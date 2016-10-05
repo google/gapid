@@ -1,0 +1,13 @@
+load("//tools/build:rules.bzl", "cc_copts", "cc_defines")
+
+cc_library(
+    name = "cc",
+    srcs = glob(["*.cpp"]),
+    deps = [
+        "//core/cc",
+    ],
+    hdrs = glob(["*.h"]),
+    defines = cc_defines(),
+    copts = cc_copts(),
+    visibility = ["//visibility:public"],
+)
