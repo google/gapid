@@ -1068,51 +1068,21 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the C++ type of the argument expected by a core::coder constructor for
-  the specified expression or type.
+  Emits the logic to set a proto field.
 -------------------------------------------------------------------------------
 */}}
-{{define "C++.CoderArgumentType"}}
-  {{if not (IsType $)}}{{Template "C++.CoderArgumentType" (TypeOf $)}}
-  {{else if IsClass       $}}core::coder::{{Global "API"}}::{{$.Name}}
-  {{else if IsSlice       $}}core::coder::{{Global "API"}}::{{$.Name | Replace "ˢ"  "__S"}}
-  {{else if IsPointer     $}}core::coder::{{Global "API"}}::{{$.Name | Replace "ᶜᵖ" "__CP" | Replace "ᵖ" "__P" | Replace "ᶜ" "__C"}}
-  {{else if IsReference   $}}{{Template "C++.CoderArgumentType" $.To}}*
-  {{else if IsString      $}}const char*
-  {{else if IsStaticArray $}}core::StaticArray<{{Template "C++.CoderArgumentType" $.ValueType}}, {{$.Size}}>
-  {{else if IsMap         $}}core::Map<{{Template "C++.CoderArgumentType" $.KeyType}}, {{Template "C++.CoderArgumentType" $.ValueType}}>
-  {{else if IsPointer     $}}{{Template "C++.CoderArgumentType" $.To}}*
-  {{else if IsPseudonym   $}}
-    {{     if IsClass       $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else if IsReference   $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else if IsStaticArray $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else if IsSlice       $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else if IsMap         $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else if IsPointer     $.To}}core::coder::{{Global "API"}}::{{$.Name}}
-    {{else}}{{Template "C++.CoderArgumentType" $.To}}
-  {{end}}
-  {{else}}{{Template "C++.Type" $}}
-  {{end}}
-{{end}}
+{{define "C++.SetProtoField"}}
+  {{AssertType $.Proto  "string"}}
+  {{AssertType $.Prefix "string"}}
+  {{AssertType $.Name   "string"}}
 
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a C++ expression that can used to pass an argument to a core::coder
-  constructor.
--------------------------------------------------------------------------------
-*/}}
-{{define "C++.CoderArgument"}}
-
-  {{$src_ty := Macro "C++.Type" $.Argument}}
-  {{$dst_ty := Macro "C++.CoderArgumentType" $.Argument}}
-  {{if not (eq $src_ty $dst_ty)}}
-    toEncoder< {{Template "C++.CoderArgumentType" $.Argument}} >({{Macro "C++.Read" $.Argument}}, {{$.Allocator}})
-  {{else}}
-    {{if IsStaticArray (TypeOf $.Argument)}}
-      {{Template "C++.CoderArgumentType" $.Argument}}({{Macro "C++.Read" $.Argument}})
-    {{else}}
-      {{Macro "C++.Read" $.Argument}}
-    {{end}}
+  {{$setter := $.Name | Strings | Lower}}
+  {{$ty := $.Type | TypeOf | Underlying}}
+  {{if      IsClass       $ty}}{{$.Prefix}}{{$.Name}}.toProto({{$.Proto}}mutable_{{$setter}}());
+  {{else if IsPointer     $ty}}::gapii::toProtoPointer({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
+  {{else if IsSlice       $ty}}::gapii::toProtoSlice({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
+  {{else if IsStaticArray $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), core::StaticArray<{{Macro "C++.Type" $ty.ValueType}}, {{$ty.Size}}>({{$.Prefix}}{{$.Name}}));
+  {{else if IsMap         $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
+  {{else                     }}{{$.Proto}}set_{{$setter}}({{$.Prefix}}{{$.Name}});
   {{end}}
 {{end}}

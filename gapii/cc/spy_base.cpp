@@ -15,7 +15,7 @@
  */
 
 #include "spy_base.h"
-#include "to_encoder.h"
+#include "to_proto.h"
 
 #include "core/cc/log.h"
 #include "core/cc/thread.h"
@@ -23,7 +23,6 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-using core::coder::memory::Range;
 using core::Interval;
 
 namespace gapii {
@@ -33,7 +32,7 @@ SpyBase::SpyBase()
     , mPassthrough(false)
     , mCommandStartEndCounter(0)
     , mExpectedNextCommandStartCounterValue(0)
-    , mNullEncoder(std::make_shared<core::NullEncoder>())
+    , mNullEncoder(PackEncoder::noop())
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
     , mMemoryTracker()
 #endif // TARGET_OS
@@ -41,13 +40,12 @@ SpyBase::SpyBase()
     mCurrentThread = core::Thread::current().id();
 }
 
-void SpyBase::init(CallObserver* observer, std::shared_ptr<core::Encoder> encoder) {
+void SpyBase::init(CallObserver* observer, PackEncoder::SPtr encoder) {
     auto threadID = core::Thread::current().id();
     mEncoder = encoder;
     mObserveApplicationPool = true;
     mPassthrough = false;
     mAbortHandler = nullptr;
-    mAborted = nullptr;
     mCurrentThread = threadID;
     mIsSuspended = false;
     onThreadSwitched(observer, threadID);
@@ -78,7 +76,6 @@ void SpyBase::lock(CallObserver* observer, const char* name) {
 }
 
 void SpyBase::unlock() {
-    mAborted = nullptr;
     mMutex.unlock();
 }
 
@@ -99,9 +96,9 @@ void SpyBase::defaultAbortHandler(CallObserver* observer, const AbortException& 
         }
     }
     // Record the abort as an extra.
-    auto aborted = observer->getScratch()->create<core::coder::atom::Aborted>();
-    aborted->mIsAssert = e.category() == AbortException::ASSERT;
-    aborted->mReason = toEncoder<const char*>(e.message(), *observer->getScratch());
+    auto aborted = new atom_pb::Aborted();
+    aborted->set_isassert(e.category() == AbortException::ASSERT);
+    aborted->set_reason(e.message());
     observer->addExtra(aborted);
 }
 

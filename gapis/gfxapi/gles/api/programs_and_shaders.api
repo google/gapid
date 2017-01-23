@@ -63,7 +63,6 @@ class ActiveUniform {
 }
 
 @internal
-@serialize
 class Uniform {
   @internal u8[] Value
   @unused GLenum Type

@@ -89,9 +89,6 @@
   #include "{{Global "API"}}_spy.h"
 ¶
   #include "core/cc/log.h"
-  #include "core/cc/coder/memory.h"
-  #include "core/cc/coder/atom.h"
-  #include "core/cc/coder/{{Global "API"}}.h"
 ¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
@@ -163,22 +160,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the comma-separated list of arguments to generate the coder arguments
-  for the given function.
--------------------------------------------------------------------------------
-*/}}
-{{define "CoderArguments"}}
-  {{AssertType $ "Function"}}
-
-  observer->getScratch()->vector<core::Encodable*>(kMaxExtras)
-  {{range $i, $p := $.FullParameters}}
-    §, {{Template "C++.CoderArgument" "Argument" $p "Allocator" "*observer->getScratch()"}}§
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the method body for the given atom.
 -------------------------------------------------------------------------------
 */}}
@@ -190,7 +171,7 @@
     {{$synthetic := GetAnnotation $ "synthetic"}}
 
     {{Template "C++.ReturnType" $}} {{$spyname}}::{{$name}}({{Macro "C++.CallParameters" $ | Strings "CallObserver* observer" | JoinWith ", "}}) {
-      GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
+      GAPID_WARNING({{Template "C++.PrintfCommandCall" $}});
 ¶
       {{if (and (not (GetAnnotation $ "synthetic")) (not (GetAnnotation $ "override")))}}
         if (§
@@ -214,8 +195,7 @@
       auto call = [{{Macro "CallCapture" $}}] {
         called = true;
 
-      {{/* Observe all reads */}}
-      observer->observeReads();
+        observer->invoke();
 
         {{/* Perform the call */}}
         {{if not (GetAnnotation $ "synthetic")}}
@@ -246,20 +226,23 @@
         handleAbort(observer, e);
       }
       uint64_t counter_at_end = mCommandStartEndCounter++;
-      core::coder::atom::CommandCounter counter_value_encodable(counter_at_begin, counter_at_end);
-¶
-      observer->observeWrites();
-¶
-      core::coder::{{Global "API"}}::{{Title .Name}} coder({{Template "CoderArguments" $}});
-      coder.mextras.append(observer->getExtras());
 ¶
       if (counter_at_end > counter_at_begin + 1 ||
           counter_at_begin != mExpectedNextCommandStartCounterValue) {
-        coder.mextras.append(&counter_value_encodable);
+
+        auto counter = new atom_pb::CommandCounter();
+        counter->set_counteratbegin(counter_at_begin);
+        counter->set_counteratend(counter_at_end);
+        observer->addExtra(counter);
       }
       mExpectedNextCommandStartCounterValue = counter_at_end + 1;
 ¶
-      getEncoder()->Variant(&coder);
+      auto cmd = new {{Global "API"}}_pb::{{.Name}}();
+      {{range $f := $.FullParameters}}
+        {{Template "C++.SetProtoField" "Proto" "cmd->" "Prefix" "" "Name" $f.Name "Type" $f}}
+      {{end}}
+      observer->encodeAndDeleteCommand(cmd);
+
       {{if GetAnnotation $ "DrawCall"}}onPostDrawCall();{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
 ¶

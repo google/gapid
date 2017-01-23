@@ -32,12 +32,12 @@
   #define {{$guard}}
 ¶
   #include "gapii/cc/slice.h"
-  #include "gapii/cc/to_encoder.h"
+  #include "gapii/cc/to_proto.h"
 ¶
-  #include "core/cc/coder/{{Global "API"}}.h"
-  #include "core/cc/coder/memory.h"
   #include "core/cc/scratch_allocator.h"
   #include "core/cc/static_array.h"
+¶
+  #include "gapis/gfxapi/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
 ¶
   #include <memory>
   #include <string>
@@ -100,18 +100,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the coder argument for the given field.
--------------------------------------------------------------------------------
-*/}}
-{{define "CoderField"}}
-  {{AssertType $ "Field"}}
-
-  {{Template "C++.CoderArgument" "Argument" $ "Allocator" "alloc"}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the declarations for all non-declared field types of the class followed
   by the class declaration.
 -------------------------------------------------------------------------------
@@ -133,7 +121,7 @@
   class {{$name}} {
     «public:»
     {{if $serializable}}
-      typedef core::coder::{{Global "API"}}::{{$name}} CoderType;
+      typedef {{Global "API"}}_pb::{{$name}} ProtoType;
     {{end}}
 
     {{if len $.Fields}}
@@ -153,10 +141,19 @@
         {{if $a}}: {{$a}}{{end}}
         ««§•{}
     {{end}}
-¶
+
     {{if $serializable}}
-      inline CoderType encodeable(core::DefaultScratchAllocator& alloc) const {
-        return CoderType({{ForEach $.Fields "CoderField" | JoinWith ", "}});
+¶
+      inline ProtoType* toProto() const {
+        auto out = new ProtoType();
+        toProto(out);
+        return out;
+      }
+¶
+      inline void toProto(ProtoType* out) const {
+        {{range $f := $.Fields}}
+          {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "m" "Name" $f.Name "Type" $f}}
+        {{end}}
       }
     {{end}}
 ¶

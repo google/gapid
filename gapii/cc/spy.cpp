@@ -14,16 +14,22 @@
  * limitations under the License.
  */
 
+#include "spy.h"
+
 #include "connection_header.h"
 #include "connection_stream.h"
+
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
+#include "gapii/cc/to_proto.h"
 
 #include "core/cc/encoder.h"
 #include "core/cc/gl/formats.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
 #include "core/cc/target.h"
+
+#include "gapis/gfxapi/gles/gles_pb/extras.pb.h"
 
 #include <cstdlib>
 #include <vector>
@@ -207,21 +213,20 @@ Spy::Spy()
 
     CallObserver observer(this);
 
-    mEncoder = std::shared_ptr<core::Encoder>(new core::Encoder(conn));
-    mEncoder->String("GapiiTraceFile_V1.1");
+    mEncoder = gapii::PackEncoder::create(conn);
 
     GlesSpy::init();
     CoreSpy::init();
     VulkanSpy::init();
     SpyBase::init(&observer, mEncoder);
 
-    core::coder::atom::FieldAlignments alignments(
-        GetAlignment<char>(),
-        GetAlignment<int>(),
-        GetAlignment<uint32_t>(),
-        GetAlignment<uint64_t>(),
-        GetAlignment<void*>());
-    observer.addExtra(&alignments);
+    atom_pb::FieldAlignments* alignments = new atom_pb::FieldAlignments();
+    alignments->set_charalignment(GetAlignment<char>());
+    alignments->set_intalignment(GetAlignment<int>());
+    alignments->set_u32alignment(GetAlignment<uint32_t>());
+    alignments->set_u64alignment(GetAlignment<uint64_t>());
+    alignments->set_pointeralignment(GetAlignment<void*>());
+    observer.addExtra(alignments);
 
 #if TARGET_OS == GAPID_OS_ANDROID
     auto props = getDeviceProperties();
@@ -234,9 +239,8 @@ Spy::Spy()
     deviceInfo.mBuildVersionSdk = props["ro.build.version.sdk"];
     deviceInfo.mDebuggable = props["ro.debuggable"];
     deviceInfo.mAbiList = props["ro.product.cpu.abilist"];
+    observer.addExtra(deviceInfo.toProto());
 
-    auto scratch = observer.getScratch();
-    observer.addExtra(scratch->make<DeviceInfo::CoderType>(deviceInfo.encodeable(*scratch)));
 #endif
     CoreSpy::architecture(&observer, alignof(void*), sizeof(void*), sizeof(int), isLittleEndian());
     if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
@@ -307,9 +311,7 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
     std::shared_ptr<StaticContextState> out(new StaticContextState(constants));
 
     // Store the StaticContextState as an extra.
-    auto scratch = observer->getScratch();
-    auto extra = scratch->make<StaticContextState::CoderType>(out->encodeable(*scratch));
-    observer->getExtras().append(extra);
+    observer->addExtra(out->toProto());
 
     return out;
 }
@@ -376,9 +378,7 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     ));
 
     // Store the DynamicContextState as an extra.
-    auto scratch = observer->getScratch();
-    auto extra = scratch->make<DynamicContextState::CoderType>(out->encodeable(*scratch));
-    observer->getExtras().append(extra);
+    observer->addExtra(out->toProto());
 
     return out;
 }
@@ -496,11 +496,16 @@ void Spy::observeFramebuffer() {
     if (downsamplePixels(data, w, h,
                          &downsampledData, &downsampledW, &downsampledH,
                          kMaxFramebufferObservationWidth, kMaxFramebufferObservationHeight)) {
-      uint32_t downsampledSize = downsampledW * downsampledH * 4;
-      core::coder::atom::FramebufferObservation coder(
-          w, h, downsampledW, downsampledH, core::Vector<uint8_t>(downsampledData, downsampledSize));
-      mEncoder->Variant(&coder);
-      delete [] downsampledData;
+
+        uint32_t downsampledSize = downsampledW * downsampledH * 4;
+        atom_pb::FramebufferObservation observation;
+        observation.set_originalwidth(w);
+        observation.set_originalheight(h);
+        observation.set_datawidth(downsampledW);
+        observation.set_dataheight(downsampledH);
+        observation.set_data(downsampledData, downsampledSize);
+        mEncoder->message(&observation);
+        delete [] downsampledData;
     }
     delete [] data;
 }
@@ -569,17 +574,18 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
 
 void Spy::onPostFence(CallObserver* observer) {
     if (mRecordGLErrorState) {
-        std::shared_ptr<Context> ctx = this->Contexts[this->CurrentThread];
-        auto es = observer->getScratch()->create<core::coder::gles::ErrorState>();
-        es->mTraceDriversGlError = GlesSpy::mImports.glGetError();
-        es->mInterceptorsGlError = observer->getError();
-        observer->addExtra(es);
+        auto traceErr = GlesSpy::mImports.glGetError();
 
         // glGetError() cleared the error in the driver.
         // Fake it the next time the user calls glGetError().
-        if (es->mTraceDriversGlError != 0) {
-            setFakeGlError(es->mTraceDriversGlError);
+        if (traceErr != 0) {
+            setFakeGlError(traceErr);
         }
+
+        auto es = new gles_pb::ErrorState();
+        es->set_tracedriversglerror(traceErr);
+        es->set_interceptorsglerror(observer->getError());
+        observer->addExtra(es);
     }
 }
 
@@ -598,9 +604,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
-            core::coder::gles::GlGetError coder(observer->getScratch()->vector<core::Encodable*>(kMaxExtras), fakeGlError);
-            coder.mextras.append(observer->getExtras());
-            mEncoder->Variant(&coder);
+            observer->encodeAndDeleteCommand(new gles_pb::glGetError());
             GLenum_Error err = fakeGlError;
             fakeGlError = 0;
             return err;

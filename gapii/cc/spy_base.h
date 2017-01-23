@@ -19,6 +19,7 @@
 
 #include "abort_exception.h"
 #include "call_observer.h"
+#include "pack_encoder.h"
 #include "return_handler.h"
 #include "slice.h"
 
@@ -29,9 +30,9 @@
 #include "core/cc/mutex.h"
 #include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
+#include "core/cc/id.h"
 
-#include "core/cc/coder/memory.h"
-#include "core/cc/coder/atom.h"
+#include "gapis/atom/atom_pb/atom.pb.h"
 
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include "core/memory_tracker/cc/memory_tracker.h"
@@ -49,7 +50,7 @@ class SpyBase {
 public:
     SpyBase();
 
-    void init(CallObserver* observer, std::shared_ptr<core::Encoder> encoder);
+    void init(CallObserver* observer, PackEncoder::SPtr encoder);
 
     // lock begins the interception of a single command. It must be called
     // before invoking any command on the spy. Blocks if any other thread
@@ -65,19 +66,23 @@ public:
     // writes do not change the memory contents. If false, then
     // no-observations are made and writes change the application memory.
     inline void setObserveApplicationPool(bool observeApplicationPool);
+
     // Set whether to just pass forward the calls directly from the
     // interceptor to the underlying driver. If false, the default, then
     // API state logic is run and an atom is emitted to the trace stream.
     // If true, the spy is just a trampoline.
     inline void setPassthrough(bool passthrough);
+
     // Set the handler to use when handle() is called with an abort
     // exception. This allows different treatment for different
     // aborts without requiring API specific knowledge.
     typedef std::function<void(CallObserver* observer, const AbortException&)> AbortHandler;
     inline void setHandler(AbortHandler handler);
+
     // Returns true if the spy should compute the expected return value and
     // call setExpectedReturn(v). Default is false.
     inline bool shouldComputeExpectedReturn() const;
+
     // Set the handler to use when setExpectedReturn(val) is called.
     // By default the return value specified is ignored.
     inline void setReturnHandler(std::shared_ptr<ReturnHandler> handler);
@@ -86,11 +91,12 @@ public:
     // TODO(qining): To support multithreaded uses, mutex is required to manage
     // the access to this set.
     std::unordered_set<core::Id>& getResources() { return mResources; }
+
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
     // the access to this encoder.
-    std::shared_ptr<core::Encoder> getEncoder() { return is_suspended()?
-        mNullEncoder: mEncoder;
+    std::shared_ptr<gapii::PackEncoder> getEncoder() {
+        return is_suspended() ? mNullEncoder : mEncoder;
     }
 
     // Returns true if we should observe application pool.
@@ -113,10 +119,7 @@ public:
 protected:
     static const size_t kMaxExtras = 16; // Per atom
 
-    typedef core::coder::atom::Observation Observation;
-
     typedef std::unordered_set<core::Id> IdSet;
-    typedef std::shared_ptr<core::Encoder> EncoderSPtr;
 
     // onThreadSwitched is invoked by enter() whenever the current thread changes.
     virtual void onThreadSwitched(CallObserver* observer, uint64_t threadID) = 0;
@@ -171,6 +174,9 @@ protected:
       return mReentrantFlag.get() != 0;
     }
 
+    // The output stream encoder.
+    PackEncoder::SPtr mEncoder;
+
     // If true the interceptor calls the underlying function directly.
     bool mPassthrough;
 
@@ -184,9 +190,6 @@ protected:
     // starts at 0 before any atoms have been sent.
     uint64_t mExpectedNextCommandStartCounterValue;
 
-    // Stores the extra if the command aborted.
-    core::coder::atom::Aborted* mAborted;
-
     // Used by the generated code to indicate that the API file compute t as the
     // return for this call. The actual return value comes from the driver.
     template <typename T> void setExpectedReturn(const T& t);
@@ -197,10 +200,8 @@ protected:
 private:
     template <class T> bool shouldObserve(const Slice<T>& slice) const;
 
-    // The output stream encoder.
-    EncoderSPtr mEncoder;
-
-    std::shared_ptr<core::NullEncoder>  mNullEncoder;
+    // The stream encoder that does nothing.
+    PackEncoder::SPtr mNullEncoder;
 
     // The list of observations that have already been encoded.
     IdSet mResources;

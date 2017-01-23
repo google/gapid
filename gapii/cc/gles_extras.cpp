@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "core/cc/encoder.h"
-#include "core/cc/coder/gles.h"
 #include "gapii/cc/gles_spy.h"
 
 #define ANDROID_NATIVE_MAKE_CONSTANT(a,b,c,d) \
@@ -32,7 +30,7 @@ namespace gapii {
 // getProgramInfo returns a ProgramInfo, populated with the details of all the
 // attributes and uniforms exposed by program.
 std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer, ProgramId program) {
-    using namespace core::coder::gles;
+    using namespace gles_pb;
 
     // Allocate temporary buffer large enough to hold any of the returned strings.
     int32_t infoLogLength = 0;
@@ -77,8 +75,7 @@ std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer
     GAPID_DEBUG("Created ProgramInfo: LinkStatus=%i ActiveUniforms=%i ActiveAttributes=%i",
         linkStatus, activeUniforms, activeAttributes);
 
-    observer->addExtra(observer->getScratch()->make<ProgramInfo::CoderType>(pi->encodeable(*observer->getScratch())));
-
+    observer->addExtra(pi->toProto());
     return pi;
 }
 
@@ -119,7 +116,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         buffer->usage
     ));
     GAPID_DEBUG("Created AndroidNativeBufferExtra: width=%i, height=%i", buffer->width, buffer->height);
-    observer->addExtra(observer->getScratch()->make<AndroidNativeBufferExtra::CoderType>(extra->encodeable(*observer->getScratch())));
+    observer->addExtra(extra->toProto());
     return extra;
 #else
     return nullptr;

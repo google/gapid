@@ -219,9 +219,7 @@ if(NOT DISABLED_CXX)
 
     if(ANDROID)
         find_package(STL REQUIRED)
-        target_link_libraries(protobuf STL::Lib)
         target_link_libraries(protobuf_lite STL::Lib)
-        target_link_libraries(protoc_lib STL::Lib)
     endif()
 endif()
 
