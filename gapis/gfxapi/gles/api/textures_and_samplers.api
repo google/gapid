@@ -190,7 +190,7 @@ sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum targ
         case false: ctx.Instances.DefaultTextures.TextureBuffer
       }
     }
-    case GL_TEXTURE_CUBE_MAP: {
+    case GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
       // minRequiredVersion(2, 0)
       switch (tu.BindingCubeMap != 0) {
         case true:  ctx.Instances.Textures[tu.BindingCubeMap]
@@ -1778,7 +1778,14 @@ sub GLenum checkSwizzleParam(GLenum swizzle) {
 }
 
 sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
-  if target == GL_TEXTURE_BUFFER { glErrorInvalidEnum(target) } // Excluded.
+  switch target {
+    case GL_TEXTURE_BUFFER, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      glErrorInvalidEnum(target) // Excluded.
+    }
+    default: {
+    }
+  }
+
   t := GetBoundTextureOrErrorInvalidEnum(target)
   switch pname {
     case GL_TEXTURE_MAG_FILTER: {
@@ -2318,13 +2325,7 @@ cmd void glTexSubImage2D(GLenum         target,
       glErrorInvalidEnum(type)
     }
   }
-  t := GetBoundTextureOrErrorInvalidEnum(switch (target) {
-      case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-          GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-        GL_TEXTURE_CUBE_MAP
-      default:
-        target
-    })
+  t := GetBoundTextureOrErrorInvalidEnum(target)
   image := switch (target) {
     case GL_TEXTURE_2D:
       t.Texture2D[level]
