@@ -30,6 +30,7 @@ set(files
     hierarchies.go
     index_limits.go
     memory.go
+    mesh.go
     report.go
     requests_test.go
     resolvables.pb.go
@@ -44,5 +45,5 @@ set(files
     thumbnail.go
 )
 set(dirs
-    
+
 )

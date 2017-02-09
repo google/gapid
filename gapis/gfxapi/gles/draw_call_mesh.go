@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/sint"
+	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -150,20 +152,35 @@ func vertexStreamData(
 	}
 	gap := vectorStride - vectorSize // number of bytes between each vector
 
-	// trim slice to relevant data range
-	base := uint64(vaa.RelativeOffset) + uint64(vbb.Offset)
-	slice = slice.Slice(base, base+uint64(vectorSize*vectorCount+gap*(vectorCount-1)), s)
-	data := slice.Read(ctx, nil, s, nil)
+	compactSize := vectorSize * vectorCount
+	out := make([]byte, compactSize)
 
-	if gap > 0 {
-		// Remove gaps from data
-		for i := 1; i < vectorCount; i++ {
-			copy(data[i*vectorSize:(i+1)*vectorSize], data[i*vectorStride:])
-		}
-		data = data[:vectorSize*vectorCount]
+	base := uint64(vaa.RelativeOffset) + uint64(vbb.Offset)
+	if base >= slice.Count {
+		// First vertex sits beyond the end of the buffer.
+		// Instead of erroring just return a 0-initialized buffer so other
+		// streams can be visualized. The report should display an error to
+		// alert the user to the bad data.
+		// TODO: Actually add this as a report error.
+		return out, nil
 	}
 
-	return data, nil
+	// Only read as much data as we actually have.
+	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.Count)
+	data := slice.Slice(base, base+size, s).Read(ctx, nil, s, nil)
+	if gap > 0 {
+		// Adjust vectorCount to the number of complete vectors found in data.
+		vectorCount := sint.Min((gap+len(data))/vectorStride, vectorCount)
+		// Copy the vector elements to out removing any gaps.
+		for i := 0; i < vectorCount; i++ {
+			copy(out[i*vectorSize:(i+1)*vectorSize], data[i*vectorStride:])
+		}
+	} else {
+		// No gaps between vector elements. Simple copy.
+		copy(out, data)
+	}
+
+	return out, nil
 }
 
 func translateDrawPrimitive(e GLenum) (gfxapi.DrawPrimitive, error) {
