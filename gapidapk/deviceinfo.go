@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -37,7 +38,13 @@ func init() {
 func fetchDeviceInfo(ctx log.Context, d adb.Device) error {
 	apk, err := EnsureInstalled(ctx, d, device.UnknownABI)
 	if err != nil {
-		return err
+		// The gapid.apk was not found. This can happen with partial builds used
+		// for testing.
+		// Don't return an error as this will prevent the device from being
+		// registered and the device already comes with basic usable
+		// information.
+		jot.Warning(ctx).Cause(err).Print("Couldn't find gapid.apk for device")
+		return nil
 	}
 
 	action := apk.ServiceActions.FindByName(sendDevInfoAction, sendDevInfoService)
