@@ -16,6 +16,7 @@ package gles
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	goimg "image"
 	"image/color"
@@ -35,7 +36,7 @@ import (
 const referenceImageDir = "reference"
 
 // storeReferenceImage replaces the reference image with img.
-func storeReferenceImage(ctx log.Context, name string, img *gpuimg.Image2D) {
+func storeReferenceImage(ctx log.Context, outputDir string, name string, img *gpuimg.Image2D) {
 	ctx = ctx.S("Name", name)
 	data := &bytes.Buffer{}
 	i, err := toGoImage(img)
@@ -45,12 +46,21 @@ func storeReferenceImage(ctx log.Context, name string, img *gpuimg.Image2D) {
 	if err := png.Encode(data, i); err != nil {
 		jot.Fatal(ctx, err, "Failed to encode reference image")
 	}
-	if err := os.MkdirAll(referenceImageDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		jot.Fatal(ctx, err, "Failed to create reference image directory")
 	}
-	path := filepath.Join(referenceImageDir, name+".png")
+	path := filepath.Join(outputDir, name+".png")
 	if err := ioutil.WriteFile(path, data.Bytes(), 0666); err != nil {
 		jot.Fatal(ctx, err, "Failed to store reference image")
+	}
+}
+
+func readFile(path string) ([]byte, error) {
+	b64, found := embedded[path]
+	if found {
+		return base64.StdEncoding.DecodeString(b64)
+	} else {
+		return ioutil.ReadFile(path)
 	}
 }
 
@@ -58,7 +68,7 @@ func storeReferenceImage(ctx log.Context, name string, img *gpuimg.Image2D) {
 func loadReferenceImage(ctx log.Context, name string) *gpuimg.Image2D {
 	ctx = ctx.S("Name", name)
 	path := filepath.Join(referenceImageDir, name+".png")
-	data, err := ioutil.ReadFile(path)
+	data, err := readFile(path)
 	if err != nil {
 		jot.Fatal(ctx, err, "Failed to load reference image")
 	}

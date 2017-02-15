@@ -29,11 +29,11 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
@@ -108,7 +108,7 @@ var (
 		0, 1, 2, 0, 2, 3,
 	}
 
-	generateReferenceImages = flag.Bool("generate", false, "generate reference images")
+	generateReferenceImages = flag.String("generate", "", "directory in which to generate reference images, empty to disable")
 	exportCaptures          = flag.String("export-captures", "", "directory to export captures to, empty to disable")
 	rootCtx                 log.Context
 
@@ -169,10 +169,11 @@ func (f *Fixture) p() memory.Pointer {
 }
 
 func newFixture(ctx log.Context) (log.Context, *Fixture) {
-	m, r := replay.New(ctx), bind.NewRegistry()
+	r := bind.NewRegistry()
+	ctx = bind.PutRegistry(ctx, r)
+	m := replay.New(ctx)
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	ctx = bind.PutRegistry(ctx, r)
 	bind.GetRegistry(ctx).AddDevice(rootCtx, bind.Host(ctx))
 
 	dev := r.DefaultDevice()
@@ -205,8 +206,8 @@ func p(addr uint64) memory.Pointer {
 }
 
 func checkImage(ctx log.Context, name string, got *image.Image2D, threshold float64) {
-	if *generateReferenceImages {
-		storeReferenceImage(ctx, name, got)
+	if *generateReferenceImages != "" {
+		storeReferenceImage(ctx, *generateReferenceImages, name, got)
 	} else {
 		quantized := quantizeImage(got)
 		expected := loadReferenceImage(ctx, name)
