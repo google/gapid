@@ -21,8 +21,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -143,6 +144,11 @@ func init() {
 		}
 	}
 	ctx := log.Background()
+
+	deviceScanDone, onDeviceScanDone := task.NewSignal()
+	onDeviceScanDone(ctx)
+	cfg.DeviceScanDone = deviceScanDone
+
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	atoms, draw := samples.DrawTexturedSquare(ctx)
 	p, err := capture.ImportAtomList(ctx, "sample", atoms)
