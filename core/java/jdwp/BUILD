@@ -1,0 +1,58 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "class_status.go",
+        "cmdset_arrayreference.go",
+        "cmdset_arraytype.go",
+        "cmdset_classtype.go",
+        "cmdset_eventrequest.go",
+        "cmdset_method.go",
+        "cmdset_objectreference.go",
+        "cmdset_referencetypes.go",
+        "cmdset_stackframe.go",
+        "cmdset_stringreference.go",
+        "cmdset_threadreference.go",
+        "cmdset_vm.go",
+        "cmdsets.go",
+        "coder.go",
+        "errors.go",
+        "event.go",
+        "event_kind.go",
+        "field.go",
+        "helpers.go",
+        "invoke_options.go",
+        "jdwp.go",
+        "method.go",
+        "modbits.go",
+        "packet.go",
+        "recv.go",
+        "suspend_policy.go",
+        "tag.go",
+        "type_tag.go",
+        "types.go",
+        "value.go",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/endian:go_default_library",
+        "//core/data/pod:go_default_library",
+        "//core/event/task:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    size = "small",
+    srcs = ["jdwp_test.go"],
+    tags = ["integration"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/java/jdwp/test:go_default_library",
+        "//core/log:go_default_library",
+    ],
+)
