@@ -1,0 +1,62 @@
+load("//tools/build:rules.bzl", "apic", "cc_copts", "cc_defines")
+
+apic(
+    name = "gles",
+    api = "//gapis/api/gles:api",
+    templates = [
+        "//gapis/api/templates:api_imports.h",
+        "//gapis/api/templates:api_spy.h",
+        "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_types.h",
+        "//gapis/api/gles/templates:api_exports.cpp",
+        "//gapis/api/gles/templates:api_imports.cpp",
+    ]
+)
+
+apic(
+    name = "vulkan",
+    api = "//gapis/api/vulkan:api",
+    templates = [
+        "//gapis/api/templates:api_imports.h",
+        "//gapis/api/templates:api_spy.h",
+        "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_types.h",
+        "//gapis/api/vulkan/templates:api_exports.cpp",
+        "//gapis/api/vulkan/templates:api_imports.cpp",
+        "//gapis/api/vulkan/templates:vk_spy_helpers.cpp",
+    ]
+)
+
+cc_library(
+    name = "gapii",
+    srcs = [
+        ":gles",
+        ":vulkan",
+    ] + glob([
+        "*.cpp",
+    ], exclude = [
+        "*_test.cpp",
+    ]) + select({
+        "//tools/build:linux": glob(["linux/*.cpp"]),
+        "//tools/build:darwin": ["//gapii/cc/osx:generated"],
+        "//tools/build:windows": ["//gapii/cc/windows:srcs"],
+        "//conditions:default": glob(["android/*.cpp"]),
+    }),
+    hdrs = glob([
+        "*.h",
+        "*.inl",
+    ]),
+    defines = cc_defines(),
+    deps = [
+        "//core/cc",
+        "//core/memory_tracker/cc",
+    ],
+    copts = cc_copts(),
+    linkopts = select({
+        "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
+        "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
+        "//tools/build:windows": [],
+        "//conditions:default": ["-lEGL", "-llog", "-lm"],
+    }),
+    visibility = ["//visibility:public"],
+)

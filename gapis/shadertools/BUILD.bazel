@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library")
+
+cgo_library(
+    name = "cgo_default_library",
+    srcs = ["shadertools.go"],
+    cdeps = [
+        "//gapis/shadertools/cc:cc",
+        "@spirv-tools//:spirv-tools",
+    ],
+    clinkopts = [],
+    visibility = ["//visibility:private"],
+    deps = [
+        "//core/fault:go_default_library",
+        "//core/text:go_default_library",
+    ],
+)
+
+go_library(
+    name = "go_default_library",
+    library = ":cgo_default_library",
+    visibility = ["//visibility:public"],
+)

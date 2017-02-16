@@ -1,0 +1,11 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["all.go"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//gapis/api/gles:go_default_library",
+        "//gapis/api/vulkan:go_default_library",
+    ],
+)

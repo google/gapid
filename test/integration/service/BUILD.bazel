@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["service.go"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["service_test.go"],
+    tags = [
+        "integration",
+        "manual",  # TODO: Needs access to a working gl driver
+    ],
+    deps = [
+        "//core/app/auth:go_default_library",
+        "//core/assert:go_default_library",
+        "//core/event/task:go_default_library",
+        "//core/log:go_default_library",
+        "//core/net/grpcutil:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/bind:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/api/gles:go_default_library",
+        "//gapis/capture:go_default_library",
+        "//gapis/client:go_default_library",
+        "//gapis/database:go_default_library",
+        "//gapis/replay:go_default_library",
+        "//gapis/server:go_default_library",
+        "//gapis/service:go_default_library",
+        "//gapis/service/path:go_default_library",
+        "//gapis/stringtable:go_default_library",
+        "//test/integration/replay/gles/samples:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
