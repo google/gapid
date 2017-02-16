@@ -29,11 +29,11 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
@@ -415,7 +415,7 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 
 func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier) {
 	ctx := f.ctx
-	atoms, square := samples.DrawTexturedSquare(ctx)
+	atoms, _, square := samples.DrawTexturedSquare(ctx)
 
 	verifyTrace := func(ctx log.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
