@@ -1,0 +1,28 @@
+cc_library(
+    name = "astc-encoder",
+    srcs = [
+        "Source/astc_block_sizes2.cpp",
+        "Source/astc_color_unquantize.cpp",
+        "Source/astc_decompress_symbolic.cpp",
+        "Source/astc_image_load_store.cpp",
+        "Source/astc_integer_sequence.cpp",
+        "Source/astc_partition_tables.cpp",
+        "Source/astc_percentile_tables.cpp",
+        "Source/astc_quantization.cpp",
+        "Source/astc_symbolic_physical.cpp",
+        "Source/astc_weight_quant_xfer_tables.cpp",
+        "Source/softfloat.h",
+        "Source/softfloat.cpp",
+        "Source/astc_codec_internals.h",
+        "Source/mathlib.h",
+        "Source/vectypes.h",
+    ],
+    hdrs = [
+        "Source/astc_codec_internals.h",
+        "Source/mathlib.h",
+        "Source/vectypes.h",
+    ],
+    copts = ["-Wno-c++11-narrowing"],
+    include_prefix = "third_party/astc-encoder",
+    visibility = ["//visibility:public"],
+)

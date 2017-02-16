@@ -6,6 +6,7 @@
 
 # Single files
 /.gapid-config
+/.bazelrc
 
 # General patterns
 *.gfxtrace

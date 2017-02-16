@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "slice.go",
+        "sort.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["sort_test.go"],
+    library = ":go_default_library",
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["slice_test.go"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+    ],
+)
