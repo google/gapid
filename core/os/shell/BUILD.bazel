@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "command.go",
+        "doc.go",
+        "env.go",
+        "local.go",
+        "process.go",
+        "target.go",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/event/task:go_default_library",
+        "//core/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    size = "small",
+    srcs = [
+        "env_test.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "command_example_test.go",
+            "command_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "command_example_test.go",
+            "command_test.go",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "//core/event/task:go_default_library",
+            "//core/fault:go_default_library",
+            "//core/log:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "//core/event/task:go_default_library",
+            "//core/fault:go_default_library",
+            "//core/log:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)

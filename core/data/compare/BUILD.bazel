@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "comparator.go",
+        "compare.go",
+        "custom.go",
+        "doc.go",
+        "handler.go",
+        "path.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    size = "small",
+    srcs = ["compare_test.go"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+    ],
+)

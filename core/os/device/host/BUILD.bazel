@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library", "go_test")
+
+cgo_library(
+    name = "cgo_default_library",
+    srcs = [
+        "host_c.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": ["host_darwin.go"],
+        "@io_bazel_rules_go//go/platform:linux_amd64": ["host_linux.go"],
+        "@io_bazel_rules_go//go/platform:windows_amd64": ["host_windows.go"],
+        "//conditions:default": [],
+    }),
+    clinkopts = [],
+    visibility = ["//visibility:private"],
+    deps = ["//core/fault:go_default_library"],
+    cdeps = ["//core/os/device/deviceinfo/cc:cc"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["host.go"],
+    library = ":cgo_default_library",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/os/device:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["host_test.go"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/data/id:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+    ],
+)

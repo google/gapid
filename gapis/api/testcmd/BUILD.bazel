@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "cmds.go",
+        "common.go",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data:go_default_library",
+        "//core/data/protoconv:go_default_library",
+        "//core/image:go_default_library",
+        "//core/os/device:go_default_library",
+        "//gapil/constset:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/api/testcmd/test_pb:go_default_library",
+        "//gapis/memory:go_default_library",
+        "//gapis/replay/builder:go_default_library",
+        "//gapis/service/box:go_default_library",
+    ],
+)
