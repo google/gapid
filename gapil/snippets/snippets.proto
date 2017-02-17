@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package snippets;
-option go_package = "github.com/google/gapid/gapil/snippets";
 option java_package = "com.google.gapid.proto.service.snippets";
 option java_outer_classname = "SnippetsProtos";
 

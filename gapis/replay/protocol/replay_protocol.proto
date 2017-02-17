@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package protocol;
-option go_package = "github.com/google/gapid/gapis/replay/protocol";
 
 // ConnectionType is sent from the server to the replay system to define the
 // type of connection.

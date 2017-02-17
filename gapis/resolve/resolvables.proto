@@ -15,11 +15,10 @@
 syntax = "proto3";
 
 package resolve;
-option go_package = "github.com/google/gapid/gapis/resolve";
 
-import "github.com/google/gapid/gapis/gfxapi/gfxapi.proto";
-import "github.com/google/gapid/gapis/service/path/path.proto";
-import "github.com/google/gapid/gapis/service/service.proto";
+import "gapis/gfxapi/gfxapi.proto";
+import "gapis/service/path/path.proto";
+import "gapis/service/service.proto";
 
 message ContextListResolvable {
 	path.Capture capture = 1;

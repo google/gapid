@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package android;
-option go_package = "github.com/google/gapid/core/os/android";
 
 enum KeyCode {
 	Unknown          = 0;

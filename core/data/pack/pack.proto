@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package pack;
-option go_package = "github.com/google/gapid/core/data/pack";
 
 // Version is the serialised form of a version spec.
 message Version {

@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package stream;
-option go_package = "github.com/google/gapid/core/stream";
 option java_package = "com.google.gapid.proto.stream";
 option java_outer_classname = "Stream";
 

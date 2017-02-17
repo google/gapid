@@ -15,10 +15,9 @@
 syntax = "proto3";
 
 package job;
-option go_package = "github.com/google/gapid/test/robot/job";
 
-import "github.com/google/gapid/core/os/device/device.proto";
-import "github.com/google/gapid/core/data/search/search.proto";
+import "core/os/device/device.proto";
+import "core/data/search/search.proto";
 
 // Operation represents the type of action being performed.
 enum Operation {

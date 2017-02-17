@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package atom_pb;
-option go_package = "github.com/google/gapid/gapis/atom/atom_pb";
 // cc_package
 
 // Invoke is the atom that marks the invocation point in the set of atoms for a command.

@@ -15,9 +15,8 @@
 syntax = "proto3";
 
 package gles;
-option go_package = "github.com/google/gapid/gapis/gfxapi/gles";
 
-import "github.com/google/gapid/gapis/service/path/path.proto";
+import "gapis/service/path/path.proto";
 
 // GAPIS internal structure.
 message GLSLParseResolvable {

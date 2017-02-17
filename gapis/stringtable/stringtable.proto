@@ -14,11 +14,10 @@
 
 syntax = "proto3";
 
-import "github.com/google/gapid/gapis/service/path/path.proto";
-import "github.com/google/gapid/gapis/service/pod/pod.proto";
+import "gapis/service/path/path.proto";
+import "gapis/service/pod/pod.proto";
 
 package stringtable;
-option go_package = "github.com/google/gapid/gapis/stringtable";
 option java_package = "com.google.gapid.proto.stringtable";
 option java_outer_classname = "Stringtable";
 

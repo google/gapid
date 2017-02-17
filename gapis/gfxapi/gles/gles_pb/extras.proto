@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package gles_pb;
-option go_package = "github.com/google/gapid/gapis/gfxapi/gles/gles_pb";
 
 // ErrorState is an atom extra used to describe the GLES error state after
 // the atom has been executed. It is optional - we use it only for testing.

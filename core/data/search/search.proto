@@ -15,8 +15,6 @@
 syntax = "proto3";
 
 package search;
-option go_package = "github.com/google/gapid/core/data/search";
-
 
 message Binary {
   Expression lhs = 1;

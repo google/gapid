@@ -14,6 +14,7 @@
 
 set(PROTO_PATH
     "${ROOT_DIR}/src"
+    "${CMAKE_SOURCE_DIR}"
     "${CMAKE_SOURCE_DIR}/third_party/src"
     "${PROTOBUF_DIR}/src"
 )
@@ -37,6 +38,9 @@ set(PROTO_HEADER "# Copyright (C) 2017 Google Inc.
 set(PROTO_FOOTER "
 ")
 
+set(GO_PROTO_BASE "github.com/google/gapid/")
+set(IMPORTMAP)
+
 function(scan_for_protos)
     set(proto_cmake "${CMAKE_SOURCE_DIR}/CMakeProto.cmake")
     if(FORCING_GLOB OR NOT EXISTS ${proto_cmake})
@@ -44,6 +48,7 @@ function(scan_for_protos)
             "${CMAKE_SOURCE_DIR}/core/*.proto"
             "${CMAKE_SOURCE_DIR}/gapic/*.proto"
             "${CMAKE_SOURCE_DIR}/gapis/*.proto"
+            "${CMAKE_SOURCE_DIR}/gapidapk/*.proto"
             "${CMAKE_SOURCE_DIR}/test/*.proto"
         )
         list(SORT all_protos)
@@ -64,9 +69,15 @@ function(scan_for_protos)
         add_proto_rules(${proto_cmake} "${proto_dir}" "${proto_set}")
         file(APPEND ${proto_cmake} ${PROTO_FOOTER})
     endif()
+    set(go_protos)
     if(NOT DISABLE_PROTOC)
         include(${proto_cmake})
     endif()
+    string(REPLACE ";" "," IMPORTMAP "${IMPORTMAP}")
+    foreach(go_proto ${go_protos})
+        string(REPLACE " " ";" go_proto "${go_proto}")
+        _do_protoc_go(${go_proto})
+    endforeach()
 endfunction()
 
 function(add_proto_rules rules proto_dir proto_set)
@@ -124,7 +135,7 @@ endfunction()
 
 function(scan_proto proto)
     set(full_proto "${CMAKE_SOURCE_DIR}/${proto}")
-    set(go_package "")
+    set(go_package "${GO_PROTO_BASE}${proto_dir}")
     set(java_package "")
     set(java_class "")
     set(cc_package "")
@@ -132,9 +143,6 @@ function(scan_proto proto)
     set(enums)
     file(STRINGS "${full_proto}" lines)
     foreach(line ${lines})
-        if(line MATCHES "option go_package = \"(.*)\";")
-            set(go_package "${CMAKE_MATCH_1}")
-        endif()
         if(line MATCHES "option java_package = \"(.*)\";")
             set(java_package "${CMAKE_MATCH_1}")
         endif()
@@ -164,6 +172,17 @@ function(scan_proto proto)
 endfunction()
 
 function(protoc_go go_package src_dir protos)
+    foreach(proto ${protos})
+        list(APPEND IMPORTMAP "M${src_dir}/${proto}=${go_package}")
+    endforeach()
+    string(REPLACE ";" "," protos "${protos}")
+    list(APPEND go_protos "${go_package} ${src_dir} ${protos}")
+    set(go_protos "${go_protos}" PARENT_SCOPE)
+    set(IMPORTMAP "${IMPORTMAP}" PARENT_SCOPE)
+endfunction()
+
+function(_do_protoc_go go_package src_dir protos)
+    string(REPLACE "," ";" protos "${protos}")
     set(outputs)
     foreach(proto ${protos})
         get_filename_component(proto_name ${proto} NAME_WE)
@@ -174,7 +193,7 @@ function(protoc_go go_package src_dir protos)
 
     _do_protoc("go" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=${os_plugin}"
-        "--go_out=plugins=grpc:${os_go_out}")
+        "--go_out=${IMPORTMAP},plugins=grpc:${os_go_out}")
 endfunction()
 
 function(protoc_cc cc_package src_dir protos)

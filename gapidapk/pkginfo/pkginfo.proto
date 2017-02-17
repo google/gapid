@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package pkginfo;
-option go_package = "github.com/google/gapid/gapidapk/pkginfo";
 option java_package = "com.google.gapid.proto.pkginfo";
 option java_outer_classname = "PkgInfo";
 
