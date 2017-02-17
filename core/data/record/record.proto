@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package record;
-option go_package = "github.com/google/gapid/core/data/record";
 
 // Kind represents a ledger storage type.
 enum Kind {

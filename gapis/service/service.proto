@@ -15,15 +15,14 @@
 syntax = "proto3";
 
 
-import "github.com/google/gapid/core/image/image.proto";
-import "github.com/google/gapid/core/os/device/device.proto";
-import "github.com/google/gapid/gapis/gfxapi/gfxapi.proto";
-import "github.com/google/gapid/gapis/service/path/path.proto";
-import "github.com/google/gapid/gapis/service/pod/pod.proto";
-import "github.com/google/gapid/gapis/stringtable/stringtable.proto";
+import "core/image/image.proto";
+import "core/os/device/device.proto";
+import "gapis/gfxapi/gfxapi.proto";
+import "gapis/service/path/path.proto";
+import "gapis/service/pod/pod.proto";
+import "gapis/stringtable/stringtable.proto";
 
 package service;
-option go_package = "github.com/google/gapid/gapis/service";
 option java_package = "com.google.gapid.proto.service";
 option java_outer_classname = "Service";
 

@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package memory;
-option go_package = "github.com/google/gapid/gapis/memory";
 option java_package = "com.google.gapid.proto.service.memory";
 option java_outer_classname = "MemoryProtos";
 // cc_package

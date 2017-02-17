@@ -15,9 +15,8 @@
 syntax = "proto3";
 
 package apk;
-option go_package = "github.com/google/gapid/core/os/android/apk";
 
-import "github.com/google/gapid/core/os/device/device.proto";
+import "core/os/device/device.proto";
 
 // Information is the extracted information we know about a given APK
 message Information {

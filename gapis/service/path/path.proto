@@ -14,12 +14,11 @@
 
 syntax = "proto3";
 
-import "github.com/google/gapid/core/image/image.proto";
-import "github.com/google/gapid/gapis/service/pod/pod.proto";
-import "github.com/google/gapid/gapis/vertex/vertex.proto";
+import "core/image/image.proto";
+import "gapis/service/pod/pod.proto";
+import "gapis/vertex/vertex.proto";
 
 package path;
-option go_package = "github.com/google/gapid/gapis/service/path";
 option java_package = "com.google.gapid.proto.service.path";
 option java_outer_classname = "Path";
 

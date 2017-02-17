@@ -15,10 +15,9 @@
 syntax = "proto3";
 
 package capture;
-option go_package = "github.com/google/gapid/gapis/capture";
 // cc_package
 
-import "github.com/google/gapid/core/os/device/device.proto";
+import "core/os/device/device.proto";
 
 // Capture holds all the information about a single imported capture.
 // This is not the service representation of the capture as it contains internal

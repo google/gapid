@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package pod;
-option go_package = "github.com/google/gapid/gapis/service/pod";
 option java_package = "com.google.gapid.proto.service.pod";
 option java_outer_classname = "Pod";
 

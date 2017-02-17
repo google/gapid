@@ -15,9 +15,8 @@
 syntax = "proto3";
 
 package worker;
-option go_package = "github.com/google/gapid/test/robot/job/worker";
 
-import "github.com/google/gapid/core/os/device/device.proto";
+import "core/os/device/device.proto";
 
 // Register request is the parameters for all worker registeration methods.
 // The type of the worker is implied by the service the request is sent to.
