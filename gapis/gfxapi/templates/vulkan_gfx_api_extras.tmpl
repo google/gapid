@@ -1,0 +1,382 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "cpp_common.tmpl"}}
+
+{{$ | Macro "vulkan_function_ptrs" | Reflow 4 | Write "vulkan_gfx_api_extras.cpp"}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Entry point.
+-------------------------------------------------------------------------------
+*/}}
+{{define "vulkan_function_ptrs"}}
+  {{AssertType $ "API"}}
+
+  {{template "C++.GeneratedHeader"}}
+¶
+  #include "vulkan_gfx_api.h"
+¶
+  #include "interpreter.h"
+  #include "stack.h"
+¶
+  #include "core/vulkan/vk_virtual_swapchain/cc/virtual_swapchain.h"
+¶
+  #include "core/cc/get_vulkan_proc_address.h"
+  #include "core/cc/log.h"
+¶
+  #include <vector>
+  #ifdef _WIN32
+  #define alloca _alloca
+  #else
+  #include <alloca.h>
+  #endif
+¶
+  #define __STDC_FORMAT_MACROS
+  #include <inttypes.h>
+¶
+  namespace gapir {«
+¶
+  namespace {«
+¶
+  std::vector<Vulkan::VkPhysicalDevice> getVkPhysicalDevices(§
+      Vulkan::PFNVKENUMERATEPHYSICALDEVICES vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
+    uint32_t count = 0;
+    vkEnumeratePhysicalDevices(instance, &count, nullptr);
+    std::vector<Vulkan::VkPhysicalDevice> devices(count);
+    vkEnumeratePhysicalDevices(instance, &count, devices.data());
+    return devices;
+  }
+¶
+  std::vector<Vulkan::VkQueue> getVkQueues(§
+      Vulkan::PFNVKGETDEVICEQUEUE vkGetDeviceQueue, Vulkan::VkDevice device, §
+      Vulkan::VkDeviceCreateInfo* createInfo) {
+    std::vector<Vulkan::VkQueue> queues;
+    for (uint32_t i = 0; i < createInfo->queueCreateInfoCount; ++i) {
+      auto& queueCreateInfo = createInfo->pQueueCreateInfos[i];
+      for (uint32_t j = 0; j < queueCreateInfo.queueCount; ++j) {
+        queues.push_back({});
+        vkGetDeviceQueue(device, queueCreateInfo.queueFamilyIndex, j, &queues.back());
+      }
+    }
+    return queues;
+  }
+¶
+  »}  // anonymous namespace
+¶
+  bool Vulkan::replayCreateVkInstance(Stack* stack, bool pushReturn) {
+    auto pInstance = stack->pop<VkInstance*>();
+    auto pAllocator = stack->pop<VkAllocationCallbacks*>();
+    auto pCreateInfo = stack->pop<VkInstanceCreateInfo*>();
+
+    // Inject "VirtualSwapchain" into the enabled layer name list by
+    // substituting "VkGraphicsSpy" used for capturing.
+    char virtualSwapchainName[] = "VirtualSwapchain";
+
+    const auto count = pCreateInfo->enabledLayerCount;
+
+    char** layers = static_cast<char**>(alloca((count + 2) * sizeof(char*)));
+
+    bool has_spy = false;
+    for (size_t i = 0; i < count; ++i) {
+      if (strcmp("VkGraphicsSpy", pCreateInfo->ppEnabledLayerNames[i]) == 0) {
+        pCreateInfo->ppEnabledLayerNames[i] = virtualSwapchainName;
+        has_spy = true;
+      }
+      layers[i] = pCreateInfo->ppEnabledLayerNames[i];
+    }
+
+    if (!has_spy) {
+      layers[count] = virtualSwapchainName;
+      pCreateInfo->enabledLayerCount = count + 1;
+    }
+    pCreateInfo->ppEnabledLayerNames = layers;
+
+    // We recorded pNext during capturing since we turned on VkGraphicsSpy layer.
+    // On the replay side, since there are no extensions that can use pNext yet,
+    // null it out.
+    pCreateInfo->pNext = nullptr;
+
+    // Push back to the stack, so the acutal function for calling
+    // vkCreateInstance can use it.
+    stack->push(pCreateInfo);
+    stack->push(pAllocator);
+    stack->push(pInstance);
+
+    return callVkCreateInstance(stack, pushReturn);
+  }
+¶
+  bool Vulkan::replayCreateVkDevice(Stack* stack, bool pushReturn) {
+    auto pDevice = stack->pop<VkDevice*>();
+    auto pAllocator = stack->pop<VkAllocationCallbacks*>();
+    auto pCreateInfo = stack->pop<VkDeviceCreateInfo*>();
+
+    // We recorded pNext during capturing since we turned on VkGraphicsSpy layer.
+    // On the replay side, since there are no extensions that can use pNext yet,
+    // null it out.
+    pCreateInfo->pNext = nullptr;
+
+    // Push back to the stack, so the acutal function for calling
+    // vkCreateDevice can use it.
+    stack->push(pCreateInfo);
+    stack->push(pAllocator);
+    stack->push(pDevice);
+
+    return callVkCreateDevice(stack, pushReturn);
+  }
+¶
+  bool Vulkan::replayRegisterVkInstance(Stack* stack) {
+    auto instance = static_cast<VkInstance>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_INFO("replayRegisterVkInstance(%" PRIu64 ")", instance);
+      if (mVkInstanceFunctionStubs.count(instance) > 0) {
+        // TODO(antiagainst): The same instance handle returned from the driver. Is this possible?
+        return false;
+      }
+      auto& stubs = mVkInstanceFunctionStubs[instance];
+      {{range $c := AllCommands $}}
+        {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
+          {{$name := Macro "CmdName" $c}}
+          stubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
+              core::GetVulkanInstanceProcAddress(instance, "{{$name}}", false));
+        {{end}}
+      {{end}}
+      // Get all physical devices for this instance and bind them.
+      for (auto phydev : getVkPhysicalDevices(stubs.vkEnumeratePhysicalDevices, instance)) {
+        mIndirectMaps.VkPhysicalDevicesToVkInstances[phydev] = instance;
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayRegisterVkInstance");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayUnregisterVkInstance(Stack* stack) {
+    auto instance = static_cast<VkInstance>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_INFO("replayUnregisterVkInstance(%" PRIu64 ")", instance);
+      mVkInstanceFunctionStubs.erase(instance);
+      auto& pdevMap = mIndirectMaps.VkPhysicalDevicesToVkInstances;
+      for (auto it = pdevMap.begin(); it != pdevMap.end();) {
+        if (it->second == instance) {
+          it = pdevMap.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayUnregisterVkInstance");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayRegisterVkDevice(Stack* stack) {
+    auto createInfo = stack->pop<VkDeviceCreateInfo*>();
+    auto device = static_cast<VkDevice>(stack->pop<size_val>());
+    auto physical_device = static_cast<VkPhysicalDevice>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_INFO("replayRegisterVkDevice(%" PRIu64 ", %" PRIu64 ", %p)", physical_device, device, createInfo);
+      if (mVkDeviceFunctionStubs.count(device) > 0) {
+        // TODO(antiagainst): The same device handle returned from the driver. Is this possible?
+        return false;
+      }
+      mIndirectMaps.VkDevicesToVkPhysicalDevices[device] = physical_device;
+      auto instance = mIndirectMaps.VkPhysicalDevicesToVkInstances[physical_device];
+      auto& stubs = mVkDeviceFunctionStubs[device];
+      {{range $c := AllCommands $}}
+        {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
+          {{$name := Macro "CmdName" $c}}
+          stubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
+              core::GetVulkanDeviceProcAddress(instance, device, "{{$name}}", false));
+        {{end}}
+      {{end}}
+      // Get all queues for this device and bind them.
+      for (auto queue : getVkQueues(stubs.vkGetDeviceQueue, device, createInfo)) {
+        mIndirectMaps.VkQueuesToVkDevices[queue] = device;
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayRegisterVkDevice");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayUnregisterVkDevice(Stack* stack) {
+    auto device = static_cast<VkDevice>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_INFO("replayUnregisterVkDevice(%" PRIu64 ")", device);
+      mVkDeviceFunctionStubs.erase(device);
+      mIndirectMaps.VkDevicesToVkPhysicalDevices.erase(device);
+      auto& queueMap = mIndirectMaps.VkQueuesToVkDevices;
+      for (auto it = queueMap.begin(); it != queueMap.end();) {
+        if (it->second == device) {
+          it = queueMap.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      auto& cmdbufMap = mIndirectMaps.VkCommandBuffersToVkDevices;
+      for (auto it = cmdbufMap.begin(); it != cmdbufMap.end();) {
+        if (it->second == device) {
+          it = cmdbufMap.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayUnregisterVkDevice");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayRegisterVkCommandBuffers(Stack* stack) {
+    auto commandBuffers = stack->pop<VkCommandBuffer*>();
+    auto count = stack->pop<uint32_t>();
+    auto device = static_cast<VkDevice>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_INFO("replayRegisterVkCommandBuffers(%" PRIu64 ", %" PRIu32 ", %p)", device, count, commandBuffers);
+      for (uint32_t i = 0; i < count; ++i) {
+        mIndirectMaps.VkCommandBuffersToVkDevices[commandBuffers[i]] = device;
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayRegisterVkCommandBuffers");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayUnregisterVkCommandBuffers(Stack* stack) {
+    auto commandBuffers = stack->pop<VkCommandBuffer*>();
+    auto count = stack->pop<uint32_t>();
+    if (stack->isValid()) {
+      GAPID_INFO("replayUnregisterVkCommandBuffers(%" PRIu32 ", %p)", count, commandBuffers);
+      for (uint32_t i = 0; i < count; ++i) {
+        mIndirectMaps.VkCommandBuffersToVkDevices.erase(commandBuffers[i]);
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayUnregisterVkCommandBuffers");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::toggleVirtualSwapchainReturnAcquiredImage(Stack* stack) {
+    auto pSwapchain = stack->pop<VkSwapchainKHR*>();
+    if (stack->isValid()) {
+      GAPID_INFO("toggleVirtualSwapchainReturnAcquiredImage(%" PRIu32 ", %p)", pSwapchain);
+      auto virtual_swapchain = reinterpret_cast<swapchain::VirtualSwapchain*>(*pSwapchain);
+      virtual_swapchain->SetAlwaysGetAcquiredImage(true);
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function toggleVirtualSwapchainReturnAcquiredImage");
+      return false;
+   }
+  }
+¶
+namespace {
+uint32_t getMemoryTypeIndex(
+  const Vulkan::VkPhysicalDeviceMemoryProperties* memory_properties,
+  uint32_t memory_type_bits, Vulkan::VkFlags requirement_bit) {
+  // Search through mem types to find the first index with the required properties
+  for (uint32_t i = 0; i < memory_properties->memoryTypeCount; i++) {
+    if ((memory_type_bits & 1) == 1) {
+      if ((memory_properties->memoryTypes[i].propertyFlags & requirement_bit) ==
+          requirement_bit) {
+        return i;
+      }
+    }
+    memory_type_bits >>= 1;
+  }
+  // No memory types matched
+  return UINT32_MAX;
+  }
+}
+¶
+  bool Vulkan::replayAllocateImageMemory(Stack* stack, bool pushReturn) {
+    auto pMemory = stack->pop<VkDeviceMemory*>();
+    auto image = stack->pop<VkImage>();
+    auto pPhysicalDeviceMemoryProperties = stack->pop<VkPhysicalDeviceMemoryProperties*>();
+    auto device = stack->pop<VkDevice>();
+    if (stack->isValid()) {
+      GAPID_INFO("replayAllocateImageMemory(%zu, %zu, %p", device, image, pMemory);
+
+      VkMemoryRequirements image_mem_reqs;
+      auto GetImageMemReqFuncPtr = mVkDeviceFunctionStubs[device].vkGetImageMemoryRequirements;
+      GetImageMemReqFuncPtr(device, image, &image_mem_reqs);
+
+      uint32_t mem_type_index = getMemoryTypeIndex(
+        pPhysicalDeviceMemoryProperties,
+        image_mem_reqs.memoryTypeBits, 0);
+      VkMemoryAllocateInfo allocate_info{
+        VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        nullptr,
+        image_mem_reqs.size,
+        mem_type_index};
+      VkDeviceMemory memory;
+      auto AllocateMemoryFuncPtr = mVkDeviceFunctionStubs[device].vkAllocateMemory;
+      VkResult get_alloc_result = AllocateMemoryFuncPtr(device, &allocate_info, nullptr, &memory);
+      pMemory[0] = memory;
+      if (pushReturn) {
+          stack->push<VkResult>(get_alloc_result);
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function replayAllocateImageMemory");
+      return false;
+   }
+  }
+¶
+bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
+    auto success = gapir::Vulkan::VkResult(stack->pop<uint32_t>());
+    auto fence = stack->pop<uint64_t>();
+    auto device = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+        GAPID_INFO("vkGetFenceStatus(%zu, %" PRIu64 ")", device, fence);
+        if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
+        mVkDeviceFunctionStubs[device].vkGetFenceStatus) {
+            VkResult return_value;
+            if (success == gapir::Vulkan::VkResult::VK_SUCCESS) {
+              // TODO(qining): Theoretically the following busy loop should be
+              // equivalent to a call to vkWaitForFences(). However, an unclear
+              // issue makes vkWaitForFences() hang sometimes. Change this back
+              // to vkWaitForFences() once the issue is fixed.
+              do {
+                return_value = mVkDeviceFunctionStubs[device].vkGetFenceStatus(device, fence);
+              } while (return_value != gapir::Vulkan::VkResult::VK_SUCCESS);
+            } else {
+              return_value = mVkDeviceFunctionStubs[device].vkGetFenceStatus(device, fence);
+            }
+            GAPID_INFO("Returned: %u", return_value);
+            if (pushReturn) {
+                stack->push<VkResult>(return_value);
+            }
+        } else {
+            GAPID_WARNING("Attempted to call unsupported function vkGetFenceStatus");
+        }
+        return true;
+    } else {
+        GAPID_WARNING("Error during calling function vkGetFenceStatus");
+        return false;
+    }
+}
+¶
+  »}  // namespace gapir
+¶
+{{end}}

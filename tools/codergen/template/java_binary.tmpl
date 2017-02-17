@@ -1,0 +1,277 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{define "Java.Encoder"}}
+  @Override¶
+  public void encode(Encoder e, BinaryObject obj) throws IOException {»¶
+    {{if .Fields}}
+      {{File.ClassName .}} o = ({{File.ClassName .}})obj;¶
+      {{range .Fields}}
+        {{Call "Java.Encode" (Var .Type "o." (File.FieldName .Name))}}¶
+      {{end}}
+    {{end}}
+  «}¶
+{{end}}
+
+{{define "Java.Encode#binary.Object"}}e.object({{.Name}});{{end}}
+{{define "Java.Encode#PoolID"}}e.uint32({{.Name}});{{end}}
+{{define "Java.Encode.Primitive"}}e.{{Call "Java.Method" .Type}}({{.Name}});{{end}}
+{{define "Java.Encode.Alias"}}e.int32({{.Name}}.getNumber());{{end}}
+{{define "Java.Encode.Struct"}}e.value({{.Name}});{{end}}
+{{define "Java.Encode.Pointer"}}e.object({{.Name}});{{end}}
+{{define "Java.Encode.Interface"}}e.object({{.Name}} == null ? null : {{.Name}}.unwrap());{{end}}
+{{define "Java.Encode.Variant"}}e.variant({{.Name}} == null ? null : {{.Name}}.unwrap());{{end}}
+{{define "Java.Encode.Any"}}e.variant(Box.wrap({{.Name}}));{{end}}
+
+{{define "Java.Encode.Slice#uint8"}}
+  e.uint32({{.Name}}.length);¶
+  e.write({{.Name}}, {{.Name}}.length);¶
+{{end}}
+
+{{define "Java.Encode.Slice#byte"}}
+  e.uint32({{.Name}}.length);¶
+  e.write({{.Name}}, {{.Name}}.length);¶
+{{end}}
+
+{{define "Java.Encode.Slice"}}
+  e.uint32({{.Name}}.length);¶
+  for (int i = 0; i < {{.Name}}.length; i++) {»¶
+    {{Call "Java.Encode" (Var .Type.ValueType .Name "[i]")}}¶
+  «}
+{{end}}
+
+{{define "Java.Encode.Array#uint8"}}
+  e.write({{.Name}}, {{.Type.Size}});¶
+{{end}}
+
+{{define "Java.Encode.Array#byte"}}
+  e.write({{.Name}}, {{.Type.Size}});¶
+{{end}}
+
+{{define "Java.Encode.Array.Alias"}}
+  {{.Name}}.write(e);¶
+{{end}}
+
+{{define "Java.Encode.Array"}}
+  for (int i = 0; i < {{.Type.Size}}; i++) {»¶
+    {{Call "Java.Encode" (Var .Type.ValueType .Name "[i]")}}¶
+  «}
+{{end}}
+
+{{define "Java.Encode.Map"}}
+  e.uint32({{.Name}}.size());¶
+   for (java.util.Map.Entry<{{Call "Java.Type" .Type.KeyType}}, {{Call "Java.Type" .Type.ValueType}}> entry : {{.Name}}.entrySet()) {»¶
+    {{Call "Java.Encode" (Var .Type.KeyType "entry.getKey()")}}¶
+    {{Call "Java.Encode" (Var .Type.ValueType "entry.getValue()")}}¶
+  «}
+{{end}}
+
+{{define "Java.Decoder"}}
+  {{ $thisStruct := . }}
+  @Override¶
+  public void decode(Decoder d, BinaryObject obj) throws IOException {»¶
+    {{if .Fields}}
+      {{File.ClassName .}} o = ({{File.ClassName .}})obj;¶
+      {{range .Fields}}
+        {{Call "Java.Decode" ((Var .Type "o." (File.FieldName .Name)).SetExtra $thisStruct) }}¶
+      {{end}}
+    {{end}}
+  «}¶
+{{end}}
+
+{{define "Java.Decode#binary.Object"}}{{.Name}} = d.object();{{end}}
+{{define "Java.Decode#PoolID"}}{{.Name}} = d.uint32();{{end}}
+{{define "Java.Decode.Primitive"}}{{.Name}} = d.{{Call "Java.Method" .Type}}();{{end}}
+{{define "Java.Decode.Alias"}}{{.Name}} = {{Call "Java.Type" .Type}}.valueOf(d.int32());{{end}}
+{{define "Java.Decode.Struct"}}{{.Name}} = new {{File.ClassName .Type}}();¶d.value({{.Name}});{{end}}
+{{define "Java.Decode.Pointer"}}{{.Name}} = ({{Call "Java.Type" .Type}})d.object();{{end}}
+{{define "Java.Decode.Interface"}}{{.Name}} = {{Call "Java.Type" .Type}}.wrap(d.object());{{end}}
+{{define "Java.Decode.Variant"}}{{.Name}} = {{Call "Java.Type" .Type}}.wrap(d.variant());{{end}}
+{{define "Java.Decode.Any"}}{{.Name}} = ((Box)d.variant()).unwrap();{{end}}
+{{define "Java.Decode.Array#uint8"}}d.read({{.Name}}, {{.Name}}.length);{{end}}
+{{define "Java.Decode.Array#byte"}}d.read({{.Name}}, {{.Name}}.length);{{end}}
+{{define "Java.Decode.Array.Alias"}}{{.Name}} = new {{Call "Java.Type" .Type}}(d);{{end}}
+
+{{define "Java.Decode.Slice#uint8"}}
+  {{.Name}} = new {{Call "Java.Type" .Type.ValueType}}[d.uint32()];¶
+  d.read({{.Name}}, {{.Name}}.length);¶
+{{end}}
+
+{{define "Java.Decode.Slice#byte"}}
+  {{.Name}} = new {{Call "Java.Type" .Type.ValueType}}[d.uint32()];¶
+  d.read({{.Name}}, {{.Name}}.length);¶
+{{end}}
+
+{{define "Java.Decode.Slice"}}
+  {{if (eq (.Extra.Tags.Get "javaDefineEmptyArrays") "true") }}
+    {»¶
+      int len = d.uint32();¶
+      {{.Name}} = len != 0 ? new {{Call "Java.ElementType" .Type.ValueType}}[len] : {{Call "Java.EmptyArrayName" .}};¶
+    «}¶
+  {{else}}
+    {{.Name}} = new {{Call "Java.ElementType" .Type.ValueType}}[d.uint32()];¶
+  {{end}}
+
+  for (int i = 0; i <{{.Name}}.length; i++) {»¶
+    {{Call "Java.Decode" (Var .Type.ValueType .Name "[i]")}}¶
+  «}
+{{end}}
+
+{{define "Java.Decode.Array"}}
+  {{.Name}} = new {{Call "Java.ElementType" .Type}}[{{.Type.Size}}];¶
+  for (int i = 0; i < {{.Type.Size}}; i++) {»¶
+    {{Call "Java.Decode" (Var .Type.ValueType .Name "[i]")}}¶
+  «}
+{{end}}
+
+{{define "Java.Decode.Map"}}
+  {{.Name}} = new {{Call "Java.ElementType" .Type}}();¶
+  int size = d.uint32();¶
+  for (int i = 0; i < size; i++) {»¶
+    {{Call "Java.Type" .Type.KeyType}} {{Call "Java.Decode" (Var .Type.KeyType "key")}}¶
+    {{Call "Java.Type" .Type.ValueType}} {{Call "Java.Decode" (Var .Type.ValueType "value")}}¶
+    {{.Name}}.put(key, value);¶
+  «}
+{{end}}
+
+{{define "Java.Field"}}
+  private {{Call "Java.Type" .Type}} {{File.FieldName .Name}};¶
+{{end}}
+
+{{define "Java.Accessors"}}
+  ¶
+  public {{Call "Java.Type" .Type}} {{File.Getter .Name}}() {»¶
+    return {{File.FieldName .Name}};¶
+  «}¶
+  ¶
+  public {{File.ClassName File.Struct}} {{File.Setter .Name}}({{Call "Java.Type" .Type}} v) {»¶
+    {{File.FieldName .Name}} = v;¶
+    return this;¶
+  «}¶
+{{end}}
+
+{{define "Java.Schema.Primitive"}}new Primitive("{{.Name}}", Method.{{.Method}}){{end}}
+{{define "Java.Schema.Struct"}}new Struct({{File.ClassName .}}.Klass.INSTANCE.entity()){{end}}
+{{define "Java.Schema.Pointer"}}new Pointer({{Call "Java.Schema" .Type}}){{end}}
+{{define "Java.Schema.Interface"}}new Interface("{{.Name}}"){{end}}
+{{define "Java.Schema.Variant"}}new Variant("{{.Name}}"){{end}}
+{{define "Java.Schema.Any"}}new AnyType(){{end}}
+{{define "Java.Schema.Slice"}}new Slice("{{.Alias}}", {{Call "Java.Schema" .ValueType}}){{end}}
+{{define "Java.Schema.Array"}}new Array("{{.Alias}}", {{Call "Java.Schema" .ValueType}}, {{.Size}}){{end}}
+{{define "Java.Schema.Map"}}new Map("{{.Alias}}", {{Call "Java.Schema" .KeyType}}, {{Call "Java.Schema" .ValueType}}){{end}}
+
+{{define "Java.ClassBody"}}
+  ¶{{/*Newline after section marker*/}}
+  {{range .Struct.Fields}}{{template "Java.Field" .}}{{end}}
+  ¶
+  // Constructs a default-initialized {@link {{File.ClassName .Struct}}}.¶
+  public {{File.ClassName .Struct}}() {}¶
+  ¶
+  {{range .Struct.Fields}}{{template "Java.Accessors" .}}{{end}}
+  ¶
+  @Override¶
+  public BinaryClass klass() { return Klass.INSTANCE; }¶
+  ¶
+  ¶
+  private static final Entity ENTITY = new Entity(
+    "{{.Struct.Package}}",•
+    "{{.Struct.Identity}}",•
+    "{{.Struct.Version}}",•
+    "{{.Struct.Display}}");¶
+  ¶
+  static {»¶
+    ENTITY.setFields(new Field[]{»¶
+      {{range .Struct.Fields}}
+        new Field("{{.Declared}}", {{Call "Java.Schema" .Type}}),¶
+      {{end}}
+    «});¶
+    Namespace.register(Klass.INSTANCE);¶
+  «}¶
+  public static void register() {}¶
+  //{{/*Comment the following section marker*/}}
+{{end}}
+
+{{define "Java.KlassBody"}}
+  ¶{{/*Newline after section marker*/}}
+  INSTANCE;¶
+  {{if (eq (.Struct.Tags.Get "javaDefineEmptyArrays") "true") }}
+    ¶
+    {{$types := (NewStringSet)}}
+    {{range .Struct.Fields}}
+      {{if (StringSetAdd $types .Type.String)}}
+        {{Call "Java.EmptyArray" (Var .Type "")}}
+      {{end}}
+    {{end}}
+  {{end}}
+  ¶
+  @Override¶
+  public Entity entity() { return ENTITY; }¶
+  ¶
+  @Override¶
+  public BinaryObject create() { return new {{File.ClassName .Struct}}(); }¶
+  ¶
+  {{template "Java.Encoder" .Struct}}
+  ¶
+  {{template "Java.Decoder" .Struct}}
+  //{{/*Comment the following section marker*/}}
+{{end}}
+
+{{define "Java.File"}}
+  §{{$.Copyright}}§¶
+  package {{.JavaPackage}};¶
+  ¶
+  import com.google.gapid.rpclib.binary.*;¶
+  import com.google.gapid.rpclib.schema.*;¶
+  {{range .Struct.Fields}}{{Call "Java.Import" .Type}}{{end}}
+  ¶
+  import java.io.IOException;¶
+  ¶
+  {{if .Struct.Exported}}public•{{end}}
+  final class {{File.ClassName .Struct}}
+  {{range .Struct.Implements}}
+    {{if and (eq .Package "rpc") (eq .Name "Err")}}•extends RpcException{{end}}
+    {{if and (eq .Package "stringtable") (eq .Name "Node")}}•extends Node{{end}}
+    {{if and (eq .Package "vertex") (eq .Name "Format")}}•extends Format{{end}}
+  {{end}}
+  •implements BinaryObject {»¶
+    //{{Section "Java.ClassBody"}}¶
+    public enum Klass implements BinaryClass {»¶
+      //{{Section "Java.KlassBody"}}¶
+    «}¶
+  «}¶
+{{end}}
+
+{{define "Java.EmptyArrayName"}}{{Call "Java.Type" .Type.ValueType}}_EMPTY{{end}}
+
+{{define "Java.EmptyArray.Slice"}}private static final {{Call "Java.Type" .Type}} {{Call "Java.EmptyArrayName" .}} = {};¶{{end}}
+{{define "Java.EmptyArray"}}{{end}}
+
+{{define "Java.FactoryBody"}}
+  ¶{{/*Newline after section marker*/}}
+  {{range .Structs}}{{File.ClassName .}}.register();¶{{end}}
+  //{{/*Comment the following section marker*/}}
+{{end}}
+
+{{define "Java.Factory"}}
+  §{{$.Copyright}}§¶
+  package {{.JavaPackage}};¶
+  ¶
+  public final class Factory {»¶
+    public static void register() {»¶
+    //{{Section "Java.FactoryBody"}}¶
+    «}¶
+  «}¶
+{{end}}

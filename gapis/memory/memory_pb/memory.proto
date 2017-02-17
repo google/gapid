@@ -1,0 +1,49 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package memory_pb;
+option go_package = "github.com/google/gapid/gapis/memory/memory_pb";
+// cc_package
+
+// Observation is the structure for a single memory observation.
+message Observation {
+    // Base is the starting address for the observation range.
+    uint64 base = 1;
+    // Size is the byte count of the observation range.
+    uint64 size = 2;
+    // Id is the resource id of the bytes observed.
+    string id = 3;
+}
+
+// Pointer is the type representing a memory pointer.
+message Pointer {
+    // The memory address.
+    uint64 Address = 1;
+    // The memory pool.
+    uint32 Pool = 2;
+}
+
+// Slice is the common data between all slice types.
+message Slice {
+    // Original pointer this slice derives from.
+    uint64 Root = 1;
+    // Address of first element.
+    uint64 Base = 2;
+    // Number of elements in the slice.
+    uint64 Count= 3;
+    // The pool identifier.
+    uint32 Pool = 4;
+}

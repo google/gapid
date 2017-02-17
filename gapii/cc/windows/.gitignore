@@ -1,0 +1,3 @@
+/opengl32_exports.def
+/opengl32_resolve.cpp
+/opengl32_x64.asm

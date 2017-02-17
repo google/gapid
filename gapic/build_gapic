@@ -1,0 +1,174 @@
+#!/bin/bash
+
+# Exit on error.
+set -e
+
+absname() {
+  echo "$(cd $1 && pwd)"
+}
+
+GAPIC=$(absname "$(dirname "${BASH_SOURCE[0]}")")
+OUT=$GAPIC/out
+LIB=$GAPIC/third_party
+SRC=$GAPIC/src
+RES=$GAPIC/res
+
+BUILD_OS="all"
+BUILD_FORCE=false
+
+function show_help() {
+  echo "USAGE: "`basename $0`" [options]"
+  echo ""
+  echo "  -p <platform> Platform to build for (default is all)."
+  echo "  -f Force building, even if not required."
+  echo "  -h Show this message."
+}
+
+while getopts "p:a:fh?" opt; do
+  case "$opt" in
+    p)  BUILD_OS=$OPTARG
+        ;;
+    f)  BUILD_FORCE=true
+        ;;
+    h|\?)  show_help
+        exit 0
+        ;;
+  esac
+done
+
+LIBS="
+  $LIB/guava-20.0.jar
+  $LIB/protobuf-java-3.0.0-beta-4.jar
+  $LIB/grpc/grpc-context-1.0.1.jar
+  $LIB/grpc/grpc-core-1.0.1.jar
+  $LIB/grpc/grpc-okhttp-1.0.1.jar
+  $LIB/grpc/grpc-protobuf-1.0.1.jar
+  $LIB/grpc/grpc-protobuf-lite-1.0.1.jar
+  $LIB/grpc/grpc-stub-1.0.1.jar
+  $LIB/grpc/okhttp-2.5.0.jar
+  $LIB/grpc/okio-1.6.0.jar
+  $LIB/jface/org.eclipse.core.commands_3.9.0.v20160901-1319.jar
+  $LIB/jface/org.eclipse.core.runtime_3.12.0.v20160919-2241.jar
+  $LIB/jface/org.eclipse.equinox.common_3.9.0.v20161026-0735.jar
+  $LIB/jface/org.eclipse.jface_3.13.0.v20161022-1508.jar
+  $LIB/jface/org.eclipse.jface.databinding_1.8.100.v20161026-1452.jar
+  $LIB/jface/org.eclipse.jface.text_3.11.100.v20161021-0923.jar
+  $LIB/jface/org.eclipse.osgi_3.12.0.v20161025-1648.jar
+  $LIB/jface/org.eclipse.text_3.6.0.v20161014-1003.jar
+  $LIB/lwjgl/lwjgl.jar
+  $LIB/lwjgl/lwjgl-opengl.jar
+"
+
+function platformLibs {
+  echo "
+    $LIB/platform/$1/lwjgl-natives.jar
+    $LIB/platform/$1/lwjgl-opengl-natives.jar
+    $LIB/platform/$1/swt.jar
+  "
+}
+
+function needsBuilding {
+  local OS=$1
+
+  if [[ ! -f $OUT/gapic-base-$OS.jar ]]; then
+    return 0
+  fi
+
+  for f in `find $SRC -name "*.java"`; do
+    if [ $f -nt $OUT/gapic-base-$OS.jar ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+function build {
+  local OS=$1
+
+  if $BUILD_FORCE || needsBuilding $OS; then
+    echo "Building for $OS..."
+  else
+    return 0
+  fi
+
+  CP=$(echo "$LIBS $(platformLibs $OS)")
+  CP=$(echo $CP | tr ' ' ':')
+
+  mkdir -p $OUT/gapic/$OS
+  rm -rf $OUT/gapic/$OS/*
+
+  # Compile the java code.
+  find $SRC/main -name "*.java" > $OUT/gapic/$OS/source.txt
+  find $SRC/rpclib -name "*.java" >> $OUT/gapic/$OS/source.txt
+  find $SRC/service -name "*.java" >> $OUT/gapic/$OS/source.txt
+  find $SRC/platform/$OS -name "*.java" >> $OUT/gapic/$OS/source.txt
+  javac -d $OUT/gapic/$OS @$OUT/gapic/$OS/source.txt -classpath $CP -source 1.8 -target 1.8
+  rm $OUT/gapic/$OS/source.txt
+
+  # Copy resources into the build dir.
+  cp -r $RES/* $OUT/gapic/$OS
+
+  # Create a jar of the build dir.
+  jar -cf $OUT/gapic-base-$OS.jar -C $OUT/gapic/$OS .
+}
+
+function needsJar {
+  local OS=$1
+
+  if [[ ! -f $OUT/gapic-$OS.jar ]]; then
+    return 0
+  fi
+  if [ $OUT/gapic-base-$OS.jar -nt $OUT/gapic-$OS.jar ]; then
+    return 0
+  fi
+
+  return 1
+}
+
+function buildJar {
+  local OS=$1
+
+  if [[ ! -f "$LIB/platform/$OS/swt.jar" ]]; then
+    echo "Invalid OS: $OS."
+    return
+  fi
+
+  build $OS
+  if $BUILD_FORCE || needsJar $OS; then
+    echo "Building JAR for $OS..."
+  else
+    return 0
+  fi
+
+  mkdir -p $OUT/$OS
+  rm -rf $OUT/$OS/*
+
+  # Extract all dependency jars into the build dir.
+  pushd $OUT/$OS > /dev/null
+  for lib in $(echo "$LIBS $(platformLibs $OS)"); do
+    jar -xf $lib
+  done
+  jar -xf $OUT/gapic-base-$OS.jar
+  popd > /dev/null
+
+  # Kill the manifest and any signatures.
+  rm $OUT/$OS/META-INF/MANIFEST.MF
+  rm $OUT/$OS/META-INF/*.RSA
+  rm $OUT/$OS/META-INF/*.SF
+
+  # Make a jar containing everything.
+  jar -cef com.google.gapid.Main $OUT/gapic-$OS.jar -C $OUT/$OS .
+
+  # Clean up
+  rm -rf $OUT/$OS/*
+}
+
+if [[ $BUILD_OS != "all" ]]; then
+  buildJar $BUILD_OS
+else
+  buildJar "linux"
+  buildJar "osx"
+  buildJar "windows"
+fi
+
+exit 0

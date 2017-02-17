@@ -1,0 +1,79 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "cpp_common.tmpl"    }}
+{{Include "api_classnames.tmpl"}}
+
+{{/* ---- Overrides ---- */}}
+{{Global "C++.EnumTypeOverride" "uint32_t"}}
+
+{{$filename := print (Global "API") "_imports.h" }}
+{{$ | Macro "imports.h" | Reflow 4 | Write $filename}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Entry point.
+-------------------------------------------------------------------------------
+*/}}
+{{define "imports.h"}}
+  {{Template "C++.Copyright"}}
+  {{$guard := print "GAPII_" (Upper (Global "API")) "_IMPORTS_H"}}
+¶
+  #ifndef {{$guard}}
+  #define {{$guard}}
+¶
+  #include "{{Global "API"}}_types.h"
+¶
+  #include "core/cc/{{Global "API"}}_ptr_types.h"
+¶
+  namespace gapii {
+¶
+  {{$name := Macro "ApiClassnames.Imports"}}
+  struct {{$name}} {
+    {{$name}}();
+    void resolve();
+    {{range $c := AllCommands $}}
+      {{if (or (GetAnnotation $c "custom") (not (GetAnnotation $c "synthetic"))) }}
+        {{if not (GetAnnotation $c "pfn")}}
+          {{$name := Macro "CmdName" $c}}
+          typedef {{Template "C++.ReturnType" $c}} ({{Upper (Global "API")}}_API_PTR *{{Template "C++.FunctionPtrType" $c}})({{Template "C++.CallParameters" $c}});
+        {{end}}
+      {{end}}
+    {{end}}
+¶
+    {{range $t := (PartitionByKey (AllCommands $) "FinalIndirection")}}
+      {{$name := Title (Macro "FinalIndirection" (index $t 0))}}
+      {{if $name}}struct {{$name}}Functions { {{end}}
+        {{range $c := $t}}
+          {{if not (or (GetAnnotation $c "pfn") (GetAnnotation $c "synthetic"))}}
+            {{Template "C++.FunctionPtrDecl" $c}};
+            {{if (GetAnnotation $c "override")}}
+              {{Template "C++.FunctionPtrType" $c}} pfn_{{Template "CmdName" $c}};
+            {{end}}
+          {{end}}
+        {{end}}
+      {{if $name}}};
+        std::unordered_map<{{$name}}, {{$name}}Functions> m{{$name}}Functions;
+      {{end}}
+      ¶
+    {{end}}
+  };
+  } // namespace gapii
+¶
+  #endif // {{$guard}}
+¶
+{{end}}

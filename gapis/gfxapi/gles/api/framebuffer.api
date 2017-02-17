@@ -1,0 +1,1131 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@internal
+class FramebufferState {
+  // Table 21.14: Framebuffer Control
+  map!(DrawBufferIndex, Vec4b) ColorWritemask
+  GLboolean                    DepthWritemask       = GL_TRUE
+  GLuint                       StencilWritemask     = 0xFFFFFFFF
+  GLuint                       StencilBackWritemask = 0xFFFFFFFF
+  Vec4f                        ColorClearValue      = Vec4f(0.0, 0.0, 0.0, 0.0)
+  GLfloat                      DepthClearValue      = 1
+  GLint                        StencilClearValue    = 0
+// GLuint DrawFramebufferBinding = 0
+// GLuint ReadFramebufferBinding = 0
+// GLint RenderbufferBinding = 0
+}
+
+@internal
+class Framebuffer {
+  map!(GLint, FramebufferAttachment) ColorAttachments
+  FramebufferAttachment DepthAttachment
+  FramebufferAttachment StencilAttachment
+
+  // Table 21.15: Framebuffer (state per framebuffer object)
+  map!(GLint, GLenum) DrawBuffer                                         // TODO: init - see 15.2.1
+  @unused GLenum      ReadBuffer                  = GL_COLOR_ATTACHMENT0
+  GLint               DefaultWidth                = 0
+  GLint               DefaultHeight               = 0
+  GLint               DefaultLayers               = 0
+  GLint               DefaultSamples              = 0
+  GLboolean           DefaultFixedSampleLocations = GL_FALSE
+
+  @unused string Label // SPEC: Missing
+}
+
+@internal
+class FramebufferAttachment {
+  // Table 21.16: Framebuffer (state per attachment point)
+  GLenum    ObjectType         = GL_NONE
+  GLuint    ObjectName         = 0
+  GLint     TextureLevel       = 0
+  GLenum    TextureCubeMapFace = GL_NONE
+  GLint     TextureLayer       = 0
+  GLboolean Layered            = GL_FALSE
+/* TODO
+  GLenum ColorEncoding
+  GLenum ComponentType
+  GLuint RedSize
+  GLuint GreenSize
+  GLuint BlueSize
+  GLuint AlphaSize
+  GLuint DepthSize
+  GLuint StencilSize
+  string ObjectLabel
+  */
+}
+
+@internal
+class Renderbuffer {
+  @unused u8[] Data
+
+  // Table 21.17: Renderbuffer (state per renderbuffer object)
+  GLsizei Width          = 0
+  GLsizei Height         = 0
+  GLenum  InternalFormat = GL_RGBA4
+  /* TODO
+  GLuint RedSize = 0
+  GLuint GreenSize = 0
+  GLuint BlueSize = 0
+  GLuint AlphaSize = 0
+  GLuint DepthSize = 0
+  GLuint StencilSize = 0
+  GLuint Samples = 0
+  */
+
+  @unused string Label
+}
+
+/* TODO
+@internal
+class FramebufferDependentValues {
+  // Table 21.56: Framebuffer Dependent Values
+  GLint SampleBuffers = 0
+  GLuint Samples = 0
+  GLuint MaxSamples = 4
+  GLuint RedBits
+  GLuint GreenBits
+  GLuint BlueBits
+  GLuint AlphaBits
+  GLuint DepthBits
+  GLuint StencilBits
+  GLenum ImplementationColorReadType
+  GLenum ImplementationColorReadFormat
+  GLfloat[2][] SamplePosition // TODO: impl-dependent
+}
+*/
+
+sub ref!Framebuffer GetBoundFramebufferOrErrorInvalidEnum(GLenum framebuffer_target) {
+  // TODO: Merge this switch with the one below.
+  switch (framebuffer_target) {
+    case GL_FRAMEBUFFER: {
+      minRequiredVersion(2, 0)
+    }
+    case GL_DRAW_FRAMEBUFFER, GL_READ_FRAMEBUFFER: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(framebuffer_target)
+    }
+  }
+  ctx := GetContext()
+  framebufferId := switch (framebuffer_target) {
+    case GL_FRAMEBUFFER:      ctx.BoundDrawFramebuffer
+    case GL_DRAW_FRAMEBUFFER: ctx.BoundDrawFramebuffer
+    case GL_READ_FRAMEBUFFER: ctx.BoundReadFramebuffer
+  }
+  return ctx.Instances.Framebuffers[framebufferId]
+}
+
+sub bool IsDefaultFramebuffer(ref!Framebuffer framebuffer) {
+  ctx := GetContext()
+  return framebuffer == ctx.Instances.Framebuffers[0]
+}
+
+sub void SetFramebufferAttachment(GLenum                framebuffer_target,
+                                  GLenum                framebuffer_attachment,
+                                  FramebufferAttachment attachment) {
+  ctx := GetContext()
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(framebuffer_target)
+  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  switch (framebuffer_attachment) {
+    case GL_COLOR_ATTACHMENT0:
+      framebuffer.ColorAttachments[0] = attachment
+    case GL_DEPTH_ATTACHMENT:
+      framebuffer.DepthAttachment = attachment
+    case GL_STENCIL_ATTACHMENT:
+      framebuffer.StencilAttachment = attachment
+    case GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12,
+        GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15, GL_COLOR_ATTACHMENT2,
+        GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6,
+        GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9: {
+      minRequiredVersion(3, 0)
+      i := as!GLint(framebuffer_attachment - GL_COLOR_ATTACHMENT0)
+      if (i < 0) || (i >= ctx.Constants.MaxColorAttachments) { glErrorInvalidOperation() }
+      framebuffer.ColorAttachments[i] = attachment
+    }
+    case GL_DEPTH_STENCIL_ATTACHMENT: {
+      minRequiredVersion(3, 0)
+      framebuffer.DepthAttachment = attachment
+      framebuffer.StencilAttachment = attachment
+    }
+    default: {
+      glErrorInvalidEnum(framebuffer_attachment)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindFramebuffer.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindFramebuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindFramebuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindFramebuffer.xhtml","OpenGL ES 3.2")
+cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  switch (target) {
+    case GL_FRAMEBUFFER: {
+      // version 2.0
+      ctx.BoundReadFramebuffer = framebuffer
+      ctx.BoundDrawFramebuffer = framebuffer
+    }
+    case GL_READ_FRAMEBUFFER: {
+      minRequiredVersion(3, 0)
+      ctx.BoundReadFramebuffer = framebuffer
+    }
+    case GL_DRAW_FRAMEBUFFER: {
+      minRequiredVersion(3, 0)
+      ctx.BoundDrawFramebuffer = framebuffer
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  if !(framebuffer in ctx.Instances.Framebuffers) {
+    ctx.Instances.Framebuffers[framebuffer] = new!Framebuffer()
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindRenderbuffer.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindRenderbuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindRenderbuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindRenderbuffer.xhtml","OpenGL ES 3.2")
+cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  switch (target) {
+    case GL_RENDERBUFFER: {
+      // version 2.0
+      ctx.BoundRenderbuffer = renderbuffer
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  if !(renderbuffer in ctx.Instances.Renderbuffers) {
+    ctx.Instances.Renderbuffers[renderbuffer] = new!Renderbuffer()
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlitFramebuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlitFramebuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlitFramebuffer.xhtml","OpenGL ES 3.2")
+cmd void glBlitFramebuffer(GLint      srcX0,
+                           GLint      srcY0,
+                           GLint      srcX1,
+                           GLint      srcY1,
+                           GLint      dstX0,
+                           GLint      dstY0,
+                           GLint      dstX1,
+                           GLint      dstY1,
+                           GLbitfield mask,
+                           GLenum     filter) {
+  minRequiredVersion(3, 0)
+  BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
+}
+
+sub void BlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter) {
+  supportsBits(mask, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+  if (GL_COLOR_BUFFER_BIT in mask) {
+  }
+  if (GL_DEPTH_BUFFER_BIT in mask) {
+  }
+  if (GL_STENCIL_BUFFER_BIT in mask) {
+  }
+  switch (filter) {
+    case GL_LINEAR, GL_NEAREST: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(filter)
+    }
+  }
+  _ = srcX0 // TODO
+  _ = srcY0 // TODO
+  _ = srcX1 // TODO
+  _ = srcY1 // TODO
+  _ = dstX0 // TODO
+  _ = dstY0 // TODO
+  _ = dstX1 // TODO
+  _ = dstY1 // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCheckFramebufferStatus.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.2")
+cmd GLenum glCheckFramebufferStatus(GLenum target) {
+  minRequiredVersion(2, 0)
+  switch (target) {
+    case GL_FRAMEBUFFER: {
+      // version 2.0
+    }
+    case GL_DRAW_FRAMEBUFFER, GL_READ_FRAMEBUFFER: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+
+  return ?
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClear.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClear.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClear.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClear.xhtml","OpenGL ES 3.2")
+cmd void glClear(GLbitfield mask) {
+  minRequiredVersion(1, 0)
+  supportsBits(mask, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+  if (GL_COLOR_BUFFER_BIT in mask) {
+  }
+  if (GL_DEPTH_BUFFER_BIT in mask) {
+  }
+  if (GL_STENCIL_BUFFER_BIT in mask) {
+  }
+
+  // TODO: use(Clearing.ClearColor) when mask[GL_COLOR_BUFFER_BIT] == true
+  if (GL_COLOR_BUFFER_BIT in mask) {
+    // color := BoundFramebuffers[GL_FRAMEBUFFER].Attachments[GL_COLOR_ATTACHMENT0]
+    // error("Attempting to clear missing color buffer") if !exists(color)
+    // modifies(color.Levels[0].Data) // COMPILATION ERROR
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil) {
+  minRequiredVersion(3, 0)
+  switch (buffer) {
+    case GL_DEPTH_STENCIL: {
+      if drawbuffer != 0 { glErrorInvalidValue() }
+    }
+    default: {
+      glErrorInvalidEnum(buffer)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) {
+  minRequiredVersion(3, 0)
+  switch (buffer) {
+    case GL_COLOR: {
+      ctx := GetContext()
+      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      read(value[0:4])
+    }
+    case GL_DEPTH: {
+      if drawbuffer != 0 { glErrorInvalidValue() }
+      read(value[0:1])
+    }
+    default: {
+      glErrorInvalidEnum(buffer)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
+  minRequiredVersion(3, 0)
+  switch (buffer) {
+    case GL_COLOR: {
+      ctx := GetContext()
+      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      read(value[0:4])
+    }
+    case GL_STENCIL: {
+      if drawbuffer != 0 { glErrorInvalidValue() }
+      read(value[0:1])
+    }
+    default: {
+      glErrorInvalidEnum(buffer)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) {
+  minRequiredVersion(3, 0)
+  switch (buffer) {
+    case GL_COLOR: {
+      ctx := GetContext()
+      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      read(value[0:4])
+    }
+    default: {
+      glErrorInvalidEnum(buffer)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearColor.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearColor.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearColor.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearColor.xhtml","OpenGL ES 3.2")
+cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Framebuffer.ColorClearValue = Vec4f(r, g, b, a)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearDepthf.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearDepthf.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearDepthf.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearDepthf.xhtml","OpenGL ES 3.2")
+cmd void glClearDepthf(GLfloat depth) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Framebuffer.DepthClearValue = depth
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearStencil.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearStencil.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearStencil.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearStencil.xhtml","OpenGL ES 3.2")
+cmd void glClearStencil(GLint stencil) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Framebuffer.StencilClearValue = stencil
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glColorMask.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glColorMask.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glColorMask.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml","OpenGL ES 3.2")
+cmd void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
+  minRequiredVersion(1, 0)
+  ctx := GetContext()
+  for i in (0 .. as!DrawBufferIndex(len(ctx.Framebuffer.ColorWritemask))) {
+    ctx.Framebuffer.ColorWritemask[i] = Vec4b(red, green, blue, alpha)
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml","OpenGL ES 3.2")
+cmd void glColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
+  minRequiredVersion(3, 2)
+  ColorMaski(index, r, g, b, a)
+}
+
+sub void ColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
+  ctx := GetContext()
+  ctx.Framebuffer.ColorWritemask[index] = Vec4b(r, g, b, a)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteFramebuffers.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.2")
+cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) {
+  minRequiredVersion(2, 0)
+  if count < 0 { glErrorInvalidValue() }
+
+  f := framebuffers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := f[i]
+    if id != 0 {
+      delete(ctx.Instances.Framebuffers, id)
+      if id == ctx.BoundReadFramebuffer {
+        ctx.BoundReadFramebuffer = 0
+      }
+      if id == ctx.BoundDrawFramebuffer {
+        ctx.BoundDrawFramebuffer = 0
+      }
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteRenderbuffers.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.2")
+cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffers) {
+  minRequiredVersion(2, 0)
+  if count < 0 { glErrorInvalidValue() }
+
+  r := renderbuffers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := r[i]
+    if id != 0 {
+      delete(ctx.Instances.Renderbuffers, id)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthMask.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthMask.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthMask.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthMask.xhtml","OpenGL ES 3.2")
+cmd void glDepthMask(GLboolean enabled) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Framebuffer.DepthWritemask = enabled
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawBuffers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawBuffers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawBuffers.xhtml","OpenGL ES 3.2")
+cmd void glDrawBuffers(GLsizei n, const GLenum* bufs) {
+  minRequiredVersion(3, 0)
+  DrawBuffers(n, bufs)
+}
+
+sub void DrawBuffers(GLsizei n, const GLenum* buffers) {
+  ctx := GetContext()
+  b := buffers[0:n]
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(GL_DRAW_FRAMEBUFFER)
+  for i in (0 .. as!GLint(n)) {
+    framebuffer.DrawBuffer[i] = b[i]
+  }
+  for i in (as!GLint(n) .. ctx.Constants.MaxDrawBuffers) {
+    framebuffer.DrawBuffer[i] = GL_NONE
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferParameteri.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferParameteri.xhtml","OpenGL ES 3.2")
+cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
+  minRequiredVersion(3, 1)
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
+  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  switch (pname) {
+    case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS: {
+      framebuffer.DefaultFixedSampleLocations = as!GLboolean(param)
+    }
+    case GL_FRAMEBUFFER_DEFAULT_HEIGHT: {
+      framebuffer.DefaultHeight = param
+    }
+    case GL_FRAMEBUFFER_DEFAULT_SAMPLES: {
+      framebuffer.DefaultSamples = param
+    }
+    case GL_FRAMEBUFFER_DEFAULT_WIDTH: {
+      framebuffer.DefaultWidth = param
+    }
+    case GL_FRAMEBUFFER_DEFAULT_LAYERS: {
+      minRequiredVersion(3, 2)
+      framebuffer.DefaultLayers = param
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferRenderbuffer.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.2")
+cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
+                                   GLenum         framebuffer_attachment,
+                                   GLenum         renderbuffer_target,
+                                   RenderbufferId renderbuffer) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
+  // SPEC: Only PDF spec mentions this:
+  if (renderbuffer != 0) && !(renderbuffer in ctx.Instances.Renderbuffers) { glErrorInvalidOperation() }
+
+  attachment := FramebufferAttachment()
+  if (renderbuffer != 0) {
+    attachment.ObjectType = GL_RENDERBUFFER
+    attachment.ObjectName = as!GLuint(renderbuffer)
+  }
+  SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture.xhtml","OpenGL ES 3.2")
+cmd void glFramebufferTexture(GLenum target, GLenum attachment, TextureId texture, GLint level) {
+  minRequiredVersion(3, 2)
+  FramebufferTexture(target, attachment, texture, level)
+}
+
+sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture, GLint level) {
+  attachment_info := FramebufferAttachment()
+  if (texture != 0) {
+    attachment_info.ObjectType = GL_TEXTURE
+    attachment_info.ObjectName = as!GLuint(texture)
+    attachment_info.TextureLevel = level
+    attachment_info.Layered = 0 // TODO
+  }
+  SetFramebufferAttachment(target, attachment, attachment_info)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferTexture2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.2")
+cmd void glFramebufferTexture2D(GLenum    framebuffer_target,
+                                GLenum    framebuffer_attachment,
+                                GLenum    texture_target,
+                                TextureId texture,
+                                GLint     level) {
+  minRequiredVersion(2, 0)
+  FramebufferTexture2D(framebuffer_target, framebuffer_attachment, texture_target, texture, level)
+}
+
+sub void FramebufferTexture2D(GLenum    framebuffer_target,
+                              GLenum    framebuffer_attachment,
+                              GLenum    texture_target,
+                              TextureId texture,
+                              GLint     level) {
+  switch (texture_target) {
+    case GL_TEXTURE_2D,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      minRequiredVersion(3, 1)
+    }
+    default: {
+      glErrorInvalidEnum(texture_target)
+    }
+  }
+  if level != 0 { glErrorInvalidValue() }
+
+  ctx := GetContext()
+  attachment := FramebufferAttachment()
+  if (texture != 0) {
+    if !(texture in ctx.Instances.Textures) { glErrorInvalidOperation() }
+    kind := switch (texture_target) {
+      case GL_TEXTURE_2D:
+        GL_TEXTURE_2D
+      case GL_TEXTURE_2D_MULTISAMPLE:
+        GL_TEXTURE_2D_MULTISAMPLE
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+          GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        GL_TEXTURE_CUBE_MAP
+      default:
+        as!GLenum(0)
+    }
+    // TODO: Handle texture 0
+    if ctx.Instances.Textures[texture].Kind != kind { glErrorInvalidOperation() }
+    attachment.ObjectType = GL_TEXTURE
+    attachment.ObjectName = as!GLuint(texture)
+    attachment.TextureLevel = level
+    attachment.TextureCubeMapFace = switch (texture_target) {
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+          GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        texture_target
+      default: GL_NONE
+    }
+  }
+  SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.2")
+cmd void glFramebufferTextureLayer(GLenum    target,
+                                   GLenum    attachment,
+                                   TextureId texture,
+                                   GLint     level,
+                                   GLint     layer) {
+  minRequiredVersion(3, 0)
+  attachment_info := FramebufferAttachment()
+  if (texture != 0) {
+    attachment_info.ObjectType = GL_TEXTURE
+    attachment_info.ObjectName = as!GLuint(texture)
+    attachment_info.TextureLevel = level
+    attachment_info.TextureLayer = layer
+  }
+  SetFramebufferAttachment(target, attachment, attachment_info)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenFramebuffers.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenFramebuffers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenFramebuffers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml","OpenGL ES 3.2")
+cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
+  minRequiredVersion(2, 0)
+  if count < 0 { glErrorInvalidValue() }
+
+  f := framebuffers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := as!FramebufferId(?)
+    ctx.Instances.Framebuffers[id] = new!Framebuffer()
+    f[i] = id
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenRenderbuffers.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenRenderbuffers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenRenderbuffers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml","OpenGL ES 3.2")
+cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
+  minRequiredVersion(2, 0)
+  if count < 0 { glErrorInvalidValue() }
+
+  r := renderbuffers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := as!RenderbufferId(?)
+    ctx.Instances.Renderbuffers[id] = new!Renderbuffer()
+    r[i] = id
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetFramebufferAttachmentParameteriv.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.2")
+cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
+                                               GLenum attachment,
+                                               GLenum parameter,
+                                               GLint* value) {
+  minRequiredVersion(2, 0)
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(framebuffer_target)
+  a := switch (attachment) {
+    case GL_COLOR_ATTACHMENT0, GL_BACK:
+      framebuffer.ColorAttachments[0]
+    case GL_DEPTH_ATTACHMENT:
+      framebuffer.DepthAttachment
+    case GL_STENCIL_ATTACHMENT:
+      framebuffer.StencilAttachment
+    case GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
+        GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
+        GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5,
+        GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9: {
+      // TODO: minRequiredVersion(3, 0)
+      // TODO: if i < 0 || i >= ctx.Constants.MaxColorAttachments { glErrorInvalidOperation() }
+      framebuffer.ColorAttachments[as!GLint(attachment - GL_COLOR_ATTACHMENT0)]
+    }
+    case GL_DEPTH_STENCIL_ATTACHMENT: {
+      // TODO: minRequiredVersion(3, 0)
+      // TODO: check framebuffer.DepthAttachment == framebuffer.StencilAttachment
+      framebuffer.DepthAttachment
+    }
+    default: {
+      // TODO: glErrorInvalidEnum(attachment)
+      framebuffer.ColorAttachments[0]
+    }
+  }
+  switch (parameter) {
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
+        GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE, GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL: {
+      // version 2.0
+    }
+    case GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE,
+        GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
+        GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE,
+        GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
+        GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_FRAMEBUFFER_ATTACHMENT_LAYERED: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(parameter)
+    }
+  }
+
+  if (a.ObjectType == GL_NONE) &&
+      (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME) && (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) {
+    glErrorInvalidOperation()
+  }
+  value[0] = switch (parameter) {
+    // TODO: Several format-related cases are still missing.
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE:           as!GLint(a.ObjectType)
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME:           as!GLint(a.ObjectName)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL:         as!GLint(a.TextureLevel)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: as!GLint(a.TextureCubeMapFace)
+    case GL_FRAMEBUFFER_ATTACHMENT_LAYERED:               as!GLint(a.Layered)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER:         as!GLint(a.TextureLayer)
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferParameteriv.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferParameteriv.xhtml","OpenGL ES 3.2")
+cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params) {
+  minRequiredVersion(3, 1)
+  switch (pname) {
+    case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS, GL_FRAMEBUFFER_DEFAULT_HEIGHT,
+        GL_FRAMEBUFFER_DEFAULT_SAMPLES, GL_FRAMEBUFFER_DEFAULT_WIDTH: {
+      // version 3.1
+    }
+    case GL_FRAMEBUFFER_DEFAULT_LAYERS: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
+  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  params[0] = switch (pname) {
+    case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS: as!GLint(framebuffer.DefaultFixedSampleLocations)
+    case GL_FRAMEBUFFER_DEFAULT_HEIGHT:                 framebuffer.DefaultHeight
+    case GL_FRAMEBUFFER_DEFAULT_SAMPLES:                framebuffer.DefaultSamples
+    case GL_FRAMEBUFFER_DEFAULT_WIDTH:                  framebuffer.DefaultWidth
+    case GL_FRAMEBUFFER_DEFAULT_LAYERS:                 framebuffer.DefaultLayers
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetRenderbufferParameteriv.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.2")
+cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* values) {
+  minRequiredVersion(2, 0)
+  switch (target) {
+    case GL_RENDERBUFFER: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (parameter) {
+    case GL_RENDERBUFFER_ALPHA_SIZE, GL_RENDERBUFFER_BLUE_SIZE, GL_RENDERBUFFER_DEPTH_SIZE,
+        GL_RENDERBUFFER_GREEN_SIZE, GL_RENDERBUFFER_HEIGHT, GL_RENDERBUFFER_INTERNAL_FORMAT,
+        GL_RENDERBUFFER_RED_SIZE, GL_RENDERBUFFER_STENCIL_SIZE, GL_RENDERBUFFER_WIDTH: {
+      // version 2.0
+    }
+    case GL_RENDERBUFFER_SAMPLES: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(parameter)
+    }
+  }
+
+  ctx := GetContext()
+  id := ctx.BoundRenderbuffer
+  if id == 0 { glErrorInvalidOperation() } // PDF spec
+  rb := ctx.Instances.Renderbuffers[id]
+  values[0] = switch (parameter) {
+    case GL_RENDERBUFFER_WIDTH:           as!GLint(rb.Width)
+    case GL_RENDERBUFFER_HEIGHT:          as!GLint(rb.Height)
+    case GL_RENDERBUFFER_INTERNAL_FORMAT: as!GLint(rb.InternalFormat)
+  // TODO:
+  // case GL_RENDERBUFFER_RED_SIZE:        ?
+  // case GL_RENDERBUFFER_GREEN_SIZE:      ?
+  // case GL_RENDERBUFFER_BLUE_SIZE:       ?
+  // case GL_RENDERBUFFER_ALPHA_SIZE:      ?
+  // case GL_RENDERBUFFER_DEPTH_SIZE:      ?
+  // case GL_RENDERBUFFER_STENCIL_SIZE:    ?
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.2")
+cmd void glInvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attachments) {
+  minRequiredVersion(3, 0)
+  InvalidateFramebuffer(target, count, attachments)
+}
+
+sub void InvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attachments) {
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
+  a := attachments[0:count]
+  if IsDefaultFramebuffer(framebuffer) {
+    for i in 0 .. count {
+      switch a[i] {
+        case GL_COLOR, GL_DEPTH, GL_STENCIL: { }
+        default:                             {
+          glErrorInvalidEnum(a[i])
+        }
+      }
+    }
+  } else {
+    for i in 0 .. count {
+      switch a[i] {
+        case GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
+            GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
+            GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5,
+            GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9,
+            GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT, GL_STENCIL_ATTACHMENT: { }
+        default:                                                                     {
+          glErrorInvalidEnum(a[i])
+        }
+      }
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.2")
+cmd void glInvalidateSubFramebuffer(GLenum        target,
+                                    GLsizei       numAttachments,
+                                    const GLenum* attachments,
+                                    GLint         x,
+                                    GLint         y,
+                                    GLsizei       width,
+                                    GLsizei       height) {
+  minRequiredVersion(3, 0)
+  switch (target) {
+    case GL_FRAMEBUFFER: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+
+  // TODO
+  read(attachments[0:numAttachments])
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsFramebuffer.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsFramebuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsFramebuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsFramebuffer.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
+  minRequiredVersion(2, 0)
+
+  ctx := GetContext()
+  return as!GLboolean(framebuffer in ctx.Instances.Framebuffers)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsRenderbuffer.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsRenderbuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsRenderbuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsRenderbuffer.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
+  minRequiredVersion(2, 0)
+
+  ctx := GetContext()
+  return as!GLboolean(renderbuffer in ctx.Instances.Renderbuffers)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadBuffer.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadBuffer.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadBuffer.xhtml","OpenGL ES 3.2")
+cmd void glReadBuffer(GLenum src) {
+  minRequiredVersion(3, 0)
+  switch (src) {
+    case GL_BACK, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10,
+        GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14,
+        GL_COLOR_ATTACHMENT15, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4,
+        GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8,
+        GL_COLOR_ATTACHMENT9, GL_NONE: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(src)
+    }
+  }
+  framebuffer := GetBoundFramebufferOrErrorInvalidEnum(GL_READ_FRAMEBUFFER)
+  framebuffer.ReadBuffer = src
+}
+
+sub void checkReadPixels(GLsizei width,
+                         GLsizei height,
+                         GLenum  format,
+                         GLenum  type) {
+  switch (format) {
+    case GL_ALPHA, GL_RGB, GL_RGBA: {
+      // version 2.0
+    }
+    case GL_RED, GL_RED_INTEGER, GL_RG, GL_RG_INTEGER, GL_RGB_INTEGER, GL_LUMINANCE_ALPHA, GL_LUMINANCE: {
+      minRequiredVersion(3, 0) // TODO: or GL_EXT_texture_rg
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  switch (type) {
+    case GL_UNSIGNED_SHORT_5_6_5: {
+      // version 2.0
+      if format != GL_RGB { glErrorInvalidOperation() }
+    }
+    case GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1: {
+      // version 2.0
+      if format != GL_RGBA { glErrorInvalidOperation() }
+    }
+    case GL_UNSIGNED_BYTE: {
+      // version 2.0
+    }
+    case GL_FLOAT, GL_INT, GL_UNSIGNED_INT, GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_5_9_9_9_REV: {
+      // TODO(dsrbecky) - implement additional 'type compatible with format'
+      // validation. PDF spec contains a table with for these.
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(type)
+    }
+  }
+  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glReadPixels.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadPixels.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadPixels.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml","OpenGL ES 3.2")
+cmd void glReadPixels(GLint   x,
+                      GLint   y,
+                      GLsizei width,
+                      GLsizei height,
+                      GLenum  format,
+                      GLenum  type,
+                      void*   data) {
+  minRequiredVersion(1, 0)
+  checkReadPixels(width, height, format, type)
+
+  ctx := GetContext()
+  if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
+    requiredSize := imageSize(as!u32(width), as!u32(height), format, type)
+    write(data[0:requiredSize])
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml","OpenGL ES 3.2")
+cmd void glReadnPixels(GLint   x,
+                       GLint   y,
+                       GLsizei width,
+                       GLsizei height,
+                       GLenum  format,
+                       GLenum  type,
+                       GLsizei bufSize,
+                       void*   data) {
+  minRequiredVersion(3, 2)
+  ReadnPixels(x, y, width, height, format, type, bufSize, data)
+}
+
+sub void ReadnPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLsizei bufSize, void* data) {
+  checkReadPixels(width, height, format, type)
+  ctx := GetContext()
+  if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
+    requiredSize := imageSize(as!u32(width), as!u32(height), format, type)
+    if as!GLsizei(requiredSize) > bufSize { glErrorInvalidOperation() }
+    write(data[0:requiredSize])
+  }
+
+  _ = x // TODO
+  _ = y // TODO
+  _ = width // TODO
+  _ = height // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glRenderbufferStorage.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorage.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorage.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorage.xhtml","OpenGL ES 3.2")
+cmd void glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
+  minRequiredVersion(2, 0)
+  RenderbufferStorageMultisample(target, 0 /* samples */, internalformat, width, height)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.2")
+cmd void glRenderbufferStorageMultisample(GLenum  target,
+                                          GLsizei samples,
+                                          GLenum  internalformat,
+                                          GLsizei width,
+                                          GLsizei height) {
+  minRequiredVersion(3, 0)
+  RenderbufferStorageMultisample(target, samples, internalformat, width, height)
+}
+
+sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height) {
+  switch (target) {
+    case GL_RENDERBUFFER: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_DEPTH_COMPONENT16, GL_RGB565, GL_RGB5_A1, GL_RGBA4, GL_STENCIL_INDEX8: {
+      // version 2.0
+    }
+    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F,
+        GL_R16I, GL_R16UI, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_RG16I, GL_RG16UI,
+        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB8,
+        GL_RGBA16I, GL_RGBA16UI, GL_RGBA32I, GL_RGBA32UI, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI,
+        GL_SRGB8_ALPHA8: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_R16, GL_RG16, GL_RGBA16: {
+      minRequiredVersion(3, 1)
+      requiresExtension(GL_EXT_texture_norm16)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+
+  ctx := GetContext()
+  if (width > as!GLsizei(ctx.Constants.MaxRenderbufferSize)) ||
+      (height > as!GLsizei(ctx.Constants.MaxRenderbufferSize)) {
+    glErrorInvalidValue()
+  }
+
+  id := ctx.BoundRenderbuffer
+  if id == 0 { glErrorInvalidOperation() }
+  rb := ctx.Instances.Renderbuffers[id]
+  rb.InternalFormat = internalformat
+  rb.Width = width
+  rb.Height = height
+
+  _ = samples // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMask.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMask.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMask.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMask.xhtml","OpenGL ES 3.2")
+cmd void glStencilMask(GLuint mask) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Framebuffer.StencilWritemask = mask
+  ctx.Framebuffer.StencilBackWritemask = mask
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMaskSeparate.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.2")
+cmd void glStencilMaskSeparate(GLenum face, GLuint mask) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  switch (face) {
+    case GL_BACK:
+      ctx.Framebuffer.StencilBackWritemask = mask
+    case GL_FRONT:
+      ctx.Framebuffer.StencilWritemask = mask
+    case GL_FRONT_AND_BACK: {
+      ctx.Framebuffer.StencilWritemask = mask
+      ctx.Framebuffer.StencilBackWritemask = mask
+    }
+    default: {
+      glErrorInvalidEnum(face)
+    }
+  }
+}

@@ -1,0 +1,584 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Implementation dependent constants.
+@internal
+@serialize
+class Constants {
+  // Constants defined in version 2.0.25 (November 2, 2010)
+  // SampleBuffers and Samples are omitted since they are not constants in later versions.
+  GLfloat[2]            AliasedLineWidthRange
+  GLfloat[2]            AliasedPointSizeRange
+  map!(u32, GLenum)     CompressedTextureFormats
+  map!(u32, string)     Extensions
+  GLint                 MaxCombinedTextureImageUnits
+  GLint                 MaxCubeMapTextureSize
+  GLint                 MaxFragmentUniformVectors
+  GLint                 MaxRenderbufferSize
+  GLint                 MaxTextureImageUnits
+  GLint                 MaxTextureSize
+  GLint                 MaxVaryingVectors
+  GLint                 MaxVertexAttribs
+  GLint                 MaxVertexTextureImageUnits
+  GLint                 MaxVertexUniformVectors
+  GLint[2]              MaxViewportDims
+  @unused string        Renderer
+  map!(u32, GLenum)     ShaderBinaryFormats
+  GLboolean             ShaderCompiler
+  @unused string        ShadingLanguageVersion
+  GLint                 SubpixelBits
+  @unused string        Vendor
+  @unused string        Version
+  ShaderPrecisionFormat VertexShaderPrecisionFormat
+  ShaderPrecisionFormat FragmentShaderPrecisionFormat
+
+  // Constants defined in version 3.0.4 (August 27, 2014)
+  GLint             MajorVersion
+  GLint             Max3dTextureSize
+  GLint             MaxArrayTextureLayers
+  GLint             MaxColorAttachments
+  GLint64           MaxCombinedFragmentUniformComponents
+  GLint             MaxCombinedUniformBlocks
+  GLint64           MaxCombinedVertexUniformComponents
+  GLint             MaxDrawBuffers
+  GLint             MaxElementsIndices
+  GLint             MaxElementsVertices
+  GLint64           MaxElementIndex
+  GLint             MaxFragmentInputComponents
+  GLint             MaxFragmentUniformBlocks
+  GLint             MaxFragmentUniformComponents
+  GLint             MaxProgramTexelOffset
+  GLint64           MaxServerWaitTimeout
+  GLfloat           MaxTextureLodBias
+  GLint             MaxTransformFeedbackInterleavedComponents
+  GLint             MaxTransformFeedbackSeparateAttribs
+  GLint             MaxTransformFeedbackSeparateComponents
+  GLint64           MaxUniformBlockSize
+  GLint             MaxUniformBufferBindings
+  GLint             MaxVaryingComponents
+  GLint             MaxVertexOutputComponents
+  GLint             MaxVertexUniformBlocks
+  GLint             MaxVertexUniformComponents
+  GLint             MinorVersion
+  GLint             MinProgramTexelOffset
+  map!(u32, GLenum) ProgramBinaryFormats
+  GLint             UniformBufferOffsetAlignment
+
+  // Constants defined in version 3.1 (April 29, 2015)
+  GLint    MaxAtomicCounterBufferBindings
+  GLint    MaxAtomicCounterBufferSize
+  GLint    MaxColorTextureSamples
+  GLint    MaxCombinedAtomicCounters
+  GLint    MaxCombinedAtomicCounterBuffers
+  GLint    MaxCombinedComputeUniformComponents
+  GLint    MaxCombinedImageUniforms
+  GLint    MaxCombinedShaderOutputResources
+  GLint    MaxCombinedShaderStorageBlocks
+  GLint    MaxComputeAtomicCounters
+  GLint    MaxComputeAtomicCounterBuffers
+  GLint    MaxComputeImageUniforms
+  GLint    MaxComputeShaderStorageBlocks
+  GLint    MaxComputeSharedMemorySize
+  GLint    MaxComputeTextureImageUnits
+  GLint    MaxComputeUniformBlocks
+  GLint    MaxComputeUniformComponents
+  GLint[3] MaxComputeWorkGroupCount
+  GLint    MaxComputeWorkGroupInvocations
+  GLint[3] MaxComputeWorkGroupSize
+  GLint    MaxDepthTextureSamples
+  GLint    MaxFragmentAtomicCounters
+  GLint    MaxFragmentAtomicCounterBuffers
+  GLint    MaxFragmentImageUniforms
+  GLint    MaxFragmentShaderStorageBlocks
+  GLint    MaxFramebufferHeight
+  GLint    MaxFramebufferSamples
+  GLint    MaxFramebufferWidth
+  GLint    MaxImageUnits
+  GLint    MaxIntegerSamples
+  GLint    MaxProgramTextureGatherOffset
+  GLint    MaxSampleMaskWords
+  GLint64  MaxShaderStorageBlockSize
+  GLint    MaxShaderStorageBufferBindings
+  GLint    MaxUniformLocations
+  GLint    MaxVertexAtomicCounters
+  GLint    MaxVertexAtomicCounterBuffers
+  GLint    MaxVertexAttribBindings
+  GLint    MaxVertexAttribRelativeOffset
+  GLint    MaxVertexAttribStride
+  GLint    MaxVertexImageUniforms
+  GLint    MaxVertexShaderStorageBlocks
+  GLint    MinProgramTextureGatherOffset
+  GLint    ShaderStorageBufferOffsetAlignment
+
+  // Constants defined in version 3.2 (June 15, 2016)
+  GLint      ContextFlags
+  GLint      FragmentInterpolationOffsetBits
+  GLenum     LayerProvokingVertex
+  GLint      MaxCombinedGeometryUniformComponents
+  GLint      MaxCombinedTessControlUniformComponents
+  GLint      MaxCombinedTessEvaluationUniformComponents
+  GLint      MaxDebugGroupStackDepth
+  GLint      MaxDebugLoggedMessages
+  GLint      MaxDebugMessageLength
+  GLfloat    MaxFragmentInterpolationOffset
+  GLint      MaxFramebufferLayers
+  GLint      MaxGeometryAtomicCounters
+  GLint      MaxGeometryAtomicCounterBuffers
+  GLint      MaxGeometryImageUniforms
+  GLint      MaxGeometryInputComponents
+  GLint      MaxGeometryOutputComponents
+  GLint      MaxGeometryOutputVertices
+  GLint      MaxGeometryShaderInvocations
+  GLint      MaxGeometryShaderStorageBlocks
+  GLint      MaxGeometryTextureImageUnits
+  GLint      MaxGeometryTotalOutputComponents
+  GLint      MaxGeometryUniformBlocks
+  GLint      MaxGeometryUniformComponents
+  GLint      MaxLabelLength
+  GLint      MaxPatchVertices
+  GLint      MaxTessControlAtomicCounters
+  GLint      MaxTessControlAtomicCounterBuffers
+  GLint      MaxTessControlImageUniforms
+  GLint      MaxTessControlInputComponents
+  GLint      MaxTessControlOutputComponents
+  GLint      MaxTessControlShaderStorageBlocks
+  GLint      MaxTessControlTextureImageUnits
+  GLint      MaxTessControlTotalOutputComponents
+  GLint      MaxTessControlUniformBlocks
+  GLint      MaxTessControlUniformComponents
+  GLint      MaxTessEvaluationAtomicCounters
+  GLint      MaxTessEvaluationAtomicCounterBuffers
+  GLint      MaxTessEvaluationImageUniforms
+  GLint      MaxTessEvaluationInputComponents
+  GLint      MaxTessEvaluationOutputComponents
+  GLint      MaxTessEvaluationShaderStorageBlocks
+  GLint      MaxTessEvaluationTextureImageUnits
+  GLint      MaxTessEvaluationUniformBlocks
+  GLint      MaxTessEvaluationUniformComponents
+  GLint      MaxTessGenLevel
+  GLint      MaxTessPatchComponents
+  GLint      MaxTextureBufferSize
+  GLfloat    MinFragmentInterpolationOffset
+  GLfloat    MultisampleLineWidthGranularity
+  GLfloat[2] MultisampleLineWidthRange
+  GLboolean  PrimitiveRestartForPatchesSupported
+  GLint      TextureBufferOffsetAlignment
+
+  // Constants defined in extensions
+  GLfloat MaxTextureMaxAnisotropyExt
+}
+
+@internal
+@serialize
+class ShaderPrecisionFormat {
+  @unused PrecisionFormat LowFloat
+  @unused PrecisionFormat MediumFloat
+  @unused PrecisionFormat HighFloat
+  @unused PrecisionFormat LowInt
+  @unused PrecisionFormat MediumInt
+  @unused PrecisionFormat HighInt
+}
+
+@internal
+@serialize
+class PrecisionFormat {
+  @unused GLint MinRange
+  @unused GLint MaxRange
+  @unused GLint Precision
+}
+
+@deprecated
+@ignore_unreachables
+sub void SetConstant(ref!StaticContextState ctx, GLenum name, u8[] value) {
+  switch (name) {
+    case GL_RENDERER:
+      ctx.Constants.Renderer = as!string(as!char[](value))
+    case GL_VENDOR:
+      ctx.Constants.Vendor = as!string(as!char[](value))
+    case GL_VERSION:
+      ctx.Constants.Version = as!string(as!char[](value))
+    case GL_EXTENSIONS: {
+      extensions := as!char[](value)
+      for start in 0 .. len(value) {
+        if (start == 0) || (as!string(extensions[start - 1:start]) == " ") {
+          idx := as!u32(len(ctx.Constants.Extensions))
+          for end in start .. (len(value) + 1) {
+            if (end == len(value)) || (as!string(extensions[end:end + 1]) == " ") {
+              if !(idx in ctx.Constants.Extensions) {
+                ctx.Constants.Extensions[idx] = as!string(extensions[start:end])
+              }
+            }
+          }
+        }
+      }
+    }
+    case GL_SHADING_LANGUAGE_VERSION:
+      ctx.Constants.ShadingLanguageVersion = as!string(as!char[](value))
+    case GL_SUBPIXEL_BITS:
+      ctx.Constants.SubpixelBits = as!GLint[](value)[0]
+    case GL_MAX_ELEMENT_INDEX:
+      ctx.Constants.MaxElementIndex = as!GLint64[](value)[0]
+    case GL_MAX_3D_TEXTURE_SIZE:
+      ctx.Constants.Max3dTextureSize = as!GLint[](value)[0]
+    case GL_MAX_TEXTURE_SIZE:
+      ctx.Constants.MaxTextureSize = as!GLint[](value)[0]
+    case GL_MAX_ARRAY_TEXTURE_LAYERS:
+      ctx.Constants.MaxArrayTextureLayers = as!GLint[](value)[0]
+    case GL_MAX_TEXTURE_LOD_BIAS:
+      ctx.Constants.MaxTextureLodBias = as!GLfloat[](value)[0]
+    case GL_MAX_CUBE_MAP_TEXTURE_SIZE:
+      ctx.Constants.MaxCubeMapTextureSize = as!GLint[](value)[0]
+    case GL_MAX_RENDERBUFFER_SIZE:
+      ctx.Constants.MaxRenderbufferSize = as!GLint[](value)[0]
+    case GL_ALIASED_POINT_SIZE_RANGE: {
+      ctx.Constants.AliasedPointSizeRange[0] = as!GLfloat[](value)[0]
+      ctx.Constants.AliasedPointSizeRange[1] = as!GLfloat[](value)[1]
+    }
+    case GL_ALIASED_LINE_WIDTH_RANGE: {
+      ctx.Constants.AliasedLineWidthRange[0] = as!GLfloat[](value)[0]
+      ctx.Constants.AliasedLineWidthRange[1] = as!GLfloat[](value)[1]
+    }
+    case GL_MULTISAMPLE_LINE_WIDTH_RANGE: {
+      ctx.Constants.MultisampleLineWidthRange[0] = as!GLfloat[](value)[0]
+      ctx.Constants.MultisampleLineWidthRange[1] = as!GLfloat[](value)[1]
+    }
+    case GL_MULTISAMPLE_LINE_WIDTH_GRANULARITY:
+      ctx.Constants.MultisampleLineWidthGranularity = as!GLfloat[](value)[0]
+    case GL_MAX_DRAW_BUFFERS:
+      ctx.Constants.MaxDrawBuffers = as!GLint[](value)[0]
+    case GL_MAX_FRAMEBUFFER_WIDTH:
+      ctx.Constants.MaxFramebufferWidth = as!GLint[](value)[0]
+    case GL_MAX_FRAMEBUFFER_HEIGHT:
+      ctx.Constants.MaxFramebufferHeight = as!GLint[](value)[0]
+    case GL_MAX_FRAMEBUFFER_LAYERS:
+      ctx.Constants.MaxFramebufferLayers = as!GLint[](value)[0]
+    case GL_MAX_FRAMEBUFFER_SAMPLES:
+      ctx.Constants.MaxFramebufferSamples = as!GLint[](value)[0]
+    case GL_MAX_COLOR_ATTACHMENTS:
+      ctx.Constants.MaxColorAttachments = as!GLint[](value)[0]
+    case GL_MIN_FRAGMENT_INTERPOLATION_OFFSET:
+      ctx.Constants.MinFragmentInterpolationOffset = as!GLfloat[](value)[0]
+    case GL_MAX_FRAGMENT_INTERPOLATION_OFFSET:
+      ctx.Constants.MaxFragmentInterpolationOffset = as!GLfloat[](value)[0]
+    case GL_FRAGMENT_INTERPOLATION_OFFSET_BITS:
+      ctx.Constants.FragmentInterpolationOffsetBits = as!GLint[](value)[0]
+    case GL_MAX_VIEWPORT_DIMS: {
+      ctx.Constants.MaxViewportDims[0] = as!GLint[](value)[0]
+      ctx.Constants.MaxViewportDims[1] = as!GLint[](value)[1]
+    }
+    case GL_MAX_SAMPLE_MASK_WORDS:
+      ctx.Constants.MaxSampleMaskWords = as!GLint[](value)[0]
+    case GL_MAX_COLOR_TEXTURE_SAMPLES:
+      ctx.Constants.MaxColorTextureSamples = as!GLint[](value)[0]
+    case GL_MAX_DEPTH_TEXTURE_SAMPLES:
+      ctx.Constants.MaxDepthTextureSamples = as!GLint[](value)[0]
+    case GL_MAX_INTEGER_SAMPLES:
+      ctx.Constants.MaxIntegerSamples = as!GLint[](value)[0]
+    case GL_MAX_SERVER_WAIT_TIMEOUT:
+      ctx.Constants.MaxServerWaitTimeout = as!GLint64[](value)[0]
+    case GL_LAYER_PROVOKING_VERTEX:
+      ctx.Constants.LayerProvokingVertex = as!GLenum[](value)[0]
+    case GL_PRIMITIVE_RESTART_FOR_PATCHES_SUPPORTED:
+      ctx.Constants.PrimitiveRestartForPatchesSupported = as!GLboolean[](value)[0]
+    case GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET:
+      ctx.Constants.MaxVertexAttribRelativeOffset = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_ATTRIB_BINDINGS:
+      ctx.Constants.MaxVertexAttribBindings = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_ATTRIB_STRIDE:
+      ctx.Constants.MaxVertexAttribStride = as!GLint[](value)[0]
+    case GL_MAX_ELEMENTS_INDICES:
+      ctx.Constants.MaxElementsIndices = as!GLint[](value)[0]
+    case GL_MAX_ELEMENTS_VERTICES:
+      ctx.Constants.MaxElementsVertices = as!GLint[](value)[0]
+    case GL_MAX_TEXTURE_BUFFER_SIZE:
+      ctx.Constants.MaxTextureBufferSize = as!GLint[](value)[0]
+    case GL_COMPRESSED_TEXTURE_FORMATS: {
+      formats := as!GLenum[](value)
+      for i in 0 .. as!u32(len(formats)) {
+        ctx.Constants.CompressedTextureFormats[i] = formats[i]
+      }
+    }
+    case GL_PROGRAM_BINARY_FORMATS: {
+      formats := as!GLenum[](value)
+      for i in 0 .. as!u32(len(formats)) {
+        ctx.Constants.ProgramBinaryFormats[i] = formats[i]
+      }
+    }
+    case GL_SHADER_BINARY_FORMATS: {
+      formats := as!GLenum[](value)
+      for i in 0 .. as!u32(len(formats)) {
+        ctx.Constants.ShaderBinaryFormats[i] = formats[i]
+      }
+    }
+    case GL_SHADER_COMPILER:
+      ctx.Constants.ShaderCompiler = as!GLboolean[](value)[0]
+    case GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
+      ctx.Constants.TextureBufferOffsetAlignment = as!GLint[](value)[0]
+    case GL_MAJOR_VERSION:
+      ctx.Constants.MajorVersion = as!GLint[](value)[0]
+    case GL_MINOR_VERSION:
+      ctx.Constants.MinorVersion = as!GLint[](value)[0]
+    case GL_CONTEXT_FLAGS:
+      ctx.Constants.ContextFlags = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_ATTRIBS:
+      ctx.Constants.MaxVertexAttribs = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxVertexUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_UNIFORM_VECTORS:
+      ctx.Constants.MaxVertexUniformVectors = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_UNIFORM_BLOCKS:
+      ctx.Constants.MaxVertexUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxVertexOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxVertexTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxVertexAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_ATOMIC_COUNTERS:
+      ctx.Constants.MaxVertexAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxVertexShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MAX_TESS_GEN_LEVEL:
+      ctx.Constants.MaxTessGenLevel = as!GLint[](value)[0]
+    case GL_MAX_PATCH_VERTICES:
+      ctx.Constants.MaxPatchVertices = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxTessControlUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxTessControlTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxTessControlOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_PATCH_COMPONENTS:
+      ctx.Constants.MaxTessPatchComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_TOTAL_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxTessControlTotalOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_INPUT_COMPONENTS:
+      ctx.Constants.MaxTessControlInputComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_UNIFORM_BLOCKS:
+      ctx.Constants.MaxTessControlUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxTessControlAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS:
+      ctx.Constants.MaxTessControlAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxTessControlShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxTessEvaluationUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxTessEvaluationTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxTessEvaluationOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_INPUT_COMPONENTS:
+      ctx.Constants.MaxTessEvaluationInputComponents = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_UNIFORM_BLOCKS:
+      ctx.Constants.MaxTessEvaluationUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxTessEvaluationAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS:
+      ctx.Constants.MaxTessEvaluationAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxTessEvaluationShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxGeometryUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_UNIFORM_BLOCKS:
+      ctx.Constants.MaxGeometryUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_INPUT_COMPONENTS:
+      ctx.Constants.MaxGeometryInputComponents = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxGeometryOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_OUTPUT_VERTICES:
+      ctx.Constants.MaxGeometryOutputVertices = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
+      ctx.Constants.MaxGeometryTotalOutputComponents = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxGeometryTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_SHADER_INVOCATIONS:
+      ctx.Constants.MaxGeometryShaderInvocations = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxGeometryAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_ATOMIC_COUNTERS:
+      ctx.Constants.MaxGeometryAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxGeometryShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxFragmentUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_UNIFORM_VECTORS:
+      ctx.Constants.MaxFragmentUniformVectors = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_UNIFORM_BLOCKS:
+      ctx.Constants.MaxFragmentUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_INPUT_COMPONENTS:
+      ctx.Constants.MaxFragmentInputComponents = as!GLint[](value)[0]
+    case GL_MAX_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxFragmentAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_ATOMIC_COUNTERS:
+      ctx.Constants.MaxFragmentAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxFragmentShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MIN_PROGRAM_TEXTURE_GATHER_OFFSET:
+      ctx.Constants.MinProgramTextureGatherOffset = as!GLint[](value)[0]
+    case GL_MAX_PROGRAM_TEXTURE_GATHER_OFFSET:
+      ctx.Constants.MaxProgramTextureGatherOffset = as!GLint[](value)[0]
+    case GL_MIN_PROGRAM_TEXEL_OFFSET:
+      ctx.Constants.MinProgramTexelOffset = as!GLint[](value)[0]
+    case GL_MAX_PROGRAM_TEXEL_OFFSET:
+      ctx.Constants.MaxProgramTexelOffset = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_WORK_GROUP_COUNT: {
+      ctx.Constants.MaxComputeWorkGroupCount[0] = as!GLint[](value)[0]
+      ctx.Constants.MaxComputeWorkGroupCount[1] = as!GLint[](value)[1]
+      ctx.Constants.MaxComputeWorkGroupCount[2] = as!GLint[](value)[2]
+    }
+    case GL_MAX_COMPUTE_WORK_GROUP_SIZE: {
+      ctx.Constants.MaxComputeWorkGroupSize[0] = as!GLint[](value)[0]
+      ctx.Constants.MaxComputeWorkGroupSize[1] = as!GLint[](value)[1]
+      ctx.Constants.MaxComputeWorkGroupSize[2] = as!GLint[](value)[2]
+    }
+    case GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS:
+      ctx.Constants.MaxComputeWorkGroupInvocations = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_UNIFORM_BLOCKS:
+      ctx.Constants.MaxComputeUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxComputeTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_SHARED_MEMORY_SIZE:
+      ctx.Constants.MaxComputeSharedMemorySize = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxComputeUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxComputeAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_ATOMIC_COUNTERS:
+      ctx.Constants.MaxComputeAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedComputeUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxComputeShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_MAX_UNIFORM_BUFFER_BINDINGS:
+      ctx.Constants.MaxUniformBufferBindings = as!GLint[](value)[0]
+    case GL_MAX_UNIFORM_BLOCK_SIZE:
+      ctx.Constants.MaxUniformBlockSize = as!GLint64[](value)[0]
+    case GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT:
+      ctx.Constants.UniformBufferOffsetAlignment = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_UNIFORM_BLOCKS:
+      ctx.Constants.MaxCombinedUniformBlocks = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedVertexUniformComponents = as!GLint64[](value)[0]
+    case GL_MAX_COMBINED_TESS_CONTROL_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedTessControlUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_TESS_EVALUATION_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedTessEvaluationUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_GEOMETRY_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedGeometryUniformComponents = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS:
+      ctx.Constants.MaxCombinedFragmentUniformComponents = as!GLint64[](value)[0]
+    case GL_MAX_VARYING_COMPONENTS:
+      ctx.Constants.MaxVaryingComponents = as!GLint[](value)[0]
+    case GL_MAX_VARYING_VECTORS:
+      ctx.Constants.MaxVaryingVectors = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
+      ctx.Constants.MaxCombinedTextureImageUnits = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
+      ctx.Constants.MaxCombinedShaderOutputResources = as!GLint[](value)[0]
+    case GL_MAX_UNIFORM_LOCATIONS:
+      ctx.Constants.MaxUniformLocations = as!GLint[](value)[0]
+    case GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS:
+      ctx.Constants.MaxAtomicCounterBufferBindings = as!GLint[](value)[0]
+    case GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE:
+      ctx.Constants.MaxAtomicCounterBufferSize = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS:
+      ctx.Constants.MaxCombinedAtomicCounterBuffers = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_ATOMIC_COUNTERS:
+      ctx.Constants.MaxCombinedAtomicCounters = as!GLint[](value)[0]
+    case GL_MAX_IMAGE_UNITS:
+      ctx.Constants.MaxImageUnits = as!GLint[](value)[0]
+    case GL_MAX_VERTEX_IMAGE_UNIFORMS:
+      ctx.Constants.MaxVertexImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_TESS_CONTROL_IMAGE_UNIFORMS:
+      ctx.Constants.MaxTessControlImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_TESS_EVALUATION_IMAGE_UNIFORMS:
+      ctx.Constants.MaxTessEvaluationImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_GEOMETRY_IMAGE_UNIFORMS:
+      ctx.Constants.MaxGeometryImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_FRAGMENT_IMAGE_UNIFORMS:
+      ctx.Constants.MaxFragmentImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_COMPUTE_IMAGE_UNIFORMS:
+      ctx.Constants.MaxComputeImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_COMBINED_IMAGE_UNIFORMS:
+      ctx.Constants.MaxCombinedImageUniforms = as!GLint[](value)[0]
+    case GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS:
+      ctx.Constants.MaxShaderStorageBufferBindings = as!GLint[](value)[0]
+    case GL_MAX_SHADER_STORAGE_BLOCK_SIZE:
+      ctx.Constants.MaxShaderStorageBlockSize = as!GLint64[](value)[0]
+    case GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS:
+      ctx.Constants.MaxCombinedShaderStorageBlocks = as!GLint[](value)[0]
+    case GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT:
+      ctx.Constants.ShaderStorageBufferOffsetAlignment = as!GLint[](value)[0]
+    case GL_MAX_DEBUG_MESSAGE_LENGTH:
+      ctx.Constants.MaxDebugMessageLength = as!GLint[](value)[0]
+    case GL_MAX_DEBUG_LOGGED_MESSAGES:
+      ctx.Constants.MaxDebugLoggedMessages = as!GLint[](value)[0]
+    case GL_MAX_DEBUG_GROUP_STACK_DEPTH:
+      ctx.Constants.MaxDebugGroupStackDepth = as!GLint[](value)[0]
+    case GL_MAX_LABEL_LENGTH:
+      ctx.Constants.MaxLabelLength = as!GLint[](value)[0]
+    case GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS:
+      ctx.Constants.MaxTransformFeedbackInterleavedComponents = as!GLint[](value)[0]
+    case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS:
+      ctx.Constants.MaxTransformFeedbackSeparateAttribs = as!GLint[](value)[0]
+    case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS:
+      ctx.Constants.MaxTransformFeedbackSeparateComponents = as!GLint[](value)[0]
+    case GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT:
+      ctx.Constants.MaxTextureMaxAnisotropyExt = as!GLfloat[](value)[0]
+    case GL_LOW_FLOAT, GL_MEDIUM_FLOAT, GL_HIGH_FLOAT, GL_LOW_INT, GL_MEDIUM_INT, GL_HIGH_INT: {
+      vsPrecisionFormat := PrecisionFormat(
+        MinRange:   as!GLint[](value)[0],
+        MaxRange:   as!GLint[](value)[1],
+        Precision:  as!GLint[](value)[2],
+      )
+      fsPrecisionFormat := PrecisionFormat(
+        MinRange:   as!GLint[](value)[3],
+        MaxRange:   as!GLint[](value)[4],
+        Precision:  as!GLint[](value)[5],
+      )
+      switch (name) {
+        case GL_LOW_FLOAT: {
+          ctx.Constants.VertexShaderPrecisionFormat.LowFloat = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.LowFloat = fsPrecisionFormat
+        }
+        case GL_MEDIUM_FLOAT: {
+          ctx.Constants.VertexShaderPrecisionFormat.MediumFloat = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.MediumFloat = fsPrecisionFormat
+        }
+        case GL_HIGH_FLOAT: {
+          ctx.Constants.VertexShaderPrecisionFormat.HighFloat = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.HighFloat = fsPrecisionFormat
+        }
+        case GL_LOW_INT: {
+          ctx.Constants.VertexShaderPrecisionFormat.LowInt = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.LowInt = fsPrecisionFormat
+        }
+        case GL_MEDIUM_INT: {
+          ctx.Constants.VertexShaderPrecisionFormat.MediumInt = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.MediumInt = fsPrecisionFormat
+        }
+        case GL_HIGH_INT: {
+          ctx.Constants.VertexShaderPrecisionFormat.HighInt = vsPrecisionFormat
+          ctx.Constants.FragmentShaderPrecisionFormat.HighInt = fsPrecisionFormat
+        }
+      }
+    }
+    default: {
+      // Ignore
+    }
+  }
+}

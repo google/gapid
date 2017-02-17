@@ -1,0 +1,1479 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// VersionGreaterOrEqual returns true if the context's version is greater or
+// equal to the specified major-minor version.
+sub bool VersionGreaterOrEqual(ref!Context ctx, GLint major, GLint minor) {
+  return (ctx.Constants.MajorVersion > major) || ((ctx.Constants.MajorVersion == major) && (ctx.Constants.MinorVersion >= minor))
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetBooleani_v(GLenum param, GLuint index, GLboolean* values) {
+  minRequiredVersion(3, 1)
+  GetStateVariable!GLboolean(param, true, index, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetBooleanv(GLenum param, GLboolean* values) {
+  minRequiredVersion(1, 0)
+  GetStateVariable!GLboolean(param, false, 0, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetFloatv(GLenum param, GLfloat* values) {
+  minRequiredVersion(1, 0)
+  GetStateVariable!GLfloat(param, false, 0, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetInteger64i_v(GLenum param, GLuint index, GLint64* values) {
+  minRequiredVersion(3, 0)
+  GetStateVariable!GLint64(param, true, index, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetInteger64v(GLenum param, GLint64* values) {
+  minRequiredVersion(3, 0)
+  GetInteger64v(param, values)
+}
+
+sub void GetInteger64v(GLenum param, GLint64* values) {
+  GetStateVariable!GLint64(param, false, 0, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetIntegeri_v(GLenum param, GLuint index, GLint* values) {
+  minRequiredVersion(3, 0)
+  GetStateVariable!GLint(param, true, index, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+cmd void glGetIntegerv(GLenum param, GLint* values) {
+  minRequiredVersion(1, 0)
+  GetStateVariable!GLint(param, false, 0, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetInternalformativ.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetInternalformativ.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetInternalformativ.xhtml","OpenGL ES 3.2")
+cmd void glGetInternalformativ(GLenum  target,
+                               GLenum  internalformat,
+                               GLenum  pname,
+                               GLsizei bufSize,
+                               GLint*  params) {
+  minRequiredVersion(3, 0)
+  switch (target) {
+    case GL_RENDERBUFFER: {
+      // version 3.0
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      minRequiredVersion(3, 1)
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24,
+        GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I,
+        GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F,
+        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI,
+        GL_RGB16F, GL_RGB16I, GL_RGB16UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1,
+        GL_RGB8, GL_RGB8I, GL_RGB8UI, GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I,
+        GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I,
+        GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8, GL_SRGB8_ALPHA8: {
+      // version 3.0
+    }
+    case GL_STENCIL_INDEX8: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  switch (pname) {
+    case GL_NUM_SAMPLE_COUNTS, GL_SAMPLES: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+  // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetString.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml","OpenGL ES 3.2")
+cmd const GLubyte* glGetString(GLenum param) {
+  minRequiredVersion(1, 0)
+  switch (param) {
+    case GL_EXTENSIONS, GL_RENDERER, GL_SHADING_LANGUAGE_VERSION, GL_VENDOR, GL_VERSION: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(param)
+    }
+  }
+
+  ret := ?
+  _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  return ret
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml","OpenGL ES 3.2")
+cmd const GLubyte* glGetStringi(GLenum name, GLuint index) {
+  minRequiredVersion(3, 0)
+  switch (name) {
+    case GL_EXTENSIONS: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(name)
+    }
+  }
+
+  ret := ?
+  _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  return ret
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsEnabled.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsEnabled.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsEnabled.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsEnabled(GLenum capability) {
+  minRequiredVersion(1, 0)
+  return GetCapability(capability, 0)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsEnabledi(GLenum capability, GLuint index) {
+  minRequiredVersion(3, 2)
+  return IsEnabledi(capability, index)
+}
+
+sub GLboolean IsEnabledi(GLenum capability, GLuint index) {
+  return GetCapability(capability, index)
+}
+
+sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
+  ctx := GetContext()
+  switch (name) {
+    case GL_ACTIVE_TEXTURE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.ActiveTextureUnit)
+    }
+    case GL_ALIASED_LINE_WIDTH_RANGE: {
+      minRequiredVersion(2, 0)
+      s := v[0:2]
+      s[0] = as!T(ctx.Constants.AliasedLineWidthRange[0])
+      s[1] = as!T(ctx.Constants.AliasedLineWidthRange[1])
+    }
+    case GL_ALIASED_POINT_SIZE_RANGE: {
+      minRequiredVersion(2, 0)
+      s := v[0:2]
+      s[0] = as!T(ctx.Constants.AliasedPointSizeRange[0])
+      s[1] = as!T(ctx.Constants.AliasedPointSizeRange[1])
+    }
+    case GL_ALPHA_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_ARRAY_BUFFER_BINDING: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.BoundBuffers.ArrayBuffer)
+    }
+    case GL_ATOMIC_COUNTER_BUFFER_BINDING: {
+      minRequiredVersion(3, 1) // SPEC: Missing in the man page
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Binding)
+      } else {
+        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffer)
+      }
+    }
+    case GL_ATOMIC_COUNTER_BUFFER_SIZE: {
+      minRequiredVersion(3, 1) // SPEC: Missing in the man page
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Size)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_ATOMIC_COUNTER_BUFFER_START: {
+      minRequiredVersion(3, 1) // SPEC: Missing in the man page
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Start)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_BLEND: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].Enabled)
+    }
+    case GL_BLEND_COLOR: {
+      minRequiredVersion(2, 0)
+      s := v[0:4]
+      s[0] = as!T(ctx.FragmentOperations.BlendColor.Red)
+      s[1] = as!T(ctx.FragmentOperations.BlendColor.Green)
+      s[2] = as!T(ctx.FragmentOperations.BlendColor.Blue)
+      s[3] = as!T(ctx.FragmentOperations.BlendColor.Alpha)
+    }
+    case GL_BLEND_DST_ALPHA: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].DstAlpha)
+    }
+    case GL_BLEND_DST_RGB: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].DstRgb)
+    }
+    case GL_BLEND_EQUATION_ALPHA: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].EquationAlpha)
+    }
+    case GL_BLEND_EQUATION_RGB: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].EquationRgb)
+    }
+    case GL_BLEND_SRC_ALPHA: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].SrcAlpha)
+    }
+    case GL_BLEND_SRC_RGB: {
+      minRequiredVersion(2, 0)
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      v[0] = as!T(ctx.FragmentOperations.Blend[i].SrcRgb)
+    }
+    case GL_BLUE_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_COLOR_CLEAR_VALUE: {
+      minRequiredVersion(2, 0)
+      s := v[0:4]
+      s[0] = as!T(ctx.Framebuffer.ColorClearValue[0])
+      s[1] = as!T(ctx.Framebuffer.ColorClearValue[1])
+      s[2] = as!T(ctx.Framebuffer.ColorClearValue[2])
+      s[3] = as!T(ctx.Framebuffer.ColorClearValue[3])
+    }
+    case GL_COLOR_WRITEMASK: {
+      minRequiredVersion(2, 0)
+      s := v[0:4]
+      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
+      s[0] = as!T(ctx.Framebuffer.ColorWritemask[i][0])
+      s[1] = as!T(ctx.Framebuffer.ColorWritemask[i][1])
+      s[2] = as!T(ctx.Framebuffer.ColorWritemask[i][2])
+      s[3] = as!T(ctx.Framebuffer.ColorWritemask[i][3])
+    }
+    case GL_COMPRESSED_TEXTURE_FORMATS: {
+      minRequiredVersion(2, 0)
+      s := v[0:len(ctx.Constants.CompressedTextureFormats)]
+      for _ , i , f in ctx.Constants.CompressedTextureFormats {
+        s[i] = as!T(f)
+      }
+    }
+    case GL_CONTEXT_FLAGS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.ContextFlags)
+    }
+    case GL_CONTEXT_ROBUST_ACCESS: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_COPY_READ_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundBuffers.CopyReadBuffer)
+    }
+    case GL_COPY_WRITE_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundBuffers.CopyWriteBuffer)
+    }
+    case GL_CULL_FACE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.CullFace)
+    }
+    case GL_CULL_FACE_MODE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.CullFaceMode)
+    }
+    case GL_CURRENT_PROGRAM: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.BoundProgram)
+    }
+    case GL_DEBUG_GROUP_STACK_DEPTH: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_DEBUG_LOGGED_MESSAGES: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_DEPTH_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_DEPTH_CLEAR_VALUE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Framebuffer.DepthClearValue)
+    }
+    case GL_DEPTH_FUNC: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Depth.Func)
+    }
+    case GL_DEPTH_RANGE: {
+      minRequiredVersion(2, 0)
+      s := v[0:2]
+      s[0] = as!T(ctx.Rasterization.DepthRange[0])
+      s[1] = as!T(ctx.Rasterization.DepthRange[1])
+    }
+    case GL_DEPTH_TEST: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Depth.Test)
+    }
+    case GL_DEPTH_WRITEMASK: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Framebuffer.DepthWritemask)
+    }
+    case GL_DISPATCH_INDIRECT_BUFFER_BINDING: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.BoundBuffers.DispatchIndirectBuffer)
+    }
+    case GL_DITHER: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Dither)
+    }
+    case GL_DRAW_BUFFER: {
+      minRequiredVersion(3, 0)
+      write(v[0:1])
+    }
+    case GL_DRAW_BUFFER0, GL_DRAW_BUFFER1, GL_DRAW_BUFFER2, GL_DRAW_BUFFER3,
+        GL_DRAW_BUFFER4, GL_DRAW_BUFFER5, GL_DRAW_BUFFER6, GL_DRAW_BUFFER7,
+        GL_DRAW_BUFFER8, GL_DRAW_BUFFER9, GL_DRAW_BUFFER10, GL_DRAW_BUFFER11,
+        GL_DRAW_BUFFER12, GL_DRAW_BUFFER13, GL_DRAW_BUFFER14, GL_DRAW_BUFFER15: {
+      minRequiredVersion(3, 0)
+      framebuffer := GetBoundFramebufferOrErrorInvalidEnum(GL_DRAW_FRAMEBUFFER)
+      v[0] = as!T(framebuffer.DrawBuffer[as!GLint(name - GL_DRAW_BUFFER0)])
+    }
+    case GL_DRAW_FRAMEBUFFER_BINDING: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.BoundDrawFramebuffer)
+    }
+    case GL_ELEMENT_ARRAY_BUFFER_BINDING: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer)
+    }
+    case GL_FRAGMENT_INTERPOLATION_OFFSET_BITS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.FragmentInterpolationOffsetBits)
+    }
+    case GL_FRAGMENT_SHADER_DERIVATIVE_HINT: {
+      minRequiredVersion(3, 0)
+      write(v[0:1])
+    }
+    case GL_FRONT_FACE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.FrontFace)
+    }
+    case GL_GENERATE_MIPMAP_HINT: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Miscellaneous.GenerateMipmapHint)
+    }
+    case GL_GREEN_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_IMAGE_BINDING_NAME: {
+      minRequiredVersion(3, 1) // SPEC: Missing from online man page
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Name)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMAGE_BINDING_LEVEL: {
+      minRequiredVersion(3, 1) // SPEC: Missing from online man page
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Level)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMAGE_BINDING_LAYERED: {
+      minRequiredVersion(3, 1) // SPEC: Online man page does not mention indexing
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Layered)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMAGE_BINDING_LAYER: {
+      minRequiredVersion(3, 1) // SPEC: Missing from online man page
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Layer)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMAGE_BINDING_ACCESS: {
+      minRequiredVersion(3, 1) // SPEC: Missing from online man page
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Access)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMAGE_BINDING_FORMAT: {
+      minRequiredVersion(3, 1) // SPEC: Missing from online man page
+      if isIndexed {
+        v[0] = as!T(ctx.ImageUnits[index].Format)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_IMPLEMENTATION_COLOR_READ_FORMAT: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_IMPLEMENTATION_COLOR_READ_TYPE: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_LAYER_PROVOKING_VERTEX: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.LayerProvokingVertex)
+    }
+    case GL_LINE_WIDTH: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.LineWidth)
+    }
+    case GL_PRIMITIVE_RESTART_FOR_PATCHES_SUPPORTED: {
+      minRequiredVersion(3, 2) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.PrimitiveRestartForPatchesSupported)
+    }
+    case GL_MAJOR_VERSION: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MajorVersion)
+    }
+    case GL_MAX_3D_TEXTURE_SIZE: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.Max3dTextureSize)
+    }
+    case GL_MAX_ARRAY_TEXTURE_LAYERS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxArrayTextureLayers)
+    }
+    case GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxAtomicCounterBufferBindings)
+    }
+    case GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxAtomicCounterBufferSize)
+    }
+    case GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxCombinedAtomicCounterBuffers)
+    }
+    case GL_MAX_COLOR_ATTACHMENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxColorAttachments)
+    }
+    case GL_MAX_COLOR_TEXTURE_SAMPLES: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxColorTextureSamples)
+    }
+    case GL_MAX_DEPTH_TEXTURE_SAMPLES: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxDepthTextureSamples)
+    }
+    case GL_MAX_COMBINED_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxCombinedAtomicCounters)
+    }
+    case GL_MAX_IMAGE_UNITS: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxImageUnits)
+    }
+    case GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxCombinedComputeUniformComponents)
+    }
+    case GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxCombinedFragmentUniformComponents)
+    }
+    case GL_MAX_COMBINED_GEOMETRY_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxCombinedGeometryUniformComponents)
+    }
+    case GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxCombinedShaderStorageBlocks)
+    }
+    case GL_MAX_COMBINED_TESS_CONTROL_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxCombinedTessControlUniformComponents)
+    }
+    case GL_MAX_COMBINED_TESS_EVALUATION_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxCombinedTessEvaluationUniformComponents)
+    }
+    case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxCombinedTextureImageUnits)
+    }
+    case GL_MAX_COMBINED_SHADER_OUTPUT_RESOURCES: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxCombinedShaderOutputResources)
+    }
+    case GL_MAX_COMBINED_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxCombinedUniformBlocks)
+    }
+    case GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxCombinedVertexUniformComponents)
+    }
+    case GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeAtomicCounterBuffers)
+    }
+    case GL_MAX_COMPUTE_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeAtomicCounters)
+    }
+    case GL_MAX_COMPUTE_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeImageUniforms)
+    }
+    case GL_MAX_COMBINED_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxCombinedImageUniforms)
+    }
+    case GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeShaderStorageBlocks)
+    }
+    case GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeTextureImageUnits)
+    }
+    case GL_MAX_COMPUTE_SHARED_MEMORY_SIZE: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxComputeSharedMemorySize)
+    }
+    case GL_MAX_COMPUTE_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeUniformBlocks)
+    }
+    case GL_MAX_COMPUTE_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeUniformComponents)
+    }
+    case GL_MAX_COMPUTE_WORK_GROUP_COUNT: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        v[0] = as!T(ctx.Constants.MaxComputeWorkGroupCount[index])
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxComputeWorkGroupInvocations)
+    }
+    case GL_MAX_COMPUTE_WORK_GROUP_SIZE: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        v[0] = as!T(ctx.Constants.MaxComputeWorkGroupSize[index])
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_MAX_CUBE_MAP_TEXTURE_SIZE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxCubeMapTextureSize)
+    }
+    case GL_MAX_DEBUG_GROUP_STACK_DEPTH: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxDebugGroupStackDepth)
+    }
+    case GL_MAX_DEBUG_LOGGED_MESSAGES: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxDebugLoggedMessages)
+    }
+    case GL_MAX_DEBUG_MESSAGE_LENGTH: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxDebugMessageLength)
+    }
+    case GL_MAX_DRAW_BUFFERS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxDrawBuffers)
+    }
+    case GL_MAX_ELEMENT_INDEX: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxElementIndex)
+    }
+    case GL_MAX_ELEMENTS_INDICES: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxElementsIndices)
+    }
+    case GL_MAX_ELEMENTS_VERTICES: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxElementsVertices)
+    }
+    case GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFragmentAtomicCounterBuffers)
+    }
+    case GL_MAX_FRAGMENT_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFragmentAtomicCounters)
+    }
+    case GL_MAX_FRAGMENT_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFragmentImageUniforms)
+    }
+    case GL_MAX_FRAGMENT_INPUT_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxFragmentInputComponents)
+    }
+    case GL_MAX_FRAGMENT_INTERPOLATION_OFFSET: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxFragmentInterpolationOffset)
+    }
+    case GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFragmentShaderStorageBlocks)
+    }
+    case GL_MIN_PROGRAM_TEXTURE_GATHER_OFFSET: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MinProgramTextureGatherOffset)
+    }
+    case GL_MAX_PROGRAM_TEXTURE_GATHER_OFFSET: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxProgramTextureGatherOffset)
+    }
+    case GL_MAX_FRAGMENT_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxFragmentUniformBlocks)
+    }
+    case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxFragmentUniformComponents)
+    }
+    case GL_MAX_FRAGMENT_UNIFORM_VECTORS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxFragmentUniformVectors)
+    }
+    case GL_MAX_FRAMEBUFFER_HEIGHT: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFramebufferHeight)
+    }
+    case GL_MAX_FRAMEBUFFER_LAYERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxFramebufferLayers)
+    }
+    case GL_MAX_FRAMEBUFFER_SAMPLES: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFramebufferSamples)
+    }
+    case GL_MAX_FRAMEBUFFER_WIDTH: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxFramebufferWidth)
+    }
+    case GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryAtomicCounterBuffers)
+    }
+    case GL_MAX_GEOMETRY_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryAtomicCounters)
+    }
+    case GL_MAX_GEOMETRY_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryImageUniforms)
+    }
+    case GL_MAX_GEOMETRY_INPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryInputComponents)
+    }
+    case GL_MAX_GEOMETRY_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryOutputComponents)
+    }
+    case GL_MAX_GEOMETRY_OUTPUT_VERTICES: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryOutputVertices)
+    }
+    case GL_MAX_GEOMETRY_SHADER_INVOCATIONS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryShaderInvocations)
+    }
+    case GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryShaderStorageBlocks)
+    }
+    case GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryTextureImageUnits)
+    }
+    case GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryTotalOutputComponents)
+    }
+    case GL_MAX_GEOMETRY_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryUniformBlocks)
+    }
+    case GL_MAX_GEOMETRY_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxGeometryUniformComponents)
+    }
+    case GL_MAX_INTEGER_SAMPLES: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxIntegerSamples)
+    }
+    case GL_MAX_LABEL_LENGTH: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxLabelLength)
+    }
+    case GL_MAX_PROGRAM_TEXEL_OFFSET: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxProgramTexelOffset)
+    }
+    case GL_MAX_RENDERBUFFER_SIZE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxRenderbufferSize)
+    }
+    case GL_MAX_SAMPLE_MASK_WORDS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxSampleMaskWords)
+    }
+    case GL_MAX_SAMPLES: {
+      minRequiredVersion(3, 0)
+      write(v[0:1])
+    }
+    case GL_MAX_SERVER_WAIT_TIMEOUT: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxServerWaitTimeout)
+    }
+    case GL_MAX_SHADER_STORAGE_BLOCK_SIZE: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxShaderStorageBlockSize)
+    }
+    case GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxShaderStorageBufferBindings)
+    }
+    case GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlAtomicCounterBuffers)
+    }
+    case GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlAtomicCounters)
+    }
+    case GL_MAX_TESS_CONTROL_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlImageUniforms)
+    }
+    case GL_MAX_TESS_CONTROL_INPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlInputComponents)
+    }
+    case GL_MAX_TESS_CONTROL_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlOutputComponents)
+    }
+    case GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlShaderStorageBlocks)
+    }
+    case GL_MAX_TESS_CONTROL_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlTextureImageUnits)
+    }
+    case GL_MAX_TESS_CONTROL_TOTAL_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlTotalOutputComponents)
+    }
+    case GL_MAX_TESS_CONTROL_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlUniformBlocks)
+    }
+    case GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessControlUniformComponents)
+    }
+    case GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationAtomicCounterBuffers)
+    }
+    case GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationAtomicCounters)
+    }
+    case GL_MAX_TESS_EVALUATION_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationImageUniforms)
+    }
+    case GL_MAX_TESS_EVALUATION_INPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationInputComponents)
+    }
+    case GL_MAX_TESS_EVALUATION_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationOutputComponents)
+    }
+    case GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationShaderStorageBlocks)
+    }
+    case GL_MAX_TESS_EVALUATION_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationTextureImageUnits)
+    }
+    case GL_MAX_TESS_EVALUATION_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationUniformBlocks)
+    }
+    case GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessEvaluationUniformComponents)
+    }
+    case GL_MAX_TESS_GEN_LEVEL: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessGenLevel)
+    }
+    case GL_MAX_PATCH_VERTICES: {
+      minRequiredVersion(3, 2) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxPatchVertices)
+    }
+    case GL_MAX_TESS_PATCH_COMPONENTS: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTessPatchComponents)
+    }
+    case GL_MAX_TEXTURE_BUFFER_SIZE: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MaxTextureBufferSize)
+    }
+    case GL_MAX_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxTextureImageUnits)
+    }
+    case GL_MAX_TEXTURE_LOD_BIAS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxTextureLodBias)
+    }
+    case GL_MAX_TEXTURE_SIZE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxTextureSize)
+    }
+    case GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxTransformFeedbackInterleavedComponents)
+    }
+    case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxTransformFeedbackSeparateAttribs)
+    }
+    case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxTransformFeedbackSeparateComponents)
+    }
+    case GL_MAX_UNIFORM_BLOCK_SIZE: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxUniformBlockSize)
+    }
+    case GL_MAX_UNIFORM_BUFFER_BINDINGS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxUniformBufferBindings)
+    }
+    case GL_MAX_UNIFORM_LOCATIONS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxUniformLocations)
+    }
+    case GL_MAX_VARYING_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxVaryingComponents)
+    }
+    case GL_MAX_VARYING_VECTORS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxVaryingVectors)
+    }
+    case GL_MAX_VERTEX_ATOMIC_COUNTERS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxVertexAtomicCounters)
+    }
+    case GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxVertexAtomicCounterBuffers)
+    }
+    case GL_MAX_VERTEX_ATTRIB_BINDINGS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxVertexAttribBindings)
+    }
+    case GL_MAX_VERTEX_ATTRIB_STRIDE: {
+      minRequiredVersion(3, 1) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MaxVertexAttribStride)
+    }
+    case GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxVertexAttribRelativeOffset)
+    }
+    case GL_MAX_VERTEX_ATTRIBS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexAttribs)
+    }
+    case GL_MAX_VERTEX_IMAGE_UNIFORMS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxVertexImageUniforms)
+    }
+    case GL_MAX_VERTEX_OUTPUT_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexOutputComponents)
+    }
+    case GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.MaxVertexShaderStorageBlocks)
+    }
+    case GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexTextureImageUnits)
+    }
+    case GL_MAX_VERTEX_UNIFORM_BLOCKS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexUniformBlocks)
+    }
+    case GL_MAX_VERTEX_UNIFORM_COMPONENTS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexUniformComponents)
+    }
+    case GL_MAX_VERTEX_UNIFORM_VECTORS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.MaxVertexUniformVectors)
+    }
+    case GL_MAX_VIEWPORT_DIMS: {
+      minRequiredVersion(2, 0)
+      s := v[0:2]
+      s[0] = as!T(ctx.Constants.MaxViewportDims[0])
+      s[1] = as!T(ctx.Constants.MaxViewportDims[1])
+    }
+    case GL_MIN_FRAGMENT_INTERPOLATION_OFFSET: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.MinFragmentInterpolationOffset)
+    }
+    case GL_MIN_PROGRAM_TEXEL_OFFSET: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MinProgramTexelOffset)
+    }
+    case GL_MIN_SAMPLE_SHADING_VALUE: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Rasterization.MinSampleShadingValue)
+    }
+    case GL_MINOR_VERSION: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.MinorVersion)
+    }
+    case GL_MULTISAMPLE_LINE_WIDTH_RANGE: {
+      minRequiredVersion(3, 2)
+      s := v[0:2]
+      s[0] = as!T(ctx.Constants.MultisampleLineWidthRange[0])
+      s[1] = as!T(ctx.Constants.MultisampleLineWidthRange[1])
+    }
+    case GL_MULTISAMPLE_LINE_WIDTH_GRANULARITY: {
+      minRequiredVersion(3, 2) // SPEC: Missing from the online man page
+      v[0] = as!T(ctx.Constants.MultisampleLineWidthGranularity)
+    }
+    case GL_NUM_COMPRESSED_TEXTURE_FORMATS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(len(ctx.Constants.CompressedTextureFormats))
+    }
+    case GL_NUM_EXTENSIONS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(len(ctx.Constants.Extensions))
+    }
+    case GL_NUM_PROGRAM_BINARY_FORMATS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(len(ctx.Constants.ProgramBinaryFormats))
+    }
+    case GL_NUM_SHADER_BINARY_FORMATS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(len(ctx.Constants.ShaderBinaryFormats))
+    }
+    case GL_PACK_ALIGNMENT: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.PixelStorage.PackAlignment)
+    }
+    case GL_PACK_IMAGE_HEIGHT: {
+      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
+      v[0] = as!T(ctx.PixelStorage.PackImageHeight)
+    }
+    case GL_PACK_ROW_LENGTH: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.PackRowLength)
+    }
+    case GL_PACK_SKIP_IMAGES: {
+      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
+      v[0] = as!T(ctx.PixelStorage.PackSkipImages)
+    }
+    case GL_PACK_SKIP_PIXELS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.PackSkipPixels)
+    }
+    case GL_PACK_SKIP_ROWS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.PackSkipRows)
+    }
+    case GL_PATCH_VERTICES: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_PIXEL_PACK_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundBuffers.PixelPackBuffer)
+    }
+    case GL_PIXEL_UNPACK_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundBuffers.PixelUnpackBuffer)
+    }
+    case GL_POLYGON_OFFSET_FACTOR: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.PolygonOffsetFactor)
+    }
+    case GL_POLYGON_OFFSET_FILL: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.PolygonOffsetFill)
+    }
+    case GL_POLYGON_OFFSET_UNITS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.PolygonOffsetUnits)
+    }
+    case GL_PRIMITIVE_BOUNDING_BOX: {
+      minRequiredVersion(3, 2)
+      write(v[0:8])
+    }
+    case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Miscellaneous.PrimitiveRestartFixedIndex)
+    }
+    case GL_PROGRAM_BINARY_FORMATS: {
+      minRequiredVersion(3, 0)
+      s := v[0:len(ctx.Constants.ProgramBinaryFormats)]
+      for _ , i , f in ctx.Constants.ProgramBinaryFormats {
+        s[i] = as!T(f)
+      }
+    }
+    case GL_PROGRAM_PIPELINE_BINDING: {
+      minRequiredVersion(3, 1)
+      write(v[0:1])
+    }
+    case GL_RASTERIZER_DISCARD: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Rasterization.RasterizerDiscard)
+    }
+    case GL_READ_BUFFER: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_READ_FRAMEBUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundReadFramebuffer)
+    }
+    case GL_RED_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_RENDERBUFFER_BINDING: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.BoundRenderbuffer)
+    }
+    case GL_RESET_NOTIFICATION_STRATEGY: {
+      // TODO: minRequiredVersion(3, 2) or GL_EXT_robustness
+      write(v[0:1])
+    }
+    case GL_SAMPLE_ALPHA_TO_COVERAGE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.SampleAlphaToCoverage)
+    }
+    case GL_SAMPLE_BUFFERS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_SAMPLE_COVERAGE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.SampleCoverage)
+    }
+    case GL_SAMPLE_COVERAGE_INVERT: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.SampleCoverageInvert)
+    }
+    case GL_SAMPLE_COVERAGE_VALUE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Rasterization.SampleCoverageValue)
+    }
+    case GL_SAMPLE_SHADING: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_SAMPLER_BINDING: {
+      minRequiredVersion(3, 0)
+      write(v[0:1])
+    }
+    case GL_SAMPLES: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_SCISSOR_BOX: {
+      minRequiredVersion(2, 0)
+      s := v[0:4]
+      s[0] = as!T(ctx.FragmentOperations.Scissor.Box.X)
+      s[1] = as!T(ctx.FragmentOperations.Scissor.Box.Y)
+      s[2] = as!T(ctx.FragmentOperations.Scissor.Box.Width)
+      s[3] = as!T(ctx.FragmentOperations.Scissor.Box.Height)
+    }
+    case GL_SCISSOR_TEST: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Scissor.Test)
+    }
+    case GL_SHADER_BINARY_FORMATS: {
+      minRequiredVersion(2, 0)
+      s := v[0:len(ctx.Constants.ShaderBinaryFormats)]
+      for _ , i , f in ctx.Constants.ShaderBinaryFormats {
+        s[i] = as!T(f)
+      }
+    }
+    case GL_SHADER_COMPILER: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.ShaderCompiler)
+    }
+    case GL_SHADER_STORAGE_BUFFER_BINDING: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Binding)
+      } else {
+        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffer)
+      }
+    }
+    case GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.Constants.ShaderStorageBufferOffsetAlignment)
+    }
+    case GL_SHADER_STORAGE_BUFFER_SIZE: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Size)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_SHADER_STORAGE_BUFFER_START: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Start)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_STENCIL_BACK_FAIL: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackFail)
+    }
+    case GL_STENCIL_BACK_FUNC: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackFunc)
+    }
+    case GL_STENCIL_BACK_PASS_DEPTH_FAIL: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackPassDepthFail)
+    }
+    case GL_STENCIL_BACK_PASS_DEPTH_PASS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackPassDepthPass)
+    }
+    case GL_STENCIL_BACK_REF: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackRef)
+    }
+    case GL_STENCIL_BACK_VALUE_MASK: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.BackValueMask)
+    }
+    case GL_STENCIL_BACK_WRITEMASK: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Framebuffer.StencilBackWritemask)
+    }
+    case GL_STENCIL_BITS: {
+      minRequiredVersion(2, 0)
+      write(v[0:1])
+    }
+    case GL_STENCIL_CLEAR_VALUE: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Framebuffer.StencilClearValue)
+    }
+    case GL_STENCIL_FAIL: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.Fail)
+    }
+    case GL_STENCIL_FUNC: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.Func)
+    }
+    case GL_STENCIL_PASS_DEPTH_FAIL: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.PassDepthFail)
+    }
+    case GL_STENCIL_PASS_DEPTH_PASS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.PassDepthPass)
+    }
+    case GL_STENCIL_REF: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.Ref)
+    }
+    case GL_STENCIL_TEST: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.Test)
+    }
+    case GL_STENCIL_VALUE_MASK: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.FragmentOperations.Stencil.ValueMask)
+    }
+    case GL_STENCIL_WRITEMASK: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Framebuffer.StencilWritemask)
+    }
+    case GL_SUBPIXEL_BITS: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.Constants.SubpixelBits)
+    }
+    case GL_TEXTURE_BINDING_2D: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2d)
+    }
+    case GL_TEXTURE_BINDING_EXTERNAL_OES: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingExternalOes)
+    }
+    case GL_TEXTURE_BINDING_2D_ARRAY: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dArray)
+    }
+    case GL_TEXTURE_BINDING_2D_MULTISAMPLE: {
+      minRequiredVersion(3, 1)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisample)
+    }
+    case GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisampleArray)
+    }
+    case GL_TEXTURE_BINDING_3D: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding3d)
+    }
+    case GL_TEXTURE_BINDING_BUFFER: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingBuffer)
+    }
+    case GL_TEXTURE_BINDING_CUBE_MAP: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMap)
+    }
+    case GL_TEXTURE_BINDING_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMapArray)
+    }
+    case GL_TEXTURE_BUFFER_BINDING: {
+      minRequiredVersion(3, 2)
+      write(v[0:1])
+    }
+    case GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT: {
+      minRequiredVersion(3, 2)
+      v[0] = as!T(ctx.Constants.TextureBufferOffsetAlignment)
+    }
+    case GL_TRANSFORM_FEEDBACK_ACTIVE: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(GetBoundTransformFeedback().Active)
+    }
+    case GL_TRANSFORM_FEEDBACK_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundTransformFeedback)
+    }
+    case GL_TRANSFORM_FEEDBACK_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Binding)
+      } else {
+        v[0] = as!T(ctx.BoundBuffers.TransformFeedbackBuffer)
+      }
+    }
+    case GL_TRANSFORM_FEEDBACK_BUFFER_SIZE: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Size)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_TRANSFORM_FEEDBACK_BUFFER_START: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Start)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_TRANSFORM_FEEDBACK_PAUSED: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(GetBoundTransformFeedback().Paused)
+    }
+    case GL_UNIFORM_BUFFER_BINDING: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Binding)
+      } else {
+        v[0] = as!T(ctx.BoundBuffers.UniformBuffer)
+      }
+    }
+    case GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.Constants.UniformBufferOffsetAlignment)
+    }
+    case GL_UNIFORM_BUFFER_SIZE: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Size)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_UNIFORM_BUFFER_START: {
+      minRequiredVersion(3, 0)
+      if isIndexed {
+        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Start)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_UNPACK_ALIGNMENT: {
+      minRequiredVersion(2, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackAlignment)
+    }
+    case GL_UNPACK_IMAGE_HEIGHT: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackImageHeight)
+    }
+    case GL_UNPACK_ROW_LENGTH: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackRowLength)
+    }
+    case GL_UNPACK_SKIP_IMAGES: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackSkipImages)
+    }
+    case GL_UNPACK_SKIP_PIXELS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackSkipPixels)
+    }
+    case GL_UNPACK_SKIP_ROWS: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.PixelStorage.UnpackSkipRows)
+    }
+    case GL_VERTEX_ARRAY_BINDING: {
+      minRequiredVersion(3, 0)
+      v[0] = as!T(ctx.BoundVertexArray)
+    }
+    case GL_VERTEX_BINDING_DIVISOR: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        i := as!VertexBufferBindingIndex(index)
+        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Divisor)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_VERTEX_BINDING_OFFSET: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        i := as!VertexBufferBindingIndex(index)
+        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Offset)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_VERTEX_BINDING_STRIDE: {
+      minRequiredVersion(3, 1)
+      if isIndexed {
+        i := as!VertexBufferBindingIndex(index)
+        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Stride)
+      } else {
+        glErrorInvalidEnum(name)
+      }
+    }
+    case GL_VIEWPORT: {
+      minRequiredVersion(2, 0)
+      s := v[0:4]
+      s[0] = as!T(ctx.Rasterization.Viewport.X)
+      s[1] = as!T(ctx.Rasterization.Viewport.Y)
+      s[2] = as!T(ctx.Rasterization.Viewport.Width)
+      s[3] = as!T(ctx.Rasterization.Viewport.Height)
+    }
+    case GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT: {
+      requiresExtension(GL_EXT_texture_filter_anisotropic)
+      v[0] = as!T(ctx.Constants.MaxTextureMaxAnisotropyExt)
+    }
+    case GL_GPU_DISJOINT_EXT: {
+      requiresExtension(GL_EXT_disjoint_timer_query)
+      write(v[0:1])
+    }
+    default: {
+      glErrorInvalidEnum(name)
+    }
+  }
+}
+

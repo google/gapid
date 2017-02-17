@@ -1,0 +1,157 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@internal
+class RasterizationState {
+  // Table 21.6: Transformation State
+  Rect        Viewport                           // TODO: initialize
+  Vec2f       DepthRange           = Vec2f(0, 1)
+  BoundingBox PrimitiveBoundingBox
+
+  // Table 21.7: Rasterization
+  GLboolean RasterizerDiscard   = GL_FALSE
+  GLfloat   LineWidth           = 1.0
+  GLboolean CullFace            = GL_FALSE
+  GLenum    CullFaceMode        = GL_BACK
+  GLenum    FrontFace           = GL_CCW
+  GLfloat   PolygonOffsetFactor = 0
+  GLfloat   PolygonOffsetUnits  = 0
+  GLboolean PolygonOffsetFill   = GL_FALSE
+
+  // Table 21.8: Multisampling
+  GLboolean                        SampleAlphaToCoverage = GL_FALSE
+  GLboolean                        SampleCoverage        = GL_FALSE
+  GLfloat                          SampleCoverageValue   = 1
+  GLboolean                        SampleCoverageInvert  = GL_FALSE
+  @unused GLboolean                SampleShading         = GL_FALSE
+  GLfloat                          MinSampleShadingValue = 0
+  GLboolean                        SampleMask            = GL_FALSE
+  @unused map!(GLuint, GLbitfield) SampleMaskValue                  // TODO: init - all bits set; MAX_SAMPLE_MASK_WORDS
+}
+
+@internal
+class BoundingBox {
+  @unused Vec4f Min = Vec4f(-1, -1, -1, 1) // SPEC: Man pages say w is -1
+  @unused Vec4f Max = Vec4f(1, 1, 1, 1)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCullFace.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCullFace.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCullFace.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCullFace.xhtml","OpenGL ES 3.2")
+cmd void glCullFace(GLenum mode) {
+  minRequiredVersion(1, 0)
+  switch (mode) {
+    case GL_BACK, GL_FRONT, GL_FRONT_AND_BACK: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(mode)
+    }
+  }
+
+  ctx := GetContext()
+  ctx.Rasterization.CullFaceMode = mode
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthRangef.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthRangef.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthRangef.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthRangef.xhtml","OpenGL ES 3.2")
+cmd void glDepthRangef(GLfloat near, GLfloat far) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Rasterization.DepthRange = Vec2f(near, far)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFrontFace.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFrontFace.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFrontFace.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFrontFace.xhtml","OpenGL ES 3.2")
+cmd void glFrontFace(GLenum orientation) {
+  minRequiredVersion(1, 0)
+  switch (orientation) {
+    case GL_CCW, GL_CW: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(orientation)
+    }
+  }
+
+  ctx := GetContext()
+  ctx.Rasterization.FrontFace = orientation
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetMultisamplefv.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetMultisamplefv.xhtml","OpenGL ES 3.2")
+cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
+  minRequiredVersion(3, 1)
+  switch (pname) {
+    case GL_SAMPLE_POSITION: {
+      // version 3.1
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+  // TODO
+  read(val[0:2])
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glLineWidth.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glLineWidth.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLineWidth.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLineWidth.xhtml","OpenGL ES 3.2")
+cmd void glLineWidth(GLfloat width) {
+  minRequiredVersion(1, 0)
+  if (width <= 0.0) { glErrorInvalidValue() }
+  ctx := GetContext()
+  ctx.Rasterization.LineWidth = width
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMinSampleShading.xhtml","OpenGL ES 3.2")
+cmd void glMinSampleShading(GLfloat value) {
+  minRequiredVersion(3, 2)
+  MinSampleShading(value)
+}
+
+sub void MinSampleShading(GLfloat value) {
+  ctx := GetContext()
+  ctx.Rasterization.MinSampleShadingValue = value
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPolygonOffset.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPolygonOffset.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPolygonOffset.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPolygonOffset.xhtml","OpenGL ES 3.2")
+cmd void glPolygonOffset(GLfloat scale_factor, GLfloat units) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Rasterization.PolygonOffsetUnits = units
+  ctx.Rasterization.PolygonOffsetFactor = scale_factor
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glViewport.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glViewport.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glViewport.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glViewport.xhtml","OpenGL ES 3.2")
+cmd void glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
+  minRequiredVersion(1, 0)
+  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+  ctx := GetContext()
+  ctx.Rasterization.Viewport = Rect(x, y, width, height)
+}

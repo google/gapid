@@ -1,0 +1,388 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "api_classnames.tmpl"}}
+{{Include "cpp_common.tmpl"    }}
+
+{{/* ---- Overrides ---- */}}
+{{Global "C++.EnumTypeOverride"   "uint32_t"}}
+{{Global "C++.Statement.Override" "Statement"}}
+
+{{Global "SpyName" (print (Title (Global "API")) "Spy")}}
+{{$ | Macro "SpyCpp"}}
+
+{{define "CommandKey"}}
+{{.Name}}
+{{end}}
+
+{{define "SpyCpp"}}
+  {{AssertType $ "API"}}
+  {{range $i, $part := (Partition (AllCommands $) "CommandKey" 8)}}
+     {{$filename := print (Global "API") "_spy_" $i ".cpp"}}
+     {{$part | Macro "SpyCppPart" | Reflow 4 | Write $filename}}
+  {{end}}
+  {{range $i, $part := (Partition $.Subroutines "CommandKey" 2)}}
+     {{$filename := print (Global "API") "_spy_subroutines_" $i ".cpp"}}
+     {{$part | Macro "Subroutines" | Reflow 4 | Write $filename}}
+  {{end}}
+
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits all the commands passed in $ into a new C++ file.
+-------------------------------------------------------------------------------
+*/}}
+{{define "SpyCppPart"}}
+  {{Template "C++.Copyright"}}
+  {{Template "FileHeaders"}}
+  {{$spyname := Global "SpyName"}}
+¶
+  namespace gapii {«
+¶
+  {{ForEach $ "MethodImplementation" | JoinWith "\n¶"}}
+  »} // namespace gapii
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits all the subroutines for the API.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Subroutines"}}
+  {{Template "C++.Copyright"}}
+  {{Template "FileHeaders"}}
+¶
+  namespace gapii {«
+¶
+  {{ForEach $ "Subroutine" | JoinWith "\n¶"}}
+  »} // namespace gapii
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the headers for a C++ file.
+-------------------------------------------------------------------------------
+*/}}
+{{define "FileHeaders"}}
+¶
+  #include "abort_exception.h"
+  #include "{{Global "API"}}_imports.h"
+  #include "{{Global "API"}}_types.h"
+¶
+  #include "{{Global "API"}}_spy.h"
+¶
+  #include "core/cc/log.h"
+  #include "core/cc/coder/memory.h"
+  #include "core/cc/coder/atom.h"
+  #include "core/cc/coder/{{Global "API"}}.h"
+¶
+  #define __STDC_FORMAT_MACROS
+  #include <inttypes.h>
+¶
+  #include <stdint.h>
+¶
+  #include <memory>
+  #include <string>
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits an import declaration for an indirected command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ConcatenateImports"}}
+  {{AssertType $.FromClass "string"}}
+  {{AssertType $.ToClass   "string"}}
+  {{AssertType $.Element   "string"}}
+  {{Template "RemoveUpperPrefix" $.FromClass}}s[{{$.Element}}]->m{{Template "RemoveUpperPrefix" $.ToClass}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a validity check for an indirected function pointer.
+-------------------------------------------------------------------------------
+*/}}
+{{define "GetIndirectedFunction"}}
+  {{AssertType $.Element    "string"      }}
+  {{AssertType $.Function   "string"      }}
+  {{$annotation := print (index $.Annotations 0)}}
+  {{if eq (len $.Annotations) 1}}
+    {{$function_class := Title $annotation}}
+    mImports.m{{$function_class}}Functions.find({{$.Element}}) == mImports.m{{$function_class}}Functions.end() ||
+    mImports.m{{$function_class}}Functions[{{$.Element}}].{{$.Function}} == nullptr
+  {{else}}
+    {{$next_annotation := print (index $.Annotations 1)}}
+    {{$from_class := $annotation}}
+    {{$to_class := $next_annotation}}
+    {{Template "RemoveUpperPrefix" (print $from_class)}}s.find({{$.Element}}) == {{Template "RemoveUpperPrefix" (print $from_class)}}s.end() ||
+    {{$next_elements := Macro "ConcatenateImports" "FromClass" $from_class "ToClass" $to_class "Element" $.Element}}
+    {{Template "GetIndirectedFunction" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a reference to a function pointer to an indirected function.
+-------------------------------------------------------------------------------
+*/}}
+{{define "GetIndirectedCall"}}
+  {{AssertType $.Element    "string"      }}
+  {{AssertType $.Function   "string"      }}
+  {{$annotation := index $.Annotations 0}}
+  {{if eq (len $.Annotations) 1}}
+    {{$function_class := Title $annotation}}
+    mImports.m{{$function_class}}Functions[{{$.Element}}].{{$.Function}}
+  {{else}}
+    {{$next_annotation := index $.Annotations 1}}
+    {{$from_class := Title $annotation}}
+    {{$to_class := Title $next_annotation}}
+    {{$next_elements := Macro "ConcatenateImports" "FromClass" (print $from_class) "ToClass" (print $to_class) "Element" $.Element}}
+    {{Template "GetIndirectedCall" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the comma-separated list of arguments to generate the coder arguments
+  for the given function.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CoderArguments"}}
+  {{AssertType $ "Function"}}
+
+  observer->getScratch()->vector<core::Encodable*>(kMaxExtras)
+  {{range $i, $p := $.FullParameters}}
+    §, {{Template "C++.CoderArgument" "Argument" $p "Allocator" "*observer->getScratch()"}}§
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the method body for the given atom.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MethodImplementation"}}
+  {{AssertType $ "Function"}}
+  {{if not (GetAnnotation $ "pfn")}}
+    {{$name      := Macro "C++.MethodName" $}}
+    {{$spyname   := Global "SpyName"}}
+    {{$synthetic := GetAnnotation $ "synthetic"}}
+
+    {{Template "C++.ReturnType" $}} {{$spyname}}::{{$name}}({{Macro "C++.CallParameters" $ | Strings "CallObserver* observer" | JoinWith ", "}}) {
+      GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
+¶
+      {{if (and (not (GetAnnotation $ "synthetic")) (not (GetAnnotation $ "override")))}}
+        if (§
+        {{if (GetAnnotation $ "indirect")}}
+          {{Template "GetIndirectedFunction" "Annotations" (GetAnnotation $ "indirect").Arguments "Element" ((index $.CallParameters 0).Name) "Function" (Macro "CmdName" $)}}
+        {{else}}
+          mImports.{{$name}} == nullptr
+        {{end}}
+          §) {
+          GAPID_ERROR("Application called unsupported function {{$name}}");
+          return{{if not (IsVoid $.Return.Type)}} {{Template "C++.Null" (TypeOf $.Return)}}{{end}};
+        }
+¶
+      {{end}}
+
+      {{if not (IsVoid $.Return.Type)}}
+        {{Template "C++.ReturnType" $}} result = {{Template "C++.Null" (TypeOf $.Return)}};
+      {{end}}
+
+      bool called = false;
+      auto call = [{{Macro "CallCapture" $}}] {
+        called = true;
+
+      {{/* Observe all reads */}}
+      observer->observeReads();
+
+        {{/* Perform the call */}}
+        {{if not (GetAnnotation $ "synthetic")}}
+          {{if not (IsVoid $.Return.Type)}}result = §{{end}}
+          {{if (GetAnnotation $ "override")}}
+            SpyOverride_{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
+          {{else if (GetAnnotation $ "indirect")}}
+            {{Template "GetIndirectedCall" "Annotations" (GetAnnotation $ "indirect").Arguments "Element" ((index $.CallParameters 0).Name) "Function" (Macro "CmdName" $)}}({{Template "C++.CallArguments" $}});
+          {{else}}
+            mImports.{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
+          {{end}}
+        {{end}}
+        onPostFence(observer);
+      };
+¶
+      {{if GetAnnotation $ "EndOfFrame"}}onPreEndOfFrame();{{end}}
+¶
+      uint64_t counter_at_begin = mCommandStartEndCounter++;
+¶
+      try {
+        do {
+          {{Template "C++.Block" $.Block}}
+        } while(false);
+      } catch (gapii::AbortException& e) {
+        if (!called) {
+          call(); // abort() was called before the fence.
+        }
+        handleAbort(observer, e);
+      }
+      uint64_t counter_at_end = mCommandStartEndCounter++;
+      core::coder::atom::CommandCounter counter_value_encodable(counter_at_begin, counter_at_end);
+¶
+      observer->observeWrites();
+¶
+      core::coder::{{Global "API"}}::{{Title .Name}} coder({{Template "CoderArguments" $}});
+      coder.mextras.append(observer->getExtras());
+¶
+      if (counter_at_end > counter_at_begin + 1 ||
+          counter_at_begin != mExpectedNextCommandStartCounterValue) {
+        coder.mextras.append(&counter_value_encodable);
+      }
+      mExpectedNextCommandStartCounterValue = counter_at_end + 1;
+¶
+      getEncoder()->Variant(&coder);
+      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall();{{end}}
+      {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
+¶
+      {{if not (IsVoid $.Return.Type)}}¶
+        return result;
+      {{end}}
+    }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ capture list for the call lambda.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CallCapture"}}
+  {{AssertType $ "Function"}}
+
+  {{$args := Macro "C++.CallArguments" $}}
+
+  {{if IsVoid $.Return.Type}}
+    {{(Strings "this" "observer" "&called" $args) | JoinWith ", "}}
+  {{else}}
+    {{(Strings "this" "observer" "&called" "&result" $args) | JoinWith ", "}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the method body for the subroutine.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Subroutine"}}
+  {{AssertType $ "Function"}}
+
+  {{$name      := Macro "C++.MethodName" $}}
+  {{$spyname   := Global "SpyName"}}
+  {{$args      := Strings "CallObserver* observer" "const std::function<void()>& call" (Macro "C++.CallParameters" $) | JoinWith ", "}}
+
+  {{Template "C++.ReturnType" $}} {{$spyname}}::{{$name}}({{$args}}) {
+    {{Global "CurrentCommand" $}}
+    {{Template "C++.Block" $.Block}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Override for the "C++.Statement" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Statement"}}
+  {{     if IsReturn $}}{{Template "Return" $}}
+  {{else if IsFence  $}}{{Template "Fence" $}}
+  {{else              }}{{Template "C++.Statement.Default" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Fence" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Fence"}}
+  {{AssertType $ "Fence"}}
+
+  {{if not (IsNil $.Statement)}}
+    {{if IsCopy $.Statement}}
+      {{/* Apply the fenced-copy read */}}
+      {{Template "C++.Type" $.Statement.Dst}} copy__dst__ = observer->copy({{Template "C++.Read" $.Statement.Dst}}, {{Template "C++.Read" $.Statement.Src}});
+    {{end}}
+  {{end}}
+
+  call();
+
+  {{/* Perform the fenced statement */}}
+  {{if not (IsNil $.Statement)}}
+    {{if IsCopy $.Statement}}
+      observer->write(copy__dst__);
+    {{else}}
+      {{Template "C++.Statement" $.Statement}}
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Predicate to see if a value originated from an unknown ? expression
+  Emits true if it was otherwise empty string.
+-------------------------------------------------------------------------------
+*/}}
+{{define "WasUnknown"}}
+  {{if IsUnknown $}}
+    true
+  {{else if IsLocal $}}
+    {{if IsUnknown (Unpack $).Value}}
+      true
+    {{end}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Return" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Return"}}
+  {{AssertType $ "Return"}}
+
+  {{if $.Function.Subroutine}}
+    {{Template "C++.Return" $}}
+  {{else}}
+    {{if $.Value}}
+      {{if not (Macro "WasUnknown" $.Value)}}
+        if (UNLIKELY(shouldComputeExpectedReturn())) {
+          setExpectedReturn<{{Template "C++.Type" $.Value}}>({{Template "C++.Read" $.Value}});
+        }
+      {{end}}
+    {{end}}
+    break;
+  {{end}}
+{{end}}

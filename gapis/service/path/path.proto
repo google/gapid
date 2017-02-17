@@ -1,0 +1,255 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "github.com/google/gapid/core/image/image.proto";
+import "github.com/google/gapid/gapis/service/pod/pod.proto";
+import "github.com/google/gapid/gapis/vertex/vertex.proto";
+
+package path;
+option go_package = "github.com/google/gapid/gapis/service/path";
+option java_package = "com.google.gapid.proto.service.path";
+option java_outer_classname = "Path";
+
+// Any is a oneof union of all the path types.
+message Any {
+  oneof path {
+    ArrayIndex array_index = 1;
+    As as = 2;
+    Blob blob = 3;
+    Capture capture = 4;
+    Command command = 5;
+    Commands commands = 6;
+    Context context = 7;
+    Contexts contexts = 8;
+    Device device = 9;
+    Field field = 10;
+    Hierarchies hierarchies = 11;
+    Hierarchy hierarchy = 12;
+    ImageInfo image_info = 13;
+    MapIndex map_index = 14;
+    Memory memory = 15;
+    Mesh mesh = 16;
+    Parameter parameter = 17;
+    Report report = 18;
+    ResourceData resource_data = 19;
+    Resources resources = 20;
+    Slice slice = 21;
+    State state = 22;
+    Thumbnail thumbnail = 23;
+  }
+}
+
+// ID is a 20-byte identifier.
+message ID {
+    bytes data = 1;
+}
+
+// ArrayIndex is path to a element in an array or slice.
+message ArrayIndex {
+    uint64 index = 1;
+    oneof array {
+        Field field = 2;
+        Slice slice = 3;
+        ArrayIndex array_index = 4;
+        MapIndex map_index = 5;
+        Report report = 6;
+        Parameter parameter = 7;
+    }
+}
+
+// API is a path to an API.
+message API {
+    ID id = 1;
+}
+
+// As casts or transforms the object to the requested type.
+message As {
+    oneof to {
+        image.Format image_format = 1;
+        vertex.BufferFormat vertex_buffer_format = 2;
+    }
+    oneof from {
+       Field field = 3;
+       Slice slice = 4;
+       ArrayIndex array_index = 5;
+       MapIndex map_index = 6;
+       ImageInfo image_info = 7;
+       ResourceData resource_data = 8;
+       Mesh mesh = 9;
+    }
+}
+
+// Blob is a path to a blob of data.
+message Blob {
+    // id is the identifier of the data.
+    ID id = 1;
+}
+
+// Capture is a path to a capture.
+message Capture {
+    ID id = 1;
+}
+
+// Commands is a path to a list of commands in a capture.
+message Commands {
+    Capture capture = 1;
+}
+
+// Command is the path to a single command in a capture.
+message Command {
+    Commands commands = 1;
+    uint64 index = 2;
+}
+
+// Parameter is the path to a single parameter on a command.
+message Parameter {
+    Command command = 1;
+    string name = 2;
+}
+
+// Contexts is path to a list of contexts in a capture.
+message Contexts {
+    Capture capture = 1;
+}
+
+// Context is a path to a single context in a capture.
+message Context {
+    Contexts contexts = 1;
+    ID id = 2;
+}
+
+// Device is a path to a device used for replay.
+message Device {
+    ID id = 1;
+}
+
+// Field is a path to a field in a struct.
+message Field {
+    string name = 1;
+    oneof struct {
+        Field field = 2;
+        Slice slice = 3;
+        ArrayIndex array_index = 4;
+        MapIndex map_index = 5;
+        State state = 6;
+        Parameter parameter = 7;
+    }
+}
+
+// Hierarchies is a path to a list of hierarchies in a capture.
+message Hierarchies {
+    Capture capture = 1;
+}
+
+// Hierarchy is a path to a single hierarchy in a capture.
+message Hierarchy {
+    Hierarchies hierarchies = 1;
+    ID id = 2;
+}
+
+// ImageInfo is a path that refers to a image.Info2D.
+message ImageInfo {
+    image.ID id = 1; // The ImageInfo's unique identifier.
+}
+
+// MapIndex is a path to a value held inside a map.
+message MapIndex {
+    oneof key {
+        pod.Value pod = 1;
+    }
+    oneof map {
+        Field field = 2;
+        Slice slice = 3;
+        ArrayIndex array_index = 4;
+        MapIndex map_index = 5;
+        State state = 6;
+        Parameter parameter = 7;
+    }
+}
+
+// Memory is a path to a region of memory.
+message Memory {
+    uint64 address = 1;
+    uint64 size = 2;
+    uint32 pool = 3;
+    Command after = 4;
+}
+
+// Mesh is a path to a mesh representation of an object.
+message Mesh {
+    MeshOptions options = 1;
+    oneof object {
+        Command command = 2;
+    }
+}
+
+// MeshOptions provides parameters for the mesh returned by a Mesh path resolve.
+message MeshOptions {
+    bool faceted = 1; // If true then normals are calculated from each face.
+}
+
+// Report is a path to a list of report items for a capture.
+message Report {
+    Capture capture = 1;
+    // The optional path the the device used to generate replay information.
+    Device device = 2;
+}
+
+// Resources is a path to a list of resources used in a capture.
+message Resources {
+    Capture capture = 1;
+}
+
+// ResourceData is a path to a single resource snapshot at a given point in an
+// atom stream.
+message ResourceData {
+    ID id = 1;
+    Command after = 2;
+}
+
+// Slice is a path to a subslice of a slice or array.
+message Slice {
+    uint64 start = 1;
+    uint64 end = 2;
+    oneof array {
+        Field field = 3;
+        Slice slice = 4;
+        ArrayIndex array_index = 5;
+        MapIndex map_index = 6;
+        Parameter parameter = 7;
+    }
+}
+
+// State is a path to the state at a point in a capture.
+message State {
+    Command after = 1;
+}
+
+// Thumbnail is a path to a thumbnail image representing the object.
+message Thumbnail {
+    // The desired maximum width of the thumbnail image.
+    // If DesiredMaxWidth <= 0, then no limits will be placed on the width.
+    uint32 desired_max_width = 1;
+    // The desired maximum height of the thumbnail image.
+    // If DesiredMaxHeight <= 0, then no limits will be placed on the height.
+    uint32 desired_max_height = 2;
+    // If requested thumbnail format. If nil, then return the native format.
+    image.Format desired_format = 3;
+
+    oneof object {
+        Command command = 4;
+    }
+}

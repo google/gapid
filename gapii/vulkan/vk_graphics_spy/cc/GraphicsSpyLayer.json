@@ -1,0 +1,16 @@
+{
+  "file_format_version" : "1.0.0",
+  "layer": {
+    "name": "VkGraphicsSpy",
+    "type": "GLOBAL",
+    "library_path": "./libgapii.so",
+    "api_version" : "1.0.5",
+    "implementation_version" : "1",
+    "description" : "Graphics Spy Layer",
+    "functions": {
+      "vkGetDeviceProcAddr": "gapid_vkGetDeviceProcAddr",
+      "vkGetInstanceProcAddr": "gapid_vkGetInstanceProcAddr"
+    }
+  }
+}
+

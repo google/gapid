@@ -1,0 +1,277 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// TODO: What if the index buffer is written by shader?
+
+sub void checkPrimitiveType(GLenum draw_mode) {
+  switch (draw_mode) {
+    case GL_LINES, GL_LINE_LOOP, GL_LINE_STRIP, GL_POINTS, GL_TRIANGLES, GL_TRIANGLE_FAN,
+        GL_TRIANGLE_STRIP: {
+      // version 2.0
+    }
+    case GL_LINES_ADJACENCY, GL_LINE_STRIP_ADJACENCY, GL_PATCHES, GL_TRIANGLES_ADJACENCY,
+        GL_TRIANGLE_STRIP_ADJACENCY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(draw_mode)
+    }
+  }
+}
+
+sub void checkIndicesType(GLenum indices_type) {
+  switch (indices_type) {
+    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT: {
+      // version 2.0
+    }
+    case GL_UNSIGNED_INT: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(indices_type)
+    }
+  }
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawArrays.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArrays.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArrays.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml","OpenGL ES 3.2")
+cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
+  minRequiredVersion(1, 0)
+  checkPrimitiveType(draw_mode)
+  if first_index < 0 { glErrorInvalidValue() } // "Recommended behaviour"
+  if indices_count < 0 { glErrorInvalidValue() }
+  ctx := GetContext()
+  ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml","OpenGL ES 3.2")
+cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
+  minRequiredVersion(3, 1)
+  checkPrimitiveType(draw_mode)
+  ctx := GetContext()
+  if ctx.BoundVertexArray == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  if ctx.BoundBuffers.DrawIndirectBuffer == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
+  // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.2")
+cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
+  minRequiredVersion(3, 0)
+  DrawArraysInstanced(draw_mode, first_index, indices_count, instance_count)
+}
+
+sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
+  checkPrimitiveType(draw_mode)
+  if first_index < 0 { glErrorInvalidValue() } // "Recommended behaviour"
+  if indices_count < 0 { glErrorInvalidValue() }
+  if instance_count < 0 { glErrorInvalidValue() }
+  ctx := GetContext()
+  ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
+}
+
+sub void DrawElements(ref!Context    ctx,
+                      GLenum         draw_mode,
+                      GLsizei        indices_count,
+                      GLenum         indices_type,
+                      IndicesPointer indices,
+                      GLsizei        instance_count,
+                      GLint          base_vertex) {
+  checkPrimitiveType(draw_mode)
+  if indices_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
+  checkIndicesType(indices_type)
+  if instance_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
+  if indices_count > 0 {
+    count := as!u32(indices_count)
+    id := ctx.Instances.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
+    if (id != 0) {
+      // Element array buffer bound - indices is an offset on the buffer.
+      index_data := ctx.Instances.Buffers[id].Data
+      offset := as!u32(as!u64(indices))
+
+      // Read the vertices
+      limits := IndexLimits(as!u8*(index_data), indices_type, offset, count)
+      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), (limits.last - limits.first) + 1, as!u32(instance_count))
+
+      // No need to read the indices - they're already in a GPU-side buffer.
+    } else {
+      // No element array buffer bound - indices is a pointer.
+      index_data := as!u8*(indices)
+
+      // Read the vertices
+      limits := IndexLimits(index_data, indices_type, 0, count)
+      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), (limits.last - limits.first) + 1, as!u32(instance_count))
+
+      // Read the indices
+      read(index_data[0:count * IndexSize(indices_type)])
+    }
+  }
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawElements.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElements.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElements.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElements.xhtml","OpenGL ES 3.2")
+cmd void glDrawElements(GLenum         draw_mode,
+                        GLsizei        indices_count,
+                        GLenum         indices_type,
+                        IndicesPointer indices) {
+  minRequiredVersion(1, 0)
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, 0)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsBaseVertex.xhtml","OpenGL ES 3.2")
+cmd void glDrawElementsBaseVertex(GLenum         draw_mode,
+                                  GLsizei        indices_count,
+                                  GLenum         indices_type,
+                                  IndicesPointer indices,
+                                  GLint          base_vertex) {
+  minRequiredVersion(3, 2)
+  DrawElementsBaseVertex(draw_mode, indices_count, indices_type, indices, base_vertex)
+}
+
+sub void DrawElementsBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum indices_type, IndicesPointer indices, GLint base_vertex) {
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml","OpenGL ES 3.2")
+cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const void* indirect) {
+  minRequiredVersion(3, 1)
+  checkPrimitiveType(draw_mode)
+  checkIndicesType(indices_type)
+
+  ctx := GetContext()
+  if ctx.BoundVertexArray == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  // TODO: Error if enabled array is not bound or is mapped.
+  if ctx.BoundBuffers.DrawIndirectBuffer == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
+  // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.2")
+cmd void glDrawElementsInstanced(GLenum         draw_mode,
+                                 GLsizei        indices_count,
+                                 GLenum         indices_type,
+                                 IndicesPointer indices,
+                                 GLsizei        instance_count) {
+  minRequiredVersion(3, 0)
+  DrawElementsInstanced(draw_mode, indices_count, indices_type, indices, instance_count)
+}
+
+sub void DrawElementsInstanced(GLenum draw_mode, GLsizei indices_count, GLenum indices_type, IndicesPointer indices, GLsizei instance_count) {
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, instance_count, 0)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstancedBaseVertex.xhtml","OpenGL ES 3.2")
+cmd void glDrawElementsInstancedBaseVertex(GLenum         draw_mode,
+                                           GLsizei        indices_count,
+                                           GLenum         indices_type,
+                                           IndicesPointer indices,
+                                           GLsizei        instance_count,
+                                           GLint          base_vertex) {
+  minRequiredVersion(3, 2)
+  DrawElementsInstancedBaseVertex(draw_mode, indices_count, indices_type, indices, instance_count, base_vertex)
+}
+
+sub void DrawElementsInstancedBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum indices_type, IndicesPointer indices, GLsizei instance_count, GLint base_vertex) {
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, instance_count, base_vertex)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawRangeElements.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawRangeElements.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElements.xhtml","OpenGL ES 3.2")
+cmd void glDrawRangeElements(GLenum         draw_mode,
+                             GLuint         start,
+                             GLuint         end,
+                             GLsizei        indices_count,
+                             GLenum         indices_type,
+                             IndicesPointer indices) {
+  minRequiredVersion(3, 0)
+  if end < start { glErrorInvalidValue() }
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, 0)
+}
+
+@DrawCall
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElementsBaseVertex.xhtml","OpenGL ES 3.2")
+cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
+                                       GLuint         start,
+                                       GLuint         end,
+                                       GLsizei        indices_count,
+                                       GLenum         indices_type,
+                                       IndicesPointer indices,
+                                       GLint          base_vertex) {
+  minRequiredVersion(3, 2)
+  DrawRangeElementsBaseVertex(draw_mode, start, end, indices_count, indices_type, indices, base_vertex)
+}
+
+sub void DrawRangeElementsBaseVertex(GLenum draw_mode, GLuint start, GLuint end, GLsizei indices_count, GLenum indices_type, IndicesPointer indices, GLint base_vertex) {
+  if end < start { glErrorInvalidValue() }
+  ctx := GetContext()
+  DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPatchParameteri.xhtml","OpenGL ES 3.2")
+cmd void glPatchParameteri(GLenum pname, GLint value) {
+  minRequiredVersion(3, 2)
+  PatchParameteri(pname, value)
+}
+
+// TODO: Move to misc?
+sub void PatchParameteri(GLenum pname, GLint value) {
+  if pname != GL_PATCH_VERTICES { glErrorInvalidEnum(pname) }
+  ctx := GetContext()
+  ctx.Miscellaneous.PatchVertices = value
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPrimitiveBoundingBox.xhtml","OpenGL ES 3.2")
+cmd void glPrimitiveBoundingBox(GLfloat minX,
+                                GLfloat minY,
+                                GLfloat minZ,
+                                GLfloat minW,
+                                GLfloat maxX,
+                                GLfloat maxY,
+                                GLfloat maxZ,
+                                GLfloat maxW) {
+  minRequiredVersion(3, 2)
+  PrimitiveBoundingBox(minX, minY, minZ, minW, maxX, maxY, maxZ, maxW)
+}
+
+// TODO: Move to rasterization?
+sub void PrimitiveBoundingBox(GLfloat minX, GLfloat minY, GLfloat minZ, GLfloat minW, GLfloat maxX, GLfloat maxY, GLfloat maxZ, GLfloat maxW) {
+  ctx := GetContext()
+  ctx.Rasterization.PrimitiveBoundingBox.Min = Vec4f(minX, minY, minZ, minW)
+  ctx.Rasterization.PrimitiveBoundingBox.Max = Vec4f(maxX, maxY, maxZ, maxW)
+}

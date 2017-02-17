@@ -1,0 +1,130 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@internal
+class SyncObject {
+// Table 21.37: Sync (state per sync object)
+// GLenum ObjectType = GL_SYNC_FENCE
+// GLenum SyncStatus = GL_UNSIGNALED
+// GLenum SyncCondition = GL_SYNC_GPU_COMMANDS_COMPLETE
+// GLint SyncFlags = 0
+// string ObjectPtrLabel
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClientWaitSync.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClientWaitSync.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClientWaitSync.xhtml","OpenGL ES 3.2")
+cmd GLenum glClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
+  minRequiredVersion(3, 0)
+  ClientWaitSync(sync, syncFlags, timeout)
+  return ?
+}
+
+sub void ClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
+  supportsBits(syncFlags, GL_SYNC_FLUSH_COMMANDS_BIT)
+  ctx := GetContext()
+  if !(sync in ctx.Instances.SyncObjects) { glErrorInvalidValue() }
+  if (GL_SYNC_FLUSH_COMMANDS_BIT in syncFlags) {
+  }
+  _ = timeout // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSync.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSync.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSync.xhtml","OpenGL ES 3.2")
+cmd void glDeleteSync(GLsync sync) {
+  minRequiredVersion(3, 0)
+  DeleteSync(sync)
+}
+
+sub void DeleteSync(GLsync sync) {
+  if sync != null {
+    ctx := GetContext()
+    if !(sync in ctx.Instances.SyncObjects) { glErrorInvalidValue() }
+    delete(ctx.Instances.SyncObjects, sync)
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFenceSync.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFenceSync.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFenceSync.xhtml","OpenGL ES 3.2")
+cmd GLsync glFenceSync(GLenum condition, GLbitfield syncFlags) {
+  minRequiredVersion(3, 0)
+  sync := as!GLsync(?)
+  FenceSync(condition, syncFlags, sync)
+  return sync
+}
+
+sub void FenceSync(GLenum condition, GLbitfield syncFlags, GLsync sync) {
+  if condition != GL_SYNC_GPU_COMMANDS_COMPLETE { glErrorInvalidEnum(condition) }
+  if syncFlags != as!GLbitfield(0) { glErrorInvalidValue() }
+  ctx := GetContext()
+  if (sync != null) {
+    ctx.Instances.SyncObjects[sync] = new!SyncObject()
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSynciv.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSynciv.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSynciv.xhtml","OpenGL ES 3.2")
+cmd void glGetSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei* length, GLint* values) {
+  minRequiredVersion(3, 0)
+  GetSynciv(sync, pname, bufSize, length, values)
+}
+
+sub void GetSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei* length, GLint* values) {
+  _ = sync // TODO: Use or lose.
+  switch (pname) {
+    case GL_OBJECT_TYPE, GL_SYNC_CONDITION, GL_SYNC_FLAGS, GL_SYNC_STATUS: {
+      // version 3.0
+      if (values != null) && (bufSize > 0) {
+        values[0] = ?
+        if length != null {
+          length[0] = 1
+        }
+      }
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSync.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSync.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSync.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsSync(GLsync sync) {
+  minRequiredVersion(3, 0)
+  return IsSync(sync)
+}
+
+sub GLboolean IsSync(GLsync sync) {
+  ctx := GetContext()
+  return as!GLboolean(sync in ctx.Instances.SyncObjects)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glWaitSync.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glWaitSync.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glWaitSync.xhtml","OpenGL ES 3.2")
+cmd void glWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
+  minRequiredVersion(3, 0)
+  WaitSync(sync, syncFlags, timeout)
+}
+
+sub void WaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
+  ctx := GetContext()
+  if !(sync in ctx.Instances.SyncObjects) { glErrorInvalidOperation() }
+  if timeout != 0xFFFFFFFFFFFFFFFF { glErrorInvalidValue() } // GL_TIMEOUT_IGNORED
+  if syncFlags != as!GLbitfield(0) { glErrorInvalidValue() }
+}

@@ -1,0 +1,42 @@
+# Copyright (C) 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (NOT "@ANDROID_ABI@" STREQUAL "")
+  set(ANDROID ON CACHE INTERNAL "Target system was of type Android")
+  set(CMAKE_SYSTEM_NAME Linux)
+endif()
+
+set(CMAKE_AR                  "@CMAKE_AR@"                  CACHE STRING "Archiver")
+set(CMAKE_CXX_COMPILER        "@CMAKE_CXX_COMPILER@"        CACHE STRING "C++ Compiler")
+set(CMAKE_CXX_FLAGS           "@CMAKE_CXX_FLAGS@"           CACHE STRING "C++ flags")
+set(CMAKE_C_COMPILER          "@CMAKE_C_COMPILER@"          CACHE STRING "C Compiler")
+set(CMAKE_C_FLAGS             "@CMAKE_C_FLAGS@"             CACHE STRING "C++ flags")
+set(CMAKE_EXE_LINKER_FLAGS    "@CMAKE_EXE_LINKER_FLAGS@"    CACHE STRING "Exe linker flags")
+set(CMAKE_FIND_ROOT_PATH      "@CMAKE_FIND_ROOT_PATH@"      CACHE STRING "Find root path")
+set(CMAKE_LINKER              "@CMAKE_LINKER@"              CACHE STRING "Linker")
+set(CMAKE_LINKTOOL            "@CMAKE_LINKTOOL@"            CACHE STRING "Linktool")
+set(CMAKE_PREFIX_PATH         "@CMAKE_PREFIX_PATH@"         CACHE STRING "Prefix path")
+set(CMAKE_RANLIB              "@CMAKE_RANLIB_PATH@"         CACHE STRING "Ranlib path")
+set(CMAKE_SHARED_LINKER_FLAGS "@CMAKE_SHARED_LINKER_FLAGS@" CACHE STRING "Shared linker flags")
+
+if(NOT "@CMAKE_SYSROOT@" STREQUAL "")
+  set(CMAKE_SYSROOT "@CMAKE_SYSROOT@" CACHE STRING "Sysroot")
+endif()
+
+set(STL_INCLUDES @STL_INCLUDES@)
+foreach(inc ${STL_INCLUDES})
+  include_directories(SYSTEM ${inc})
+endforeach()
+link_libraries(@STL_LIBRARY@)
+

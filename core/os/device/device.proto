@@ -1,0 +1,192 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package device;
+option go_package = "github.com/google/gapid/core/os/device";
+option java_package = "com.google.gapid.proto.device";
+option java_outer_classname = "Device";
+// cc_package
+// js_path = "proto";
+
+// ID is a 20-byte identifier.
+message ID {
+    bytes data = 1;
+}
+
+// Architecture is used to represent the set of known processor architectures.
+enum Architecture {
+    UnknownArchitecture = 0;
+    ARMv7a = 1;
+    ARMv8a = 2;
+    X86 = 3;
+    X86_64 = 4;
+    MIPS = 5;
+    MIPS64 = 6;
+}
+
+// Endian represents a byte ordering specification for multi-yte values.
+enum Endian {
+    UnknownEndian = 0;
+    BigEndian = 1;
+    LittleEndian = 2;
+}
+
+// OSKind is an enumerator of operating systems.
+enum OSKind {
+    UnknownOS = 0;
+    Windows = 1;
+    OSX = 2;
+    Linux = 3;
+    Android = 4;
+}
+
+// MemoryLayout holds information about how memory is fundamentally laid out for a device.
+message MemoryLayout {
+    // PointerAlignment is the alignment in bytes of a pointer type.
+    int32 PointerAlignment = 1;
+    // PointerSize is the size in bytes of a pointer type.
+    int32 PointerSize = 2;
+    // IntegerSize is the size in bytes of a int or unsigned int.
+    int32 IntegerSize = 3;
+    // SizeSize is the size in bytes of a size_t.
+    int32 SizeSize = 4;
+    // U64Alignment is the alignment of 64-bit values in a struct.
+    int32 U64Alignment = 6;
+    // Endian is the natural byte ordering of the memory layout.
+    Endian Endian = 5;
+}
+
+// ABI represents an application binary interface specification.
+// A device supports a set of ABI's, and an application has an abi it is compiled for.
+message ABI {
+    // Name is the human understandable name for the abi.
+    string Name = 1;
+    // OS is the type of OS this abi is targetted at, which normally controls things like calling convention.
+    OSKind OS = 2;
+    // Architecture is the processor type for the abi, controlling the instruction and feature set available.
+    Architecture Architecture = 3;
+    // MemoryLayout specifies things like size and alignment of types used directly buy the ABI.
+    MemoryLayout MemoryLayout = 4;
+}
+
+message OS {
+     // The kind of the operating system.
+    OSKind Kind = 1;
+    // The name of the operating system.
+    string Name = 2;
+    // The OS build description.
+    string Build = 3;
+    // The major version of the OS.
+    int32 Major = 4;
+    // The minor version of the OS.
+    int32 Minor = 5;
+    // The point version of the OS.
+    int32 Point = 6;
+}
+
+// CPU represents a specific central processing unit product.
+message CPU {
+    // Name is the product name of this CPU.
+    string Name = 1;
+    // Vendor is the vendor of this CPU.
+    string Vendor = 2;
+    // Architecture is the architecture that this CPU implements.
+    Architecture Architecture = 3;
+    // Cores is the number of cores in this CPU.
+    uint32 Cores = 4;
+}
+
+// GPU represents a specific graphics processing unit product.
+message GPU {
+    // Name is the product name of the GPU.
+    string Name = 1;
+    // Vendor is the vendor of this GPU.
+    string Vendor = 2;
+}
+
+// Hardware describes the physical configuration of a computing device.
+message Hardware {
+    // The product name for this hardware.
+    string Name = 1;
+    // CPU is the primary central processing unit that is part of this hardware
+    // configuration.
+    CPU CPU = 2;
+    // GPU is the primary graphics processing unit that is part of this hardware
+    // configuration.
+    GPU GPU = 3;
+}
+
+// Configuration describes a combination of hardware and software to make up a device.
+// A configuration can have many instances, all of which should have similar behavioural characteristics.
+message Configuration {
+    // The OS the device is running.
+    OS OS = 1;
+    // The hardware description of this device.
+    Hardware Hardware = 2;
+    // The abi's the device supports.
+    repeated ABI ABIs = 3;
+    // The drivers supported by the system.
+    Drivers Drivers = 4;
+}
+
+// Instance represents a physical device.
+// An instance is persistable, and can be used to retain information about
+// offline devices, and reconnect to them.
+message Instance {
+    // The unique identifier of the instance.
+    ID id = 1;
+    // The serial code of the device, if present.
+    string Serial = 2;
+    // The friendly name of this device, if present.
+    string Name = 3;
+    // The hardware and software configuration of the device.
+    Configuration Configuration = 4;
+}
+
+// Drivers describes the drivers available on a device.
+message Drivers {
+    // The OpenGL or OpenGL ES driver support.
+    OpenGLDriver OpenGL = 1;
+    // The Vulkan driver support.
+    VulkanDriver Vulkan = 2;
+}
+
+// OpenGLDriver describes the device driver support for the OpenGL or OpenGL ES
+// APIs.
+message OpenGLDriver {
+    // Supported extensions. e.g. "GL_KHR_debug", "GL_EXT_sRGB [...]".
+    repeated string Extensions = 1;
+    // Driver name. e.g. "Adreno (TM) 320".
+    string Renderer = 2;
+    // Driver vendor name. e.g. "Qualcomm".
+    string Vendor = 3;
+    // Renderer version. e.g. "OpenGL ES 3.0 V@53.0 AU@  (CL@)".
+    string Version = 4;
+    // Value returned by glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
+    uint32 UniformBufferAlignment = 5;
+}
+
+// VulkanDriver describes the device driver support for the Vulkan API.
+message VulkanDriver {
+    // Supported extensions.
+    repeated string Extensions = 1;
+    // Driver name. e.g. "Adreno (TM) 320".
+    string Renderer = 2;
+    // Driver vendor name. e.g. "Qualcomm".
+    string Vendor = 3;
+    // Renderer version. e.g. "OpenGL ES 3.0 V@53.0 AU@  (CL@)".
+    string Version = 4;
+}

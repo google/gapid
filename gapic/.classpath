@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main"/>
+	<classpathentry kind="src" path="src/rpclib"/>
+	<classpathentry kind="src" path="src/service"/>
+	<classpathentry kind="src" path="platform_src"/>
+	<classpathentry kind="src" path="res"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="lib" path="third_party/guava-20.0.jar" sourcepath="third_party/guava-20.0-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-context-1.0.1.jar" sourcepath="third_party/grpc/grpc-context-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-core-1.0.1.jar" sourcepath="third_party/grpc/grpc-core-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-okhttp-1.0.1.jar" sourcepath="third_party/grpc/grpc-okhttp-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-protobuf-1.0.1.jar" sourcepath="third_party/grpc/grpc-protobuf-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-protobuf-lite-1.0.1.jar" sourcepath="third_party/grpc/grpc-protobuf-lite-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/grpc-stub-1.0.1.jar" sourcepath="third_party/grpc/grpc-stub-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/okhttp-2.5.0.jar" sourcepath="third_party/grpc/okhttp-2.5.0-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/grpc/okio-1.6.0.jar" sourcepath="third_party/grpc/okio-1.6.0-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.core.commands_3.8.0.v20160316-1921.jar" sourcepath="third_party/jface/org.eclipse.core.commands.source_3.8.0.v20160316-1921.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.core.runtime_3.12.0.v20160606-1342.jar" sourcepath="third_party/jface/org.eclipse.core.runtime.source_3.12.0.v20160606-1342.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.equinox.common_3.8.0.v20160509-1230.jar" sourcepath="third_party/jface/org.eclipse.equinox.common.source_3.8.0.v20160509-1230.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.jface_3.12.1.v20160923-1528.jar" sourcepath="third_party/jface/org.eclipse.jface.source_3.12.1.v20160923-1528.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.jface.databinding_1.8.1.v20161026-1531.jar" sourcepath="third_party/jface/org.eclipse.jface.databinding.source_1.8.1.v20161026-1531.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.jface.text_3.11.2.v20161113-1700.jar" sourcepath="third_party/jface/org.eclipse.jface.text.source_3.11.2.v20161113-1700.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.osgi_3.11.2.v20161107-1947.jar" sourcepath="third_party/jface/org.eclipse.osgi.source_3.11.2.v20161107-1947.jar"/>
+	<classpathentry kind="lib" path="third_party/jface/org.eclipse.text_3.6.0.v20160503-1849.jar" sourcepath="third_party/jface/org.eclipse.text.source_3.6.0.v20160503-1849.jar"/>
+	<classpathentry kind="lib" path="platform_lib/swt.jar" sourcepath="platform_lib/swt-src.zip"/>
+	<classpathentry kind="lib" path="third_party/protobuf-java-3.0.0-beta-4.jar" sourcepath="third_party/protobuf-java-3.0.0-beta-4-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/lwjgl/lwjgl-opengl.jar" sourcepath="third_party/lwjgl/lwjgl-opengl-sources.jar"/>
+	<classpathentry kind="lib" path="third_party/lwjgl/lwjgl.jar" sourcepath="third_party/lwjgl/lwjgl-sources.jar"/>
+	<classpathentry kind="lib" path="platform_lib/lwjgl-natives.jar"/>
+	<classpathentry kind="lib" path="platform_lib/lwjgl-opengl-natives.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

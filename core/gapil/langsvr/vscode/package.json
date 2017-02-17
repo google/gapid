@@ -1,0 +1,66 @@
+{
+    "name": "gfxapi-ls",
+    "description": "Language server for the GAPID .api language",
+    "author": "Google",
+    "license": "Apache-2.0",
+    "version": "0.0.1",
+    "private": true,
+    "publisher": "Google",
+    "engines": {
+        "vscode": "^0.10.10"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^2.3.0"
+    },
+    "categories": [
+        "Languages"
+    ],
+    "activationEvents": [
+        "*"
+    ],
+    "main": "./extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "gfxapi",
+                "extensions": [
+                    "api"
+                ],
+                "configuration": "./gfxapi.configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "gfxapi",
+                "scopeName": "source.gfxapi",
+                "path": "gfxapi.json"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "gfxapi language-server configuration",
+            "properties": {
+                "gfxapi.debug": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enables debug mode of the server."
+                },
+                "gfxapi.logToFiles": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Creates log files for all IO and log messages."
+                },
+                "gfxapi.ignorePaths": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of workspace directories to ignore."
+                },
+                "gfxapi.checkUnused": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Check for unused types, fields etc."
+                }
+            }
+        }
+    }
+}

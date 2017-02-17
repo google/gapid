@@ -1,0 +1,526 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+
+import "github.com/google/gapid/core/image/image.proto";
+import "github.com/google/gapid/core/os/device/device.proto";
+import "github.com/google/gapid/gapis/gfxapi/gfxapi.proto";
+import "github.com/google/gapid/gapis/service/path/path.proto";
+import "github.com/google/gapid/gapis/service/pod/pod.proto";
+import "github.com/google/gapid/gapis/stringtable/stringtable.proto";
+
+package service;
+option go_package = "github.com/google/gapid/gapis/service";
+option java_package = "com.google.gapid.proto.service";
+option java_outer_classname = "Service";
+
+// WireframeMode is an enumerator of wireframe modes that can be used by
+// RenderSettings.
+enum WireframeMode {
+    // None indicates that nothing should be drawn in wireframe.
+    None = 0;
+    // Overlay indicates that the single draw call should be overlayed
+    // with the wireframe of the mesh.
+    Overlay = 1;
+    // All indicates that all draw calls should be displayed in wireframe.
+    All = 2;
+}
+
+// Severity defines the severity of a logging message.
+// The levels match the ones defined in rfc5424 for syslog.
+// They must be identical to the values in the logging package.
+enum Severity {
+    // EmergencyLevel indicates the system is unusable, no further data should be trusted.
+    EmergencyLevel = 0;
+    // AlertLevel indicates action must be taken immediately.
+    AlertLevel = 1;
+    // CriticalLevel indicates errors severe enough to terminate processing.
+    CriticalLevel = 2;
+    // ErrorLevel indicates non terminal failure conditions that may have an effect on results.
+    ErrorLevel = 3;
+    // WarningLevel indicates issues that might affect performance or compatibility, but could be ignored.
+    WarningLevel = 4;
+    // NoticeLevel indicates normal but significant conditions.
+    NoticeLevel = 5;
+    // InfoLevel indicates minor informational messages that should generally be ignored.
+    InfoLevel = 6;
+    // DebugLevel indicates verbose debug-level messages.
+    DebugLevel = 7;
+}
+
+message ServerInfo {
+  string name = 1;
+  uint32 version_major = 2;
+  uint32 version_minor = 3;
+  uint32 version_point = 4;
+  // A string list of features supported by the server. This feature list can be
+  // used by the client to determine what new RPCs can be called.
+  repeated string features = 5;
+}
+
+// Messages that hold a repeated field so they can be used in oneofs.
+
+message Contexts { repeated Context list = 1; }
+message Devices { repeated path.Device list = 1; }
+message Hierarchies { repeated Hierarchy list = 1; }
+message StringTableInfos { repeated stringtable.Info list = 1; }
+
+message Object {
+  bytes data = 1;
+}
+
+message Value {
+  oneof val {
+    pod.Value pod = 1;
+    Object object = 2;
+    Capture capture = 3;
+    Contexts contexts = 4;
+    gfxapi.Mesh mesh = 7;
+    Hierarchies hierarchies = 8;
+    image.Info2D image_info_2d = 9;
+    MemoryInfo memory_info = 10;
+    Report report = 11;
+    Resources resources = 12;
+    gfxapi.Shader shader = 13;
+    gfxapi.Program program = 14;
+    gfxapi.Texture2D texture_2d = 15;
+    gfxapi.Cubemap cubemap = 16;
+    device.Instance device = 17;
+  }
+}
+
+message GetServerInfoRequest {}
+message GetServerInfoResponse {
+  oneof res {
+    ServerInfo info = 1;
+    Error error = 2;
+  }
+}
+
+message GetRequest {
+  path.Any path = 1;
+}
+
+message GetResponse {
+  oneof res {
+    Value value = 1;
+    Error error = 2;
+  }
+}
+
+message SetRequest {
+  path.Any path = 1;
+  Value value = 2;
+}
+
+message SetResponse {
+  oneof res {
+    path.Any path = 1;
+    Error error = 2;
+  }
+}
+
+message FollowRequest {
+  path.Any path = 1;
+}
+
+message FollowResponse {
+  oneof res {
+    path.Any path = 1;
+    Error error = 2;
+  }
+}
+
+message BeginCPUProfileRequest {}
+message BeginCPUProfileResponse {
+  Error error = 1;
+}
+
+message EndCPUProfileRequest {}
+message EndCPUProfileResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
+message GetPerformanceCountersRequest {}
+message GetPerformanceCountersResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
+message GetProfileRequest {
+  string name = 1;
+  int32 debug = 2;
+}
+message GetProfileResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
+message GetSchemaRequest {}
+message GetSchemaResponse {
+  oneof res {
+    Object object = 1;
+    Error error = 2;
+  }
+}
+
+message GetAvailableStringTablesRequest {}
+message GetAvailableStringTablesResponse {
+  oneof res {
+    StringTableInfos tables = 1;
+    Error error = 2;
+  }
+}
+
+message GetStringTableRequest {
+  stringtable.Info table = 1;
+}
+message GetStringTableResponse {
+  oneof res {
+    stringtable.StringTable table = 1;
+    Error error = 2;
+  }
+}
+
+message ImportCaptureRequest {
+  string name = 1;
+  bytes data = 2;
+}
+message ImportCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message LoadCaptureRequest {
+  string path = 1;
+}
+message LoadCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message GetDevicesRequest {}
+message GetDevicesResponse {
+  oneof res {
+    Devices devices = 1;
+    Error error = 2;
+  }
+}
+
+message GetDevicesForReplayRequest {
+  path.Capture capture = 1;
+}
+message GetDevicesForReplayResponse {
+  oneof res {
+    Devices devices = 1;
+    Error error = 2;
+  }
+}
+
+message GetFramebufferAttachmentRequest {
+		path.Device device = 1;
+		path.Command after = 2;
+		gfxapi.FramebufferAttachment attachment = 3;
+		RenderSettings settings = 4;
+}
+
+message GetFramebufferAttachmentResponse {
+  oneof res {
+    path.ImageInfo image = 1;
+    Error error = 2;
+  }
+}
+
+service Gapid {
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
+
+  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc Set(SetRequest) returns (SetResponse) {}
+  rpc Follow(FollowRequest) returns (FollowResponse) {}
+
+  rpc BeginCPUProfile(BeginCPUProfileRequest) returns (BeginCPUProfileResponse) {}
+  rpc EndCPUProfile(EndCPUProfileRequest) returns (EndCPUProfileResponse) {}
+  rpc GetPerformanceCounters(GetPerformanceCountersRequest) returns (GetPerformanceCountersResponse) {}
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {}
+
+  rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+  rpc GetAvailableStringTables(GetAvailableStringTablesRequest) returns (GetAvailableStringTablesResponse) {}
+  rpc GetStringTable(GetStringTableRequest) returns (GetStringTableResponse) {}
+  rpc ImportCapture(ImportCaptureRequest) returns (ImportCaptureResponse) {}
+  rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {}
+  rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
+  rpc GetDevicesForReplay(GetDevicesForReplayRequest) returns (GetDevicesForReplayResponse) {}
+  rpc GetFramebufferAttachment(GetFramebufferAttachmentRequest) returns (GetFramebufferAttachmentResponse) {}
+}
+
+message Error {
+  oneof err {
+    ErrInternal err_internal = 1;
+    ErrDataUnavailable err_data_unavailable = 2;
+    ErrInvalidPath err_invalid_path = 3;
+    ErrInvalidArgument err_invalid_argument = 4;
+    ErrPathNotFollowable err_path_not_followable = 5;
+  }
+}
+
+// ErrInternal is the error raised when an internal server error has occurred.
+message ErrInternal {
+  string message = 1;
+}
+
+// ErrDataUnavailable is the error raised when the requested data is
+// unavailable. For instance: the error raised when a framebuffer is
+// requested at a point in the capture where none is bound.
+message ErrDataUnavailable {
+  // The reason the data is unavailable.
+  stringtable.Msg reason = 1;
+  // If true, then making the same request at a later time may result in data.
+  bool transient = 2;
+}
+
+// ErrInvalidPath is the error raised when the specified path is invalid.
+// This type of error is permanent.
+message ErrInvalidPath {
+  // The description of what's invalid.
+  stringtable.Msg reason = 1;
+  // The part of the path that was invalid.
+  path.Any path = 2;
+}
+
+// ErrInvalidArgument is the error raised when one of the parameters to an RPC
+// call is invalid.
+// This type of error is permanent.
+message ErrInvalidArgument {
+  // The description of what's invalid.
+  stringtable.Msg reason = 1;
+}
+
+// ErrPathNotFollowable is the error raised when attempting to follow a path
+// that cannot be followed.
+message ErrPathNotFollowable {
+  path.Any path = 1;
+}
+
+// Capture describes single capture file held by the server.
+message Capture {
+  // Name given to the capture. e.g. "KittyWorld"
+  string name = 1;
+  // Information about the device used to create the capture.
+  device.Instance device = 2;
+  // The path to the stream of commands in this capture.
+  path.Commands commands = 3;
+  // List of graphics APIs used by this capture.
+  repeated path.API apis = 4;
+  // List of all the memory observations made by the application.
+  repeated MemoryRange observations = 5;
+}
+
+// Report describes all warnings and errors found by a capture.
+message Report {
+  // Report items for this report.
+  repeated ReportItem items = 1;
+  // Report groups for this report.
+  repeated ReportGroup groups = 2;
+  // Array of strings for messages.
+  repeated string strings = 3;
+  // Array of values for messages.
+  repeated stringtable.Value values = 4;
+}
+
+// ReportItem represents an entry in a report.
+message ReportItem {
+  // The severity of the report item.
+  Severity severity = 1;
+  // The message for the item.
+  MsgRef message = 2;
+  // The index of the command the item refers to.
+  uint64 command = 3;
+  // The references to tags associated with this item.
+  repeated MsgRef tags = 4;
+}
+
+// MsgRef references a message in a Report.
+message MsgRef {
+  // The index in Report.strings of the message identifier.
+  uint32 identifier = 1;
+  // The indexed arguments.
+  repeated MsgRefArgument arguments = 2;
+}
+
+// MsgRefArgument is an argument formed from two indices into the report.
+message MsgRefArgument {
+  // The index in Report.strings of the argument identifier.
+  uint32 key = 1;
+  // The index in Report.values of the argument value.
+  uint32 value = 2;
+}
+
+// ReportGroup represents a group of ReportItem which have the same tag.
+message ReportGroup {
+  // The reference to Msg which describes this group.
+  MsgRef name = 1;
+  // The indices of report items which belong to this group.
+  repeated uint32 items = 2;
+  // The union of all Items tags. Currently isn't supported and is nil. TODO: Add filtering support for the entire group.
+  repeated MsgRef tags = 3;
+}
+
+// MemoryInfo describes the state of a range of memory at a specific point in
+// the command stream.
+message MemoryInfo {
+  // The memory values for the span.
+  bytes data = 1;
+  // Structure describes the layout of the memory.
+  MemoryStructure structure = 2;
+  // The data-relative ranges that were read-from at the specified command.
+  repeated MemoryRange reads = 3;
+  // The data-relative ranges that were written-to at the specified command.
+  repeated MemoryRange writes = 4;
+  // The data-relative ranges that have been observed.
+  repeated MemoryRange observed = 5;
+}
+
+// MemoryStructure describes the structure of the of memory.
+message MemoryStructure {
+  // TODO
+}
+
+// MemoryRange represents a contiguous range of memory.
+message MemoryRange {
+  // The address of the first byte in the memory range.
+  uint64 base = 1;
+  // The number of bytes that are in the memory range.
+  uint64 size = 2;
+}
+
+// RenderSettings contains settings and flags to be used in replaying and
+// returning a bound render target's color buffer.
+message RenderSettings {
+  // The desired maximum width of the image. The returned image may be larger than this.
+  uint32 max_width = 1;
+  // The desired minimum height of the image. The returned image may be larger than this.
+  uint32 max_height = 2;
+  // The wireframe mode to use when rendering.
+  WireframeMode wireframe_mode = 3;
+}
+
+// Resources contains the full list of resources used by a capture.
+message Resources {
+  repeated ResourcesByType types = 1;
+}
+
+// ResourcesByType contains all resources of a specific type.
+message ResourcesByType {
+  gfxapi.ResourceType type = 1;
+  repeated Resource resources = 2;
+}
+
+// Resource describes a single resource.
+message Resource {
+  // The resource instance unique identifier.
+  path.ID id = 1;
+  // The resource name.
+  string name = 2;
+  // The list of command indices where the resource was used.
+  repeated uint64 accesses = 3;
+}
+
+// Context represents a single rendering context in the capture.
+message Context {
+  // The context instance unique identifier.
+  path.ID id = 1;
+  // The context name.
+  string name = 2;
+  // The API that this context belongs to.
+  path.API api = 3;
+  // The range of commands that belong to this context.
+  repeated CommandRange ranges = 4;
+}
+
+// Hierarchy represents a single atom hierarchy.
+message Hierarchy {
+  // Name of the hierarchy.
+  string name = 1;
+  // Context identifier.
+  path.ID context = 2;
+  // The root of the hierarchy.
+  CommandGroup root = 3;
+}
+
+// CommandRange represents a contiguous range of commands.
+message CommandRange {
+  // The first command within the range.
+  uint64 first = 1;
+  // The number of commands within the range.
+  uint64 count = 2;
+}
+
+// Group represents a named, contiguous span of atoms with support for sparse
+// sub-groups. Groups are ideal for expressing nested hierarchies of atoms.
+//
+// Groups have the concept of items. An item is either an immediate sub-group,
+// or an atom index that is within this group's span but outside of any
+// sub-group.
+//
+// For example a Group spanning the atom index range [0 - 9] with two
+// sub-groups spanning [2 - 4] and [7 - 8] would have the following tree of
+// items:
+//
+//  Group
+//    │
+//    ├─── Item[0] ─── Atom[0]
+//    │
+//    ├─── Item[1] ─── Atom[1]
+//    │
+//    ├─── Item[2] ─── Sub-group 0
+//    │                   │
+//    │                   ├─── Item[0] ─── Atom[2]
+//    │                   │
+//    │                   ├─── Item[1] ─── Atom[3]
+//    │                   │
+//    │                   └─── Item[2] ─── Atom[4]
+//    │
+//    ├─── Item[3] ─── Atom[5]
+//    │
+//    ├─── Item[4] ─── Atom[6]
+//    │
+//    ├─── Item[5] ─── Sub-group 1
+//    │                   │
+//    │                   ├─── Item[0] ─── Atom[7]
+//    │                   │
+//    │                   └─── Item[1] ─── Atom[8]
+//    │
+//    └─── Item[6] ─── Atom[9]
+//
+message CommandGroup {
+  // Name of this group.
+  string name = 1;
+  // The range of atoms this group (and sub-groups) represents.
+  CommandRange range = 2;
+  // All sub-groups of this group.
+  repeated CommandGroup subgroups = 3;
+}

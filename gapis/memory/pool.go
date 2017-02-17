@@ -1,0 +1,263 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package memory
+
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/math/u64"
+	"github.com/google/gapid/framework/binary"
+	"github.com/google/gapid/gapis/database"
+	"github.com/pkg/errors"
+)
+
+// Pool represents an unbounded and isolated memory space. Pool can be used
+// to represent the application address space, or hidden GPU Pool.
+//
+// Pool can be sliced into smaller regions which can be read or written to.
+// All writes to Pool or its slices do not actually perform binary data
+// copies, but instead all writes are stored as lightweight records. Only when a
+// Pool slice has Get called will any resolving, loading or copying of binary
+// data occur.
+type Pool struct {
+	binary.Generate `disable:"true"`
+	writes          poolWriteList
+	OnRead          func(Range)
+	OnWrite         func(Range)
+}
+
+type poolSlice struct {
+	rng    Range         // The memory range of the slice.
+	writes poolWriteList // The list of writes to the pool when this slice was created.
+}
+
+// PoolID is an identifier of a Pool.
+type PoolID uint32
+
+const (
+	// ApplicationPool is the PoolID of Pool representing the application's memory
+	// address space.
+	ApplicationPool = PoolID(PoolNames_Application)
+)
+
+// Slice returns a Slice referencing the subset of the Pool range.
+func (m *Pool) Slice(rng Range) Slice {
+	i, c := interval.Intersect(&m.writes, rng.Span())
+	if c == 1 {
+		w := m.writes[i]
+		if rng == w.dst {
+			// Exact hit
+			return w.src
+		}
+		if rng.First() >= w.dst.First() && rng.Last() <= w.dst.Last() {
+			// Subset of a write.
+			rng.Base -= w.dst.First()
+			return w.src.Slice(rng)
+		}
+	}
+	writes := make(poolWriteList, c)
+	copy(writes, m.writes[i:i+c])
+	return poolSlice{rng: rng, writes: writes}
+}
+
+// At returns an unbounded Slice starting at p.
+func (m *Pool) At(addr uint64) Slice {
+	return m.Slice(Range{Base: addr, Size: ^uint64(0) - addr})
+}
+
+// Write copies the slice src to the address dst.
+func (m *Pool) Write(dst uint64, src Slice) {
+	rng := Range{Base: dst, Size: src.Size()}
+	i := interval.Replace(&m.writes, rng.Span())
+	m.writes[i].src = src
+}
+
+// String returns the full history of writes performed to this pool.
+func (m *Pool) String() string {
+	l := make([]string, len(m.writes)+1)
+	l[0] = fmt.Sprintf("Pool(%p):", m)
+	for i, w := range m.writes {
+		l[i+1] = fmt.Sprintf("(%d) %v <- %v", i, w.dst, w.src)
+	}
+	return strings.Join(l, "\n")
+}
+
+func (m poolSlice) Get(ctx log.Context, offset uint64, dst []byte) error {
+	orng := Range{Base: m.rng.Base + offset, Size: m.rng.Size - offset}
+	i, c := interval.Intersect(&m.writes, orng.Span())
+	for _, w := range m.writes[i : i+c] {
+		if w.dst.First() > orng.First() {
+			if err := w.src.Get(ctx, 0, dst[w.dst.First()-orng.First():]); err != nil {
+				return err
+			}
+		} else {
+			if err := w.src.Get(ctx, orng.First()-w.dst.First(), dst); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (m poolSlice) ResourceID(ctx log.Context) (id.ID, error) {
+	bytes := make([]byte, m.Size())
+	if err := m.Get(ctx, 0, bytes); err != nil {
+		return id.ID{}, err
+	}
+	return database.Store(ctx, bytes)
+}
+
+func (m poolSlice) Slice(rng Range) Slice {
+	if uint64(rng.Last()) > m.rng.Size {
+		panic(fmt.Errorf("%v.Slice(%v) - out of bounds", m.String(), rng))
+	}
+	rng.Base += m.rng.Base
+	i, c := interval.Intersect(&m.writes, rng.Span())
+	return poolSlice{rng, m.writes[i : i+c]}
+}
+
+func (m poolSlice) ValidRanges() RangeList {
+	valid := make(RangeList, len(m.writes))
+	for i, w := range m.writes {
+		s := u64.Max(w.dst.Base, m.rng.Base)
+		e := u64.Min(w.dst.Base+w.dst.Size, m.rng.Base+m.rng.Size)
+		valid[i] = Range{Base: s - m.rng.Base, Size: e - s}
+	}
+	return valid
+}
+
+func (m poolSlice) Size() uint64 {
+	return m.rng.Size
+}
+
+func (m poolSlice) String() string {
+	return fmt.Sprintf("Slice(%v)", m.rng)
+}
+
+func (m poolSlice) NewReader(ctx log.Context) io.Reader {
+	r := &poolSliceReader{ctx: ctx, writes: m.writes, rng: m.rng}
+	r.readImpl = r.prepareAndRead
+	return r
+}
+
+type readFunction func([]byte) (int, error)
+
+type poolSliceReader struct {
+	ctx      log.Context
+	writes   poolWriteList
+	rng      Range
+	readImpl readFunction
+}
+
+// Implements io.Reader
+func (r *poolSliceReader) Read(p []byte) (n int, err error) {
+	return r.readImpl(p)
+}
+
+// prepareAndRead determines whether we are about to read from an area covered
+// by a write. If so, it obtains an io.Reader for the write and starts reading
+// from it (additionally, subsequent Read() calls will skip this function, and
+// go through a fast path that delegates to the Reader, until we reach the end
+// of the write). If, instead, the area we're looking at is unwritten, we will
+// have a fast path until the end of the unwritten area which simply fills the
+// output buffers with zeros. At the end of each contiguous region (one single
+// write or unwritten area), we go through this again.
+func (r *poolSliceReader) prepareAndRead(p []byte) (n int, err error) {
+	if r.rng.Size <= 0 {
+		return r.setError(0, io.EOF)
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+
+	if len(r.writes) > 0 {
+		w := r.writes[0]
+		intersection := w.dst.Intersect(r.rng)
+
+		if intersection.First() > r.rng.First() {
+			r.readImpl = r.zeroReadFunc(intersection.First() - r.rng.First())
+		} else {
+			r.writes = r.writes[1:]
+			slice := w.src
+			if intersection != w.dst {
+				slice = w.src.Slice(Range{
+					Base: intersection.First() - w.dst.First(),
+					Size: intersection.Size,
+				})
+			}
+			sliceReader := slice.NewReader(r.ctx)
+			r.readImpl = r.readerReadFunc(sliceReader, intersection.Size)
+		}
+	} else {
+		r.readImpl = r.zeroReadFunc(r.rng.Size)
+	}
+
+	return r.readImpl(p)
+}
+
+// zeroReadFunc returns a read function that fills up to bytesLeft bytes
+// in the buffer with zeros, after which it switches to the slow path.
+func (r *poolSliceReader) zeroReadFunc(bytesLeft uint64) readFunction {
+	r.rng = r.rng.TrimLeft(bytesLeft)
+	return func(p []byte) (n int, err error) {
+		zeroCount := min(bytesLeft, uint64(len(p)))
+		for i := uint64(0); i < zeroCount; i++ {
+			p[i] = 0
+		}
+
+		bytesLeft -= zeroCount
+		if bytesLeft == 0 {
+			r.readImpl = r.prepareAndRead
+		}
+
+		return int(zeroCount), nil
+	}
+}
+
+// readerReadFunc returns a read function that reads up to bytesLeft
+// bytes from srcReader after which it switches to the slow path.
+func (r *poolSliceReader) readerReadFunc(srcReader io.Reader, bytesLeft uint64) readFunction {
+	r.rng = r.rng.TrimLeft(bytesLeft)
+	return func(p []byte) (n int, err error) {
+		bytesToRead := min(bytesLeft, uint64(len(p)))
+
+		bytesRead, err := srcReader.Read(p[:bytesToRead])
+		if bytesRead == 0 && errors.Cause(err) == io.EOF {
+			return r.setError(0, fmt.Errorf("Premature EOF from underlying reader"))
+		}
+		if err != nil && err != io.EOF {
+			return r.setError(bytesRead, err)
+		}
+
+		bytesLeft -= uint64(bytesRead)
+		if bytesLeft == 0 {
+			r.readImpl = r.prepareAndRead
+		}
+		return bytesRead, nil
+	}
+}
+
+// setError returns its arguments and makes subsequent Read()s return (0, err).
+func (r *poolSliceReader) setError(n int, err error) (int, error) {
+	r.readImpl = func([]byte) (int, error) {
+		return 0, err
+	}
+	return n, err
+}

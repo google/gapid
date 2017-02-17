@@ -1,0 +1,114 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "github.com/google/gapid/core/stream/stream.proto";
+
+package image;
+option go_package = "github.com/google/gapid/core/image";
+option java_package = "com.google.gapid.proto.image";
+option java_outer_classname = "Image";
+
+// ID is a 20-byte identifier.
+message ID {
+    bytes data = 1;
+}
+
+// Image2D is a two-dimensional bitmap.
+message Image2D {
+	// The format of the image.
+    Format format = 1;
+	// The width of the image in pixels.
+    uint32 width = 2;
+	// The height of the image in pixels.
+    uint32 height = 3;
+	// The pixel data.
+    bytes data = 4;
+}
+
+// Info2D describes a two-dimensional bitmap.
+message Info2D {
+	// The format of the image.
+    Format format = 1;
+	// The width of the image in pixels.
+    uint32 width = 2;
+	// The height of the image in pixels.
+    uint32 height = 3;
+	// The identifier of the Image2D data.
+    ID data = 4;
+}
+
+message Format {
+    string name = 1;
+    oneof format {
+        FmtPNG png = 2;
+        FmtUncompressed uncompressed = 3;
+        FmtATC_RGB_AMD atc_rgb_amd = 4;
+        FmtATC_RGBA_EXPLICIT_ALPHA_AMD atc_rgba_explicit_alpha_amd = 5;
+        FmtATC_RGBA_INTERPOLATED_ALPHA_AMD atc_rgba_interpolated_alpha_amd = 6;
+        FmtETC1_RGB8 etc1_rgb8 = 7;
+        FmtETC2_RGB8 etc2_rgb8 = 8;
+        FmtETC2_RGBA8_EAC etc2_rgba8_eac = 9;
+        FmtS3_DXT1_RGB s3_dxt1_rgb = 10;
+        FmtS3_DXT1_RGBA s3_dxt1_rgba = 11;
+        FmtS3_DXT3_RGBA s3_dxt3_rgba = 12;
+        FmtS3_DXT5_RGBA s3_dxt5_rgba = 13;
+        FmtASTC astc = 14;
+    }
+}
+
+message FmtUncompressed {
+    stream.Format format = 1;
+}
+message FmtPNG {}
+message FmtATC_RGB_AMD {}
+message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {}
+message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {}
+message FmtETC1_RGB8 {}
+message FmtETC2_RGB8 {}
+message FmtETC2_RGBA8_EAC {}
+message FmtS3_DXT1_RGB {}
+message FmtS3_DXT1_RGBA {}
+message FmtS3_DXT3_RGBA {}
+message FmtS3_DXT5_RGBA {}
+
+message FmtASTC {
+    uint32 block_width = 1;
+    uint32 block_height = 2;
+    bool srgb = 3;
+}
+
+// GAPIS internal structure.
+message ConvertResolvable {
+    ID data = 1;
+	uint32 width = 2;
+	uint32 height = 3;
+	Format format_from = 4;
+	Format format_to = 5;
+
+	// Number of bytes between lines in the source image.
+	// If 0 then lines are contiguous.
+	uint32 stride_from = 6;
+}
+
+// GAPIS internal structure.
+message ResizeResolvable {
+    ID data = 1;
+    Format format = 2;
+    uint32 src_width = 3;
+    uint32 src_height = 4;
+    uint32 dst_width = 5;
+    uint32 dst_height = 6;
+}

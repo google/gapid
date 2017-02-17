@@ -1,0 +1,345 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@internal
+class MiscellaneousState {
+  // Table 21.2: Current Values and Associated Data
+  @unused GLint PatchVertices = 3
+
+  // Table 21.4: Vertex Array Data (not in vertex array objects)
+  // GLuint ArrayBufferBinding = 0
+  // GLuint DrawIndirectBufferBinding = 0
+  // GLuint VertexArrayBinding = 0
+  GLboolean PrimitiveRestartFixedIndex = GL_FALSE
+
+  // Table 21.6: Transformation State
+  // GLuint TransformFeedbackBinding = 0
+
+  // Table 21.38: Hints
+  GLenum         GenerateMipmapHint           = GL_DONT_CARE
+  @unused GLenum FragmentShaderDerivativeHint = GL_DONT_CARE
+
+// Table 21.39: Compute Dispatch State
+// GLuint DispatchIndirectBufferBinding = 0
+
+// Table 21.57: Miscellaneous
+// GLenum CurrentError = as!GLenum(0)
+// GLboolean HasError = GL_FALSE
+// Vec3u CurrentQuery = Vec3u(0,0,0)
+// GLuint CopyReadBufferBinding = 0
+// GLuint CopyWriteBufferBinding = 0
+// GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
+// GLuint TextureBufferBinding = 0
+}
+
+sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolean enabled) {
+  ctx := GetContext()
+  switch (capability) {
+    case GL_BLEND: {
+      minRequiredVersion(2, 0)
+      // TODO: Remove the temporary variables once we fix bug 28858106
+      if isIndexed {
+        blend := ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)]
+        blend.Enabled = enabled
+        ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)] = blend
+      } else {
+        for i in 0 .. as!DrawBufferIndex(len(ctx.FragmentOperations.Blend)) {
+          blend := ctx.FragmentOperations.Blend[i]
+          blend.Enabled = enabled
+          ctx.FragmentOperations.Blend[i] = blend
+        }
+      }
+    }
+    case GL_CULL_FACE: {
+      minRequiredVersion(2, 0)
+      ctx.Rasterization.CullFace = enabled
+    }
+    case GL_DEPTH_TEST: {
+      minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Depth.Test = enabled
+    }
+    case GL_DITHER: {
+      minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Dither = enabled
+    }
+    case GL_POLYGON_OFFSET_FILL: {
+      minRequiredVersion(2, 0)
+      ctx.Rasterization.PolygonOffsetFill = enabled
+    }
+    case GL_SAMPLE_ALPHA_TO_COVERAGE: {
+      minRequiredVersion(2, 0)
+      ctx.Rasterization.SampleAlphaToCoverage = enabled
+    }
+    case GL_SAMPLE_COVERAGE: {
+      minRequiredVersion(2, 0)
+      ctx.Rasterization.SampleCoverage = enabled
+    }
+    case GL_SCISSOR_TEST: {
+      minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Scissor.Test = enabled
+    }
+    case GL_STENCIL_TEST: {
+      minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Stencil.Test = enabled
+    }
+    case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
+      minRequiredVersion(3, 0)
+      ctx.Miscellaneous.PrimitiveRestartFixedIndex = enabled
+    }
+    case GL_RASTERIZER_DISCARD: {
+      minRequiredVersion(3, 0)
+      ctx.Rasterization.RasterizerDiscard = enabled
+    }
+    case GL_SAMPLE_MASK: {
+      minRequiredVersion(3, 1)
+      ctx.Rasterization.SampleMask = enabled
+    }
+    case GL_DEBUG_OUTPUT: {
+      minRequiredVersion(3, 2)
+      ctx.Debug.Output = enabled
+    }
+    case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
+      minRequiredVersion(3, 2)
+      ctx.Debug.OutputSynchronous = enabled
+    }
+    case GL_ALPHA_TEST_QCOM: {
+      requiresExtension(GL_QCOM_alpha_test)
+      // TODO: Set state.
+    }
+    case GL_FRAMEBUFFER_SRGB_EXT: {
+      requiresExtension(GL_EXT_sRGB_write_control)
+      ctx.FragmentOperations.FramebufferSrgb = enabled
+    }
+    default: {
+      glErrorInvalidEnum(capability)
+    }
+  }
+}
+
+sub GLboolean GetCapability(GLenum capability, GLuint index) {
+  ctx := GetContext()
+  // TODO: Add back the version checks.
+  switch (capability) {
+    case GL_BLEND: {
+      // minRequiredVersion(2, 0)
+    }
+    case GL_CULL_FACE,
+        GL_DEPTH_TEST,
+        GL_DITHER,
+        GL_POLYGON_OFFSET_FILL,
+        GL_SAMPLE_ALPHA_TO_COVERAGE,
+        GL_SAMPLE_COVERAGE,
+        GL_SCISSOR_TEST,
+        GL_STENCIL_TEST: {
+      // minRequiredVersion(2, 0)
+      if index > 0 { glErrorInvalidValue() }
+    }
+    case GL_PRIMITIVE_RESTART_FIXED_INDEX,
+        GL_RASTERIZER_DISCARD: {
+      // minRequiredVersion(3, 0)
+      if index > 0 { glErrorInvalidValue() }
+    }
+    case GL_SAMPLE_MASK: {
+      // minRequiredVersion(3, 1) // TODO: Check version.
+      if index > 0 { glErrorInvalidValue() }
+    }
+    case GL_DEBUG_OUTPUT, GL_DEBUG_OUTPUT_SYNCHRONOUS: {
+      // minRequiredVersion(3, 2)
+      if index > 0 { glErrorInvalidValue() }
+    }
+    default: {
+      // glErrorInvalidEnum(capability)
+    }
+  }
+
+  return switch (capability) {
+    case GL_BLEND: {
+      // minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)].Enabled
+    }
+    case GL_CULL_FACE: {
+      // minRequiredVersion(2, 0)
+      ctx.Rasterization.CullFace
+    }
+    case GL_DEPTH_TEST: {
+      // minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Depth.Test
+    }
+    case GL_DITHER: {
+      // minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Dither
+    }
+    case GL_POLYGON_OFFSET_FILL: {
+      // minRequiredVersion(2, 0)
+      ctx.Rasterization.PolygonOffsetFill
+    }
+    case GL_SAMPLE_ALPHA_TO_COVERAGE: {
+      // minRequiredVersion(2, 0)
+      ctx.Rasterization.SampleAlphaToCoverage
+    }
+    case GL_SAMPLE_COVERAGE: {
+      // minRequiredVersion(2, 0)
+      ctx.Rasterization.SampleCoverage
+    }
+    case GL_SCISSOR_TEST: {
+      // minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Scissor.Test
+    }
+    case GL_STENCIL_TEST: {
+      // minRequiredVersion(2, 0)
+      ctx.FragmentOperations.Stencil.Test
+    }
+    case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
+      // minRequiredVersion(3, 0)
+      ctx.Miscellaneous.PrimitiveRestartFixedIndex
+    }
+    case GL_RASTERIZER_DISCARD: {
+      // minRequiredVersion(3, 0)
+      ctx.Rasterization.RasterizerDiscard
+    }
+    case GL_SAMPLE_MASK: {
+      // minRequiredVersion(3, 1) // TODO: Check version.
+      ctx.Rasterization.SampleMask
+    }
+    case GL_DEBUG_OUTPUT: {
+      // minRequiredVersion(3, 2)
+      ctx.Debug.Output
+    }
+    case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
+      // minRequiredVersion(3, 2)
+      ctx.Debug.OutputSynchronous
+    }
+    case GL_ALPHA_TEST_QCOM: {
+      // requiresExtension(GL_QCOM_alpha_test)
+      GL_FALSE // TODO: Get state.
+    }
+    case GL_FRAMEBUFFER_SRGB_EXT: {
+      // requiresExtension(GL_EXT_sRGB_write_control)
+      ctx.FragmentOperations.FramebufferSrgb
+    }
+    default: {
+      // glErrorInvalidEnum(capability)
+      GL_FALSE
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml","OpenGL ES 3.2")
+cmd void glDisable(GLenum capability) {
+  minRequiredVersion(1, 0)
+  SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_FALSE)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml","OpenGL ES 3.2")
+cmd void glDisablei(GLenum capability, GLuint index) {
+  minRequiredVersion(3, 2)
+  Disablei(capability, index)
+}
+
+sub void Disablei(GLenum capability, GLuint index) {
+  SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_FALSE)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml","OpenGL ES 3.2")
+cmd void glEnable(GLenum capability) {
+  minRequiredVersion(1, 0)
+  SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_TRUE)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml","OpenGL ES 3.2")
+cmd void glEnablei(GLenum capability, GLuint index) {
+  minRequiredVersion(3, 2)
+  Enablei(capability, index)
+}
+
+sub void Enablei(GLenum capability, GLuint index) {
+  SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_TRUE)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFinish.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFinish.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFinish.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFinish.xhtml","OpenGL ES 3.2")
+cmd void glFinish() {
+  minRequiredVersion(1, 0)
+
+}
+
+@EndOfFrame // For daydream.  TODO: Use gvr-specific api call instead?
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFlush.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlush.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlush.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlush.xhtml","OpenGL ES 3.2")
+cmd void glFlush() {
+  minRequiredVersion(1, 0)
+
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetError.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetError.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetError.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetError.xhtml","OpenGL ES 3.2")
+cmd GLenum glGetError() {
+  minRequiredVersion(1, 0)
+
+  return ?
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetGraphicsResetStatus.xhtml","OpenGL ES 3.2")
+cmd GLenum glGetGraphicsResetStatus() {
+  minRequiredVersion(3, 2)
+  GetGraphicsResetStatus()
+  return ?
+}
+
+sub void GetGraphicsResetStatus() {
+  // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glHint.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glHint.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glHint.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glHint.xhtml","OpenGL ES 3.2")
+cmd void glHint(GLenum target, GLenum mode) {
+  minRequiredVersion(1, 0)
+  switch (mode) {
+    case GL_DONT_CARE, GL_FASTEST, GL_NICEST: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(mode)
+    }
+  }
+  ctx := GetContext()
+  switch (target) {
+    case GL_GENERATE_MIPMAP_HINT: {
+      minRequiredVersion(2, 0)
+      ctx.Miscellaneous.GenerateMipmapHint = mode
+    }
+    case GL_FRAGMENT_SHADER_DERIVATIVE_HINT: {
+      minRequiredVersion(3, 0)
+      ctx.Miscellaneous.FragmentShaderDerivativeHint = mode
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+
+}

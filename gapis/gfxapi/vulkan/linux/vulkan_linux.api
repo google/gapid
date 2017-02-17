@@ -1,0 +1,224 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@extension("VK_KHR_xlib_surface") define VK_KHR_XLIB_SURFACE_SPEC_VERSION   6
+@extension("VK_KHR_xlib_surface") define VK_KHR_XLIB_SURFACE_EXTENSION_NAME "VK_KHR_xlib_surface"
+
+@extension("VK_KHR_xcb_surface") define VK_KHR_XCB_SURFACE_SPEC_VERSION   6
+@extension("VK_KHR_xcb_surface") define VK_KHR_XCB_SURFACE_EXTENSION_NAME "VK_KHR_xcb_surface"
+
+@extension("VK_KHR_wayland_surface") define VK_KHR_WAYLAND_SURFACE_SPEC_VERSION   5
+@extension("VK_KHR_wayland_surface") define VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME "VK_KHR_wayland_surface"
+
+@extension("VK_KHR_mir_surface") define VK_KHR_MIR_SURFACE_SPEC_VERSION   4
+@extension("VK_KHR_mir_surface") define VK_KHR_MIR_SURFACE_EXTENSION_NAME "VK_KHR_mir_surface"
+
+
+
+// ----------------------------------------------------------------------------
+// VK_KHR_xlib_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_KHR_xlib_surface")
+@reserved_flags
+type VkFlags VkXlibSurfaceCreateFlagsKHR
+
+@extension("VK_KHR_xlib_surface") @forwarddecl class Display {}
+@extension("VK_KHR_xlib_surface") type size Window
+@extension("VK_KHR_xlib_surface") type size VisualID
+
+@extension("VK_KHR_xlib_surface")
+class VkXlibSurfaceCreateInfoKHR {
+  VkStructureType             sType
+  const void*                 pNext
+  VkXlibSurfaceCreateFlagsKHR flags
+  Display*                    dpy
+  Window                      window
+}
+
+@extension("VK_KHR_xlib_surface")
+@indirect("VkInstance")
+cmd VkResult vkCreateXlibSurfaceKHR(
+    VkInstance                        instance,
+    const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*      pAllocator,
+    VkSurfaceKHR*                     pSurface) {
+  return ?
+}
+
+@extension("VK_KHR_xlib_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkBool32 vkGetPhysicalDeviceXlibPresentationSupportKHR(
+    VkPhysicalDevice physicalDevice,
+    u32              queueFamilyIndex,
+    Display*         dpy,
+    VisualID         visualID) {
+  return ?
+}
+
+// ----------------------------------------------------------------------------
+// VK_KHR_xcb_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_KHR_xcb_surface")
+@reserved_flags
+type VkFlags VkXcbSurfaceCreateFlagsKHR
+
+@extension("VK_KHR_xcb_surface") @forwarddecl class xcb_connection_t {}
+@extension("VK_KHR_xcb_surface") type u32 xcb_window_t
+@extension("VK_KHR_xcb_surface") type u32 xcb_visualid_t
+
+@extension("VK_KHR_xcb_surface")
+class VkXcbSurfaceCreateInfoKHR {
+  VkStructureType            sType
+  const void*                pNext
+  VkXcbSurfaceCreateFlagsKHR flags
+  xcb_connection_t*          connection
+  xcb_window_t               window
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateXCBSurfaceKHR(
+    VkInstance instance,
+    const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
+    VkSurfaceKHR*                    pSurface) {
+  read(pCreateInfo[0:1])
+  write(pSurface[0:1])
+}
+
+@extension("VK_KHR_xcb_surface")
+@indirect("VkInstance")
+cmd VkResult vkCreateXcbSurfaceKHR(
+    VkInstance                       instance,
+    const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*     pAllocator,
+    VkSurfaceKHR*                    pSurface) {
+  surface := createXCBSurfaceObject(pCreateInfo)
+  surface.Instance = instance
+  surface.Type = SURFACE_TYPE_XCB
+  // TODO: pAllocator
+
+  handle := ?
+  pSurface[0] = handle
+  surface.VulkanHandle = handle
+  Surfaces[handle] = surface
+
+  return ?
+}
+
+@extension("VK_KHR_xcb_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkBool32 vkGetPhysicalDeviceXcbPresentationSupportKHR(
+    VkPhysicalDevice  physicalDevice,
+    u32               queueFamilyIndex,
+    xcb_connection_t* connection,
+    xcb_visualid_t    visual_id) {
+  return ?
+}
+
+
+// ----------------------------------------------------------------------------
+// Struct subroutines
+// ----------------------------------------------------------------------------
+
+sub ref!SurfaceObject createXCBSurfaceObject(const VkXcbSurfaceCreateInfoKHR* data) {
+  object := new!SurfaceObject()
+  _ = data[0]
+
+  // TODO: pNext
+  // TODO: window?
+
+  return object
+}
+
+
+// ----------------------------------------------------------------------------
+// VK_KHR_wayland_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_KHR_wayland_surface")
+@reserved_flags
+type VkFlags VkWaylandSurfaceCreateFlagsKHR
+
+@extension("VK_KHR_wayland_surface") @forwarddecl class wl_display {}
+@extension("VK_KHR_wayland_surface") @forwarddecl class wl_surface {}
+
+@extension("VK_KHR_wayland_surface")
+class VkWaylandSurfaceCreateInfoKHR {
+  VkStructureType                sType
+  const void*                    pNext
+  VkWaylandSurfaceCreateFlagsKHR flags
+  wl_display*                    display
+  wl_surface*                    surface
+}
+
+@extension("VK_KHR_wayland_surface")
+@indirect("VkInstance")
+cmd VkResult vkCreateWaylandSurfaceKHR(
+    VkInstance                           instance,
+    const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*         pAllocator,
+    VkSurfaceKHR*                        pSurface) {
+  return ?
+}
+
+@extension("VK_KHR_wayland_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkBool32 vkGetPhysicalDeviceWaylandPresentationSupportKHR(
+    VkPhysicalDevice physicalDevice,
+    u32              queueFamilyIndex,
+    wl_display*      display) {
+  return ?
+}
+
+// ----------------------------------------------------------------------------
+// VK_KHR_mir_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_KHR_mir_surface")
+@reserved_flags
+type VkFlags VkMirSurfaceCreateFlagsKHR
+
+@extension("VK_KHR_mir_surface") @forwarddecl class MirConnection {}
+@extension("VK_KHR_mir_surface") @forwarddecl class MirSurface {}
+
+@extension("VK_KHR_mir_surface")
+class VkMirSurfaceCreateInfoKHR {
+  VkStructureType            sType
+  const void*                pNext
+  VkMirSurfaceCreateFlagsKHR flags
+  MirConnection*             connection
+  MirSurface*                mirSurface
+}
+
+@extension("VK_KHR_mir_surface")
+@indirect("VkInstance")
+cmd VkResult vkCreateMirSurfaceKHR(
+    VkInstance                       instance,
+    const VkMirSurfaceCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*     pAllocator,
+    VkSurfaceKHR*                    pSurface) {
+  return ?
+}
+
+@extension("VK_KHR_mir_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkBool32 vkGetPhysicalDeviceMirPresentationSupportKHR(
+    VkPhysicalDevice physicalDevice,
+    u32              queueFamilyIndex,
+    MirConnection*   connection) {
+  return ?
+}

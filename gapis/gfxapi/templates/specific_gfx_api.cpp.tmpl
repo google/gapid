@@ -1,0 +1,275 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "cpp_common.tmpl"}}
+
+{{$filename := print (Global "API") "_gfx_api.cpp" }}
+{{$ | Macro "specific_gfx_api.cpp" | Reflow 4 | Write $filename}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Entry point.
+-------------------------------------------------------------------------------
+*/}}
+{{define "specific_gfx_api.cpp"}}
+  {{AssertType $ "API"}}
+
+  {{template "C++.GeneratedHeader"}}
+¶
+  #include "{{Global "API"}}_gfx_api.h"
+¶
+  #include "interpreter.h"
+  #include "stack.h"
+¶
+  #include "core/cc/get_{{Global "API"}}_proc_address.h"
+  #include "core/cc/log.h"
+¶
+  #define __STDC_FORMAT_MACROS
+  #include <inttypes.h>
+¶
+  namespace gapir {«
+  {{$api := Title (Global "API")}}
+¶
+  const char* {{$api}}::ID = "{{$api}}";
+  uint8_t {{$api}}::INDEX = {{$.Index}};
+¶
+  {{$api}}::{{$api}}() {
+    using namespace std::placeholders;
+    ¶
+    {{range $i, $c := AllCommands $}}
+      {{if and (not (GetAnnotation $c "synthetic")) (not (GetAnnotation $c "pfn"))}}
+        {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
+        mFunctions.insert({{$i}}, std::bind(&{{$api}}::call{{$name}}, this, _1, _2));
+      {{end}}
+    {{end}}
+  }
+¶
+  void {{$api}}::resolve() {
+    {{range $c := AllCommands $}}
+      {{if (Macro "IsRealDirectFunction" $c)}}
+        {{$name := Macro "CmdName" $c}}
+        mFunctionStubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
+          core::Get{{$api}}ProcAddress("{{$name}}", false));
+      {{end}}
+    {{end}}
+  }
+¶
+  const char* {{$api}}::id() const {
+    return ID;
+  }
+  uint8_t {{$api}}::index() const {
+    return INDEX;
+  }
+¶
+  {{range $c := AllCommands $}}
+    {{if and (not (GetAnnotation $c "synthetic")) (not (GetAnnotation $c "pfn"))}}
+      {{template "CommandHandler" $c}}
+    {{end}}
+  {{end}}
+¶
+  }  // namespace gapir
+¶
+{{end}}
+
+
+{{define "PopType"}}
+  {{if not (IsType $)}}{{Template "PopType" (TypeOf $)}}
+  {{else if IsStaticArray $}}{{Template "C++.Type" $}}
+  {{else                   }}{{Template "C++.ParameterType" $}}
+  {{end}}
+{{end}}
+
+
+{{define "CommandHandler"}}
+  {{AssertType $ "Function"}}
+
+  {{$api  := Title (Global "API")}}
+  {{$name := Macro "CmdName" $}}
+
+  bool {{$api}}::call{{Template "C++.Public" $name}}(Stack* stack, bool pushReturn) {
+    {{range $p := (Reverse $.CallParameters)}}
+      auto {{$p.Name}} = §
+
+      {{$ty := TypeOf $p | Underlying | Unpack}}
+      {{if IsStaticArray $ty}}
+        stack->pop<{{Template "C++.ParameterType" $ty.ValueType}}, {{$ty.Size}}>();
+      {{else if IsSize $ty}}
+        static_cast<size_val>(stack->pop<size_val>());
+      {{else}}
+        stack->pop<{{Template "C++.ParameterType" $ty}}>();
+      {{end}}
+    {{end}}
+
+    if (stack->isValid()) {
+      GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
+
+      {{if GetAnnotation $ "indirect"}}
+        {{$args := (GetAnnotation $ "indirect").Arguments}}
+        {{$elem := (index $.CallParameters 0).Name}}
+        {{$func := Macro "CmdName" $}}
+        if ({{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}) {
+      {{else}}
+        if (mFunctionStubs.{{$name}} != nullptr) {
+      {{end}}
+        {{if not (IsVoid $.Return.Type)}}
+          {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
+          GAPID_DEBUG("Returned: {{Template "C++.PrintfFormatCode" $.Return.Type}}", return_value);
+          {{if eq $name "glGetError"}}
+            if (return_value != Gles::GLenum::GL_NO_ERROR) {
+              GAPID_ERROR("glGetError() returned: 0x%x", return_value);
+            }
+          {{end}}
+          if (pushReturn) {
+            {{$ty := TypeOf $.Return.Type | Underlying | Unpack}}
+            {{if IsSize $ty}}
+              stack->push<uint64_t>(static_cast<uint64_t>(return_value));
+            {{else}}
+              stack->push<{{Template "C++.ReturnType" $}}>(return_value);
+            {{end}}
+          }
+        {{else}}
+          {{Template "Call" $}};
+        {{end}}
+
+        {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
+          const Gles::GLenum err = mFunctionStubs.glGetError();
+          if (err != Gles::GLenum::GL_NO_ERROR) {
+            GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
+            GAPID_ERROR("{{$name}} returned error: 0x%x", err);
+            return false;
+          }
+          {{if eq $name "glShaderSource"}}
+            GAPID_DEBUG("Shader source: %s", source[0]);
+          {{else if eq $name "glCompileShader"}}
+            int success = 0;
+            mFunctionStubs.glGetShaderiv(shader, Gles::GLenum::GL_COMPILE_STATUS, &success);
+            if (success == 0) {
+              char buf[2048];
+              mFunctionStubs.glGetShaderInfoLog(shader, 2048, nullptr, buf);
+              GAPID_ERROR("Shader failed to compile: %s", buf);
+            }
+          {{end}}
+        {{end}}
+      } else {
+        GAPID_ERROR("Attempted to call unsupported function {{$name}}");
+      }
+      return true;
+    } else {
+      GAPID_ERROR("Error during calling function {{$name}}");
+      return false;
+    }
+  }
+¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to call the specified command
+-------------------------------------------------------------------------------
+*/}}
+{{define "Call"}}
+  {{AssertType $ "Function"}}
+
+  {{if GetAnnotation $ "indirect"}}
+    {{$a := (GetAnnotation $ "indirect").Arguments}}
+    {{$e := (index $.CallParameters 0).Name}}
+    {{$f := Macro "CmdName" $}}
+    {{Template "GetIndirectedCall" "Annotations" $a "Element" $e "Function" $f}}(§
+  {{else}}
+    mFunctionStubs.{{Template "CmdName" $}}(§
+  {{end}}
+  {{range $i, $p := $.CallParameters}}
+    {{if $i}}, {{end}}{{$p.Name}}§
+  {{end}})
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Composes the name of an indirect map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ComposeIndirectMap"}}
+  {{AssertType $.FromClass "string"}}
+  {{AssertType $.ToClass   "string"}}
+  {{AssertType $.Element   "string"}}
+  mIndirectMaps.{{$.FromClass}}sTo{{$.ToClass}}s[{{$.Element}}]
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a validity check for an indirected function pointer.
+-------------------------------------------------------------------------------
+*/}}
+{{define "GetIndirectedFunction"}}
+  {{AssertType $.Element  "string"}}
+  {{AssertType $.Function "string"}}
+  {{$annotation := index $.Annotations 0}}
+  {{if eq (len $.Annotations) 1}}
+    {{$function_class := Title $annotation}}
+    m{{$function_class}}FunctionStubs.find({{$.Element}}) != m{{$function_class}}FunctionStubs.end() &&
+    m{{$function_class}}FunctionStubs[{{$.Element}}].{{$.Function}}
+  {{else}}
+    {{$next_annotation := index $.Annotations 1}}
+    {{$from_class := Title $annotation}}
+    {{$to_class := Title $next_annotation}}
+    mIndirectMaps.{{$from_class}}sTo{{$to_class}}s.find({{$.Element}}) != mIndirectMaps.{{$from_class}}sTo{{$to_class}}s.end() &&
+    {{$next_elements := Macro "ComposeIndirectMap" "FromClass" (print $from_class) "ToClass" (print $to_class) "Element" $.Element}}
+    {{Template "GetIndirectedFunction" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a reference to a function pointer to an indirected function.
+-------------------------------------------------------------------------------
+*/}}
+{{define "GetIndirectedCall"}}
+  {{AssertType $.Element  "string"}}
+  {{AssertType $.Function "string"}}
+  {{$annotation := index $.Annotations 0}}
+  {{if eq (len $.Annotations) 1}}
+    {{$function_class := Title $annotation}}
+    m{{$function_class}}FunctionStubs[{{$.Element}}].{{$.Function}}
+  {{else}}
+    {{$next_annotation := index $.Annotations 1}}
+    {{$from_class := Title $annotation}}
+    {{$to_class := Title $next_annotation}}
+    {{$next_elements := Macro "ComposeIndirectMap" "FromClass" (print $from_class) "ToClass" (print $to_class) "Element" $.Element}}
+    {{Template "GetIndirectedCall" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Returns true if the given cmd is not annotated with "synthetic", "pfn",
+  or "indirect".
+-------------------------------------------------------------------------------
+*/}}
+{{define "IsRealDirectFunction"}}
+  {{AssertType $ "Function"}}
+
+  {{if GetAnnotation $ "synthetic"}}
+  {{else if GetAnnotation $ "pfn"}}
+  {{else if GetAnnotation $ "indirect"}}
+  {{else}}true
+  {{end}}
+{{end}}

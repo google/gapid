@@ -1,0 +1,85 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package memory
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"github.com/google/gapid/core/data/endian"
+	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/database"
+)
+
+type blob struct {
+	data []byte
+	id   id.ID
+}
+
+func (r *blob) Get(ctx log.Context, offset uint64, out []byte) error {
+	copy(out, r.data[offset:])
+	return nil
+}
+
+func (r *blob) ResourceID(ctx log.Context) (id.ID, error) {
+	if !r.id.IsValid() {
+		ident, err := database.Store(ctx, r.data)
+		if err != nil {
+			return id.ID{}, err
+		}
+		r.id = ident
+	}
+	return r.id, nil
+}
+
+func (r *blob) Size() uint64 {
+	return uint64(len(r.data))
+}
+
+func (r *blob) Slice(rng Range) Slice {
+	return Blob(r.data[rng.First() : rng.Last()+1])
+}
+
+func (r *blob) ValidRanges() RangeList {
+	return RangeList{Range{Size: r.Size()}}
+}
+
+func (r *blob) String() string {
+	return fmt.Sprintf("Blob[% x]", r.data)
+}
+
+func (r *blob) NewReader(ctx log.Context) io.Reader {
+	return bytes.NewReader(r.data)
+}
+
+// Blob returns a read-only Slice that wraps data.
+func Blob(data []byte) Slice {
+	return &blob{data: data}
+}
+
+// Data returns a read-only Slice that contains the encoding of data.
+func Data(layout *device.MemoryLayout, data ...interface{}) Slice {
+	buf := &bytes.Buffer{}
+	w := endian.Writer(buf, layout.GetEndian())
+	for _, d := range data {
+		if _, err := Write(w, layout, d); err != nil {
+			panic(err)
+		}
+	}
+	return Blob(buf.Bytes())
+}

@@ -1,0 +1,97 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the name of the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CmdName"}}
+  {{AssertType $ "Function"}}
+  {{$ | CommandName}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits 1 if $Command has been indirected on $.IndirectOn
+  Eg: @indirect("foo", "bar") will emit 1 iff $.IndirectOn is "foo" or "bar"
+-------------------------------------------------------------------------------
+*/}}
+{{define "IsIndirected"}}
+  {{AssertType $.Command    "Function"    }}
+  {{AssertType $.IndirectOn "string"      }}
+  {{$a := GetAnnotation $.Command "indirect"}}
+  {{if $a}}{{if Contains $.IndirectOn $a.Arguments}}1{{end}}{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the last element in the indirect list of the command.
+  Eg: @indirect("foo", "bar") will emit "bar"
+  If no @indirect annotation is present emits nothing
+-------------------------------------------------------------------------------
+*/}}
+{{define "FinalIndirection"}}
+  {{$a := GetAnnotation $ "indirect"}}
+  {{if $a}}{{index (Reverse $a.Arguments) 0}}{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the last element in the indirect list of the command.
+  Eg: @indirect("foo", "bar") will emit "bar"
+  If no @indirect annotation is present emits nothing
+-------------------------------------------------------------------------------
+*/}}
+{{define "InitialIndirection"}}
+  {{$a := GetAnnotation $ "indirect"}}
+  {{if $a}}{{index ($a.Arguments) 0}}{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+   Takes a string of the form "PrefixRestOfName" and returns everything except
+   for the prefix. "RestOfName"
+-------------------------------------------------------------------------------
+*/}}
+{{define "RemoveUpperPrefix"}}
+  {{AssertType $ "string"}}
+  {{print (Tail 1 (SplitPascalCase $))}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  ExternalAPI returns the API that owns the semantic node if different from
+  this API. If the node is part of the same API then an empty string is
+  returned.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ExternalAPI"}}
+  {{if IsOwned $}}
+    {{if IsAPI $.Owner}}
+      {{if ne $.Owner.Name (Global "API")}}
+        {{/* type belongs in a different package... */}}
+        {{$.Owner.Name}}
+      {{end}}
+    {{end}}
+  {{end}}
+{{end}}
+

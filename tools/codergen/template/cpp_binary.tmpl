@@ -1,0 +1,295 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{define "Cpp.IncludeType"}}
+  {{File.Include (print "<core/cc/coder/" (index (File.ModuleOf .).Directives "cpp") ".h>") }}
+{{end}}
+
+{{define "Cpp.Include.Primitive"}}{{end}}
+
+{{define "Cpp.Include.Struct"}}
+  {{template "Cpp.IncludeType" .}}
+{{end}}
+
+{{define "Cpp.Include.Interface"}}
+  {{template "Cpp.IncludeType" .}}
+{{end}}
+
+{{define "Cpp.Include.Variant"}}
+  {{template "Cpp.IncludeType" .}}
+{{end}}
+
+{{define "Cpp.Include.Pointer"}}
+  {{template "Cpp.Include" .Type}}
+{{end}}
+
+{{define "Cpp.Include.Array"}}
+  {{template "Cpp.Include" .ValueType}}
+{{end}}
+
+{{define "Cpp.Include.Slice"}}
+  {{template "Cpp.Include" .ValueType}}
+  {{File.Include "<core/cc/vector.h>"}}
+{{end}}
+
+{{define "Cpp.Include.Map"}}
+  {{template "Cpp.Include" .KeyType}}
+  {{template "Cpp.Include" .ValueType}}
+  {{File.Include "<core/cc/map.h>"}}
+{{end}}
+
+{{define "Cpp.Include"}}{{end}}
+
+{{define "Cpp.Type#gfxapi.ID"}}::core::Id{{end}}
+{{define "Cpp.Type#gfxapi.Char"}}char{{end}}
+{{define "Cpp.Type#id.ID"}}::core::Id{{end}}
+{{define "Cpp.Type#bool"}}bool{{end}}
+{{define "Cpp.Type#int8"}}int8_t{{end}}
+{{define "Cpp.Type#uint8"}}uint8_t{{end}}
+{{define "Cpp.Type#int16"}}int16_t{{end}}
+{{define "Cpp.Type#uint16"}}uint16_t{{end}}
+{{define "Cpp.Type#int32"}}int32_t{{end}}
+{{define "Cpp.Type#uint32"}}uint32_t{{end}}
+{{define "Cpp.Type#int64"}}int64_t{{end}}
+{{define "Cpp.Type#uint64"}}uint64_t{{end}}
+{{define "Cpp.Type#size"}}size_val{{end}}
+{{define "Cpp.Type#float32"}}float{{end}}
+{{define "Cpp.Type#float64"}}double{{end}}
+{{define "Cpp.Type#string"}}const char*{{end}}
+{{define "Cpp.Type.Struct"}}{{.String | File.TypeName}}{{end}}
+{{define "Cpp.Type.Interface"}}::core::Encodable*{{end}}
+{{define "Cpp.Type.Variant"}}::core::Encodable*{{end}}
+{{define "Cpp.Type.Pointer"}}{{Call "Cpp.Type" .Type}}*{{end}}
+{{define "Cpp.Type.Array.Alias"}}{{TrimPackage .Alias}}{{end}}
+{{define "Cpp.Type.Array"}}::core::StaticArray<{{Call "Cpp.Type" .ValueType}}, {{.Size}}>{{end}}
+{{define "Cpp.Type.Slice"}}::core::Vector<{{Call "Cpp.Type" .ValueType}}>{{end}}
+{{define "Cpp.Type.Map"}}::core::Map<{{Call "Cpp.Type" .KeyType}}, {{Call "Cpp.Type" .ValueType}}>{{end}}
+
+{{define "Cpp.ParamType"}}{{Call "Cpp.Type" .}}{{end}}
+{{define "Cpp.ParamType#gfxapi.ID"}}const ::core::Id&{{end}}
+{{define "Cpp.ParamType#id.ID"}}const ::core::Id&{{end}}
+{{define "Cpp.ParamType.Array"}}const ::core::StaticArray<{{Call "Cpp.Type" .ValueType}}, {{.Size}}>&{{end}}
+{{define "Cpp.ParamType.Slice"}}const {{Call "Cpp.Type" .}}&{{end}}
+{{define "Cpp.ParamType.Map"}}const {{Call "Cpp.Type" .}}&{{end}}
+
+{{define "Cpp.Method#ID"}}Id{{end}}
+{{define "Cpp.Method"}}{{.}}{{end}}
+
+{{define "Cpp.Constructor"}}
+  {{if len .Fields}}{{.Name | File.TypeName}}() = default;¶{{end}}
+  {{.Name | File.TypeName}}(
+    {{range $index, $field := .Fields}}
+      {{if $index}}, {{end}}{{Call "Cpp.ParamType" $field.Type}} {{$field.Name}}
+    {{end}}
+  )»»
+  {{range $index, $field := .Fields}}
+    ¶{{if $index}},{{else}}:{{end}} m{{.Name}}({{.Name}})
+  {{end}}
+  ««•{}¶
+{{end}}
+
+{{define "Cpp.HeaderEncoder"}}
+  virtual void Encode(Encoder* e) const
+  {{if gt (len .Fields) 3}}
+  ;¶
+  {{else}}
+  {»¶
+      {{range .Fields}}
+        {{Call "Cpp.Encode" (Var .Type "this->m" .Name)}}¶
+      {{end}}
+  «}¶
+  {{end}}
+{{end}}
+
+{{define "Cpp.Encoder"}}
+  {{if gt (len .Fields) 3}}
+  void {{.Name | File.TypeName}}::Encode(Encoder* e) const {»¶
+      {{range .Fields}}
+        {{Call "Cpp.Encode" (Var .Type "this->m" .Name)}}¶
+      {{end}}
+  «}¶
+  {{end}}
+{{end}}
+
+{{define "Cpp.Encode.Primitive"}}e->{{Call "Cpp.Method" .Type.Method}}({{.Name}});{{end}}
+{{define "Cpp.Encode.Struct"}}e->Struct({{.Name}});{{end}}
+{{define "Cpp.Encode.Pointer"}}e->Object({{.Name}});{{end}}
+{{define "Cpp.Encode.Interface"}}e->Object({{.Name}});{{end}}
+{{define "Cpp.Encode.Variant"}}e->Variant({{.Name}});{{end}}
+
+{{define "Cpp.Encode.Slice#byte"}}
+  e->Uint32({{.Name}}.count());¶
+  e->Data({{.Name}}.data(), {{.Name}}.count());
+{{end}}
+
+{{define "Cpp.Encode.Slice#uint8"}}
+  e->Uint32({{.Name}}.count());¶
+  e->Data({{.Name}}.data(), {{.Name}}.count());
+{{end}}
+
+{{define "Cpp.Encode.Slice"}}
+  e->Uint32({{.Name}}.count());¶
+  for (auto v : {{.Name}}) {»¶
+    {{Call "Cpp.Encode" (Var .Type.ValueType "v")}}¶
+  «}
+{{end}}
+
+{{define "Cpp.Encode.Map"}}
+  e->Uint32({{.Name}}.count());¶
+  for (auto v : {{.Name}}) {»¶
+    {{Call "Cpp.Encode" (Var .Type.KeyType "v.key")}}¶
+    {{Call "Cpp.Encode" (Var .Type.ValueType "v.value")}}¶
+  «}
+{{end}}
+
+{{define "Cpp.Encode.Array#byte"}}
+  e->Data({{.Name}}, {{.Type.Size}});
+{{end}}
+
+{{define "Cpp.Encode.Array#uint8"}}
+  e->Data({{.Name}}, {{.Type.Size}});
+{{end}}
+
+{{define "Cpp.Encode.Array"}}
+  for (int i = 0; i < {{.Type.Size}}; i++) {»¶
+    {{Call "Cpp.Encode" (Var .Type.ValueType .Name "[i]")}}¶
+  «}
+{{end}}
+
+{{define "Cpp.Schema.Primitive"}}new schema::Primitive{"{{.Name}}", schema::Primitive::{{.Method}}}{{end}}
+{{define "Cpp.Schema.Struct"}}new schema::Struct{ {{.String | File.TypeName}}::StaticSchema()}{{end}}
+{{define "Cpp.Schema.Pointer"}}new schema::Pointer{ {{Call "Cpp.Schema" .Type}} }{{end}}
+{{define "Cpp.Schema.Interface"}}new schema::Interface{"{{.Name}}"}{{end}}
+{{define "Cpp.Schema.Variant"}}new schema::Variant{"{{.Name}}"}{{end}}
+{{define "Cpp.Schema.Any"}}new schema::Any{}{{end}}
+{{define "Cpp.Schema.Slice"}}new schema::Slice{"{{.Alias}}", {{Call "Cpp.Schema" .ValueType}}}{{end}}
+{{define "Cpp.Schema.Array"}}new schema::Array{"{{.Alias}}", {{Call "Cpp.Schema" .ValueType}}, {{.Size}}}{{end}}
+{{define "Cpp.Schema.Map"}}new schema::Map{"{{.Alias}}", {{Call "Cpp.Schema" .KeyType}}, {{Call "Cpp.Schema" .ValueType}}}{{end}}
+
+{{define "Cpp.HeaderSchema"}}
+    {{if File.Directive "Schema" true}}
+    virtual const schema::Entity* Schema() const {»¶
+        return StaticSchema();¶
+    «}¶
+    static const schema::Entity* StaticSchema();
+    {{end}}
+{{end}}
+
+{{define "Cpp.SchemaMethod"}}
+    {{if File.Directive "Schema" true}}
+    const schema::Entity* {{.Name | File.TypeName}}::StaticSchema() {»¶
+        static schema::Entity entity {»¶
+            "{{.Package}}",¶
+            "{{.Display}}",¶
+            "{{.Identity}}",¶
+            "{{.Version}}",¶
+            {»¶
+                {{range .Fields}}
+                    schema::Field{"{{.Declared}}", {{Call "Cpp.Schema" .Type}}},¶
+                {{end}}
+            «},¶
+        «};¶
+        return &entity;¶
+    «}¶
+    {{end}}
+{{end}}
+
+{{define "HeaderGuard"}}CORE_CODER_{{.Namespace | Upper}}_H{{end}}
+
+{{define "Cpp.Header"}}
+  §{{$.Copyright}}§
+  ¶
+  ¶
+  ¶
+  #ifndef {{template "HeaderGuard" .}}¶
+  #define {{template "HeaderGuard" .}}¶
+  ¶
+  {{if and (File.Directive "Schema" true) (len .Structs)}}
+    #include "core/cc/schema.h"¶
+    {{range .Structs}}
+      {{range .Fields}}
+        {{Call "Cpp.Include" .Type}}
+      {{end}}
+    {{end}}
+    {{range $namespace := .Includes}}
+      #include {{$namespace}}¶
+    {{end}}
+  {{end}}
+  ¶
+  #include "core/cc/static_array.h"
+  ¶
+  namespace core {¶
+  ¶
+  class Encodable;¶
+  class Encoder;¶
+  ¶
+  namespace coder {¶
+  namespace {{.Namespace}} {»¶
+  {{range .Structs}}
+      class {{.Name | File.TypeName}}: public Encodable {¶
+      public:»¶
+    {{template "Cpp.Constructor" .}}
+    {{template "Cpp.HeaderEncoder" .}}
+    {{template "Cpp.HeaderSchema" .}}
+    ¶
+    {{range .Fields}}
+      {{Call "Cpp.Type" .Type}} m{{.Name}};¶
+    {{end}}
+    «
+      };¶
+      ¶
+  {{end}}
+  ¶
+  ¶
+  «} // namespace {{.Namespace}}¶
+  } // namespace coder¶
+  }  // namespace core¶
+  ¶
+  #endif // {{template "HeaderGuard" .}}¶
+{{end}}
+
+{{define "Cpp.File"}}
+  §{{$.Copyright}}§
+  ¶
+  ¶
+  ¶
+  ¶
+  {{if and (File.Directive "Schema" true) (len .Structs)}}
+#include "{{.Namespace}}.h"¶
+
+#include "core/cc/schema.h"¶
+  {{end}}
+  namespace core {¶
+  ¶
+  class Encodable;¶
+  class Encoder;¶
+  ¶
+  namespace coder {¶
+  namespace {{.Namespace}} {¶
+  {{range .Structs}}
+    // {{.Entity.Name}}:¶
+    // {{.Entity.Signature}}¶
+    {{template "Cpp.Encoder" .}}
+    {{template "Cpp.SchemaMethod" .}}
+    ¶
+  {{end}}
+  ¶
+  ¶
+  } // namespace {{.Namespace}}¶
+  } // namespace coder¶
+  }  // namespace core¶
+  ¶
+{{end}}

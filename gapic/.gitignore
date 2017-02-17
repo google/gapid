@@ -1,0 +1,9 @@
+**/gapic.iml
+/.idea
+/bin
+/out
+gapic.jar
+hs_err_pid*.log
+
+# Proto generated files.
+src/service/com/google/gapid/proto

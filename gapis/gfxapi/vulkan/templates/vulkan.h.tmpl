@@ -1,0 +1,346 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Include "vulkan_common.tmpl"}}
+{{Macro "DefineGlobals" $}}
+{{$ | Macro "vulkan.h" | Reflow 4 | Write "vulkan.h"}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Entry point
+-------------------------------------------------------------------------------
+*/}}
+{{define "vulkan.h"}}
+#ifndef __vulkan_h_
+#define __vulkan_h_ 1
+¶
+#ifdef __cplusplus
+extern "C" {«
+#endif
+¶
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Based off of the original vulkan.h header file which has the following
+// license.
+//
+// 
+//  Copyright (c) 2015-2016 The Khronos Group Inc.
+// 
+//  Permission is hereby granted, free of charge, to any person obtaining a
+//  copy of this software and/or associated documentation files (the
+//  "Materials"), to deal in the Materials without restriction, including
+//  without limitation the rights to use, copy, modify, merge, publish,
+//  distribute, sublicense, and/or sell copies of the Materials, and to
+//  permit persons to whom the Materials are furnished to do so, subject to
+//  the following conditions:
+// 
+//  The above copyright notice and this permission notice shall be included
+//  in all copies or substantial portions of the Materials.
+// 
+//  THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+//  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+//  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+//  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+//  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+//  MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+¶
+#define VK_VERSION_1_0 1
+#include "vk_platform.h"
+¶
+#define VK_MAKE_VERSION(major, minor, patch) (((major) << 22) | ((minor) << 12) | (patch))
+#define VK_ENUM_RANGE(...)
+¶
+// Vulkan API version supported by this file
+#define VK_API_VERSION_1_0 \
+    VK_MAKE_VERSION({{Global "VERSION_MAJOR"}}, {{Global "VERSION_MINOR"}}, {{Global "VERSION_PATCH"}})
+¶
+#define VK_VERSION_MAJOR(version) ((uint32_t)(version) >> 22)
+#define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
+#define VK_VERSION_PATCH(version) ((uint32_t)(version) & 0xfff)
+¶
+#define VK_NULL_HANDLE 0
+¶
+#define VK_DEFINE_HANDLE(obj) typedef struct object##_T* obj;
+¶
+#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__) || defined(_M_X64) || defined(__ia64) || defined (_M_IA64) || defined(__aarch64__) || defined(__powerpc64__)
+  #define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef struct object##_T *object;
+#else
+  #define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef uint64_t object;
+#endif
+¶
+#define VK_LOD_CLAMP_NONE         1000.0f
+#define VK_REMAINING_MIP_LEVELS   (~0U)
+#define VK_REMAINING_ARRAY_LAYERS (~0U)
+#define VK_WHOLE_SIZE             (~0ULL)
+#define VK_ATTACHMENT_UNUSED      (~0U)
+#define VK_TRUE                           1
+#define VK_FALSE                          0
+#define VK_QUEUE_FAMILY_IGNORED           (~0U)
+#define VK_SUBPASS_EXTERNAL               (~0U)
+#define VK_MAX_PHYSICAL_DEVICE_NAME_SIZE  256
+#define VK_UUID_SIZE                      16
+#define VK_MAX_MEMORY_TYPES               32
+#define VK_MAX_MEMORY_HEAPS               16
+#define VK_MAX_EXTENSION_NAME_SIZE        256
+#define VK_MAX_DESCRIPTION_SIZE           256
+{{range $d := $.Definitions}}
+  {{if IsNumericValue $d.Expression}}
+      #define {{$d.Name}}  {{$d.Expression}}
+  {{else}}
+      #define {{$d.Name}}  "{{$d.Expression}}"
+  {{end}}
+{{end}}
+¶
+{{range $i, $p := $.Pseudonyms}}
+  {{if GetAnnotation $p "dispatchHandle"}}VK_DEFINE_HANDLE({{$p.Name}})
+  {{else if GetAnnotation $p "nonDispatchHandle"}}VK_DEFINE_NON_DISPATCHABLE_HANDLE({{$p.Name}})
+  {{end}}
+{{end}}
+¶
+{{range $i, $p := $.Pseudonyms}}
+  {{if GetAnnotation $p "dispatchHandle"}}§
+  {{else if GetAnnotation $p "nonDispatchHandle"}}§
+  {{else if not (GetAnnotation $p "external")}}typedef {{Node "Type" $p.To}} {{$p.Name}};
+  {{end}}
+{{end}}
+¶
+//-------------------------------------------------------------------------------------------------
+// Enumerations
+¶
+  {{range $e := $.Enums}}
+    {{if not $e.IsBitfield}}
+      {{Macro "Enum" $e}}
+    {{end}}
+  {{end}}
+¶
+// ------------------------------------------------------------------------------------------------
+// Flags
+¶
+  {{range $e := $.Enums}}
+    {{if $e.IsBitfield}}
+      {{Macro "Bitfield" $e}}
+    {{end}}
+  {{end}}
+¶
+// ------------------------------------------------------------------------------------------------
+// Vulkan structures
+¶
+  {{/* Function pointers */}}
+  {{range $f := AllCommands $}}
+    {{if GetAnnotation $f "pfn"}}
+      {{Macro "FunctionTypedef" $f}}
+    {{end}}
+  {{end}}
+¶
+  {{range $c := $.Classes}}
+    {{if not (GetAnnotation $c "internal")}}
+      {{Macro "Struct" $c}}
+    {{end}}
+  {{end}}
+¶
+// ------------------------------------------------------------------------------------------------
+// API functions
+¶
+  {{range $f := AllCommands $}}
+    {{if not (GetAnnotation $f "pfn")}}
+      {{Macro "FunctionTypedef" $f}}
+    {{end}}
+  {{end}}
+¶
+#ifndef VK_NO_PROTOTYPES
+¶
+  {{range $f := AllCommands $}}
+    {{if not (GetAnnotation $f "pfn")}}
+      {{Macro "FunctionDecl" $f}}
+    {{end}}
+  {{end}}
+¶
+#endif
+¶
+#ifdef __cplusplus
+}
+#endif
+¶
+#endif
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C declaration for the specified bitfield.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Bitfield"}}
+  {{AssertType $ "Enum"}}
+
+  {{if $.Entries}}
+  typedef enum {
+  {{range $b := $.Entries}}
+    {{Macro "BitfieldEntryName" $b}} = {{printf "0x%.8X" $b.Value}}, {{Macro "Docs" $b.Docs}}
+  {{end}}
+  } {{Macro "EnumName" $}};
+  {{end}}
+  ¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C declaration for the specified enum.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Enum"}}
+  {{AssertType $ "Enum"}}
+
+  {{Macro "Docs" $.Docs}}
+  typedef enum {
+    {{range $i, $e := $.Entries}}
+      {{Macro "EnumEntry" $e}} = {{printf "0x%.8X" $e.Value}}, {{Macro "Docs" $e.Docs}}
+    {{end}}
+  ¶
+    {{$name  := Macro "EnumName" $ | TrimRight "ABCDEFGHIJKLMNOQRSTUVWXYZ" | SplitPascalCase | Upper | JoinWith "_"}}
+    {{if GetAnnotation $ "enumMaxOnly"}}
+      VK_MAX_ENUM({{$name | SplitOn "VK_"}})
+    {{else}}
+      {{$first := Macro "EnumFirstEntry" $ | SplitOn $name | TrimLeft "_"}}
+      {{$last  := Macro "EnumLastEntry" $  | SplitOn $name | TrimLeft "_"}}
+      VK_ENUM_RANGE({{$name | SplitOn "VK_"}}, {{$first}}, {{$last}})
+    {{end}}
+  } {{Macro "EnumName" $}};
+  ¶
+{{end}}
+
+{{/*
+------------------------------------------------------------------------------
+  Emits a list of extensions intercepted by vulkan::driver.
+------------------------------------------------------------------------------
+*/}}
+{{define "EnabledExtensions"}}
+VK_KHR_surface
+VK_KHR_swapchain
+VK_KHR_display
+VK_KHR_display_swapchain
+VK_KHR_xlib_surface
+VK_KHR_xcb_surface
+VK_KHR_wayland_surface
+VK_KHR_mir_surface
+VK_KHR_android_surface
+VK_KHR_win32_surface
+VK_EXT_debug_report
+VK_ANDROID_native_buffer
+{{end}}
+
+{{define "IsExtensionSupported"}}
+  {{$ext_name := index $.Arguments 0}}
+  {{$filters := Strings (Macro "EnabledExtensions") | SplitOn "\n"}}
+
+  {{range $f := $filters}}
+    {{if eq $ext_name $f}}true{{end}}
+  {{end}}
+{{end}}
+
+{{define "IsSupported"}}
+  {{$ext := GetAnnotation $ "extension"}}
+  {{if $ext}}
+    {{Macro "IsExtensionSupported" $ext}}
+  {{else}}
+    true
+  {{end}}
+{{end}}
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C declaration for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Struct"}}
+  {{AssertType $ "Class"}}
+  {{if (Macro "IsSupported" $)}}
+    {{Macro "Docs" $.Docs}}
+    typedef {{Macro "StructType" $}} {
+      {{ForEach $.Fields "Field" | JoinWith "\n"}}
+    } {{Macro "StructName" $}};
+  {{end}}
+  ¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C declaration for the specified class field.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Field"}}
+  {{AssertType $ "Field"}}
+
+  {{Node "Type" $}} {{$.Name}}§
+  {{Macro "ArrayPostfix" (TypeOf $)}}; {{Macro "Docs" $.Docs}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits either 'struct' or 'union' for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "StructType"}}
+  {{AssertType $ "Class"}}
+
+  {{if GetAnnotation $ "union"}}union{{else}}struct{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C function pointer typedef declaration for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "FunctionTypedef"}}
+  {{AssertType $ "Function"}}
+  {{if (Macro "IsSupported" $)}}
+    typedef {{Node "Type" $.Return}} (VKAPI_PTR* {{Macro "FunctionPtrName" $}})({{Macro "Parameters" $}});
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C function declaration for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "FunctionDecl"}}
+  {{AssertType $ "Function"}}
+
+  {{if (Macro "IsSupported" $)}}
+    {{if not (GetAnnotation $ "fptr")}}
+      {{Macro "Docs" $.Docs}}
+      VKAPI_ATTR {{Node "Type" $.Return}} VKAPI_CALL {{Macro "FunctionName" $}} (
+        »{{Macro "LineSeparatedParameters" $}}«
+      );
+    {{end}}
+  {{end}}
+{{end}}

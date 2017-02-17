@@ -1,0 +1,389 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+type int   EGLBoolean
+type void* EGLClientBuffer
+type void* EGLConfig
+type void* EGLContext
+type void* EGLDisplay
+type void* EGLImageKHR
+type int   EGLint
+type int   EGLNativeDisplayType
+type void* EGLNativePixmapType
+type void* EGLNativeWindowType
+type void* EGLSurface
+type void* EGLSyncKHR
+type u64   EGLTimeKHR
+
+@replay_custom_value
+type void* GLeglImageOES
+
+sub void ObserveAttribList(const EGLint* attrib_list) {
+  // TODO: Replace with proper loop control flow
+  if (attrib_list != null) {
+    done := make!bool(1)
+    done[0] = false
+    for i in (0 .. 256) {
+      if !(done[0]) {
+        pair := attrib_list[i * 2:(i * 2) + 2]
+        if as!EGLenum(pair[0]) != EGL_NONE {
+          _ = pair[1]
+        } else {
+          done[0] = true
+        }
+      }
+    }
+  }
+}
+
+map!(EGLContext, ref!Context) EGLContexts
+map!(EGLImageKHR, ref!AndroidNativeBufferExtra) EGLImages
+
+@no_replay
+cmd EGLBoolean eglGetConfigAttrib(EGLDisplay display,
+                                  EGLConfig  config,
+                                  EGLint     attribute,
+                                  EGLint*    value) {
+  value[0] = ?
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglBindAPI(EGLenum api) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglBindTexImage(EGLDisplay display, EGLSurface surface, EGLint buffer) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglChooseConfig(EGLDisplay    display,
+                               EGLint const* attrib_list,
+                               EGLConfig*    configs,
+                               EGLint        config_size,
+                               EGLint*       num_config) {
+  ObserveAttribList(attrib_list)
+  num := ?
+  num_config[0] = num
+  if configs != null {
+    write(configs[0:num])
+  }
+  return ?
+}
+
+@no_replay
+cmd EGLint eglClientWaitSyncKHR(EGLDisplay dpy,
+                                EGLSyncKHR sync,
+                                EGLint     sync_flags,
+                                EGLTimeKHR timeout) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglCopyBuffers(EGLDisplay          display,
+                              EGLSurface          surface,
+                              EGLNativePixmapType native_pixmap) {
+  return ? // TODO
+}
+
+@custom @no_replay
+///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglCreateContext.xhtml
+cmd EGLContext eglCreateContext(EGLDisplay    display,
+                                EGLConfig     config,
+                                EGLContext    share_context,
+                                EGLint*       attrib_list) {
+  ObserveAttribList(as!EGLint const*(attrib_list))
+  context := ?
+  EGLContexts[context] = CreateContext()
+  return context
+}
+
+@no_replay
+cmd EGLSurface eglCreatePbufferFromClientBuffer(EGLDisplay      display,
+                                                EGLenum         buftype,
+                                                EGLClientBuffer buffer,
+                                                EGLConfig       config,
+                                                EGLint const*   attrib_list) {
+  ObserveAttribList(attrib_list)
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLSurface eglCreatePbufferSurface(EGLDisplay    display,
+                                       EGLConfig     config,
+                                       EGLint const* attrib_list) {
+  ObserveAttribList(attrib_list)
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLSurface eglCreatePixmapSurface(EGLDisplay          display,
+                                      EGLConfig           config,
+                                      EGLNativePixmapType native_pixmap,
+                                      EGLint const*       attrib_list) {
+  ObserveAttribList(attrib_list)
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLSyncKHR eglCreateSyncKHR(EGLDisplay    dpy,
+                                EGLenum       type,
+                                const EGLint* attrib_list) {
+  ObserveAttribList(attrib_list)
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLSurface eglCreateWindowSurface(EGLDisplay          display,
+                                      EGLConfig           config,
+                                      EGLNativeWindowType native_window,
+                                      EGLint const*       attrib_list) {
+  ObserveAttribList(attrib_list)
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglDestroyContext(EGLDisplay display, EGLContext context) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglDestroySurface(EGLDisplay display, EGLSurface surface) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglDestroySyncKHR(EGLDisplay dpy, EGLSyncKHR sync) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglGetConfigs(EGLDisplay display,
+                             EGLConfig* configs,
+                             EGLint     config_size,
+                             EGLint*    num_config) {
+  num := ?
+  num_config[0] = num
+  if configs != null {
+    write(configs[0:num])
+  }
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLContext eglGetCurrentContext() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLDisplay eglGetCurrentDisplay() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLSurface eglGetCurrentSurface(EGLint readdraw) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLDisplay eglGetDisplay(EGLNativeDisplayType native_display) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLint eglGetError() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglGetSyncAttribKHR(EGLDisplay dpy, EGLSyncKHR sync, EGLint attribute, EGLint* value) {
+  return ? // TODO
+}
+
+@no_replay
+///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglInitialize.xhtml
+cmd EGLBoolean eglInitialize(EGLDisplay dpy, EGLint* major, EGLint* minor) {
+  if major != null {
+    major[0] = ?
+  }
+  if major != null {
+    minor[0] = ?
+  }
+  return ?
+}
+
+@custom @no_replay
+///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglMakeCurrent.xhtml
+cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
+                              EGLSurface draw,
+                              EGLSurface read,
+                              EGLContext context) {
+  if (context == null) {
+    SetContext(null)
+  } else if context in EGLContexts {
+      ctx := EGLContexts[context]
+      SetContext(ctx)
+      if !ctx.Info.Initialized {
+        ApplyStaticContextState(ctx, GetEGLStaticContextState(display, draw, context))
+      }
+      ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))
+    } else {
+      staticState := GetEGLStaticContextState(display, draw, context)
+      dynamicState := GetEGLDynamicContextState(display, draw, context)
+      if (dynamicState != null) && (staticState != null) {
+        // We don't know anything about this context, but it existed at trace
+        // time. In this situation it is likely that the context was created
+        // before the interceptor was injected. The best thing we can do in this
+        // situation is to build the context now.
+        _ = newMsg(SEVERITY_WARNING, new!WARN_UNKNOWN_CONTEXT(id: as!u64(context)))
+        ctx := CreateContext()
+        EGLContexts[context] = ctx
+        ApplyStaticContextState(ctx, staticState)
+        ApplyDynamicContextState(ctx, dynamicState)
+        SetContext(ctx)
+      } else if context != null {
+          // TODO: onEGLError(EGL_BAD_CONTEXT)
+          _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
+          abort
+        }
+    }
+  return ?
+}
+
+@no_replay
+cmd EGLenum eglQueryAPI() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglQueryContext(EGLDisplay display, EGLContext context, EGLint attribute, EGLint* value) {
+  value[0] = ?
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglQuerySurface(EGLDisplay display, EGLSurface surface, EGLint attribute, EGLint* value) {
+  value[0] = ?
+  return ?
+}
+
+@no_replay
+cmd const char* eglQueryString(EGLDisplay display, EGLint name) {
+  // TODO: EGL_CLIENT_APIS, EGL_VENDOR, EGL_VERSION, or EGL_EXTENSIONS
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglReleaseTexImage(EGLDisplay display,
+                                  EGLSurface surface,
+                                  EGLint     buffer) {
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglReleaseThread() {
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglSignalSyncKHR(EGLDisplay dpy, EGLSyncKHR sync, EGLenum mode) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglSurfaceAttrib(EGLDisplay display,
+                                EGLSurface surface,
+                                EGLint     attribute,
+                                EGLint     value) {
+  return ? // TODO
+}
+
+@no_replay
+@EndOfFrame
+///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglSwapBuffers.xhtml
+cmd EGLBoolean eglSwapBuffers(EGLDisplay display, void* surface) {
+  return ?
+}
+
+@no_replay
+@EndOfFrame
+///https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_swap_buffers_with_damage.txt
+cmd EGLBoolean eglSwapBuffersWithDamageKHR(EGLDisplay dpy,
+                                           EGLSurface surface,
+                                           EGLint*    rects,
+                                           EGLint     n_rects) {
+  read(rects[0:n_rects * as!EGLint(4)])
+  return ?
+}
+
+@no_replay
+cmd EGLBoolean eglSwapInterval(EGLDisplay display, EGLint interval) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglTerminate(EGLDisplay display) {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglWaitClient() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglWaitGL() {
+  return ? // TODO
+}
+
+@no_replay
+cmd EGLBoolean eglWaitNative(EGLint engine) {
+  // TODO: EGL_CORE_NATIVE_ENGINE
+  return ? // TODO
+}
+
+@Doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", "EGL_KHR_image_base")
+@no_replay
+cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
+                                  EGLContext      ctx,
+                                  EGLenum         target,
+                                  EGLClientBuffer buffer,
+                                  const EGLint*   attrib_list) {
+  requiresExtension(EGL_KHR_image_base)
+  ObserveAttribList(attrib_list)
+  img := ?
+  if target == EGL_NATIVE_BUFFER_ANDROID {
+    EGLImages[img] = GetAndroidNativeBufferExtra(as!void*(buffer))
+  }
+  // TODO
+  return img
+}
+
+@Doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", "EGL_KHR_image_base")
+@no_replay
+cmd EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR image) {
+  requiresExtension(EGL_KHR_image_base)
+  // TODO
+  return ?
+}
+
+@Doc("https://www.khronos.org/registry/egl/extensions/ANDROID/EGL_ANDROID_create_native_client_buffer.txt", "EGL_ANDROID_create_native_client_buffer")
+cmd EGLClientBuffer eglCreateNativeClientBufferANDROID(const EGLint* attrib_list) {
+  requiresExtension(EGL_ANDROID_create_native_client_buffer)
+  ObserveAttribList(attrib_list)
+  // TODO
+  return ?
+}

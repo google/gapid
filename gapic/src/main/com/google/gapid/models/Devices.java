@@ -1,0 +1,182 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.google.gapid.models;
+
+import static java.util.logging.Level.SEVERE;
+import static java.util.stream.Collectors.toList;
+
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.Server.GapisInitException;
+import com.google.gapid.proto.device.Device;
+import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpclib.futures.FutureController;
+import com.google.gapid.rpclib.futures.SingleInFlight;
+import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.Rpc.Result;
+import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.server.Client;
+import com.google.gapid.util.Events;
+import com.google.gapid.util.Paths;
+import com.google.gapid.util.UiErrorCallback;
+
+import org.eclipse.swt.widgets.Shell;
+
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
+
+public class Devices {
+  protected static final Logger LOG = Logger.getLogger(Devices.class.getName());
+
+  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
+  private final FutureController rpcController = new SingleInFlight();
+  private final Shell shell;
+  private final Client client;
+  private Path.Device replayDevice;
+  private List<Device.Instance> devices;
+
+  public Devices(Shell shell, Client client, Capture capture) {
+    this.shell = shell;
+    this.client = client;
+
+    capture.addListener(new Capture.Listener() {
+      @Override
+      public void onCaptureLoadingStart() {
+        resetReplayDevice();
+      }
+
+      @Override
+      public void onCaptureLoaded(GapisInitException error) {
+        if (error == null) {
+          loadReplayDevice(capture.getCapture());
+        }
+      }
+    });
+  }
+
+  protected void resetReplayDevice() {
+    replayDevice = null;
+  }
+
+  protected void loadReplayDevice(Path.Capture capturePath) {
+    Rpc.listen(client.getDevicesForReplay(capturePath), rpcController,
+        new UiErrorCallback<List<Path.Device>, Path.Device, Void>(shell, LOG) {
+      @Override
+      protected ResultOrError<Path.Device, Void> onRpcThread(Result<List<Path.Device>> result) {
+        try {
+          List<Path.Device> devs = result.get();
+          return (devs == null || devs.isEmpty()) ? error(null) : success(devs.get(0));
+        } catch (RpcException | ExecutionException e) {
+          LOG.log(SEVERE, "LoadData error", e);
+          return error(null);
+        }
+      }
+
+      @Override
+      protected void onUiThreadSuccess(Path.Device result) {
+        updateReplayDevice(result);
+      }
+
+      @Override
+      protected void onUiThreadError(Void error) {
+        updateReplayDevice(null);
+      }
+    });
+  }
+
+  protected void updateReplayDevice(Path.Device newDevice) {
+    replayDevice = newDevice;
+    listeners.fire().onReplayDeviceChanged();
+  }
+
+  public boolean hasReplayDevice() {
+    return replayDevice != null;
+  }
+
+  public Path.Device getReplayDevice() {
+    return replayDevice;
+  }
+
+  public void loadDevices() {
+    Rpc.listen(Futures.transformAsync(client.getDevices(), paths -> {
+      List<ListenableFuture<Service.Value>> results = Lists.newArrayList();
+      for (Path.Device path : paths) {
+        results.add(client.get(Paths.device(path)));
+      }
+      return Futures.allAsList(results);
+    }), rpcController,
+        new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
+      @Override
+      protected ResultOrError<List<Device.Instance>, Void> onRpcThread(
+          Result<List<Service.Value>> result) throws RpcException, ExecutionException {
+        try {
+          return success(result.get().stream().map(Service.Value::getDevice).collect(toList()));
+        } catch (RpcException | ExecutionException e) {
+          LOG.log(SEVERE, "LoadData error", e);
+          return error(null);
+        }
+      }
+
+      @Override
+      protected void onUiThreadSuccess(List<Device.Instance> result) {
+        updateDevices(result);
+      }
+
+      @Override
+      protected void onUiThreadError(Void error) {
+        updateDevices(null);
+      }
+    });
+  }
+
+  protected void updateDevices(List<Device.Instance> newDevices) {
+    devices = newDevices;
+    listeners.fire().onCaptureDevicesLoaded();
+  }
+
+  public boolean isLoaded() {
+    return devices != null;
+  }
+
+  public List<Device.Instance> getAllDevices() {
+    return devices;
+  }
+
+  public List<Device.Instance> getCaptureDevices() {
+    // Only return Android devices.
+    return (devices == null) ? null : devices.stream().filter(Devices::isAndroid).collect(toList());
+  }
+
+  private static boolean isAndroid(Device.Instance device) {
+    return device.getConfiguration().getOS().getKind() == Device.OSKind.Android;
+  }
+
+  public void addListener(Listener listener) {
+    listeners.addListener(listener);
+  }
+
+  public void removeListener(Listener listener) {
+    listeners.removeListener(listener);
+  }
+
+  public static interface Listener extends Events.Listener {
+    public default void onReplayDeviceChanged() { /* empty */ }
+    public default void onCaptureDevicesLoaded() { /* empty */ }
+  }
+}

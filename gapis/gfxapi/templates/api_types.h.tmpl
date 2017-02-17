@@ -1,0 +1,295 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "cpp_common.tmpl"}}
+
+{{/* ---- Overrides ---- */}}
+{{Global "C++.EnumTypeOverride" "uint32_t"}}
+
+{{$filename := print (Global "API") "_types.h" }}
+{{$ | Macro "Types" | Reflow 4 | Write $filename}}
+
+{{define "Types"}}
+  {{AssertType $ "API"}}
+  {{Template "C++.Copyright"}}
+  {{$guard := print "GAPII_" (Upper (Global "API")) "_TYPES_H"}}
+¶
+  #ifndef {{$guard}}
+  #define {{$guard}}
+¶
+  #include "slice.h"
+  #include "to_encoder.h"
+¶
+  #include "core/cc/coder/{{Global "API"}}.h"
+  #include "core/cc/coder/memory.h"
+  #include "core/cc/scratch_allocator.h"
+  #include "core/cc/static_array.h"
+¶
+  #include <memory>
+  #include <string>
+  #include <unordered_map>
+  #include <vector>
+¶
+  #include <stdint.h>
+  #include <string.h>
+¶
+  namespace gapii {«
+  class CallObserver;
+¶
+  {{range $e := $.Enums}}
+    {{Template "DeclareType" $e}}
+  {{end}}
+  {{range $p := $.Pseudonyms}}
+    {{Template "DeclareType" $p}}
+  {{end}}
+  {{range $m := $.Maps}}
+    {{Template "DeclareType" $m}}
+  {{end}}
+  {{range $c := $.Classes}}
+    {{Template "DeclareType" $c}}
+  {{end}}
+¶
+
+  »} // namespace gapii
+¶
+  #endif // {{$guard}}
+¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ type declaration specified AST type if it hasn't already been
+  declared.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareType"}}
+  {{if not (IsBuiltin $)}}
+    {{$key  := printf "ApiType%vDeclared" $.Name}}
+    {{if not (Global $key)}}
+      {{Global $key "true"}}
+      {{     if IsClass       $}}{{Template "DeclareClass"     $}}
+      {{else if IsEnum        $}}{{Template "DeclareEnum"      $}}
+      {{else if IsMap         $}}{{Template "DeclareMap"       $}}
+      {{else if IsPseudonym   $}}{{Template "DeclarePseudonym" $}}
+      {{else if IsPointer     $}}{{Template "DeclareType"      $.To}}
+      {{else if IsReference   $}}{{Template "DeclareType"      $.To}}
+      {{else if IsStaticArray $}}{{Template "DeclareType"      $.ValueType}}
+      {{else if IsSlice       $}}
+      {{else}}{{Error "DeclareType does not support type '%T'" $}}
+      {{end}}
+¶
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the coder argument for the given field.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CoderField"}}
+  {{AssertType $ "Field"}}
+
+  {{Template "C++.CoderArgument" "Argument" $ "Allocator" "alloc"}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the declarations for all non-declared field types of the class followed
+  by the class declaration.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareClass"}}
+  {{AssertType $ "Class"}}
+  {{/* TODO: Remove this once closure support is in the API language */}}
+  {{$is_cmd_buffer := (eq $.Name "CommandBufferObject")}}
+  {{$is_shader_module := (eq $.Name "ShaderModuleObject")}}
+  {{$is_specialization_info := (eq $.Name "SpecializationInfo")}}
+  {{$is_update_buffer := (eq $.Name "RecreateUpdateBufferData")}}
+  {{range $f := $.Fields}}
+    {{Template "DeclareType" (TypeOf $f)}}
+  {{end}}
+
+  {{$serializable := GetAnnotation $ "serialize"}}
+  {{$name := Macro "C++.Type" $}}
+  class {{$name}} {
+    «public:»
+    {{if $serializable}}
+      typedef core::coder::{{Global "API"}}::{{$name}} CoderType;
+    {{end}}
+
+    {{if len $.Fields}}
+      inline {{$name}}()»»
+        {{$a := ForEach $.Fields "DeclareDefaultInitializer" | JoinWith "\n, "}}
+        {{if $a}}: {{$a}}{{end}}
+        ««§•{}
+
+      inline {{$name}}(§»
+        {{range $i, $f := $.Fields}}
+          {{if $i}}, §{{end}}
+          {{if (IsStaticArray (TypeOf $f))}}const §{{end}}
+          {{Template "C++.Type" $f}} {{$f.Name}}§
+        {{end}}
+        «)»»
+        {{$a := ForEach $.Fields "DeclareCopyInitializer" | JoinWith "\n, "}}
+        {{if $a}}: {{$a}}{{end}}
+        ««§•{}
+    {{end}}
+¶
+    {{if $serializable}}
+      inline CoderType encodeable(core::DefaultScratchAllocator& alloc) const {
+        return CoderType({{ForEach $.Fields "CoderField" | JoinWith ", "}});
+      }
+    {{end}}
+¶
+    {{range $f := $.Fields}}
+      {{Template "C++.Type" $f}} m{{$f.Name}};
+    {{end}}
+
+    {{if $is_cmd_buffer}}
+      std::vector<std::function<void(CallObserver* observer)>> commands;
+      std::vector<std::function<void(CallObserver* observer)>> recreateCommands;
+    {{end}}
+    {{if $is_shader_module}}
+      std::vector<uint32_t> shaderWords;
+    {{end}}
+    {{if $is_specialization_info}}
+      std::vector<uint8_t> specializationData;
+    {{end}}
+    {{if $is_update_buffer}}
+      std::vector<uint8_t> bufferData;
+    {{end}}
+  };
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a default initializer for the field.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareDefaultInitializer"}}
+  {{if IsNil $.Default}}
+    m{{$.Name}}({{Macro "C++.Null" (TypeOf $)}})
+  {{else}}
+    m{{$.Name}}({{Macro "C++.Read" $.Default}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a copy initializer if the element is not a static array.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareCopyInitializer"}}
+  m{{$.Name}}({{$.Name}})
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits enum entry declarations as a number of uint32_t constants.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareEnumEntries"}}
+  {{AssertType $ "Enum"}}
+
+  {{range $entry := $.Entries}}
+  static const uint32_t {{Template "C++.EnumEntryName" $entry}} = {{$entry.Value}};
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits an enum declaration as a number of uint32_t constants in a namespace.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareEnum"}}
+  {{AssertType $ "Enum"}}
+
+  namespace {{Template "C++.EnumName" $}} {
+    {{Template "DeclareEnumEntries" $}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits label declarations as a number of constants of the labeled type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareLabeledTypeLabels"}}
+  {{/* {{AssertType $ "Labeled"}} */}}
+
+  {{range $label := $.Labels}}
+  static const {{$.Name}} {{Template "C++.LabelName" $label}} = {{Template "C++.ReadNoCast" $label.Value}};
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a labeled type declaration as a number of constants in a namespace.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareLabeledType"}}
+  {{/* {{AssertType $ "Labeled"}} */}}
+
+  {{if $.Labels}}
+    namespace {{Template "C++.LabelNamespaceName" $}} {
+      {{Template "DeclareLabeledTypeLabels" $}}
+    }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the declaration of the pseudonym's target type (if it is not already
+  declared) followed by the pseudonym's typedef declaration.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclarePseudonym"}}
+  {{AssertType $ "Pseudonym"}}
+
+  {{Template "DeclareType" $.To}}
+
+  typedef {{Template "C++.Type" $.To}} {{Template "C++.Type" $}};
+
+  {{template "DeclareLabeledType" $}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the declaration of the map's key and value types (if it is not already
+  declared) followed by the map's declaration as a std::unordered_map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareMap"}}
+  {{AssertType $ "Map"}}
+
+  {{Template "DeclareType" $.KeyType}}
+  {{Template "DeclareType" $.ValueType}}
+
+  typedef std::unordered_map<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
+{{end}}

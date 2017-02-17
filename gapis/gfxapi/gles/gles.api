@@ -1,0 +1,700 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+api_index 1
+
+import "api/android_extension_pack.api"
+import "api/android_native.api"
+import "api/asynchronous_queries.api"
+import "api/buffer_objects.api"
+import "api/constants.api"
+import "api/egl.api"
+import "api/eglenum.api"
+import "api/debug.api"
+import "api/draw_commands.api"
+import "api/extensions.api"
+import "api/extras.api"
+import "api/fragment_operations.api"
+import "api/framebuffer.api"
+import "api/glbitfield.api"
+import "api/glenum.api"
+import "api/other.api"
+import "api/image_format.api"
+import "api/programs_and_shaders.api"
+import "api/rasterization.api"
+import "api/state_queries.api"
+import "api/synchronization.api"
+import "api/textures_and_samplers.api"
+import "api/transform_feedback.api"
+import "api/vertex_arrays.api"
+import "types.api"
+import "synthetic.api"
+import "gles10.api"
+import "../../messages/messages.api"
+
+extern void mapMemory(u8[] slice)
+extern void unmapMemory(u8[] slice)
+
+extern void onGlError(GLenum v)
+
+sub void minRequiredVersion(GLint requiredMajor, GLint requiredMinor) {
+  ctx := GetContext()
+  major := ctx.Constants.MajorVersion
+  minor := ctx.Constants.MinorVersion
+  if (major < requiredMajor) || ((major == requiredMajor) && (minor < requiredMinor)) {
+    // TODO: We might need to trigger different errors depending on the circumstances.
+    glErrorInvalidOperationMsg(new!ERR_WRONG_CONTEXT_VERSION(
+        reqmajor: as!u32(requiredMajor),reqminor:  as!u32(requiredMinor),
+        major:    as!u32(major),minor:             as!u32(minor)))
+  }
+}
+sub void supportsBits(GLbitfield seenBits, GLbitfield validBits) {
+  if (seenBits & validBits) != seenBits { glErrorInvalidValue() }
+}
+
+sub void requiresExtension(ExtensionId ext) { }
+sub void requiresExtension2(ExtensionId ext, ExtensionId ext2) { }
+sub void requiresExtension3(ExtensionId ext, ExtensionId ext2, ExtensionId ext3) { }
+sub void glErrorInvalidEnum(GLenum param) {
+  onGlError(GL_INVALID_ENUM)
+  // TODO: be more specific in callers
+  _ = newMsg(SEVERITY_ERROR, new!ERR_INVALID_ENUM_VALUE(value: 0,variable:  "variable"))
+  abort
+}
+
+sub void glErrorInvalidValue() {
+  onGlError(GL_INVALID_VALUE)
+  _ = newMsg(SEVERITY_ERROR, new!ERR_INVALID_VALUE(value: "value",variable:  "variable"))
+  abort
+}
+
+sub void glErrorInvalidOperation() {
+  glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION(operation: "operation"))
+}
+
+sub void glErrorInvalidOperationMsg(message m) {
+  onGlError(GL_INVALID_OPERATION)
+  _ = newMsg(SEVERITY_ERROR, m)
+  abort
+}
+
+sub void glErrorInvalidValueMsg(message m) {
+  onGlError(GL_INVALID_VALUE)
+  _ = newMsg(SEVERITY_ERROR, m)
+  abort
+}
+
+sub T max!T(T a, T b) {
+  return switch a > b {
+    case true:  a
+    case false: b
+  }
+}
+
+enum ExtensionId {
+  GL_AMD_compressed_ATC_texture                   = 1,
+  GL_AMD_performance_monitor                      = 2,
+  GL_ANGLE_framebuffer_blit                       = 3,
+  GL_ANGLE_framebuffer_multisample                = 4,
+  GL_ANGLE_instanced_arrays                       = 5,
+  GL_ANGLE_translated_shader_source               = 6,
+  GL_APPLE_copy_texture_levels                    = 7,
+  GL_APPLE_framebuffer_multisample                = 8,
+  GL_APPLE_sync                                   = 9,
+  GL_EXT_base_instance                            = 10,
+  GL_EXT_blend_func_extended                      = 11,
+  GL_EXT_buffer_storage                           = 12,
+  GL_EXT_copy_image                               = 13,
+  GL_EXT_debug_label                              = 14,
+  GL_EXT_debug_marker                             = 15,
+  GL_EXT_discard_framebuffer                      = 16,
+  GL_EXT_disjoint_timer_query                     = 17,
+  GL_EXT_draw_buffers                             = 18,
+  GL_EXT_draw_buffers_indexed                     = 19,
+  GL_EXT_draw_elements_base_vertex                = 20,
+  GL_EXT_draw_instanced                           = 21,
+  GL_EXT_geometry_shader                          = 22,
+  GL_EXT_instanced_arrays                         = 23,
+  GL_EXT_map_buffer_range                         = 24,
+  GL_EXT_multi_draw_arrays                        = 25,
+  GL_EXT_multi_draw_indirect                      = 26,
+  GL_EXT_multisampled_render_to_texture           = 27,
+  GL_EXT_multiview_draw_buffers                   = 28,
+  GL_EXT_occlusion_query_boolean                  = 29,
+  GL_EXT_primitive_bounding_box                   = 30,
+  GL_EXT_raster_multisample                       = 31,
+  GL_EXT_robustness                               = 32,
+  GL_EXT_separate_shader_objects                  = 33,
+  GL_EXT_sparse_texture                           = 34,
+  GL_EXT_tessellation_shader                      = 35,
+  GL_EXT_texture_border_clamp                     = 36,
+  GL_EXT_texture_buffer                           = 37,
+  GL_EXT_texture_filter_minmax                    = 38,
+  GL_EXT_texture_storage                          = 39,
+  GL_EXT_texture_view                             = 40,
+  GL_IMG_multisampled_render_to_texture           = 41,
+  GL_IMG_user_clip_plane                          = 42,
+  GL_INTEL_framebuffer_CMAA                       = 43,
+  GL_INTEL_performance_query                      = 44,
+  GL_KHR_blend_equation_advanced                  = 45,
+  GL_KHR_debug                                    = 46,
+  GL_KHR_robustness                               = 47,
+  GL_NV_bindless_texture                          = 48,
+  GL_NV_blend_equation_advanced                   = 49,
+  GL_NV_conditional_render                        = 50,
+  GL_NV_conservative_raster                       = 51,
+  GL_NV_copy_buffer                               = 52,
+  GL_NV_coverage_sample                           = 53,
+  GL_NV_draw_buffers                              = 54,
+  GL_NV_draw_instanced                            = 55,
+  GL_NV_fence                                     = 56,
+  GL_NV_fragment_coverage_to_color                = 57,
+  GL_NV_framebuffer_blit                          = 58,
+  GL_NV_framebuffer_mixed_samples                 = 59,
+  GL_NV_framebuffer_multisample                   = 60,
+  GL_NV_instanced_arrays                          = 61,
+  GL_NV_internalformat_sample_query               = 62,
+  GL_NV_non_square_matrices                       = 63,
+  GL_NV_path_rendering                            = 64,
+  GL_NV_polygon_mode                              = 65,
+  GL_NV_read_buffer                               = 66,
+  GL_NV_sample_locations                          = 67,
+  GL_NV_viewport_array                            = 68,
+  GL_OES_blend_equation_separate                  = 69,
+  GL_OES_blend_func_separate                      = 70,
+  GL_OES_blend_subtract                           = 71,
+  GL_OES_copy_image                               = 72,
+  GL_OES_draw_buffers_indexed                     = 73,
+  GL_OES_draw_elements_base_vertex                = 74,
+  GL_OES_draw_texture                             = 75,
+  GL_OES_EGL_image                                = 76,
+  GL_OES_fixed_point                              = 77,
+  GL_OES_framebuffer_object                       = 78,
+  GL_OES_geometry_shader                          = 79,
+  GL_OES_get_program_binary                       = 80,
+  GL_OES_mapbuffer                                = 81,
+  GL_OES_matrix_palette                           = 82,
+  GL_OES_point_size_array                         = 83,
+  GL_OES_primitive_bounding_box                   = 84,
+  GL_OES_query_matrix                             = 85,
+  GL_OES_sample_shading                           = 86,
+  GL_OES_single_precision                         = 87,
+  GL_OES_tessellation_shader                      = 88,
+  GL_OES_texture_3D                               = 89,
+  GL_OES_texture_border_clamp                     = 90,
+  GL_OES_texture_buffer                           = 91,
+  GL_OES_texture_cube_map                         = 92,
+  GL_OES_texture_half_float                       = 93,
+  GL_OES_texture_storage_multisample_2d_array     = 94,
+  GL_OES_texture_view                             = 95,
+  GL_OES_vertex_array_object                      = 96,
+  GL_OES_vertex_half_float                        = 97,
+  GL_OVR_multiview                                = 98,
+  GL_QCOM_alpha_test                              = 99,
+  GL_QCOM_driver_control                          = 100,
+  GL_QCOM_extended_get                            = 101,
+  GL_QCOM_extended_get2                           = 102,
+  GL_QCOM_tiled_rendering                         = 103,
+  GL_OES_compressed_ETC1_RGB8_texture             = 104,
+  GL_EXT_texture_filter_anisotropic               = 105,
+  GL_EXT_texture_norm16                           = 106,
+  GL_EXT_texture_sRGB_decode                      = 107,
+  GL_OES_depth_texture                            = 108,
+  GL_EXT_sRGB_write_control                       = 109,
+  GL_EXT_texture_rg                               = 110,
+  GL_EXT_texture_compression_s3tc                 = 111,
+  GL_OES_packed_depth_stencil                     = 112,
+  GL_EXT_texture_format_BGRA8888                  = 113,
+  GL_OES_viewport_array                           = 114,
+  GL_EXT_shader_pixel_local_storage2              = 115,
+  GL_EXT_clear_texture                            = 116,
+  GL_NV_conservative_raster_pre_snap_triangles    = 118,
+  GL_EXT_draw_transform_feedback                  = 119,
+  GL_IMG_framebuffer_downsample                   = 123,
+  GL_OVR_multiview_multisampled_render_to_texture = 124,
+  GL_IMG_bindless_texture                         = 125,
+  GL_NV_gpu_shader5                               = 126,
+  GL_EXT_polygon_offset_clamp                     = 127,
+  GL_NV_viewport_swizzle                          = 128,
+  GL_EXT_window_rectangles                        = 129,
+  GL_OES_EGL_image_external                       = 130,
+
+  EGL_KHR_image_base                      = 400,
+  EGL_ANDROID_create_native_client_buffer = 401,
+
+  ANDROID_image_native_buffer = 500,
+}
+
+sub s32 min(s32 a, s32 b) {
+  return switch (a < b) {
+    case true:  a
+    case false: b
+  }
+}
+
+@internal
+class Color {
+  GLfloat Red
+  GLfloat Green
+  GLfloat Blue
+  GLfloat Alpha
+}
+
+@internal
+class Rect {
+  GLint   X
+  GLint   Y
+  GLsizei Width
+  GLsizei Height
+}
+
+@internal type GLboolean[4] Vec4b
+@internal type GLint[1]     Vec1i
+@internal type GLint[2]     Vec2i
+@internal type GLint[3]     Vec3i
+@internal type GLint[4]     Vec4i
+@internal type GLuint[2]    Vec2u
+@internal type GLuint[3]    Vec3u
+@internal type GLuint[4]    Vec4u
+@internal type GLfloat[1]   Vec1f
+@internal type GLfloat[2]   Vec2f
+@internal type GLfloat[3]   Vec3f
+@internal type GLfloat[4]   Vec4f
+@internal type Vec2f[2]     Mat2f
+@internal type Vec3f[2]     Mat2x3f
+@internal type Vec4f[2]     Mat2x4f
+@internal type Vec2f[3]     Mat3x2f
+@internal type Vec3f[3]     Mat3f
+@internal type Vec4f[3]     Mat3x4f
+@internal type Vec2f[4]     Mat4x2f
+@internal type Vec3f[4]     Mat4x3f
+@internal type Vec4f[4]     Mat4f
+
+/////////////////////////////////////////////////////////////////
+// State
+/////////////////////////////////////////////////////////////////
+
+@replay_remap type GLuint RenderbufferId
+@replay_remap type GLuint TextureId
+@replay_remap type GLuint FramebufferId
+@replay_remap type GLuint BufferId
+@replay_remap type GLuint ShaderId
+@replay_remap type GLuint ProgramId
+@replay_remap type GLuint VertexArrayId
+@replay_remap type GLuint QueryId
+@replay_remap type GLint  UniformLocation
+type GLuint               UniformIndex
+type GLuint               AttributeLocation
+type GLuint               AttributeIndex
+type GLuint               SamplerId
+type GLuint               PipelineId
+@replay_remap type GLuint UniformBlockId
+type GLuint               TransformFeedbackId
+
+@replay_custom_value type const void* IndicesPointer
+@replay_custom_value type const void* VertexPointer
+@replay_custom_value type const void* TexturePointer
+@replay_custom_value type const void* BufferDataPointer
+
+@internal
+class DefaultTextureObjects {
+  ref!Texture Texture2d
+  ref!Texture Texture2dArray
+  ref!Texture Texture2dMultisample
+  ref!Texture Texture2dMultisampleArray
+  ref!Texture Texture3d
+  ref!Texture TextureBuffer
+  ref!Texture TextureCubeMap
+  ref!Texture TextureCubeMapArray
+  ref!Texture TextureExternalOes
+}
+
+@internal
+class Objects {
+  map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
+  DefaultTextureObjects                            DefaultTextures
+  map!(TextureId, ref!Texture)                     Textures
+  map!(FramebufferId, ref!Framebuffer)             Framebuffers
+  map!(BufferId, ref!Buffer)                       Buffers
+  map!(SamplerId, ref!Sampler)                     Samplers
+  map!(ShaderId, ref!Shader)                       Shaders
+  map!(ProgramId, ref!Program)                     Programs
+  @unused map!(PipelineId, ref!Pipeline)           Pipelines
+  map!(VertexArrayId, ref!VertexArray)             VertexArrays
+  map!(QueryId, ref!Query)                         Queries
+  map!(TransformFeedbackId, ref!TransformFeedback) TransformFeedbacks
+  map!(GLsync, ref!SyncObject)                     SyncObjects
+}
+
+@internal type u32 ContextID
+
+@internal
+class ContextCreationInfo {
+  bool         Initialized
+  @unused bool PreserveBuffersOnSwap
+}
+
+@internal
+class BufferBindings {
+  BufferId                    ArrayBuffer
+  BufferId                    AtomicCounterBuffer
+  map!(GLuint, BufferBinding) AtomicCounterBuffers
+  BufferId                    CopyReadBuffer
+  BufferId                    CopyWriteBuffer
+  BufferId                    DispatchIndirectBuffer
+  BufferId                    DrawIndirectBuffer
+  BufferId                    PixelPackBuffer
+  BufferId                    PixelUnpackBuffer
+  BufferId                    ShaderStorageBuffer
+  map!(GLuint, BufferBinding) ShaderStorageBuffers
+  BufferId                    TextureBuffer
+  BufferId                    TransformFeedbackBuffer
+  BufferId                    UniformBuffer
+  map!(GLuint, BufferBinding) UniformBuffers
+}
+
+@internal
+class Context {
+  @unused ContextID                                     Identifier
+  ContextCreationInfo                                   Info
+  DebugState                                            Debug
+  RasterizationState                                    Rasterization
+  FragmentOperationsState                               FragmentOperations
+  FramebufferState                                      Framebuffer
+  FramebufferId                                         BoundReadFramebuffer
+  FramebufferId                                         BoundDrawFramebuffer
+  RenderbufferId                                        BoundRenderbuffer
+  BufferBindings                                        BoundBuffers
+  ProgramId                                             BoundProgram
+  TransformFeedbackId                                   BoundTransformFeedback
+  VertexArrayId                                         BoundVertexArray
+  @unused map!(AttributeLocation, VertexAttributeValue) VertexAttributes
+  map!(GLenum, ref!TextureUnit)                         TextureUnits
+  map!(GLuint, ImageUnit)                               ImageUnits
+  GLenum                                                ActiveTextureUnit      = GL_TEXTURE0
+  PixelStorageState                                     PixelStorage
+  MiscellaneousState                                    Miscellaneous
+  map!(GLenum, QueryId)                                 ActiveQueries
+  Objects                                               Instances
+  Constants                                             Constants
+}
+
+type u64 ThreadID
+
+// Globals
+ContextID                   NextContextID
+ThreadID                    CurrentThread
+map!(ThreadID, ref!Context) Contexts
+
+sub ref!Context GetContext() {
+  context := Contexts[CurrentThread]
+  if context == null {
+    _ = newMsg(SEVERITY_ERROR, new!ERR_NO_CONTEXT_BOUND(thread: as!u64(CurrentThread)))
+    abort
+  }
+  return context
+}
+
+sub void SetContext(ref!Context context) {
+  Contexts[CurrentThread] = context
+}
+
+sub ref!Context CreateContext() {
+  identifier := NextContextID
+  NextContextID = NextContextID + 1
+
+  ctx := new!Context()
+  ctx.Identifier = identifier
+
+  return ctx
+}
+
+sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticState) {
+  if (staticState != null) {
+    color_id := as!RenderbufferId(0xffffffff)
+    depth_id := as!RenderbufferId(0xfffffffe)
+    stencil_id := as!RenderbufferId(0xfffffffd)
+
+    // First initialization for the context.
+    ctx.Constants = staticState.Constants
+
+    ctx.Instances.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
+    ctx.Instances.Buffers[0] = new!Buffer()
+    ctx.Instances.Renderbuffers[0] = new!Renderbuffer()
+    ctx.Instances.TransformFeedbacks[0] = new!TransformFeedback()
+    ctx.Instances.VertexArrays[0] = NewVertexArray(ctx)
+    ctx.TextureUnits[GL_TEXTURE0] = new!TextureUnit()
+
+    ctx.Instances.DefaultTextures.Texture2d = new!Texture(Kind: GL_TEXTURE_2D)
+    ctx.Instances.DefaultTextures.Texture2dArray = new!Texture(Kind: GL_TEXTURE_2D_ARRAY)
+    ctx.Instances.DefaultTextures.Texture2dMultisample = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE)
+    ctx.Instances.DefaultTextures.Texture2dMultisampleArray = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+    ctx.Instances.DefaultTextures.Texture3d = new!Texture(Kind: GL_TEXTURE_3D)
+    ctx.Instances.DefaultTextures.TextureBuffer = new!Texture(Kind: GL_TEXTURE_BUFFER)
+    ctx.Instances.DefaultTextures.TextureCubeMap = new!Texture(Kind: GL_TEXTURE_CUBE_MAP)
+    ctx.Instances.DefaultTextures.TextureCubeMapArray = new!Texture(Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
+    ctx.Instances.DefaultTextures.TextureExternalOes = new!Texture(Kind: GL_TEXTURE_EXTERNAL_OES)
+
+    ctx.Instances.Renderbuffers[color_id] = new!Renderbuffer()
+    ctx.Instances.Renderbuffers[depth_id] = new!Renderbuffer()
+    ctx.Instances.Renderbuffers[stencil_id] = new!Renderbuffer()
+
+    backbuffer := ctx.Instances.Framebuffers[0]
+    backbuffer.ColorAttachments[0] = FramebufferAttachment(
+      ObjectName:          as!GLuint(color_id),
+      ObjectType:          GL_RENDERBUFFER,
+      TextureCubeMapFace:  GL_NONE,
+    )
+
+    backbuffer.DepthAttachment = FramebufferAttachment(
+      ObjectName:          as!GLuint(depth_id),
+      ObjectType:          GL_RENDERBUFFER,
+      TextureCubeMapFace:  GL_NONE,
+    )
+
+    backbuffer.StencilAttachment = FramebufferAttachment(
+      ObjectName:          as!GLuint(stencil_id),
+      ObjectType:          GL_RENDERBUFFER,
+      TextureCubeMapFace:  GL_NONE,
+    )
+
+    ctx.BoundDrawFramebuffer = 0
+    ctx.BoundReadFramebuffer = 0
+
+    for i in 0 .. as!AttributeLocation(staticState.Constants.MaxVertexAttribs) {
+      v := make!Vec4f(1)
+      v[0] = Vec4f(0.0, 0.0, 0.0, 1.0)
+      ctx.VertexAttributes[i] = VertexAttributeValue(Value: as!u8[](v))
+    }
+
+    for i in 0 .. staticState.Constants.MaxCombinedTextureImageUnits {
+      name := GL_TEXTURE0 + as!GLenum(i)
+      ctx.TextureUnits[name] = new!TextureUnit()
+    }
+
+    for i in 0 .. as!GLuint(staticState.Constants.MaxImageUnits) {
+      ctx.ImageUnits[i] = ImageUnit()
+    }
+
+    for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
+      ctx.FragmentOperations.Blend[i] = BlendState()
+      ctx.Framebuffer.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+    }
+
+    ctx.Info.Initialized = true
+  }
+}
+
+sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState) {
+  if (dynamicState != null) {
+    backbuffer := ctx.Instances.Framebuffers[0]
+    color_id := as!RenderbufferId(backbuffer.ColorAttachments[0].ObjectName)
+    depth_id := as!RenderbufferId(backbuffer.DepthAttachment.ObjectName)
+    stencil_id := as!RenderbufferId(backbuffer.StencilAttachment.ObjectName)
+
+    color_buffer := ctx.Instances.Renderbuffers[color_id]
+    color_buffer.Width = dynamicState.BackbufferWidth
+    color_buffer.Height = dynamicState.BackbufferHeight
+    color_buffer.InternalFormat = dynamicState.BackbufferColorFmt
+    ctx.Instances.Renderbuffers[color_id] = color_buffer
+
+    depth_buffer := ctx.Instances.Renderbuffers[depth_id]
+    depth_buffer.Width = dynamicState.BackbufferWidth
+    depth_buffer.Height = dynamicState.BackbufferHeight
+    depth_buffer.InternalFormat = dynamicState.BackbufferDepthFmt
+    ctx.Instances.Renderbuffers[depth_id] = depth_buffer
+
+    stencil_buffer := ctx.Instances.Renderbuffers[stencil_id]
+    stencil_buffer.Width = dynamicState.BackbufferWidth
+    stencil_buffer.Height = dynamicState.BackbufferHeight
+    stencil_buffer.InternalFormat = dynamicState.BackbufferStencilFmt
+    ctx.Instances.Renderbuffers[stencil_id] = stencil_buffer
+
+    if dynamicState.ResetViewportScissor {
+      ctx.FragmentOperations.Scissor.Box.Width = dynamicState.BackbufferWidth
+      ctx.FragmentOperations.Scissor.Box.Height = dynamicState.BackbufferHeight
+      ctx.Rasterization.Viewport.Width = dynamicState.BackbufferWidth
+      ctx.Rasterization.Viewport.Height = dynamicState.BackbufferHeight
+    }
+
+    ctx.Info.PreserveBuffersOnSwap = dynamicState.PreserveBuffersOnSwap
+  }
+}
+
+/////////////////////////////////////////////////////////////////
+// GLX APIs
+/////////////////////////////////////////////////////////////////
+type void* GLXContext
+type void* GLXDrawable
+type int   Bool
+
+map!(GLXContext, ref!Context) GLXContexts
+
+@custom @no_replay
+cmd GLXContext glXCreateContext(void* dpy, void* vis, GLXContext shareList, bool direct) {
+  context := ?
+  GLXContexts[context] = CreateContext()
+  return context
+}
+
+@custom @no_replay
+cmd GLXContext glXCreateNewContext(void* display, void* fbconfig, u32 type, GLXContext shared, bool direct) {
+  context := ?
+  GLXContexts[context] = CreateContext()
+  return context
+}
+
+@custom @no_replay
+cmd Bool glXMakeContextCurrent(void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
+  SetContext(GLXContexts[ctx])
+  return ?
+}
+
+@no_replay
+cmd Bool glXMakeCurrent(void* display, GLXDrawable drawable, GLXContext ctx) {
+  SetContext(GLXContexts[ctx])
+  return ?
+}
+
+@no_replay
+@EndOfFrame
+cmd void glXSwapBuffers(void* display, GLXDrawable drawable) {
+}
+
+@no_replay
+cmd int glXQueryDrawable(void* display, GLXDrawable draw, int attribute, int* value) {
+  value[0] = ?
+  return ?
+}
+
+/////////////////////////////////////////////////////////////////
+// WGL APIs
+/////////////////////////////////////////////////////////////////
+type void* HGLRC
+type void* HDC
+type int   BOOL
+
+map!(HGLRC, ref!Context) WGLContexts
+
+@custom @no_replay
+///http://msdn.microsoft.com/en-us/library/windows/desktop/dd374379(v=vs.85).aspx
+cmd HGLRC wglCreateContext(HDC hdc) {
+  context := ?
+  WGLContexts[context] = CreateContext()
+  return context
+}
+
+@custom @no_replay
+///http://www.opengl.org/registry/specs/ARB/wgl_create_context.txt
+cmd HGLRC wglCreateContextAttribsARB(HDC hdc, HGLRC hShareContext, int* attribList) {
+  context := ?
+  WGLContexts[context] = CreateContext()
+  return context
+}
+
+@custom @no_replay
+///http://msdn.microsoft.com/en-us/library/windows/desktop/dd374387(v=vs.85).aspx
+cmd BOOL wglMakeCurrent(HDC hdc, HGLRC hglrc) {
+  SetContext(WGLContexts[hglrc])
+  return ?
+}
+
+@no_replay
+@EndOfFrame
+///http://msdn.microsoft.com/en-us/library/dd369060(v=vs.85)
+cmd void wglSwapBuffers(HDC hdc) { }
+
+/////////////////////////////////////////////////////////////////
+// CGL APIs
+/////////////////////////////////////////////////////////////////
+type int   CGLError
+type void* CGLTexelFormatObj
+type void* CGLContextObj
+type void* CGSConnectionID
+type s32   CGSWindowID
+type s32   CGSSurfaceID
+
+map!(CGLContextObj, ref!Context) CGLContexts
+
+@custom @no_replay
+///http://developer.apple.com/library/mac/documentation/GraphicsImaging/Reference/CGL_OpenGL/index.html#//apple_ref/c/func/CGLCreateContext
+cmd CGLError CGLCreateContext(CGLTexelFormatObj pix, CGLContextObj share, CGLContextObj* ctx) {
+  context := ?
+  CGLContexts[context] = CreateContext()
+  ctx[0] = context
+  return context
+}
+
+@custom @no_replay
+cmd CGLError CGLSetCurrentContext(CGLContextObj ctx) {
+  SetContext(CGLContexts[ctx])
+  return ?
+}
+
+@no_replay
+cmd int CGLGetSurface(CGLContextObj ctx, CGSConnectionID* cid, CGSWindowID* wid, CGSSurfaceID* sid) {
+  cid[0] = ?
+  wid[0] = ?
+  sid[0] = ?
+  return ?
+}
+
+@no_replay
+cmd int CGSGetSurfaceBounds(CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid, f64* bounds) {
+  write(bounds[0:4])
+  return ?
+}
+
+@no_replay
+@EndOfFrame
+cmd CGLError CGLFlushDrawable(CGLContextObj ctx) {
+  return ?
+}
+
+
+/////////////////////////////////////////////////////////////////
+// GLES 2 APIs
+/////////////////////////////////////////////////////////////////
+
+sub u32 IndexSize(GLenum indices_type) {
+  return switch (indices_type) {
+    case GL_UNSIGNED_BYTE:  1
+    case GL_UNSIGNED_SHORT: 2
+    case GL_UNSIGNED_INT:   4
+  }
+}
+
+@internal class u32Limits { u32 first u32 last }
+extern u32Limits IndexLimits(u8* indices, GLenum indices_type, u32 offset, u32 count)
+
+/////////////////////////////////////////////////////////////////
+// Desktop GL
+/////////////////////////////////////////////////////////////////
+
+// EXT_disjoint_timer_query
+// TODO: Always use glGetQueryObjectui64vEXT?
+
+cmd void glGetQueryObjecti64v(QueryId query, GLenum parameter, s64* value) {
+  value[0] = ?
+}
+
+cmd void glGetQueryObjectui64v(QueryId query, GLenum parameter, u64* value) {
+  value[0] = ?
+}
+
+cmd void glTexStorage1D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
+}
+
+cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
+}

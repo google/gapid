@@ -1,0 +1,394 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+type GLuint DrawBufferIndex
+
+@internal
+class ScissorState {
+  // Table 21.13: Pixel Operations
+  GLboolean Test = GL_FALSE
+  Rect      Box             // TODO: init
+}
+
+@internal
+class StencilState {
+  // Table 21.13: Pixel Operations
+  GLboolean Test              = GL_FALSE
+  GLenum    Func              = GL_ALWAYS
+  GLuint    ValueMask         = 0xFFFFFFFF
+  GLint     Ref               = 0
+  GLenum    Fail              = GL_KEEP
+  GLenum    PassDepthFail     = GL_KEEP
+  GLenum    PassDepthPass     = GL_KEEP
+  GLenum    BackFunc          = GL_ALWAYS
+  GLuint    BackValueMask     = 0xFFFFFFFF
+  GLint     BackRef           = 0
+  GLenum    BackFail          = GL_KEEP
+  GLenum    BackPassDepthFail = GL_KEEP
+  GLenum    BackPassDepthPass = GL_KEEP
+}
+
+@internal
+class DepthState {
+  // Table 21.13: Pixel Operations
+  GLboolean Test = GL_FALSE
+  GLenum    Func = GL_LESS
+}
+
+@internal
+class BlendState {
+  // Table 21.13: Pixel Operations
+  GLboolean Enabled       = GL_FALSE
+  GLenum    SrcRgb        = GL_ONE
+  GLenum    SrcAlpha      = GL_ONE
+  GLenum    DstRgb        = GL_ZERO
+  GLenum    DstAlpha      = GL_ZERO
+  GLenum    EquationRgb   = GL_FUNC_ADD
+  GLenum    EquationAlpha = GL_FUNC_ADD
+}
+
+@internal
+class FragmentOperationsState {
+  ScissorState                      Scissor
+  StencilState                      Stencil
+  DepthState                        Depth
+  map!(DrawBufferIndex, BlendState) Blend   // One per draw buffer.
+
+  // Table 21.13: Pixel Operations
+  Color     BlendColor           // TODO: = Color(0.0,0.0,0.0,0.0)
+  GLboolean Dither     = GL_TRUE
+
+  GLboolean FramebufferSrgb = GL_TRUE
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendBarrier.xhtml","OpenGL ES 3.2")
+cmd void glBlendBarrier() {
+  minRequiredVersion(3, 2)
+  BlendBarrier()
+}
+
+sub void BlendBarrier() {
+  // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendColor.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendColor.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendColor.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendColor.xhtml","OpenGL ES 3.2")
+cmd void glBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  ctx.FragmentOperations.BlendColor = Color(red, green, blue, alpha)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendEquation.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendEquation.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendEquation.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquation.xhtml","OpenGL ES 3.2")
+cmd void glBlendEquation(GLenum equation) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  SetBlendEquation(0, len(ctx.FragmentOperations.Blend), equation, equation)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendEquationSeparate.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendEquationSeparate.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendEquationSeparate.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquationSeparate.xhtml","OpenGL ES 3.2")
+cmd void glBlendEquationSeparate(GLenum rgb, GLenum alpha) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  SetBlendEquation(0, len(ctx.FragmentOperations.Blend), rgb, alpha)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquationSeparate.xhtml","OpenGL ES 3.2")
+cmd void glBlendEquationSeparatei(DrawBufferIndex buf, GLenum modeRGB, GLenum modeAlpha) {
+  minRequiredVersion(3, 2)
+  BlendEquationSeparatei(buf, modeRGB, modeAlpha)
+}
+
+sub void BlendEquationSeparatei(DrawBufferIndex buf, GLenum modeRGB, GLenum modeAlpha) {
+  SetBlendEquation(buf, 1, modeRGB, modeAlpha)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquation.xhtml","OpenGL ES 3.2")
+cmd void glBlendEquationi(DrawBufferIndex buf, GLenum mode) {
+  minRequiredVersion(3, 2)
+  BlendEquationi(buf, mode)
+}
+
+sub void BlendEquationi(DrawBufferIndex buf, GLenum mode) {
+  SetBlendEquation(buf, 1, mode, mode)
+}
+
+sub void CheckBlendEquation(GLenum equation) {
+  switch (equation) {
+    case GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_SUBTRACT: {
+      minRequiredVersion(2, 0)
+    }
+    case GL_MAX, GL_MIN: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(equation)
+    }
+  }
+}
+
+sub void SetBlendEquation(DrawBufferIndex first_buffer, s32 buffer_count, GLenum rgb, GLenum alpha) {
+  CheckBlendEquation(rgb)
+  CheckBlendEquation(alpha)
+  ctx := GetContext()
+  for i in (first_buffer .. (first_buffer + as!DrawBufferIndex(buffer_count))) {
+    blend := ctx.FragmentOperations.Blend[i]
+    blend.EquationRgb = rgb
+    blend.EquationAlpha = alpha
+    ctx.FragmentOperations.Blend[i] = blend
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendFunc.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendFunc.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendFunc.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFunc.xhtml","OpenGL ES 3.2")
+cmd void glBlendFunc(GLenum src_factor, GLenum dst_factor) {
+  minRequiredVersion(1, 0)
+  ctx := GetContext()
+  SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor, dst_factor, src_factor, dst_factor)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendFuncSeparate.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendFuncSeparate.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendFuncSeparate.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFuncSeparate.xhtml","OpenGL ES 3.2")
+cmd void glBlendFuncSeparate(GLenum src_factor_rgb,
+                             GLenum dst_factor_rgb,
+                             GLenum src_factor_alpha,
+                             GLenum dst_factor_alpha) {
+  minRequiredVersion(2, 0)
+  ctx := GetContext()
+  SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor_rgb, dst_factor_rgb, src_factor_alpha, dst_factor_alpha)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFuncSeparate.xhtml","OpenGL ES 3.2")
+cmd void glBlendFuncSeparatei(DrawBufferIndex buf,
+                              GLenum          srcRGB,
+                              GLenum          dstRGB,
+                              GLenum          srcAlpha,
+                              GLenum          dstAlpha) {
+  minRequiredVersion(3, 2)
+  BlendFuncSeparatei(buf, srcRGB, dstRGB, srcAlpha, dstAlpha)
+}
+
+sub void BlendFuncSeparatei(DrawBufferIndex buf, GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha) {
+  SetBlendFunc(buf, 1, srcRGB, dstRGB, srcAlpha, dstAlpha)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFunc.xhtml","OpenGL ES 3.2")
+cmd void glBlendFunci(DrawBufferIndex buf, GLenum src, GLenum dst) {
+  minRequiredVersion(3, 2)
+  BlendFunci(buf, src, dst)
+}
+
+sub void BlendFunci(DrawBufferIndex buf, GLenum src, GLenum dst) {
+  SetBlendFunc(buf, 1, src, dst, src, dst)
+}
+
+sub void CheckBlendFunc(GLenum factor) {
+  switch (factor) {
+    case GL_CONSTANT_ALPHA, GL_CONSTANT_COLOR, GL_DST_ALPHA, GL_DST_COLOR, GL_ONE,
+        GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_COLOR, GL_ONE_MINUS_DST_ALPHA,
+        GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR, GL_SRC_ALPHA,
+        GL_SRC_ALPHA_SATURATE, GL_SRC_COLOR, GL_ZERO: {
+      minRequiredVersion(2, 0)
+    }
+    default: {
+      glErrorInvalidEnum(factor)
+    }
+  }
+}
+
+sub void SetBlendFunc(DrawBufferIndex first_buffer, s32    buffer_count,
+                      GLenum          srcRgb,       GLenum dstRgb, GLenum srcAlpha, GLenum dstAlpha) {
+  CheckBlendFunc(srcRgb)
+  CheckBlendFunc(dstRgb)
+  CheckBlendFunc(srcAlpha)
+  CheckBlendFunc(dstAlpha)
+  ctx := GetContext()
+  for i in (first_buffer .. (first_buffer + as!DrawBufferIndex(buffer_count))) {
+    blend := ctx.FragmentOperations.Blend[i]
+    blend.SrcRgb = srcRgb
+    blend.DstRgb = dstRgb
+    blend.SrcAlpha = srcAlpha
+    blend.DstAlpha = dstAlpha
+    ctx.FragmentOperations.Blend[i] = blend
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthFunc.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthFunc.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthFunc.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthFunc.xhtml","OpenGL ES 3.2")
+cmd void glDepthFunc(GLenum function) {
+  minRequiredVersion(1, 0)
+  switch (function) {
+    case GL_ALWAYS, GL_EQUAL, GL_GEQUAL, GL_GREATER, GL_LEQUAL, GL_LESS, GL_NEVER, GL_NOTEQUAL: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(function)
+    }
+  }
+
+  ctx := GetContext()
+  ctx.FragmentOperations.Depth.Func = function
+}
+
+// TODO: Move to rasterization?
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glSampleCoverage.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSampleCoverage.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSampleCoverage.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSampleCoverage.xhtml","OpenGL ES 3.2")
+cmd void glSampleCoverage(GLfloat value, GLboolean invert) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  ctx.Rasterization.SampleCoverageValue = value
+  ctx.Rasterization.SampleCoverageInvert = invert
+}
+
+// TODO: Move to rasterization?
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSampleMaski.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSampleMaski.xhtml","OpenGL ES 3.2")
+cmd void glSampleMaski(GLuint maskNumber, GLbitfield mask) {
+  minRequiredVersion(3, 1)
+  ctx := GetContext()
+  ctx.Rasterization.SampleMaskValue[maskNumber] = mask
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glScissor.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glScissor.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glScissor.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glScissor.xhtml","OpenGL ES 3.2")
+cmd void glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
+  minRequiredVersion(1, 0)
+  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+  ctx := GetContext()
+  ctx.FragmentOperations.Scissor.Box = Rect(x, y, width, height)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilFunc.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilFunc.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilFunc.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilFunc.xhtml","OpenGL ES 3.2")
+cmd void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
+  minRequiredVersion(1, 0)
+  StencilFuncSeparate(GL_FRONT_AND_BACK, func, ref, mask)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilFuncSeparate.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilFuncSeparate.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilFuncSeparate.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilFuncSeparate.xhtml","OpenGL ES 3.2")
+cmd void glStencilFuncSeparate(GLenum face, GLenum function, GLint reference_value, GLuint mask) {
+  minRequiredVersion(2, 0)
+  StencilFuncSeparate(face, function, reference_value, mask)
+}
+
+sub void StencilFuncSeparate(GLenum face, GLenum function, GLint reference_value, GLuint mask) {
+  switch (face) {
+    case GL_BACK, GL_FRONT, GL_FRONT_AND_BACK: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(face)
+    }
+  }
+  switch (function) {
+    case GL_ALWAYS, GL_EQUAL, GL_GEQUAL, GL_GREATER, GL_LEQUAL, GL_LESS, GL_NEVER, GL_NOTEQUAL: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(function)
+    }
+  }
+  ctx := GetContext()
+  if ((face == GL_FRONT) || (face == GL_FRONT_AND_BACK)) {
+    ctx.FragmentOperations.Stencil.Func = function
+    ctx.FragmentOperations.Stencil.Ref = reference_value
+    ctx.FragmentOperations.Stencil.ValueMask = mask
+  }
+  if ((face == GL_BACK) || (face == GL_FRONT_AND_BACK)) {
+    ctx.FragmentOperations.Stencil.BackFunc = function
+    ctx.FragmentOperations.Stencil.BackRef = reference_value
+    ctx.FragmentOperations.Stencil.BackValueMask = mask
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilOp.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilOp.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilOp.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilOp.xhtml","OpenGL ES 3.2")
+cmd void glStencilOp(GLenum fail, GLenum zfail, GLenum zpass) {
+  minRequiredVersion(1, 0)
+  StencilOpSeparate(GL_FRONT_AND_BACK, fail, zfail, zpass)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilOpSeparate.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilOpSeparate.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilOpSeparate.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilOpSeparate.xhtml","OpenGL ES 3.2")
+cmd void glStencilOpSeparate(GLenum face,
+                             GLenum stencil_fail,
+                             GLenum stencil_pass_depth_fail,
+                             GLenum stencil_pass_depth_pass) {
+  minRequiredVersion(2, 0)
+  StencilOpSeparate(face, stencil_fail, stencil_pass_depth_fail, stencil_pass_depth_pass)
+}
+
+sub void CheckStencilOp(GLenum op) {
+  switch (op) {
+    case GL_DECR, GL_DECR_WRAP, GL_INCR, GL_INCR_WRAP, GL_INVERT, GL_KEEP, GL_REPLACE, GL_ZERO: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(op)
+    }
+  }
+}
+
+sub void StencilOpSeparate(GLenum face, GLenum fail, GLenum pass_depth_fail, GLenum pass_depth_pass) {
+  switch (face) {
+    case GL_BACK, GL_FRONT, GL_FRONT_AND_BACK: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(face)
+    }
+  }
+  CheckStencilOp(fail)
+  CheckStencilOp(pass_depth_fail)
+  CheckStencilOp(pass_depth_pass)
+  ctx := GetContext()
+  if ((face == GL_FRONT) || (face == GL_FRONT_AND_BACK)) {
+    ctx.FragmentOperations.Stencil.Fail = fail
+    ctx.FragmentOperations.Stencil.PassDepthFail = pass_depth_fail
+    ctx.FragmentOperations.Stencil.PassDepthPass = pass_depth_pass
+  }
+  if ((face == GL_BACK) || (face == GL_FRONT_AND_BACK)) {
+    ctx.FragmentOperations.Stencil.BackFail = fail
+    ctx.FragmentOperations.Stencil.BackPassDepthFail = pass_depth_fail
+    ctx.FragmentOperations.Stencil.BackPassDepthPass = pass_depth_pass
+  }
+}

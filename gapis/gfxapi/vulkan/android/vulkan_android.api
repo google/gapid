@@ -1,0 +1,136 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@extension("VK_KHR_android_surface") define VK_KHR_ANDROID_SURFACE_SPEC_VERSION 6
+@extension("VK_KHR_android_surface") define VK_KHR_ANDROID_SURFACE_EXTENSION_NAME         "VK_KHR_android_surface"
+
+@extension("VK_ANDROID_native_buffer") define VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION     5
+@extension("VK_ANDROID_native_buffer") define VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME             "VK_ANDROID_native_buffer"
+
+// ----------------------------------------------------------------------------
+// VK_KHR_android_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_KHR_android_surface")
+@forwarddecl
+class ANativeWindow {}
+
+@extension("VK_KHR_android_surface")
+@unused
+type void* buffer_handle_t
+
+@extension("VK_KHR_android_surface")
+@reserved_flags
+type VkFlags VkAndroidSurfaceCreateFlagsKHR
+
+@extension("VK_KHR_android_surface")
+class VkAndroidSurfaceCreateInfoKHR {
+    VkStructureType                             sType
+    const void*                                 pNext
+    VkAndroidSurfaceCreateFlagsKHR              flags
+    ANativeWindow*                     window
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateAndroidSurfaceKHR(
+    VkInstance instance,
+    const VkAndroidSurfaceCreateInfoKHR* pCreateInfo,
+    VkSurfaceKHR*                    pSurface) {
+  read(pCreateInfo[0:1])
+  write(pSurface[0:1])
+}
+
+@extension("VK_KHR_android_surface")
+@indirect("VkInstance")
+cmd VkResult vkCreateAndroidSurfaceKHR(
+        VkInstance                              instance,
+        const VkAndroidSurfaceCreateInfoKHR*    pCreateInfo,
+        const VkAllocationCallbacks*            pAllocator,
+        VkSurfaceKHR*                           pSurface) {
+    surface := createAndroidSurfaceObject(pCreateInfo)
+    surface.Instance = instance
+    surface.Type = SURFACE_TYPE_ANDROID
+    // TODO: pAllocator
+
+    handle := ?
+    pSurface[0] = handle
+    surface.VulkanHandle = handle
+    Surfaces[handle] = surface
+
+    return ?
+}
+
+// ----------------------------------------------------------------------------
+// VK_ANDROID_native_buffer
+// ----------------------------------------------------------------------------
+
+@extension("VK_ANDROID_native_buffer")
+@unused
+class VkNativeBufferANDROID {
+    VkStructureType                             sType
+    const void*                                 pNext
+    buffer_handle_t                             handle
+    int                                         stride
+    int                                         format
+    int                                         usage
+}
+
+
+@extension("VK_ANDROID_native_buffer")
+@indirect("VkDevice")
+cmd VkResult vkGetSwapchainGrallocUsageANDROID(
+        VkDevice                                device,
+        VkFormat                                format,
+        VkImageUsageFlags                       imageUsage,
+        int*                                    grallocUsage) {
+    return ?
+}
+
+@extension("VK_ANDROID_native_buffer")
+@indirect("VkDevice")
+cmd VkResult vkAcquireImageANDROID(
+        VkDevice                                device,
+        VkImage                                 image,
+        int                                     nativeFenceFd,
+        VkSemaphore                             semaphore,
+        VkFence                                 fence) {
+    return ?
+}
+
+@extension("VK_ANDROID_native_buffer")
+@indirect("VkQueue", "VkDevice")
+cmd VkResult vkQueueSignalReleaseImageANDROID(
+        VkQueue                                 queue,
+        u32                                     waitSemaphoreCount,
+        const VkSemaphore*                      pWaitSemaphores,
+        VkImage                                 image,
+        int*                                    pNativeFenceFd) {
+    return ?
+}
+
+// ----------------------------------------------------------------------------
+// Struct subroutines
+// ----------------------------------------------------------------------------
+
+sub ref!SurfaceObject createAndroidSurfaceObject(const VkAndroidSurfaceCreateInfoKHR* data) {
+    object := new!SurfaceObject()
+    _ = data[0]
+
+    // TODO: pNext
+    // TODO: window?
+
+    return object
+}

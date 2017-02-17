@@ -1,0 +1,2425 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@internal
+class TextureUnit {
+  // Table 21.9: Textures (selector; state per texture unit)
+  TextureId         Binding2d                 = 0
+  TextureId         Binding3d                 = 0
+  TextureId         Binding2dArray            = 0
+  TextureId         BindingBuffer             = 0
+  TextureId         BindingCubeMap            = 0
+  TextureId         BindingCubeMapArray       = 0
+  TextureId         Binding2dMultisample      = 0
+  TextureId         Binding2dMultisampleArray = 0
+  TextureId         BindingExternalOes        = 0 // OES_EGL_image_external
+  @unused SamplerId SamplerBinding            = 0
+}
+
+@internal
+@resource
+class Texture {
+  @unused TextureId         ID
+  GLenum                    Kind
+  @unused GLenum            TexelFormat
+  @unused GLenum            TexelType
+  map!(GLint, Image)        Texture2D
+  map!(GLint, CubemapLevel) Cubemap
+
+  // Table 21.10: Textures (state per texture object)
+  GLenum         SwizzleR                = GL_RED
+  GLenum         SwizzleG                = GL_GREEN
+  GLenum         SwizzleB                = GL_BLUE
+  GLenum         SwizzleA                = GL_ALPHA
+  @unused Vec4f  BorderColor             = Vec4f(0.0, 0.0, 0.0, 0.0)
+  GLenum         MinFilter               = GL_NEAREST_MIPMAP_LINEAR
+  GLenum         MagFilter               = GL_LINEAR
+  GLenum         WrapS                   = GL_REPEAT
+  GLenum         WrapT                   = GL_REPEAT
+  GLenum         WrapR                   = GL_REPEAT
+  GLfloat        MinLod                  = -1000
+  GLfloat        MaxLod                  = 1000
+  GLint          BaseLevel               = 0
+  GLint          MaxLevel                = 1000
+  GLenum         DepthStencilTextureMode = GL_DEPTH_COMPONENT
+  GLenum         CompareMode             = GL_NONE
+  GLenum         CompareFunc             = GL_LEQUAL
+  GLboolean      ImmutableFormat         = GL_FALSE
+  @unused GLuint ImmutableLevels         = 0
+  @unused string Label
+
+  // EXT/texture_filter_anisotropic
+  GLfloat MaxAnisotropy = 1.0
+
+  // GL_OES_EGL_image
+  // EGL image which is used as storage for this texture.
+  // TODO: Standard glTex* methods which define new storage should clear this.
+  @unused GLeglImageOES EGLImage
+}
+
+@internal
+class CubemapLevel {
+  map!(GLenum, Image) Faces
+}
+
+@internal
+class Image {
+  GLsizei        Width
+  GLsizei        Height
+  @internal u8[] Data
+  u32            Size
+  @unused GLenum TexelFormat
+  @unused GLenum TexelType
+}
+
+@internal
+class Sampler {
+  // Table 21.12: Textures (state per sampler object)
+  @unused Vec4f  BorderColor = Vec4f(0.0, 0.0, 0.0, 0.0)
+  GLenum         MinFilter   = GL_NEAREST_MIPMAP_LINEAR
+  GLenum         MagFilter   = GL_LINEAR
+  GLenum         WrapS       = GL_REPEAT
+  GLenum         WrapT       = GL_REPEAT
+  GLenum         WrapR       = GL_REPEAT
+  GLfloat        MinLod      = -1000
+  GLfloat        MaxLod      = 1000
+  GLenum         CompareMode = GL_NONE
+  GLenum         CompareFunc = GL_LEQUAL
+  @unused string Label
+
+  // EXT/texture_filter_anisotropic
+  GLfloat MaxAnisotropy = 1.0
+}
+
+@internal
+class PixelStorageState {
+  // Table 21.18: Pixels
+  GLint UnpackImageHeight = 0
+  GLint UnpackSkipImages  = 0
+  GLint UnpackRowLength   = 0
+  GLint UnpackSkipRows    = 0
+  GLint UnpackSkipPixels  = 0
+  GLint UnpackAlignment   = 4
+  GLint PackImageHeight   = 0 // SPEC: Missing in state tables.
+  GLint PackSkipImages    = 0 // SPEC: Missing in state tables.
+  GLint PackRowLength     = 0
+  GLint PackSkipRows      = 0
+  GLint PackSkipPixels    = 0
+  GLint PackAlignment     = 4
+// GLuint PixelPackBufferBinding = 0
+// GLuint PixelUnpackBufferBinding = 0
+}
+
+@internal
+class ImageUnit {
+  // Table 21.33: Image State (state per image unit)
+  TextureId Name    = 0
+  GLint     Level   = 0
+  GLboolean Layered = GL_FALSE
+  GLint     Layer   = 0
+  GLenum    Access  = GL_READ_ONLY
+  GLenum    Format  = GL_R32UI
+}
+
+sub ref!Texture GetBoundTextureOrErrorInvalidEnum(GLenum target) {
+  ctx := GetContext()
+  return GetBoundTextureForUnit(ctx, ctx.ActiveTextureUnit, target)
+}
+
+sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum target) {
+  // TODO: Add back version checks.
+  tu := ctx.TextureUnits[unit]
+  return switch (target) {
+    case GL_TEXTURE_2D: {
+      // minRequiredVersion(2, 0)
+      switch (tu.Binding2d != 0) {
+        case true:  ctx.Instances.Textures[tu.Binding2d]
+        case false: ctx.Instances.DefaultTextures.Texture2d
+      }
+    }
+    case GL_TEXTURE_EXTERNAL_OES: {
+      // minRequiredVersion(2, 0)
+      switch (tu.BindingExternalOes != 0) {
+        case true:  ctx.Instances.Textures[tu.BindingExternalOes]
+        case false: ctx.Instances.DefaultTextures.TextureExternalOes
+      }
+    }
+    case GL_TEXTURE_2D_ARRAY: {
+      // minRequiredVersion(3, 0)
+      switch (tu.Binding2dArray != 0) {
+        case true:  ctx.Instances.Textures[tu.Binding2dArray]
+        case false: ctx.Instances.DefaultTextures.Texture2dArray
+      }
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      // minRequiredVersion(3, 1)
+      switch (tu.Binding2dMultisample != 0) {
+        case true:  ctx.Instances.Textures[tu.Binding2dMultisample]
+        case false: ctx.Instances.DefaultTextures.Texture2dMultisample
+      }
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
+      // minRequiredVersion(3, 2)
+      switch (tu.Binding2dMultisampleArray != 0) {
+        case true:  ctx.Instances.Textures[tu.Binding2dMultisampleArray]
+        case false: ctx.Instances.DefaultTextures.Texture2dMultisampleArray
+      }
+    }
+    case GL_TEXTURE_3D: {
+      // minRequiredVersion(3, 0)
+      switch (tu.Binding3d != 0) {
+        case true:  ctx.Instances.Textures[tu.Binding3d]
+        case false: ctx.Instances.DefaultTextures.Texture3d
+      }
+    }
+    case GL_TEXTURE_BUFFER: {
+      // minRequiredVersion(3, 2)
+      switch (tu.BindingBuffer != 0) {
+        case true:  ctx.Instances.Textures[tu.BindingBuffer]
+        case false: ctx.Instances.DefaultTextures.TextureBuffer
+      }
+    }
+    case GL_TEXTURE_CUBE_MAP: {
+      // minRequiredVersion(2, 0)
+      switch (tu.BindingCubeMap != 0) {
+        case true:  ctx.Instances.Textures[tu.BindingCubeMap]
+        case false: ctx.Instances.DefaultTextures.TextureCubeMap
+      }
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      // minRequiredVersion(3, 2)
+      switch (tu.BindingCubeMapArray != 0) {
+        case true:  ctx.Instances.Textures[tu.BindingCubeMapArray]
+        case false: ctx.Instances.DefaultTextures.TextureCubeMapArray
+      }
+    }
+    default: {
+      // glErrorInvalidEnum(target)
+      ctx.Instances.DefaultTextures.Texture2d
+    }
+  }
+}
+
+sub GLenum GetTextureTargetFromSamplerType(GLenum samplerType) {
+	return switch (samplerType) {
+	case GL_INT_SAMPLER_2D, GL_SAMPLER_2D, GL_UNSIGNED_INT_SAMPLER_2D, GL_SAMPLER_2D_SHADOW:
+		GL_TEXTURE_2D
+	case GL_INT_SAMPLER_2D_ARRAY, GL_SAMPLER_2D_ARRAY, GL_UNSIGNED_INT_SAMPLER_2D_ARRAY, GL_SAMPLER_2D_ARRAY_SHADOW:
+		GL_TEXTURE_2D_ARRAY
+	case GL_INT_SAMPLER_2D_MULTISAMPLE, GL_SAMPLER_2D_MULTISAMPLE, GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
+		GL_TEXTURE_2D_MULTISAMPLE
+	case GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY, GL_SAMPLER_2D_MULTISAMPLE_ARRAY, GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:
+		GL_TEXTURE_2D_MULTISAMPLE_ARRAY
+	case GL_INT_SAMPLER_3D, GL_SAMPLER_3D, GL_UNSIGNED_INT_SAMPLER_3D:
+		GL_TEXTURE_3D
+	case GL_INT_SAMPLER_BUFFER, GL_SAMPLER_BUFFER, GL_UNSIGNED_INT_SAMPLER_BUFFER:
+		GL_TEXTURE_BUFFER
+	case GL_INT_SAMPLER_CUBE, GL_SAMPLER_CUBE, GL_UNSIGNED_INT_SAMPLER_CUBE, GL_SAMPLER_CUBE_SHADOW:
+		GL_TEXTURE_CUBE_MAP
+	case GL_INT_SAMPLER_CUBE_MAP_ARRAY, GL_SAMPLER_CUBE_MAP_ARRAY, GL_UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY, GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW:
+		GL_TEXTURE_CUBE_MAP_ARRAY
+	case GL_SAMPLER_EXTERNAL_OES:
+		GL_TEXTURE_EXTERNAL_OES
+  default:
+    GL_NONE
+	}
+}
+
+sub void CheckInternalFormat(GLenum internalformat) {
+  switch (internalformat) {
+    case // Unsized Internal Formats:
+        GL_RGB, GL_RGBA, GL_LUMINANCE_ALPHA, GL_LUMINANCE, GL_ALPHA,
+        // Sized Internal Formats (R):
+        GL_R8, GL_R8_SNORM, GL_R16F, GL_R32F, GL_R8UI, GL_R8I, GL_R16UI, GL_R16I, GL_R32UI, GL_R32I,
+        // Sized Internal Formats (RG):
+        GL_RG8, GL_RG8_SNORM, GL_RG16F, GL_RG32F, GL_RG8UI, GL_RG8I, GL_RG16UI, GL_RG16I, GL_RG32UI, GL_RG32I,
+        // Sized Internal Formats (RGB):
+        GL_RGB8, GL_SRGB8, GL_RGB565, GL_RGB8_SNORM, GL_R11F_G11F_B10F, GL_RGB9_E5, GL_RGB16F, GL_RGB32F,
+        GL_RGB8UI, GL_RGB8I, GL_RGB16UI, GL_RGB16I, GL_RGB32UI, GL_RGB32I,
+        // Sized Internal Formats (RGBA):
+        GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA8_SNORM, GL_RGB5_A1, GL_RGBA4, GL_RGB10_A2, GL_RGBA16F, GL_RGBA32F,
+        GL_RGBA8UI, GL_RGBA8I, GL_RGB10_A2UI, GL_RGBA16UI, GL_RGBA16I, GL_RGBA32I, GL_RGBA32UI,
+        // Sized Internal Formats (Depth/Stencil):
+        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F,
+        GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_STENCIL_INDEX8: {
+    }
+    case GL_DEPTH_COMPONENT: {
+      requiresExtension(GL_OES_depth_texture)
+    }
+    case GL_DEPTH_STENCIL: {
+      requiresExtension(GL_OES_packed_depth_stencil)
+    }
+    case GL_RED_EXT, GL_RG_EXT: {
+      requiresExtension(GL_EXT_texture_rg)
+    }
+    case GL_BGRA_EXT: {
+      requiresExtension(GL_EXT_texture_format_BGRA8888)
+    }
+    default: {
+      glErrorInvalidValue()
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glActiveTexture.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glActiveTexture.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glActiveTexture.xhtml","OpenGL ES 3.2")
+cmd void glActiveTexture(GLenum unit) {
+  minRequiredVersion(1, 0)
+  // TODO: Tidy this. This switch case is preserved for the snippet system.
+  switch (unit) {
+    case GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE10, GL_TEXTURE11, GL_TEXTURE12, GL_TEXTURE13,
+        GL_TEXTURE14, GL_TEXTURE15, GL_TEXTURE16, GL_TEXTURE17, GL_TEXTURE18, GL_TEXTURE19,
+        GL_TEXTURE2, GL_TEXTURE20, GL_TEXTURE21, GL_TEXTURE22, GL_TEXTURE23, GL_TEXTURE24,
+        GL_TEXTURE25, GL_TEXTURE26, GL_TEXTURE27, GL_TEXTURE28, GL_TEXTURE29, GL_TEXTURE3,
+        GL_TEXTURE30, GL_TEXTURE31, GL_TEXTURE4, GL_TEXTURE5, GL_TEXTURE6, GL_TEXTURE7,
+        GL_TEXTURE8, GL_TEXTURE9: {
+      // version 2.0
+    }
+    default: {
+      // Higher texture numbers are still valid, but they do not have GLenum entries.
+    }
+  }
+  ctx := GetContext()
+  if !unit in ctx.TextureUnits { glErrorInvalidEnum(unit) }
+  ctx.ActiveTextureUnit = unit
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindImageTexture.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindImageTexture.xhtml","OpenGL ES 3.2")
+cmd void glBindImageTexture(GLuint    unit,
+                            TextureId texture,
+                            GLint     level,
+                            GLboolean layered,
+                            GLint     layer,
+                            GLenum    access,
+                            GLenum    format) {
+  minRequiredVersion(3, 1)
+  switch (access) {
+    case GL_READ_ONLY, GL_READ_WRITE, GL_WRITE_ONLY: {
+      // version 3.1
+    }
+    default: {
+      glErrorInvalidEnum(access)
+    }
+  }
+  switch (format) {
+    case GL_R32F, GL_R32I, GL_R32UI, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I,
+        GL_RGBA32UI, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI, GL_RGBA8_SNORM: {
+      // version 3.1
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  ctx := GetContext()
+  ctx.ImageUnits[unit] = ImageUnit(
+    Name:     texture,
+    Level:    level,
+    Layered:  layered,
+    Layer:    layer,
+    Access:   access,
+    Format:   format
+  )
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindSampler.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindSampler.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml","OpenGL ES 3.2")
+cmd void glBindSampler(GLuint index, SamplerId sampler) {
+  minRequiredVersion(3, 0)
+  ctx := GetContext()
+  unit := as!GLenum(index + as!GLuint(GL_TEXTURE0))
+  ctx.TextureUnits[unit].SamplerBinding = sampler
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml","OpenGL ES 3.2")
+cmd void glBindTexture(GLenum target, TextureId texture) {
+  minRequiredVersion(1, 0)
+  ctx := GetContext()
+
+  // TODO: Do not initialize if the enum is not valid.
+  if (texture != 0) {
+    if !(texture in ctx.Instances.Textures) {
+      if target == GL_TEXTURE_EXTERNAL_OES {
+        ctx.Instances.Textures[texture] = new!Texture(
+          ID:         texture,
+          WrapS:      GL_CLAMP_TO_EDGE,
+          WrapT:      GL_CLAMP_TO_EDGE,
+          MinFilter:  GL_LINEAR)
+      } else {
+        ctx.Instances.Textures[texture] = new!Texture(
+          ID: texture,
+        )
+      }
+    }
+
+    t := ctx.Instances.Textures[texture]
+    if t.Kind == as!GLenum(0) {
+      t.Kind = target
+    } else {
+      if t.Kind != target { glErrorInvalidOperation() }
+    }
+  }
+
+  tu := ctx.TextureUnits[ctx.ActiveTextureUnit]
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      minRequiredVersion(2, 0)
+      tu.Binding2d = texture
+    }
+    case GL_TEXTURE_EXTERNAL_OES: {
+      minRequiredVersion(2, 0)
+      tu.BindingExternalOes = texture
+    }
+    case GL_TEXTURE_2D_ARRAY: {
+      minRequiredVersion(3, 0)
+      tu.Binding2dArray = texture
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      minRequiredVersion(3, 1)
+      tu.Binding2dMultisample = texture
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
+      minRequiredVersion(3, 2)
+      tu.Binding2dMultisampleArray = texture
+    }
+    case GL_TEXTURE_3D: {
+      minRequiredVersion(3, 0)
+      tu.Binding3d = texture
+    }
+    case GL_TEXTURE_BUFFER: {
+      minRequiredVersion(3, 2)
+      tu.BindingBuffer = texture
+    }
+    case GL_TEXTURE_CUBE_MAP: {
+      minRequiredVersion(2, 0)
+      tu.BindingCubeMap = texture
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+      tu.BindingCubeMapArray = texture
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+}
+
+sub void checkMaxTextureSize(
+ref!Context ctx, GLenum target, GLint level, GLsizei width, GLsizei height) {
+  // These are not always mentioned in the spec for gl*TexImage*, but they
+  // are mentioned for glTexImage2D which is incorporated by reference and/or
+  // in section 8.5.3, which is about textures. Also, they are required by the
+  // dEQP certification tests.
+  //
+  // e.g. level > log_2(GL_MAX_TEXTURE_SIZE) is implemented:
+  //      ((1 << level) > ctx.Constants.MaxTextureSize)
+  maxSize := switch target {
+    case GL_TEXTURE_2D: { ctx.Constants.MaxTextureSize }
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      ctx.Constants.MaxCubeMapTextureSize
+    }
+  }
+  if (level < 0) || (width < 0) || (height < 0)
+      || (width > as!GLsizei(maxSize))
+      || (height > as!GLsizei(maxSize))
+      || (as!u32(level) > 31) // log_2(s32) <= 32
+      || ((1 << as!u32(level)) > as!u32(maxSize)) {
+    glErrorInvalidValue()
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.2")
+cmd void glCompressedTexImage2D(GLenum         target,
+                                GLint          level,
+                                GLenum         format,
+                                GLsizei        width,
+                                GLsizei        height,
+                                GLint          border,
+                                GLsizei        image_size,
+                                TexturePointer data) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (format) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_ATC_RGB_AMD, GL_ATC_RGBA_EXPLICIT_ALPHA_AMD, GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD: {
+      requiresExtension(GL_AMD_compressed_ATC_texture)
+      // TODO: Add to other commands as well.
+    }
+    case GL_ETC1_RGB8_OES: {
+      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
+      // TODO: Add to other commands as well.
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
+        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
+      requiresExtension(GL_EXT_texture_compression_s3tc)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+
+  if (border != 0) || (image_size < 0) { glErrorInvalidValue() }
+
+  ctx := GetContext()
+  checkMaxTextureSize(ctx, target, level, width, height)
+
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
+      l := Image(
+        Width:        width,
+        Height:       height,
+        Size:         as!u32(image_size),
+        TexelFormat:  format,
+      )
+      if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+        l.Data = clone(as!u8*(data)[0:l.Size])
+      }
+      t.Texture2D[level] = l
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = format
+    }
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
+      l := Image(
+        Width:        width,
+        Height:       height,
+        Size:         as!u32(image_size),
+        TexelFormat:  format,
+      )
+      if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+        l.Data = clone(as!u8*(data)[0:l.Size])
+      }
+      cube := t.Cubemap[level]
+      cube.Faces[as!GLenum(target)] = l
+      t.Cubemap[level] = cube
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = format
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.2")
+cmd void glCompressedTexImage3D(GLenum         target,
+                                GLint          level,
+                                GLenum         internalformat,
+                                GLsizei        width,
+                                GLsizei        height,
+                                GLsizei        depth,
+                                GLint          border,
+                                GLsizei        image_size,
+                                TexturePointer data) {
+  minRequiredVersion(3, 0)
+  CompressedTexImage3D(target, level, internalformat, width, height, depth, border, image_size, data)
+}
+
+sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei image_size, TexturePointer data) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
+      // version 3.0
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
+        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
+      requiresExtension(GL_EXT_texture_compression_s3tc)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+
+  _ = level // TODO
+  _ = width // TODO
+  _ = height // TODO
+  _ = depth // TODO
+  _ = border // TODO
+
+  ctx := GetContext()
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    read(as!u8*(data)[0:image_size])
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexSubImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.2")
+cmd void glCompressedTexSubImage2D(GLenum         target,
+                                   GLint          level,
+                                   GLint          xoffset,
+                                   GLint          yoffset,
+                                   GLsizei        width,
+                                   GLsizei        height,
+                                   GLenum         format,
+                                   GLsizei        image_size,
+                                   TexturePointer data) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (format) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_ETC1_RGB8_OES: {
+      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
+    }
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
+        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
+      requiresExtension(GL_EXT_texture_compression_s3tc)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+
+  ctx := GetContext()
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    read(as!u8*(data)[0:image_size])
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.2")
+cmd void glCompressedTexSubImage3D(GLenum         target,
+                                   GLint          level,
+                                   GLint          xoffset,
+                                   GLint          yoffset,
+                                   GLint          zoffset,
+                                   GLsizei        width,
+                                   GLsizei        height,
+                                   GLsizei        depth,
+                                   GLenum         format,
+                                   GLsizei        image_size,
+                                   TexturePointer data) {
+  minRequiredVersion(3, 0)
+  CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, image_size, data)
+}
+
+sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei image_size, TexturePointer data) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (format) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
+      // version 3.0
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
+        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
+      requiresExtension(GL_EXT_texture_compression_s3tc)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+
+  _ = level // TODO
+  _ = xoffset // TODO
+  _ = yoffset // TODO
+  _ = zoffset // TODO
+  _ = width // TODO
+  _ = height // TODO
+  _ = depth // TODO
+
+  ctx := GetContext()
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    read(as!u8*(data)[0:image_size])
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml","OpenGL ES 3.2")
+cmd void glCopyImageSubData(GLuint  srcName,
+                            GLenum  srcTarget,
+                            GLint   srcLevel,
+                            GLint   srcX,
+                            GLint   srcY,
+                            GLint   srcZ,
+                            GLuint  dstName,
+                            GLenum  dstTarget,
+                            GLint   dstLevel,
+                            GLint   dstX,
+                            GLint   dstY,
+                            GLint   dstZ,
+                            GLsizei srcWidth,
+                            GLsizei srcHeight,
+                            GLsizei srcDepth) {
+  minRequiredVersion(3, 2)
+  CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth)
+}
+
+sub void CopyImageSubData(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth) {
+  switch (srcTarget) {
+    case GL_RENDERBUFFER, GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE,
+        GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP,
+        GL_TEXTURE_CUBE_MAP_ARRAY: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(srcTarget)
+    }
+  }
+  switch (dstTarget) {
+    case GL_RENDERBUFFER, GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE,
+        GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP,
+        GL_TEXTURE_CUBE_MAP_ARRAY: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(dstTarget)
+    }
+  }
+
+  _ = srcName // TODO
+  _ = srcLevel // TODO
+  _ = srcX // TODO
+  _ = srcY // TODO
+  _ = srcZ // TODO
+  _ = dstName // TODO
+  _ = dstLevel // TODO
+  _ = dstX // TODO
+  _ = dstY // TODO
+  _ = dstZ // TODO
+  _ = srcWidth // TODO
+  _ = srcHeight // TODO
+  _ = srcDepth // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexImage2D.xhtml","OpenGL ES 3.2")
+cmd void glCopyTexImage2D(GLenum  target,
+                          GLint   level,
+                          GLenum  internalformat,
+                          GLint   x,
+                          GLint   y,
+                          GLsizei width,
+                          GLsizei height,
+                          GLint   border) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      // version 2.0
+    }
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      if width != height { glErrorInvalidValue() } // cube faces are square
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
+      // version 2.0
+    }
+    case GL_R16I, GL_R16UI, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_RG16I, GL_RG16UI,
+        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB565,
+        GL_RGB5_A1, GL_RGB8, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8,
+        GL_RGBA8I, GL_RGBA8UI, GL_SRGB8, GL_SRGB8_ALPHA8: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  ctx := GetContext()
+  if border != 0 { glErrorInvalidValue() }
+  checkMaxTextureSize(ctx, target, level, width, height)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexSubImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.2")
+cmd void glCopyTexSubImage2D(GLenum  target,
+                             GLint   level,
+                             GLint   xoffset,
+                             GLint   yoffset,
+                             GLint   x,
+                             GLint   y,
+                             GLsizei width,
+                             GLsizei height) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  // TODO
+  ctx := GetContext()
+  checkMaxTextureSize(ctx, target, level, width, height)
+  if (xoffset < 0) || (yoffset < 0) { glErrorInvalidValue() } // PDF page 173
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  if !(level in t.Texture2D) { glErrorInvalidValue() }
+  l := t.Texture2D[level]
+  if ((as!GLsizei(xoffset) + width) > l.Width) || ((as!GLsizei(yoffset) + height) > l.Height) { glErrorInvalidValue() }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.2")
+cmd void glCopyTexSubImage3D(GLenum  target,
+                             GLint   level,
+                             GLint   xoffset,
+                             GLint   yoffset,
+                             GLint   zoffset,
+                             GLint   x,
+                             GLint   y,
+                             GLsizei width,
+                             GLsizei height) {
+  minRequiredVersion(3, 0)
+  CopyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height)
+}
+
+sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+
+  ctx := GetContext()
+  checkMaxTextureSize(ctx, target, level, width, height)
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  if !(level in t.Texture2D) { glErrorInvalidValue() }
+  l := t.Texture2D[level]
+  if (xoffset < 0) || (yoffset < 0) || (zoffset < 0) { glErrorInvalidValue() } // PDF page 173
+  if ((as!GLsizei(xoffset) + width) > l.Width) || ((as!GLsizei(yoffset) + height) > l.Height) { glErrorInvalidValue() }
+
+  _ = level // TODO
+  _ = xoffset // TODO
+  _ = yoffset // TODO
+  _ = zoffset // TODO
+  _ = x // TODO
+  _ = y // TODO
+  _ = width // TODO
+  _ = height // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSamplers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml","OpenGL ES 3.2")
+cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
+  minRequiredVersion(3, 0)
+
+  s := samplers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := s[i]
+    if id != 0 {
+      delete(ctx.Instances.Samplers, id)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteTextures.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteTextures.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml","OpenGL ES 3.2")
+cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
+  minRequiredVersion(1, 0)
+
+  if count < 0 { glErrorInvalidValue() }
+  t := textures[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := t[i]
+    if id != 0 {
+      delete(ctx.Instances.Textures, id)
+    }
+    // TODO: Unbind from all texture units.
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenSamplers.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml","OpenGL ES 3.2")
+cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
+  minRequiredVersion(3, 0)
+
+  s := samplers[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := as!SamplerId(?)
+    ctx.Instances.Samplers[id] = new!Sampler()
+    s[i] = id
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenTextures.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenTextures.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml","OpenGL ES 3.2")
+cmd void glGenTextures(GLsizei count, TextureId* textures) {
+  minRequiredVersion(1, 0)
+  if count < 0 { glErrorInvalidValue() }
+
+  t := textures[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := as!TextureId(?)
+    ctx.Instances.Textures[id] = new!Texture(ID: id)
+    t[i] = id
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenerateMipmap.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenerateMipmap.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenerateMipmap.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenerateMipmap.xhtml","OpenGL ES 3.2")
+cmd void glGenerateMipmap(GLenum target) {
+  minRequiredVersion(2, 0)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
+      // version 2.0
+    }
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  // TODO
+}
+
+sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
+  ctx := GetContext()
+  s := ctx.Instances.Samplers[sampler]
+  switch (pname) {
+    case GL_TEXTURE_COMPARE_FUNC: params[0] = as!T(s.CompareFunc)
+    case GL_TEXTURE_COMPARE_MODE: params[0] = as!T(s.CompareMode)
+    case GL_TEXTURE_MIN_FILTER:   params[0] = as!T(s.MinFilter)
+    case GL_TEXTURE_MAG_FILTER:   params[0] = as!T(s.MagFilter)
+    case GL_TEXTURE_MIN_LOD:      params[0] = as!T(s.MinLod)
+    case GL_TEXTURE_MAX_LOD:      params[0] = as!T(s.MaxLod)
+    case GL_TEXTURE_WRAP_R:       params[0] = as!T(s.WrapR)
+    case GL_TEXTURE_WRAP_S:       params[0] = as!T(s.WrapS)
+    case GL_TEXTURE_WRAP_T:       params[0] = as!T(s.WrapT)
+    case GL_TEXTURE_BORDER_COLOR: {
+      minRequiredVersion(3, 2)
+      // TODO: Different behaviour based on the I suffix.
+      p := params[0:4]
+      p[0] = as!T(s.BorderColor[0])
+      p[1] = as!T(s.BorderColor[1])
+      p[2] = as!T(s.BorderColor[2])
+      p[3] = as!T(s.BorderColor[3])
+    }
+    case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
+      requiresExtension(GL_EXT_texture_filter_anisotropic)
+      params[0] = as!T(s.MaxAnisotropy)
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) {
+  minRequiredVersion(3, 2)
+  GetSamplerParameterIiv(sampler, pname, params)
+}
+
+sub void GetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) {
+  GetSamplerParameterv!GLint(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params) {
+  minRequiredVersion(3, 2)
+  GetSamplerParameterIuiv(sampler, pname, params)
+}
+
+sub void GetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params) {
+  GetSamplerParameterv!GLuint(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetSamplerParameterfv(SamplerId sampler, GLenum pname, GLfloat* params) {
+  minRequiredVersion(3, 0)
+  GetSamplerParameterv!GLfloat(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetSamplerParameteriv(SamplerId sampler, GLenum pname, GLint* params) {
+  minRequiredVersion(3, 0)
+  GetSamplerParameterv!GLint(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfloat* params) {
+  minRequiredVersion(3, 1)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_3D,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 3.1
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_BUFFER, GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (pname) {
+    case GL_TEXTURE_ALPHA_SIZE, GL_TEXTURE_ALPHA_TYPE, GL_TEXTURE_BLUE_SIZE, GL_TEXTURE_BLUE_TYPE,
+        GL_TEXTURE_COMPRESSED, GL_TEXTURE_DEPTH, GL_TEXTURE_DEPTH_SIZE, GL_TEXTURE_DEPTH_TYPE,
+        GL_TEXTURE_FIXED_SAMPLE_LOCATIONS, GL_TEXTURE_GREEN_SIZE, GL_TEXTURE_GREEN_TYPE,
+        GL_TEXTURE_HEIGHT, GL_TEXTURE_INTERNAL_FORMAT, GL_TEXTURE_RED_SIZE, GL_TEXTURE_RED_TYPE,
+        GL_TEXTURE_SAMPLES, GL_TEXTURE_SHARED_SIZE, GL_TEXTURE_STENCIL_SIZE, GL_TEXTURE_WIDTH: {
+      // version 3.1
+    }
+    case GL_TEXTURE_BUFFER_DATA_STORE_BINDING, GL_TEXTURE_BUFFER_OFFSET, GL_TEXTURE_BUFFER_SIZE: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+  // TODO
+  params[0] = ?
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint* params) {
+  minRequiredVersion(3, 1)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_3D,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 3.1
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_BUFFER, GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (pname) {
+    case GL_TEXTURE_ALPHA_SIZE, GL_TEXTURE_ALPHA_TYPE, GL_TEXTURE_BLUE_SIZE, GL_TEXTURE_BLUE_TYPE,
+        GL_TEXTURE_COMPRESSED, GL_TEXTURE_DEPTH, GL_TEXTURE_DEPTH_SIZE, GL_TEXTURE_DEPTH_TYPE,
+        GL_TEXTURE_FIXED_SAMPLE_LOCATIONS, GL_TEXTURE_GREEN_SIZE, GL_TEXTURE_GREEN_TYPE,
+        GL_TEXTURE_HEIGHT, GL_TEXTURE_INTERNAL_FORMAT, GL_TEXTURE_RED_SIZE, GL_TEXTURE_RED_TYPE,
+        GL_TEXTURE_SAMPLES, GL_TEXTURE_SHARED_SIZE, GL_TEXTURE_STENCIL_SIZE, GL_TEXTURE_WIDTH: {
+      // version 3.1
+    }
+    case GL_TEXTURE_BUFFER_DATA_STORE_BINDING, GL_TEXTURE_BUFFER_OFFSET, GL_TEXTURE_BUFFER_SIZE: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+  // TODO
+  params[0] = ?
+}
+
+sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
+  // TODO: Remove and rely on the switch in GetBoundTextureOrErrorInvalidEnum.
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
+      // version 2.0
+    }
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      minRequiredVersion(3, 1)
+    }
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  switch (parameter) {
+    case GL_TEXTURE_MAG_FILTER: {
+      minRequiredVersion(2, 0)
+      params[0] = as!T(t.MagFilter)
+    }
+    case GL_TEXTURE_MIN_FILTER: {
+      minRequiredVersion(2, 0)
+      params[0] = as!T(t.MinFilter)
+    }
+    case GL_TEXTURE_WRAP_S: {
+      minRequiredVersion(2, 0)
+      params[0] = as!T(t.WrapS)
+    }
+    case GL_TEXTURE_WRAP_T: {
+      minRequiredVersion(2, 0)
+      params[0] = as!T(t.WrapT)
+    }
+    case GL_TEXTURE_BASE_LEVEL: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.BaseLevel)
+    }
+    case GL_TEXTURE_COMPARE_FUNC: {
+      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
+      params[0] = as!T(t.CompareFunc)
+    }
+    case GL_TEXTURE_COMPARE_MODE: {
+      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
+      params[0] = as!T(t.CompareMode)
+    }
+    case GL_TEXTURE_IMMUTABLE_FORMAT: {
+      // TODO: minRequiredVersion(3, 0) or GL_EXT_texture_storage
+      params[0] = as!T(t.ImmutableFormat)
+    }
+    case GL_TEXTURE_MAX_LEVEL: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.MaxLevel)
+    }
+    case GL_TEXTURE_MAX_LOD: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.MaxLod)
+    }
+    case GL_TEXTURE_MIN_LOD: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.MinLod)
+    }
+    case GL_TEXTURE_SWIZZLE_A: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.SwizzleA)
+    }
+    case GL_TEXTURE_SWIZZLE_B: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.SwizzleB)
+    }
+    case GL_TEXTURE_SWIZZLE_G: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.SwizzleG)
+    }
+    case GL_TEXTURE_SWIZZLE_R: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.SwizzleR)
+    }
+    case GL_TEXTURE_WRAP_R: {
+      minRequiredVersion(3, 0)
+      params[0] = as!T(t.WrapR)
+    }
+    case GL_DEPTH_STENCIL_TEXTURE_MODE: {
+      minRequiredVersion(3, 1)
+      params[0] = as!T(t.DepthStencilTextureMode)
+    }
+    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE: {
+      minRequiredVersion(3, 1)
+      params[0] = ? // TODO
+    }
+    case GL_TEXTURE_IMMUTABLE_LEVELS: {
+      minRequiredVersion(3, 1)
+      params[0] = as!T(t.ImmutableLevels)
+    }
+    case GL_TEXTURE_BORDER_COLOR: {
+      minRequiredVersion(3, 2)
+      // TODO: Depends on the I suffix
+      p := params[0:4]
+      p[0] = as!T(t.BorderColor[0])
+      p[1] = as!T(t.BorderColor[1])
+      p[2] = as!T(t.BorderColor[2])
+      p[3] = as!T(t.BorderColor[3])
+    }
+    case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
+      requiresExtension(GL_EXT_texture_filter_anisotropic)
+      params[0] = as!T(t.MaxAnisotropy)
+    }
+    default: {
+      glErrorInvalidEnum(parameter)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
+  minRequiredVersion(3, 2)
+  GetTexParameterIiv(target, pname, params)
+}
+
+sub void GetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
+  GetTexParameter!GLint(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
+  minRequiredVersion(3, 2)
+  GetTexParameterIuiv(target, pname, params)
+}
+
+sub void GetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
+  GetTexParameter!GLuint(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexParameterfv(GLenum target, GLenum parameter, GLfloat* values) {
+  minRequiredVersion(1, 0)
+  GetTexParameter!GLfloat(target, parameter, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glGetTexParameteriv(GLenum target, GLenum parameter, GLint* values) {
+  minRequiredVersion(1, 0)
+  GetTexParameter!GLint(target, parameter, values)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSampler.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSampler.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSampler.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsSampler(SamplerId sampler) {
+  minRequiredVersion(3, 0)
+
+  ctx := GetContext()
+  return as!GLboolean(sampler in ctx.Instances.Samplers)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsTexture.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsTexture.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsTexture.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTexture.xhtml","OpenGL ES 3.2")
+cmd GLboolean glIsTexture(TextureId texture) {
+  minRequiredVersion(1, 0)
+
+  ctx := GetContext()
+  return as!GLboolean(texture in ctx.Instances.Textures)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPixelStorei.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPixelStorei.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPixelStorei.xhtml","OpenGL ES 3.2")
+cmd void glPixelStorei(GLenum parameter, GLint value) {
+  minRequiredVersion(1, 0)
+  if value < 0 { glErrorInvalidValue() }
+  ctx := GetContext()
+  switch (parameter) {
+    case GL_PACK_ALIGNMENT: {
+      minRequiredVersion(2, 0)
+      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
+      ctx.PixelStorage.PackAlignment = value
+    }
+    case GL_PACK_IMAGE_HEIGHT: {
+      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
+      ctx.PixelStorage.PackImageHeight = value
+    }
+    case GL_PACK_ROW_LENGTH: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.PackRowLength = value
+    }
+    case GL_PACK_SKIP_IMAGES: {
+      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
+      ctx.PixelStorage.PackSkipImages = value
+    }
+    case GL_PACK_SKIP_PIXELS: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.PackSkipPixels = value
+    }
+    case GL_PACK_SKIP_ROWS: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.PackSkipRows = value
+    }
+    case GL_UNPACK_ALIGNMENT: {
+      minRequiredVersion(2, 0)
+      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
+      ctx.PixelStorage.UnpackAlignment = value
+    }
+    case GL_UNPACK_IMAGE_HEIGHT: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.UnpackImageHeight = value
+    }
+    case GL_UNPACK_ROW_LENGTH: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.UnpackRowLength = value
+    }
+    case GL_UNPACK_SKIP_IMAGES: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.UnpackSkipImages = value
+    }
+    case GL_UNPACK_SKIP_PIXELS: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.UnpackSkipPixels = value
+    }
+    case GL_UNPACK_SKIP_ROWS: {
+      minRequiredVersion(3, 0)
+      ctx.PixelStorage.UnpackSkipRows = value
+    }
+    default: {
+      glErrorInvalidEnum(parameter)
+    }
+  }
+}
+
+sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
+  ctx := GetContext()
+  s := ctx.Instances.Samplers[sampler]
+  switch (pname) {
+    case GL_TEXTURE_COMPARE_FUNC: s.CompareFunc = as!GLenum(params[0])
+    case GL_TEXTURE_COMPARE_MODE: s.CompareMode = as!GLenum(params[0])
+    case GL_TEXTURE_MIN_FILTER:   s.MinFilter = as!GLenum(params[0])
+    case GL_TEXTURE_MAG_FILTER:   s.MagFilter = as!GLenum(params[0])
+    case GL_TEXTURE_MIN_LOD:      s.MinLod = as!GLfloat(params[0])
+    case GL_TEXTURE_MAX_LOD:      s.MaxLod = as!GLfloat(params[0])
+    case GL_TEXTURE_WRAP_R:       s.WrapR = as!GLenum(params[0])
+    case GL_TEXTURE_WRAP_S:       s.WrapS = as!GLenum(params[0])
+    case GL_TEXTURE_WRAP_T:       s.WrapT = as!GLenum(params[0])
+    case GL_TEXTURE_BORDER_COLOR: {
+      minRequiredVersion(3, 2)
+      // TODO: Handle - has different behaviour based on the I suffix.
+    }
+    case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
+      requiresExtension(GL_EXT_texture_filter_anisotropic)
+      // This use case is not explicitly mentioned in the extension (presumably
+      // because it is written for GLES2, but samplers were introduced in GLES3).
+      // However, it is used and supported in practice (which is reasonable).
+      s.MaxAnisotropy = as!GLfloat(params[0])
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param) {
+  minRequiredVersion(3, 2)
+  SamplerParameterIiv(sampler, pname, param)
+}
+
+sub void SamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param) {
+  SamplerParameterv!(const GLint*)(sampler, pname, param)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* param) {
+  minRequiredVersion(3, 2)
+  SamplerParameterIuiv(sampler, pname, param)
+}
+
+sub void SamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* param) {
+  SamplerParameterv!(const GLuint*)(sampler, pname, param)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameterf(SamplerId sampler, GLenum pname, GLfloat param) {
+  minRequiredVersion(3, 0)
+  params := Vec1f(param)
+  SamplerParameterv!Vec1f(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameterfv(SamplerId sampler, GLenum pname, const GLfloat* param) {
+  minRequiredVersion(3, 0)
+  SamplerParameterv!(const GLfloat*)(sampler, pname, param)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameteri(SamplerId sampler, GLenum pname, GLint param) {
+  minRequiredVersion(3, 0)
+  params := Vec1i(param)
+  SamplerParameterv!Vec1i(sampler, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+cmd void glSamplerParameteriv(SamplerId sampler, GLenum pname, const GLint* param) {
+  minRequiredVersion(3, 0)
+  SamplerParameterv!(const GLint*)(sampler, pname, param)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBuffer.xhtml","OpenGL ES 3.2")
+cmd void glTexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
+  minRequiredVersion(3, 2)
+  TexBuffer(target, internalformat, buffer)
+}
+
+sub void TexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
+  switch (target) {
+    case GL_TEXTURE_BUFFER: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_R16, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
+        GL_RG16, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
+        GL_RG8UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGBA16, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI,
+        GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  _ = buffer // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBufferRange.xhtml","OpenGL ES 3.2")
+cmd void glTexBufferRange(GLenum     target,
+                          GLenum     internalformat,
+                          BufferId   buffer,
+                          GLintptr   offset,
+                          GLsizeiptr size) {
+  minRequiredVersion(3, 2)
+  TexBufferRange(target, internalformat, buffer, offset, size)
+}
+
+sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, GLintptr offset, GLsizeiptr size) {
+  switch (target) {
+    case GL_TEXTURE_BUFFER: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_R16, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
+        GL_RG16, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
+        GL_RG8UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGBA16, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI,
+        GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  _ = buffer // TODO
+  _ = offset // TODO
+  _ = size // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage2D.xhtml","OpenGL ES 3.2")
+cmd void glTexImage2D(GLenum         target,
+                      GLint          level,
+                      GLint          internalformat,
+                      GLsizei        width,
+                      GLsizei        height,
+                      GLint          border,
+                      GLenum         format,
+                      GLenum         type,
+                      TexturePointer data) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      // version 2.0
+    }
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+      if width != height { glErrorInvalidValue() } // cube faces are square
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  CheckInternalFormat(as!GLenum(internalformat))
+  switch (format) {
+    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
+      // version 2.0
+    }
+    case GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_RED, GL_RED_INTEGER, GL_RG, GL_RGBA_INTEGER,
+        GL_RGB_INTEGER, GL_RG_INTEGER: {
+      minRequiredVersion(3, 0)
+    }
+    case GL_STENCIL_INDEX: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_BGRA_EXT: {
+      requiresExtension(GL_EXT_texture_format_BGRA8888)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  switch (type) {
+    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
+        GL_UNSIGNED_SHORT_5_6_5: {
+      // version 2.0
+    }
+    case GL_HALF_FLOAT_OES: {
+      requiresExtension(GL_OES_texture_half_float)
+    }
+    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
+        GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
+        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT: {
+      minRequiredVersion(3, 0)
+      // TODO: UNSIGNED_SHORT and UNSIGNED_INT also valid with OES_depth_texture
+    }
+    default: {
+      glErrorInvalidEnum(type)
+    }
+  }
+  if border != 0 { glErrorInvalidValue() }
+
+  // TODO: We might need to convert from format to internal format.
+
+  ctx := GetContext()
+  checkMaxTextureSize(ctx, target, level, width, height)
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
+      l := Image(
+        Width:        width,
+        Height:       height,
+        Size:         imageSize(as!u32(width), as!u32(height), format, type),
+        TexelFormat:  format,
+        TexelType:    type,
+      )
+      if (data != null) {
+        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
+          l.Data = clone(as!u8*(data)[0:l.Size])
+        }
+      } else {
+        l.Data = make!u8(l.Size)
+      }
+
+      t.Texture2D[level] = l
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = format
+      t.TexelType = type
+    }
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
+      l := Image(
+        Width:        width,
+        Height:       height,
+        Size:         imageSize(as!u32(width), as!u32(height), format, type),
+        TexelFormat:  format,
+        TexelType:    type,
+      )
+      if (data != null) {
+        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
+          l.Data = clone(as!u8*(data)[0:l.Size])
+        }
+      } else {
+        l.Data = make!u8(l.Size)
+      }
+      cube := t.Cubemap[level]
+      cube.Faces[as!GLenum(target)] = l
+      t.Cubemap[level] = cube
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = format
+      t.TexelType = type
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage3D.xhtml","OpenGL ES 3.2")
+cmd void glTexImage3D(GLenum         target,
+                      GLint          level,
+                      GLint          internalformat,
+                      GLsizei        width,
+                      GLsizei        height,
+                      GLsizei        depth,
+                      GLint          border,
+                      GLenum         format,
+                      GLenum         type,
+                      TexturePointer data) {
+  minRequiredVersion(3, 0)
+  TexImage3D(target, level, internalformat, width, height, depth, border, format, type, data)
+}
+
+sub void TexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, TexturePointer data) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  CheckInternalFormat(as!GLenum(internalformat))
+  switch (format) {
+    case GL_ALPHA, GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RED,
+        GL_RED_INTEGER, GL_RG, GL_RGB, GL_RGBA, GL_RGBA_INTEGER, GL_RGB_INTEGER, GL_RG_INTEGER: {
+      // version 3.0
+    }
+    case GL_STENCIL_INDEX: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  switch (type) {
+    case GL_HALF_FLOAT_OES: {
+      requiresExtension(GL_OES_texture_half_float)
+    }
+    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
+        GL_UNSIGNED_BYTE, GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
+        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT,
+        GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_5_6_5: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(type)
+    }
+  }
+
+  _ = level // TODO
+  _ = internalformat // TODO
+  _ = border // TODO
+
+  ctx := GetContext()
+  if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
+    size := imageSize(as!u32(width), as!u32(height), format, type) * as!u32(depth)
+    read(as!u8*(data)[0:size])
+  }
+}
+
+// Check that wrap is a valid value for GL_TEXTURE_WRAP_* otherwise
+// abort with GL_INVALID_ENUM
+sub GLenum checkWrapParam(GLenum wrap) {
+  switch wrap {
+    case GL_CLAMP_TO_EDGE, GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP_TO_BORDER: {
+    }
+    default: {
+      glErrorInvalidEnum(wrap)
+    }
+  }
+  return wrap
+}
+
+// Check that swizzle is a valid value for GL_TEXTURE_SWIZZLE_* otherwise
+// abort with GL_INVALID_ENUM
+sub GLenum checkSwizzleParam(GLenum swizzle) {
+  switch swizzle {
+    case GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA, GL_ZERO, GL_ONE: { /* fine */ }
+    default:                                                   {
+      glErrorInvalidEnum(swizzle)
+    }
+  }
+  return swizzle
+}
+
+sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
+  if target == GL_TEXTURE_BUFFER { glErrorInvalidEnum(target) } // Excluded.
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  switch pname {
+    case GL_TEXTURE_MAG_FILTER: {
+      minRequiredVersion(2, 0)
+      magFilter := as!GLenum(params[0])
+      switch (magFilter) {
+        case GL_NEAREST, GL_LINEAR: { /* fine */ }
+        default:                    {
+          glErrorInvalidEnum(magFilter)
+        }
+      }
+      t.MagFilter = magFilter
+    }
+    case GL_TEXTURE_MIN_FILTER: {
+      minRequiredVersion(2, 0)
+      minFilter := as!GLenum(params[0])
+      switch (minFilter) {
+        case GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_NEAREST,
+            GL_LINEAR_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
+            GL_LINEAR_MIPMAP_LINEAR: { /* fine */ }
+        default:                     {
+          glErrorInvalidEnum(minFilter)
+        }
+      }
+      t.MinFilter = minFilter
+    }
+    case GL_TEXTURE_WRAP_S: {
+      minRequiredVersion(2, 0)
+      t.WrapS = checkWrapParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_WRAP_T: {
+      minRequiredVersion(2, 0)
+      t.WrapT = checkWrapParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_BASE_LEVEL: {
+      minRequiredVersion(3, 0)
+      baseLevel := as!GLint(params[0])
+      if baseLevel < 0 { glErrorInvalidValue() }
+      t.BaseLevel = baseLevel
+    }
+    case GL_TEXTURE_COMPARE_FUNC: {
+      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
+      t.CompareFunc = as!GLenum(params[0])
+    }
+    case GL_TEXTURE_COMPARE_MODE: {
+      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
+      t.CompareMode = as!GLenum(params[0])
+    }
+    case GL_TEXTURE_MAX_LEVEL: {
+      minRequiredVersion(3, 0)
+      maxLevel := as!GLint(params[0])
+      if maxLevel < 0 { glErrorInvalidValue() }
+      t.MaxLevel = maxLevel
+    }
+    case GL_TEXTURE_MAX_LOD: {
+      minRequiredVersion(3, 0)
+      t.MaxLod = as!GLfloat(params[0])
+    }
+    case GL_TEXTURE_MIN_LOD: {
+      minRequiredVersion(3, 0)
+      t.MinLod = as!GLfloat(params[0])
+    }
+    case GL_TEXTURE_SWIZZLE_A: {
+      minRequiredVersion(3, 0)
+      t.SwizzleA = checkSwizzleParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_SWIZZLE_B: {
+      minRequiredVersion(3, 0)
+      t.SwizzleB = checkSwizzleParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_SWIZZLE_G: {
+      minRequiredVersion(3, 0)
+      t.SwizzleG = checkSwizzleParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_SWIZZLE_R: {
+      minRequiredVersion(3, 0)
+      t.SwizzleR = checkSwizzleParam(as!GLenum(params[0]))
+    }
+    case GL_TEXTURE_WRAP_R: {
+      minRequiredVersion(3, 0)
+      t.WrapR = as!GLenum(params[0])
+    }
+    case GL_DEPTH_STENCIL_TEXTURE_MODE: {
+      minRequiredVersion(3, 1)
+      t.DepthStencilTextureMode = as!GLenum(params[0])
+    }
+    case GL_TEXTURE_BORDER_COLOR: {
+      minRequiredVersion(3, 2)
+      // TODO: Handle - has different behaviour based on the I suffix.
+    }
+    case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
+      requiresExtension(GL_EXT_texture_filter_anisotropic)
+      t.MaxAnisotropy = as!GLfloat(params[0])
+    }
+    case GL_TEXTURE_SRGB_DECODE_EXT: {
+      requiresExtension(GL_EXT_texture_sRGB_decode)
+      // TODO: DECODE_EXT, SKIP_DECODE_EXT
+    }
+    default: {
+      glErrorInvalidEnum(pname)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
+  minRequiredVersion(3, 2)
+  TexParameterIiv(target, pname, params)
+}
+
+sub void TexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
+  TexParameterv!(const GLint*)(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
+  minRequiredVersion(3, 2)
+  TexParameterIuiv(target, pname, params)
+}
+
+sub void TexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
+  TexParameterv!(const GLuint*)(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameterf(GLenum target, GLenum parameter, GLfloat value) {
+  minRequiredVersion(1, 0)
+  if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
+  params := Vec1f(value)
+  TexParameterv!Vec1f(target, parameter, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameterfv(GLenum target, GLenum pname, const GLfloat* params) {
+  minRequiredVersion(1, 0)
+  TexParameterv!(const GLfloat*)(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameteri(GLenum target, GLenum parameter, GLint value) {
+  minRequiredVersion(1, 0)
+  if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
+  params := Vec1i(value)
+  TexParameterv!Vec1i(target, parameter, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+cmd void glTexParameteriv(GLenum target, GLenum pname, const GLint* params) {
+  minRequiredVersion(1, 0)
+  TexParameterv!(const GLint*)(target, pname, params)
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2D.xhtml","OpenGL ES 3.2")
+cmd void glTexStorage2D(GLenum  target,
+                        GLsizei levels,
+                        GLenum  internalformat,
+                        GLsizei width,
+                        GLsizei height) {
+  minRequiredVersion(3, 0)
+  TexStorage2D(target, levels, internalformat, width, height)
+}
+
+sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height) {
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  if levels < 1 { glErrorInvalidValue() }
+  switch (internalformat) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8,
+        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F,
+        GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
+        GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
+        GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB16F, GL_RGB16I, GL_RGB16UI,
+        GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1, GL_RGB8, GL_RGB8I, GL_RGB8UI,
+        GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I,
+        GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8,
+        GL_SRGB8_ALPHA8: {
+      // version 3.0
+    }
+    case GL_R16, GL_R16_SNORM, GL_RG16, GL_RG16_SNORM, GL_RGB16, GL_RGB16_SNORM, GL_RGBA16, GL_RGBA16_SNORM: {
+      minRequiredVersion(3, 1)
+      requiresExtension(GL_EXT_texture_norm16)
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8,
+        GL_STENCIL_INDEX8: {
+      minRequiredVersion(3, 2)
+    }
+    case GL_ALPHA8_EXT: {
+      requiresExtension(GL_EXT_texture_storage)
+      // TODO: GL_EXT_texture_storage has nice table of internal formats - use it.
+    }
+    case GL_ETC1_RGB8_OES: {
+      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
+      // TODO: Add to other commands as well.
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+
+  fm := imageFormat(internalformat)
+  ty := imageType(internalformat)
+
+  switch (target) {
+    case GL_TEXTURE_2D: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
+      for i in (0 .. as!GLint(levels)) {
+        w := max!GLsizei(width >> as!u32(i), 1)
+        h := max!GLsizei(height >> as!u32(i), 1)
+        s := imageSize(as!u32(w), as!u32(h), fm, ty)
+        l := Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        t.Texture2D[i] = l
+      }
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = fm
+      t.TexelType = ty
+      t.ImmutableFormat = GL_TRUE
+    }
+    case GL_TEXTURE_CUBE_MAP: {
+      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
+      for i in (0 .. as!GLint(levels)) {
+        w := max!GLsizei(width >> as!u32(i), 1)
+        h := max!GLsizei(height >> as!u32(i), 1)
+        s := imageSize(as!u32(w), as!u32(h), fm, ty)
+        cube := t.Cubemap[i]
+
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = Image(
+          Width:        w,
+          Height:       h,
+          Size:         s,
+          TexelFormat:  fm,
+          TexelType:    ty,
+          Data:         make!u8(s)
+        )
+
+        t.Cubemap[i] = cube
+      }
+      // TODO: Warning/Error if format has changed
+      t.TexelFormat = fm
+      t.TexelType = ty
+      t.ImmutableFormat = GL_TRUE
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2DMultisample.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2DMultisample.xhtml","OpenGL ES 3.2")
+cmd void glTexStorage2DMultisample(GLenum    target,
+                                   GLsizei   samples,
+                                   GLenum    internalformat,
+                                   GLsizei   width,
+                                   GLsizei   height,
+                                   GLboolean fixedsamplelocations) {
+  minRequiredVersion(3, 1)
+  switch (target) {
+    case GL_TEXTURE_2D_MULTISAMPLE: {
+      // version 3.1
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24,
+        GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I,
+        GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F,
+        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI,
+        GL_RGB16F, GL_RGB16I, GL_RGB16UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1,
+        GL_RGB8, GL_RGB8I, GL_RGB8UI, GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I,
+        GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I,
+        GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8, GL_SRGB8_ALPHA8: {
+      // version 3.1
+    }
+    case GL_STENCIL_INDEX8: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+  // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3D.xhtml","OpenGL ES 3.2")
+cmd void glTexStorage3D(GLenum  target,
+                        GLsizei levels,
+                        GLenum  internalformat,
+                        GLsizei width,
+                        GLsizei height,
+                        GLsizei depth) {
+  minRequiredVersion(3, 0)
+  TexStorage3D(target, levels, internalformat, width, height, depth)
+}
+
+sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8,
+        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F,
+        GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
+        GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
+        GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB16F, GL_RGB16I, GL_RGB16UI,
+        GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1, GL_RGB8, GL_RGB8I, GL_RGB8UI,
+        GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I,
+        GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8,
+        GL_SRGB8_ALPHA8: {
+      // version 3.0
+    }
+    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
+        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
+        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
+        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
+        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
+        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8,
+        GL_STENCIL_INDEX8: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+
+  _ = levels // TODO
+  _ = width // TODO
+  _ = height // TODO
+  _ = depth // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3DMultisample.xhtml","OpenGL ES 3.2")
+cmd void glTexStorage3DMultisample(GLenum    target,
+                                   GLsizei   samples,
+                                   GLenum    internalformat,
+                                   GLsizei   width,
+                                   GLsizei   height,
+                                   GLsizei   depth,
+                                   GLboolean fixedsamplelocations) {
+  minRequiredVersion(3, 2)
+  TexStorage3DMultisample(target, samples, internalformat, width, height, depth, fixedsamplelocations)
+}
+
+sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedsamplelocations) {
+  switch (target) {
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (internalformat) {
+    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24,
+        GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I,
+        GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F,
+        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI,
+        GL_RGB16F, GL_RGB16I, GL_RGB16UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1,
+        GL_RGB8, GL_RGB8I, GL_RGB8UI, GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I,
+        GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I,
+        GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8, GL_SRGB8_ALPHA8, GL_STENCIL_INDEX8: {
+      // version 3.2
+    }
+    default: {
+      glErrorInvalidEnum(internalformat)
+    }
+  }
+
+  _ = samples // TODO
+  _ = width // TODO
+  _ = height // TODO
+  _ = depth // TODO
+  _ = fixedsamplelocations // TODO
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexSubImage2D.xml","OpenGL ES 2.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage2D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage2D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage2D.xhtml","OpenGL ES 3.2")
+cmd void glTexSubImage2D(GLenum         target,
+                         GLint          level,
+                         GLint          xoffset,
+                         GLint          yoffset,
+                         GLsizei        width,
+                         GLsizei        height,
+                         GLenum         format,
+                         GLenum         type,
+                         TexturePointer data) {
+  minRequiredVersion(1, 0)
+  switch (target) {
+    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
+      // version 2.0
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+
+  // dEQP is giving priority to GL_INVALID_VALUE over GL_INVALID_ENUM (from
+  // type). The spec. is silent on the issue, so we do these tests before
+  // checking format and type.
+  if (level < 0) || (xoffset < 0) || (yoffset < 0) || (width < 0) || (height < 0) { glErrorInvalidValue() }
+  ctx := GetContext()
+  checkMaxTextureSize(ctx, target, level, width, height)
+
+  switch (format) {
+    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
+      // version 2.0
+    }
+    case GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_RED, GL_RED_INTEGER, GL_RG, GL_RGBA_INTEGER,
+        GL_RGB_INTEGER, GL_RG_INTEGER: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  switch (type) {
+    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
+        GL_UNSIGNED_SHORT_5_6_5: {
+      // version 2.0
+    }
+    case GL_HALF_FLOAT_OES: {
+      requiresExtension(GL_OES_texture_half_float)
+    }
+    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
+        GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
+        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT: {
+      minRequiredVersion(3, 0)
+    }
+    default: {
+      glErrorInvalidEnum(type)
+    }
+  }
+  t := GetBoundTextureOrErrorInvalidEnum(switch (target) {
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+          GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        GL_TEXTURE_CUBE_MAP
+      default:
+        target
+    })
+  image := switch (target) {
+    case GL_TEXTURE_2D:
+      t.Texture2D[level]
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+      t.Cubemap[level].Faces[as!GLenum(target)]
+  }
+  if ((as!GLsizei(xoffset) + width) > image.Width) || ((as!GLsizei(yoffset) + height) > image.Height) { glErrorInvalidValue() }
+
+  // TODO: consider GL_UNPACK_ALIGNMENT, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS and GL_UNPACK_SKIP_IMAGES
+  pbo := ctx.BoundBuffers.PixelUnpackBuffer
+  url := ctx.PixelStorage.UnpackRowLength
+  src_width := switch (url == 0) {
+    case true:  as!u32(width)
+    case false: as!u32(url)
+  }
+  src_stride := imageSize(src_width, 1, format, type)
+  src_size := src_stride * as!u32(height)
+  dst_stride := imageSize(as!u32(image.Width), 1, format, type)
+  dst_offset := imageSize(as!u32(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
+  src_data := switch (pbo == 0) {
+    case true:  as!u8*(data)[0:src_size]
+    case false: ctx.Instances.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size)]
+  }
+  line_bytes := imageSize(as!u32(width), 1, format, type)
+
+  for y in (0 .. as!u32(height)) {
+    src := (src_stride * y)
+    dst := (dst_stride * y) + dst_offset
+    copy(image.Data[dst:dst + line_bytes], src_data[src:src + line_bytes])
+  }
+}
+
+@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml","OpenGL ES 3.0")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage3D.xhtml","OpenGL ES 3.1")
+@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage3D.xhtml","OpenGL ES 3.2")
+cmd void glTexSubImage3D(GLenum         target,
+                         GLint          level,
+                         GLint          xoffset,
+                         GLint          yoffset,
+                         GLint          zoffset,
+                         GLsizei        width,
+                         GLsizei        height,
+                         GLsizei        depth,
+                         GLenum         format,
+                         GLenum         type,
+                         TexturePointer data) {
+  minRequiredVersion(3, 0)
+  TexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data)
+}
+
+sub void TexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, TexturePointer data) {
+  switch (target) {
+    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
+      // version 3.0
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      minRequiredVersion(3, 2)
+    }
+    default: {
+      glErrorInvalidEnum(target)
+    }
+  }
+  switch (format) {
+    case GL_ALPHA, GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RED,
+        GL_RED_INTEGER, GL_RG, GL_RGB, GL_RGBA, GL_RGBA_INTEGER, GL_RGB_INTEGER, GL_RG_INTEGER: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(format)
+    }
+  }
+  switch (type) {
+    case GL_HALF_FLOAT_OES: {
+      requiresExtension(GL_OES_texture_half_float)
+    }
+    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
+        GL_UNSIGNED_BYTE, GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
+        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT,
+        GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_5_6_5: {
+      // version 3.0
+    }
+    default: {
+      glErrorInvalidEnum(type)
+    }
+  }
+
+  _ = level // TODO
+  _ = xoffset // TODO
+  _ = yoffset // TODO
+  _ = zoffset // TODO
+
+  ctx := GetContext()
+  if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
+    size := imageSize(as!u32(width), as!u32(height), format, type) * as!u32(depth)
+    read(as!u8*(data)[0:size])
+  }
+}

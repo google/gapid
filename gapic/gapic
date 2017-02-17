@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Exit on error.
+set -e
+
+absname() {
+  echo "$(cd $1 && pwd)"
+}
+
+case $(uname -s | tr A-Z a-z) in
+  linux)  HOST_OS=linux ;;
+  darwin) HOST_OS=osx ;;
+  *) echo "Unsupported OS: $HOST_OS"; exit 1
+esac
+
+GAPIC=$(absname "$(dirname "${BASH_SOURCE[0]}")")
+OUT=$GAPIC/out
+JAR=$OUT/gapic-$HOST_OS.jar
+
+$GAPIC/build_gapic -p $HOST_OS
+
+if [[ $HOST_OS == "linux" ]]; then
+  SWT_GTK3=0 LIBOVERLAY_SCROLLBAR=0 java -jar $JAR $@
+else
+  java -XstartOnFirstThread -jar $JAR $@
+fi

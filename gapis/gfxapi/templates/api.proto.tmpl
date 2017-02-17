@@ -1,0 +1,143 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "module" ""}}
+{{Include "common.tmpl"}}
+{{$ | Macro "api.proto" | NewReflow "    " | Write (printf "%s_pb/api.proto" (Global "OutputDir"))}}
+
+{{define "api.proto"}}
+  {{template "Proto.GeneratedHeader" (Global "OutputDir")}}
+
+  {{range $c := AllCommands $}}
+    {{Template "CommandEntry" $c}}
+  {{end}}
+
+  {{range $c := $.Classes}}
+    {{if (GetAnnotation $c "serialize")}}{{Template "ClassEntry" $c}}{{end}}
+  {{end}}
+
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandEntry"}}
+  {{AssertType $ "Function"}}
+  {{$name := $.Name}}
+  {{Global "ProtoID" 0}}
+  {{if not (GetAnnotation $ "pfn")}}
+    ¶
+    // {{$name}} is the structure for serializing the api call {{$.Name}}¶
+    message {{$name}} {»¶
+      {{range $p := $.FullParameters}}
+        {{Template "Proto.Entry" "Param" $p "Type" (TypeOf $p)}}
+      {{end}}
+    «}¶
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassEntry"}}
+  {{$name := $.Name | Title}}
+  {{Global "ProtoID" 0}}
+  // {{$name}} is the structure for serializing the class {{$.Name}}¶
+  message {{$name}} {»¶
+    {{range $v := $.Fields}}
+      {{Template "Proto.Entry" "Param" $v "Type" (TypeOf $v)}}
+    {{end}}
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the proto type for the provided AST type or expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Proto.Type"}}
+  {{if IsBool               $}}bool
+  {{else if IsInt           $}}sint64
+  {{else if IsUint          $}}uint64
+  {{else if IsSize          $}}uint64
+  {{else if IsChar          $}}int32
+  {{else if IsU8            $}}uint32
+  {{else if IsS8            $}}sint32
+  {{else if IsU16           $}}uint32
+  {{else if IsS16           $}}sint32
+  {{else if IsF32           $}}float
+  {{else if IsU32           $}}uint32
+  {{else if IsS32           $}}sint32
+  {{else if IsF64           $}}double
+  {{else if IsU64           $}}uint64
+  {{else if IsS64           $}}int64
+  {{else if IsString        $}}string
+  {{else if IsEnum          $}}uint32
+  {{else if IsPointer       $}}memory_pb.Pointer
+  {{else if IsSlice         $}}memory_pb.Slice
+  {{else if IsClass         $}}{{$.Name | Title}}
+  {{else if IsPseudonym     $}}{{Template "Proto.Type" $.To}}
+  {{else}}{{Error "macro Proto.Type called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the proto entry for the provided AST type or expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Proto.Entry"}}
+  {{$name := $.Param.Name}}
+  {{if IsPseudonym     $.Type}}{{Template "Proto.Entry" "Param" $.Param "Type" $.Type.To}}
+  {{else if IsStaticArray   $.Type}}repeated {{Template "Proto.Entry" "Param" $.Param "Type" $.Type.ValueType}}
+  {{else if IsMap           $.Type}}
+    {{$entry := printf "%sEntry" $name}}
+    message {{$entry}} {»¶
+      {{Template "Proto.Type" $.Type.KeyType}} Key = 1;¶
+      {{Template "Proto.Type" $.Type.ValueType}} Value = 2;¶
+    «}¶
+                                    repeated {{$entry}} {{$name}} = {{Inc "ProtoID"}};¶
+  {{else}}{{Template "Proto.Type" $.Type}} {{$name}} = {{Inc "ProtoID"}};¶
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a comment stating that the file is automatically generated.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Proto.GeneratedHeader"}}
+  §{{Copyright "generated" "apic"}}§¶
+  syntax = "proto3";¶
+  ¶
+  package {{$}}_pb;¶
+  {{with (Global "GoPackage")}}option go_package = "{{.}}";¶{{end}}
+  // cc_package¶
+  ¶
+  import "github.com/google/gapid/gapis/memory/memory_pb/memory.proto";¶
+  ¶
+{{end}}
+
+
+
+

@@ -1,0 +1,25 @@
+# Directories
+/.DS_Store
+/.idea
+/.vscode
+/bazel-*
+
+# Single files
+/.gapid-config
+/signatures.txt
+
+# General patterns
+*.gfxtrace
+*.pb.go
+*ycm_extra_conf.py*
+*_binary.go
+*_binary_test.go
+*_embed.go
+*_snippets.*
+snippets.base64
+snippets.text
+gapir.log
+gapis.log
+# Vim
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
