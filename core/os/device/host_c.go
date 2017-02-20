@@ -14,25 +14,14 @@
 
 package device
 
-import (
-	"sync"
+// #cgo LDFLAGS: -ldeviceinfo -lprotobuf -lprotobuf_lite -lstdc++ -lpthread -lm -lcityhash
+// #include "core/os/device/deviceinfo/cc/instance.h"
+import "C"
+import "unsafe"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/log"
-)
-
-var (
-	host     Instance
-	hostOnce sync.Once
-)
-
-// Host returns the device information for the host computer running the code.
-func Host(ctx log.Context) *Instance {
-	hostOnce.Do(func() {
-		buf := get_device()
-		if err := proto.NewBuffer(buf).Unmarshal(&host); err != nil {
-			panic(err)
-		}
-	})
-	return &host
+func get_device() []byte {
+	s := C.get_device_instance(nil)
+	defer C.free_device_instance(s)
+	buf := C.GoBytes(unsafe.Pointer(s.data), C.int(s.size))
+	return append([]byte{}, buf...)
 }
