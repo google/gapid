@@ -131,10 +131,9 @@
   syntax = "proto3";¶
   ¶
   package {{$}}_pb;¶
-  {{with (Global "GoPackage")}}option go_package = "{{.}}";¶{{end}}
   // cc_package¶
   ¶
-  import "github.com/google/gapid/gapis/memory/memory_pb/memory.proto";¶
+  import "gapis/memory/memory_pb/memory.proto";¶
   ¶
 {{end}}
 

@@ -15,7 +15,6 @@
 syntax = "proto3";
 
 package bind;
-option go_package = "github.com/google/gapid/core/os/device/bind";
 
 // Status represents the last queried connection status of a device.
 enum Status {
