@@ -25,7 +25,7 @@ import (
 type fakeT struct {
 	fatal bytes.Buffer
 	error bytes.Buffer
-	info  bytes.Buffer
+	log   bytes.Buffer
 }
 
 func (f *fakeT) Fatal(args ...interface{}) {
@@ -35,22 +35,21 @@ func (f *fakeT) Error(args ...interface{}) {
 	fmt.Fprintln(&f.error, args...)
 }
 func (f *fakeT) Log(args ...interface{}) {
-	fmt.Fprintln(&f.info, args...)
+	fmt.Fprintln(&f.log, args...)
 }
 
 func Testmanager(t *testing.T) {
 	const (
-		expectInfo  = "Info:log to info\n"
-		expectError = "Error:log to error\n"
-		expectFatal = "Fatal:log to fatal\n"
+		expectLog   = "Info:manager test\n    log to info\n"
+		expectError = "Error:manager test\n    log to error\n"
+		expectFatal = "Critical:manager test\n    log to fatal\n"
 	)
 	fake := &fakeT{}
-	assert := assert.To(fake).For("")
-	assert.Log("log to info")
-	assert.Error("log to error")
-	assert.Fatal("log to fatal")
-	if fake.info.String() != expectInfo {
-		t.Errorf("For info got %q expected %q", fake.info.String(), expectInfo)
+	assert.To(fake).For("manager test").Log("log to info")
+	assert.To(fake).For("manager test").Error("log to error")
+	assert.To(fake).For("manager test").Fatal("log to fatal")
+	if fake.log.String() != expectLog {
+		t.Errorf("For info got %q expected %q", fake.log.String(), expectLog)
 	}
 	if fake.error.String() != expectError {
 		t.Errorf("For error got %q expected %q", fake.error.String(), expectError)
