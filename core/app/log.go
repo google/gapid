@@ -17,6 +17,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -104,4 +105,25 @@ func updateContext(legacy log.Context, flags *LogFlags, closeLogs func()) (log.C
 		ctx = output.NewContext(ctx, handler)
 	}
 	return log.Wrap(ctx), closeLogs
+}
+
+func autoScribe(w io.Writer) note.Handler {
+	low := note.Normal.Scribe(w)
+	high := note.Detailed.Scribe(w)
+	return func(page note.Page) error {
+		level := severity.FindLevel(page)
+		if level <= severity.Error {
+			return high(page)
+		}
+		return low(page)
+	}
+}
+
+func init() {
+	autoStyle := note.Style{
+		Name:   "Auto",
+		Scribe: autoScribe,
+	}
+	note.RegisterStyle(autoStyle)
+	note.DefaultStyle = autoStyle
 }
