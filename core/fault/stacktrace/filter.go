@@ -30,9 +30,9 @@ func MatchPackage(pkg string) Matcher {
 }
 
 // MatchFunction returns a predicate that matches the specified function.
-func MatchFunction(pkg string, fun string) Matcher {
+func MatchFunction(fun string) Matcher {
 	return func(entry Entry) bool {
-		return entry.Function.Package == pkg && entry.Function.Name == fun
+		return entry.Function.Name == fun
 	}
 }
 

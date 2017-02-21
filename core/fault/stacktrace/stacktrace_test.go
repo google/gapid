@@ -58,7 +58,7 @@ func (e traceEntry) FilteredCapture() []stacktrace.Entry {
 }
 
 var (
-	top    = stacktrace.MatchFunction("github.com/google/gapid/core/fault/stacktrace_test", "init")
+	top    = stacktrace.MatchFunction("init")
 	bottom = stacktrace.MatchPackage("github.com/google/gapid/core/fault/stacktrace")
 
 	traces = []traceEntry{{
