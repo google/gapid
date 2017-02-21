@@ -25,18 +25,24 @@
   import (
     "fmt"
 
+    "github.com/google/gapid/core/data/id"
+    "github.com/google/gapid/core/data/pod"
     "github.com/google/gapid/core/log"
-    "github.com/google/gapid/core/math/u64.go"
+    "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/framework/binary"
+    "github.com/google/gapid/framework/binary/schema"
     "github.com/google/gapid/gapis/atom"
+    "github.com/google/gapid/gapis/capture"
     "github.com/google/gapid/gapis/gfxapi"
+    "github.com/google/gapid/gapis/gfxapi/test/gfxapi_test_import"
     "github.com/google/gapid/gapis/memory"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
+    "github.com/google/gapid/gapis/replay/value"  
     "github.com/google/gapid/gapis/resolve"
     "github.com/google/gapid/gapis/service"
     "github.com/google/gapid/gapis/service/path"
-  )
+)
 
   {{range $p := $.Pseudonyms}}
     {{template "Pseudonym" $p}}
@@ -109,6 +115,7 @@
 
     "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/framework/binary"
+    "github.com/google/gapid/framework/binary/schema"
     "github.com/google/gapid/gapis/gfxapi"
     "github.com/google/gapid/core/log"
     "github.com/google/gapid/gapis/memory"
