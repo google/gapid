@@ -29,7 +29,7 @@ if(ANDROID_ABI)
     get_target_property(STL_INCLUDES STL::Lib INTERFACE_INCLUDE_DIRECTORIES)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake.in toolchain.cmake @ONLY)
 
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llvm/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llvm")
     add_cmake(llvm "${CMAKE_SOURCE_DIR}/third_party/llvm"
         "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_CURRENT_BINARY_DIR}/toolchain.cmake"
         "-DLLVM_EXTERNAL_PROJECTS:STRING=interceptor"
@@ -37,6 +37,7 @@ if(ANDROID_ABI)
         "-DLLVM_HOST_TRIPLE:STRING=${LLVM_HOST_TRIPLE}"
         "-DLLVM_TARGET_ARCH:STRING=${LLVM_TARGET_ARCH}"
         "-DLLVM_TARGETS_TO_BUILD:STRING=${LLVM_TARGET_ARCH}"
+        "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
         "-DLLVM_TABLEGEN:PATH=${CMAKE_BINARY_DIR}/../../../bin/llvm/llvm-tblgen"
     )
     add_cmake_target(llvm interceptor ${dst} "libinterceptor.so"
@@ -46,18 +47,19 @@ if(ANDROID_ABI)
 else()
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake.in toolchain.cmake @ONLY)
 
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llvm/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llvm")
     add_cmake(llvm "${CMAKE_SOURCE_DIR}/third_party/llvm"
         "-DCMAKE_TOOLCHAIN_FILE:STRING=${CMAKE_CURRENT_BINARY_DIR}/toolchain.cmake"
+        "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
     )
-    add_cmake_target(llvm llvm-tblgen ${dst} "llvm-tblgen"
+    add_cmake_target(llvm llvm-tblgen ${dst} "llvm-tblgen${CMAKE_EXECUTABLE_SUFFIX}"
         DEPENDS ${sources}
-        SOURCE_PATH "bin/llvm-tblgen"
+        SOURCE_PATH "bin/llvm-tblgen${CMAKE_EXECUTABLE_SUFFIX}"
     )
 endif()
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} llvm-interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources} llvm-llvm-tblgen
         DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"

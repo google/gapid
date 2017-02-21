@@ -22,6 +22,8 @@ import (
 	"os"
 	"sync"
 
+	"path/filepath"
+
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/copyright"
@@ -100,7 +102,7 @@ func run(ctx log.Context) error {
 	if err != nil {
 		return err
 	}
-	scanner := scan.New(ctx, wd, *gopath)
+	scanner := scan.New(ctx, wd, filepath.FromSlash(*gopath))
 	ctx.Print("Scanning")
 	args := flag.Args()
 	if len(args) == 0 {

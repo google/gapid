@@ -40,22 +40,27 @@ func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 }
 
 func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
 	args := []string{
 		"-GNinja",
-		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.System(),
+		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.Slash(),
 		"-DCMAKE_BUILD_TYPE=" + strings.Title(cfg.Flavor.String()),
 		"-DINSTALL_PREFIX=" + cfg.pkg().System(),
 	}
-	args = append(args, "-DCMAKE_Go_COMPILER="+goExePath.System())
+	args = append(args, "-DCMAKE_Go_COMPILER="+goExePath.Slash())
 	if !cfg.AndroidNDKRoot.IsEmpty() {
-		args = append(args, "-DANDROID_NDK_ROOT="+cfg.AndroidNDKRoot.System())
+		args = append(args, "-DANDROID_NDK_ROOT="+cfg.AndroidNDKRoot.Slash())
 	}
 	if !cfg.JavaHome.IsEmpty() {
-		args = append(args, "-DJAVA_HOME="+cfg.JavaHome.System())
+		args = append(args, "-DJAVA_HOME="+cfg.JavaHome.Slash())
 	}
 	if !cfg.AndroidSDKRoot.IsEmpty() {
-		args = append(args, "-DANDROID_HOME="+cfg.AndroidSDKRoot.System())
+		args = append(args, "-DANDROID_HOME="+cfg.AndroidSDKRoot.Slash())
 	}
+	if !cfg.PythonPath.IsEmpty() {
+		args = append(args, "-DPYTHON_EXECUTABLE="+cfg.PythonPath.Slash())
+	}
+
 	switch options.Test {
 	case RunTests:
 	case BuildTests:
@@ -64,11 +69,11 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 		args = append(args, "-DNO_TESTS=1")
 	}
 	args = append(args, srcRoot.System())
-	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
 	run(ctx, cfg.out(), cfg.CMakePath, env, args...)
 }
 
 func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
 	args := targets
 	if options.DryRun {
 		args = append([]string{"-n"}, args...)
@@ -76,6 +81,5 @@ func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	if options.Verbose {
 		args = append([]string{"-v"}, args...)
 	}
-	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
 	run(ctx, cfg.out(), cfg.NinjaPath, env, args...)
 }

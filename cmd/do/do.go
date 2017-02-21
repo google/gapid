@@ -283,7 +283,7 @@ func run(ctx log.Context, cwd file.Path, exe file.Path, env *shell.Env, args ...
 		Command(exe.System(), args...).
 		In(cwd.System()).
 		Read(os.Stdin).
-		Capture(os.Stdout, os.Stdin).
+		Capture(os.Stdout, os.Stderr).
 		Env(env).
 		Run(ctx)
 	if err != nil {

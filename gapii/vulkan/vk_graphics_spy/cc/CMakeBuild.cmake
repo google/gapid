@@ -23,7 +23,7 @@ glob(android_sources
 )
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} VkLayerGraphicsSpy ${dst} "libVkLayerGraphicsSpy.so"
         DEPENDS ${android_sources}
         DEPENDEES gapii
@@ -31,7 +31,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
 endforeach()
 
-if(NOT DISABLED_CXX)
+if(NOT DISABLED_CXX AND NOT WIN32) # TODO: Windows build not currently supported
     # This should only be needed on Android
     add_library(VkLayerGraphicsSpy SHARED ${sources})
     target_compile_options(VkLayerGraphicsSpy PRIVATE -fno-exceptions -fno-rtti)

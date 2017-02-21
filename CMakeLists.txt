@@ -16,6 +16,7 @@ cmake_minimum_required(VERSION 3.2)
 cmake_policy(SET CMP0009 NEW) # GLOB_RECURSE does not recurse symlinks
 cmake_policy(SET CMP0053 NEW) # Simplify variable reference
 cmake_policy(SET CMP0003 NEW) # Link by full path
+cmake_policy(SET CMP0058 NEW) # Custom command DEPENDS on files that are not specified as OUTPUT or BYPRODUCTS
 
 set(GAPID_CMAKE_VERSION "1")
 set(GAPID_CMAKE_VERSION_STORE ${GAPID_CMAKE_VERSION} CACHE STRING "Version of the gapid cmake build system")

@@ -15,7 +15,6 @@
  */
 
 #include "vulkan_spy.h"
-#include <alloca.h>
 #include <map>
 #include <deque>
 

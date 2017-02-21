@@ -17,6 +17,7 @@
 #ifndef CORE_INTERVAL_LIST_H
 #define CORE_INTERVAL_LIST_H
 
+#include <cstdint>
 #include <algorithm>
 #include <vector>
 

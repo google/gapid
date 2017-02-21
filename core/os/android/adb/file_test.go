@@ -24,12 +24,12 @@ func TestFilePush(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "push_device")
 	err := d.Push(ctx, "local_file", "remote_file")
-	expectedCommand(ctx, `/adb -s push_device push local_file remote_file`, err)
+	expectedCommand(ctx, adbPath.System()+` -s push_device push local_file remote_file`, err)
 }
 
 func TestFilePull(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "pull_device")
 	err := d.Pull(ctx, "remote_file", "local_file")
-	expectedCommand(ctx, `/adb -s pull_device pull remote_file local_file`, err)
+	expectedCommand(ctx, adbPath.System()+` -s pull_device pull remote_file local_file`, err)
 }

@@ -50,7 +50,7 @@ function(codergen)
     add_custom_command(
         OUTPUT ${signatures} ${outputs}
         COMMAND codergen
-        --gopath ${GO_PATH}
+        --gopath "${GO_PATH}"
         --signatures ${signatures}
         --go
         -cpp ${CMAKE_SOURCE_DIR}/core/cc/coder

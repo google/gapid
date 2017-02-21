@@ -29,7 +29,9 @@
 #   include <GL/gl.h>
 #   include <GL/glext.h>
 #   define HAS_MAJOR_VERSION_3 1
-#else
+#elif TARGET_OS == GAPID_OS_WINDOWS
+#   define WINGDIAPI
+#   define APIENTRY
 #   include <GL/gl.h>
 #endif
 

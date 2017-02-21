@@ -251,7 +251,7 @@ VirtualSwapchain::VirtualSwapchain(
 
 #ifdef _WIN32
   thread_ = CreateThread(NULL, 0,
-                         +[](void *data) -> DWORD {
+                         [](void *data) -> DWORD {
                            ((VirtualSwapchain *)data)->CopyThreadFunc();
                            return 0;
                          },

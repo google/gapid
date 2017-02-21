@@ -92,6 +92,21 @@ func (e *Env) Get(key string) string {
 	return ""
 }
 
+// Unset removes an environment variable in the form 'key=value' or 'key'.
+func (e *Env) Unset(key string) *Env {
+	if idx, existing := e.keys[key]; existing {
+		copy(e.vars[idx:], e.vars[idx+1:])
+		e.vars = e.vars[:len(e.vars)-1]
+	}
+	e.keys = map[string]int{}
+	for i, v := range e.vars {
+		if key, val := splitEnvVar(v); len(val) > 0 {
+			e.keys[key] = i
+		}
+	}
+	return e
+}
+
 // Set adds or replaces an environment variable in the form 'key=value' or
 // 'key'.
 func (e *Env) Set(key, value string) *Env {

@@ -36,11 +36,11 @@
 #   define EXPORT __attribute__ ((visibility ("default")))
 #   define PATH_DELIMITER '/'
 #   define PATH_DELIMITER_STR "/"
-#include <stdint.h>
-using size_val = uint64_t;
-#else
-#include <stddef.h>
-using size_val = size_t;
+#   include <stdint.h>
+    using size_val = uint64_t;
+#else  // defined(TARGET_OS_OSX)
+#   include <stddef.h>
+    using size_val = size_t;
 #endif
 
 #if defined(TARGET_OS_ANDROID)
@@ -57,6 +57,8 @@ using size_val = size_t;
 #   define EXPORT __declspec(dllexport)
 #   define PATH_DELIMITER '\\'
 #   define PATH_DELIMITER_STR "\\"
+#else  // defined(TARGET_OS_WINDOWS)
+#   include <alloca.h>
 #endif
 
 #ifndef TARGET_OS

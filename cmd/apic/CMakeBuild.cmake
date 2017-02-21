@@ -48,14 +48,13 @@ function(apic api)
     endif()
     abs_list(APIC_OUTPUTS ${CMAKE_CURRENT_SOURCE_DIR})
     set(apic_args template
-        --gopath ${GO_PATH}
         --cmake ${deps}
         --dir ${APIC_PATH}
     )
     if(APIC_DEFINES)
         set(apic_args ${apic_args} -G ${APIC_DEFINES})
     endif()
-    set(apic_args ${apic_args} ${api} ${APIC_TEMPLATE})
+    set(apic_args ${apic_args} "${api}" ${APIC_TEMPLATE})
     if(NOT EXISTS ${deps})
         # Ugly hacks to make intial dependancies not totally broken...
         set(APIC_INPUTS ${APIC_INPUTS}
@@ -65,10 +64,11 @@ function(apic api)
             set(api_outputs ${APIC_OUTPUTS})
         ")
     endif()
+    set(apic_args ${apic_args} "--gopath" "${GO_PATH}")
     include(${deps})
     add_custom_command(
         OUTPUT ${tag} ${api_outputs}
-        COMMAND apic ${apic_args}
+        COMMAND apic  ${apic_args}
         COMMAND ${CMAKE_COMMAND} -E touch ${tag}
         DEPENDS apic ${api_inputs}
         COMMENT "Apic on ${api} with ${name}"

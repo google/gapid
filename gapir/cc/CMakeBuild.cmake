@@ -36,7 +36,7 @@ glob(test_sources
 )
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} gapir ${dst} "libgapir.so"
         DEPENDEES cc-core
         DEPENDS ${sources} ${android_files}
