@@ -49,7 +49,7 @@ func (s PathSet) Contains(path Path) bool {
 }
 
 // RootOf returns the first Path that contains the path, or an empty path if not found.
-func (s PathSet) RootOf(p Path) Path {
+func (s PathSet) RootOf(p Path) Rooted {
 	return s.values.RootOf(p)
 }
 

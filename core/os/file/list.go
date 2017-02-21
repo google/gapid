@@ -14,7 +14,11 @@
 
 package file
 
-import "path/filepath"
+import (
+	"bytes"
+	"path/filepath"
+	"strings"
+)
 
 // PathList is a list of file paths.
 type PathList []Path
@@ -55,13 +59,27 @@ func (l PathList) Contains(path Path) bool {
 }
 
 // RootOf returns the first Path that contains the path, or an empty path if not found.
-func (l PathList) RootOf(p Path) Path {
+func (l PathList) RootOf(p Path) Rooted {
 	for _, entry := range l {
-		if entry.Contains(p) {
-			return entry
+		base := entry.System()
+		full := p.System()
+		if strings.HasPrefix(full, base) {
+			return Join(entry, full[len(base)+1:])
 		}
 	}
-	return Path{}
+	return Rooted{}
+}
+
+// Find searches the paths in the list for on that when joined with the path fragment produces
+// an existing file name.
+func (l PathList) Find(fragment string) Rooted {
+	for _, p := range l {
+		r := Join(p, fragment)
+		if r.Path().Exists() {
+			return r
+		}
+	}
+	return Rooted{Fragment: fragment}
 }
 
 // Matching returns the list of files that matches any supplied pattern.
@@ -97,3 +115,27 @@ func (l PathList) Less(i, j int) bool { return l[i].value < l[j].value }
 // Swap swaps the elements with indexes i and j,
 // so PathList implements sort.Interface.
 func (l PathList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+
+func (l PathList) String() string {
+	switch len(l) {
+	case 0:
+		return ""
+	case 1:
+		return l[0].String()
+	default:
+		buf := bytes.Buffer{}
+		buf.WriteString(l[0].String())
+		for _, p := range l[1:] {
+			buf.WriteString(",")
+			buf.WriteString(p.String())
+		}
+		return buf.String()
+	}
+}
+
+func (l *PathList) Set(value string) error {
+	for _, entry := range strings.Split(value, ",") {
+		*l = append(*l, Abs(entry))
+	}
+	return nil
+}

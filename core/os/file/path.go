@@ -102,6 +102,14 @@ func (p Path) Basename() string { return filepath.Base(p.value) }
 // if the path has no extension.
 func (p Path) Ext() string { return filepath.Ext(p.value) }
 
+// Smash returns the parent, name and extension of a path.
+func (p Path) Smash() (Path, string, string) {
+	dir, name := filepath.Split(p.value)
+	ext := filepath.Ext(name)
+	name = name[:len(name)-len(ext)]
+	return Path{dir}, name, ext
+}
+
 // Split returns the parent and name of the path.
 func (p Path) Split() (Path, string) {
 	dir, name := filepath.Split(p.value)

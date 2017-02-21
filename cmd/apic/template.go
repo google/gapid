@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/template"
 )
@@ -36,6 +37,7 @@ var (
 	cmake      string
 	gopath     string
 	globalList flags.Strings
+	searchPath file.PathList
 )
 
 func init() {
@@ -44,6 +46,7 @@ func init() {
 		ShortHelp: "Passes the ast to a template for code generation",
 	}
 	verb.Flags.Raw.Var(&globalList, "G", "A global value setting for the template")
+	verb.Flags.Raw.Var(&searchPath, "search", "The set of paths to search for includes")
 	verb.Flags.Raw.StringVar(&dir, "dir", cwd(), "The output directory")
 	verb.Flags.Raw.StringVar(&tracer, "t", "", "The template function trace expression")
 	verb.Flags.Raw.StringVar(&deps, "deps", "", "The dependancies file to generate")
@@ -70,6 +73,9 @@ func doTemplate(ctx log.Context, flags flag.FlagSet) error {
 	mainTemplate := args[1]
 	ctx.Info().S("api", apiName).Log("Reading")
 	processor := gapil.NewProcessor()
+	if len(searchPath) > 0 {
+		processor.Loader = gapil.NewSearchLoader(searchPath)
+	}
 	compiled, errs := processor.Resolve(apiName)
 	for path := range processor.Parsed {
 		template.InputDep(path)

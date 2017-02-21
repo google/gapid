@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 
+	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/text/parse"
 )
 
 // ParseResult holds the result of parsing a file.
@@ -44,10 +44,22 @@ type ResolveResult struct {
 	Errs parse.ErrorList
 }
 
+// Loader is the interface to something that finds and loads api imports.
+type Loader interface {
+	// Find recieves the path to a desired import relative to the current file.
+	// The path it is supplied may not be valid, the loader should transform it
+	// into a valid path if possible or return a fully invalid path if the api
+	// file cannot be found.
+	Find(path file.Path) file.Path
+	// Load takes a path returned by Find and returns the content the path
+	// represents, or an error if the path was not valid.
+	Load(file.Path) ([]byte, error)
+}
+
 // Processor holds the state when resolving multiple api files.
 type Processor struct {
 	*resolver.Mappings
-	Loader              func(path string) ([]byte, error)
+	Loader              Loader
 	Parsed              map[string]ParseResult // guarded by parsedLock
 	Resolved            map[string]ResolveResult
 	ResolveOnParseError bool // If true, resolving will be attempted even if parsing failed.
@@ -59,10 +71,40 @@ type Processor struct {
 func NewProcessor() *Processor {
 	return &Processor{
 		Mappings: resolver.NewMappings(),
-		Loader:   ioutil.ReadFile,
+		Loader:   absLoader{},
 		Parsed:   map[string]ParseResult{},
 		Resolved: map[string]ResolveResult{},
 	}
+}
+
+type (
+	absLoader        struct{}
+	dataLoader       struct{ data []byte }
+	searchListLoader struct {
+		search file.PathList
+	}
+)
+
+func (l absLoader) Find(path file.Path) file.Path        { return path }
+func (l absLoader) Load(path file.Path) ([]byte, error)  { return ioutil.ReadFile(path.System()) }
+func (l dataLoader) Find(path file.Path) file.Path       { return path }
+func (l dataLoader) Load(path file.Path) ([]byte, error) { return l.data, nil }
+
+func NewDataLoader(data []byte) Loader {
+	return dataLoader{data: data}
+}
+
+func NewSearchLoader(search file.PathList) Loader {
+	return searchListLoader{search: search}
+}
+
+func (l searchListLoader) Find(path file.Path) file.Path {
+	rooted := l.search.RootOf(path)
+	return l.search.Find(rooted.Fragment).Path()
+}
+
+func (l searchListLoader) Load(path file.Path) ([]byte, error) {
+	return ioutil.ReadFile(path.System())
 }
 
 // Parse parses the api file with a default Processor.
@@ -76,20 +118,25 @@ func Parse(apiname string) (*ast.API, parse.ErrorList) {
 // otherwise it invokes parser.Parse on the content of the supplied file name.
 // It is safe to parse multiple files simultaniously.
 func (p *Processor) Parse(path string) (*ast.API, parse.ErrorList) {
+	return p.parse(file.Abs(path))
+}
+
+func (p *Processor) parse(path file.Path) (*ast.API, parse.ErrorList) {
+	path = p.Loader.Find(path)
+	absname := path.System()
 	p.parsedLock.Lock()
-	res, ok := p.Parsed[path]
+	res, ok := p.Parsed[absname]
 	p.parsedLock.Unlock()
 	if ok {
 		return res.API, res.Errs
 	}
-
-	info, err := p.Loader(path)
+	info, err := p.Loader.Load(path)
 	if err != nil {
 		return nil, parse.ErrorList{parse.Error{Message: err.Error()}}
 	}
-	api, errs := parser.Parse(path, string(info), p)
+	api, errs := parser.Parse(absname, string(info), p)
 	p.parsedLock.Lock()
-	p.Parsed[path] = ParseResult{api, errs}
+	p.Parsed[absname] = ParseResult{api, errs}
 	p.parsedLock.Unlock()
 	return api, errs
 }
@@ -107,16 +154,12 @@ func Resolve(apiname string) (*semantic.API, parse.ErrorList) {
 // the ast and all included ast's are handed to resolver.Resolve to do semantic
 // processing.
 func (p *Processor) Resolve(apiname string) (*semantic.API, parse.ErrorList) {
-	absname, err := filepath.Abs(apiname)
-	if err != nil {
-		return nil, parse.ErrorList{parse.Error{Message: err.Error()}}
-	}
-	wd, name := filepath.Split(absname)
-	return p.resolve(wd, name)
+	return p.resolve(file.Abs(apiname))
 }
 
-func (p *Processor) resolve(wd, name string) (*semantic.API, parse.ErrorList) {
-	absname := filepath.Join(wd, name)
+func (p *Processor) resolve(base file.Path) (*semantic.API, parse.ErrorList) {
+	base = p.Loader.Find(base)
+	absname := base.System()
 	if res, ok := p.Resolved[absname]; ok {
 		if res.API == nil && res.Errs == nil { // reentry detected
 			return nil, parse.ErrorList{parse.Error{
@@ -128,7 +171,7 @@ func (p *Processor) resolve(wd, name string) (*semantic.API, parse.ErrorList) {
 	p.Resolved[absname] = ResolveResult{} // mark to prevent reentry
 	// Parse the API file and gather all the includes
 	includes := map[string]*ast.API{}
-	allErrs := p.parseIncludesResursive(wd, name, includes)
+	allErrs := p.parseIncludesResursive(base, includes)
 	// Build a sorted list of includes
 	names := make(sort.StringSlice, 0, len(includes))
 	for name := range includes {
@@ -141,32 +184,31 @@ func (p *Processor) resolve(wd, name string) (*semantic.API, parse.ErrorList) {
 	}
 	// Resolve all the named imports
 	imports := &semantic.Symbols{}
-	importPaths := map[string]string{}
+	importPaths := map[string]file.Path{}
 	for _, api := range list {
 		for _, i := range api.Imports {
 			if i.Name == nil {
 				// unnamed imports have already been included
 				continue
 			}
-			path := filepath.Join(wd, i.Path.Value)
+			child := p.Loader.Find(base.Parent().Join(i.Path.Value))
 			if importedPath, seen := importPaths[i.Name.Value]; seen {
-				if path == importedPath {
+				if child.System() == importedPath.System() {
 					// import with same path and name already included
 					continue
 				}
 				return nil, parse.ErrorList{parse.Error{
 					Message: fmt.Sprintf("Import name '%s' used for different paths (%s != %s)",
-						i.Name.Value, path, importedPath)},
+						i.Name.Value, child, importedPath)},
 				}
 			}
-			wd, name := filepath.Split(path)
-			api, errs := p.resolve(wd, name)
+			api, errs := p.resolve(child)
 			if len(errs) > 0 {
 				allErrs = append(errs, allErrs...)
 			}
 			if api != nil {
 				imports.Add(i.Name.Value, api)
-				importPaths[i.Name.Value] = path
+				importPaths[i.Name.Value] = child
 			}
 		}
 	}
@@ -178,7 +220,7 @@ func (p *Processor) resolve(wd, name string) (*semantic.API, parse.ErrorList) {
 	if len(errs) > 0 {
 		allErrs = append(errs, allErrs...)
 	}
-	nameNoExt := name[:len(name)-len(filepath.Ext(name))]
+	_, nameNoExt, _ := base.Smash()
 	api.Named = semantic.Named(nameNoExt)
 	p.Resolved[absname] = ResolveResult{api, allErrs}
 	return api, allErrs
@@ -187,27 +229,23 @@ func (p *Processor) resolve(wd, name string) (*semantic.API, parse.ErrorList) {
 // parseUnnamedIncludesResursive resursively parses the unnamed includes from
 // apiname in wd. The full list of includes (named and unnamed) is added to
 // includes.
-func (p *Processor) parseIncludesResursive(wd string, name string, includes map[string]*ast.API) parse.ErrorList {
-	path, err := filepath.Abs(filepath.Join(wd, name))
-	if err != nil {
-		return parse.ErrorList{parse.Error{Message: err.Error()}}
-	}
-	if _, seen := includes[path]; seen {
+func (p *Processor) parseIncludesResursive(base file.Path, includes map[string]*ast.API) parse.ErrorList {
+	absname := base.System()
+	if _, seen := includes[absname]; seen {
 		return nil
 	}
-	api, allErrs := p.Parse(path)
+	api, allErrs := p.parse(base)
 	if api == nil {
 		return allErrs
 	}
-	includes[path] = api
+	includes[absname] = api
 	for _, i := range api.Imports {
 		if i.Name != nil {
 			// named imports don't get merged
 			continue
 		}
-		path := filepath.Join(wd, i.Path.Value)
-		wd, name := filepath.Split(path)
-		if errs := p.parseIncludesResursive(wd, name, includes); len(errs) > 0 {
+		child := p.Loader.Find(base.Parent().Join(i.Path.Value))
+		if errs := p.parseIncludesResursive(child, includes); len(errs) > 0 {
 			allErrs = append(allErrs, errs...)
 		}
 	}
