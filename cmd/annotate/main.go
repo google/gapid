@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/annotate"
 )
@@ -34,6 +35,7 @@ var (
 	base64Filename        string
 	globalsTextFilename   string
 	globalsBase64Filename string
+	searchPath            file.PathList
 )
 
 func main() {
@@ -45,6 +47,8 @@ func main() {
 		"Filename for text output of global state snippets")
 	flag.StringVar(&globalsBase64Filename, "globals_base64", "",
 		"Filename for base64 encoded binary objects of global state snippets")
+	flag.Var(&searchPath, "search",
+		"The set of paths to search for includes")
 
 	app.ShortHelp = "Annotates entities with metadata from static analysis"
 	app.Run(Run)
@@ -64,7 +68,11 @@ func Run(ctx log.Context) error {
 	apiName := args[0]
 	ctx = ctx.S("api", apiName)
 	ctx.Print("Parse and resolve")
-	compiled, errs := gapil.Resolve(apiName)
+	processor := gapil.NewProcessor()
+	if len(searchPath) > 0 {
+		processor.Loader = gapil.NewSearchLoader(searchPath)
+	}
+	compiled, errs := processor.Resolve(apiName)
 	ctx.Print("Check for errors")
 	if err := gapil.CheckErrors(apiName, errs, maxErrors); err != nil {
 		return err

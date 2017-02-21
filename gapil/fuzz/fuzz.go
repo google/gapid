@@ -28,7 +28,7 @@ func compile(data []byte) bool {
 	// Build a processor that will 'load' from data.
 	processor := gapil.Processor{
 		Mappings:            resolver.NewMappings(),
-		Loader:              func(path string) ([]byte, error) { return data, nil },
+		Loader:              gapil.NewDataLoader(data),
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},
 		ResolveOnParseError: true,

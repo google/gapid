@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/gapil/validate"
 	ls "github.com/google/gapid/core/langsvr"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text/parse"
 )
 
@@ -194,6 +195,16 @@ func (a *analyzer) begin(ctx log.Context, s *server) error {
 	return nil
 }
 
+type docsLoader struct{ docs map[string]*ls.Document }
+
+func (l docsLoader) Find(path file.Path) file.Path { return path }
+func (l docsLoader) Load(path file.Path) ([]byte, error) {
+	if doc, ok := l.docs[path.System()]; ok {
+		return []byte(doc.Body().Text()), nil
+	}
+	return ioutil.ReadFile(path.System())
+}
+
 // doAnalysis is the internal analysis function.
 // Must only be called from analyzer.begin().
 func (a *analyzer) doAnalysis(
@@ -221,13 +232,8 @@ func (a *analyzer) doAnalysis(
 	// Build a processor that will 'load' from the in-memory docs, falling back
 	// to disk loads.
 	processor := gapil.Processor{
-		Mappings: resolver.NewMappings(),
-		Loader: func(path string) ([]byte, error) {
-			if doc, ok := docs[path]; ok {
-				return []byte(doc.Body().Text()), nil
-			}
-			return ioutil.ReadFile(path)
-		},
+		Mappings:            resolver.NewMappings(),
+		Loader:              docsLoader{docs: docs},
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},
 		ResolveOnParseError: true,

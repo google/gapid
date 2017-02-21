@@ -80,7 +80,7 @@ func compile(data []byte) (err error) {
 	defer timebomb(time.Second * 3)()
 	processor := gapil.Processor{
 		Mappings:            resolver.NewMappings(),
-		Loader:              func(string) ([]byte, error) { return data, nil },
+		Loader:              gapil.NewDataLoader(data),
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},
 		ResolveOnParseError: true,
