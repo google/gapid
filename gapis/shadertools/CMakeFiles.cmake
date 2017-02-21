@@ -18,8 +18,6 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    funcs.go
-    funcs_integration.go
     shadertools.go
 )
 set(dirs
