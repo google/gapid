@@ -29,7 +29,11 @@ set(LLVM_LINK_COMPONENTS
   Object
   Support)
 
-add_llvm_library(interceptor SHARED
+llvm_map_components_to_libnames(
+  interceptor_libs ${LLVM_LINK_COMPONENTS}
+)
+
+add_library(interceptor SHARED
   code_generator.cc
   constant_pool_data_expr.cc
   disassembler.cc
@@ -38,6 +42,9 @@ add_llvm_library(interceptor SHARED
   linker.cc
   memory_manager.cc
   target.cc)
+
+target_link_libraries(interceptor PRIVATE ${interceptor_libs})
+llvm_update_compile_flags(interceptor)
 
 foreach(TARGET ${LLVM_TARGETS_TO_BUILD})
   target_link_libraries(interceptor PRIVATE

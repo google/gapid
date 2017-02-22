@@ -17,7 +17,7 @@ include(${GRADLE_ENV})
 separate_arguments(args UNIX_COMMAND ${GRADLE_ARGS})
 
 execute_process(
-    COMMAND ./gradlew
+    COMMAND gradlew.bat
             ${args}
             -Djava.awt.headless=true # Prevent gradle from stealing window focus.
             build

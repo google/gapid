@@ -93,5 +93,8 @@ func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	if options.Verbose {
 		args = append([]string{"-v"}, args...)
 	}
+	if options.Verbose {
+		args = append([]string{"-j1"}, args...)
+	}
 	run(ctx, cfg.out(), cfg.NinjaPath, env, args...)
 }
