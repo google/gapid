@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(ENV{GOPATH} ${GO_PATH})
+set(ENV{GOPATH} "${GO_PATH}")
 execute_process(
     COMMAND ${TESTER}
     OUTPUT_VARIABLE output

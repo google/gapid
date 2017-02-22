@@ -41,7 +41,7 @@ if (TARGET langsvr)
         endforeach()
 
         # Copy the gfxapi langsvr to the gfxapi extension /bin sub-directory
-        set(dst "${extdir}/bin/langsvr${CMAKE_EXECUTABLE_SUFFIX}")
+        set(dst "${extdir}/bin/langsvr${CMAKE_HOST_EXECUTABLE_SUFFIX}")
         add_custom_command(
             OUTPUT ${dst}
             COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:langsvr>" ${dst}

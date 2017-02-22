@@ -1,0 +1,5 @@
+{
+  global:
+    @EXPORTS@
+  local: *;
+};

@@ -199,7 +199,7 @@ function(protoc_java src_dir protos classes)
         list(APPEND outputs ${os_java_output})
     endforeach()
     
-    file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-grpc-java${CMAKE_EXECUTABLE_SUFFIX}" os_protoc_gen_grpc_java)
+    file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-grpc-java${CMAKE_HOST_EXECUTABLE_SUFFIX}" os_protoc_gen_grpc_java)
     file(TO_NATIVE_PATH "${JAVA_SERVICE}" os_java_service)
 
     _do_protoc("java" "${src_dir}" "${protos}" "${outputs}" 
