@@ -1,4 +1,4 @@
-# Setup guide for building GAPID
+# Building GAPID
 
 ## Windows
 
