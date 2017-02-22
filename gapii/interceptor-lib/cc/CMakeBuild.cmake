@@ -38,7 +38,7 @@ if(ANDROID_ABI)
         "-DLLVM_TARGET_ARCH:STRING=${LLVM_TARGET_ARCH}"
         "-DLLVM_TARGETS_TO_BUILD:STRING=${LLVM_TARGET_ARCH}"
         "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
-        "-DLLVM_TABLEGEN:PATH=${CMAKE_BINARY_DIR}/../../../bin/llvm/llvm-tblgen"
+        "-DLLVM_TABLEGEN:PATH=${CMAKE_BINARY_DIR}/../../../bin/llvm/llvm-tblgen${CMAKE_EXECUTABLE_SUFFIX}"
     )
     add_cmake_target(llvm interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources}

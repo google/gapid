@@ -14,7 +14,16 @@
 
 set(TARGET_OS WINDOWS)
 
-if(NOT ToolchainTarget STREQUAL ${ToolchainHost})
+if(ToolchainTarget STREQUAL ${ToolchainHost})
+    set(MSYS2_PATH "" CACHE PATH "Path to the msys2 installation directory")
+    if(NOT MSYS2_PATH)
+        message(FATAL_ERROR "MSYS2_PATH not set!")
+    endif()
+
+    set(MINGW_PATH "${MSYS2_PATH}/mingw64")
+    set(CMAKE_C_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-gcc.exe")
+    set(CMAKE_CXX_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-g++.exe")
+else()
     # Cross compiling
     message(FATAL_ERROR "Cross compiling to windows was only supported with PREBUILTS")
     if(NOT ToolchainHost STREQUAL "Linux")

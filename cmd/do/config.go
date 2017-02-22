@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/user"
 	"reflect"
+	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/fault"
@@ -61,6 +62,7 @@ type Config struct {
 	CMakePath      file.Path `desc:"Path to CMake executable"`
 	NinjaPath      file.Path `desc:"Path to ninja executable"`
 	PythonPath     file.Path `desc:"Path to python executable"`
+	MSYS2Path      file.Path `desc:"Path to msys2 root" os:"windows"`
 }
 
 func defaults() Config {
@@ -158,13 +160,17 @@ func validateConfig(ctx log.Context, cfg Config) error {
 	return nil
 }
 
-func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Config {
-	cfgV, cfgT := reflect.ValueOf(&cfg).Elem(), reflect.TypeOf(cfg)
-	for i := 0; i < cfgT.NumField(); i++ {
-		f, t := cfgV.Field(i), cfgT.Field(i)
+func interactiveStructConfig(ctx log.Context, v reflect.Value, options ConfigOptions) {
+	t := v.Type()
+	for i, c := 0, t.NumField(); i < c; i++ {
+		f, t := v.Field(i), t.Field(i)
 		desc := t.Tag.Get("desc")
 		if desc == "" {
 			desc = t.Name
+		}
+		os := t.Tag.Get("os")
+		if os != "" && os != runtime.GOOS {
+			continue
 		}
 		v := f.Addr().Interface()
 		switch v := v.(type) {
@@ -200,9 +206,20 @@ func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Confi
 				*v = file.Abs(in)
 			}
 		default:
+			if t.Type.Kind() == reflect.Interface {
+				if !f.IsNil() {
+					interactiveStructConfig(ctx, f.Elem(), options)
+				}
+				continue
+			}
 			panic(fmt.Sprintf("Unknown type %T in config struct", v))
 		}
 	}
+}
+
+func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Config {
+	v := reflect.ValueOf(&cfg).Elem()
+	interactiveStructConfig(ctx, v, options)
 	writeConfig(cfg)
 	return cfg
 }

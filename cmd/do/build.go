@@ -40,7 +40,10 @@ func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 }
 
 func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
-	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
+	env := shell.CloneEnv().AddPathStart("PATH",
+		cfg.bin().System(),
+		cfg.JavaHome.Join("bin").System(),
+	)
 	args := []string{
 		"-GNinja",
 		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.Slash(),
@@ -60,7 +63,10 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	if !cfg.PythonPath.IsEmpty() {
 		args = append(args, "-DPYTHON_EXECUTABLE="+cfg.PythonPath.Slash())
 	}
-
+	if !cfg.MSYS2Path.IsEmpty() {
+		args = append(args, "-DMSYS2_PATH="+cfg.MSYS2Path.Slash())
+		env.AddPathStart("PATH", cfg.MSYS2Path.Join("mingw64/bin").System()) // Required to pick up DLLs
+	}
 	switch options.Test {
 	case RunTests:
 	case BuildTests:
@@ -73,7 +79,13 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 }
 
 func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
-	env := shell.CloneEnv().AddPathStart("PATH", cfg.bin().System())
+	env := shell.CloneEnv().AddPathStart("PATH",
+		cfg.bin().System(),
+		cfg.JavaHome.Join("bin").System(),
+	)
+	if !cfg.MSYS2Path.IsEmpty() {
+		env.AddPathStart("PATH", cfg.MSYS2Path.Join("mingw64/bin").System()) // Required to pick up DLLs
+	}
 	args := targets
 	if options.DryRun {
 		args = append([]string{"-n"}, args...)

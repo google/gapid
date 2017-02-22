@@ -57,8 +57,6 @@
 #   define EXPORT __declspec(dllexport)
 #   define PATH_DELIMITER '\\'
 #   define PATH_DELIMITER_STR "\\"
-#else  // defined(TARGET_OS_WINDOWS)
-#   include <alloca.h>
 #endif
 
 #ifndef TARGET_OS

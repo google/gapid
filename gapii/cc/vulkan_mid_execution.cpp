@@ -18,6 +18,12 @@
 #include <map>
 #include <deque>
 
+#ifdef _WIN32
+#define alloca _alloca
+#else
+#include <alloca.h>
+#endif
+
 namespace gapii {
 
 void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
