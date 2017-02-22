@@ -4,7 +4,7 @@
 
 ### Install [Go 1.7](https://storage.googleapis.com/golang/go1.7.5.windows-amd64.msi)
 
-### Install Toolchain
+### Install Mingw-w64 Toolchain
 * Install [msys2](http://repo.msys2.org/distrib/x86_64/msys2-x86_64-20161025.exe).
 * Open the msys2 terminal.
 * Type: `pacman -Syu --noconfirm` and press enter.
@@ -27,8 +27,10 @@
 
 ### Install [Python 3.6](https://www.python.org/ftp/python/3.6.0/python-3.6.0-amd64.exe)
 
+### Install [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+
 ### Get the source
-In a terminal type:
+In a terminal elevated to Administrator type:
 ```
 go get github.com/google/gapid
 cd %GOPATH%\src\google\gapid
@@ -36,7 +38,7 @@ git submodule update --init
 ```
 
 ### Configure build
-In a terminal type:
+In a terminal elevated to Administrator type:
 ```
 cd %GOPATH%\src\google\gapid
 do config
@@ -72,6 +74,8 @@ The build output will be in the directory you specified with `do config`.
 * Unzip the [Ninja executable](https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-mac.zip) to a directory of your choosing.
 
 ### Install [Python 3.6](https://www.python.org/ftp/python/3.6.0/python-3.6.0-macosx10.6.pkg)
+
+### Install [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 
 ### Get the source
 In a terminal type:
@@ -118,6 +122,8 @@ The build output will be in the directory you specified with `do config`.
 * Unzip the [Ninja executable](https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip) to a directory of your choosing.
 
 ### Install Python 3.6
+
+### Install [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 
 ### Get the source
 In a terminal type:
