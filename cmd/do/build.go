@@ -29,6 +29,18 @@ func doGlob(ctx log.Context, cfg Config) {
 }
 
 func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+	doGapic := len(targets) == 0 // Building everything implies gapic.
+	for i, t := range targets {
+		if t == "gapic" {
+			doGapic = true
+			options.Install = true
+			// Remove gapic from the targets list.
+			copy(targets[i:], targets[i+1:])
+			targets = targets[:len(targets)-1]
+			break
+		}
+	}
+
 	runCMake := options.Rescan || !cfg.cacheFile().Exists()
 	if runCMake {
 		doCMake(ctx, cfg, options, targets...)
@@ -37,6 +49,10 @@ func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 		targets = append(targets, "install")
 	}
 	doNinja(ctx, cfg, options, targets...)
+
+	if doGapic {
+		gapic(ctx, cfg).build(ctx, options)
+	}
 }
 
 func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {

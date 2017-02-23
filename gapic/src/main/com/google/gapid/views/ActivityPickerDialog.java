@@ -16,6 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createTree;
 import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
 import static org.eclipse.swt.SWT.VERTICAL;
 
@@ -116,7 +117,7 @@ public class ActivityPickerDialog extends TitleAreaDialog {
     Composite container = createComposite(area, new FillLayout(VERTICAL));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    loading = LoadablePanel.create(container, widgets, panel -> new Tree(panel, SWT.BORDER));
+    loading = LoadablePanel.create(container, widgets, panel -> createTree(panel, SWT.BORDER));
     tree = loading.getContents();
     tree.addListener(SWT.Selection, e -> {
       Object data = e.item.getData();

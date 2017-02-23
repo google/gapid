@@ -47,14 +47,14 @@ LIBS="
   $LIB/grpc/grpc-stub-1.0.1.jar
   $LIB/grpc/okhttp-2.5.0.jar
   $LIB/grpc/okio-1.6.0.jar
-  $LIB/jface/org.eclipse.core.commands_3.9.0.v20160901-1319.jar
-  $LIB/jface/org.eclipse.core.runtime_3.12.0.v20160919-2241.jar
-  $LIB/jface/org.eclipse.equinox.common_3.9.0.v20161026-0735.jar
-  $LIB/jface/org.eclipse.jface_3.13.0.v20161022-1508.jar
-  $LIB/jface/org.eclipse.jface.databinding_1.8.100.v20161026-1452.jar
-  $LIB/jface/org.eclipse.jface.text_3.11.100.v20161021-0923.jar
-  $LIB/jface/org.eclipse.osgi_3.12.0.v20161025-1648.jar
-  $LIB/jface/org.eclipse.text_3.6.0.v20161014-1003.jar
+  $LIB/jface/org.eclipse.core.commands_3.8.0.v20160316-1921.jar
+  $LIB/jface/org.eclipse.core.runtime_3.12.0.v20160606-1342.jar
+  $LIB/jface/org.eclipse.equinox.common_3.8.0.v20160509-1230.jar
+  $LIB/jface/org.eclipse.jface_3.12.1.v20160923-1528.jar
+  $LIB/jface/org.eclipse.jface.databinding_1.8.1.v20161026-1531.jar
+  $LIB/jface/org.eclipse.jface.text_3.11.2.v20161113-1700.jar
+  $LIB/jface/org.eclipse.osgi_3.11.2.v20161107-1947.jar
+  $LIB/jface/org.eclipse.text_3.6.0.v20160503-1849.jar
   $LIB/lwjgl/lwjgl.jar
   $LIB/lwjgl/lwjgl-opengl.jar
 "

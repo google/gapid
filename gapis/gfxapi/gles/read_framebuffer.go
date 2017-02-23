@@ -78,23 +78,20 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		var (
-			origRenderbufferID            = c.BoundRenderbuffer
-			origReadFramebufferID         = c.BoundReadFramebuffer
-			origDrawFramebufferID         = c.BoundDrawFramebuffer
-			origDrawFramebufferReadBuffer = c.Instances.Framebuffers[origDrawFramebufferID].ReadBuffer
-
 			inW  = int32(w)
 			inH  = int32(h)
 			outW = int32(width)
 			outH = int32(height)
 		)
 
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.BoundDrawFramebuffer))
+		t := newTweaker(ctx, out)
+
+		t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
 
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
-		if origDrawFramebufferID == 0 {
+		if c.BoundDrawFramebuffer == 0 {
 			out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
@@ -103,52 +100,29 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 				return nil
 			}))
 		} else {
-			out.MutateAndWrite(ctx, atom.NoID, NewGlReadBuffer(GLenum_GL_COLOR_ATTACHMENT0+GLenum(bufferIdx)))
+			t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(bufferIdx))
 		}
 
 		if inW == outW && inH == outH {
 			postColorData(ctx, s, outW, outH, fmt, out, func(i imgRes) { res <- i })
 		} else {
-			// Generate new unused object IDs.
-			renderbufferID := RenderbufferId(newUnusedID('R', func(x uint32) bool { _, ok := c.Instances.Renderbuffers[RenderbufferId(x)]; return ok }))
-			framebufferID := FramebufferId(newUnusedID('F', func(x uint32) bool { _, ok := c.Instances.Framebuffers[FramebufferId(x)]; return ok }))
+			t.glScissor(0, 0, GLsizei(inW), GLsizei(inH))
+			framebufferID := t.glGenFramebuffer()
+			t.glBindFramebuffer_Draw(framebufferID)
+			renderbufferID := t.glGenRenderbuffer()
+			t.glBindRenderbuffer(renderbufferID)
 
-			c := GetContext(s)
-			origScissor := c.FragmentOperations.Scissor.Box
-
-			tmpF := atom.Must(atom.AllocData(ctx, s, framebufferID))
-			tmpR := atom.Must(atom.AllocData(ctx, s, renderbufferID))
 			mutateAndWriteEach(ctx, out,
-				NewGlScissor(0, 0, GLsizei(inW), GLsizei(inH)),
-				NewGlGenFramebuffers(1, tmpF.Ptr()).AddRead(tmpF.Data()),
-				NewGlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, framebufferID),
-				NewGlGenRenderbuffers(1, tmpR.Ptr()).AddRead(tmpR.Data()),
-				NewGlBindRenderbuffer(GLenum_GL_RENDERBUFFER, renderbufferID),
 				NewGlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt.sif, GLsizei(outW), GLsizei(outH)),
 				NewGlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
 				NewGlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
-				NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, framebufferID),
 			)
+			t.glBindFramebuffer_Read(framebufferID)
 
 			postColorData(ctx, s, outW, outH, fmt, out, func(i imgRes) { res <- i })
-
-			mutateAndWriteEach(ctx, out,
-				NewGlBindRenderbuffer(GLenum_GL_RENDERBUFFER, origRenderbufferID),
-				NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, origReadFramebufferID),
-				NewGlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, origDrawFramebufferID),
-				NewGlDeleteRenderbuffers(1, tmpR.Ptr()).AddRead(tmpR.Data()),
-				NewGlDeleteFramebuffers(1, tmpF.Ptr()).AddRead(tmpF.Data()),
-				NewGlScissor(origScissor.X, origScissor.Y, origScissor.Width, origScissor.Height),
-			)
 		}
 
-		if origDrawFramebufferID == 0 {
-			// The original read buffer is likely GL_BACK, which is invalid on the replay device.
-		} else {
-			out.MutateAndWrite(ctx, atom.NoID, NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, origDrawFramebufferID))
-			out.MutateAndWrite(ctx, atom.NoID, NewGlReadBuffer(origDrawFramebufferReadBuffer))
-		}
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, origReadFramebufferID))
+		t.revert()
 	})
 }
 
@@ -161,16 +135,8 @@ func postColorData(ctx log.Context,
 
 	imgFmt := glfmt.asImageOrPanic()
 
-	c := GetContext(s)
-	origPackAlignment := c.PixelStorage.PackAlignment
-	if origPackAlignment != 1 {
-		out.MutateAndWrite(ctx, atom.NoID, NewGlPixelStorei(GLenum_GL_PACK_ALIGNMENT, 1))
-		defer out.MutateAndWrite(ctx, atom.NoID, NewGlPixelStorei(GLenum_GL_PACK_ALIGNMENT, origPackAlignment))
-	}
-	if origPackBuffer := c.BoundBuffers.PixelPackBuffer; origPackBuffer != 0 {
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, origPackBuffer))
-	}
+	t := newTweaker(ctx, out)
+	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height))
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
@@ -207,6 +173,8 @@ func postColorData(ctx log.Context,
 		return nil
 	}))
 	tmp.Free()
+
+	t.revert()
 }
 
 func mutateAndWriteEach(ctx log.Context, out transform.Writer, atoms ...atom.Atom) {

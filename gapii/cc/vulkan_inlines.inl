@@ -32,6 +32,9 @@ template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateUpdateBufferData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateUpdateBufferData>& t) {
+    if (!spy->Buffers.count(t->mdstBuffer)) {
+        return;
+    }
     spy->RecreateUpdateBuffer(observer, commandBuf,
         t->mdstBuffer, t->mdstOffset, t->mdataSize, t->bufferData.data());
 }
@@ -55,10 +58,16 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdPipelineBarrierData>
     std::vector<VkBufferMemoryBarrier> buffer_memory_barriers;
     for (size_t i = 0; i < t->mBufferMemoryBarriers.size(); ++i) {
         buffer_memory_barriers.push_back(t->mBufferMemoryBarriers[i]);
+        if (!spy->Buffers.count(t->mBufferMemoryBarriers[i].mbuffer)) {
+            return;
+        }
     }
     std::vector<VkImageMemoryBarrier> image_memory_barriers;
     for (size_t i = 0; i < t->mImageMemoryBarriers.size(); ++i) {
         image_memory_barriers.push_back(t->mImageMemoryBarriers[i]);
+        if (!spy->Images.count(t->mImageMemoryBarriers[i].mimage)) {
+            return;
+        }
     }
     spy->RecreateCmdPipelineBarrier(observer, commandBuf,
         t->mSrcStageMask, t->mDstStageMask, t->mDependencyFlags,
@@ -71,6 +80,10 @@ template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdCopyBufferData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdCopyBufferData>& t) {
+    if (!spy->Buffers.count(t->mSrcBuffer) ||
+        !spy->Buffers.count(t->mDstBuffer)) {
+        return;
+    }
     std::vector<VkBufferCopy> buffer_copies;
     for (size_t i = 0; i < t->mCopyRegions.size(); ++i) {
         buffer_copies.push_back(t->mCopyRegions[i]);
@@ -85,6 +98,10 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdResolveImageData>>::
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdResolveImageData>& t) {
     std::vector<VkImageResolve> image_resolves;
+    if (!spy->Images.count(t->mSrcImage) ||
+        !spy->Images.count(t->mDstImage)) {
+        return;
+    }
     for (size_t i = 0; i < t->mResolveRegions.size(); ++i) {
         image_resolves.push_back(t->mResolveRegions[i]);
     }
@@ -97,6 +114,10 @@ template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBeginRenderPassData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBeginRenderPassData>& t) {
+    if (!spy->RenderPasses.count(t->mRenderPass) ||
+        !spy->Framebuffers.count(t->mFramebuffer)) {
+        return;
+    }
     std::vector<VkClearValue> clear_values;
     for (size_t i = 0; i < t->mClearValues.size(); ++i) {
         clear_values.push_back(t->mClearValues[i]);
@@ -124,6 +145,9 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindDescriptorSetsDa
     }
     std::vector<VkDescriptorSet> descriptor_sets;
     for (size_t i = 0; i < t->mDescriptorSets.size(); ++i) {
+        if (!spy->DescriptorSets.count(t->mDescriptorSets[i])) {
+            return;
+        }
         descriptor_sets.push_back(t->mDescriptorSets[i]);
     }
 
@@ -140,6 +164,9 @@ void inline CommandListRecreator<std::shared_ptr<RecreateBindVertexBuffersData>>
     const std::shared_ptr<RecreateBindVertexBuffersData>& t) {
     std::vector<VkBuffer> buffers;
     for (size_t i = 0; i < t->mBuffers.size(); ++i) {
+        if (!spy->Buffers.count(t->mBuffers[i])) {
+            return;
+        }
         buffers.push_back(t->mBuffers[i]);
     }
     std::vector<uint64_t> device_sizes;
@@ -155,6 +182,9 @@ template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindIndexBufferData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindIndexBufferData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
     spy->RecreateCmdBindIndexBuffer(observer, commandBuf,
         t->mBuffer, t->mOffset, t->mIndexType);
 }
@@ -163,8 +193,61 @@ template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {
+    if (!spy->GraphicsPipelines.count(t->mPipeline) &&
+        !spy->ComputePipelines.count(t->mPipeline)) {
+        return;
+    }
     spy->RecreateCmdBindPipeline(observer, commandBuf,
         t->mPipelineBindPoint, t->mPipeline);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCopyBufferToImageData>& t) {
+    if (!spy->Buffers.count(t->mSrcBuffer) ||
+        !spy->Images.count(t->mDstImage)) {
+        return;
+    }
+    std::vector<VkBufferImageCopy> buffers;
+    for (size_t i = 0; i < t->mRegions.size(); ++i) {
+        buffers.push_back(t->mRegions[i]);
+    }
+    spy->RecreateCmdCopyBufferToImage(observer, commandBuf,
+        t->mSrcBuffer, t->mDstImage, t->mLayout, buffers.size(), buffers.data());
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetScissorData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetScissorData>& t) {
+    std::vector<VkRect2D> rects;
+    for (size_t i = 0; i < t->mScissors.size(); ++i) {
+        rects.push_back(t->mScissors[i]);
+    }
+    spy->RecreateCmdSetScissor(observer, commandBuf,
+        t->mFirstScissor, rects.size(), rects.data());
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetViewportData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetViewportData>& t) {
+    std::vector<VkViewport> viewports;
+    for (size_t i = 0; i < t->mViewports.size(); ++i) {
+        viewports.push_back(t->mViewports[i]);
+    }
+    spy->RecreateCmdSetViewport(observer, commandBuf,
+        t->mFirstViewport, viewports.size(), viewports.data());
+}
+
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDrawData>& t) {
+    spy->RecreateCmdDraw(observer, commandBuf,
+        t->mVertexCount, t->mInstanceCount, t->mFirstVertex, t->mFirstInstance);
 }
 
 template<>

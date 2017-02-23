@@ -287,7 +287,7 @@ func run(ctx log.Context, cwd file.Path, exe file.Path, env *shell.Env, args ...
 		Env(env).
 		Run(ctx)
 	if err != nil {
-		fmt.Printf("Error running %s: %v\n", exe, err)
+		fmt.Printf("Error running %s %v: %v\n", exe, args, err)
 		os.Exit(1)
 	}
 }

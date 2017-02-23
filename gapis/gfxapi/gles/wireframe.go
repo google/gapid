@@ -35,7 +35,7 @@ func wireframe(ctx log.Context) transform.Transformer {
 	return transform.Transform("Wireframe", func(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		if dc, ok := a.(drawCall); ok {
 			s := out.State()
-			t := tweaker{ctx: ctx, out: out, c: GetContext(s)}
+			t := newTweaker(ctx, out)
 			t.glEnable(GLenum_GL_LINE_SMOOTH)
 			t.glEnable(GLenum_GL_BLEND)
 			t.glBlendFunc(GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
@@ -61,7 +61,7 @@ func wireframeOverlay(ctx log.Context, id atom.ID) transform.Transformer {
 				s := out.State()
 				out.MutateAndWrite(ctx, atom.NoID, dc)
 
-				t := tweaker{ctx: ctx, out: out, c: GetContext(s)}
+				t := newTweaker(ctx, out)
 				t.glEnable(GLenum_GL_POLYGON_OFFSET_LINE)
 				t.glPolygonOffset(-1, -1)
 				t.glEnable(GLenum_GL_BLEND)

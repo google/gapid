@@ -53,6 +53,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.function.Consumer;
@@ -289,6 +290,21 @@ public class Widgets {
     group.setLayout(new FillLayout(SWT.VERTICAL));
     group.setText(text);
     return group;
+  }
+
+  public static Tree createTree(Composite parent, int style) {
+    Tree tree = new Tree(parent, style);
+    tree.addListener(SWT.KeyDown, e -> {
+      switch (e.keyCode) {
+        case SWT.ARROW_LEFT:
+        case SWT.ARROW_RIGHT:
+          if (tree.getSelectionCount() == 1) {
+            tree.getSelection()[0].setExpanded(e.keyCode == SWT.ARROW_RIGHT);
+          }
+          break;
+      }
+    });
+    return tree;
   }
 
   public static Composite createComposite(Composite parent, Layout layout) {

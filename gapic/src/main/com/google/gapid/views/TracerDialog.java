@@ -19,6 +19,7 @@ import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
+import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
@@ -50,6 +51,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
@@ -61,6 +63,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TracerDialog {
   private TracerDialog() {
@@ -81,6 +84,7 @@ public class TracerDialog {
     TraceInputDialog input = new TraceInputDialog(shell, models.settings, widgets);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
       TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue());
+      AtomicBoolean failed = new AtomicBoolean(false);
       Tracer.Trace trace = Tracer.trace(shell.getDisplay(), input.getValue(), new Tracer.Listener() {
         @Override
         public void onProgress(String message) {
@@ -91,10 +95,14 @@ public class TracerDialog {
         public void onFailure(Throwable error) {
           progress.append("Tracing failed:");
           progress.append(Throwables.getStackTraceAsString(error));
+          failed.set(true);
         }
       });
       progress.open();
       trace.stop();
+      if (!failed.get()) {
+        models.capture.loadCapture(input.getValue().output);
+      }
     }
   }
 
@@ -209,9 +217,15 @@ public class TracerDialog {
 
       updateDevicesDropDown();
 
-      traceTarget.addListener(SWT.Modify, e -> {
+      traceTarget.addBoxListener(SWT.Modify, e -> {
         if (!userHasChangedOutputFile) {
           String pkg = traceTarget.getText();
+          int actionSep = pkg.indexOf(":");
+          int pkgSep = pkg.indexOf("/");
+          if (actionSep >= 0 && pkgSep > actionSep) {
+            pkg = pkg.substring(actionSep + 1, pkgSep);
+          }
+
           int p = pkg.lastIndexOf('.');
           if (p >= pkg.length() - 1) {
             file.setText(DEFAULT_TRACE_FILE);
@@ -252,17 +266,15 @@ public class TracerDialog {
     private void updateDevicesDropDown() {
       if (device != null && devices != null) {
         device.setInput(devices);
-        boolean found = false;
         if (!settings.traceDevice.isEmpty()) {
           Optional<Device.Instance> deflt = devices.stream()
               .filter(dev -> settings.traceDevice.equals(dev.getSerial()))
               .findAny();
           if (deflt.isPresent()) {
             device.setSelection(new StructuredSelection(deflt.get()));
-            found = true;
           }
         }
-        traceTarget.setEnabled(found);
+        device.getCombo().notifyListeners(SWT.Selection, new Event());
       }
     }
 
@@ -272,7 +284,6 @@ public class TracerDialog {
       Button ok = createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
       createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
 
-      ok.setEnabled(false);
       Listener modifyListener = e -> {
         traceTarget.setActionEnabled(device.getCombo().getSelectionIndex() >= 0);
         ok.setEnabled(
@@ -281,8 +292,10 @@ public class TracerDialog {
             !file.getText().isEmpty());
       };
       device.getCombo().addListener(SWT.Selection, modifyListener);
-      traceTarget.addListener(SWT.Modify, modifyListener);
+      traceTarget.addBoxListener(SWT.Modify, modifyListener);
       file.addListener(SWT.Modify, modifyListener);
+
+      modifyListener.handleEvent(null); // Set initial state of widgets.
     }
 
     @Override
@@ -347,16 +360,19 @@ public class TracerDialog {
     }
 
     public void append(String line) {
-      log.append(line).append(text.getLineDelimiter());
-      text.setText(log.toString());
-      text.setSelection(text.getCharCount() - 1);
+      ifNotDisposed(text, () -> {
+        log.append(line).append(text.getLineDelimiter());
+        int selection = text.getCharCount();
+        text.setText(log.toString());
+        text.setSelection(selection);
+      });
     }
 
     @Override
     public void create() {
       super.create();
       setTitle(Messages.CAPTURING_TRACE);
-      setMessage("Capturing " + request.action + " to " + request.output.getName());
+      setMessage("Capturing " + request.getActionString() + " to " + request.output.getName());
     }
 
     @Override

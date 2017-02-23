@@ -17,10 +17,21 @@ package gles
 import (
 	"fmt"
 
+	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/config"
+)
+
+var (
+	deadCodeEliminationCounter         = benchmark.GlobalCounters.Duration("deadCodeElimination")
+	deadCodeEliminationAtomDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.atom.dead")
+	deadCodeEliminationAtomLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.atom.live")
+	deadCodeEliminationDrawDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.dead")
+	deadCodeEliminationDrawLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.live")
+	deadCodeEliminationDataDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.dead")
+	deadCodeEliminationDataLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.live")
 )
 
 // DeadCodeElimination is an implementation of Transformer that outputs live atoms.
@@ -54,7 +65,9 @@ func (t *DeadCodeElimination) Transform(ctx log.Context, id atom.ID, a atom.Atom
 }
 
 func (t *DeadCodeElimination) Flush(ctx log.Context, out transform.Writer) {
+	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
+	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
 			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.atoms[i])
@@ -69,6 +82,10 @@ func (t *DeadCodeElimination) propagateLiveness(ctx log.Context) []bool {
 	for i := int(t.lastRequest); i >= 0; i-- {
 		b := t.dependencyGraph.behaviours[i]
 		isLive[i] = b.KeepAlive
+		// Always ignore commands that abort.
+		if b.Aborted {
+			continue
+		}
 		// If this is requested ID, mark all root state as live.
 		if t.requests.Contains(atom.ID(i)) {
 			isLive[i] = true
@@ -109,23 +126,41 @@ func (t *DeadCodeElimination) propagateLiveness(ctx log.Context) []bool {
 		}
 	}
 
-	if config.DebugDeadCodeElimination {
+	{
+		// Collect and report statistics
 		num, numDead, numDeadDraws, numLive, numLiveDraws := len(isLive), 0, 0, 0, 0
+		deadMem, liveMem := uint64(0), uint64(0)
 		for i := 0; i < num; i++ {
-			if !isLive[i] {
-				numDead++
-				if t.dependencyGraph.atoms[i].AtomFlags().IsDrawCall() {
-					numDeadDraws++
-				}
-			} else {
-				numLive++
-				if t.dependencyGraph.atoms[i].AtomFlags().IsDrawCall() {
-					numLiveDraws++
+			a := t.dependencyGraph.atoms[i]
+			mem := uint64(0)
+			if e := a.Extras(); e != nil && e.Observations() != nil {
+				for _, r := range e.Observations().Reads {
+					mem += r.Range.Size
 				}
 			}
+			if !isLive[i] {
+				numDead++
+				if a.AtomFlags().IsDrawCall() {
+					numDeadDraws++
+				}
+				deadMem += mem
+			} else {
+				numLive++
+				if a.AtomFlags().IsDrawCall() {
+					numLiveDraws++
+				}
+				liveMem += mem
+			}
 		}
-		ctx.Info().Logf("DCE: dead: %v%% %v cmds %v draws, live: %v%% %v cmds %v draws",
-			100*numDead/num, numDead, numDeadDraws, 100*numLive/num, numLive, numLiveDraws)
+		deadCodeEliminationAtomDeadCounter.AddInt64(int64(numDead))
+		deadCodeEliminationAtomLiveCounter.AddInt64(int64(numLive))
+		deadCodeEliminationDrawDeadCounter.AddInt64(int64(numDeadDraws))
+		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
+		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
+		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
+		ctx.Debug().Logf("DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
+			100*numDead/num, numDead, deadMem/1024/1024, numDeadDraws,
+			100*numLive/num, numLive, liveMem/1024/1024, numLiveDraws)
 	}
 	return isLive
 }

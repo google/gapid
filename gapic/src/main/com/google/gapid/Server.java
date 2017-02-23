@@ -66,7 +66,7 @@ public class Server {
   private GapisConnection gapisConnection;
   private Client client;
 
-  public void connect(Listener listener) throws GapisInitException {
+  public void connect(GapisProcess.Listener listener) throws GapisInitException {
     connectToServer(listener);
     String status = "";
     try {
@@ -92,7 +92,7 @@ public class Server {
     }
   }
 
-  private void connectToServer(Listener listener) throws GapisInitException {
+  private void connectToServer(GapisProcess.Listener listener) throws GapisInitException {
     GapisConnection connection = createConnection(listener);
     if (!connection.isConnected()) {
       throw new GapisInitException(GapisInitException.MESSAGE_FAILED_CONNECT, "not connected");
@@ -112,18 +112,12 @@ public class Server {
     }
   }
 
-  private static GapisConnection createConnection(Listener listener) {
+  private static GapisConnection createConnection(GapisProcess.Listener listener) {
     if (gapis.get().isEmpty()) {
-      return new GapisProcess() {
-        @Override
-        protected void onExit(int code) {
-          super.onExit(code);
-          listener.onServerExit(code);
-        }
-      }.connect();
+      return new GapisProcess(listener).connect();
     } else {
       return GapisConnection.create(
-          gapis.get(), gapisAuthToken.get(), con -> listener.onServerExit(-1));
+          gapis.get(), gapisAuthToken.get(), con -> listener.onServerExit(-1, null));
     }
   }
 
@@ -177,10 +171,6 @@ public class Server {
     for (ConstantSet set : schema.constants) {
       ConstantSet.register(set);
     }
-  }
-
-  public static interface Listener {
-    public void onServerExit(int code);
   }
 
   public static class GapisInitException extends Exception {

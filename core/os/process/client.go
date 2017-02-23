@@ -58,15 +58,19 @@ func (w *portWatcher) Write(b []byte) (n int, err error) {
 }
 
 func Start(ctx log.Context, name string, extraEnv map[string][]string, args ...string) (int, error) {
-	errChan := make(chan error, 1)
-	portChan := make(chan string, 1)
-	stdout := &portWatcher{portChan: portChan}
 
 	// Append extra environment variable values
 	env := shell.CloneEnv()
 	for key, vals := range extraEnv {
 		env.AddPathStart(key, vals...)
 	}
+	return StartWithEnv(ctx, name, env, args...)
+}
+
+func StartWithEnv(ctx log.Context, name string, env *shell.Env, args ...string) (int, error) {
+	errChan := make(chan error, 1)
+	portChan := make(chan string, 1)
+	stdout := &portWatcher{portChan: portChan}
 
 	go func() {
 		errChan <- shell.Command(name, args...).Verbose().Env(env).Capture(stdout, nil).Run(ctx)

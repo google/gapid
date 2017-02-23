@@ -228,15 +228,11 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 			if att.ObjectType == GLenum_GL_TEXTURE {
 				if tex, ok := c.Instances.Textures[TextureId(att.ObjectName)]; ok {
 					if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+						t := newTweaker(ctx, out)
 						s := out.State()
-						origReadFramebuffer := c.BoundReadFramebuffer
-						origReadBuffer := fb.ReadBuffer
-						origPackBuffer := c.BoundBuffers.PixelPackBuffer
-						origPackAlignment := c.PixelStorage.PackAlignment
-						out.MutateAndWrite(ctx, i, NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.BoundDrawFramebuffer))
-						out.MutateAndWrite(ctx, i, NewGlReadBuffer(GLenum_GL_COLOR_ATTACHMENT0+GLenum(name)))
-						out.MutateAndWrite(ctx, i, NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, 0))
-						out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_PACK_ALIGNMENT, 1))
+						t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
+						t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
+						t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
 						img := tex.Texture2D[0]
 						data, ok := eglImageData[tex.EGLImage]
 						if !ok {
@@ -245,10 +241,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 						}
 						out.MutateAndWrite(ctx, i, NewGlReadPixels(0, 0, img.Width, img.Height, img.TexelFormat, img.TexelType, data))
 						out.MutateAndWrite(ctx, i, NewGlGetError(0))
-						out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_PACK_ALIGNMENT, origPackAlignment))
-						out.MutateAndWrite(ctx, i, NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, origPackBuffer))
-						out.MutateAndWrite(ctx, i, NewGlReadBuffer(origReadBuffer))
-						out.MutateAndWrite(ctx, i, NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, origReadFramebuffer))
+						t.revert()
 					}
 				}
 			}
@@ -306,7 +299,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 		}
 
 		c := GetContext(s)
-		if c == nil {
+		if c == nil || !c.Info.Initialized {
 			// The compatibility translations below assume that we have a valid context.
 			out.MutateAndWrite(ctx, i, a)
 			return
@@ -522,13 +515,17 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 				if clientVAsBound(c, clientVAs) {
 					first := int(a.FirstIndex)
 					last := first + int(a.IndicesCount) - 1
-					defer moveClientVBsToVAs(ctx, clientVAs, first, last, i, a, s, c, out)()
+					t := newTweaker(ctx, out)
+					defer t.revert()
+					moveClientVBsToVAs(ctx, t, clientVAs, first, last, i, a, s, c, out)
 				}
 			}
 
 		case *GlDrawElements:
 			if target.vertexArrayObjects == required {
 				e := externs{ctx: ctx, a: a, s: s}
+				t := newTweaker(ctx, out)
+				defer t.revert()
 
 				ib := c.Instances.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
 				clientIB := ib == 0
@@ -538,23 +535,14 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 					// We need to move this into a temporary buffer.
 
 					// Generate a new element array buffer and bind it.
-					id := BufferId(newUnusedID('B', func(x uint32) bool { _, ok := c.Instances.Buffers[BufferId(x)]; return ok }))
-					c.Instances.Buffers[id] = &Buffer{} // Not used aside from reserving the ID.
-					tmpId := atom.Must(atom.AllocData(ctx, s, id))
-					out.MutateAndWrite(ctx, atom.NoID, NewGlGenBuffers(1, tmpId.Ptr()).AddRead(tmpId.Data()))
-					out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, id))
+					id := t.glGenBuffer()
+					t.GlBindBuffer_ElementArrayBuffer(id)
 
 					// By moving the draw call's observations earlier, populate the element array buffer.
 					size, base := DataTypeSize(a.IndicesType)*int(a.IndicesCount), memory.Pointer(a.Indices)
 					glBufferData := NewGlBufferData(GLenum_GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(size), memory.Pointer(base), GLenum_GL_STATIC_DRAW)
 					glBufferData.extras = a.extras
 					out.MutateAndWrite(ctx, atom.NoID, glBufferData)
-
-					// Clean-up
-					defer func() {
-						out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, ib))
-						out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteBuffers(1, tmpId.Ptr()).AddRead(tmpId.Data()))
-					}()
 
 					if clientVB {
 						// Some of the vertex arrays for the glDrawElements call is in
@@ -564,7 +552,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 						// application pool.
 						a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 						limits := e.calcIndexLimits(U8ᵖ(a.Indices), a.IndicesType, 0, uint32(a.IndicesCount))
-						defer moveClientVBsToVAs(ctx, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)()
+						moveClientVBsToVAs(ctx, t, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)
 					}
 
 					glDrawElements := *a
@@ -580,7 +568,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 					data := c.Instances.Buffers[ib].Data.Index(0, s)
 					base := uint32(a.Indices.Address)
 					limits := e.calcIndexLimits(data, a.IndicesType, base, uint32(a.IndicesCount))
-					defer moveClientVBsToVAs(ctx, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)()
+					moveClientVBsToVAs(ctx, t, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)
 				}
 			}
 
@@ -1013,13 +1001,14 @@ func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAtt
 // versions of GL), into array-buffers.
 func moveClientVBsToVAs(
 	ctx log.Context,
+	t *tweaker,
 	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
 	first, last int, // vertex indices
 	i atom.ID,
 	a atom.Atom,
 	s *gfxapi.State,
 	c *Context,
-	out transform.Writer) (revert func()) {
+	out transform.Writer) {
 
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
@@ -1050,12 +1039,8 @@ func moveClientVBsToVAs(
 	// use. These are populated with data below.
 	ids := make([]BufferId, len(rngs))
 	for i := range rngs {
-		id := BufferId(newUnusedID('B', func(x uint32) bool { _, ok := c.Instances.Buffers[BufferId(x)]; return ok }))
-		c.Instances.Buffers[id] = &Buffer{} // Not used aside from reserving the ID.
-		ids[i] = id
+		ids[i] = t.glGenBuffer()
 	}
-	tmp := atom.Must(atom.AllocData(ctx, s, ids))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlGenBuffers(GLsizei(len(ids)), tmp.Ptr()).AddRead(tmp.Data()))
 
 	// Apply the memory observations that were made by the draw call now.
 	// We need to do this as the glBufferData calls below will require the data.
@@ -1068,11 +1053,10 @@ func moveClientVBsToVAs(
 	// calls to glBufferData below.
 
 	// Fill the array-buffers with the observed memory data.
-	origArrayBuffer := c.BoundBuffers.ArrayBuffer
 	for i, rng := range rngs {
 		base := memory.Pointer{Address: rng.First, Pool: memory.ApplicationPool}
 		size := GLsizeiptr(rng.Count)
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, ids[i]))
+		t.GlBindBuffer_ArrayBuffer(ids[i])
 		out.MutateAndWrite(ctx, atom.NoID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
 	}
 
@@ -1083,19 +1067,10 @@ func moveClientVBsToVAs(
 			if a, ok := clientVAs[arr]; ok {
 				a := *a // Copy
 				i := interval.IndexOf(&rngs, a.Data.Address)
-				out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, ids[i]))
+				t.GlBindBuffer_ArrayBuffer(ids[i])
 				a.Data = NewVertexPointer(a.Data.Address - rngs[i].First) // Offset
 				out.MutateAndWrite(ctx, atom.NoID, &a)
 			}
-		}
-	}
-
-	// Restore original state.
-	return func() {
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBuffer))
-		for _, id := range ids {
-			tmp := atom.Must(atom.AllocData(ctx, s, id))
-			out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
 		}
 	}
 }

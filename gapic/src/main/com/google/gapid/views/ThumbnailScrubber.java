@@ -190,12 +190,12 @@ public class ThumbnailScrubber extends Composite
     public void paint(GC gc, Image toDraw, int x, int y, int w, int h, boolean selected) {
       if (selected) {
         gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_SELECTION));
-        gc.drawRectangle(x - 2, y - 2, w + 4, h + 4);
-        gc.drawRectangle(x - 1, y - 1, w + 2, h + 2);
+        gc.drawRectangle(x - 2, y - 2, w + 3, h + 3);
+        gc.drawRectangle(x - 1, y - 1, w + 1, h + 1);
+      } else {
+        gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WIDGET_BORDER));
+        gc.drawRectangle(x - 1, y - 1, w + 1, h + 1);
       }
-
-      gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WIDGET_BORDER));
-      gc.drawRectangle(x, y, w, h);
 
       Rectangle size = toDraw.getBounds();
       gc.drawImage(toDraw, 0, 0, size.width, size.height,

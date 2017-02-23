@@ -28,7 +28,12 @@ type Extra interface {
 }
 
 // ExtraCast is automatically called by the generated decoders.
-func ExtraCast(obj binary.Object) Extra { return obj.(Extra) }
+func ExtraCast(obj binary.Object) Extra {
+	if obj == nil {
+		return nil
+	}
+	return obj.(Extra)
+}
 
 // Extras is a list of Extra objects.
 type Extras []Extra

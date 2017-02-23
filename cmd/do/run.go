@@ -33,7 +33,12 @@ func doRobot(ctx log.Context, cfg Config, options RobotOptions, args ...string) 
 
 func doRunTarget(ctx log.Context, cfg Config, options BuildAndRunOptions, target string, args ...string) {
 	doBuild(ctx, cfg, options.BuildOptions, target)
-	doRun(ctx, cfg, options.RunOptions, target, args...)
+
+	if target == "gapic" {
+		gapic(ctx, cfg).run(ctx, args...)
+	} else {
+		doRun(ctx, cfg, options.RunOptions, target, args...)
+	}
 }
 
 func doGo(ctx log.Context, cfg Config, options RunOptions, args ...string) {

@@ -54,6 +54,7 @@ public class Texture {
 
   public Texture loadData(
       int width, int height, int internalFormat, int format, int type, ByteBuffer data) {
+    GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
     GL11.glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
     return this;
   }

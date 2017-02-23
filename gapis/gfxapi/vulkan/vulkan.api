@@ -4095,6 +4095,16 @@ cmd void vkDestroyPipelineLayout(
   delete(PipelineLayouts, pipelineLayout)
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateSampler(VkDevice device,
+  const VkSamplerCreateInfo*   pCreateInfo,
+  VkSampler*                   pSampler) {
+    read(pCreateInfo[0:1])
+    write(pSampler[0:1])
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSampler(
@@ -4102,13 +4112,29 @@ cmd VkResult vkCreateSampler(
     const VkSamplerCreateInfo*   pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkSampler*                   pSampler) {
-  _ = pCreateInfo[0]
-  // TODO: pCreateInfo->pNext
-  // TODO: pAllocator
-
+  create_info := pCreateInfo[0]
+  sampler := new!SamplerObject(
+      Device: device,
+      MagFilter: create_info.magFilter,
+      MinFilter: create_info.minFilter,
+      MipMapMode: create_info.mipmapMode,
+      AddressModeU: create_info.addressModeU,
+      AddressModeV: create_info.addressModeV,
+      AddressModeW: create_info.addressModeW,
+      MipLodBias: create_info.mipLodBias,
+      AnisotropyEnable: create_info.anisotropyEnable,
+      MaxAnisotropy: create_info.maxAnisotropy,
+      CompareEnable: create_info.compareEnable,
+      CompareOp: create_info.compareOp,
+      MinLod: create_info.minLod,
+      MaxLod: create_info.maxLod,
+      BorderColor: create_info.borderColor,
+      UnnormalizedCoordinates: create_info.unnormalizedCoordinates
+  )
   handle := ?
   pSampler[0] = handle
-  Samplers[handle] = new!SamplerObject(device, handle)
+  sampler.VulkanHandle = handle
+  Samplers[handle] = sampler
   return ?
 }
 
@@ -5035,6 +5061,27 @@ sub void doCmdBindPipeline(CmdBindPipeline args) {
   }
 }
 
+
+@internal
+class RecreateCmdSetViewportData{
+  u32 FirstViewport
+  map!(u32, VkViewport) Viewports
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetViewport(
+    VkCommandBuffer commandBuffer,
+    u32             firstViewport,
+    u32             viewportCount,
+    const VkViewport* pViewports) {
+  read(pViewports[0:viewportCount])
+}
+
+sub void doCmdSetViewport(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetViewport(
@@ -5042,7 +5089,34 @@ cmd void vkCmdSetViewport(
     u32               firstViewport,
     u32               viewportCount,
     const VkViewport* pViewports) {
-  read(pViewports[0:viewportCount])
+  viewports := pViewports[0:viewportCount]
+  recreate_info := new!RecreateCmdSetViewportData(
+    firstViewport
+  )
+  for i in (0 .. viewportCount) {
+    recreate_info.Viewports[i] = viewports[i]
+  }
+  addCmd(commandBuffer, recreate_info, as!u32(0), doCmdSetViewport)
+}
+
+@internal
+class RecreateCmdSetScissorData{
+  u32 FirstScissor
+  map!(u32, VkRect2D) Scissors
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetScissor(
+    VkCommandBuffer commandBuffer,
+    u32             firstScissor,
+    u32             scissorCount,
+    const VkRect2D* pScissors) {
+  read(pScissors[0:scissorCount])
+}
+
+sub void doCmdSetScissor(u32 unused) {
 }
 
 @threadSafety("app")
@@ -5052,7 +5126,14 @@ cmd void vkCmdSetScissor(
     u32             firstScissor,
     u32             scissorCount,
     const VkRect2D* pScissors) {
-  read(pScissors[0:scissorCount])
+  scissors := pScissors[0:scissorCount]
+  recreate_info := new!RecreateCmdSetScissorData(
+    firstScissor
+  )
+  for i in (0 .. scissorCount) {
+    recreate_info.Scissors[i] = scissors[i]
+  }
+  addCmd(commandBuffer, recreate_info, as!u32(0), doCmdSetScissor)
 }
 
 @threadSafety("app")
@@ -5371,10 +5452,28 @@ sub void readCoherentVertexBuffers(u32 firstVertex, u32 firstInstance, u32 verte
   u32 FirstInstance
 }
 
+@internal class RecreateCmdDrawData {
+  u32 VertexCount
+  u32 InstanceCount
+  u32 FirstVertex
+  u32 FirstInstance
+}
+
 sub void doCmdDraw(CmdDraw draw) {
   if areAnyVertexBuffersCoherent() {
     readCoherentVertexBuffers(draw.FirstVertex, draw.FirstInstance, draw.VertexCount, draw.InstanceCount)
   }
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDraw(
+    VkCommandBuffer commandBuffer,
+    u32             vertexCount,
+    u32             instanceCount,
+    u32             firstVertex,
+    u32             firstInstance) {
 }
 
 @threadSafety("app")
@@ -5385,7 +5484,9 @@ cmd void vkCmdDraw(
     u32             instanceCount,
     u32             firstVertex,
     u32             firstInstance) {
-  addCmd(commandBuffer, Unimplemented(), CmdDraw(vertexCount, instanceCount, firstVertex, firstInstance), doCmdDraw)
+  addCmd(commandBuffer,
+    new!RecreateCmdDrawData(vertexCount, instanceCount, firstVertex, firstInstance),
+    CmdDraw(vertexCount, instanceCount, firstVertex, firstInstance), doCmdDraw)
 }
 
 @internal class CmdDrawIndexed {
@@ -5812,6 +5913,27 @@ sub void doCmdCopyBufferToImage(CmdCopyBufferToImage args) {
   }
 }
 
+@internal
+class RecreateCopyBufferToImageData {
+  VkBuffer      SrcBuffer
+  VkImage       DstImage
+  VkImageLayout Layout
+  map!(u64, VkBufferImageCopy) Regions
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdCopyBufferToImage(
+    VkCommandBuffer          commandBuffer,
+    VkBuffer                 srcBuffer,
+    VkImage                  dstImage,
+    VkImageLayout            dstImageLayout,
+    u32                      regionCount,
+    const VkBufferImageCopy* pRegions) {
+  read(pRegions[0:regionCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyBufferToImage(
@@ -5824,10 +5946,12 @@ cmd void vkCmdCopyBufferToImage(
   regions := pRegions[0:regionCount]
   read(regions)
   copyArgs := CmdCopyBufferToImage(srcBuffer, dstImage)
+  recreateArgs := new!RecreateCopyBufferToImageData(srcBuffer, dstImage, dstImageLayout)
   for i in (0 .. regionCount) {
     copyArgs.Regions[as!u64(i)] = regions[i]
+    recreateArgs.Regions[as!u64(i)] = regions[i]
   }
-  addCmd(commandBuffer, Unimplemented(), copyArgs, doCmdCopyBufferToImage)
+  addCmd(commandBuffer, recreateArgs, copyArgs, doCmdCopyBufferToImage)
 }
 
 @threadSafety("app")
@@ -7396,6 +7520,21 @@ enum RecordingState {
 @internal class SamplerObject {
   @unused VkDevice  Device
   @unused VkSampler VulkanHandle
+  @unused VkFilter  MagFilter
+  @unused VkFilter  MinFilter
+  @unused VkSamplerMipmapMode MipMapMode
+  @unused VkSamplerAddressMode AddressModeU
+  @unused VkSamplerAddressMode AddressModeV
+  @unused VkSamplerAddressMode AddressModeW
+  @unused f32                  MipLodBias
+  @unused VkBool32             AnisotropyEnable
+  @unused f32                  MaxAnisotropy
+  @unused VkBool32             CompareEnable
+  @unused VkCompareOp          CompareOp
+  @unused f32                  MinLod
+  @unused f32                  MaxLod
+  @unused VkBorderColor        BorderColor
+  @unsued VkBool32             UnnormalizedCoordinates
 }
 
 @internal class DescriptorBinding {

@@ -31,6 +31,9 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 	if c == nil {
 		return 0, 0, imgfmt{}, fmt.Errorf("No context bound")
 	}
+	if !c.Info.Initialized {
+		return 0, 0, imgfmt{}, fmt.Errorf("Context not initialized")
+	}
 
 	framebuffer, ok := c.Instances.Framebuffers[c.BoundReadFramebuffer]
 	if !ok {

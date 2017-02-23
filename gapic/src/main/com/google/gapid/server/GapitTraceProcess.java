@@ -77,6 +77,14 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
     });
   }
 
+  @Override
+  protected OutputHandler<Boolean> createStderrHandler() {
+    return new LoggingStringHandler<Boolean>(LOG, name, true, line -> {
+      onOutput.accept(line);
+      return null;
+    });
+  }
+
   public void stopTracing() {
     if (isRunning()) {
       LOG.log(INFO, "Attempting to end the trace.");

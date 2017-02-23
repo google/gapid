@@ -291,8 +291,6 @@ func postImageData(ctx log.Context,
 	}
 	resolveImageCreateInfoData := MustAllocData(ctx, s, resolveImageCreateInfo)
 	resolveImageData := MustAllocData(ctx, s, resolveImageId)
-	// TODO: We should definitely figure out a better source for the size of this
-	// allocation, it may need to be larger
 	resolveImageMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool {
 		_, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]
 		ok = ok || VkDeviceMemory(x) == bufferMemoryId || VkDeviceMemory(x) == stagingImageMemoryId

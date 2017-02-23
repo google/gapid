@@ -48,9 +48,12 @@ public class GapisProcess extends ChildProcess<Integer> {
 
   private final ListenableFuture<GapisConnection> connection;
   private final String authToken =  generateAuthToken();
+  private final PanicDetector panicDetector = new PanicDetector();
+  private final Listener listener;
 
-  public GapisProcess() {
+  public GapisProcess(Listener listener) {
     super("gapis");
+    this.listener = (listener == null) ? Listener.NULL : listener;
     connection = Futures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
       return GapisConnection.create(SERVER_HOST + ":" + port, authToken, con -> {
@@ -94,6 +97,7 @@ public class GapisProcess extends ChildProcess<Integer> {
   @Override
   protected OutputHandler<Integer> createStdoutHandler() {
     return new LoggingStringHandler<Integer>(LOG, name, false, line -> {
+      panicDetector.processLine(line);
       if (!connection.isDone()) {
         Matcher matcher = PORT_PATTERN.matcher(line);
         if (matcher.matches()) {
@@ -104,6 +108,20 @@ public class GapisProcess extends ChildProcess<Integer> {
       }
       return null;
     });
+  }
+
+  @Override
+  protected OutputHandler<Integer> createStderrHandler() {
+    return new LoggingStringHandler<Integer>(LOG, name, true, line -> {
+      panicDetector.processLine(line);
+      return null;
+    });
+  }
+
+  @Override
+  protected void onExit(int code) {
+    super.onExit(code);
+    listener.onServerExit(code, panicDetector.hasFoundPanic() ? panicDetector.getPanic() : null);
   }
 
   public GapisConnection connect() {
@@ -125,5 +143,47 @@ public class GapisProcess extends ChildProcess<Integer> {
     byte[] bytes = new byte[AUTH_TOKEN_LENGTH * 3 / 4];
     rnd.nextBytes(bytes);
     return Base64.getEncoder().encodeToString(bytes);
+  }
+
+  public static interface Listener {
+    public static final Listener NULL = new Listener() {
+      @Override
+      public void onServerExit(int code, String panic) {
+        // Do nothing.
+      }
+    };
+
+    public void onServerExit(int code, String panic);
+  }
+
+  private static class PanicDetector {
+    private static final int MAX_PANIC_DETAIL_LINES = 256;
+
+    private final StringBuilder panic = new StringBuilder();
+    private boolean foundPanic;
+    private int count;
+
+    public PanicDetector() {
+    }
+
+    public void processLine(String line) {
+      if (foundPanic && count < MAX_PANIC_DETAIL_LINES) {
+        panic.append(line).append('\n');
+        count++;
+      } else if (line.startsWith("panic: ")) {
+        panic.delete(0, panic.length());
+        foundPanic = true;
+        count = 0;
+        panic.append(line).append('\n');
+      }
+    }
+
+    public boolean hasFoundPanic() {
+      return foundPanic;
+    }
+
+    public String getPanic() {
+      return panic.toString();
+    }
   }
 }
