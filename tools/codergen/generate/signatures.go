@@ -99,7 +99,11 @@ func (s *stream) measure(e *binary.Entity) int {
 
 func (s *stream) stats(w io.Writer) {
 	fmt.Fprintln(w, "Total:", s.total)
-	fmt.Fprintln(w, "Average:", s.total/s.count)
+	average := 0
+	if s.count > 0 {
+		average = s.total / s.count
+	}
+	fmt.Fprintln(w, "Average:", average)
 	fmt.Fprintln(w, "Largest:", s.largest)
 }
 
