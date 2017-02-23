@@ -46,6 +46,9 @@ var (
 
 	// Path to the GO executable found on PATH.
 	goExePath file.Path
+
+	// Extension to use for host executables.
+	hostExeExt string
 )
 
 const (
@@ -114,6 +117,10 @@ func findRootSourcePath() file.Path {
 }
 
 func init() {
+	if runtime.GOOS == "windows" {
+		hostExeExt = ".exe"
+	}
+
 	srcRoot = findRootSourcePath()
 	if path, err := file.FindExecutable("go"); err != nil {
 		panic("go executable not found on PATH")
