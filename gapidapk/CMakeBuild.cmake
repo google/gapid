@@ -122,7 +122,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
         list(APPEND TARGET_SOURCES ${apk_dir}/${rooted_source})
     endforeach()
 
-    string(REPLACE ";" ":" all_inputs "${TARGET_SOURCES}")
+    string(REPLACE ";" "," all_inputs "${TARGET_SOURCES}")
 
     set(gradle_out "${apk_dir}/app/build/outputs/apk/app-debug.apk")
     gradle(${abi}-gradle-gapid-apk

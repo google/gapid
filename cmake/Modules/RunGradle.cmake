@@ -16,8 +16,13 @@ include(${GRADLE_ENV})
 
 separate_arguments(args UNIX_COMMAND ${GRADLE_ARGS})
 
+set(gradle "./gradlew")
+if(CMAKE_HOST_WIN32)
+    set(gradle "gradlew.bat")
+endif(CMAKE_HOST_WIN32)
+
 execute_process(
-    COMMAND ./gradlew
+    COMMAND ${gradle}
             ${args}
             -Djava.awt.headless=true # Prevent gradle from stealing window focus.
             build

@@ -48,7 +48,7 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 		"-GNinja",
 		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.Slash(),
 		"-DCMAKE_BUILD_TYPE=" + strings.Title(cfg.Flavor.String()),
-		"-DINSTALL_PREFIX=" + cfg.pkg().System(),
+		"-DINSTALL_PREFIX=" + cfg.pkg().Slash(),
 	}
 	args = append(args, "-DCMAKE_Go_COMPILER="+goExePath.Slash())
 	if !cfg.AndroidNDKRoot.IsEmpty() {

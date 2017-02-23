@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 def inputsHash() {
-    def files = inputs.split(":")
+    def files = inputs.split(",")
     def hash = ""
     new ByteArrayOutputStream().withStream { os ->
         exec {

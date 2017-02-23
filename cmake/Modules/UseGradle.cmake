@@ -23,8 +23,8 @@ set(JAVA_HOME $ENV{JAVA_HOME} CACHE PATH "The root path to the JDK")
 #TODO: should we try to find an installed SDK here?
 
 file(WRITE ${GRADLE_ENV} "
-set(ENV{ANDROID_HOME} ${ANDROID_HOME})
-set(ENV{JAVA_HOME} ${JAVA_HOME})
+set(ENV{ANDROID_HOME} \"${ANDROID_HOME}\")
+set(ENV{JAVA_HOME} \"${JAVA_HOME}\")
 ")
 
 
