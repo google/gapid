@@ -17,7 +17,7 @@ package gapidapk
 import (
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
+	"path"
 	"sync"
 
 	"github.com/google/gapid/core/app/layout"
@@ -111,12 +111,12 @@ func EnsureInstalled(ctx log.Context, d adb.Device, abi *device.ABI) (*APK, erro
 				continue
 			}
 
-			path, err := gapid.Path(ctx)
+			apkPath, err := gapid.Path(ctx)
 			if err != nil {
 				return nil, cause.Explain(ctx, err, "Obtaining GAPID package path")
 			}
 			ctx.Info().Log("Found gapid package...")
-			return &APK{gapid, filepath.Dir(path)}, nil
+			return &APK{gapid, path.Dir(apkPath)}, nil
 		}
 	}
 
