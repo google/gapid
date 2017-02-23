@@ -107,7 +107,7 @@ func actionComponent(pkg *InstalledPackage, owner string) string {
 // ActionExtra is the interface implemented by intent extras.
 type ActionExtra interface {
 	// Flags returns the formatted flags to pass to the Android am command.
-	Flags() string
+	Flags() []string
 }
 
 // StringExtra represents an extra with a string value.
@@ -147,19 +147,19 @@ type URIExtra struct {
 }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e StringExtra) Flags() string { return fmt.Sprintf(`--es %v "%v"`, e.Key, e.Value) }
+func (e StringExtra) Flags() []string { return []string{"--es", e.Key, fmt.Sprintf(`"%v"`, e.Value)} }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e BoolExtra) Flags() string { return fmt.Sprintf("--ez %v %v", e.Key, e.Value) }
+func (e BoolExtra) Flags() []string { return []string{"--ez", e.Key, fmt.Sprintf("%v", e.Value)} }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e IntExtra) Flags() string { return fmt.Sprintf("--ei %v %v", e.Key, e.Value) }
+func (e IntExtra) Flags() []string { return []string{"--ei", e.Key, fmt.Sprintf("%v", e.Value)} }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e LongExtra) Flags() string { return fmt.Sprintf("--el %v %v", e.Key, e.Value) }
+func (e LongExtra) Flags() []string { return []string{"--el", e.Key, fmt.Sprintf("%v", e.Value)} }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e FloatExtra) Flags() string { return fmt.Sprintf("--ef %v %v", e.Key, e.Value) }
+func (e FloatExtra) Flags() []string { return []string{"--ef", e.Key, fmt.Sprintf("%v", e.Value)} }
 
 // Flags returns the formatted flags to pass to the Android am command.
-func (e URIExtra) Flags() string { return fmt.Sprintf("--eu %v %v", e.Key, e.Value) }
+func (e URIExtra) Flags() []string { return []string{"--eu", e.Key, fmt.Sprintf("%v", e.Value)} }
