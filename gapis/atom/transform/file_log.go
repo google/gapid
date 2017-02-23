@@ -39,7 +39,11 @@ func NewFileLog(ctx log.Context, name string) *FileLog {
 
 func (t *FileLog) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Writer) {
 	if a.API() != nil {
-		t.file.WriteString(fmt.Sprintf("%v\n", a))
+		if id != atom.NoID {
+			t.file.WriteString(fmt.Sprintf("%v: %v\n", id, a))
+		} else {
+			t.file.WriteString(fmt.Sprintf("%v\n", a))
+		}
 	} else {
 		t.file.WriteString(fmt.Sprintf("%T\n", a))
 	}

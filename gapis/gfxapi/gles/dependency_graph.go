@@ -17,6 +17,7 @@ package gles
 import (
 	"fmt"
 
+	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -24,6 +25,8 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 )
+
+var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
 
 // DependencyGraph represents dependencies between atoms.
 // For each atom, we want to know what other atoms it depends on.
@@ -130,9 +133,11 @@ func (r *DependencyGraphResolvable) Resolve(ctx log.Context) (interface{}, error
 	}
 
 	s := c.NewState()
+	t0 := dependencyGraphBuildCounter.Start()
 	for i, a := range g.atoms {
-		g.behaviours[i] = g.getBehaviour(ctx, s, a)
+		g.behaviours[i] = g.getBehaviour(ctx, s, atom.ID(i), a)
 	}
+	dependencyGraphBuildCounter.Stop(t0)
 	return g, nil
 }
 
@@ -234,7 +239,7 @@ func (k eglImageDataKey) Parent() stateKey { return nil }
 // implemented. This makes it more difficult to do only partial implementations.
 // It is fine to overestimate reads, or to read parent state (i.e. superset).
 //
-func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, a atom.Atom) AtomBehaviour {
+func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
 	b := AtomBehaviour{}
 	c := GetContext(s)
 	if c != nil {
@@ -306,7 +311,8 @@ func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, a atom.
 		b.KeepAlive = true
 	}
 	if err := a.Mutate(ctx, s, nil /* builder */); err != nil {
-		b.Aborted = true
+		ctx.Warning().Logf("Atom %v %v: %v", id, a, err)
+		return AtomBehaviour{Aborted: true}
 	}
 	return b
 }
@@ -315,26 +321,30 @@ func (g *DependencyGraph) getTextureData(ctx log.Context, a atom.Atom, s *gfxapi
 	// Look for samplers used by the current program.
 	if prog, ok := c.Instances.Programs[c.BoundProgram]; ok {
 		for _, activeUniform := range prog.ActiveUniforms {
-			uniform := prog.Uniforms[activeUniform.Location]
-			// Check values set by glUniform1i except for ones which are really just int and not a sampler.
-			if uniform.Type == GLenum_GL_INT && activeUniform.Type != GLenum_GL_INT {
-				target, err := subGetTextureTargetFromSamplerType(ctx, a, nil, s, GetState(s), nil, activeUniform.Type)
-				if target == GLenum_GL_NONE || err != nil {
-					ctx.Error().Logf("Unknown sampler type for uniform %v", activeUniform)
-					continue
+			// Optimization - skip the two most common types which we know are not samplers.
+			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
+				target, _ := subGetTextureTargetFromSamplerType(ctx, a, nil, s, GetState(s), nil, activeUniform.Type)
+				if target == GLenum_GL_NONE {
+					continue // Not a sampler type
 				}
-				units := AsU32ˢ(uniform.Value, s).Read(ctx, a, s, nil)
-				for _, unit := range units {
-					unit := GLenum(unit) + GLenum_GL_TEXTURE0
-					tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
-					if tex == nil || err != nil {
-						ctx.Error().Logf("Can not find texture for sampler %v", activeUniform)
-						continue
+				for i := 0; i < int(activeUniform.ArraySize); i++ {
+					uniform := prog.Uniforms[activeUniform.Location+UniformLocation(i)]
+					units := AsU32ˢ(uniform.Value, s).Read(ctx, a, s, nil)
+					if len(units) == 0 {
+						units = []uint32{0} // The uniform was not set, so use default value.
 					}
-					if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
-						stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
-					} else {
-						stateKeys = append(stateKeys, textureDataKey{tex, tex.ID})
+					for _, unit := range units {
+						unit := GLenum(unit) + GLenum_GL_TEXTURE0
+						tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
+						if tex == nil || err != nil {
+							ctx.Error().Logf("Can not find texture for sampler %v", activeUniform)
+							continue
+						}
+						if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+							stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
+						} else {
+							stateKeys = append(stateKeys, textureDataKey{tex, tex.ID})
+						}
 					}
 				}
 			}

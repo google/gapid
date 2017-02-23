@@ -69,19 +69,13 @@ public class Tracer {
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public TraceRequest(Device.Instance device, String action, File output,
-        boolean clearCache, boolean disablePcs) {
-      this.device = device;
-      this.pkg = null;
-      this.activity = null;
-      this.action = action;
-      this.output = output;
-      this.clearCache = clearCache;
-      this.disablePcs = disablePcs;
+    public TraceRequest(Device.Instance device, String action, File output, boolean clearCache,
+        boolean disablePcs) {
+      this(device, null, null, action, output, clearCache, disablePcs);
     }
 
-    public TraceRequest(Device.Instance device, String pkg, String activity, String action, File output,
-        boolean clearCache, boolean disablePcs) {
+    public TraceRequest(Device.Instance device, String pkg, String activity, String action,
+        File output, boolean clearCache, boolean disablePcs) {
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
@@ -118,6 +112,10 @@ public class Tracer {
         cmd.add(action);
       }
       return cmd;
+    }
+
+    public String getActionString() {
+      return (pkg != null) ? pkg : action;
     }
 
     @Override

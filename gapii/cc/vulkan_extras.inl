@@ -58,6 +58,7 @@ void SpyOverride_RecreateDescriptorPool(VkDevice, const VkDescriptorPoolCreateIn
 void SpyOverride_RecreateSwapchain(VkDevice, const VkSwapchainCreateInfoKHR*, VkImage*, const uint32_t*, const VkQueue*, VkSwapchainKHR*) {}
 void SpyOverride_RecreateImage(VkDevice, VkQueue, uint32_t, uint32_t, VkDeviceMemory, uint64_t, uint64_t data_size, void* data, const VkImageCreateInfo*, VkImage*) {}
 void SpyOverride_RecreateImageView(VkDevice, const VkImageViewCreateInfo*, VkImageView*) {}
+void SpyOverride_RecreateSampler(VkDevice, const VkSamplerCreateInfo*, VkSampler*) {}
 void SpyOverride_RecreateFramebuffer(VkDevice, const VkFramebufferCreateInfo*, VkFramebuffer*) {}
 void SpyOverride_RecreateDescriptorSet(VkDevice, const VkDescriptorSetAllocateInfo*, uint32_t, const VkWriteDescriptorSet*, VkDescriptorSet*) {}
 void SpyOverride_RecreateGraphicsPipeline(VkDevice, VkPipelineCache, const VkGraphicsPipelineCreateInfo*, VkPipeline*) {}
@@ -80,6 +81,10 @@ void SpyOverride_RecreateBindVertexBuffers(VkCommandBuffer, uint32_t, uint32_t, 
 void SpyOverride_RecreateCmdBindIndexBuffer(VkCommandBuffer, VkBuffer, uint64_t, uint32_t) {}
 void SpyOverride_RecreateEndRenderPass(VkCommandBuffer) {}
 void SpyOverride_RecreateCmdDrawIndexed(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
+void SpyOverride_RecreateCmdCopyBufferToImage(VkCommandBuffer, VkBuffer, VkImage, uint32_t, uint32_t, const VkBufferImageCopy*) {}
+void SpyOverride_RecreateCmdDraw(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t) {}
+void SpyOverride_RecreateCmdSetScissor(VkCommandBuffer, uint32_t, uint32_t, const VkRect2D*) {}
+void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*) {}
 
 void SpyOverride_RecreateXCBSurfaceKHR(VkDevice, const VkXcbSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 void SpyOverride_RecreateAndroidSurfaceKHR(VkDevice, const VkAndroidSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}

@@ -35,6 +35,7 @@ import (
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/process"
+	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/gapii/client"
 )
 
@@ -98,15 +99,13 @@ func (verb *traceVerb) startLocalApp(ctx log.Context) error {
 	if err != nil {
 		return err
 	}
+	env := shell.CloneEnv()
+	env.AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy")
+	env.AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
+	env.AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System())
+	env.Set("LD_PRELOAD", libgapii.System())
 
-	var extraEnv = map[string][]string{
-		"VK_LAYER_PATH":      {libVkLayerGraphicsSpy.Parent().System()},
-		"VK_INSTANCE_LAYERS": {"VkGraphicsSpy"},
-		"VK_DEVICE_LAYERS":   {"VkGraphicsSpy"},
-		"LD_PRELOAD":         {libgapii.System()},
-	}
-
-	boundPort, err := process.Start(ctx, verb.Local.App.System(), extraEnv)
+	boundPort, err := process.StartWithEnv(ctx, verb.Local.App.System(), env)
 	if err != nil {
 		return err
 	}

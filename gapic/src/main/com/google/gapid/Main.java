@@ -29,10 +29,12 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.Widgets;
 
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.MultiStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.window.Window;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
@@ -51,10 +53,10 @@ public class Main {
     Server server = new Server();
     AtomicReference<UI> uiRef = new AtomicReference<UI>(null);
     try {
-      server.connect(code -> {
+      server.connect((code, panic) -> {
         UI ui = uiRef.get();
         if (ui != null) {
-          ui.showServerDiedMessage(code);
+          ui.showServerDiedMessage(code, panic);
         }
       });
       uiRef.set(new UI(server.getClient(), args));
@@ -97,18 +99,28 @@ public class Main {
       window.open();
     }
 
-    public void showServerDiedMessage(int code) {
+    public void showServerDiedMessage(int code, String panic) {
       Shell shell = window.getShell();
-      if (shell != null) {
-        scheduleIfNotDisposed(shell, () -> {
-          // TODO: show more info, try to restart the server?
-          MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
-          dialog.setText("Fatal Error");
-          dialog.setMessage("The gapis server has exited with an error code of: " + code +
-              "\nPlease check the logs for more details.");
-          dialog.open();
-        });
+      if (shell == null) {
+        return;
       }
+
+      scheduleIfNotDisposed(shell, () -> {
+        // TODO: try to restart the server?
+        IStatus status;
+        if (panic == null) {
+          status = new Status(IStatus.ERROR, "gapid", "unknown");
+        } else {
+          int p = panic.indexOf('\n');
+          String reason = (p < 0) ? null : panic.substring(0, p);
+          status = new MultiStatus("gapid", IStatus.ERROR, new IStatus[] {
+              new Status(IStatus.ERROR, "gapid", panic)
+          }, reason, null);
+        }
+        ErrorDialog.openError(shell, "Fatal Error",
+            "The gapis server has exited with an error code of: " + code +
+            "\nPlease check the logs for more details.", status);
+      });
     }
 
     @Override

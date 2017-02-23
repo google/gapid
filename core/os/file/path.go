@@ -138,6 +138,17 @@ func (p Path) Files() PathList {
 	return list
 }
 
+// Walk walks path.
+func (p Path) Walk(walkFn func(path Path, err error) error) error {
+	return filepath.Walk(p.System(), func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			return walkFn(Path{path}, nil)
+		} else {
+			return walkFn(Path{}, err)
+		}
+	})
+}
+
 // Glob adds each pattern to the path in turn, and uses filepath.Glob to resolve that pattern to a list of files.
 func (p Path) Glob(pattern ...string) PathList {
 	list := PathList{}

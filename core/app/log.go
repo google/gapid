@@ -16,6 +16,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -84,7 +85,12 @@ func updateContext(legacy log.Context, flags *LogFlags, closeLogs func()) (log.C
 		}
 		jot.To(ctx).With("File", flags.File).Print("Switching to log file")
 		// Build the logging context
-		handler, closer := wrapHandler(flags.Style.Scribe(file))
+		style := flags.Style.Scribe(file)
+		handler, closer := wrapHandler(func(p note.Page) error {
+			err := style(p)
+			fmt.Fprintln(file)
+			return err
+		})
 		closeLogs()
 		closeLogs = func() {
 			closer()

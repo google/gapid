@@ -31,7 +31,7 @@ func undefinedFramebuffer(ctx log.Context, device *device.Instance) transform.Tr
 		out.MutateAndWrite(ctx, i, a)
 		s := out.State()
 		c := GetState(s).getContext()
-		if c == nil {
+		if c == nil || !c.Info.Initialized {
 			return // We can't do anything without a context.
 		}
 		if eglMakeCurrent, ok := a.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw] {
@@ -72,27 +72,10 @@ func drawUndefinedFramebuffer(ctx log.Context, a atom.Atom, device *device.Insta
 					}`
 	)
 
-	version, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
-
-	var (
-		origProgramID     = c.BoundProgram
-		origArrayBufferID = c.BoundBuffers.ArrayBuffer
-	)
-
-	// Generate new unused object IDs.
-	programID := ProgramId(newUnusedID('P', func(x uint32) bool { _, ok := c.Instances.Programs[ProgramId(x)]; return ok }))
-	vertexShaderID := ShaderId(newUnusedID('S', func(x uint32) bool { _, ok := c.Instances.Shaders[ShaderId(x)]; return ok }))
-	fragmentShaderID := ShaderId(newUnusedID('S', func(x uint32) bool {
-		_, ok := c.Instances.Shaders[ShaderId(x)]
-		return ok || ShaderId(x) == vertexShaderID
-	}))
-	bufferID := BufferId(newUnusedID('B', func(x uint32) bool { _, ok := c.Instances.Buffers[BufferId(x)]; return ok }))
-	arrayID := VertexArrayId(newUnusedID('V', func(x uint32) bool { _, ok := c.Instances.VertexArrays[VertexArrayId(x)]; return ok }))
-
 	// 2D vertices positions for a full screen 2D triangle strip.
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
-	t := tweaker{ctx: ctx, out: out, c: GetContext(s)}
+	t := newTweaker(ctx, out)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.
 	t.glDisable(GLenum_GL_BLEND)
@@ -100,24 +83,18 @@ func drawUndefinedFramebuffer(ctx log.Context, a atom.Atom, device *device.Insta
 	t.glDisable(GLenum_GL_DEPTH_TEST)
 	t.glDisable(GLenum_GL_SCISSOR_TEST)
 	t.glDisable(GLenum_GL_STENCIL_TEST)
-	t.bindOrSaveVertexArray(version, arrayID, aScreenCoordsLocation)
-	out.MutateAndWrite(ctx, atom.NoID, NewGlEnableVertexAttribArray(aScreenCoordsLocation))
+	t.makeVertexArray(aScreenCoordsLocation)
 
-	// Create the shader program
-	for _, a := range BuildProgram(ctx, s, vertexShaderID, fragmentShaderID, programID, vertexShaderSource, fragmentShaderSource) {
-		out.MutateAndWrite(ctx, atom.NoID, a)
-	}
+	programID := t.makeProgram(vertexShaderSource, fragmentShaderSource)
 
 	out.MutateAndWrite(ctx, atom.NoID, NewGlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
 	out.MutateAndWrite(ctx, atom.NoID, NewGlLinkProgram(programID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlUseProgram(programID))
+	t.glUseProgram(programID)
 
-	tmp := atom.Must(atom.AllocData(ctx, s, bufferID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
+	bufferID := t.glGenBuffer()
+	t.GlBindBuffer_ArrayBuffer(bufferID)
 
-	out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, bufferID))
-
-	tmp = atom.Must(atom.AllocData(ctx, s, positions))
+	tmp := t.AllocData(positions)
 	out.MutateAndWrite(ctx, atom.NoID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
 		AddRead(tmp.Data()))
 
@@ -125,17 +102,6 @@ func drawUndefinedFramebuffer(ctx log.Context, a atom.Atom, device *device.Insta
 	out.MutateAndWrite(ctx, atom.NoID, NewGlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
 
 	t.revert()
-
-	// Restore buffer state.
-	out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBufferID))
-	tmp = atom.Must(atom.AllocData(ctx, s, bufferID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
-
-	// Restore program state.
-	out.MutateAndWrite(ctx, atom.NoID, NewGlUseProgram(origProgramID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteProgram(programID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteShader(vertexShaderID))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlDeleteShader(fragmentShaderID))
 
 	return nil
 }

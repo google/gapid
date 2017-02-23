@@ -20,6 +20,7 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Ranges.count;
 import static com.google.gapid.util.Ranges.first;
 import static com.google.gapid.util.Ranges.last;
+import static com.google.gapid.widgets.Widgets.createTree;
 import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
@@ -106,7 +107,7 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
 
     SearchBox search = new SearchBox(this);
     loading = new LoadablePanel<Tree>(this, widgets,
-        loadingParent -> new Tree(loadingParent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
+        loadingParent -> createTree(loadingParent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
     Tree tree = loading.getContents();
     tree.setLinesVisible(true);
     viewer = new TreeViewer(tree);

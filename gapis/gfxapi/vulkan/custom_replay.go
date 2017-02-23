@@ -447,7 +447,48 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx log.Context, s *gfxapi.State, b *bui
 	return hijack.Mutate(ctx, s, b)
 }
 
-//////////// End Command Buffer Commands
+func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdCopyBufferToImage(
+		a.CommandBuffer,
+		a.SrcBuffer,
+		a.DstImage,
+		a.DstImageLayout,
+		a.RegionCount,
+		memory.Pointer(a.PRegions))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDraw) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDraw(
+		a.CommandBuffer,
+		a.VertexCount,
+		a.InstanceCount,
+		a.FirstVertex,
+		a.FirstInstance)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdSetScissor) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetScissor(
+		a.CommandBuffer,
+		a.FirstScissor,
+		a.ScissorCount,
+		memory.Pointer(a.PScissors))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdSetViewport) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetViewport(
+		a.CommandBuffer,
+		a.FirstViewport,
+		a.ViewportCount,
+		memory.Pointer(a.PViewports))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
 
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkGetPhysicalDeviceQueueFamilyProperties(
@@ -570,6 +611,17 @@ func (a *RecreateImageView) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	allocator := memory.Pointer{}
 	pImageView := memory.Pointer(a.PImageView)
 	hijack := NewVkCreateImageView(a.Device, createInfo, allocator, pImageView, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateSampler) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCreateSampler(
+		a.Device,
+		memory.Pointer(a.PCreateInfo),
+		memory.Pointer{},
+		memory.Pointer(a.PSampler),
+		VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }

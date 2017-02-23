@@ -22,7 +22,6 @@
 namespace gapii {
 
 void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
-
     for(auto& instance: Instances) {
         VkInstanceCreateInfo create_info = {};
         //TODO(awoloszyn): Add ApplicationInfo here if we
@@ -450,6 +449,30 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     device, copy_memory, nullptr
                 );
             }
+        }
+    }
+    {
+        VkSamplerCreateInfo sampler_create_info = {};
+        sampler_create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        for (auto& sampler: Samplers) {
+            auto& samplerObject = *sampler.second;
+            sampler_create_info.mmagFilter = samplerObject.mMagFilter;
+            sampler_create_info.mminFilter = samplerObject.mMinFilter;
+            sampler_create_info.mmipmapMode = samplerObject.mMipMapMode;
+            sampler_create_info.maddressModeU = samplerObject.mAddressModeU;
+            sampler_create_info.maddressModeV = samplerObject.mAddressModeV;
+            sampler_create_info.maddressModeW = samplerObject.mAddressModeW;
+            sampler_create_info.mmipLodBias = samplerObject.mMipLodBias;
+            sampler_create_info.manisotropyEnable = samplerObject.mAnisotropyEnable;
+            sampler_create_info.mmaxAnisotropy = samplerObject.mMaxAnisotropy;
+            sampler_create_info.mcompareEnable = samplerObject.mCompareEnable;
+            sampler_create_info.mcompareOp = samplerObject.mCompareOp;
+            sampler_create_info.mminLod = samplerObject.mMinLod;
+            sampler_create_info.mmaxLod = samplerObject.mMaxLod;
+            sampler_create_info.mborderColor = samplerObject.mBorderColor;
+            sampler_create_info.munnormalizedCoordinates = samplerObject.mUnnormalizedCoordinates;
+
+            RecreateSampler(observer, samplerObject.mDevice, &sampler_create_info, &samplerObject.mVulkanHandle);
         }
     }
     {
@@ -1177,12 +1200,20 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             allocate_info.mdescriptorPool = descriptorSet.second->mDescriptorPool->mVulkanHandle;
             allocate_info.mpSetLayouts = &descriptorSet.second->mLayout->mVulkanHandle;
 
-            std::deque<std::vector<VkDescriptorImageInfo>> image_infos;
-            std::deque<std::vector<VkDescriptorBufferInfo>> buffer_infos;
-            std::deque<std::vector<VkBufferView>> buffer_views;
+            std::deque<VkDescriptorImageInfo> image_infos;
+            std::deque<VkDescriptorBufferInfo> buffer_infos;
+            std::deque<VkBufferView> buffer_views;
             std::vector<VkWriteDescriptorSet> writes;
             for (size_t i = 0; i < descriptorSet.second->mBindings.size(); ++i) {
                 auto& binding = descriptorSet.second->mBindings[i];
+                VkWriteDescriptorSet write_template = {};
+
+                write_template.msType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write_template.mdstSet = descriptorSet.second->mVulkanHandle;
+                write_template.mdstBinding = i;
+                write_template.mdescriptorCount = 1;
+                write_template.mdescriptorType = binding.mBindingType;
+
                 writes.push_back({});
                 writes.back().msType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 writes.back().mdstSet = descriptorSet.second->mVulkanHandle;
@@ -1197,32 +1228,46 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-                        image_infos.push_back({});
-                        for (size_t i = 0 ; i < binding.mImageBinding.size(); ++i) {
-                            image_infos.back().push_back(*binding.mImageBinding[i]);
+                        for (size_t j = 0 ; j < binding.mImageBinding.size(); ++j) {
+                            if (!binding.mImageBinding[j]->mSampler ||
+                                !binding.mImageBinding[j]->mImageView) {
+                                    continue;
+                            }
+                            image_infos.push_back(*binding.mImageBinding[j]);
+                            VkWriteDescriptorSet write = write_template;
+                            write.mdstArrayElement = j;
+                            write.mpImageInfo = &image_infos.back();
+                            writes.push_back(write);
                         }
-                        writes.back().mpImageInfo = image_infos.back().data();
-                        writes.back().mdescriptorCount = image_infos.back().size();
                         break;
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                        buffer_views.push_back({});
-                        for (size_t i = 0 ; i < binding.mBufferViewBindings.size(); ++i) {
-                            buffer_views.back().push_back(binding.mBufferViewBindings[i]);
+
+                        for (size_t j = 0 ; j < binding.mBufferViewBindings.size(); ++j) {
+                            if (!binding.mBufferViewBindings[j]) {
+                                continue;
+                            }
+                            buffer_views.push_back(binding.mBufferViewBindings[j]);
+                            VkWriteDescriptorSet write = write_template;
+                            write.mdstArrayElement = j;
+                            write.mpTexelBufferView = &buffer_views.back();
+                            writes.push_back(write);
                         }
-                        writes.back().mpTexelBufferView = buffer_views.back().data();
-                        writes.back().mdescriptorCount = buffer_views.back().size();
                         break;
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                        buffer_infos.push_back({});
-                        for (size_t i = 0 ; i < binding.mBufferBinding.size(); ++i) {
-                            buffer_infos.back().push_back(*binding.mBufferBinding[i]);
+                        for (size_t j = 0 ; j < binding.mBufferBinding.size(); ++j) {
+                            if (!binding.mBufferBinding[j]->mBuffer) {
+                                continue;
+                            }
+                            buffer_infos.push_back(*binding.mBufferBinding[j]);
+                            VkWriteDescriptorSet write = write_template;
+                            write.mdstArrayElement = j;
+                            write.mpBufferInfo = &buffer_infos.back();
+                            writes.push_back(write);
                         }
-                        writes.back().mpBufferInfo = buffer_infos.back().data();
-                        writes.back().mdescriptorCount = buffer_infos.back().size();
                         break;
                 }
             }

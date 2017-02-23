@@ -59,12 +59,12 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
 
   @Override
   public ImageData getImageData() {
-    ImageData result = Images.createImageData(width, height, false);
-    convert(data, result.data);
+    ImageData result = Images.createImageData(width, height, true);
+    convert(data, result.data, result.alphaData, result.bytesPerLine);
     return result;
   }
 
-  protected abstract void convert(byte[] src, byte[] dst);
+  protected abstract void convert(byte[] src, byte[] dst, byte[] alpha, int stride);
 
   @Override
   public PixelValue getPixel(int x, int y) {
@@ -125,12 +125,14 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst) {
-      for (int row = 0, d = 0, p = 4 * (height - 1) * width; row < height; row++, p -= 4 * width) {
-        for (int col = 0, s = p; col < width; col++, s += 4, d += 3) {
+    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+      for (int row = 0, di = 0, si = 4 * (height - 1) * width, ai = 0; row < height;
+          row++, si -= 4 * width, di += stride) {
+        for (int col = 0, s = si, d = di; col < width; col++, s += 4, d += 3, ai++) {
           dst[d + 0] = src[s + 0];
           dst[d + 1] = src[s + 1];
           dst[d + 2] = src[s + 2];
+          alpha[ai] = src[s + 3];
         }
       }
     }
@@ -180,12 +182,14 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst) {
-      for (int row = 0, d = 0, p = 4 * (height - 1) * width; row < height; row++, p -= 4 * width) {
-        for (int col = 0, s = p; col < width; col++, s += 4, d += 3) {
+    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+      for (int row = 0, di = 0, si = 4 * (height - 1) * width, ai = 0; row < height;
+          row++, si -= 4 * width, di += stride) {
+        for (int col = 0, s = si, d = di; col < width; col++, s += 4, d += 3, ai++) {
           dst[d + 0] = clamp(buffer.get(s + 0));
           dst[d + 1] = clamp(buffer.get(s + 1));
           dst[d + 2] = clamp(buffer.get(s + 2));
+          alpha[ai] = clamp(buffer.get(s + 3));
         }
       }
     }
@@ -236,12 +240,14 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst) {
-      for (int row = 0, d = 0, p = (height - 1) * width; row < height; row++, p -= width) {
-        for (int col = 0, s = p; col < width; col++, s ++, d += 3) {
+    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+      for (int row = 0, di = 0, si = (height - 1) * width, ai = 0; row < height;
+          row++, si -= width, di += stride) {
+        for (int col = 0, s = si, d = di; col < width; col++, s++, d += 3, ai++) {
           dst[d + 0] = src[s];
           dst[d + 1] = src[s];
           dst[d + 2] = src[s];
+          alpha[ai] = -1;
         }
       }
     }
@@ -293,13 +299,15 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst) {
-      for (int row = 0, d = 0, p = (height - 1) * width; row < height; row++, p -= width) {
-        for (int col = 0, s = p; col < width; col++, s ++, d += 3) {
+    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+      for (int row = 0, di = 0, si = (height - 1) * width, ai = 0; row < height;
+          row++, si -= width, di += stride) {
+        for (int col = 0, s = si, d = di; col < width; col++, s++, d += 3, ai++) {
           byte value = clamp(buffer.get(s));
           dst[d + 0] = value;
           dst[d + 1] = value;
           dst[d + 2] = value;
+          alpha[ai] = -1;
         }
       }
     }
