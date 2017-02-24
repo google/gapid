@@ -38,9 +38,6 @@ void registerWindowClass() {
         GAPID_FATAL("Failed to get module handle. Error: %d", GetLastError());
     }
 
-    //static volatile bool waiting_for_debugger = true;
-    //while (waiting_for_debugger) {}
-
     wc.style         = 0;
     wc.lpfnWndProc   = DefWindowProc;
     wc.hInstance     = hInstance;
@@ -48,14 +45,6 @@ void registerWindowClass() {
     wc.hbrBackground = HBRUSH(COLOR_WINDOW + 1);
     wc.lpszMenuName  = TEXT("");
     wc.lpszClassName = wndClassName;
-
-    GAPID_WARNING("style=%d", wc.style);
-    GAPID_WARNING("lpfnWndProc=0x%llx", (uintptr_t)wc.lpfnWndProc);
-    GAPID_WARNING("hInstance=0x%llx", (uintptr_t)wc.hInstance);
-    GAPID_WARNING("hCursor=%d", wc.hCursor);
-    GAPID_WARNING("hbrBackground=%d", wc.hbrBackground);
-    GAPID_WARNING("lpszMenuName=%s", wc.lpszMenuName);
-    GAPID_WARNING("lpszClassName=%s", wc.lpszClassName);
 
     if (RegisterClass(&wc) == 0) {
         GAPID_FATAL("Failed to register window class. Error: %d", GetLastError());
