@@ -100,7 +100,14 @@ func NewSearchLoader(search file.PathList) Loader {
 
 func (l searchListLoader) Find(path file.Path) file.Path {
 	rooted := l.search.RootOf(path)
-	return l.search.Find(rooted.Fragment).Path()
+	if rooted.Root.IsEmpty() {
+		return path
+	}
+	found := l.search.Find(rooted.Fragment)
+	if found.Root.IsEmpty() {
+		return path
+	}
+	return found.Path()
 }
 
 func (l searchListLoader) Load(path file.Path) ([]byte, error) {
