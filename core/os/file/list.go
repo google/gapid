@@ -64,7 +64,7 @@ func (l PathList) RootOf(p Path) Rooted {
 		base := entry.System()
 		full := p.System()
 		if strings.HasPrefix(full, base) {
-			return Join(entry, full[len(base)+1:])
+			return Join(entry, full[len(base):])
 		}
 	}
 	return Rooted{}
