@@ -74,11 +74,11 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     if (!logDir.get().isEmpty()) {
       args.add("-log-file");
-      args.add(logDir.get() + File.separator + "gapis.log");
+      args.add(logDir.get() + "gapis.log");
       args.add("-log-level");
       args.add(logLevel.get().gapisLevel);
       args.add("-gapir-args");
-      args.add("--log " + logDir.get() + File.separator + "gapir.log");
+      args.add("--log " + logDir.get() + "gapir.log");
     }
 
     File strings = GapiPaths.strings();
