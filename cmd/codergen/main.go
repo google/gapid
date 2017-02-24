@@ -40,6 +40,7 @@ var (
 	workers    = flag.Int("workers", 15, "The numer of output workers to use")
 	signatures = flag.String("signatures", "", "the signature file to generate")
 	gopath     = flag.String("gopath", "", "the go path to use when looking up packages")
+	base       = flag.String("base", "", "the base directory of the package scan")
 )
 
 func main() {
@@ -98,9 +99,13 @@ func worker(ctx log.Context, wg *sync.WaitGroup, errs *errors, tasks chan genera
 }
 
 func run(ctx log.Context) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
+	wd := *base
+	if wd == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		wd = cwd
 	}
 	scanner := scan.New(ctx, wd, filepath.FromSlash(*gopath))
 	ctx.Print("Scanning")
