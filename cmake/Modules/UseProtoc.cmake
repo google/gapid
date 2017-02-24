@@ -215,9 +215,6 @@ function(_do_protoc type src_dir protos outputs)
         string(REPLACE ";" ":" os_proto_path "${os_proto_path}")
     endif()
 
-    message("protos: ${protos}")
-    message("output: ${outputs}")
-
     add_custom_command(
         OUTPUT ${outputs}
         COMMAND protoc
