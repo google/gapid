@@ -26,7 +26,9 @@ import (
 )
 
 var (
-	validDevices = stub.RespondTo(`/adb devices`, `
+	adbPath = file.Abs("/adb")
+
+	validDevices = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached
 adb server version (36) doesn't match this client (35); killing...
 * daemon not running. starting it now on port 5037 *
@@ -51,24 +53,24 @@ run_device               unknown
 screen_off_device        offline
 screen_on_device         device
 `)
-	emptyDevices = stub.RespondTo(`/adb devices`, `
+	emptyDevices = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached
 * daemon not running. starting it now on port 5037 *
 * daemon started successfully *
 `)
-	invalidDevices = stub.RespondTo(`/adb devices`, `
+	invalidDevices = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached
 * daemon not running. starting it now on port 5037 *
 * daemon started successfully *
 production_device        unauthorized invalid
 `)
-	invalidStatus = stub.RespondTo(`/adb devices`, `
+	invalidStatus = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached
 * daemon not running. starting it now on port 5037 *
 * daemon started successfully *
 production_device        invalid
 `)
-	notDevices = stub.RespondTo(`/adb devices`, ``)
+	notDevices = stub.RespondTo(adbPath.System()+` devices`, ``)
 	devices    = &stub.Delegate{Handlers: []shell.Target{validDevices}}
 )
 
@@ -77,7 +79,7 @@ func init() {
 
 	shell.LocalTarget = stub.OneOf(
 		devices,
-		stub.RespondTo(`/adb -s dumpsys_device shell dumpsys package`, `
+		stub.RespondTo(adbPath.System()+` -s dumpsys_device shell dumpsys package`, `
 Activity Resolver Table:
   Non-Data Actions:
     android.intent.action.MAIN:
@@ -104,14 +106,14 @@ Packages:
 `),
 
 		// Screen on / off queries.
-		stub.RespondTo(`/adb -s screen_off_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_off_device shell dumpsys window policy`, `
 WINDOW MANAGER POLICY STATE (dumpsys window policy)
     mSafeMode=false mSystemReady=true mSystemBooted=true
     mAwake=false
     mScreenOnEarly=false mScreenOnFully=false
     mKeyguardDrawComplete=false mWindowManagerDrawComplete=false
     mOrientationSensorEnabled=false`),
-		stub.RespondTo(`/adb -s screen_on_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_on_device shell dumpsys window policy`, `
 WINDOW MANAGER POLICY STATE (dumpsys window policy)
     mSafeMode=false mSystemReady=true mSystemBooted=true
     mAwake=true
@@ -120,13 +122,13 @@ WINDOW MANAGER POLICY STATE (dumpsys window policy)
     mOrientationSensorEnabled=false`),
 
 		// Lockscreen on / off queries.
-		stub.RespondTo(`/adb -s lockscreen_off_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s lockscreen_off_device shell dumpsys window policy`, `
 WINDOW MANAGER POLICY STATE (dumpsys window policy)
     mSafeMode=false mSystemReady=true mSystemBooted=true
     mDockLayer=268435456 mStatusBarLayer=151000
     mShowingLockscreen=false mShowingDream=false mDreamingLockscreen=false
     mStatusBar=Window{5aa43c7 u0 StatusBar}`),
-		stub.RespondTo(`/adb -s lockscreen_on_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s lockscreen_on_device shell dumpsys window policy`, `
 WINDOW MANAGER POLICY STATE (dumpsys window policy)
     mSafeMode=false mSystemReady=true mSystemBooted=true
     mDockLayer=268435456 mStatusBarLayer=151000
@@ -136,33 +138,33 @@ WINDOW MANAGER POLICY STATE (dumpsys window policy)
 		// Pid queries.
 		stub.Regex(`adb -s ok_pgrep_\S*device shell pgrep .* com.google.foo`, stub.Respond("")),
 		stub.Regex(`adb -s ok_pgrep\S*device shell pgrep -o -f com.google.bar`, stub.Respond("2778")),
-		stub.RespondTo(`/adb -s no_pgrep_ok_ps_device shell ps`, `
+		stub.RespondTo(adbPath.System()+` -s no_pgrep_ok_ps_device shell ps`, `
 u0_a11    21926 5061  1976096 42524 SyS_epoll_ 0000000000 S com.google.android.gms
 u0_a111   2778  5062  1990796 59268 SyS_epoll_ 0000000000 S com.google.bar
 u0_a69    22841 5062  1255788 88672 SyS_epoll_ 0000000000 S com.example.meh`),
 		stub.Regex(`adb -s \S*no_ps\S*device shell ps`, stub.Respond("/system/bin/sh: ps: not found")),
 		stub.Regex(`adb -s \S*no_pgrep\S*device shell pgrep \S+`, stub.Respond("/system/bin/sh: pgrep: not found")),
 
-		stub.RespondTo(`/adb -s invalid_device shell dumpsys window policy`, `not a normal response`),
+		stub.RespondTo(adbPath.System()+` -s invalid_device shell dumpsys window policy`, `not a normal response`),
 
 		// Root command responses
-		stub.RespondTo(`/adb -s production_device root`, `adbd cannot run as root in production builds`),
+		stub.RespondTo(adbPath.System()+` -s production_device root`, `adbd cannot run as root in production builds`),
 		&stub.Sequence{
-			stub.RespondTo(`/adb -s debug_device root`, `restarting adbd as root`),
-			stub.RespondTo(`/adb -s debug_device root`, `some random output`),
-			stub.RespondTo(`/adb -s debug_device root`, `adbd is already running as root`),
+			stub.RespondTo(adbPath.System()+` -s debug_device root`, `restarting adbd as root`),
+			stub.RespondTo(adbPath.System()+` -s debug_device root`, `some random output`),
+			stub.RespondTo(adbPath.System()+` -s debug_device root`, `adbd is already running as root`),
 		},
-		stub.RespondTo(`/adb -s rooted_device root`, `adbd is already running as root`),
-		stub.RespondTo(`/adb -s invalid_device root`, `not a normal response`),
-		stub.Match(`/adb -s error_device root`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),
+		stub.RespondTo(adbPath.System()+` -s rooted_device root`, `adbd is already running as root`),
+		stub.RespondTo(adbPath.System()+` -s invalid_device root`, `not a normal response`),
+		stub.Match(adbPath.System()+` -s error_device root`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),
 
 		// SELinuxEnforcing command responses
-		stub.RespondTo(`/adb -s production_device shell getenforce`, `Enforcing`),
-		stub.RespondTo(`/adb -s debug_device shell getenforce`, `Permissive`),
-		stub.Match(`/adb -s error_device shell getenforce`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),
+		stub.RespondTo(adbPath.System()+` -s production_device shell getenforce`, `Enforcing`),
+		stub.RespondTo(adbPath.System()+` -s debug_device shell getenforce`, `Permissive`),
+		stub.Match(adbPath.System()+` -s error_device shell getenforce`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),
 
 		// Logcat command responses
-		stub.RespondTo(`/adb -s logcat_device logcat -v long -T 0`, `
+		stub.RespondTo(adbPath.System()+` -s logcat_device logcat -v long -T 0`, `
 [ 03-29 15:16:29.514 24153:24153 V/AndroidRuntime ]
 >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
 

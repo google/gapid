@@ -25,9 +25,8 @@ set(CMAKE_C_FLAGS             "@CMAKE_C_FLAGS@"             CACHE STRING "C++ fl
 set(CMAKE_EXE_LINKER_FLAGS    "@CMAKE_EXE_LINKER_FLAGS@"    CACHE STRING "Exe linker flags")
 set(CMAKE_FIND_ROOT_PATH      "@CMAKE_FIND_ROOT_PATH@"      CACHE STRING "Find root path")
 set(CMAKE_LINKER              "@CMAKE_LINKER@"              CACHE STRING "Linker")
-set(CMAKE_LINKTOOL            "@CMAKE_LINKTOOL@"            CACHE STRING "Linktool")
 set(CMAKE_PREFIX_PATH         "@CMAKE_PREFIX_PATH@"         CACHE STRING "Prefix path")
-set(CMAKE_RANLIB              "@CMAKE_RANLIB_PATH@"         CACHE STRING "Ranlib path")
+set(CMAKE_RANLIB              "@CMAKE_RANLIB@"              CACHE STRING "Ranlib path")
 set(CMAKE_SHARED_LINKER_FLAGS "@CMAKE_SHARED_LINKER_FLAGS@" CACHE STRING "Shared linker flags")
 
 if(NOT "@CMAKE_SYSROOT@" STREQUAL "")

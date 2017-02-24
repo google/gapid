@@ -19,6 +19,7 @@ set(sources
 set(cityhash_gen "${CMAKE_BINARY_DIR}/third_party/cityhash")
 
 configure_file("third_party/cityhash_config.h.in" "${cityhash_gen}/config.h" @ONLY)
+configure_file("third_party/cityhash_byteswap.h.in" "${cityhash_gen}/byteswap.h" @ONLY)
 
 if(NOT DISABLED_CXX)
     add_library(cityhash ${sources})

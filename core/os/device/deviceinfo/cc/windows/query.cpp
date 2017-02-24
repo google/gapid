@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-/* TODO
+#include "../query.h"
 
 #include <windows.h>
 #include <wingdi.h>
 #include <GL/gl.h>
+
+namespace {
 
 static const char* wndClassName = TEXT("opengl-dummy-window");
 
@@ -35,108 +37,147 @@ WNDCLASS registerWindowClass() {
     return wc;
 }
 
-const char* gpuArch() {
-    const char* out = "unknown";
-    WNDCLASS wc = registerWindowClass();
-    HWND wnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
-    if (wnd) {
-        PIXELFORMATDESCRIPTOR pfd;
-        memset(&pfd, 0, sizeof(pfd));
-        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-        pfd.nVersion = 1;
-        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-        pfd.iPixelType = PFD_TYPE_RGBA;
-        pfd.cRedBits = 8;
-        pfd.cGreenBits = 8;
-        pfd.cBlueBits = 8;
-        pfd.cAlphaBits = 8;
-        pfd.cDepthBits = 24;
-        pfd.cStencilBits = 8;
-        pfd.cColorBits = 32;
-        pfd.iLayerType = PFD_MAIN_PLANE;
-        HDC hdc = GetDC(wnd);
-        SetPixelFormat(hdc, ChoosePixelFormat(hdc, &pfd), &pfd);
-        HGLRC ctx = wglCreateContext(hdc);
-        if (ctx) {
-            wglMakeCurrent(hdc, ctx);
-            static char buffer[1024];
-            strncpy(buffer, glGetString(GL_RENDERER), 1023);
-            out = buffer;
-            wglMakeCurrent(hdc, 0);
-            wglDeleteContext(ctx);
-        }
-        DestroyWindow(wnd);
-    }
-    return out;
+} // anonymous namespace
+
+namespace query {
+
+struct Context {
+	HWND mWnd;
+	HDC mHDC;
+	HGLRC mCtx;
+	int mNumCores;
+	char mHostName[MAX_COMPUTERNAME_LENGTH+1];
+	OSVERSIONINFOEX mOsVersion;
+	const char* mOsName;
+};
+
+static Context gContext;
+
+void destroyContext() {
+    if (gContext.mWnd != nullptr) {
+        DestroyWindow(gContext.mWnd);
+	}
+    if (gContext.mCtx != nullptr) {
+		wglMakeCurrent(gContext.mHDC, 0);
+		wglDeleteContext(gContext.mCtx);
+	}
 }
 
-void osVersion(int* major, int* minor, int* point, int* isNTWorkstation) {
+bool createContext(void*) {
+    
+	WNDCLASS wc = registerWindowClass();
+    gContext.mWnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
+    if (gContext.mWnd == nullptr) {
+		return false;
+	}
+	PIXELFORMATDESCRIPTOR pfd;
+	memset(&pfd, 0, sizeof(pfd));
+	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+	pfd.nVersion = 1;
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cRedBits = 8;
+	pfd.cGreenBits = 8;
+	pfd.cBlueBits = 8;
+	pfd.cAlphaBits = 8;
+	pfd.cDepthBits = 24;
+	pfd.cStencilBits = 8;
+	pfd.cColorBits = 32;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+	gContext.mHDC = GetDC(gContext.mWnd);
+	SetPixelFormat(gContext.mHDC, ChoosePixelFormat(gContext.mHDC, &pfd), &pfd);
+	gContext.mCtx = wglCreateContext(gContext.mHDC);
+	if (gContext.mCtx == nullptr) {
+		destroyContext();
+		return false;
+	}
+	wglMakeCurrent(gContext.mHDC, gContext.mCtx);
+
     OSVERSIONINFOEX osinfo;
-    osinfo.dwOSVersionInfoSize = sizeof(osinfo);
-    GetVersionEx((OSVERSIONINFO*)(&osinfo));
-    *major = osinfo.dwMajorVersion;
-    *minor = osinfo.dwMinorVersion;
-    *point = osinfo.dwBuildNumber;
-    *isNTWorkstation = (osinfo.wProductType == VER_NT_WORKSTATION) ? 1 : 0;
-}
+    gContext.mOsVersion.dwOSVersionInfoSize = sizeof(osinfo);
+    GetVersionEx((OSVERSIONINFO*)(&gContext.mOsVersion));
+    int major = osinfo.dwMajorVersion;
+    int minor = osinfo.dwMinorVersion;
+    int point = osinfo.dwBuildNumber;
+    bool isNTWorkstation = (osinfo.wProductType == VER_NT_WORKSTATION) ? 1 : 0;
 
-
-func hostOS(ctx log.Context) *OS {
-	var major, minor, point, isNTWorkstation C.int
-	C.osVersion(&major, &minor, &point, &isNTWorkstation)
-	return &OS{
-		Kind:  Windows,
-		Build: windowsBuild(int(major), int(minor), isNTWorkstation == 1),
-		Major: int32(major),
-		Minor: int32(minor),
-		Point: int32(point),
+	if (major == 10 && isNTWorkstation) {
+		gContext.mOsName = "Windows 10";
+	} else if (major == 10 && !isNTWorkstation) {
+		gContext.mOsName = "Windows Server 2016 Technical Preview";
+	} else if (major == 6 && minor == 3 && isNTWorkstation) {
+		gContext.mOsName = "Windows 8.1";
+	} else if (major == 6 && minor == 3 && !isNTWorkstation) {
+		gContext.mOsName = "Windows Server 2012 R2";
+	} else if (major == 6 && minor == 2 && isNTWorkstation) {
+		gContext.mOsName = "Windows 8";
+	} else if (major == 6 && minor == 2 && !isNTWorkstation) {
+		gContext.mOsName = "Windows Server 2012";
+	} else if (major == 6 && minor == 1 && isNTWorkstation) {
+		gContext.mOsName = "Windows 7";
+	} else if (major == 6 && minor == 1 && !isNTWorkstation) {
+		gContext.mOsName = "Windows Server 2008 R2";
+	} else if (major == 6 && minor == 0 && isNTWorkstation) {
+		gContext.mOsName = "Windows Vista";
+	} else if (major == 6 && minor == 0 && !isNTWorkstation) {
+		gContext.mOsName = "Windows Server 2008";
+	} else if (major == 5 && minor == 1) {
+		gContext.mOsName = "Windows XP";
+	} else if (major == 5 && minor == 0) {
+		gContext.mOsName = "Windows 2000";
+	} else {
+		gContext.mOsName = "<unknown>";
 	}
+
+	SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+	gContext.mNumCores = sysInfo.dwNumberOfProcessors;
+
+	DWORD size = MAX_COMPUTERNAME_LENGTH;
+	GetComputerNameA(gContext.mHostName, &size);
+
+	return true;
 }
 
-func hostChipset(ctx log.Context) *Chipset {
-	cpu := hostCPUName(ctx)
-	return &Chipset{
-		Name: cpu,
-		GPU: &GPU{
-			Name: C.GoString(C.gpuArch()),
-		},
-		Cores: []*CPU{
-			&CPU{
-				Name:         cpu,
-				Architecture: ArchitectureByName(runtime.GOARCH),
-			},
-		},
-	}
+int numABIs() { return 1; }
+
+void abi(int idx, device::ABI* abi) {
+    auto memory_layout = new device::MemoryLayout();
+    memory_layout->set_pointeralignment(alignof(void*));
+    memory_layout->set_pointersize(sizeof(void*));
+    memory_layout->set_integersize(sizeof(int));
+    memory_layout->set_sizesize(sizeof(size_t));
+    memory_layout->set_u64alignment(alignof(uint64_t));
+    memory_layout->set_endian(device::LittleEndian);
+
+    abi->set_name("X86_64");
+    abi->set_os(device::OSX);
+    abi->set_architecture(device::X86_64);
+    abi->set_allocated_memorylayout(memory_layout);
 }
 
-func windowsBuild(major, minor int, isNTWorkstation bool) string {
-	switch {
-	case major == 10 && isNTWorkstation:
-		return "Windows 10"
-	case major == 10 && !isNTWorkstation:
-		return "Windows Server 2016 Technical Preview"
-	case major == 6 && minor == 3 && isNTWorkstation:
-		return "Windows 8.1"
-	case major == 6 && minor == 3 && !isNTWorkstation:
-		return "Windows Server 2012 R2"
-	case major == 6 && minor == 2 && isNTWorkstation:
-		return "Windows 8"
-	case major == 6 && minor == 2 && !isNTWorkstation:
-		return "Windows Server 2012"
-	case major == 6 && minor == 1 && isNTWorkstation:
-		return "Windows 7"
-	case major == 6 && minor == 1 && !isNTWorkstation:
-		return "Windows Server 2008 R2"
-	case major == 6 && minor == 0 && isNTWorkstation:
-		return "Windows Vista"
-	case major == 6 && minor == 0 && !isNTWorkstation:
-		return "Windows Server 2008"
-	case major == 5 && minor == 1:
-		return "Windows XP"
-	case major == 5 && minor == 0:
-		return "Windows 2000"
-	default:
-		return fmt.Sprintf("Windows (%d.%d)", major, minor)
-	}
-}
-*/
+int cpuNumCores() { return gContext.mNumCores; }
+
+const char* gpuName() { return "<unknown>"; }
+
+const char* gpuVendor() { return "<unknown>"; }
+
+const char* instanceName() { return gContext.mHostName; }
+
+const char* instanceSerial()  { return gContext.mHostName; }
+
+const char* hardwareName() { return "<unknown>"; }
+
+device::OSKind osKind() { return device::Windows; }
+
+const char* osName() { return gContext.mOsName; }
+
+const char* osBuild() { return "<unknown>"; }
+
+int osMajor() { return gContext.mOsVersion.dwMajorVersion; }
+
+int osMinor() { return gContext.mOsVersion.dwMinorVersion; }
+
+int osPoint() { return gContext.mOsVersion.dwBuildNumber; }
+
+} // namespace query

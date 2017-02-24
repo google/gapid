@@ -127,9 +127,9 @@ func (b *binding) StartService(ctx log.Context, a android.ServiceAction, extras 
 }
 
 func extrasFlags(extras []android.ActionExtra) []string {
-	flags := make([]string, len(extras))
-	for i, e := range extras {
-		flags[i] = e.Flags()
+	flags := []string{}
+	for _, e := range extras {
+		flags = append(flags, e.Flags()...)
 	}
 	return flags
 }

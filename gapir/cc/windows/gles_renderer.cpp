@@ -21,6 +21,7 @@
 #include "core/cc/log.h"
 
 #include <windows.h>
+#include <winuser.h>
 #include <string>
 
 namespace gapir {
@@ -28,13 +29,18 @@ namespace {
 
 const TCHAR* wndClassName = TEXT("gapir");
 
-WNDCLASS registerWindowClass() {
+void registerWindowClass() {
     WNDCLASS wc;
     memset(&wc, 0, sizeof(wc));
 
+    auto hInstance = GetModuleHandle(nullptr);
+    if (hInstance == nullptr) {
+        GAPID_FATAL("Failed to get module handle. Error: %d", GetLastError());
+    }
+
     wc.style         = 0;
     wc.lpfnWndProc   = DefWindowProc;
-    wc.hInstance     = GetModuleHandle(0);
+    wc.hInstance     = hInstance;
     wc.hCursor       = LoadCursor(0, IDC_ARROW); // TODO: Needed?
     wc.hbrBackground = HBRUSH(COLOR_WINDOW + 1);
     wc.lpszMenuName  = TEXT("");
@@ -43,8 +49,6 @@ WNDCLASS registerWindowClass() {
     if (RegisterClass(&wc) == 0) {
         GAPID_FATAL("Failed to register window class. Error: %d", GetLastError());
     }
-
-    return wc;
 }
 
 class GlesRendererImpl : public GlesRenderer {
@@ -143,7 +147,11 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 
     reset();
 
-    static WNDCLASS wc = registerWindowClass(); // Only needs to be done once per app life-time.
+    static bool inited = false;
+    if (!inited) {
+        inited = true;
+        registerWindowClass(); // Only needs to be done once per app life-time.
+    }
 
     mWindow = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0,
             backbuffer.width, backbuffer.height, 0, 0, GetModuleHandle(0), 0);

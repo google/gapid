@@ -14,7 +14,14 @@
 
 set(TARGET_OS WINDOWS)
 
-if(NOT ToolchainTarget STREQUAL ${ToolchainHost})
+if(ToolchainTarget STREQUAL ${ToolchainHost})
+    set(MSYS2_PATH "" CACHE PATH "Path to the msys2 installation directory")
+    if(NOT MSYS2_PATH)
+        message(FATAL_ERROR "MSYS2_PATH not set!")
+    endif()
+
+    set(MINGW_PATH "${MSYS2_PATH}/mingw64")
+else()
     # Cross compiling
     message(FATAL_ERROR "Cross compiling to windows was only supported with PREBUILTS")
     if(NOT ToolchainHost STREQUAL "Linux")
@@ -24,8 +31,9 @@ if(NOT ToolchainTarget STREQUAL ${ToolchainHost})
     set(CMAKE_SYSTEM_NAME "Windows")
     set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-w64-mingw32")
     set(MINGW_PATH "${PREBUILTS}/gcc/linux-x86/host/x86_64-w64-mingw32-4.8")
-    set(CMAKE_C_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-gcc")
-    set(CMAKE_CXX_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-g++")
     list(APPEND CMAKE_LIBRARY_PATH "${MINGW_PATH}/x86_64-w64-mingw32/lib")
     list(APPEND CMAKE_PREFIX_PATH "${PREBUILTS}/go/linux-x86")
 endif()
+
+set(CMAKE_C_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-gcc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+set(CMAKE_CXX_COMPILER "${MINGW_PATH}/bin/x86_64-w64-mingw32-g++${CMAKE_HOST_EXECUTABLE_SUFFIX}")

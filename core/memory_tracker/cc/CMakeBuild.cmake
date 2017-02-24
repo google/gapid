@@ -30,7 +30,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_step(${abi} cc-memory-tracker DEPENDS ${sources} ${android_files})
 endforeach()
 
-if(NOT DISABLED_CXX)
+if(NOT DISABLED_CXX AND NOT WIN32) # TODO: Windows build not currently supported
   add_library(cc-memory-tracker ${sources})
 
   if(ANDROID)
@@ -41,7 +41,7 @@ if(NOT DISABLED_CXX)
 
   # TODO(qining): Add Windows support
 
-  if(NOT ANDROID)
+  if(NOT ANDROID AND NOT WIN32)
     add_executable(cc-memory-tracker-tests ${test_sourcs})
     find_package(PThread REQUIRED)
     use_gtest(cc-memory-tracker-tests)

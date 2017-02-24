@@ -24,10 +24,10 @@ import (
 	"os"
 	"os/user"
 	"reflect"
+	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -61,6 +61,8 @@ type Config struct {
 	AndroidNDKRoot file.Path `desc:"Path to Android NDK"`
 	CMakePath      file.Path `desc:"Path to CMake executable"`
 	NinjaPath      file.Path `desc:"Path to ninja executable"`
+	PythonPath     file.Path `desc:"Path to python executable"`
+	MSYS2Path      file.Path `desc:"Path to msys2 root" os:"windows"`
 }
 
 func defaults() Config {
@@ -73,6 +75,7 @@ func defaults() Config {
 	cfg.AndroidNDKRoot = file.Abs(os.Getenv("ANDROID_NDK_ROOT"))
 	cfg.CMakePath, _ = file.FindExecutable("cmake")
 	cfg.NinjaPath, _ = file.FindExecutable("ninja")
+	cfg.PythonPath, _ = file.FindExecutable("python")
 	return cfg
 }
 
@@ -138,36 +141,36 @@ func fetchValidConfig(ctx log.Context, options ConfigOptions) Config {
 	}
 }
 
-const (
-	ErrNoCMake    = fault.Const("Could not find cmake")
-	ErrCmakeIsDir = fault.Const("The provided cmake path is a directory,\nplease provide the path to the cmake executable")
-	ErrNoNinja    = fault.Const("Could not find ninja")
-	ErrNinjaIsDir = fault.Const("The provided ninja path is a directory,\nplease provide the path to the cmake executable")
-)
-
 func validateConfig(ctx log.Context, cfg Config) error {
-	if !cfg.CMakePath.Exists() {
-		return cause.Wrap(ctx, ErrNoCMake)
-	}
-	if cfg.CMakePath.IsDir() {
-		return cause.Wrap(ctx, ErrCmakeIsDir)
-	}
-	if !cfg.NinjaPath.Exists() {
-		return cause.Wrap(ctx, ErrNoNinja)
-	}
-	if cfg.NinjaPath.IsDir() {
-		return cause.Wrap(ctx, ErrNinjaIsDir)
+	for _, test := range []struct {
+		name string
+		path file.Path
+	}{
+		{"cmake", cfg.CMakePath},
+		{"ninja", cfg.NinjaPath},
+		{"python", cfg.PythonPath},
+	} {
+		if !test.path.Exists() {
+			return fault.Const("Could not find " + test.name)
+		}
+		if test.path.IsDir() {
+			return fault.Const("The provided " + test.name + " is a directory,\nplease provide the path to the " + test.name + " executable")
+		}
 	}
 	return nil
 }
 
-func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Config {
-	cfgV, cfgT := reflect.ValueOf(&cfg).Elem(), reflect.TypeOf(cfg)
-	for i := 0; i < cfgT.NumField(); i++ {
-		f, t := cfgV.Field(i), cfgT.Field(i)
+func interactiveStructConfig(ctx log.Context, v reflect.Value, options ConfigOptions) {
+	t := v.Type()
+	for i, c := 0, t.NumField(); i < c; i++ {
+		f, t := v.Field(i), t.Field(i)
 		desc := t.Tag.Get("desc")
 		if desc == "" {
 			desc = t.Name
+		}
+		os := t.Tag.Get("os")
+		if os != "" && os != runtime.GOOS {
+			continue
 		}
 		v := f.Addr().Interface()
 		switch v := v.(type) {
@@ -203,9 +206,20 @@ func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Confi
 				*v = file.Abs(in)
 			}
 		default:
+			if t.Type.Kind() == reflect.Interface {
+				if !f.IsNil() {
+					interactiveStructConfig(ctx, f.Elem(), options)
+				}
+				continue
+			}
 			panic(fmt.Sprintf("Unknown type %T in config struct", v))
 		}
 	}
+}
+
+func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Config {
+	v := reflect.ValueOf(&cfg).Elem()
+	interactiveStructConfig(ctx, v, options)
 	writeConfig(cfg)
 	return cfg
 }
@@ -213,7 +227,7 @@ func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Confi
 func readLine() string {
 	r := bufio.NewReader(os.Stdin)
 	l, _ := r.ReadString('\n')
-	return strings.Trim(l, "\n")
+	return strings.Trim(l, "\n\r")
 }
 
 func parseBool(str string) (val, ok bool) {

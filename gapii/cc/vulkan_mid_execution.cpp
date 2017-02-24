@@ -15,9 +15,14 @@
  */
 
 #include "vulkan_spy.h"
-#include <alloca.h>
 #include <map>
 #include <deque>
+
+#ifdef _WIN32
+#define alloca _alloca
+#else
+#include <alloca.h>
+#endif
 
 namespace gapii {
 

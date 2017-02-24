@@ -227,7 +227,7 @@ uint32_t SpvManager::addTypeInst(SpvOp_ op, std::initializer_list<std::initializ
 }
 
 void SpvManager::addVariable(uint32_t type_id, uint32_t ref_id, spv::StorageClass storage_class) {
-  auto inst = makeInstruction(SpvOpVariable, type_id, ref_id, {{storage_class}});
+  auto inst = makeInstruction(SpvOpVariable, type_id, ref_id, {{static_cast<uint32_t>(storage_class)}});
   if (storage_class == spv::StorageClassFunction)
     curr_block_insts.emplace_back(std::move(inst));
   else
@@ -237,7 +237,7 @@ void SpvManager::addVariable(uint32_t type_id, uint32_t ref_id, spv::StorageClas
 void SpvManager::addGlobalVariable(spv::StorageClass storage_class, Variable* const var) {
   if (!var->name.empty() && var->type_id) {
     var->ref_id = addName(var->name.c_str());
-    uint32_t ptr_id = addTypeInst(SpvOpTypePointer, {{storage_class}, {var->type_id}});
+    uint32_t ptr_id = addTypeInst(SpvOpTypePointer, {{static_cast<uint32_t>(storage_class)}, {var->type_id}});
     addVariable(ptr_id, var->ref_id, storage_class);
   }
 }

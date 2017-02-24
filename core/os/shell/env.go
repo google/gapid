@@ -57,7 +57,7 @@ func CloneEnv() *Env {
 	out.vars = os.Environ()
 	for i, v := range out.vars {
 		if key, val := splitEnvVar(v); len(val) > 0 {
-			out.keys[key] = i
+			out.keys[strings.ToUpper(key)] = i
 		}
 	}
 	return out
@@ -77,7 +77,7 @@ func (e *Env) Vars() []string {
 // exists.
 // The variable can be of the form 'key=value' or simply 'key'.
 func (e *Env) Exists(key string) bool {
-	_, existing := e.keys[key]
+	_, existing := e.keys[strings.ToUpper(key)]
 	return existing
 }
 
@@ -85,24 +85,39 @@ func (e *Env) Exists(key string) bool {
 // 'key=value'.
 // If there are no variables with the key, then an empty string is returned.
 func (e *Env) Get(key string) string {
-	if idx, existing := e.keys[key]; existing {
+	if idx, existing := e.keys[strings.ToUpper(key)]; existing {
 		_, val := splitEnvVar(e.vars[idx])
 		return val
 	}
 	return ""
 }
 
+// Unset removes an environment variable in the form 'key=value' or 'key'.
+func (e *Env) Unset(key string) *Env {
+	if idx, existing := e.keys[strings.ToUpper(key)]; existing {
+		copy(e.vars[idx:], e.vars[idx+1:])
+		e.vars = e.vars[:len(e.vars)-1]
+	}
+	e.keys = map[string]int{}
+	for i, v := range e.vars {
+		if key, val := splitEnvVar(v); len(val) > 0 {
+			e.keys[strings.ToUpper(key)] = i
+		}
+	}
+	return e
+}
+
 // Set adds or replaces an environment variable in the form 'key=value' or
 // 'key'.
 func (e *Env) Set(key, value string) *Env {
 	v := joinEnvVar(key, value)
-	if idx, existing := e.keys[key]; existing {
+	if idx, existing := e.keys[strings.ToUpper(key)]; existing {
 		e.vars[idx] = v
-		e.keys[key] = idx
+		e.keys[strings.ToUpper(key)] = idx
 	} else {
 		idx = len(e.vars)
 		e.vars = append(e.vars, v)
-		e.keys[key] = idx
+		e.keys[strings.ToUpper(key)] = idx
 	}
 	return e
 }

@@ -62,21 +62,21 @@ func TestInstallAPK(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "install_device")
 	err := d.InstallAPK(ctx, "thing_to_install", false, false)
-	expectedCommand(ctx, `/adb -s install_device install thing_to_install`, err)
+	expectedCommand(ctx, adbPath.System()+` -s install_device install thing_to_install`, err)
 }
 
 func TestInstallAPKWithPermissions(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "install_device")
 	err := d.InstallAPK(ctx, "thing_to_install", false, true)
-	expectedCommand(ctx, `/adb -s install_device install -g thing_to_install`, err)
+	expectedCommand(ctx, adbPath.System()+` -s install_device install -g thing_to_install`, err)
 }
 
 func TestReinstallAPK(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "install_device")
 	err := d.InstallAPK(ctx, "thing_to_install", true, false)
-	expectedCommand(ctx, `/adb -s install_device install -r thing_to_install`, err)
+	expectedCommand(ctx, adbPath.System()+` -s install_device install -r thing_to_install`, err)
 }
 
 func TestSELinuxEnforcing(t_ *testing.T) {
@@ -106,14 +106,14 @@ func TestSetSELinuxEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "install_device")
 	err := d.SetSELinuxEnforcing(ctx, false)
-	expectedCommand(ctx, `/adb -s install_device shell setenforce 0`, err)
+	expectedCommand(ctx, adbPath.System()+` -s install_device shell setenforce 0`, err)
 }
 
 func TestClearSELinuxEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "install_device")
 	err := d.SetSELinuxEnforcing(ctx, true)
-	expectedCommand(ctx, `/adb -s install_device shell setenforce 1`, err)
+	expectedCommand(ctx, adbPath.System()+` -s install_device shell setenforce 1`, err)
 }
 
 func TestStartActivity(t_ *testing.T) {
@@ -127,5 +127,5 @@ func TestStartActivity(t_ *testing.T) {
 		Activity: "FooBarActivity",
 	}
 	err := d.StartActivity(ctx, a)
-	expectedCommand(ctx, `/adb -s run_device shell am start -S -a android.intent.action.MAIN -n com.google.test.AnApp/.FooBarActivity`, err)
+	expectedCommand(ctx, adbPath.System()+` -s run_device shell am start -S -a android.intent.action.MAIN -n com.google.test.AnApp/.FooBarActivity`, err)
 }

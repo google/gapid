@@ -31,9 +31,9 @@ import (
 type gapicEnv struct {
 	cfg      Config
 	src      file.Path // Root of the GAPIC source tree
-	java     file.Path // java executable path
-	javac    file.Path // javac executable path
-	jar      file.Path // jar executable path
+	javaExe  file.Path // java executable path
+	javacExe file.Path // javac executable path
+	jarExe   file.Path // jar executable path
 	out      file.Path // build output
 	platform string    // windows,linux,osx
 }
@@ -71,9 +71,9 @@ func gapic(ctx log.Context, cfg Config) *gapicEnv {
 	return &gapicEnv{
 		cfg:      cfg,
 		src:      srcRoot.Join("gapic"),
-		java:     findOrExit(cfg.JavaHome.Join("bin", "java")),
-		javac:    findOrExit(cfg.JavaHome.Join("bin", "javac")),
-		jar:      findOrExit(cfg.JavaHome.Join("bin", "jar")),
+		javaExe:  findOrExit(cfg.JavaHome.Join("bin", "java"+hostExeExt)),
+		javacExe: findOrExit(cfg.JavaHome.Join("bin", "javac"+hostExeExt)),
+		jarExe:   findOrExit(cfg.JavaHome.Join("bin", "jar"+hostExeExt)),
 		out:      mkdirOrExit(cfg.OutRoot.Join(string(cfg.Flavor), "java")),
 		platform: platform,
 	}
@@ -101,18 +101,18 @@ func (e *gapicEnv) build(ctx log.Context, options BuildOptions) {
 		})
 
 		jarTxt := e.writeFile(e.out.Join("classpath-"+e.platform+".txt"), func(f *os.File) {
-			colonWriter := func(p file.Path) { f.WriteString(p.System() + ":") }
-			e.findAllJars(e.src.Join("third_party"), colonWriter)
+			listWriter := func(p file.Path) { f.WriteString(p.System() + string(os.PathListSeparator)) }
+			e.findAllJars(e.src.Join("third_party"), listWriter)
 		})
 
-		run(ctx, e.out, e.javac, nil,
+		run(ctx, e.out, e.javacExe, nil,
 			"-d", e.mkdirCleanOrExit(javaOut).System(),
 			"@"+srcTxt.System(),
 			"-classpath", "@"+jarTxt.System(),
 			"-source", "1.8", "-target", "1.8")
 		e.copyOrExit(e.src.Join("res"), javaOut)
 
-		run(ctx, e.out, e.jar, nil,
+		run(ctx, e.out, e.jarExe, nil,
 			"-cf", baseJar.System(),
 			"-C", javaOut.System(),
 			".")
@@ -124,9 +124,9 @@ func (e *gapicEnv) build(ctx log.Context, options BuildOptions) {
 		classOut := e.mkdirCleanOrExit(e.out.Join(e.platform))
 
 		e.findAllJars(e.src.Join("third_party"), func(jarFile file.Path) {
-			run(ctx, classOut, e.jar, nil, "-xf", jarFile.System())
+			run(ctx, classOut, e.jarExe, nil, "-xf", jarFile.System())
 		})
-		run(ctx, classOut, e.jar, nil, "-xf", baseJar.System())
+		run(ctx, classOut, e.jarExe, nil, "-xf", baseJar.System())
 
 		// Kill the manifest and any signatures.
 		os.RemoveAll(classOut.Join("META-INF", "MANIFEST.MF").System())
@@ -137,7 +137,7 @@ func (e *gapicEnv) build(ctx log.Context, options BuildOptions) {
 			os.Remove(p.System())
 		}
 
-		run(ctx, e.out, e.jar, nil,
+		run(ctx, e.out, e.jarExe, nil,
 			"-cef", "com.google.gapid.Main", jarOut.System(),
 			"-C", classOut.System(),
 			".")
@@ -157,11 +157,11 @@ func (e *gapicEnv) run(ctx log.Context, args ...string) {
 		jargs = append(args, "-XstartOnFirstThread")
 	}
 	jargs = append(jargs, "-jar", jar.System(), "-gapid", e.cfg.pkg().System())
-	run(ctx, e.out, e.java, env, append(jargs, args...)...)
+	run(ctx, e.out, e.javaExe, env, append(jargs, args...)...)
 }
 
 func (e *gapicEnv) findAllJavaFiles(path file.Path, cb func(file.Path)) {
-	if err := path.Walk(func(p file.Path, err error) error {
+	err := path.Walk(func(p file.Path, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -170,7 +170,8 @@ func (e *gapicEnv) findAllJavaFiles(path file.Path, cb func(file.Path)) {
 			cb(p)
 		}
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		fmt.Println("Error looking for Java files:", err)
 		os.Exit(1)
 	}

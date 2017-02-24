@@ -36,7 +36,7 @@ list(APPEND sources
 # )
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}/")
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} deviceinfo ${dst} "libdeviceinfo.so"
         DEPENDS ${android_sources}
     )

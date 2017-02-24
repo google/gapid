@@ -135,7 +135,7 @@ function(_go_package VAR package)
             POST_BUILD
             COMMAND ${CMAKE_COMMAND}
                 "-DTESTER=$<TARGET_FILE:${test_name}>"
-                "-DGO_PATH=${GO_PATH}"
+                "-DGO_PATH=\"${GO_PATH}\""
                 -P "${GO_TEST_SCRIPT}"
             # Let the test run in the original source directory so that
             # we can properly locate resources referenced by the test.

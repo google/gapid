@@ -74,16 +74,12 @@ if(ToolchainHost STREQUAL "Darwin")
     set(compiler_host "darwin-x86_64")
 endif()
 if(ToolchainHost STREQUAL "Windows")
-    set(compiler_host "darwin-x86_64")
+    set(compiler_host "windows-x86_64")
 endif()
+
 set(ANDROID_TOOLCHAIN_PREFIX_armeabi "${toolchains}/arm-linux-androideabi-4.9/prebuilt/${compiler_host}/bin/arm-linux-androideabi-")
 set(ANDROID_TOOLCHAIN_PREFIX_aarch64 "${toolchains}/aarch64-linux-android-4.9/prebuilt/${compiler_host}/bin/aarch64-linux-android-")
 set(ANDROID_TOOLCHAIN_PREFIX_x86 "${toolchains}/x86-4.9/prebuilt/${compiler_host}/bin/i686-linux-android-")
-
-set(host_suffix "")
-if(ToolchainHost STREQUAL "Windows")
-    set(host_suffix ".exe")
-endif()
 
 # Look up the set of android ABI's by detecting the ANDROID_ABI_NAME_{$abi} variables
 set(ANDROID_ABI_LIST)
@@ -96,11 +92,11 @@ endforeach()
 
 foreach(abi ${ANDROID_ABI_LIST})
     # Build any constructed variables
-    set(ANDROID_GCC_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}gcc${host_suffix}")
-    set(ANDROID_GXX_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}g++${host_suffix}")
-    set(ANDROID_RANLIB_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ranlib${host_suffix}")
-    set(ANDROID_AR_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ar${host_suffix}")
-    set(ANDROID_LD_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ld${host_suffix}")
+    set(ANDROID_GCC_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}gcc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+    set(ANDROID_GXX_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}g++${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+    set(ANDROID_RANLIB_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ranlib${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+    set(ANDROID_AR_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ar${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+    set(ANDROID_LD_PATH_${abi} "${ANDROID_TOOLCHAIN_PREFIX_${abi}}ld${CMAKE_HOST_EXECUTABLE_SUFFIX}")
     # Verify that all required variables are set
     foreach(var ${ANDROID_ABI_VARS})
         if(NOT DEFINED ${var}_${abi})

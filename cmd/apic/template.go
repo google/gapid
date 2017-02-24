@@ -20,6 +20,7 @@ import (
 	"go/build"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
@@ -64,7 +65,7 @@ func doTemplate(ctx log.Context, flags flag.FlagSet) error {
 		return nil
 	}
 	if gopath != "" {
-		build.Default.GOPATH = gopath
+		build.Default.GOPATH = filepath.FromSlash(gopath)
 	}
 	mainTemplate := args[1]
 	ctx.Info().S("api", apiName).Log("Reading")
