@@ -92,6 +92,17 @@ function(abs_list VAR path)
 endfunction(abs_list)
 
 
+# paths_to_native transforms the list of paths to the os-native form
+# and assigns the results to OUT.
+function(paths_to_native OUT list)
+    set(result)
+    foreach(entry ${${list}})
+        file(TO_NATIVE_PATH ${entry} entry)
+        list(APPEND result ${entry})
+    endforeach()
+    set(${OUT} ${result} PARENT_SCOPE)
+endfunction(paths_to_native)
+
 # Override and disable link_libraries, it's been a mistake every time it's been used
 function(link_libraries)
     message(FATAL_ERROR "Don't use link_libraries, you probably meant target_link_libraries (${ARGV})")

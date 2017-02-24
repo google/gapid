@@ -167,26 +167,23 @@ function(protoc_go go_package src_dir protos)
     set(outputs)
     foreach(proto ${protos})
         get_filename_component(proto_name ${proto} NAME_WE)
-        file(TO_NATIVE_PATH "${GO_SRC}/${go_package}/${proto_name}.pb.go" os_proto)
-        list(APPEND outputs "${os_proto}")
+        list(APPEND outputs "${GO_SRC}/${go_package}/${proto_name}.pb.go")
     endforeach()
     file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-go" os_plugin)
     file(TO_NATIVE_PATH "${ROOT_DIR}/src" os_go_out)
-   
+
     _do_protoc("go" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=${os_plugin}"
         "--go_out=plugins=grpc:${os_go_out}")
 endfunction()
 
 function(protoc_cc cc_package src_dir protos)
-    set(outputs)
     set(cc_out "${CMAKE_BINARY_DIR}/proto_cc")
     set(dest_dir "${cc_out}/${cc_package}")
+    set(outputs)
     foreach(proto ${protos})
         get_filename_component(proto_name ${proto} NAME_WE)
-        file(TO_NATIVE_PATH "${dest_dir}/${proto_name}.pb.cc" os_pb_cc)
-        file(TO_NATIVE_PATH "${dest_dir}/${proto_name}.pb.h" os_pb_h)
-        list(APPEND outputs ${os_pb_cc} ${os_pb_h})
+        list(APPEND outputs "${dest_dir}/${proto_name}.pb.cc" "${dest_dir}/${proto_name}.pb.h")
     endforeach()
     file(TO_NATIVE_PATH ${cc_out} os_cc_out)
     _do_protoc("cc" "${src_dir}" "${protos}" "${outputs}" "--cpp_out=${os_cc_out}")
@@ -195,14 +192,13 @@ endfunction()
 function(protoc_java src_dir protos classes)
     set(outputs)
     foreach(class ${classes})
-        file(TO_NATIVE_PATH "${JAVA_SERVICE}/${class}.java" os_java_output)
-        list(APPEND outputs ${os_java_output})
+        list(APPEND outputs "${JAVA_SERVICE}/${class}.java")
     endforeach()
-    
+
     file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-grpc-java${CMAKE_HOST_EXECUTABLE_SUFFIX}" os_protoc_gen_grpc_java)
     file(TO_NATIVE_PATH "${JAVA_SERVICE}" os_java_service)
 
-    _do_protoc("java" "${src_dir}" "${protos}" "${outputs}" 
+    _do_protoc("java" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=protoc-gen-grpc-java=${os_protoc_gen_grpc_java}"
         "--java_out=${os_java_service}"
         "--grpc-java_out=${os_java_service}"
@@ -211,17 +207,16 @@ endfunction()
 
 function(_do_protoc type src_dir protos outputs)
     abs_list(protos "${CMAKE_SOURCE_DIR}/${src_dir}")
-    set(os_protos)
-    foreach(proto ${protos})
-        file(TO_NATIVE_PATH "${proto}" os_proto)
-        list(APPEND os_protos ${os_proto})
-    endforeach()
-    
+    paths_to_native(os_protos protos)
+
     set(os_proto_path "${PROTO_PATH}")
     file(TO_NATIVE_PATH "${os_proto_path}" os_proto_path)
     if (NOT WIN32)
         string(REPLACE ";" ":" os_proto_path "${os_proto_path}")
     endif()
+
+    message("protos: ${protos}")
+    message("output: ${outputs}")
 
     add_custom_command(
         OUTPUT ${outputs}
