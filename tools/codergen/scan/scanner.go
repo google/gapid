@@ -110,6 +110,9 @@ func (s *Scanner) Scan(ctx log.Context, entry string) error {
 		return nil
 	}
 	return filepath.Walk(pkg.Dir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
 		if !info.IsDir() {
 			return nil
 		}
