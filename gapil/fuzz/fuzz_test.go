@@ -22,9 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/gapid/core/context/jot"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/resolver"
-	"github.com/google/gapid/core/log"
 )
 
 // TestCrashers checks that each of the crashers reported by the fuzzer no
