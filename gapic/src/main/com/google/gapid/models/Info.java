@@ -18,6 +18,9 @@ package com.google.gapid.models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.server.Version;
 
+/**
+ * Basic information retrieved from and about the server.
+ */
 public class Info {
   private static Service.ServerInfo serverInfo = Service.ServerInfo.getDefaultInstance();
 

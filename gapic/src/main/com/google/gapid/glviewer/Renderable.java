@@ -17,6 +17,9 @@ package com.google.gapid.glviewer;
 
 import com.google.gapid.glviewer.gl.Shader;
 
+/**
+ * Something to be rendered, e.g. a node in a "scene graph".
+ */
 public interface Renderable {
   public static final Renderable NOOP = new Renderable() {
     @Override
@@ -35,10 +38,24 @@ public interface Renderable {
     }
   };
 
+  /**
+   * Called once to initialize this {@link Renderable} before any calls to {@link #render(State)}.
+   */
   public void init();
+
+  /**
+   * Renders this object with the given state.
+   */
   public void render(State state);
+
+  /**
+   * Called once to dispose this {@link Renderable} after the last call to {@link #render(State)}.
+   */
   public void dispose();
 
+  /**
+   * Current render state, consisting of the current shader and view transforms.
+   */
   public static class State {
     public final Shader shader;
     public final ModelViewProjection transform;

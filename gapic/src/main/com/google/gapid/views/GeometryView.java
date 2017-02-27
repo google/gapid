@@ -73,6 +73,9 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * View that displays the 3D geometry of the last draw call within the current selection.
+ */
 public class GeometryView extends Composite implements Capture.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(GeometryView.class.getName());
   private static final Vertex.Semantic POSITION_0 = Vertex.Semantic.newBuilder()

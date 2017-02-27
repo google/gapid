@@ -36,6 +36,9 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * Model containing information about the currently loaded trace.
+ */
 public class Capture {
   private static final Logger LOG = Logger.getLogger(Capture.class.getName());
 
@@ -154,9 +157,17 @@ public class Capture {
     listeners.removeListener(listener);
   }
 
-  @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the capture is currenlty being loaded.
+     */
     public default void onCaptureLoadingStart() { /* empty */ }
+
+    /**
+     * Event indicating that the capture has finished loading.
+     *
+     * @param error the loading error or {@code null} if loading was successful.
+     */
     public default void onCaptureLoaded(GapisInitException error) { /* empty */ }
   }
 }

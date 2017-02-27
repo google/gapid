@@ -27,6 +27,10 @@ import java.io.File;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * {@link ChildProcess} running the "gapit packages" command to read the package info from a
+ * connected Android device for tracing.
+ */
 public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   private static final Logger LOG = Logger.getLogger(GapitPkgInfoProcess.class.getName());
 

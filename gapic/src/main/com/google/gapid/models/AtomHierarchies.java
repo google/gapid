@@ -56,6 +56,9 @@ import java.util.RandomAccess;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+/**
+ * Model containing the command (atom) hierarchies used to group API commands in the display.
+ */
 public class AtomHierarchies extends CaptureDependentModel<Service.Hierarchy[]> {
   private static final Logger LOG = Logger.getLogger(AtomHierarchies.class.getName());
   private static final int SUBGROUP_SIZE = 1000;
@@ -111,9 +114,15 @@ public class AtomHierarchies extends CaptureDependentModel<Service.Hierarchy[]> 
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the hierarchies have finished loading.
+     */
     public default void onHierarchiesLoaded() { /* empty */ }
   }
 
+  /**
+   * A command grouping node that has been filtered by a {@link FilteringContext}.
+   */
   public static class FilteredGroup {
     public final FilteredGroup parent;
     private final AtomList atoms;
@@ -517,6 +526,9 @@ public class AtomHierarchies extends CaptureDependentModel<Service.Hierarchy[]> 
     }
   }
 
+  /**
+   * A node representing a single command (atom).
+   */
   public static class AtomNode {
     public final FilteredGroup parent;
     public final long index;

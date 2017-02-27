@@ -60,6 +60,9 @@ import org.eclipse.swt.widgets.TreeItem;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * View that shows the capture report items in a tree.
+ */
 public class ReportView extends Composite
     implements Capture.Listener, ApiContext.Listener, Reports.Listener {
   private final Models models;
@@ -176,6 +179,9 @@ public class ReportView extends Composite
     return result.build();
   }
 
+  /**
+   * A node in the tree representing a report item group with children.
+   */
   private static class Group {
     public final ReportGroup group;
     public final String name;
@@ -186,6 +192,9 @@ public class ReportView extends Composite
     }
   }
 
+  /**
+   * A report item leaf in the tree.
+   */
   private static class Item {
     public final Report report;
     public final ReportItem item;
@@ -196,6 +205,9 @@ public class ReportView extends Composite
     }
   }
 
+  /**
+   * Content provider for the report tree.
+   */
   private static class ReportContentProvider implements ILazyTreeContentProvider {
     private final TreeViewer viewer;
     private final MessageProvider messages;
@@ -241,6 +253,9 @@ public class ReportView extends Composite
     }
   }
 
+  /**
+   * Label provider for the report tree.
+   */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider {
     private static final int TAG_STR_LENGTH = 40;
 
@@ -321,6 +336,9 @@ public class ReportView extends Composite
     }
   }
 
+  /**
+   * Formats the various {@link MsgRef messages} in the report tree.
+   */
   private static class MessageProvider {
     private final Cache<MsgRef, String> cache = CacheBuilder.newBuilder().softValues().build();
 

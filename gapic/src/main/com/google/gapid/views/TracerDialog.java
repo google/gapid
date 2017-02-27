@@ -65,6 +65,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Dialogs used for capturing a trace.
+ */
 public class TracerDialog {
   private TracerDialog() {
   }
@@ -122,6 +125,9 @@ public class TracerDialog {
     }
   }
 
+  /**
+   * Dialog to request the information from the user to start a trace (which app, filename, etc.).
+   */
   private static class TraceInputDialog extends TitleAreaDialog {
     private static final String DEFAULT_TRACE_FILE = "trace.gfxtrace";
     private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
@@ -349,6 +355,9 @@ public class TracerDialog {
     }
   }
 
+  /**
+   * Dialog that shows trace progress to the user and allows the user to stop the capture.
+   */
   private static class TraceProgressDialog extends TitleAreaDialog {
     private final StringBuilder log = new StringBuilder();
     private final Tracer.TraceRequest request;

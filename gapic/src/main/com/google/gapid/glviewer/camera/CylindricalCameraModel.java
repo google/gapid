@@ -26,6 +26,11 @@ import static com.google.gapid.glviewer.Constants.Z_NEAR;
 import com.google.gapid.glviewer.CameraModel;
 import com.google.gapid.glviewer.vec.MatD;
 
+/**
+ * A {@link CameraModel} that allows rotating the camera fully around the up axis, and between
+ * +/- 90 degrees around the horizontal axis. Comparable to an ArcBall, except that the model is
+ * never "upside down".
+ */
 public class CylindricalCameraModel implements CameraModel {
   private MatD viewTransform;
   private MatD projection;

@@ -37,6 +37,9 @@ import org.eclipse.swt.graphics.ImageData;
 
 import java.util.List;
 
+/**
+ * A {@link MultiLevelImage} fetched from the RPC server.
+ */
 public class FetchedImage implements MultiLevelImage {
   private final Level[] levels;
 
@@ -127,6 +130,9 @@ public class FetchedImage implements MultiLevelImage {
         image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getData().getImageData()));
   }
 
+  /**
+   * A single mipmap level {@link Image} of a {@link FetchedImage}.
+   */
   private abstract static class Level implements Function<ArrayImageBuffer, Image>, Image {
     public static final Level EMPTY_LEVEL = new Level(null) {
       @Override
@@ -219,6 +225,9 @@ public class FetchedImage implements MultiLevelImage {
     }
   }
 
+  /**
+   * A {@link Level} of a simple 2D texture.
+   */
   private static class SingleFacedLevel extends Level {
     private final Client client;
     protected final Info2D imageInfo;
@@ -241,6 +250,9 @@ public class FetchedImage implements MultiLevelImage {
     }
   }
 
+  /**
+   * A {@link Level} of a cubemap texture.
+   */
   private static class SixFacedLevel extends Level {
     private final Client client;
     protected final Info2D[] imageInfos;

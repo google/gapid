@@ -29,6 +29,10 @@ import org.lwjgl.opengl.GL30;
 
 import java.util.logging.Logger;
 
+/**
+ * Renders a {@link Renderable} and handles user interactions with the given {@link CameraModel}.
+ * This is the main entry point of the GL model viewer.
+ */
 public class Viewer implements GlComposite.Listener {
   private static final Logger LOG = Logger.getLogger(Viewer.class.getName());
 
@@ -44,6 +48,9 @@ public class Viewer implements GlComposite.Listener {
     this.camera = camera;
   }
 
+  /**
+   * Hooks up the mouse handling event listener to the given canvas.
+   */
   public void addMouseListeners(GlComposite canvas) {
     MouseHandler handler = new MouseHandler(camera, canvas);
     canvas.getControl().addMouseListener(handler);
@@ -149,6 +156,9 @@ public class Viewer implements GlComposite.Listener {
     }
   }
 
+  /**
+   * Back-face culling mode.
+   */
   public static enum Culling {
     OFF() {
       @Override
@@ -170,6 +180,9 @@ public class Viewer implements GlComposite.Listener {
     }
   }
 
+  /**
+   * Triangle winding mode.
+   */
   public static enum Winding {
     CCW(false) {
       @Override
@@ -197,6 +210,9 @@ public class Viewer implements GlComposite.Listener {
     }
   }
 
+  /**
+   * Different shading options to use when rendering.
+   */
   public static enum Shading {
     LIT() {
       @Override

@@ -37,6 +37,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 
+/**
+ * Welcome dialog shown when the application is run without a capture as an argument.
+ */
 public class WelcomeDialog {
   private WelcomeDialog() {
   }

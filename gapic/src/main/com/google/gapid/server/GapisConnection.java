@@ -28,6 +28,9 @@ import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.okhttp.OkHttpChannelProvider;
 
+/**
+ * A connection to a running Graphics API Server (GAPIS).
+ */
 public abstract class GapisConnection implements Closeable {
   public static final GapisConnection NOT_CONNECTED = new GapisConnection(null) {
     @Override
@@ -73,6 +76,9 @@ public abstract class GapisConnection implements Closeable {
     public void onClose(GapisConnection connection);
   }
 
+  /**
+   * {@link GapisConnection} to a gRPC GAPIS server.
+   */
   private static class GRpcGapisConnection extends GapisConnection {
     protected static final Metadata.Key<String> AUTH_HEADER =
         Metadata.Key.of("auth_token", Metadata.ASCII_STRING_MARSHALLER);

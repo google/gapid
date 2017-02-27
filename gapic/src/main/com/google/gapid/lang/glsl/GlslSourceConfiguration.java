@@ -49,6 +49,9 @@ import org.eclipse.swt.SWT;
 
 import java.util.Set;
 
+/**
+ * {@link SourceViewerConfiguration} to use for syntax highlighting of GLSL code.
+ */
 public class GlslSourceConfiguration extends SourceViewerConfiguration {
   private static final String PARTIONING = GlslSourceConfiguration.class.getName();
   private static final String SOURCE = IDocument.DEFAULT_CONTENT_TYPE;

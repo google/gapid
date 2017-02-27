@@ -68,6 +68,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.LongConsumer;
 import java.util.logging.Logger;
 
+/**
+ * View that displays the texture resources of the current capture.
+ */
 public class TextureView extends Composite
     implements Capture.Listener, Resources.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(TextureView.class.getName());
@@ -268,6 +271,9 @@ public class TextureView extends Composite
     }
   }
 
+  /**
+   * Texture metadata.
+   */
   private static class Data {
     public static final Data NULL_DATA = new Data(null, null, null) {
       @Override
@@ -301,6 +307,10 @@ public class TextureView extends Composite
     }
   }
 
+  /**
+   * Action for the {@link ToolItem} that allows the user to jump to references of the currently
+   * displayed texture.
+   */
   private static class GotoAction {
     private final Theme theme;
     private final LongConsumer listener;

@@ -72,6 +72,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * The main {@link ApplicationWindow} containing all of the UI components.
+ */
 public class MainWindow extends ApplicationWindow {
   protected final Client client;
   protected final ModelsAndWidgets maw;
@@ -298,13 +301,34 @@ public class MainWindow extends ApplicationWindow {
     return maw.widgets();
   }
 
+  /**
+   * Manages the lifetime of the {@link Models} and {@link Widgets}.
+   */
   public static interface ModelsAndWidgets {
+    /**
+     * Initializes the models and widgets for the given window shell.
+     */
     public void init(Shell shell);
+
+    /**
+     * @return the {@link Models}.
+     */
     public Models models();
+
+    /**
+     * @return the {@link Widgets}.
+     */
     public Widgets widgets();
+
+    /**
+     * Disposes the models and widgets.
+     */
     public void dispose();
   }
 
+  /**
+   * Information about the tabs to be shown in the main window.
+   */
   private static class MainTab extends TabInfo {
     public MainTab(Type type, Function<Composite, Control> contentFactory) {
       super(type, type.label, contentFactory);
@@ -376,10 +400,16 @@ public class MainWindow extends ApplicationWindow {
       return result;
     }
 
+    /**
+     * Possible tab locations.
+     */
     public static enum Location {
       Left, Center, Right;
     }
 
+    /**
+     * Information about the available tabs.
+     */
     public static enum Type {
       ApiCalls(Location.Left, "Commands", (p, c, m, w) -> new AtomTree(p, m, w)),
 
@@ -403,11 +433,17 @@ public class MainWindow extends ApplicationWindow {
       }
     }
 
+    /**
+     * Factory to create the UI components of a tab.
+     */
     public static interface TabFactory {
       public Control create(Composite parent, Client client, Models models, Widgets widgets);
     }
   }
 
+  /**
+   * The menu items shown in the main application window menus.
+   */
   private static enum MenuItems {
     FileOpen("&Open", 'O'),
     FileTrace("Capture &Trace", 'T'),

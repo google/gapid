@@ -22,9 +22,23 @@ import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.graphics.RGB;
 import org.lwjgl.opengl.GL11;
 
+/**
+ * Image pixel data of a texture, framebuffer, etc.
+ */
 public interface Image {
+  /**
+   * @return the width in pixels of this image.
+   */
   public int getWidth();
+
+  /**
+   * @return the height in pixels of this image.
+   */
   public int getHeight();
+
+  /**
+   * @return the {@link ImageBuffer pixel data} of this image.
+   */
   public ImageBuffer getData();
 
   public static final ImageData EMPTY_IMAGE =
@@ -47,6 +61,9 @@ public interface Image {
     }
   };
 
+  /**
+   * Contains the bytes of the {@link Image Image's} pixel data.
+   */
   public static interface ImageBuffer {
     public static final ImageBuffer EMPTY_BUFFER = new ImageBuffer() {
       @Override
@@ -70,12 +87,30 @@ public interface Image {
       }
     };
 
+    /**
+     * Uploads this image data to the given texture.
+     */
     public void uploadToTexture(Texture texture);
+
+    /**
+     * Converts this image data to a SWT {@link ImageData} object.
+     */
     public ImageData getImageData();
+
+    /**
+     * @return the {@link PixelValue} at the given pixel location.
+     */
     public PixelValue getPixel(int x, int y);
+
+    /**
+     * @return the {@link PixelInfo} for this buffer.
+     */
     public PixelInfo getInfo();
   }
 
+  /**
+   * Information about a specific pixel in an image.
+   */
   public static interface PixelValue {
     public static final PixelValue NULL_PIXEL = new PixelValue() {
       @Override
@@ -89,11 +124,21 @@ public interface Image {
       }
     };
 
+    /**
+     * @return whether this pixel is considered to be a dark color (based on its luminance).
+     */
     public boolean isDark();
+
+    /**
+     * @return a text representation of this pixel that can be displayed to the user.
+     */
     @Override
     public String toString();
   }
 
+  /**
+   * Information about all the pixels in an image.
+   */
   public static interface PixelInfo {
     public static final PixelInfo NULL_INFO = new PixelInfo() {
       @Override
@@ -107,7 +152,14 @@ public interface Image {
       }
     };
 
+    /**
+     * @return the minimum value across all channels of the image data. Used for tone mapping.
+     */
     public float getMin();
+
+    /**
+     * @return the maximum value across all channels of the image data. Used for tone mapping.
+     */
     public float getMax();
   }
 }

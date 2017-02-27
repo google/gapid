@@ -33,6 +33,11 @@ import org.eclipse.swt.widgets.ScrollBar;
 import java.math.BigInteger;
 import java.util.function.IntConsumer;
 
+/**
+ * A {@link ScrolledComposite} where the contents can be too large in one or both dimensions to use
+ * a standard scrollbar. The scrollbar thumb will jump back to the center position when let go,
+ * while scrolling through the middle of the bulk of the scroll range.
+ */
 public class InfiniteScrolledComposite extends ScrolledComposite {
   private static final BigInteger MAX_NON_INFINTE =
       BigInteger.valueOf(DPIUtil.autoScaleDown((1 << 15)) - 1);
@@ -103,12 +108,29 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
     setMinSize(mw, mh);
   }
 
+  /**
+   * Contents to be scrolled.
+   */
   public static interface Scrollable {
+    /**
+     * @return the height of the scrolling contents in SWT points.
+     */
     public BigInteger getHeight();
+
+    /**
+     * @return the width of the scrolling contents in SWT points.
+     */
     public BigInteger getWidth();
+
+    /**
+     * Paints the contents at the given location using the given graphics context.
+     */
     public void paint(BigInteger xOffset, BigInteger yOffset, GC gc);
   }
 
+  /**
+   * Hanldes the scroll events of an infinite scrollbar.
+   */
   private static class ScrollHandler extends SelectionAdapter {
     public final ScrollBar bar;
     private final IntConsumer updateLocation;

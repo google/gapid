@@ -29,6 +29,17 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.logging.Logger;
 
+/**
+ * Utility to load shaders resources from the classpath. To simplify editing shaders, both the
+ * vertex and fragment shaders of a program are stored in the same file. Special "comment markers"
+ * are used to indicate which shader the following lines of code belong to. This utility also takes
+ * care to insert the correct #version tag at the beginning of the shaders, allows sharing of code
+ * between the shaders (using the "//! COMMON" marker) and simplifies declaration of vertex shader
+ * output to fragment shader input by resurrecting the deprecated "varrying" keyword.
+ *
+ * @see
+ * <a href="https://github.com/google/gapid/blob/master/docs/gapic-shaders.md">GAPIC Shaders</a>
+ */
 public class ShaderSource {
   private static final Logger LOG = Logger.getLogger(ShaderSource.class.getName());
   private static final String VERSION_130 = "#version 130\n";

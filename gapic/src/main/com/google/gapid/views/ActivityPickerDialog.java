@@ -57,6 +57,9 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Dialog to allow the user to pick which application and activity to trace.
+ */
 public class ActivityPickerDialog extends TitleAreaDialog {
   protected static final Logger LOG = Logger.getLogger(ActivityPickerDialog.class.getName());
   private static final int ICON_SIZE_DIP = 24;
@@ -69,6 +72,9 @@ public class ActivityPickerDialog extends TitleAreaDialog {
   private PkgInfo.PackageList packageList;
   private Action selected;
 
+  /**
+   * The selected application and activity.
+   */
   public static class Action {
     public final PkgInfo.Package pkg;
     public final PkgInfo.Activity activity;

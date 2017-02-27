@@ -26,6 +26,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+/**
+ * Popup displaying text to the user.
+ */
 public class TextViewer {
   private TextViewer() {
   }

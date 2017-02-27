@@ -30,6 +30,10 @@ import org.eclipse.swt.graphics.TextLayout;
 
 import java.util.Arrays;
 
+/**
+ * A {@link StyledCellLabelProvider} that can be used to measure the size of the label to correctly
+ * determine if the the mouse pointer is hovering over a link in the {@link StylingString}.
+ */
 public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider {
   private final ColumnViewer viewer;
   private final Theme theme;

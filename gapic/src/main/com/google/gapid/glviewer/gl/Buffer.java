@@ -17,6 +17,9 @@ package com.google.gapid.glviewer.gl;
 
 import org.lwjgl.opengl.GL15;
 
+/**
+ * Helper object for GL buffers.
+ */
 public class Buffer {
   private final int target;
   private final int handle;

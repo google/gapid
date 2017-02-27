@@ -35,6 +35,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 
+/**
+ * Dialog showing some basic info about our application.
+ */
 public class AboutDialog {
   private static final String HELP_URL =
       "https://developer.android.com/r/studio-ui/am-gpu-debugger.html";

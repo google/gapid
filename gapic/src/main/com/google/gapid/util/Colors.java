@@ -18,6 +18,9 @@ package com.google.gapid.util;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.RGBA;
 
+/**
+ * Color handling utilities.
+ */
 public class Colors {
   public static final double DARK_LUMINANCE_THRESHOLD = 0.65;
   public static final int DARK_LUMINANCE8_THRESHOLD = 165;

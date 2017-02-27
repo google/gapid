@@ -17,6 +17,9 @@ package com.google.gapid.glviewer.vec;
 
 import java.util.Arrays;
 
+/**
+ * A 4x4 double precision matrix.
+ */
 public class MatD {
   public static final MatD IDENTITY = new MatD();
 

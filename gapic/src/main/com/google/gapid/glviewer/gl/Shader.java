@@ -28,6 +28,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
 
+/**
+ * Helper object for GL shaders and programs.
+ */
 public class Shader {
   protected static Logger LOG = Logger.getLogger(Shader.class.getName());
 

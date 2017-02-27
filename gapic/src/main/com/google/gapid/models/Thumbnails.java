@@ -41,6 +41,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Manages the loading of thumbnail previews. In order to keep the UI responsive and give other
+ * requests to the server a chance to complete, a single thread is used to request thumbnail
+ * previews, which require a replay, from the server. In essence, this prevents request starvation
+ * to the server by de-prioritizing requests for thumbnails. Thumbnail requests are batched to take
+ * advantage of the batching optimization the server does for replay requests.
+ */
 public class Thumbnails {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
@@ -144,9 +151,15 @@ public class Thumbnails {
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that render settings have changed an thumbnails need to be updated.
+     */
     public default void onThumnailsChanged() { /* empty */ }
   }
 
+  /**
+   * A queued thumbnail request and its result.
+   */
   private static class Thumbnail implements Comparable<Thumbnail> {
     public final long atomId;
     public final ListenableFuture<Path.ImageInfo> pathFuture;
@@ -164,6 +177,9 @@ public class Thumbnails {
     }
   }
 
+  /**
+   * Thread that requests and processes all thumbnail previews..
+   */
   private static class ProcessorThread extends Thread {
     private static final long BATCH_TIMEOUT_MS = 10;
     private static final int BATCH_SIZE = 25;

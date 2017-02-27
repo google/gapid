@@ -20,6 +20,9 @@ import static com.google.gapid.glviewer.vec.MatD.makeScaleTranslationZupToYup;
 import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.glviewer.vec.VecD;
 
+/**
+ * Bounding box of a model aligned to the standard cartesian directions.
+ */
 public class BoundingBox {
   public static final BoundingBox INVALID = new BoundingBox();
 
@@ -37,6 +40,9 @@ public class BoundingBox {
     VecD.max(max, x, y, z);
   }
 
+  /**
+   * @return a matrix that will center the model at the origin and scale it to the given size.
+   */
   public MatD getCenteringMatrix(double diagonalSize, boolean zUp) {
     VecD minV = VecD.fromArray(min), maxV = VecD.fromArray(max);
     double diagonal = maxV.distance(minV);

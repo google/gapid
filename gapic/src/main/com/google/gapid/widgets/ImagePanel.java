@@ -80,6 +80,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntConsumer;
 import java.util.logging.Logger;
 
+/**
+ * Image viewer panel with various image inspection tools.
+ */
 public class ImagePanel extends Composite {
   protected static final Logger LOG = Logger.getLogger(ImagePanel.class.getName());
   protected static final int ZOOM_AMOUNT = 5;
@@ -313,6 +316,9 @@ public class ImagePanel extends Composite {
     imageComponent.setImageData(level);
   }
 
+  /**
+   * Component that renders the image using OpenGL.
+   */
   private static class ImageComponent extends Composite implements GlComposite.Listener {
     private static final double ZOOM_FIT = Double.POSITIVE_INFINITY;
     private static final int BORDER_SIZE = 2;
@@ -666,6 +672,9 @@ public class ImagePanel extends Composite {
     }
   }
 
+  /**
+   * Information regarding the currently hovered pixel.
+   */
   private static class Pixel {
     public static final Pixel OUT_OF_BOUNDS = new Pixel(-1, -1, -1, -1, PixelValue.NULL_PIXEL) {
       @Override
@@ -691,10 +700,16 @@ public class ImagePanel extends Composite {
     }
   }
 
+  /**
+   * Background rendring mode.
+   */
   private static enum BackgroundMode {
     Checkerboard, SolidColor;
   }
 
+  /**
+   * UI components to allow the user to select how to render the background behind the image.
+   */
   private static class BackgroundSelection {
     public final org.eclipse.swt.graphics.Image image;
     public Color color;
@@ -742,10 +757,17 @@ public class ImagePanel extends Composite {
     }
 
     public static interface Listener {
+      /**
+       * Event that indicates the background mode has changed.
+       */
       public void onBackgroundSelectionChanged(BackgroundMode mode);
     }
   }
 
+  /**
+   * UI status bar component below the image that shows information about the currently hovered
+   * pixel and a level selection slider for mipmaps.
+   */
   private static class StatusBar extends Composite {
     private final Composite levelComposite;
     private final Scale levelScale;

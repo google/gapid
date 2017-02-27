@@ -34,6 +34,9 @@ import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Control;
 
+/**
+ * Utilities for dragging tabs, e.g. in a {@link TabArea}.
+ */
 public class TabDnD {
   protected static final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
@@ -70,6 +73,9 @@ public class TabDnD {
     return newItem;
   }
 
+  /**
+   * A {@link CTabFolder} containing tabs that can be dragged away.
+   */
   private static class TabDragSource extends DragSourceAdapter {
     private final CTabFolder folder;
 
@@ -95,6 +101,9 @@ public class TabDnD {
     }
   }
 
+  /**
+   * A {@link CTabFolder} where tabs can be dragged to.
+   */
   private static class TabDropTarget extends DropTargetAdapter {
     private final CTabFolder folder;
 
@@ -135,6 +144,9 @@ public class TabDnD {
     }
   }
 
+  /**
+   * A {@link ISelection} containing a tab that is currently being dragged.
+   */
   private static class TabSelection implements ISelection {
     public final CTabItem item;
 
@@ -150,7 +162,15 @@ public class TabDnD {
 
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the given source item had to be copied (e.g. because it has been moved
+     * to a new folder - reparenting).
+     */
     public default void itemCopied(CTabItem source, CTabItem target) { /* empty */ }
+
+    /**
+     * Event indicating that the given item was moved from one folder to another.
+     */
     public default void onTabMoved(CTabFolder sourceFolder, CTabItem oldItem,
         CTabFolder destFolder, CTabItem newItem) { /* empty */ }
   }

@@ -20,12 +20,15 @@ import com.google.gapid.glviewer.geo.BoundingBox;
 import com.google.gapid.glviewer.geo.Model;
 import com.google.gapid.glviewer.gl.Buffer;
 import com.google.gapid.glviewer.vec.MatD;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.DrawPrimitive;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
+/**
+ * Renders a {@link Model}. Can render the geometry using either y-up or z-up and as either a
+ * point cloud, wire mesh, or solid.
+ */
 public class Geometry {
   private Model model;
   private MatD modelMatrix;
@@ -140,11 +143,18 @@ public class Geometry {
     };
   }
 
+  /**
+   * @return an {@link Emitter} based on the bounding box.
+   */
   public Emitter getEmitter() {
     return Emitter.BoxEmitter.fromBoundingBox(getBounds().transform(modelMatrix));
   }
 
-  public static boolean isPolygon(GfxAPI.DrawPrimitive primitive) {
+  /**
+   * @return whether the given {@link DrawPrimitive} will be considered a polygon by GL. I.e. not
+   * points or lines.
+   */
+  public static boolean isPolygon(DrawPrimitive primitive) {
     switch (primitive) {
       case Triangles:
       case TriangleFan:
@@ -155,6 +165,13 @@ public class Geometry {
     }
   }
 
+  /**
+   * @return whether the given {@link DisplayMode} will require special handling when rendering
+   * the geometry. We control the rendering mode (points, wire mesh, solid) using glPolygonMode,
+   * which only works if the underlying geometry is polygon. Since rendering lines as lines is fine,
+   * even if it ignores glPolygonMode, the only case that requires special handling is rendering
+   * non-polygons as points.
+   */
   private boolean isNonPolygonPoints(DisplayMode displayMode) {
     return displayMode == DisplayMode.POINTS && !isPolygon(model.getPrimitive());
   }

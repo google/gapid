@@ -18,12 +18,21 @@ package com.google.gapid.image;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+/**
+ * An image with (optionally) multiple mipmap levels.
+ */
 public interface MultiLevelImage {
-  int getLevelCount();
+  /**
+   * @return the number of levels in this image.
+   */
+  public int getLevelCount();
 
-  ListenableFuture<Image> getLevel(int index);
+  /**
+   * @return a future {@link Image} representing the given 0-based level.
+   */
+  public ListenableFuture<Image> getLevel(int index);
 
-  MultiLevelImage EMPTY = new MultiLevelImage() {
+  public static final MultiLevelImage EMPTY = new MultiLevelImage() {
     @Override
     public int getLevelCount() {
       return 1;

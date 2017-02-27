@@ -34,6 +34,11 @@ import org.eclipse.swt.widgets.Control;
 
 import java.util.function.Function;
 
+/**
+ * Manages {@link CTabItem tabs} in three {@link CTabFolder tab areas}. Allows the user to drag
+ * tabs between areas and minimzing/maximzing each area. The three areas are horizontally laid out
+ * with movable dividers.
+ */
 public class TabArea {
   private static final int MINIMIZED_SIZE = 40;
 
@@ -207,11 +212,24 @@ public class TabArea {
     }
   }
 
+  /**
+   * Responsible for remembering the order and location of tabs.
+   */
   public static interface Persistance {
-    public FolderInfo[] restore(); // has to be length 3 (left, center, right).
-    public void store(FolderInfo[] folders); // length 3 (left, center, right).
+    /**
+     * @return the previously stored tab information. Has to be length 3 (left, center, right).
+     */
+    public FolderInfo[] restore();
+
+    /**
+     * @param folders the tab information to store. Always length 3 (left, center, right).
+     */
+    public void store(FolderInfo[] folders);
   }
 
+  /**
+   * Size and containing tabs information of a folder.
+   */
   public static class FolderInfo {
     public final boolean minimized;
     public final TabInfo[] tabs;
@@ -224,6 +242,9 @@ public class TabArea {
     }
   }
 
+  /**
+   * Information about a single tab in a folder.
+   */
   public static class TabInfo {
     public static final String KEY = TabInfo.class.getName();
 
@@ -238,6 +259,9 @@ public class TabArea {
     }
   }
 
+  /**
+   * A folder widget containing multiple tabs.
+   */
   private static class Folder extends Composite {
     private final boolean minimizable;
     public final CTabFolder folder;
@@ -341,6 +365,9 @@ public class TabArea {
     }
   }
 
+  /**
+   * The state of a folder's tabs.
+   */
   private static enum TabState {
     VISIBLE, MINIMIZED, EMPTY;
 

@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Command line flag definition and parsing utilities.
+ */
 public class Flags {
   private static final Pattern FLAG_PATTERN =
       Pattern.compile("-+([^=\\s]+)(?:=(.*))?", Pattern.MULTILINE | Pattern.DOTALL);
@@ -35,6 +38,12 @@ public class Flags {
 
   private static boolean initialized = false;
 
+  private Flags() {
+  }
+
+  /**
+   * Parses the given command line arguments and initializes the given flags.
+   */
   public static synchronized String[] initFlags(Flag<?>[] flags, String[] args) {
     if (initialized) {
       throw new RuntimeException("Flags already initalized");
@@ -144,6 +153,9 @@ public class Flags {
     }
   }
 
+  /**
+   * Command line flag definition.
+   */
   public static class Flag<T> {
     private final String name;
     private final Parser<T> parser;
@@ -244,6 +256,9 @@ public class Flags {
     }, dflt, description);
   }
 
+  /**
+   * {@link RuntimeException} thrown when flag parsing failed.
+   */
   public static class InvalidFlagException extends RuntimeException {
     public InvalidFlagException(String flag) {
       super("Invalid flag: " + flag);
@@ -254,6 +269,9 @@ public class Flags {
     }
   }
 
+  /**
+   * Parses flag values.
+   */
   private static interface Parser<T> {
     public T parse(String value);
   }

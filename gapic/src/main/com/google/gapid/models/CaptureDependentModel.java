@@ -39,6 +39,10 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * Base class for models that depend on a capture. I.e. models that will trigger a load whenever
+ * the capture changes and require a capture to be loaded.
+ */
 abstract class CaptureDependentModel<T> {
   private final Logger log;
   protected final Shell shell;

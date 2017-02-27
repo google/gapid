@@ -40,6 +40,9 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * Model managing the API state object of the currently selected command.
+ */
 public class ApiState {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
@@ -139,8 +142,21 @@ public class ApiState {
 
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the state is currently being loaded.
+     */
     public default void onStateLoadingStart()  { /* empty */ }
+
+    /**
+     * Event indicating that the state has finished loading.
+     *
+     * @param error the loading error or {@code null} if loading was successful.
+     */
     public default void onStateLoaded(DataUnavailableException error) { /* empty */ }
+
+    /**
+     * Event indicating that the portion of the state that is selected has changed.
+     */
     public default void onStateSelected(Path.Any path) { /* empty */ }
   }
 }

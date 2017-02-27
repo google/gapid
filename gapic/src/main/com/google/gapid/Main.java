@@ -42,6 +42,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Main entry point of the application.
+ */
 public class Main {
   public static void main(String[] args) throws Exception {
     args = Flags.initFlags(ALL_FLAGS, args);
@@ -68,6 +71,9 @@ public class Main {
     }
   }
 
+  /**
+   * Manages the main UI.
+   */
   private static class UI implements MainWindow.ModelsAndWidgets {
     protected static final Logger LOG = Logger.getLogger(UI.class.getName());
 

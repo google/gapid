@@ -35,6 +35,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
+/**
+ * Dialog for the goto command (atom) action.
+ */
 public class GotoAtom {
   private GotoAtom() {
   }
@@ -46,6 +49,9 @@ public class GotoAtom {
     }
   }
 
+  /**
+   * Dialog asking the user for the ID of the command to jump to.
+   */
   private static class GotoDialog extends MessageDialog {
     private final AtomStream atoms;
     private Spinner spinner;

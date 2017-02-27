@@ -20,7 +20,16 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
+/**
+ * Special handling for OSX application menus.
+ */
 public class MacApplication {
+  private MacApplication() {
+  }
+
+  /**
+   * Initializes the OSX application menus.
+   */
   public static void init(Display display, Runnable onAbout) {
     Menu menu = display.getSystemMenu();
     if (menu == null) {

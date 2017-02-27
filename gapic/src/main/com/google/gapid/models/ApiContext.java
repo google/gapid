@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+/**
+ * Model containing the different API contexts of a capture.
+ */
 public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContext[]> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
@@ -121,6 +124,9 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
     listeners.removeListener(listener);
   }
 
+  /**
+   * A {@link Context} wrapper to allow filtering of commands.
+   */
   public static class FilteringContext {
     public static final FilteringContext ALL = new FilteringContext(null) {
       @Override
@@ -213,7 +219,14 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
 
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the contexts have finished loading from the server.
+     */
     public default void onContextsLoaded() { /* empty */ }
+
+    /**
+     * Event indicating that the currently selected context has changed.
+     */
     public default void onContextSelected(FilteringContext context) { /* empty */ }
   }
 }

@@ -26,6 +26,10 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Text;
 
+/**
+ * A textbox-button combo, where clicking the button shows a dialog that will provide a value
+ * for the textbox on closing.
+ */
 public abstract class ActionTextbox extends Composite {
   private final Text box;
   private final Button button;

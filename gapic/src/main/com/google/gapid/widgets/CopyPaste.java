@@ -26,6 +26,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
 
+/**
+ * Clipboard helper to handle copy-paste operations on various widgets.
+ */
 public class CopyPaste {
   private static final String SOURCE_DATA_KEY = CopyPaste.class.getName() + ".source";
 
@@ -134,11 +137,24 @@ public class CopyPaste {
     listeners.removeListener(listener);
   }
 
+  /**
+   * A source from which data can be copied to the clipboard.
+   */
   public static interface CopySource {
+    /**
+     * @return whether the source currently contains any copiable (selected) data.
+     */
     public boolean hasCopyData();
+
+    /**
+     * @return the current copiable data.
+     */
     public CopyData[] getCopyData();
   }
 
+  /**
+   * Data to be copied to the clipboard.
+   */
   public static class CopyData {
     public final Object data;
     public final Transfer transfer;
@@ -155,9 +171,15 @@ public class CopyPaste {
 
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event that indicates whether the copy action (such as in the menu) should be enabled.
+     */
     public default void onCopyEnabled(boolean enabled) { /* empty */ }
   }
 
+  /**
+   * Handles copying to the clipboard.
+   */
   private static interface Copier {
     public static final Copier NULL_COPIER = new Copier() {
       @Override
@@ -171,7 +193,14 @@ public class CopyPaste {
       }
     };
 
+    /**
+     * @return whether the copier currently contains any copiable data.
+     */
     public boolean hasCopyData();
+
+    /**
+     * Performs the copy operation.
+     */
     public void copy();
   }
 }

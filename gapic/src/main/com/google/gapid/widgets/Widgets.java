@@ -58,6 +58,9 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.function.Consumer;
 
+/**
+ * Widget utilities.
+ */
 public class Widgets {
   public final Theme theme;
   public final CopyPaste copypaste;

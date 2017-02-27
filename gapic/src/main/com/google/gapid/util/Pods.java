@@ -21,6 +21,9 @@ import com.google.gapid.rpclib.schema.Method;
 import com.google.gapid.rpclib.schema.Primitive;
 import com.google.gapid.rpclib.schema.Type;
 
+/**
+ * Plain-Old-Data utilities.
+ */
 public class Pods {
   private Pods() {
   }

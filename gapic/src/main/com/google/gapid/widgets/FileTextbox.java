@@ -20,11 +20,17 @@ import com.google.gapid.util.Messages;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.DirectoryDialog;
 
+/**
+ * An {@link ActionTextbox} representing a file path where the button will open a file dialog.
+ */
 public abstract class FileTextbox extends ActionTextbox {
   public FileTextbox(Composite parent, String value) {
     super(parent, Messages.BROWSE, value);
   }
 
+  /**
+   * A {@link FileTextbox} limiting the selection to directories in the file dialog.
+   */
   public static class Directory extends FileTextbox {
     public Directory(Composite parent) {
       super(parent, "");

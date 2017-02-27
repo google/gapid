@@ -17,6 +17,9 @@ package com.google.gapid.util;
 
 import com.google.gapid.proto.stream.Stream;
 
+/**
+ * Data {@link Stream} utilities.
+ */
 public class Streams {
   // U8 represents a 8-bit unsigned, integer.
   public static final Stream.DataType U8 = newInt(false, 8);

@@ -26,6 +26,9 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
+/**
+ * SWT {@link Event} and {@link Listener} utilities.
+ */
 public class Events {
   protected static final Logger LOG = Logger.getLogger(Events.class.getName());
 
@@ -44,16 +47,38 @@ public class Events {
     return event;
   }
 
+  /**
+   * Tagging interface for event listener interface declarations.
+   */
   public static interface Listener {
     // Empty tagging interface.
   }
 
+  /**
+   * A collection of event {@link Listener listeners}. Handles adding/removing listeners as well as
+   * broadcasting events to all registered listener.
+   */
   public static interface ListenerCollection<T extends Listener> {
+    /**
+     * Adds the given listener to this collection.
+     */
     public void addListener(T listener);
+
+    /**
+     * Removes the given listener from this collection.
+     */
     public void removeListener(T listener);
+
+    /**
+     * @return a proxy {@link Listener} implementation that will broadcast events to all listeners
+     * registered with this collection.
+     */
     public T fire();
   }
 
+  /**
+   * Factory method to create a {@link ListenerCollection} for listeners of the given type.
+   */
   @SuppressWarnings("unchecked")
   public static <T extends Listener> ListenerCollection<T> listeners(Class<T> listenerInterface) {
     ListenerCollectionImpl<T> result = new ListenerCollectionImpl<T>();
@@ -61,7 +86,10 @@ public class Events {
         Events.class.getClassLoader(), new Class<?>[] { listenerInterface }, result));
   }
 
-
+  /**
+   * A {@link ListenerCollection} implementation based on an {@link ArrayList}. This class is
+   * thread-safe as long as it is only used via the {@link ListenerCollection} interface.
+   */
   private static class ListenerCollectionImpl<T extends Listener> extends ArrayList<T>
       implements ListenerCollection<T>, InvocationHandler {
 

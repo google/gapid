@@ -25,6 +25,9 @@ import org.eclipse.swt.widgets.Display;
 
 import java.util.Set;
 
+/**
+ * Widget to draw an animated loading indicator.
+ */
 public class LoadingIndicator {
   private static final int FRAME_COUNT = 8;
   private static final int CYCLE_LENGTH = 1000;
@@ -101,7 +104,13 @@ public class LoadingIndicator {
     }
   }
 
+  /**
+   * Object containing the loading indicator that needs to be animated.
+   */
   public interface Repaintable {
-    void repaint();
+    /**
+     * Repaints the widget, potentially rendering the next frame in the loading animation.
+     */
+    public void repaint();
   }
 }

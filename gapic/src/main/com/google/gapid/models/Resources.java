@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * Model containing the capture resources (textures, shaders, etc.) metadata.
+ */
 public class Resources extends CaptureDependentModel<Service.Resources> {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
@@ -67,6 +70,9 @@ public class Resources extends CaptureDependentModel<Service.Resources> {
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the resources metadata has been loaded.
+     */
     public default void onResourcesLoaded() { /* empty */ }
   }
 }
