@@ -24,7 +24,7 @@ public class Buffer {
 
   public Buffer(int target) {
     this.target = target;
-    this.handle = Util.createBuffer();
+    this.handle = GL15.glGenBuffers();
   }
 
   public Buffer bind() {

@@ -27,7 +27,7 @@ public class Texture {
 
   public Texture(int target) {
     this.target = target;
-    this.handle = Util.createTexture();
+    this.handle = GL11.glGenTextures();
   }
 
   public Texture bind() {
