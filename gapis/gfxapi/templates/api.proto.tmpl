@@ -16,7 +16,7 @@
 
 {{Global "module" ""}}
 {{Include "common.tmpl"}}
-{{$ | Macro "api.proto" | NewReflow "    " | Write (printf "%s_pb/api.proto" (Global "OutputDir"))}}
+{{$ | Macro "api.proto" | NewReflow "    " | Write "api.proto"}}
 
 {{define "api.proto"}}
   {{template "Proto.GeneratedHeader" (Global "OutputDir")}}
@@ -130,7 +130,7 @@
   §{{Copyright "generated" "apic"}}§¶
   syntax = "proto3";¶
   ¶
-  package {{$}}_pb;¶
+  package {{$}};¶
   // cc_package¶
   ¶
   import "gapis/memory/memory_pb/memory.proto";¶

@@ -12,17 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(api gles/gles.api)
-
-build_subdirectory(gles_pb)
-
-apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
-apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
-apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)
-
-annotate(${api})
-embed(
-    OUTPUT "snippets_embed.go"
-    snippets.base64
-    globals_snippets.base64
-)
+apic(${api} TEMPLATE api.proto.tmpl OUTPUTS api.proto)

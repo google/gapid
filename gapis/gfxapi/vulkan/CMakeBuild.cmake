@@ -13,9 +13,10 @@
 # limitations under the License.
 
 set(api vulkan/vulkan.api)
+
+build_subdirectory(vulkan_pb)
+
 apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
-apic(${api} TEMPLATE api.proto.tmpl OUTPUTS vulkan_pb/api.proto
-    DEFINES GoPackage=github.com/google/gapid/gapis/gfxapi/vulkan/vulkan_pb)
 apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
 apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)
 

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 set(api core/core.api)
+
+build_subdirectory(core_pb)
+
 apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
-apic(${api} TEMPLATE api.proto.tmpl OUTPUTS core_pb/api.proto
-    DEFINES GoPackage=github.com/google/gapid/gapis/gfxapi/core/core_pb)
 apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
 apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)
 
