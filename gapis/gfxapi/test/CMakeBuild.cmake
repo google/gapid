@@ -14,9 +14,9 @@
 
 set(api test/gfxapi_test.api)
 
+build_subdirectory(test_pb)
+
 apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
-apic(${api} TEMPLATE api.proto.tmpl OUTPUTS test_pb/api.proto
-    DEFINES GoPackage=github.com/google/gapid/gapis/gfxapi/test/test_pb)
 apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
 apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)
 
