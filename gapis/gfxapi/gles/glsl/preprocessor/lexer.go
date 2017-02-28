@@ -184,14 +184,14 @@ func (l *lexer) skip(mode parse.SkipMode) parse.Separator {
 			l.current.Whitespace = true
 			n := parse.NewFragment(l.reader.Consume())
 			sep = append(sep, n)
-		case mode == parse.SkipPrefix && l.reader.Rune(parse.RuneEOL):
+		case mode == parse.SkipPrefix && l.reader.EOL():
 			l.current.Whitespace = true
 			l.current.Newline = true
 			n := parse.NewFragment(l.reader.Consume())
 			sep = append(sep, n)
 		case l.reader.String(lineComment):
 			l.current.Whitespace = true
-			if !l.reader.SeekRune(parse.RuneEOL) {
+			if !l.reader.SeekRune('\n') {
 				for !l.reader.IsEOF() {
 					l.reader.Advance()
 				}

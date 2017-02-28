@@ -27,7 +27,7 @@ import (
 func skip(p *parse.Parser, mode parse.SkipMode) parse.Separator {
 	for i := 0; ; i++ {
 		r := p.PeekN(i)
-		if !unicode.IsSpace(r) || r == '\r' || r == parse.RuneEOL || r == utf8.RuneError {
+		if !unicode.IsSpace(r) || r == '\r' || r == '\n' || r == utf8.RuneError {
 			if i == 0 {
 				return nil
 			}
@@ -48,27 +48,18 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				panic(fmt.Sprintf("Scanner cannot progress when scanning: '%s'\n"+
 					"Stuck at rune: 0x%x '%c'", data, p.Peek(), p.Peek()))
 			}
+			if p.IsEOL() {
+				// Keep the \r out of ParseLeaf so we normalize CRLF -> LF.
+				p.Rune('\r')
+				p.Consume()
 
-			switch p.Peek() {
-			case '\r':
 				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
-					p.Advance()
-					r := p.Peek()
-					switch r {
-					case '\n':
-						p.Advance()
-						tokens = append(tokens, token.NewLine{Leaf: cst})
-					default:
-						tokens = append(tokens, token.Text{Leaf: cst})
-					}
-				})
-
-			case parse.RuneEOL:
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
-					p.Advance()
+					p.Rune('\n')
 					tokens = append(tokens, token.NewLine{Leaf: cst})
 				})
-
+				continue
+			}
+			switch p.Peek() {
 			case '\\':
 				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
 					p.Advance()
