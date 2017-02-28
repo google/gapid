@@ -71,6 +71,23 @@ func (r *Reader) IsEOF() bool {
 	return r.cursor >= len(r.runes)
 }
 
+// IsEOL returns true when the cursor is at the end of a line (\n or \r\n).
+// IsEOL does not move the cursor.
+func (r *Reader) IsEOL() bool {
+	return (r.PeekN(0) == '\n') || (r.PeekN(0) == '\r' && r.PeekN(1) == '\n')
+}
+
+// EOL moves the cursor past the EOL and returns true if the cursor is at the
+// end of a line (\n or \r\n), otherwise EOL returns false and does nothing.
+func (r *Reader) EOL() bool {
+	if !r.IsEOL() {
+		return false
+	}
+	r.Rune('\r')
+	r.Rune('\n')
+	return true
+}
+
 // GuessNextToken attempts to do a general purpose consume of a single
 // arbitrary token from the stream. It is used by error handlers to indicate
 // where the error occurred. It guarantees that if the stream is not finished,
@@ -146,7 +163,7 @@ func (r *Reader) Space() bool {
 	i := r.cursor
 	for ; i < len(r.runes); i++ {
 		r := r.runes[i]
-		if r == RuneEOL || !unicode.IsSpace(r) {
+		if r == '\n' || !unicode.IsSpace(r) {
 			break
 		}
 	}

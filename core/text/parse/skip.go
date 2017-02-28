@@ -48,12 +48,12 @@ func NewSkip(line, blockstart, blockend string) Skip {
 				n := &fragment{}
 				n.SetToken(p.Consume())
 				sep = append(sep, n)
-			case mode == SkipPrefix && p.Rune(RuneEOL):
+			case mode == SkipPrefix && p.EOL():
 				n := &fragment{}
 				n.SetToken(p.Consume())
 				sep = append(sep, n)
 			case p.String(line):
-				if !p.SeekRune(RuneEOL) {
+				if !p.SeekRune('\n') {
 					for !p.IsEOF() {
 						p.Advance()
 					}

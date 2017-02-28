@@ -20,9 +20,6 @@ import (
 	"github.com/google/gapid/core/data/compare"
 )
 
-// RuneEOL is the rune that marks the end of a line.
-const RuneEOL = '\n'
-
 // A Token represents the smallest consumed unit input.
 type Token struct {
 	Source *Source // The source object this token is from (including the full rune array).
@@ -72,7 +69,7 @@ func (t Token) Cursor() (line int, column int) {
 	line = 1
 	column = 1
 	for _, r := range t.Source.Runes[:t.Start] {
-		if r == RuneEOL {
+		if r == '\n' {
 			line++
 			column = 0
 		}
