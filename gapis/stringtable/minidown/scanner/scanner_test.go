@@ -59,8 +59,7 @@ func TestScanner(t *testing.T) {
 		}},
 		{`Some text
     split over several
-
-    lines`, []tok{T("Some"), T("text"), NL(), T("split"), T("over"), T("several"), NL(), NL(), T("lines")}},
+` + "\r\nlines", []tok{T("Some"), T("text"), NL(), T("split"), T("over"), T("several"), NL(), NL(), T("lines")}},
 		{`{here's [some] (brackets)}`, []tok{
 			OB('{'), T("here's"), OB('['), T("some"), CB(']'), OB('('), T("brackets"), CB(')'), CB('}'),
 		}},

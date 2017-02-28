@@ -48,11 +48,14 @@ func TestParser(t *testing.T) {
 		{`This is a
 			single line`, T("This is a single line")},
 
+		{`This is also a` + "\r\n" + `single line`,
+			T("This is also a single line")},
+
 		{`These are
 
 			lines with
 
-
+` + "\r\n" + `
 
 			breaks`, B(T("These are"), NL(), T("lines with"), NL(), T("breaks"))},
 
@@ -88,6 +91,12 @@ func TestParser(t *testing.T) {
 
 		{`# Heading 1`,
 			H1(T("Heading 1"))},
+
+		{"# Heading 1 ending with LF\n",
+			H1(T("Heading 1 ending with LF"))},
+
+		{"# Heading 1 ending with CRLF\r\n",
+			H1(T("Heading 1 ending with CRLF"))},
 
 		{`* Bullets are treated as text for now`,
 			T("* Bullets are treated as text for now")},

@@ -42,7 +42,8 @@ line
 
 # LINKS
 [{{person}}]({{link}}) likes to use [google](http://www.google.com).
-`
+
+` + "# SINGLE_LINE_STRING_CRLF\r\nThis is\r\n a simple\r\n string"
 
 func TestParser(t *testing.T) {
 	assert := assert.To(t)
@@ -79,6 +80,7 @@ func TestParser(t *testing.T) {
 			WS(), T("likes to use"), WS(),
 			L(T("google"), T("http://www.google.com")),
 			T("."))},
+		{"SINGLE_LINE_STRING_CRLF", T("This is a simple string")},
 	} {
 		got, found := loc.Entries[test.key]
 		assert.For(test.key).That(found).Equals(true)
