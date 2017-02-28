@@ -86,6 +86,7 @@ go get github.com/google/gapid
 cd $GOPATH/src/google/gapid
 git submodule update --init
 ```
+The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
 
 ### Configure build
 In a terminal type:
@@ -134,6 +135,7 @@ go get github.com/google/gapid
 cd $GOPATH/src/google/gapid
 git submodule update --init
 ```
+The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
 
 ### Configure build
 In a terminal type:
