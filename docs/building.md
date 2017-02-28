@@ -9,6 +9,7 @@
 * Open the msys2 terminal.
 * Type: `pacman -Syu --noconfirm` and press enter.
 * Close and reopen the msys2 terminal.
+* Note that pacman may need to update itself before updating other packages, so repeat the above two steps until pacman no longer updates anything.
 * Type: `pacman -S mingw-w64-x86_64-gcc --noconfirm` and press enter.
 * Close the msys2 terminal
 
@@ -36,6 +37,7 @@ go get github.com/google/gapid
 cd %GOPATH%\src\google\gapid
 git submodule update --init
 ```
+The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
 
 ### Configure build
 In a terminal elevated to Administrator type:
@@ -46,7 +48,7 @@ do config
 And follow the instructions to configure the build.
 
 ### Building
-In a terminal type:
+In a terminal elevated to Administrator type:
 ```
 cd %GOPATH%\src\google\gapid
 do build
