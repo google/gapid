@@ -5,10 +5,10 @@ GAPID is a collection of tools that allows you to inspect, tweak and replay call
 ## Status
 GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
 Downloadable prebuilts will be available once the project reaches beta quality.
-Vulkan is still a work in progress. Current status can be found [here](docs/vulkan.md).
+Vulkan is still a work in progress. Current status can be found [here](gapis/gfxapi/vulkan/README.md).
 
 ## Building
-See [Building GAPID](docs/building.md).
+See [Building GAPID](BUILDING.md).
 
 ## Running the client
 
