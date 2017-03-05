@@ -9,21 +9,21 @@ The client does not need to have any knowledge of any graphics APIs, making impl
 
 ## API deep-knowledge
 
-GAPIS uses the graphics API packages declared in **{{TODO}}** to have a deep understanding of each command in the API and how it interacts with the state.
+GAPIS uses the graphics API packages declared in [gapis/gfxapi](gfxapi) to have a deep understanding of each command in the API and how it interacts with the state.
 
 Most of the code in these graphics API packages is generated from a corresponding graphics API file, which describes the internal state of a graphics driver, each command exposed by the API, and how each command interacts with the internal driver state. When these API files are combined with the API compiler and template files, we produce Go code that:
 
-* Describes the classes, enums, and bitfields that are used in the graphics API. Each type declared in the API file produces a corresponding Go type via the api.go.tmpl template file. See **{{TODO}}** for examples of these generated types.
+* Describes the classes, enums, and bitfields that are used in the graphics API. Each type declared in the API file produces a corresponding Go type via the api.go.tmpl template file.
 
 * Describes the structure of the graphics library's State object. These are formed from the global fields in the API file.
 
-* Describes each of the commands declared in the API. Each command in the API file produces a Go struct that implements the Atom interface. See **{{TODO}}** for examples of these generated atoms.
+* Describes each of the commands declared in the API. Each command in the API file produces a Go struct that implements the Atom interface.
 
-* Implements the `Atom.Mutate()` method on each command, which performs the necessary mutations to the state object provided in the call. See **{{TODO}}** for examples of these generated mutate methods.
+* Implements the `Atom.Mutate()` method on each command, which performs the necessary mutations to the state object provided in the call.
 
 ## State mutation
 
-The generated `Atom.Mutate()` methods simulate the execution of the command by mutating the provided State object, and applying any memory Observations to the memory pools. Examples of this generated code can be found with the **{{TODO}}**, generated from the `gles.api` file and the **{{TODO}}**.
+The generated `Atom.Mutate()` methods simulate the execution of the command by mutating the provided State object, and applying any memory Observations to the memory pools.
 
 This state mutation is essential for much of the GAPIS functionality - it performs the work to get a default-initialized state to a particular point in the capture.
 
@@ -90,7 +90,7 @@ Application-allocated memory is often handed to the graphics driver. Commands li
 
 In order to reduce the number of small allocations required in a replay, a pass is performed over all the atoms, and all the overlapping observed memory ranges in the capture are merged into the fewest number of allocations required to encapsulate all observations. Replay pointers are then adjusted to be relative to the start address of the merged block.
 
-![Memory Observations](./docs/observations.svg)
+![Memory Observations](docs/observations.svg)
 
 ### Memory Observations
 
@@ -203,9 +203,9 @@ Example transformations include:
 
 ## Client service
 
-GAPIS offers simultaneous connections from any number of clients. All client-server communication is performed through a REST-like, schema-based, proprietary RPC (**{{TODO}}**).
+GAPIS offers simultaneous connections from any number of clients. All client-server communication is performed through the [gRPC service interface](service/service.proto).
 
-The service relies heavily on resource identifiers and paths to refer to computed data. This means the list of RPC functions is relatively small. The full list of RPC service functions can be found in **{{TODO}}**.
+The service relies heavily on resource identifiers and paths to refer to computed data. This means the list of RPC functions is relatively small when considering the number of different queries the client can make.
 
 
 ## Schema
@@ -214,14 +214,14 @@ One of the goals of the GAPID project is to keep the clients simple to implement
 
 The client does however need to display the commands (and arguments) that make up a capture, the state structure and the information that links one value to another (for example, a texture ID to texture object).
 
-**{{TODO}}**: GAPIS exposes the `GetSchema()` RPC function to describe the all the types used by all graphics APIs understood by the server. The returned value of GetSchema holds all the class information and named constants used by the stream. This information contains everything the client needs to decode the object serialized by the other RPC calls.
+GAPIS exposes the `GetSchema()` RPC function to describe the all the types used by all graphics APIs understood by the server. The returned value of GetSchema holds all the class information and named constants used by the stream. This information contains everything the client needs to decode the object serialized by the other RPC calls.
 
-The **{{TODO}}** package contains all the Schema types.
+The [framework/binary/schema](../framework/binary/schema) package contains all the Schema types.
 
 
 ## Paths
 
-Paths are well defined set of encodable objects that can be chained to describe a reference to some object or data held by the server. The list of path object types can be found in the **{{TODO}}** package.
+Paths are well defined set of encodable objects that can be chained to describe a reference to some object or data held by the server. The list of path object types can be found in [gapis/service/path/path.proto](service/path/path.proto).
 
 A path is resolved using the RPC `Get()`, and the object returned is guaranteed to be the same with subsequent calls.
 
