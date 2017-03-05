@@ -34,7 +34,7 @@
 In a terminal elevated to Administrator type:
 ```
 go get github.com/google/gapid
-cd %GOPATH%\src\google\gapid
+cd %GOPATH%\src\github.com\google\gapid
 git submodule update --init
 ```
 The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
@@ -42,7 +42,7 @@ The `go get` and `git submodule` commands will fetch the source of this project 
 ### Configure build
 In a terminal elevated to Administrator type:
 ```
-cd %GOPATH%\src\google\gapid
+cd %GOPATH%\src\github.com\google\gapid
 do config
 ```
 And follow the instructions to configure the build.
@@ -50,7 +50,7 @@ And follow the instructions to configure the build.
 ### Building
 In a terminal elevated to Administrator type:
 ```
-cd %GOPATH%\src\google\gapid
+cd %GOPATH%\src\github.com\google\gapid
 do build
 ```
 The build output will be in the directory you specified with `do config`.
@@ -83,7 +83,7 @@ The build output will be in the directory you specified with `do config`.
 In a terminal type:
 ```
 go get github.com/google/gapid
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 git submodule update --init
 ```
 The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
@@ -91,7 +91,7 @@ The `go get` and `git submodule` commands will fetch the source of this project 
 ### Configure build
 In a terminal type:
 ```
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 ./do config
 ```
 And follow the instructions to configure the build.
@@ -99,7 +99,7 @@ And follow the instructions to configure the build.
 ### Building
 In a terminal type:
 ```
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 ./do build
 ```
 The build output will be in the directory you specified with `do config`.
@@ -132,7 +132,7 @@ The build output will be in the directory you specified with `do config`.
 In a terminal type:
 ```
 go get github.com/google/gapid
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 git submodule update --init
 ```
 The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
@@ -140,7 +140,7 @@ The `go get` and `git submodule` commands will fetch the source of this project 
 ### Configure build
 In a terminal type:
 ```
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 ./do config
 ```
 And follow the instructions to configure the build.
@@ -148,7 +148,7 @@ And follow the instructions to configure the build.
 ### Building
 In a terminal type:
 ```
-cd $GOPATH/src/google/gapid
+cd $GOPATH/src/github.com/google/gapid
 ./do build
 ```
 The build output will be in the directory you specified with `do config`.
