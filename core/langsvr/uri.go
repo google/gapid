@@ -34,5 +34,5 @@ func URItoPath(uri string) (string, error) {
 
 // PathToURI returns the URI for the absolute filepath
 func PathToURI(path string) string {
-	return "file://" + path
+	return "file://" + filepath.ToSlash(path)
 }
