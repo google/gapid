@@ -31,7 +31,7 @@
 ### Install [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 
 ### Get the source
-In a terminal elevated to Administrator type:
+In a terminal type:
 ```
 go get github.com/google/gapid
 cd %GOPATH%\src\github.com\google\gapid
@@ -40,7 +40,7 @@ git submodule update --init
 The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
 
 ### Configure build
-In a terminal elevated to Administrator type:
+In a terminal type:
 ```
 cd %GOPATH%\src\github.com\google\gapid
 do config
@@ -48,7 +48,7 @@ do config
 And follow the instructions to configure the build.
 
 ### Building
-In a terminal elevated to Administrator type:
+In a terminal type:
 ```
 cd %GOPATH%\src\github.com\google\gapid
 do build
