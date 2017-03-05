@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "vulkan_spy.h"
+#include "gapii/cc/vulkan_spy.h"
 #include <map>
 #include <deque>
 

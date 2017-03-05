@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "gles_gfx_api.h"
+#include "gapir/cc/gles_gfx_api.h"
 #include "gles_renderer.h"
 
 #include "server_connection.h"
