@@ -90,7 +90,7 @@ Application-allocated memory is often handed to the graphics driver. Commands li
 
 In order to reduce the number of small allocations required in a replay, a pass is performed over all the atoms, and all the overlapping observed memory ranges in the capture are merged into the fewest number of allocations required to encapsulate all observations. Replay pointers are then adjusted to be relative to the start address of the merged block.
 
-![Memory Observations](./images/observations.svg)
+![Memory Observations](./docs/observations.svg)
 
 ### Memory Observations
 
