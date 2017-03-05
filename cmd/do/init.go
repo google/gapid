@@ -37,9 +37,9 @@ func doInit(ctx log.Context, options InitOptions) Config {
 func initOutput(ctx log.Context, cfg *Config, options InitOptions) {
 	file.Mkdir(cfg.bin())
 	file.Mkdir(cfg.pkg())
-	must(file.Relink(cfg.OutRoot.Join("current"), cfg.out()))
-	must(file.Relink(cfg.OutRoot.Join("bin"), cfg.bin()))
-	must(file.Relink(cfg.OutRoot.Join("pkg"), cfg.pkg()))
+	must(file.Relink(cfg.OutRoot.Join("current"), cfg.out(), file.Junction))
+	must(file.Relink(cfg.OutRoot.Join("bin"), cfg.bin(), file.Junction))
+	must(file.Relink(cfg.OutRoot.Join("pkg"), cfg.pkg(), file.Junction))
 }
 
 func initBuildVersion(ctx log.Context, cfg *Config, options InitOptions) {

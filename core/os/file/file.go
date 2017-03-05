@@ -40,17 +40,24 @@ func RemoveAll(f Path) error {
 	return os.RemoveAll(f.value)
 }
 
-func Symlink(dst, src Path) error {
-	return os.Symlink(src.value, dst.value)
+// Symlink creates a new symbolic-link at link to target.
+func Symlink(link, target Path) error {
+	return os.Symlink(target.value, link.value)
 }
 
-func Relink(dst, src Path) error {
-	if dst.Exists() {
-		if err := Remove(dst); err != nil {
+// Link creates a new hard-link at link to target.
+func Link(link, target Path) error {
+	return os.Link(target.value, link.value)
+}
+
+// Relink repoints link to target using the provided linking function.
+func Relink(link, target Path, method func(link, target Path) error) error {
+	if link.Exists() {
+		if err := Remove(link); err != nil {
 			return err
 		}
 	}
-	return Symlink(dst, src)
+	return method(link, target)
 }
 
 // Move moves the file at src to dst.
