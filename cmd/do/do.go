@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-
 	"strings"
 
 	"github.com/google/gapid/core/app"
