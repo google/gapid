@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"unicode"
 
-	"github.com/google/gapid/core/gapil/snippets"
+	"github.com/google/gapid/gapil/snippets"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/cyclic"
 	"github.com/google/gapid/framework/binary/registry"

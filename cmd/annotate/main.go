@@ -22,9 +22,9 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault/cause"
-	"github.com/google/gapid/core/gapil"
-	"github.com/google/gapid/core/gapil/annotate"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil"
+	"github.com/google/gapid/gapil/annotate"
 )
 
 const maxErrors = 10

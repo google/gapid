@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
-	_ "github.com/google/gapid/core/gapil/snippets"
+	_ "github.com/google/gapid/gapil/snippets"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/registry"
 	"github.com/google/gapid/gapis/atom"
