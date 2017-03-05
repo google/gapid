@@ -161,7 +161,7 @@ the corresponding read() and write() logic on src and dst, respectively.
 
 The copy statement is an implicit pre and post-fence statement.
 
-fence
+#### fence
 
 Statements need to be split into those that are executed before the call to the
 function, and those that need to be executed after the call to the function.
