@@ -41,7 +41,7 @@ In order to solve these issues, GAPII contains a state-mutator code-generated fr
 
 Each intercepted function needs to call the real driver function and also perform state-mutator logic based on the parameters (and sometimes the return value) of the call. Because the state-mutator is imitating the driver to track driver state based on inputs and outputs of the call, the state-mutation logic needs to be split into pre-call and post-call statements. The splitting point between the pre and post statements is called a **fence**, and this is the point where the call to the real driver is made.
 
-Pre-call statements may include memory observations on the pointer arguments handed to the function. Post-call statements may include logic dependent on the return value of the call. More details about fences can be found here **{{TODO}}**.
+Pre-call statements may include memory observations on the pointer arguments handed to the function. Post-call statements may include logic dependent on the return value of the call. More details about fences can be [found here](../gapil/README.md#fence).
 
 
 ## Thread handling
