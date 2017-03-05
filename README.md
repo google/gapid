@@ -10,6 +10,19 @@ Vulkan is still a work in progress. Current status can be found [here](docs/vulk
 ## Building
 See [Building GAPID](docs/building.md).
 
+## Running the client
+
+<table>
+  <tr>
+    <th>Windows</th>
+    <th>MacOS / Linux</th>
+  </tr>
+  <tr>
+    <td><pre>cd %GOPATH%\src\github.com\google\gapid<br>do run gapic</pre></td>
+    <td><pre>cd $GOPATH/src/github.com/google/gapid<br>./do run gapic</pre></td>
+  </tr>
+</table>
+
 ## Overview
 GAPID consists of the following sub-components:
 
