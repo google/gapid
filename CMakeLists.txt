@@ -62,6 +62,7 @@ build_subdirectory(cmd)
 
 build_subdirectory(core)
 build_subdirectory(gapii)
+build_subdirectory(gapil)
 build_subdirectory(gapir)
 build_subdirectory(gapis)
 build_subdirectory(gapidapk)
@@ -78,7 +79,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 # generation steps.
 # Might have to add an explicit dependancy on codergen-all to fix it.
 codergen(
-    core/gapil/snippets
+    gapil/snippets
     framework/binary/any
     framework/binary/test
     gapis/atom

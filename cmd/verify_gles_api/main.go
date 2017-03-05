@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/gapil"
-	"github.com/google/gapid/core/gapil/resolver"
-	"github.com/google/gapid/core/gapil/semantic"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil"
+	"github.com/google/gapid/gapil/resolver"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 var (

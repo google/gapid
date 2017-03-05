@@ -1,0 +1,40 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package snippets;
+option go_package = "github.com/google/gapid/gapil/snippets";
+option java_package = "com.google.gapid.proto.service.snippets";
+option java_outer_classname = "SnippetsProtos";
+
+// ObservationType specifies whether the observation was a read or a write.
+enum ObservationType {
+    Read = 0;
+    Write = 1;
+}
+
+// PartKind represents the different ways that a part can be embedded in a container.
+enum PartKind {
+    Key = 0; // The key of a map, slice or array
+    Elem = 1; // The element of a map, slice or array
+    Range = 2; // The range over a slice
+}
+
+
+enum SymbolCategory {
+    Global = 0;
+    Local = 1;
+    Parameter = 2;
+}

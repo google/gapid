@@ -25,10 +25,10 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/gapil/format"
-	"github.com/google/gapid/core/gapil/parser"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/format"
+	"github.com/google/gapid/gapil/parser"
 )
 
 func init() {

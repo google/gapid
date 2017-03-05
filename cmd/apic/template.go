@@ -24,9 +24,9 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
-	"github.com/google/gapid/core/gapil"
-	"github.com/google/gapid/core/gapil/template"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil"
+	"github.com/google/gapid/gapil/template"
 )
 
 var (

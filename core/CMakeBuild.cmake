@@ -14,7 +14,6 @@
 
 build_subdirectory(cc)
 build_subdirectory(data)
-build_subdirectory(gapil)
 build_subdirectory(os)
 build_subdirectory(text)
 build_subdirectory(vulkan)

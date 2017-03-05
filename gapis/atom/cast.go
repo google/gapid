@@ -20,7 +20,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/gapid/core/gapil/snippets"
+	"github.com/google/gapid/gapil/snippets"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
