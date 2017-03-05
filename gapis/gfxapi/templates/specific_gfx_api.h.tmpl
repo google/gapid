@@ -33,7 +33,7 @@
 #ifndef GAPIR_{{Upper (Global "API")}}_GFX_API_H
 #define GAPIR_{{Upper (Global "API")}}_GFX_API_H
 ¶
-#include "gfx_api.h"
+#include "gapir/cc/gfx_api.h"
 ¶
 #include "core/cc/static_array.h"
 #include "core/cc/target.h"
@@ -99,7 +99,7 @@ class {{Title (Global "API")}} : public Api {
     {{end}}¶
   {{end}}
 ¶
-  #include "{{Global "API"}}_gfx_api.inl"
+  #include "gapir/cc/{{Global "API"}}_gfx_api.inl"
 ¶
 «private:»
   {{range $c := AllCommands $}}

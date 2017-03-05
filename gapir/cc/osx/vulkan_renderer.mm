@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "../vulkan_gfx_api.h"
-#include "../vulkan_renderer.h"
+#include "gapir/cc/vulkan_gfx_api.h"
+#include "gapir/cc/vulkan_renderer.h"
 
 namespace gapir {
 namespace {

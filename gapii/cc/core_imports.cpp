@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "core_imports.h"
+#include "gapii/cc/core_imports.h"
 
 namespace gapii {
 

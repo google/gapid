@@ -15,7 +15,7 @@
  */
 
 #include "context.h"
-#include "gles_gfx_api.h"
+#include "gapir/cc/gles_gfx_api.h"
 #include "gles_renderer.h"
 #include "interpreter.h"
 #include "memory_manager.h"
@@ -25,7 +25,7 @@
 #include "resource_in_memory_cache.h"
 #include "server_connection.h"
 #include "stack.h"
-#include "vulkan_gfx_api.h"
+#include "gapir/cc/vulkan_gfx_api.h"
 #include "vulkan_renderer.h"
 
 #include "core/cc/log.h"

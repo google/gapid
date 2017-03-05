@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <gapir/cc/context.h>
-#include <gapir/cc/memory_manager.h>
-#include <gapir/cc/resource_disk_cache.h>
-#include <gapir/cc/resource_in_memory_cache.h>
-#include <gapir/cc/resource_requester.h>
-#include <gapir/cc/server_connection.h>
-#include <gapir/cc/server_listener.h>
+#include "gapir/cc/context.h"
+#include "gapir/cc/memory_manager.h"
+#include "gapir/cc/resource_disk_cache.h"
+#include "gapir/cc/resource_in_memory_cache.h"
+#include "gapir/cc/resource_requester.h"
+#include "gapir/cc/server_connection.h"
+#include "gapir/cc/server_listener.h"
 
 #include "core/cc/connection.h"
 #include "core/cc/log.h"
