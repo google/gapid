@@ -88,6 +88,9 @@ void SpyOverride_RecreateCmdDispatch(VkCommandBuffer, uint32_t, uint32_t, uint32
 void SpyOverride_RecreateCmdSetScissor(VkCommandBuffer, uint32_t, uint32_t, const VkRect2D*) {}
 void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*) {}
 
+void SpyOverride_RecreateCmdDrawIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}
+void SpyOverride_RecreateCmdDrawIndexedIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}
+
 void SpyOverride_RecreateXCBSurfaceKHR(VkDevice, const VkXcbSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 void SpyOverride_RecreateAndroidSurfaceKHR(VkDevice, const VkAndroidSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 

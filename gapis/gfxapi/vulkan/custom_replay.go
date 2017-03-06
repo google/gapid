@@ -457,6 +457,28 @@ func (a *RecreateCmdDispatch) Mutate(ctx log.Context, s *gfxapi.State, b *builde
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdDrawIndirect) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDrawIndirect(
+		a.CommandBuffer,
+		a.Buffer,
+		a.Offset,
+		a.DrawCount,
+		a.Stride)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDrawIndexedIndirect(
+		a.CommandBuffer,
+		a.Buffer,
+		a.Offset,
+		a.DrawCount,
+		a.Stride)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdCopyBufferToImage(
 		a.CommandBuffer,

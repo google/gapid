@@ -190,6 +190,28 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindIndexBufferData>
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndirectData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDrawIndirectData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
+    spy->RecreateCmdDrawIndirect(observer, commandBuf,
+        t->mBuffer, t->mOffset, t->mDrawCount, t->mStride);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndexedIndirectData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDrawIndexedIndirectData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
+    spy->RecreateCmdDrawIndexedIndirect(observer, commandBuf,
+        t->mBuffer, t->mOffset, t->mDrawCount, t->mStride);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {
