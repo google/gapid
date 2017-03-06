@@ -190,6 +190,36 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindIndexBufferData>
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndirectData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDrawIndirectData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
+    spy->RecreateCmdDrawIndirect(observer, commandBuf,
+        t->mBuffer, t->mOffset, t->mDrawCount, t->mStride);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndexedIndirectData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDrawIndexedIndirectData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
+    spy->RecreateCmdDrawIndexedIndirect(observer, commandBuf,
+        t->mBuffer, t->mOffset, t->mDrawCount, t->mStride);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetDepthBiasData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetDepthBiasData>& t) {
+    spy->RecreateCmdSetDepthBias(observer, commandBuf,
+        t->mDepthBiasConstantFactor, t->mDepthBiasClamp, t->mDepthBiasSlopeFactor);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {
@@ -218,6 +248,37 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdCopyImageData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdCopyImageData>& t) {
+    if (!spy->Images.count(t->mSrcImage) ||
+        !spy->Images.count(t->mDstImage)) {
+        return;
+    }
+    std::vector<VkImageCopy> buffers;
+    for (size_t i = 0; i < t->mRegions.size(); ++i) {
+        buffers.push_back(t->mRegions[i]);
+    }
+    spy->RecreateCmdCopyImage(observer, commandBuf,
+        t->mSrcImage, t->mSrcImageLayout,
+        t->mDstImage, t->mDstImageLayout,
+        buffers.size(), buffers.data());
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdPushConstantsData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdPushConstantsData>& t) {
+    if (!spy->PipelineLayouts.count(t->mLayout)) {
+        return;
+    }
+    spy->RecreateCmdPushConstants(observer, commandBuf,
+        t->mLayout, t->mStageFlags,
+        t->mOffset, t->mSize,
+        t->pushConstantData.data());
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetScissorData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdSetScissorData>& t) {
@@ -241,13 +302,20 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetViewportData>>::o
         t->mFirstViewport, viewports.size(), viewports.data());
 }
 
-
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdDrawData>& t) {
     spy->RecreateCmdDraw(observer, commandBuf,
         t->mVertexCount, t->mInstanceCount, t->mFirstVertex, t->mFirstInstance);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDispatchData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDispatchData>& t) {
+    spy->RecreateCmdDispatch(observer, commandBuf,
+        t->mX, t->mY, t->mZ);
 }
 
 template<>

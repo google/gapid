@@ -447,6 +447,48 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx log.Context, s *gfxapi.State, b *bui
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdDispatch) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDispatch(
+		a.CommandBuffer,
+		a.X,
+		a.Y,
+		a.Z)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDrawIndirect) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDrawIndirect(
+		a.CommandBuffer,
+		a.Buffer,
+		a.Offset,
+		a.DrawCount,
+		a.Stride)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDrawIndexedIndirect(
+		a.CommandBuffer,
+		a.Buffer,
+		a.Offset,
+		a.DrawCount,
+		a.Stride)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdSetDepthBias) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetDepthBias(
+		a.CommandBuffer,
+		a.DepthBiasConstantFactor,
+		a.DepthBiasClamp,
+		a.DepthBiasSlopeFactor)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdCopyBufferToImage(
 		a.CommandBuffer,
@@ -455,6 +497,31 @@ func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, 
 		a.DstImageLayout,
 		a.RegionCount,
 		memory.Pointer(a.PRegions))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdCopyImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdCopyImage(
+		a.CommandBuffer,
+		a.SrcImage,
+		a.SrcImageLayout,
+		a.DstImage,
+		a.DstImageLayout,
+		a.RegionCount,
+		memory.Pointer(a.PRegions))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdPushConstants) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdPushConstants(
+		a.CommandBuffer,
+		a.Layout,
+		a.StageFlags,
+		a.Offset,
+		a.Size,
+		memory.Pointer(a.PValues))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
@@ -653,6 +720,14 @@ func (a *RecreateGraphicsPipeline) Mutate(ctx log.Context, s *gfxapi.State, b *b
 	pCreateInfo := memory.Pointer(a.PCreateInfo)
 	pPipeline := memory.Pointer(a.PPipeline)
 	hijack := NewVkCreateGraphicsPipelines(a.Device, a.PipelineCache, uint32(1), pCreateInfo, memory.Pointer{}, pPipeline, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateComputePipeline) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	pCreateInfo := memory.Pointer(a.PCreateInfo)
+	pPipeline := memory.Pointer(a.PPipeline)
+	hijack := NewVkCreateComputePipelines(a.Device, a.PipelineCache, uint32(1), pCreateInfo, memory.Pointer{}, pPipeline, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }

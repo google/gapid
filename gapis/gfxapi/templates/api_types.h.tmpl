@@ -123,6 +123,7 @@
   {{$is_shader_module := (eq $.Name "ShaderModuleObject")}}
   {{$is_specialization_info := (eq $.Name "SpecializationInfo")}}
   {{$is_update_buffer := (eq $.Name "RecreateUpdateBufferData")}}
+  {{$is_push_constants := (eq $.Name "RecreateCmdPushConstantsData")}}
   {{range $f := $.Fields}}
     {{Template "DeclareType" (TypeOf $f)}}
   {{end}}
@@ -175,6 +176,9 @@
     {{end}}
     {{if $is_update_buffer}}
       std::vector<uint8_t> bufferData;
+    {{end}}
+    {{if $is_push_constants}}
+      std::vector<uint8_t> pushConstantData;
     {{end}}
   };
 {{end}}

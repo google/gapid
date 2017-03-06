@@ -3708,7 +3708,6 @@ class CreatedGraphicsPipelines {
   map!(u32, ref!GraphicsPipelineObject) Objects
 }
 
-
 @override
 @custom
 @no_replay
@@ -3994,6 +3993,30 @@ cmd VkResult vkCreateGraphicsPipelines(
   return ?
 }
 
+@internal
+class CreatedComputePipelines {
+  map!(u32, ref!ComputePipelineObject) Objects
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateComputePipeline(
+    VkDevice                           device,
+    VkPipelineCache                    pipelineCache,
+    const VkComputePipelineCreateInfo* pCreateInfo,
+    VkPipeline*                        pPipeline) {
+  create_info := pCreateInfo[0]
+  _ = as!string(create_info.stage.pName)
+  if (create_info.stage.pSpecializationInfo != null) {
+    spec_info := create_info.stage.pSpecializationInfo[0]
+    read(spec_info.pMapEntries[0:spec_info.mapEntryCount])
+    read(as!char*(spec_info.pData)[0:spec_info.dataSize])
+  }
+
+  write(pPipeline[0:1])
+}
+
 @indirect("VkDevice")
 cmd VkResult vkCreateComputePipelines(
     VkDevice                           device,
@@ -4002,28 +4025,58 @@ cmd VkResult vkCreateComputePipelines(
     const VkComputePipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*       pAllocator,
     VkPipeline*                        pPipelines) {
+  created_pipelines := CreatedComputePipelines()
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
-    // TODO: infos[i].pNext
-    stage := infos[i].stage
-    // TODO: stage.pNext
-    _ = as!string(stage.pName)
-    if stage.pSpecializationInfo != null {
-      specInfo := stage.pSpecializationInfo[0]
-      read(specInfo.pMapEntries[0:specInfo.mapEntryCount])
-      if specInfo.dataSize != as!size(0) {
-        read(as!u8*(specInfo.pData)[0:specInfo.dataSize])
+    info := infos[i]
+    obj := new!ComputePipelineObject(
+      PipelineCache: PipelineCaches[pipelineCache],
+      Device: device,
+      Flags: info.flags,
+      PipelineLayout: PipelineLayouts[info.layout]
+    )
+    stage_create_info := infos[i].stage
+    stage_data := StageData(
+      Stage: stage_create_info.stage,
+      Module: ShaderModules[stage_create_info.module],
+      EntryPoint: as!string(stage_create_info.pName),
+    )
+    if (stage_create_info.pSpecializationInfo != null) {
+      spec_info := stage_create_info.pSpecializationInfo[0]
+      spec_data := new!SpecializationInfo()
+      spec_map := spec_info.pMapEntries[0:spec_info.mapEntryCount]
+      for k in (0 .. spec_info.mapEntryCount) {
+        spec_data.Specializations[k] = spec_map[k]
       }
+      read(as!char*(spec_info.pData)[0:spec_info.dataSize])
+      setSpecData(spec_data, spec_info.dataSize, spec_info.pData)
+      stage_data.Specialization = spec_data
     }
+    obj.Stage = stage_data
+    if ((as!u32(info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
+      if (info.basePipelineIndex != -1) {
+        obj.BasePipelineIndex = info.basePipelineIndex
+      } else {
+        obj.BasePipeline = info.basePipelineHandle
+      }
+    } else {
+      obj.BasePipelineIndex = 0
+      obj.BasePipeline = as!VkPipeline(0)
+    }
+    created_pipelines.Objects[i] = obj
   }
   // TODO: pAllocator
 
   pipelines := pPipelines[0:createInfoCount]
   for i in (0 .. createInfoCount) {
-    handle := ?
-    pipelines[i] = handle
-    ComputePipelines[handle] = new!ComputePipelineObject(device, handle)
-  }
+      pipeline := ?
+      pipelines[i] = pipeline
+      created_pipelines.Objects[i].VulkanHandle = pipeline
+      if (created_pipelines.Objects[i].BasePipelineIndex != -1) {
+        created_pipelines.Objects[i].BasePipeline = pipelines[created_pipelines.Objects[i].BasePipelineIndex]
+      }
+      ComputePipelines[pipeline] = created_pipelines.Objects[i]
+    }
 
   return ?
 }
@@ -5052,6 +5105,13 @@ extern ref!RecreateUpdateBufferData createUpdateBufferData(
   VkDeviceSize    dataSize
   const void*     data)
 
+extern ref!RecreateCmdPushConstantsData createPushConstantsData(
+  VkPipelineLayout   layout,
+  VkShaderStageFlags stageFlags,
+  u32                offset,
+  u32                size,
+  const void*        pValues)
+
 sub void doCmdBindPipeline(CmdBindPipeline args) {
   switch args.PipelineBindPoint {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
@@ -5143,6 +5203,26 @@ cmd void vkCmdSetLineWidth(
     f32             lineWidth) {
 }
 
+@internal
+class RecreateCmdSetDepthBiasData{
+  f32             DepthBiasConstantFactor
+  f32             DepthBiasClamp
+  f32             DepthBiasSlopeFactor
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetDepthBias(
+    VkCommandBuffer commandBuffer,
+    f32             depthBiasConstantFactor
+    f32             depthBiasClamp
+    f32             depthBiasSlopeFactor) {
+}
+
+sub void doCmdSetDepthBias(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetDepthBias(
@@ -5150,6 +5230,11 @@ cmd void vkCmdSetDepthBias(
     f32             depthBiasConstantFactor,
     f32             depthBiasClamp,
     f32             depthBiasSlopeFactor) {
+  addCmd(commandBuffer, new!RecreateCmdSetDepthBiasData(
+    depthBiasConstantFactor,
+    depthBiasClamp,
+    depthBiasSlopeFactor
+  ), as!u32(0), doCmdSetDepthBias)
 }
 
 @threadSafety("app")
@@ -5599,6 +5684,28 @@ cmd void vkCmdDrawIndexed(
   ), CmdDrawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance), doCmdDrawIndexed)
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDrawIndirect(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    u32             drawCount,
+    u32             stride) {
+}
+
+@internal class
+RecreateCmdDrawIndirectData {
+    VkBuffer        Buffer
+    VkDeviceSize    Offset
+    u32             DrawCount
+    u32             Stride
+}
+
+sub void doCmdDrawIndirect(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDrawIndirect(
@@ -5607,6 +5714,31 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDrawIndirectData(buffer, offset, drawCount, stride),
+    as!u32(0), doCmdDrawIndirect)
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDrawIndexedIndirect(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    u32             drawCount,
+    u32             stride) {
+}
+
+@internal class
+RecreateCmdDrawIndexedIndirectData {
+    VkBuffer        Buffer
+    VkDeviceSize    Offset
+    u32             DrawCount
+    u32             Stride
+}
+
+sub void doCmdDrawIndexedIndirect(u32 unused) {
 }
 
 @threadSafety("app")
@@ -5617,6 +5749,29 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDrawIndexedIndirectData(buffer, offset, drawCount, stride),
+    as!u32(0), doCmdDrawIndirect)
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDispatch(
+    VkCommandBuffer commandBuffer,
+    u32             x,
+    u32             y,
+    u32             z) {
+}
+
+@internal class
+RecreateCmdDispatchData {
+    u32             X,
+    u32             Y,
+    u32             Z
+}
+
+sub void doCmdDispatch(u32 unused) {
 }
 
 @threadSafety("app")
@@ -5626,6 +5781,8 @@ cmd void vkCmdDispatch(
     u32             x,
     u32             y,
     u32             z) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDispatchData(x, y, z), as!u32(0), doCmdDispatch)
 }
 
 @threadSafety("app")
@@ -5765,6 +5922,29 @@ sub void doCmdCopyImage(CmdCopyImage args) {
   }
 }
 
+@internal
+class RecreateCmdCopyImageData{
+  VkImage            SrcImage
+  VkImageLayout      SrcImageLayout
+  VkImage            DstImage
+  VkImageLayout      DstImageLayout
+  map!(u32, VkImageCopy) Regions
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdCopyImage(
+    VkCommandBuffer commandBuffer,
+    VkImage            srcImage,
+    VkImageLayout      srcImageLayout,
+    VkImage            dstImage,
+    VkImageLayout      dstImageLayout,
+    u32                regionCount,
+    const VkImageCopy* pRegions) {
+  read(pRegions[0:regionCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyImage(
@@ -5775,12 +5955,19 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
+  recreate_data := new!RecreateCmdCopyImageData(
+    SrcImage: srcImage,
+    SrcImageLayout: srcImageLayout,
+    DstImage: dstImage,
+    DstImageLayout: dstImageLayout
+  )
   regions := pRegions[0:regionCount]
   copyArgs := CmdCopyImage(srcImage, dstImage)
   for i in (0 .. regionCount) {
     copyArgs.Regions[as!u64(i)] = regions[i]
+    recreate_data.Regions[as!u32(i)] = regions[i]
   }
-  addCmd(commandBuffer, Unimplemented(), copyArgs, doCmdCopyImage)
+  addCmd(commandBuffer, recreate_data, copyArgs, doCmdCopyImage)
 }
 
 @threadSafety("app")
@@ -6265,6 +6452,30 @@ cmd void vkCmdCopyQueryPoolResults(
     VkQueryResultFlags flags) {
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdPushConstants(
+    VkCommandBuffer    commandBuffer,
+    VkPipelineLayout   layout,
+    VkShaderStageFlags stageFlags,
+    u32                offset,
+    u32                size,
+    const void*        pValues) {
+  read(as!u8*(pValues)[0:size])
+}
+
+@internal class
+RecreateCmdPushConstantsData {
+  VkPipelineLayout   Layout,
+  VkShaderStageFlags StageFlags,
+  u32                Offset,
+  u32                Size,
+}
+
+sub void doCmdPushConstants(u32 unused) {
+}
+
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdPushConstants(
     VkCommandBuffer    commandBuffer,
@@ -6273,7 +6484,10 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  read(as!u8*(pValues)[offset:offset + size])
+  read(as!u8*(pValues)[0:size])
+  addCmd(commandBuffer, createPushConstantsData(
+    layout, stageFlags, offset, size, pValues
+  ), as!u32(0), doCmdPushConstants)
 }
 
 @override
@@ -6295,7 +6509,6 @@ RecreateCmdBeginRenderPassData {
   VkRect2D                      RenderArea,
   map!(u32, VkClearValue)       ClearValues
 }
-
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -7506,8 +7719,16 @@ enum RecordingState {
 }
 
 @internal class ComputePipelineObject {
-  @unused VkDevice   Device
-  @unused VkPipeline VulkanHandle
+  @unused VkDevice                                    Device
+  @unused VkPipeline                                  VulkanHandle
+  @unused ref!PipelineCacheObject                     PipelineCache
+  @unused VkPipelineCreateFlags                       Flags
+  @unused StageData                                   Stage
+  @unused ref!PipelineLayoutObject                    PipelineLayout
+  @unused VkPipeline                                  BasePipeline
+  // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
+  //       It will have been set for you correctly
+  @unused s32                                         BasePipelineIndex
 }
 
 @internal class PipelineLayoutObject {

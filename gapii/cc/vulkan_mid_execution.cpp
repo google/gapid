@@ -986,6 +986,39 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             RecreateShaderModule(observer, shaderModule.second->mDevice, &create_info, &shaderModule.second->mVulkanHandle);
         }
     }
+    for (auto& compute_pipeline: ComputePipelines) {
+        auto& pipeline = *compute_pipeline.second;
+        VkComputePipelineCreateInfo create_info = {};
+        create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        create_info.mflags = pipeline.mFlags;
+        create_info.mlayout = pipeline.mPipelineLayout->mVulkanHandle;
+        create_info.mbasePipelineHandle = pipeline.mBasePipeline;
+
+        VkSpecializationInfo specialization_info;
+        std::vector<VkSpecializationMapEntry> specialization_entries;
+        create_info.mstage.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        create_info.mstage.mstage = pipeline.mStage.mStage;
+        create_info.mstage.mmodule = pipeline.mStage.mModule->mVulkanHandle;
+
+        create_info.mstage.mpName = const_cast<char*>(pipeline.mStage.mEntryPoint.c_str());
+        if (pipeline.mStage.mSpecialization) {
+            specialization_info.mmapEntryCount = pipeline.mStage.mSpecialization->mSpecializations.size();
+            for (size_t j = 0; j < specialization_info.mmapEntryCount; ++j) {
+                specialization_entries.push_back(pipeline.mStage.mSpecialization->mSpecializations[j]);
+            }
+            specialization_info.mpMapEntries = specialization_entries.data();
+            specialization_info.mdataSize = pipeline.mStage.mSpecialization->specializationData.size();
+            specialization_info.mpData = pipeline.mStage.mSpecialization->specializationData.data();
+            create_info.mstage.mpSpecializationInfo = &specialization_info;
+        }
+        RecreateComputePipeline(
+            observer,
+            pipeline.mDevice,
+            pipeline.mPipelineCache->mVulkanHandle,
+            &create_info,
+            &pipeline.mVulkanHandle);
+    }
+
     for (auto& graphics_pipeline: GraphicsPipelines) {
         auto& pipeline = *graphics_pipeline.second;
         VkGraphicsPipelineCreateInfo create_info = {};

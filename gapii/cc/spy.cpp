@@ -160,6 +160,7 @@ uint32_t GetAlignment() {
 Spy::Spy()
   : mNumFrames(0)
   , mSuspendCaptureFrames(0)
+  , mCaptureFrames(0)
   , mNumDraws(0)
   , mNumDrawsPerFrame(0)
   , mObserveFrameFrequency(0)
@@ -386,6 +387,12 @@ void Spy::onPreEndOfFrame() {
 }
 
 void Spy::onPostEndOfFrame(CallObserver* observer) {
+    if (!is_suspended() && mCaptureFrames >= 1) {
+        mCaptureFrames -= 1;
+        if (mCaptureFrames == 0) {
+            set_suspended(true);
+        }
+    }
     if (mSuspendCaptureFrames > 0) {
         if (is_suspended() && --mSuspendCaptureFrames == 0) {
             set_suspended(false);
