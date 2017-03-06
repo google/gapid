@@ -73,6 +73,10 @@ public class Logging {
     Logger.getLogger("com.google.gapid").setLevel(logLevel.get().level);
   }
 
+  public static File getLogDir() {
+    return logDir.get().isEmpty() ? null : new File(logDir.get());
+  }
+
   private static class LogFormatter extends Formatter {
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmssSSS");
 
