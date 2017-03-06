@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
+
 # GAPID: **G**raphics **API** **D**ebugger
 
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver. 
