@@ -241,13 +241,20 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetViewportData>>::o
         t->mFirstViewport, viewports.size(), viewports.data());
 }
 
-
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdDrawData>& t) {
     spy->RecreateCmdDraw(observer, commandBuf,
         t->mVertexCount, t->mInstanceCount, t->mFirstVertex, t->mFirstInstance);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdDispatchData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdDispatchData>& t) {
+    spy->RecreateCmdDispatch(observer, commandBuf,
+        t->mX, t->mY, t->mZ);
 }
 
 template<>
