@@ -1167,15 +1167,20 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
-	image := a.PImage.Read(ctx, a, s, b)
+	return nil
+}
+
+func (a *RecreateBindAndFillImageMemory) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory[memory.ApplicationPool])
 
 	if a.Memory != VkDeviceMemory(0) {
-		if err := NewVkBindImageMemory(a.Device, image, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
+		if err := NewVkBindImageMemory(a.Device, a.Image, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 	}
 
-	imageObject := GetState(s).Images[image]
+	imageObject := GetState(s).Images[a.Image]
 	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 		queueObject := GetState(s).Queues[a.LastBoundQueue]
 		device := queueObject.Device
@@ -1194,7 +1199,7 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 		srcLayout := VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
 
 		if a.Data != NewVoidᵖ(0) {
-			create_info := a.PCreateInfo.Read(ctx, a, s, b)
+			imageInfo := imageObject.Info
 			bufferId, memoryId, err = createAndBindSourceBuffer(ctx, s, b, device, a.DataSize, a.HostMemoryIndex)
 			if err != nil {
 				return err
@@ -1215,7 +1220,7 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 			if err := createImageTransition(ctx, s, b,
 				srcLayout,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				image,
+				a.Image,
 				imageObject.ImageAspect,
 				commandBuffer); err != nil {
 				return err
@@ -1223,13 +1228,13 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 			srcLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			copies := []VkBufferImageCopy{}
 
-			block_info, _ := subGetElementAndTexelBlockSize(ctx, a, nil, nil, nil, nil, create_info.Format)
+			block_info, _ := subGetElementAndTexelBlockSize(ctx, a, nil, nil, nil, nil, imageInfo.Format)
 			offset := VkDeviceSize(0)
 
-			for i := uint32(0); i < create_info.MipLevels; i++ {
-				width, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, create_info.Extent.Width, 1<<i)
-				height, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, create_info.Extent.Height, 1<<i)
-				depth, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, create_info.Extent.Depth, 1<<i)
+			for i := uint32(0); i < imageInfo.MipLevels; i++ {
+				width, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Width, 1<<i)
+				height, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Height, 1<<i)
+				depth, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Depth, 1<<i)
 				width_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, width, block_info.TexelBlockSize.Width)
 				height_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, height, block_info.TexelBlockSize.Height)
 				copies = append(copies, VkBufferImageCopy{
@@ -1259,7 +1264,7 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 
 			pointer := atom.Must(atom.AllocData(ctx, s, copies))
 
-			copy := NewVkCmdCopyBufferToImage(commandBuffer, bufferId, image,
+			copy := NewVkCmdCopyBufferToImage(commandBuffer, bufferId, a.Image,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, uint32(len(copies)), pointer.Ptr())
 			copy.AddRead(pointer.Data())
 			if err := copy.Mutate(ctx, s, b); err != nil {
@@ -1272,7 +1277,7 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 		if err := createImageTransition(ctx, s, b,
 			srcLayout,
 			a.LastLayout,
-			image,
+			a.Image,
 			imageObject.ImageAspect,
 			commandBuffer); err != nil {
 			return err
@@ -1306,27 +1311,35 @@ func (a *RecreateImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Buil
 }
 
 func (a *RecreateBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	// ApplyReads() is necessary only because we need to access the Read
+	// observation data prior to calling the VkCreateBuffer's Mutate().
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
+
+	createInfo := a.PCreateInfo.Read(ctx, a, s, b)
+	createInfo.Usage = createInfo.Usage | VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+	createInfoData := atom.Must(atom.AllocData(ctx, s, createInfo))
+	defer createInfoData.Free()
 	allocator := memory.Pointer{}
 	pBuffer := memory.Pointer(a.PBuffer)
-
-	actualCreateInfo := a.PCreateInfo.Read(ctx, a, s, b)
-	actualCreateInfo.Usage = actualCreateInfo.Usage | VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-	actualCreateInfoData := atom.Must(atom.AllocData(ctx, s, actualCreateInfo))
-
-	hijack := NewVkCreateBuffer(a.Device, actualCreateInfoData.Ptr(), allocator, pBuffer, VkResult(0))
+	hijack := NewVkCreateBuffer(a.Device, createInfoData.Ptr(), allocator, pBuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
-	hijack.AddRead(actualCreateInfoData.Data())
+	hijack.AddRead(createInfoData.Data())
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
+	return nil
+}
 
-	buffer := a.PBuffer.Read(ctx, a, s, b)
-	actualCreateInfoData.Free()
+func (a *RecreateBindAndFillBufferMemory) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory[memory.ApplicationPool])
+
+	bufferObject := GetState(s).Buffers[a.Buffer]
+	bufferInfo := bufferObject.Info
 
 	if a.Memory != VkDeviceMemory(0) {
-		if err := NewVkBindBufferMemory(a.Device, buffer, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
+		if err := NewVkBindBufferMemory(a.Device, a.Buffer, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 	}
@@ -1337,20 +1350,19 @@ func (a *RecreateBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Bui
 		queueObject := GetState(s).Queues[queue]
 		device := queueObject.Device
 
-		create_info := a.PCreateInfo.Read(ctx, a, s, b)
-		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, s, b, device, create_info.Size, a.HostBufferMemoryIndex)
+		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, s, b, device, bufferInfo.Size, a.HostBufferMemoryIndex)
 		if err != nil {
 			return err
 		}
-		mappedLocation, mem, err := mapBufferMemory(ctx, s, b, a, device, create_info.Size, memoryId)
+		mappedLocation, mem, err := mapBufferMemory(ctx, s, b, a, device, bufferInfo.Size, memoryId)
 		if err != nil {
 			return err
 		}
 		mappedChars := U8ᵖ(mappedLocation)
 		dataP := U8ᵖ(a.Data)
-		mappedChars.Slice(uint64(0), uint64(create_info.Size), s).Copy(ctx, dataP.Slice(uint64(0), uint64(create_info.Size), s), a, s, b)
+		mappedChars.Slice(uint64(0), uint64(bufferInfo.Size), s).Copy(ctx, dataP.Slice(uint64(0), uint64(bufferInfo.Size), s), a, s, b)
 
-		if err := flushBufferMemory(ctx, s, b, device, create_info.Size, memoryId, mappedChars); err != nil {
+		if err := flushBufferMemory(ctx, s, b, device, bufferInfo.Size, memoryId, mappedChars); err != nil {
 			return err
 		}
 
@@ -1367,15 +1379,15 @@ func (a *RecreateBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Bui
 		bufferCopy := VkBufferCopy{
 			SrcOffset: VkDeviceSize(0),
 			DstOffset: VkDeviceSize(0),
-			Size:      create_info.Size,
+			Size:      bufferInfo.Size,
 		}
 		bufferData := atom.Must(atom.AllocData(ctx, s, bufferCopy))
-		if err := NewVkCmdCopyBuffer(commandBuffer, bufferId, buffer, 1, bufferData.Ptr()).
+		if err := NewVkCmdCopyBuffer(commandBuffer, bufferId, a.Buffer, 1, bufferData.Ptr()).
 			AddRead(bufferData.Data()).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 
-		if err := createBufferBarrier(ctx, s, b, bufferId, create_info.Size, commandBuffer); err != nil {
+		if err := createBufferBarrier(ctx, s, b, bufferId, bufferInfo.Size, commandBuffer); err != nil {
 			return err
 		}
 

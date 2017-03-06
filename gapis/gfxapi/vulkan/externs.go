@@ -135,3 +135,13 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size uint64) {}
+
+func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
+	counter := uint32(0)
+	for (pNext) != (Voidᶜᵖ{}) {
+		counter++
+		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), e.s).Index(uint64(1), e.s).Read(e.ctx, e.a, e.s, e.b)
+	}
+	return counter
+}
+

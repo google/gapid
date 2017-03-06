@@ -235,39 +235,131 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 &swapchain.second->mVulkanHandle);
         }
     }
-    for (auto& memory: DeviceMemories) {
-        auto& dm = memory.second;
-        VkDeviceMemory mem = memory.second->mVulkanHandle;
-        VkMemoryAllocateInfo allocate_info {
-            VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            nullptr, // pNext TODO: Handle
-                    //     VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV
-            dm->mAllocationSize,
-            dm->mMemoryTypeIndex
-        };
-        RecreateDeviceMemory(observer, dm->mDevice,
-         &allocate_info,
-         dm->mMappedOffset, dm->mMappedSize, &dm->mMappedLocation,
-         &mem);
-    }
+    // Recreate CreateBuffers
     {
-        VkBufferCreateInfo buffer_create_info = {};
+      VkBufferCreateInfo buffer_create_info{};
+      buffer_create_info.msType =
+          VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      for (auto& buffer : Buffers) {
+        BufferInfo& info = buffer.second->mInfo;
+        std::vector<uint32_t> queues(info.mQueueFamilyIndices.size());
+        for (size_t i = 0; i < info.mQueueFamilyIndices.size(); ++i) {
+          queues[i] = info.mQueueFamilyIndices[i];
+        }
+        buffer_create_info.mflags = info.mCreateFlags;
+        buffer_create_info.msize = info.mSize;
+        buffer_create_info.musage = info.mUsage;
+        buffer_create_info.msharingMode = info.mSharingMode;
+        buffer_create_info.mqueueFamilyIndexCount = queues.size();
+        buffer_create_info.mpQueueFamilyIndices = queues.data();
+
+        // Empty NV dedicated allocation struct
+        VkDedicatedAllocationBufferCreateInfoNV dedicated_allocation_create_info{
+            VkStructureType::
+                VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV,  // sType
+            nullptr,          // pNext
+            VkBool32(false),  // dedicatedAllocation
+        };
+        // If the buffer is created with Dedicated Allocation NV extension,
+        // we need to populate the pNext pointer here.
+        if (buffer.second->mInfo.mDedicatedAllocationNV) {
+          dedicated_allocation_create_info.mdedicatedAllocation =
+              buffer.second->mInfo.mDedicatedAllocationNV->mDedicatedAllocation;
+          buffer_create_info.mpNext =
+                  &dedicated_allocation_create_info;
+        }
+        RecreateBuffer(observer, buffer.second->mDevice,
+                             &buffer_create_info,
+                             &buffer.second->mVulkanHandle);
+      }
+    }
+
+    // Recreate CreateImages
+    {
+      VkImageCreateInfo image_create_info{};
+      image_create_info.msType =
+          VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+      for (auto& image : Images) {
+        if (image.second->mIsSwapchainImage) {
+          // Don't recreate the swapchain images
+          continue;
+        }
+        ImageInfo& info = image.second->mInfo;
+        std::vector<uint32_t> queues(info.mQueueFamilyIndices.size());
+        for (size_t i = 0; i < info.mQueueFamilyIndices.size(); ++i) {
+          queues[i] = info.mQueueFamilyIndices[i];
+        }
+        image_create_info.mflags = info.mFlags;
+        image_create_info.mimageType = info.mImageType;
+        image_create_info.mformat = info.mFormat;
+        image_create_info.mextent = info.mExtent;
+        image_create_info.mmipLevels = info.mMipLevels;
+        image_create_info.marrayLayers = info.mArrayLayers;
+        image_create_info.msamples = info.mSamples;
+        image_create_info.mtiling = info.mTiling;
+        image_create_info.musage = info.mUsage;
+        image_create_info.msharingMode = info.mSharingMode;
+        image_create_info.mqueueFamilyIndexCount = queues.size();
+        image_create_info.mpQueueFamilyIndices = queues.data();
+        image_create_info.minitialLayout =
+            VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+
+        // Empty NV dedicated allocation struct
+        VkDedicatedAllocationImageCreateInfoNV dedicated_allocation_create_info{
+            VkStructureType::
+                VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV,  // sType
+            nullptr,          // pNext
+            VkBool32(false),  // dedicatedAllocation
+        };
+        // If the buffer is created with Dedicated Allocation NV extension,
+        // we need to populate the pNext pointer here.
+        if (info.mDedicatedAllocationNV) {
+          dedicated_allocation_create_info.mdedicatedAllocation =
+              info.mDedicatedAllocationNV->mDedicatedAllocation;
+          image_create_info.mpNext =
+                  &dedicated_allocation_create_info;
+        }
+        RecreateImage(observer, image.second->mDevice, &image_create_info,
+                            &image.second->mVulkanHandle);
+      }
+    }
+
+    // Recreate AllocateMemory
+    for (auto& memory: DeviceMemories) {
+      // Empty NV dedicated allocation struct
+      VkDedicatedAllocationMemoryAllocateInfoNV dedicated_allocation_info{
+          VkStructureType::
+              VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV,  // sType
+          nullptr,                                    // pNext
+          VkImage(0),   // image
+          VkBuffer(0),  // buffer
+      };
+
+      auto& dm = memory.second;
+      VkDeviceMemory mem = memory.second->mVulkanHandle;
+      VkMemoryAllocateInfo allocate_info{
+          VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, nullptr,
+          dm->mAllocationSize, dm->mMemoryTypeIndex};
+
+      if (memory.second->mDedicatedAllocationNV) {
+          dedicated_allocation_info.mimage =
+            memory.second->mDedicatedAllocationNV->mImage;
+          dedicated_allocation_info.mbuffer =
+            memory.second->mDedicatedAllocationNV->mBuffer;
+          allocate_info.mpNext = &dedicated_allocation_info;
+      }
+
+      RecreateDeviceMemory(observer, dm->mDevice, &allocate_info,
+                           dm->mMappedOffset, dm->mMappedSize,
+                           &dm->mMappedLocation, &mem);
+    }
+
+    // Bind and Fill the "recreated" buffer memory
+    {
         VkBufferCreateInfo copy_info = {};
-        buffer_create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         copy_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         for(auto& buffer: Buffers) {
-
             BufferInfo& info = buffer.second->mInfo;
-            std::vector<uint32_t> queues(info.mQueueFamilyIndices.size());
-            for (size_t i = 0; i < info.mQueueFamilyIndices.size(); ++i) {
-                queues[i] = info.mQueueFamilyIndices[i];
-            }
-            buffer_create_info.mflags = info.mCreateFlags;
-            buffer_create_info.msize = info.mSize;
-            buffer_create_info.musage = info.mUsage;
-            buffer_create_info.msharingMode = info.mSharingMode;
-            buffer_create_info.mqueueFamilyIndexCount = queues.size();
-            buffer_create_info.mpQueueFamilyIndices = queues.data();
 
             std::shared_ptr<QueueObject> submit_queue;
             if (buffer.second->mLastBoundQueue) {
@@ -276,6 +368,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 for (auto& queue: Queues) {
                     if (queue.second->mDevice == buffer.second->mDevice) {
                         submit_queue = queue.second;
+                        break;
                     }
                 }
             }
@@ -296,27 +389,32 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
             if (buffer.second->mMemory) {
 
-                need_to_clean_up_temps = true;
-                VkPhysicalDeviceMemoryProperties properties;
-                mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceMemoryProperties(
-                    physical_device, &properties);
-                copy_info.msize = info.mSize;
-                copy_info.musage = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-                copy_info.msharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
-                device_functions.vkCreateBuffer(device, &copy_info, nullptr, &copy_buffer);
-                VkMemoryRequirements buffer_memory_requirements;
-                device_functions.vkGetBufferMemoryRequirements(device, copy_buffer,
-                    &buffer_memory_requirements);
-                uint32_t index = 0;
+              need_to_clean_up_temps = true;
+              VkPhysicalDeviceMemoryProperties properties;
+              mImports.mVkInstanceFunctions[instance]
+                  .vkGetPhysicalDeviceMemoryProperties(physical_device,
+                                                       &properties);
+              copy_info.msize = info.mSize;
+              copy_info.musage =
+                  VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+              copy_info.msharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+              device_functions.vkCreateBuffer(device, &copy_info, nullptr,
+                                              &copy_buffer);
+              VkMemoryRequirements buffer_memory_requirements;
+              device_functions.vkGetBufferMemoryRequirements(
+                  device, copy_buffer, &buffer_memory_requirements);
+              uint32_t index = 0;
 
-                while(buffer_memory_requirements.mmemoryTypeBits) {
-                    if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
-                        if (properties.mmemoryTypes[index].mpropertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-                            break;
-                        }
-                    }
-                    buffer_memory_requirements.mmemoryTypeBits >>= 1;
-                    index++;
+              while (buffer_memory_requirements.mmemoryTypeBits) {
+                if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
+                  if (properties.mmemoryTypes[index].mpropertyFlags &
+                      VkMemoryPropertyFlagBits::
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+                    break;
+                  }
+                }
+                buffer_memory_requirements.mmemoryTypeBits >>= 1;
+                index++;
                 }
                 host_buffer_memory_index = index;
 
@@ -434,17 +532,16 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 );
             }
 
-            RecreateBuffer(
+            RecreateBindAndFillBufferMemory(
                 observer,
                 buffer.second->mDevice,
-                &buffer_create_info,
-                submit_queue->mVulkanHandle,
+                buffer.second->mVulkanHandle,
                 buffer.second->mMemory?
                     buffer.second->mMemory->mVulkanHandle: VkDeviceMemory(0),
-                buffer.second->mMemoryOffset,
                 host_buffer_memory_index,
-                data,
-                &buffer.second->mVulkanHandle);
+                submit_queue->mVulkanHandle,
+                buffer.second->mMemoryOffset,
+                data);
 
             if (need_to_clean_up_temps) {
                 device_functions.vkDestroyBuffer(
@@ -480,9 +577,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             RecreateSampler(observer, samplerObject.mDevice, &sampler_create_info, &samplerObject.mVulkanHandle);
         }
     }
+
+    // Bind and Fill the "recreated" image memory
     {
-        VkImageCreateInfo image_create_info = {};
-        image_create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         VkBufferCreateInfo buffer_create_info = {};
         VkBufferCreateInfo copy_info = {};
         buffer_create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -490,32 +587,16 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
         for(auto& image: Images) {
             if (image.second->mIsSwapchainImage) {
-                // Don't recreate the swapchain images here
+                // Don't bind and fill swapchain images memory here
                 continue;
             }
+
             ImageInfo& info = image.second->mInfo;
-            std::vector<uint32_t> queues(info.mQueueFamilyIndices.size());
-            for (size_t i = 0; i < info.mQueueFamilyIndices.size(); ++i) {
-                queues[i] = info.mQueueFamilyIndices[i];
-            }
-            image_create_info.mflags = info.mFlags;
-            image_create_info.mimageType = info.mImageType;
-            image_create_info.mformat = info.mFormat;
-            image_create_info.mextent = info.mExtent;
-            image_create_info.mmipLevels = info.mMipLevels;
-            image_create_info.marrayLayers = info.mArrayLayers;
-            image_create_info.msamples = info.mSamples;
-            image_create_info.mtiling = info.mTiling;
-            image_create_info.musage = info.mUsage;
-            image_create_info.msharingMode = info.mSharingMode;
-            image_create_info.mqueueFamilyIndexCount = queues.size();
-            image_create_info.mpQueueFamilyIndices = queues.data();
-            image_create_info.minitialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
             VkQueue lastQueue = 0;
             uint32_t lastQueueFamily = 0;
             if (image.second->mLastBoundQueue) {
-                lastQueue = image.second->mLastBoundQueue->mVulkanHandle;
-                lastQueueFamily = image.second->mLastBoundQueue->mFamily;
+              lastQueue = image.second->mLastBoundQueue->mVulkanHandle;
+              lastQueueFamily = image.second->mLastBoundQueue->mFamily;
             }
 
             void* data = nullptr;
@@ -760,19 +841,18 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 );
             }
 
-            RecreateImage(
+            RecreateBindAndFillImageMemory(
                 observer,
                 image.second->mDevice,
-                lastQueue,
+                image.second->mVulkanHandle,
                 imageLayout,
-                host_buffer_memory_index,
                 image.second->mBoundMemory?
                     image.second->mBoundMemory->mVulkanHandle: VkDeviceMemory(0),
+                host_buffer_memory_index,
+                lastQueue,
                 image.second->mBoundMemoryOffset,
                 data_size,
-                data,
-                &image_create_info,
-                &image.second->mVulkanHandle);
+                data);
         }
     }
     {
