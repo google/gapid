@@ -15,7 +15,6 @@
  */
 package com.google.gapid.server;
 
-import static com.google.gapid.util.Logging.logDir;
 import static com.google.gapid.util.Logging.logLevel;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
@@ -23,6 +22,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.util.Logging;
 
 import java.io.File;
 import java.security.SecureRandom;
@@ -72,13 +72,14 @@ public class GapisProcess extends ChildProcess<Integer> {
     List<String> args = Lists.newArrayList();
     args.add(GapiPaths.gapis().getAbsolutePath());
 
-    if (!logDir.get().isEmpty()) {
+    File logDir = Logging.getLogDir();
+    if (logDir != null) {
       args.add("-log-file");
-      args.add(logDir.get() + "gapis.log");
+      args.add(new File(logDir, "gapis.log").getAbsolutePath());
       args.add("-log-level");
       args.add(logLevel.get().gapisLevel);
       args.add("-gapir-args");
-      args.add("--log " + logDir.get() + "gapir.log");
+      args.add("--log " + new File(logDir, "gapir.log").getAbsolutePath());
     }
 
     File strings = GapiPaths.strings();
