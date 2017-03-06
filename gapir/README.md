@@ -72,20 +72,139 @@ AbsolutePointer | Pointer to an [absolute address](#absolute-pointers)
 ConstantPointer | Pointer within the [constant pool](#constant-memory)
 VolatilePointer | Pointer within the [volatile pool](#volatile-memory)
 
+### Stack
 
-## VM instruction set
+The VM uses a standard LIFO stack where each element is a type-value pair.
+The size of the stored elements are unified to the size of the largest storable
+type and all of the elements are aligned.
 
-The entire replay VM instruction set consists of the following opcodes:
+Each operation, except for CLONE, consumes the operands from the current stack
+and pushes the result back to the stack.
 
-<table>
-<tr><td>CALL</td><td>PUSH_I</td><td>LOAD_C</td><td>LOAD_V</td><td>LOAD</td></tr>
-<tr><td>POP</td><td>STORE_V</td><td>STORE</td><td>RESOURCE</td><td>POST</td></tr>
-<tr><td>COPY</td><td>CLONE</td><td>STRCPY</td><td>EXTEND</td><td>LABEL</td></tr>
-</table>
+## Opcodes
 
-Full descriptions on each opcode is described in the **{{TODO}}** [document][interpreter_doc]
-accompanying the source code
+Each opcode is 32 bits long where the first 6 bits are the instruction code and
+the rest of the bits contain the instruction data. This leaves room for
+additional instructions to be added in the future.
 
+Notation: `<field_name:field_size_in_bits>`
+
+### `CALL(push-return, api, function)` [-{arg-count} (any type) / +{push-return} (any type)]
+`<code:6> <padding:1> <push-return:1> <padding:4> <api:4> <function id:16>`
+
+* Calls the specified function in the given api and if push-return is 1 then save the
+  return value to the stack; otherwise discard the return value.
+* The arguments are popped from the stack and they are type checked with the arguments
+  of the called function.
+* The arguments have to be pushed onto the stack in order (the last argument is on the
+  top of the stack).
+* Function IDs in range 0xff00-0xffff are reserved.
+
+### `PUSH_I(type, data)` [+1 (type)]
+`<code:6> <type:6> <data:20>`
+
+Pushes the data specified inside the opcode to the stack.
+
+If the data type is an integer or a pointer type, then the data is copied into the
+least-significant-bits of the target word, sign-extending if the type is signed.
+
+If the data type is a float or double, then the value is written to the sign and
+exponent bits of the floating point number, and the fractional bits are set to 0.
+
+### `LOAD_C(type, address)` [+1 (type)]
+`<code:6> <type:6> <constant-address:20>`
+
+Pushes data from the given constant memory address to the stack.
+
+### `LOAD_V(type, address)` [+1 (type)]
+`<code:6> <type:6> <volatile-address:20>`
+
+Pushes data from the given volatile memory address to the stack.
+
+### `LOAD(type)` [-1 (pointer) / +1 (type)]
+`<code:6> <type:6> <padding:20>`
+
+Pops a memory address from the top of the stack and pushes the data at that
+address to the top of the stack
+
+### `POP(count)` [-{count} (any type)]
+`<code:6> <count:26>`
+
+Pops and discards `count` values from the top of the stack.
+
+### `STORE_V(volatile-address)` [-1 (any type)]
+`<code:6> <volatile-address:26>`
+
+Pops the top value from the the stack and saves it to the given volatile memory address.
+All pointer values, regardless of the pointer type on the stack, will be stored as an
+absolute pointer address.
+
+### `STORE()` [-2 (pointer, any type)]
+`<code:6> <padding:26>`
+
+Pops the target address and then the value from the top of the stack, and then stores
+the value to the target address.
+All pointer values, regardless of the pointer type on the stack, will be stored as an
+absolute pointer address.
+
+### `RESOURCE(resource-id)` [-1 (pointer)]
+`<code:6> <resource-id:26>`
+
+Pops the address from the top of the stack and then loads the resource with the
+given id to that address.
+
+### `POST()` [-2 (uint32_t, pointer)]
+`<code:6> <padding:26>`
+
+Pops size and then a pointer from the top of the stack and posts size bytes of
+data from the address to the server.
+
+### `COPY(count)` [-2 (pointer, pointer)]
+`<code:6> <count:26>`
+
+Pops the target address then the source address from the top of the stack, and
+then copies `count` bytes from source to target.
+
+### `CLONE(n)` [+1 (any type)]
+`<code:6> <n:26>`
+
+Copies the n-th element from the top of the stack to the new top of the stack.
+
+### `STRCPY()` [-2 (pointer, pointer)]
+`<code:6> <max-count:26>`
+
+Pops the target address then the source address from the top of the stack, and
+then copies at most `max-count` minus one bytes from source to target. If the
+`max-count` is greater than the source string length, then the target will be
+padded with 0s. The destination buffer will always be 0-terminated.
+
+### `EXTEND(value)` [no change]
+`<code:6> <value:26>`
+
+Extends the value at the top of the stack with the given data, in-place.
+
+If the data type of the top of the stack is an integer or a pointer type, then the
+value on the stack is left-shifted by 26 bits and is bitwise-OR’ed with the
+specified value.
+
+If the data type is a float or double, then the fractional part of the floating
+point value on the stack is left-shifted by 26 bits and is bitwise-OR’ed with the
+specified value. Bits shifted beyond the fractional part of the floating point
+number are discarded.
+
+### `ADD(value)` [no change]
+`<code:6> <count:26>`
+
+Pops and sums `count` values from the top of the stack, and then pushes the
+result to the top of the stack.
+
+All summed value types must be equal.
+
+### `LABEL(value)` [no change]
+`<code:6> <value:26>`
+
+Set the current debug label to `value`.
+The label value is displayed in debug messages or in the case of a crash.
 
 ## Resources
 

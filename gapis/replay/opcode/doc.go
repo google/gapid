@@ -14,7 +14,4 @@
 
 // Package opcode holds all the opcodes that are to be interpreted by the replay
 // virtual machine.
-//
-// Documentation on each of the opcodes can be found at:
-//   gapid/gapir/cc/Interpreter_doc.txt
 package opcode
