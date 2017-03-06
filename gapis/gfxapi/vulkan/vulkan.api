@@ -5105,6 +5105,13 @@ extern ref!RecreateUpdateBufferData createUpdateBufferData(
   VkDeviceSize    dataSize
   const void*     data)
 
+extern ref!RecreateCmdPushConstantsData createPushConstantsData(
+  VkPipelineLayout   layout,
+  VkShaderStageFlags stageFlags,
+  u32                offset,
+  u32                size,
+  const void*        pValues)
+
 sub void doCmdBindPipeline(CmdBindPipeline args) {
   switch args.PipelineBindPoint {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
@@ -5915,6 +5922,29 @@ sub void doCmdCopyImage(CmdCopyImage args) {
   }
 }
 
+@internal
+class RecreateCmdCopyImageData{
+  VkImage            SrcImage
+  VkImageLayout      SrcImageLayout
+  VkImage            DstImage
+  VkImageLayout      DstImageLayout
+  map!(u32, VkImageCopy) Regions
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdCopyImage(
+    VkCommandBuffer commandBuffer,
+    VkImage            srcImage,
+    VkImageLayout      srcImageLayout,
+    VkImage            dstImage,
+    VkImageLayout      dstImageLayout,
+    u32                regionCount,
+    const VkImageCopy* pRegions) {
+  read(pRegions[0:regionCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyImage(
@@ -5925,12 +5955,19 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
+  recreate_data := new!RecreateCmdCopyImageData(
+    SrcImage: srcImage,
+    SrcImageLayout: srcImageLayout,
+    DstImage: dstImage,
+    DstImageLayout: dstImageLayout
+  )
   regions := pRegions[0:regionCount]
   copyArgs := CmdCopyImage(srcImage, dstImage)
   for i in (0 .. regionCount) {
     copyArgs.Regions[as!u64(i)] = regions[i]
+    recreate_data.Regions[as!u32(i)] = regions[i]
   }
-  addCmd(commandBuffer, Unimplemented(), copyArgs, doCmdCopyImage)
+  addCmd(commandBuffer, recreate_data, copyArgs, doCmdCopyImage)
 }
 
 @threadSafety("app")
@@ -6415,6 +6452,30 @@ cmd void vkCmdCopyQueryPoolResults(
     VkQueryResultFlags flags) {
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdPushConstants(
+    VkCommandBuffer    commandBuffer,
+    VkPipelineLayout   layout,
+    VkShaderStageFlags stageFlags,
+    u32                offset,
+    u32                size,
+    const void*        pValues) {
+  read(as!u8*(pValues)[0:size])
+}
+
+@internal class
+RecreateCmdPushConstantsData {
+  VkPipelineLayout   Layout,
+  VkShaderStageFlags StageFlags,
+  u32                Offset,
+  u32                Size,
+}
+
+sub void doCmdPushConstants(u32 unused) {
+}
+
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdPushConstants(
     VkCommandBuffer    commandBuffer,
@@ -6423,7 +6484,10 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  read(as!u8*(pValues)[offset:offset + size])
+  read(as!u8*(pValues)[0:size])
+  addCmd(commandBuffer, createPushConstantsData(
+    layout, stageFlags, offset, size, pValues
+  ), as!u32(0), doCmdPushConstants)
 }
 
 @override
@@ -6445,7 +6509,6 @@ RecreateCmdBeginRenderPassData {
   VkRect2D                      RenderArea,
   map!(u32, VkClearValue)       ClearValues
 }
-
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
