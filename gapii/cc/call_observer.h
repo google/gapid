@@ -17,9 +17,9 @@
 #ifndef GAPII_CALL_OBSERVER_H
 #define GAPII_CALL_OBSERVER_H
 
-#include "abort_exception.h"
-#include "gles_types.h"
-#include "slice.h"
+#include "gapii/cc/abort_exception.h"
+#include "gapii/cc/gles_types.h"
+#include "gapii/cc/slice.h"
 
 #include "core/cc/coder/atom.h"
 #include "core/cc/interval_list.h"

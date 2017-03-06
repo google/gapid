@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "gles_spy.h"
+#include "gapii/cc/gles_spy.h"
 
 #include <iostream>
 #include <string>

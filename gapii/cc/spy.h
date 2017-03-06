@@ -16,9 +16,9 @@
 
 #ifndef GAPII_SPY_H
 #define GAPII_SPY_H
-#include "core_spy.h"
-#include "vulkan_spy.h"
-#include "gles_spy.h"
+#include "gapii/cc/core_spy.h"
+#include "gapii/cc/vulkan_spy.h"
+#include "gapii/cc/gles_spy.h"
 
 #include <memory>
 #include <unordered_map>

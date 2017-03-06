@@ -16,8 +16,8 @@
 
 #include "connection_header.h"
 #include "connection_stream.h"
-#include "gles_exports.h"
-#include "spy.h"
+#include "gapii/cc/gles_exports.h"
+#include "gapii/cc/spy.h"
 
 #include "core/cc/encoder.h"
 #include "core/cc/gl/formats.h"

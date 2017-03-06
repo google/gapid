@@ -38,11 +38,11 @@
   #include "{{Global "API"}}_types.h"
 ¶
 {{if (eq (Global "API") "gles")}}
-  #include "spy_base.h"
+  #include "gapii/cc/spy_base.h"
 {{else}}
-  #include "gles_spy.h"
+  #include "gapii/cc/gles_spy.h"
 {{end}}
-  #include "call_observer.h"
+  #include "gapii/cc/call_observer.h"
 ¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
@@ -70,7 +70,7 @@
   «protected:»
     {{$imports}} mImports;
 ¶
-    #include "{{Global "API"}}_extras.inl"
+    #include "gapii/cc/{{Global "API"}}_extras.inl"
   };
 ¶
   // Inline methods
@@ -90,7 +90,7 @@
     return mImports;
   }
 ¶
-  #include "{{Global "API"}}_inlines.inl"
+  #include "gapii/cc/{{Global "API"}}_inlines.inl"
 ¶
   »} // namespace gapii
 ¶

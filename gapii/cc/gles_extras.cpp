@@ -16,7 +16,7 @@
 
 #include "core/cc/encoder.h"
 #include "core/cc/coder/gles.h"
-#include "gles_spy.h"
+#include "gapii/cc/gles_spy.h"
 
 #define ANDROID_NATIVE_MAKE_CONSTANT(a,b,c,d) \
     (((unsigned)(a)<<24)|((unsigned)(b)<<16)|((unsigned)(c)<<8)|(unsigned)(d))
