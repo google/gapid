@@ -14,11 +14,6 @@
 
 package snippets
 
-// binary: java.source = service
-// binary: java.package = com.google.gapid.service.snippets
-// binary: java.indent = "  "
-// binary: java.member_prefix = my
-
 import (
 	"bytes"
 	"fmt"

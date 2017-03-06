@@ -26,7 +26,9 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	_ "github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
+	_ "github.com/google/gapid/core/text/lingo"
 )
 
 func main() {

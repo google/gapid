@@ -16,3 +16,9 @@
 // workers (see package job for more information about what a worker is).
 // It is not required to use this package, but it helps for the simple cases.
 package worker
+
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
+import (
+	_ "github.com/golang/protobuf/proto"
+)

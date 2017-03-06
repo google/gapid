@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package replay is used to issue replay requests to replay devices.
 package replay
 
 import (

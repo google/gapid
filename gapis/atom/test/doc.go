@@ -12,19 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package test
 
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
 import (
-	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/gfxapi"
+	_ "github.com/google/gapid/core/data/id"
+	_ "github.com/google/gapid/core/data/pod"
+	_ "github.com/google/gapid/framework/binary/registry"
+	_ "github.com/google/gapid/framework/binary/schema"
 )
-
-// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
-	return 0, 0, nil, nil
-}
-
-// Context returns the active context for the given state.
-func (api) Context(*gfxapi.State) gfxapi.Context {
-	return nil
-}

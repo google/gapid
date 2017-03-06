@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package capture contains all the core GAPIS functionality for dealing with
-// loaded captures.
 package capture
 
 import (

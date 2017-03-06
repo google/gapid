@@ -12,19 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+// Package service is the definition of the RPC GPU debugger service exposed by the server.
+//
+// It is not the actual implementation of the service functionality.
+package service
 
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
 import (
-	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/gfxapi"
+	_ "github.com/golang/protobuf/proto"
+	_ "golang.org/x/net/context"
+	_ "google.golang.org/grpc"
 )
-
-// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
-	return 0, 0, nil, nil
-}
-
-// Context returns the active context for the given state.
-func (api) Context(*gfxapi.State) gfxapi.Context {
-	return nil
-}
