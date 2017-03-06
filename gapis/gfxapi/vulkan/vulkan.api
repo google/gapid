@@ -3708,7 +3708,6 @@ class CreatedGraphicsPipelines {
   map!(u32, ref!GraphicsPipelineObject) Objects
 }
 
-
 @override
 @custom
 @no_replay
@@ -3994,6 +3993,30 @@ cmd VkResult vkCreateGraphicsPipelines(
   return ?
 }
 
+@internal
+class CreatedComputePipelines {
+  map!(u32, ref!ComputePipelineObject) Objects
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateComputePipeline(
+    VkDevice                           device,
+    VkPipelineCache                    pipelineCache,
+    const VkComputePipelineCreateInfo* pCreateInfo,
+    VkPipeline*                        pPipeline) {
+  create_info := pCreateInfo[0]
+  _ = as!string(create_info.stage.pName)
+  if (create_info.stage.pSpecializationInfo != null) {
+    spec_info := create_info.stage.pSpecializationInfo[0]
+    read(spec_info.pMapEntries[0:spec_info.mapEntryCount])
+    read(as!char*(spec_info.pData)[0:spec_info.dataSize])
+  }
+
+  write(pPipeline[0:1])
+}
+
 @indirect("VkDevice")
 cmd VkResult vkCreateComputePipelines(
     VkDevice                           device,
@@ -4002,28 +4025,58 @@ cmd VkResult vkCreateComputePipelines(
     const VkComputePipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*       pAllocator,
     VkPipeline*                        pPipelines) {
+  created_pipelines := CreatedComputePipelines()
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
-    // TODO: infos[i].pNext
-    stage := infos[i].stage
-    // TODO: stage.pNext
-    _ = as!string(stage.pName)
-    if stage.pSpecializationInfo != null {
-      specInfo := stage.pSpecializationInfo[0]
-      read(specInfo.pMapEntries[0:specInfo.mapEntryCount])
-      if specInfo.dataSize != as!size(0) {
-        read(as!u8*(specInfo.pData)[0:specInfo.dataSize])
+    info := infos[i]
+    obj := new!ComputePipelineObject(
+      PipelineCache: PipelineCaches[pipelineCache],
+      Device: device,
+      Flags: info.flags,
+      PipelineLayout: PipelineLayouts[info.layout]
+    )
+    stage_create_info := infos[i].stage
+    stage_data := StageData(
+      Stage: stage_create_info.stage,
+      Module: ShaderModules[stage_create_info.module],
+      EntryPoint: as!string(stage_create_info.pName),
+    )
+    if (stage_create_info.pSpecializationInfo != null) {
+      spec_info := stage_create_info.pSpecializationInfo[0]
+      spec_data := new!SpecializationInfo()
+      spec_map := spec_info.pMapEntries[0:spec_info.mapEntryCount]
+      for k in (0 .. spec_info.mapEntryCount) {
+        spec_data.Specializations[k] = spec_map[k]
       }
+      read(as!char*(spec_info.pData)[0:spec_info.dataSize])
+      setSpecData(spec_data, spec_info.dataSize, spec_info.pData)
+      stage_data.Specialization = spec_data
     }
+    obj.Stage = stage_data
+    if ((as!u32(info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
+      if (info.basePipelineIndex != -1) {
+        obj.BasePipelineIndex = info.basePipelineIndex
+      } else {
+        obj.BasePipeline = info.basePipelineHandle
+      }
+    } else {
+      obj.BasePipelineIndex = 0
+      obj.BasePipeline = as!VkPipeline(0)
+    }
+    created_pipelines.Objects[i] = obj
   }
   // TODO: pAllocator
 
   pipelines := pPipelines[0:createInfoCount]
   for i in (0 .. createInfoCount) {
-    handle := ?
-    pipelines[i] = handle
-    ComputePipelines[handle] = new!ComputePipelineObject(device, handle)
-  }
+      pipeline := ?
+      pipelines[i] = pipeline
+      created_pipelines.Objects[i].VulkanHandle = pipeline
+      if (created_pipelines.Objects[i].BasePipelineIndex != -1) {
+        created_pipelines.Objects[i].BasePipeline = pipelines[created_pipelines.Objects[i].BasePipelineIndex]
+      }
+      ComputePipelines[pipeline] = created_pipelines.Objects[i]
+    }
 
   return ?
 }
@@ -7506,8 +7559,16 @@ enum RecordingState {
 }
 
 @internal class ComputePipelineObject {
-  @unused VkDevice   Device
-  @unused VkPipeline VulkanHandle
+  @unused VkDevice                                    Device
+  @unused VkPipeline                                  VulkanHandle
+  @unused ref!PipelineCacheObject                     PipelineCache
+  @unused VkPipelineCreateFlags                       Flags
+  @unused StageData                                   Stage
+  @unused ref!PipelineLayoutObject                    PipelineLayout
+  @unused VkPipeline                                  BasePipeline
+  // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
+  //       It will have been set for you correctly
+  @unused s32                                         BasePipelineIndex
 }
 
 @internal class PipelineLayoutObject {

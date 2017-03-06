@@ -91,6 +91,8 @@ private:
     // The number of frames that we want to suspend capture for before
     // we start.
     int mSuspendCaptureFrames;
+    // The number of frames that we want to capture
+    int mCaptureFrames;
     int mNumDraws;
     int mNumDrawsPerFrame;
     int mObserveFrameFrequency;

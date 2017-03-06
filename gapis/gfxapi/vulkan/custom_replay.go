@@ -657,6 +657,14 @@ func (a *RecreateGraphicsPipeline) Mutate(ctx log.Context, s *gfxapi.State, b *b
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateComputePipeline) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	pCreateInfo := memory.Pointer(a.PCreateInfo)
+	pPipeline := memory.Pointer(a.PPipeline)
+	hijack := NewVkCreateComputePipelines(a.Device, a.PipelineCache, uint32(1), pCreateInfo, memory.Pointer{}, pPipeline, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *VkCreateDevice) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	// Hijack VkCreateDevice's Mutate() method entirely with our ReplayCreateVkDevice's Mutate().
 	// Similar to VkCreateInstance's Mutate() above.

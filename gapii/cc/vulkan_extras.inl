@@ -62,6 +62,7 @@ void SpyOverride_RecreateSampler(VkDevice, const VkSamplerCreateInfo*, VkSampler
 void SpyOverride_RecreateFramebuffer(VkDevice, const VkFramebufferCreateInfo*, VkFramebuffer*) {}
 void SpyOverride_RecreateDescriptorSet(VkDevice, const VkDescriptorSetAllocateInfo*, uint32_t, const VkWriteDescriptorSet*, VkDescriptorSet*) {}
 void SpyOverride_RecreateGraphicsPipeline(VkDevice, VkPipelineCache, const VkGraphicsPipelineCreateInfo*, VkPipeline*) {}
+void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache, const VkComputePipelineCreateInfo*, VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkQueue, VkDeviceMemory, VkDeviceSize, uint32_t, void*, VkBuffer*) {}
 void SpyOverride_RecreatePhysicalDeviceProperties(VkPhysicalDevice, uint32_t*, VkQueueFamilyProperties*, VkPhysicalDeviceMemoryProperties*) {}
 
