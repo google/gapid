@@ -92,6 +92,10 @@ func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, si
 	return nil
 }
 
+func (e externs) createPushConstantsData(layout VkPipelineLayout, stageFlags VkShaderStageFlags, offset uint32, size uint32, data interface{}) *RecreateCmdPushConstantsData {
+	return nil
+}
+
 func (e externs) addWords(module VkShaderModule, numBytes interface{}, data interface{}) {
 }
 
