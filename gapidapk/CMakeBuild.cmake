@@ -118,7 +118,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     endforeach()
     foreach (source ${android_configure_sources})
         file(RELATIVE_PATH rooted_source ${CMAKE_CURRENT_SOURCE_DIR}/android ${source})
-        configure_file(${source} ${apk_dir}/${rooted_source} @ONLY)
+        configure_file(${source}.in ${apk_dir}/${rooted_source} @ONLY)
         list(APPEND TARGET_SOURCES ${apk_dir}/${rooted_source})
     endforeach()
 
@@ -134,7 +134,6 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
         DEPENDS
             ${TARGET_SOURCES}
             ${android_sources}
-            ${android_configure_sources}
             filehash
     )
 
