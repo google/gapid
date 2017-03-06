@@ -1,11 +1,16 @@
 # GAPID: **G**raphics **API** **D**ebugger
 
-GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
+GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver. 
 
 ## Status
 GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
-Downloadable prebuilts will be available once the project reaches beta quality.
-Vulkan is still a work in progress. Current status can be found [here](gapis/gfxapi/vulkan/README.md).
+
+The UI runs on Windows, Linux and MacOS and can currently be used to trace on Android.
+We also plan to be able to trace OpenGL ES and Vulkan applications on host OSes that support those APIs in the near future.
+
+Downloadable prebuilts will be available once the project reaches the beta milestone.
+
+Detailed current status for Vulkan can be found [here](gapis/gfxapi/vulkan/README.md).
 
 ## Building
 See [Building GAPID](BUILDING.md).
