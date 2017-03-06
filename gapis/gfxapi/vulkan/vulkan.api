@@ -5652,6 +5652,28 @@ cmd void vkCmdDrawIndexed(
   ), CmdDrawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance), doCmdDrawIndexed)
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDrawIndirect(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    u32             drawCount,
+    u32             stride) {
+}
+
+@internal class
+RecreateCmdDrawIndirectData {
+    VkBuffer        Buffer
+    VkDeviceSize    Offset
+    u32             DrawCount
+    u32             Stride
+}
+
+sub void doCmdDrawIndirect(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDrawIndirect(
@@ -5660,6 +5682,31 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDrawIndirectData(buffer, offset, drawCount, stride),
+    as!u32(0), doCmdDrawIndirect)
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDrawIndexedIndirect(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    u32             drawCount,
+    u32             stride) {
+}
+
+@internal class
+RecreateCmdDrawIndexedIndirectData {
+    VkBuffer        Buffer
+    VkDeviceSize    Offset
+    u32             DrawCount
+    u32             Stride
+}
+
+sub void doCmdDrawIndexedIndirect(u32 unused) {
 }
 
 @threadSafety("app")
@@ -5670,6 +5717,9 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDrawIndexedIndirectData(buffer, offset, drawCount, stride),
+    as!u32(0), doCmdDrawIndirect)
 }
 
 @override
