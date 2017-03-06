@@ -16,9 +16,8 @@ package trace
 
 import (
 	"fmt"
-	"time"
-
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/app/layout"
@@ -48,12 +47,6 @@ type client struct {
 type runner struct {
 	*client
 	device bind.Device
-}
-
-func (c *client) setRunner(serial string, r *runner) {
-	c.l.Lock()
-	defer c.l.Unlock()
-
 }
 
 func (c *client) getRunner(d bind.Device) (r *runner, existing bool) {
