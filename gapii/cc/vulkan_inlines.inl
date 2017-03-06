@@ -212,6 +212,14 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndexedIndirectD
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetDepthBiasData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetDepthBiasData>& t) {
+    spy->RecreateCmdSetDepthBias(observer, commandBuf,
+        t->mDepthBiasConstantFactor, t->mDepthBiasClamp, t->mDepthBiasSlopeFactor);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {

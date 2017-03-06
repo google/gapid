@@ -5196,6 +5196,26 @@ cmd void vkCmdSetLineWidth(
     f32             lineWidth) {
 }
 
+@internal
+class RecreateCmdSetDepthBiasData{
+  f32             DepthBiasConstantFactor
+  f32             DepthBiasClamp
+  f32             DepthBiasSlopeFactor
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetDepthBias(
+    VkCommandBuffer commandBuffer,
+    f32             depthBiasConstantFactor
+    f32             depthBiasClamp
+    f32             depthBiasSlopeFactor) {
+}
+
+sub void doCmdSetDepthBias(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetDepthBias(
@@ -5203,6 +5223,11 @@ cmd void vkCmdSetDepthBias(
     f32             depthBiasConstantFactor,
     f32             depthBiasClamp,
     f32             depthBiasSlopeFactor) {
+  addCmd(commandBuffer, new!RecreateCmdSetDepthBiasData(
+    depthBiasConstantFactor,
+    depthBiasClamp,
+    depthBiasSlopeFactor
+  ), as!u32(0), doCmdSetDepthBias)
 }
 
 @threadSafety("app")
