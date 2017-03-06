@@ -1,6 +1,7 @@
 # Graphics API Language
 
-The Graphics API Language is used to describe in detail the interface and required behaviour of a graphics API. The api files are the heart of the graphics deubugging tools.
+The Graphics API Language is used to describe in detail the interface and required behaviour of a graphics API.
+From these API files, much of GAPII, GAPIR and GAPIS is generated.
 
 ## Data types
 
@@ -9,12 +10,12 @@ The Graphics API Language is used to describe in detail the interface and requir
 Typename | Description
 -------- | -----------
 `void`   | used to denote no return value, or a pointer to untyped memory (void\*)
-`any`    | special 'wildcard' type only allowed in macro parameters and return values.
 `string` | a sequence of characters
 `bool`   | architecture dependent sized boolean value
 `char`   | architecture dependent sized character value
 `int`    | architecture dependent sized signed integer
 `uint`   | architecture dependent sized unsigned integer
+`size`   | architecture dependent sized integer used for sizes
 `s8`     | 8-bit signed integer
 `u8`     | 8-bit unsigned integer
 `s16`    | 16-bit signed integer
@@ -30,8 +31,7 @@ Typename | Description
 
 A number of different types can be defined within the API file.
 
-Each of the following types can be preceded with any number of [annotations]
-(#annotations).
+Each of the following types can be preceded with any number of [annotations](#annotations).
 
 #### Class
 
@@ -202,4 +202,5 @@ Annotations can take the form:
 ```
 
 Annotations are for use by the templates when using the apic [`template`]
-(apic#template) command, but otherwise have no effect.
+(../cmd/apic/template.go) or [`validate`]
+(../cmd/apic/validate.go) commands, but otherwise have no effect.
