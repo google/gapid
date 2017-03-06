@@ -479,6 +479,16 @@ func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx log.Context, s *gfxapi.State
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdSetDepthBias) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetDepthBias(
+		a.CommandBuffer,
+		a.DepthBiasConstantFactor,
+		a.DepthBiasClamp,
+		a.DepthBiasSlopeFactor)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdCopyBufferToImage(
 		a.CommandBuffer,
