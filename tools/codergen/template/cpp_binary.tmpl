@@ -15,7 +15,7 @@
  */}}
 
 {{define "Cpp.IncludeType"}}
-  {{File.Include (print "<core/cc/coder/" (index (File.ModuleOf .).Directives "cpp") ".h>") }}
+  {{File.Include (print "\"core/cc/coder/" (index (File.ModuleOf .).Directives "cpp") ".h\"") }}
 {{end}}
 
 {{define "Cpp.Include.Primitive"}}{{end}}
@@ -42,13 +42,13 @@
 
 {{define "Cpp.Include.Slice"}}
   {{template "Cpp.Include" .ValueType}}
-  {{File.Include "<core/cc/vector.h>"}}
+  {{File.Include "\"core/cc/vector.h\""}}
 {{end}}
 
 {{define "Cpp.Include.Map"}}
   {{template "Cpp.Include" .KeyType}}
   {{template "Cpp.Include" .ValueType}}
-  {{File.Include "<core/cc/map.h>"}}
+  {{File.Include "\"core/cc/map.h\""}}
 {{end}}
 
 {{define "Cpp.Include"}}{{end}}
@@ -268,7 +268,7 @@
   ¶
   ¶
   {{if and (File.Directive "Schema" true) (len .Structs)}}
-#include "{{.Namespace}}.h"¶
+#include "core/cc/coder/{{.Namespace}}.h"¶
 
 #include "core/cc/schema.h"¶
   {{end}}

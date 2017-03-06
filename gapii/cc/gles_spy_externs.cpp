@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "gles_spy.h"
-#include "call_observer.h"
+#include "gapii/cc/gles_spy.h"
+#include "gapii/cc/call_observer.h"
 
 namespace gapii {
 

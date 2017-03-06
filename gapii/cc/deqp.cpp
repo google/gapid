@@ -23,9 +23,9 @@
 #include <memory>
 #include <iostream>
 
-#include "abort_exception.h"
-#include "call_observer.h"
-#include "gles_types.h"
+#include "gapii/cc/abort_exception.h"
+#include "gapii/cc/call_observer.h"
+#include "gapii/cc/gles_types.h"
 
 namespace null_driver {
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "spy.h"
-#include "call_observer.h"
+#include "gapii/cc/spy.h"
+#include "gapii/cc/call_observer.h"
 
 #include "core/cc/coder/gles.h"
 

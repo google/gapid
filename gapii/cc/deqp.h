@@ -17,8 +17,8 @@
 #ifndef GAPII_DEQP_H
 #define GAPII_DEQP_H
 
-#include "core_spy.h"
-#include "gles_spy.h"
+#include "gapii/cc/core_spy.h"
+#include "gapii/cc/gles_spy.h"
 #include "return_handler.h"
 
 #include "core/cc/null_writer.h"

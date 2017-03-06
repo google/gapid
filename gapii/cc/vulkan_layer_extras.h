@@ -37,11 +37,11 @@
 #ifndef GAPII_VULKAN_LAYER_EXTRAS_H
 #define GAPII_VULKAN_LAYER_EXTRAS_H
 
-#include "vulkan_exports.h"
-#include "vulkan_extras.h"
-#include "vulkan_types.h"
-#include "vulkan_imports.h"
-#include "vulkan_spy.h"
+#include "gapii/cc/vulkan_exports.h"
+#include "gapii/cc/vulkan_extras.h"
+#include "gapii/cc/vulkan_types.h"
+#include "gapii/cc/vulkan_imports.h"
+#include "gapii/cc/vulkan_spy.h"
 
 namespace gapii {
 namespace {
