@@ -5672,6 +5672,26 @@ cmd void vkCmdDrawIndexedIndirect(
     u32             stride) {
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDispatch(
+    VkCommandBuffer commandBuffer,
+    u32             x,
+    u32             y,
+    u32             z) {
+}
+
+@internal class
+RecreateCmdDispatchData {
+    u32             X,
+    u32             Y,
+    u32             Z
+}
+
+sub void doCmdDispatch(u32 unused) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDispatch(
@@ -5679,6 +5699,8 @@ cmd void vkCmdDispatch(
     u32             x,
     u32             y,
     u32             z) {
+  addCmd(commandBuffer,
+    new!RecreateCmdDispatchData(x, y, z), as!u32(0), doCmdDispatch)
 }
 
 @threadSafety("app")
