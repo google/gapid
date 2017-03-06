@@ -32,9 +32,6 @@ class MemoryManager;
 
 // Implementation of a (fix sized) stack based virtual machine to interpret the instructions in the
 // given opcode stream.
-//
-// The list of supported opcodes and their detailed definition is described in the
-// Interpreter_doc.txt documentation file
 class Interpreter {
 public:
     // The type of the callback function for requesting to register an api's renderer functions to
