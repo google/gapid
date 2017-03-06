@@ -31,7 +31,7 @@ func TestAnnotatedSampleJSONMarshaling(t *testing.T) {
 		serialized string
 		obj        Sample
 	}{
-		{`"0"`, Sample(0)},
+		{`"0s"`, Sample(0)},
 		{`"5s"`, Sample(5 * time.Second)},
 	} {
 		data, err := json.Marshal(s.obj)
