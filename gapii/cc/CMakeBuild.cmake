@@ -56,14 +56,14 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} gapii ${dst} "libgapii.so"
         DEPENDEES cc-core llvm-interceptor
-        DEPENDS ${sources} ${android_files}
+        DEPENDS ${sources} ${android_files} cc-memory-tracker
         DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"
     )
 endforeach()
 
 if(NOT DISABLED_CXX)
     add_library(gapii SHARED ${sources})
-    target_link_libraries(gapii cc-core)
+    target_link_libraries(gapii cc-core cc-memory-tracker)
 
     if(APPLE)
         find_package(Cocoa REQUIRED)

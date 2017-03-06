@@ -107,3 +107,31 @@ func (e externs) unmapMemory(slice slice) {
 		b.UnmapMemory(slice.Range(e.s))
 	}
 }
+
+func (e externs) trackMappedCoherentMemory(start uint64, size uint64) {}
+func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size uint64) {
+	memory := GetState(e.s).DeviceMemories.Get(memory_handle)
+	mapped_offset := uint64(memory.MappedOffset)
+	dstStart := mapped_offset + offset_in_mapped
+	srcStart := offset_in_mapped
+	srcEnd := offset_in_mapped + uint64(read_size)
+
+	//TODO: Add the PageSize to the architecture header of trace.
+	// Here we relay on the underlying optimization to avoid creating duplicated slice.
+	// A larger copy size makes a fewer number of call to read() and results into a faster replay.
+	// But a large copy size generates more data to be stored in the server and uses too much memory.
+	// A smaller copy size saves memory, but slow down the replay speed.
+	// By far, spliting the data into PageSize chunks seems like the best option.
+	copySize := uint64(4196)
+
+	for srcStart < srcEnd {
+		if srcStart+copySize > srcEnd {
+			copySize = srcEnd - srcStart
+		}
+		memory.Data.Slice(dstStart, dstStart+copySize, e.s).Copy(
+			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, e.s), e.a, e.s, e.b)
+		srcStart += copySize
+		dstStart += copySize
+	}
+}
+func (e externs) untrackMappedCoherentMemory(start uint64, size uint64) {}

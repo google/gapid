@@ -137,6 +137,9 @@ type u32 VkSampleMask
 
 extern void mapMemory(void** mem, u8[] slice)
 extern void unmapMemory(u8[] slice)
+extern void trackMappedCoherentMemory(u64 start, size size)
+extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize)
+extern void untrackMappedCoherentMemory(u64 start, size size)
 
 @unused
 enum VkPipelineCacheHeaderVersion {
@@ -2797,34 +2800,6 @@ sub bool IsMemoryCoherent(ref!DeviceMemoryObject memory) {
   as!u32(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 }
 
-// TODO(awoloszyn): Remove this once we get a more robust coherent memory
-//    system in place.
-sub void ReadMemoryIfCoherent(ref!DeviceMemoryObject memory, VkDeviceSize offset, VkDeviceSize numBytes) {
-  if (IsMemoryCoherent(memory)) {
-    mappedLocation := as!u8*(memory.MappedLocation)
-    if (mappedLocation != null) {
-      requestedStart := as!s64(offset - memory.MappedOffset)
-      flushStart := switch (requestedStart > 0) {
-        case true:  as!s64(offset - memory.MappedOffset)
-        case false: as!s64(0)
-      }
-      requestedEnd := as!s64(offset - memory.MappedOffset) + switch numBytes == 0xFFFFFFFFFFFFFFFF {
-        case true:  as!s64(memory.MappedSize)
-        case false: as!s64(numBytes)
-      }
-      flushEnd := switch (requestedEnd <= as!s64(memory.MappedSize)) {
-        case true:  requestedEnd
-        case false: as!s64(memory.MappedSize)
-      }
-      if (flushEnd > flushStart) {
-        mappedFlushStart := flushStart + as!s64(memory.MappedOffset)
-        mappedFlushEnd := flushEnd + as!s64(memory.MappedOffset)
-        copy(memory.Data[mappedFlushStart:mappedFlushEnd], (mappedLocation)[flushStart:flushEnd])
-      }
-    }
-  }
-}
-
 @override
 @custom
 @no_replay
@@ -2927,6 +2902,9 @@ cmd VkResult vkMapMemory(
   mapMemory(ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
   memoryObject.MappedLocation = memoryLocation
   DeviceMemories[memory] = memoryObject
+  if (IsMemoryCoherent(memoryObject)) {
+    trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  }
   return ?
 }
 
@@ -2937,7 +2915,10 @@ cmd void vkUnmapMemory(
     VkDeviceMemory memory) {
   memoryObject := DeviceMemories[memory]
   mappedLocation := as!u8*(memoryObject.MappedLocation)
-  ReadMemoryIfCoherent(memoryObject, memoryObject.MappedOffset, memoryObject.MappedSize)
+  if (IsMemoryCoherent(memoryObject)) {
+    readCoherentMemory(memoryObject, memoryObject.MappedOffset, memoryObject.MappedSize)
+    untrackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  }
   unmapMemory(mappedLocation[0:memoryObject.MappedSize])
   memoryObject.MappedSize = 0
   memoryObject.MappedLocation = null
@@ -3053,6 +3034,7 @@ cmd void vkGetImageMemoryRequirements(
     VkMemoryRequirements* pMemoryRequirements) {
   requirements := ?
   pMemoryRequirements[0] = requirements
+  Images[image].Size = pMemoryRequirements[0].size
 }
 
 @indirect("VkDevice")
@@ -3296,7 +3278,6 @@ cmd VkResult vkGetQueryPoolResults(
   return ?
 }
 
-
 @override
 @custom
 @no_replay
@@ -3417,7 +3398,6 @@ sub u32 roundUpTo(u32 dividend, u32 divisor) {
   return (dividend + divisor - 1) / divisor
 }
 
-
 @override
 @custom
 @no_replay
@@ -3458,26 +3438,25 @@ cmd VkResult vkCreateImage(
 
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
-
-  object := new!ImageObject(
-    Device:                   device,
-    BoundMemory:              null,
-    Info:                     ImageInfo(
-        Flags:                info.flags,
-        ImageType:            info.imageType,
-        Format:               info.format,
-        Extent:               info.extent,
-        MipLevels:            info.mipLevels,
-        ArrayLayers:          info.arrayLayers,
-        Samples:              info.samples,
-        Tiling:               info.tiling,
-        Usage:                info.usage,
-        SharingMode:          info.sharingMode,
-        Layout:               info.initialLayout
-    )
+  imageInfo := ImageInfo(
+    Flags:                info.flags,
+    ImageType:            info.imageType,
+    Format:               info.format,
+    Extent:               info.extent,
+    MipLevels:            info.mipLevels,
+    ArrayLayers:          info.arrayLayers,
+    Samples:              info.samples,
+    Tiling:               info.tiling,
+    Usage:                info.usage,
+    SharingMode:          info.sharingMode,
+    Layout:               info.initialLayout
   )
 
-  object.ImageAspect = as!VkImageAspectFlags(
+  for i in (0 .. info.queueFamilyIndexCount) {
+    imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+  }
+
+  imageAspect := as!VkImageAspectFlags(
     switch info.format {
       case VK_FORMAT_D16_UNORM,
           VK_FORMAT_X8_D24_UNORM_PACK32,
@@ -3494,13 +3473,17 @@ cmd VkResult vkCreateImage(
           VK_IMAGE_ASPECT_COLOR_BIT
   })
 
-  for i in (0 .. info.queueFamilyIndexCount) {
-    object.Info.QueueFamilyIndices[i] = queueFamilyIndices[i]
-  }
-
   handle := ?
   pImage[0] = handle
-  object.VulkanHandle = handle
+
+  object := new!ImageObject(
+    Device:                   device,
+    BoundMemory:              null,
+    IsSwapchainImage:         false,
+    VulkanHandle:             handle,
+    Info:                     imageInfo,
+    ImageAspect:              imageAspect,
+  )
 
   for j in (0 .. info.arrayLayers) {
     layer := new!ImageLayer()
@@ -3550,7 +3533,6 @@ cmd void vkGetImageSubresourceLayout(
 
   pLayout[0] = ?
 }
-
 
 @override
 @custom
@@ -3835,8 +3817,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     vertex_input_state.vertexBindingDescriptionCount]
     // TODO: vertex_input_state.pNext
     for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
-      binding := vertex_descriptions[b]
-      obj.VertexInputState.BindingDescriptions[binding.binding] = binding
+      vertex_binding := vertex_descriptions[b]
+      obj.VertexInputState.BindingDescriptions[vertex_binding.binding] = vertex_binding
     }
 
     vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
@@ -4013,7 +3995,6 @@ cmd void RecreateComputePipeline(
     read(spec_info.pMapEntries[0:spec_info.mapEntryCount])
     read(as!char*(spec_info.pData)[0:spec_info.dataSize])
   }
-
   write(pPipeline[0:1])
 }
 
@@ -5358,7 +5339,7 @@ cmd void vkCmdBindDescriptorSets(
             default:
               dynamic_offset_index.Val
           }
-          bind_buffer.Buffers[len(bind_buffer.Buffers)] = BoundBuffer(
+          bind_buffer.BoundBuffers[len(bind_buffer.BoundBuffers)] = BoundBuffer(
               Buffers[bufferBinding.Buffer], binding_offset, bufferBinding.Range)
         }
       }
@@ -5414,8 +5395,8 @@ cmd void vkCmdBindIndexBuffer(
 }
 
 sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
-  for _ , k , v in bind.Buffers {
-    CurrentVertexBuffers[k] = v
+  for _ , k , v in bind.BoundBuffers {
+    CurrentBoundVertexBuffers[k] = v
     v.Buffer.LastBoundQueue = LastBoundQueue
   }
 }
@@ -5459,7 +5440,7 @@ cmd void vkCmdBindVertexBuffers(
   for i in (0 .. bindingCount) {
     recreate_data.Buffers[i] = buffers[i]
     recreate_data.Offsets[i] = offsets[i]
-    bindBuffer.Buffers[firstBinding + i] = BoundBuffer(Buffers[buffers[i]], offsets[i],
+    bindBuffer.BoundBuffers[firstBinding + i] = BoundBuffer(Buffers[buffers[i]], offsets[i],
       Buffers[buffers[i]].Info.Size - offsets[i])
   }
   addCmd(commandBuffer, recreate_data, bindBuffer, doCmdBindVertexBuffers)
@@ -5471,60 +5452,78 @@ class BoundBuffer {
   VkDeviceSize     Offset
   VkDeviceSize     Range
 }
+
 @internal
 class CmdBindBuffer {
-  map!(u32, BoundBuffer) Buffers
+  map!(u32, BoundBuffer) BoundBuffers
 }
 
 sub void doCmdBindBuffers(CmdBindBuffer bind) {
-  for _ , _ , v in bind.Buffers {
+  for _ , _ , v in bind.BoundBuffers {
     if (v.Buffer != null) {
       v.Buffer.LastBoundQueue = LastBoundQueue
-      ReadMemoryIfCoherent(v.Buffer.Memory, v.Buffer.MemoryOffset + v.Offset, v.Range)
+      readCoherentMemoryInBuffer(v.Buffer, v.Offset, v.Range)
     }
   }
 }
 
-@internal class MutableBool {
-  bool B
-}
-
-sub bool areAnyVertexBuffersCoherent() {
-  b := MutableBool(false)
-  for _ , _ , binding in CurrentGraphicsPipeline.VertexInputState.BindingDescriptions {
-    if binding.binding in CurrentVertexBuffers {
-      b.B = b.B || IsMemoryCoherent(
-        CurrentVertexBuffers[binding.binding].Buffer.Memory)
+sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
+  if IsMemoryCoherent(memory) && (memory.MappedLocation != null) {
+    if (as!VkDeviceSize(readOffset) >= memory.MappedOffset) && (as!VkDeviceSize(readOffset) < memory.MappedOffset + memory.MappedSize) {
+      offset_in_mapped := as!u64(readOffset) - as!u64(memory.MappedOffset)
+      read_size_in_mapped := switch ((as!u64(readSize) == 0xFFFFFFFFFFFFFFFF) || ((offset_in_mapped + as!u64(readSize)) > as!u64(memory.MappedSize))) {
+        case true:
+          memory.MappedSize -  as!VkDeviceSize(offset_in_mapped)
+        case false:
+          readSize
+      }
+      if ((offset_in_mapped + as!u64(read_size_in_mapped)) > offset_in_mapped) {
+        readMappedCoherentMemory(memory.VulkanHandle, offset_in_mapped, as!size(read_size_in_mapped))
+      }
     }
   }
-
-  return b.B
 }
 
-sub void readCoherentVertexBuffers(u32 firstVertex, u32 firstInstance, u32 vertexCount, u32 instanceCount) {
-  for _ , _ , binding in CurrentGraphicsPipeline.VertexInputState.BindingDescriptions {
-    if binding.binding in CurrentVertexBuffers {
-      if (IsMemoryCoherent(
-            CurrentVertexBuffers[binding.binding].Buffer.Memory)) {
-        currentBoundBuffer := CurrentVertexBuffers[binding.binding]
-        currentBufferObject := currentBoundBuffer.Buffer
-        startVertexOffset := switch binding.inputRate {
+sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
+  mem := buffer.Memory
+  if mem != null {
+    readCoherentMemory(mem, buffer.MemoryOffset + readOffset, readSize)
+  }
+}
+
+sub void readCoherentMemoryInImage(ref!ImageObject image) {
+  mem := image.BoundMemory
+  if mem != null {
+    readCoherentMemory(mem, image.BoundMemoryOffset, image.Size)
+  }
+}
+
+sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
+  for _, _, vertex_binding in CurrentGraphicsPipeline.VertexInputState.BindingDescriptions {
+    if vertex_binding.binding in CurrentBoundVertexBuffers {
+      bound_vertex_buffer := CurrentBoundVertexBuffers[vertex_binding.binding]
+      backing_buf := bound_vertex_buffer.Buffer
+      if ((backing_buf.Memory != null) && IsMemoryCoherent(backing_buf.Memory)) {
+        start_vertex := switch vertex_binding.inputRate {
           case VK_VERTEX_INPUT_RATE_VERTEX:
             firstVertex
           case VK_VERTEX_INPUT_RATE_INSTANCE:
             firstInstance
         }
-        numVertices := switch (binding.inputRate) {
+        num_vertices := switch vertex_binding.inputRate {
           case VK_VERTEX_INPUT_RATE_VERTEX:
             vertexCount
           case VK_VERTEX_INPUT_RATE_INSTANCE:
             instanceCount
         }
-        startVertexOffsetBytes := currentBoundBuffer.Offset +
-        currentBufferObject.MemoryOffset +
-        as!VkDeviceSize(startVertexOffset * binding.stride)
-        numBytes := as!VkDeviceSize(numVertices * binding.stride)
-        ReadMemoryIfCoherent(currentBufferObject.Memory, startVertexOffsetBytes, numBytes)
+        start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize(start_vertex * vertex_binding.stride)
+        num := switch vertexCount == 0xFFFFFFFF {
+          case true:
+            backing_buf.Info.Size - start_offset
+          case false:
+            as!VkDeviceSize(num_vertices * vertex_binding.stride)
+        }
+        readCoherentMemoryInBuffer(backing_buf, start_offset, num)
       }
     }
   }
@@ -5545,9 +5544,7 @@ sub void readCoherentVertexBuffers(u32 firstVertex, u32 firstInstance, u32 verte
 }
 
 sub void doCmdDraw(CmdDraw draw) {
-  if areAnyVertexBuffersCoherent() {
-    readCoherentVertexBuffers(draw.FirstVertex, draw.FirstInstance, draw.VertexCount, draw.InstanceCount)
-  }
+  readCoherentMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
 }
 
 @override
@@ -5582,18 +5579,11 @@ cmd void vkCmdDraw(
   u32 FirstInstance
 }
 
-@internal class AccumulateVertices {
-  u32 FirstVertex
-  u32 LastVertex
-}
-
 sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
-  currentIndex := CurrentIndexBuffer
-  indexBuffer := CurrentIndexBuffer.Buffer.Buffer
-  indexMemory := indexBuffer.Memory
-  indexSize := switch (currentIndex.Type) {
+  indexBuffer := CurrentIndexBuffer.BoundBuffer.Buffer
+  indexSize := switch (CurrentIndexBuffer.Type) {
     case VK_INDEX_TYPE_UINT16:
       as!VkDeviceSize(2)
     case VK_INDEX_TYPE_UINT32:
@@ -5601,48 +5591,12 @@ sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   }
 
   numBytes := as!VkDeviceSize(draw.IndexCount) * indexSize
+  startOffset := CurrentIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
 
-  startOffset := currentIndex.Buffer.Offset +
-  indexBuffer.MemoryOffset +
-  indexSize * as!VkDeviceSize(draw.FirstIndex)
-
-  ReadMemoryIfCoherent(indexMemory, startOffset, as!VkDeviceSize(numBytes))
-  if areAnyVertexBuffersCoherent() && draw.IndexCount > 0 {
-    d := AccumulateVertices(0, 0)
-    data := indexMemory.Data[startOffset:startOffset + numBytes]
-    d.FirstVertex = switch (currentIndex.Type) {
-      case VK_INDEX_TYPE_UINT16:
-        as!u32(as!u16[](data)[0])
-      case VK_INDEX_TYPE_UINT32:
-        as!u32(as!u32[](data)[0])
-    }
-
-    switch (currentIndex.Type) {
-      case VK_INDEX_TYPE_UINT16: {
-        dat := as!u16[](data)
-        for i in 1 .. draw.IndexCount {
-          currentVertex := as!u32(dat[i])
-          if currentVertex < d.FirstVertex {
-            d.FirstVertex = currentVertex
-          }
-          if currentVertex > d.LastVertex {
-            d.LastVertex = currentVertex
-          }
-        } }
-      case VK_INDEX_TYPE_UINT32: {
-        dat := as!u32[](data)
-        for i in 1 .. draw.IndexCount {
-          currentVertex := dat[i]
-          if currentVertex < d.FirstVertex {
-            d.FirstVertex = currentVertex
-          }
-          if currentVertex > d.LastVertex {
-            d.LastVertex = currentVertex
-          }
-        } }
-    }
-    readCoherentVertexBuffers(as!u32(as!s32(d.FirstVertex) + draw.VertexOffset), draw.FirstInstance, (d.LastVertex - d.FirstVertex) + 1, draw.InstanceCount)
-  }
+  // Read the data of the index buffer if the index buffer is backed with coherent memory.
+  readCoherentMemoryInBuffer(indexBuffer, startOffset, numBytes)
+  // Read the whole vertex buffer if a buffer is backed with coherent memory.
+  readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
 }
 
 @override
@@ -5703,7 +5657,21 @@ RecreateCmdDrawIndirectData {
     u32             Stride
 }
 
-sub void doCmdDrawIndirect(u32 unused) {
+@internal class CmdDrawIndirect {
+  VkBuffer Buffer
+  VkDeviceSize Offset
+  u32 DrawCount
+  u32 Stride
+}
+
+sub void doCmdDrawIndirect(CmdDrawIndirect draw) {
+  if draw.DrawCount > 0 {
+    command_size := as!VkDeviceSize(16)
+    indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
+    readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
+    // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
+    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+  }
 }
 
 @threadSafety("app")
@@ -5716,7 +5684,7 @@ cmd void vkCmdDrawIndirect(
     u32             stride) {
   addCmd(commandBuffer,
     new!RecreateCmdDrawIndirectData(buffer, offset, drawCount, stride),
-    as!u32(0), doCmdDrawIndirect)
+    CmdDrawIndirect(buffer, offset, drawCount, stride), doCmdDrawIndirect)
 }
 
 @override
@@ -5738,7 +5706,24 @@ RecreateCmdDrawIndexedIndirectData {
     u32             Stride
 }
 
-sub void doCmdDrawIndexedIndirect(u32 unused) {
+@internal class CmdDrawIndexedIndirect {
+  VkBuffer Buffer
+  VkDeviceSize Offset
+  u32 DrawCount
+  u32 Stride
+}
+
+sub void doCmdDrawIndexedIndirect(CmdDrawIndexedIndirect draw) {
+  if draw.DrawCount > 0 {
+    command_size := as!VkDeviceSize(16)
+    indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
+    readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
+    // Read through the whole index buffer if it uses coherent menory.
+    indexBuffer := CurrentIndexBuffer.BoundBuffer.Buffer
+    readCoherentMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
+    // Read through all the coherent memory vertex buffers, as we cannot assume the buffer given to indirect draw is host
+    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+  }
 }
 
 @threadSafety("app")
@@ -5751,7 +5736,7 @@ cmd void vkCmdDrawIndexedIndirect(
     u32             stride) {
   addCmd(commandBuffer,
     new!RecreateCmdDrawIndexedIndirectData(buffer, offset, drawCount, stride),
-    as!u32(0), doCmdDrawIndirect)
+    CmdDrawIndexedIndirect(buffer, offset, drawCount, stride), doCmdDrawIndexedIndirect)
 }
 
 @override
@@ -5785,12 +5770,23 @@ cmd void vkCmdDispatch(
     new!RecreateCmdDispatchData(x, y, z), as!u32(0), doCmdDispatch)
 }
 
+@internal class CmdDispatchIndirect {
+  VkBuffer Buffer
+  VkDeviceSize Offset
+}
+
+sub void doCmdDispatchIndirect(CmdDispatchIndirect dispatch) {
+  command_size := as!VkDeviceSize(12)
+  readCoherentMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
+  addCmd(commandBuffer, Unimplemented(), CmdDispatchIndirect(buffer, offset), doCmdDispatchIndirect)
 }
 
 
@@ -5806,11 +5802,10 @@ sub void doCmdCopyBuffer(CmdCopyBuffer buffer) {
   for _ , _ , region in buffer.CopyRegions {
     srcMemoryOffset := sourceBuffer.MemoryOffset + region.srcOffset
     dstMemoryOffset := destBuffer.MemoryOffset + region.dstOffset
-    ReadMemoryIfCoherent(sourceBuffer.Memory, srcMemoryOffset, region.size)
+    readCoherentMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
     copy(destBuffer.Memory.Data[dstMemoryOffset:dstMemoryOffset + region.size],
       sourceBuffer.Memory.Data[srcMemoryOffset:srcMemoryOffset + region.size])
   }
-
 }
 
 @override
@@ -5863,6 +5858,13 @@ class CmdCopyImage {
 sub void doCmdCopyImage(CmdCopyImage args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
+
+  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
+  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
+  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
+  // the changes in coherent memory to the UI's texture view.
+  readCoherentMemoryInImage(srcImageObject)
+
   srcFormat := srcImageObject.Info.Format
   srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
   dstFormat := dstImageObject.Info.Format
@@ -5914,7 +5916,6 @@ sub void doCmdCopyImage(CmdCopyImage args) {
           srcZ := srcZStart + as!u64(z)
           dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
           srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
-          ReadMemoryIfCoherent(srcImageObject.BoundMemory, as!VkDeviceSize(srcStart), as!VkDeviceSize(copySize))
           copy(dstData[dstStart:dstStart + copySize], srcData[srcStart:srcStart + copySize])
         }
       }
@@ -6092,7 +6093,7 @@ sub void doCmdCopyBufferToImage(CmdCopyBufferToImage args) {
           rowStartInExtent := (((zInExtent * imageHeight) + yInExtent) * rowLength) * elementSize
           srcStart := as!u64(bufferObject.MemoryOffset) + as!u64(region.bufferOffset) + bufferLayerOffset + rowStartInExtent
           srcEnd := srcStart + copySize
-          ReadMemoryIfCoherent(bufferObject.Memory, as!VkDeviceSize(srcStart), as!VkDeviceSize(copySize))
+          readCoherentMemoryInBuffer(bufferObject, region.bufferOffset + as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
           copy(dstData[dstStart:dstEnd], srcData[srcStart:srcEnd])
         }
       }
@@ -6824,8 +6825,6 @@ cmd VkResult vkCreateSwapchainKHR(
   swapchainObject.VulkanHandle = handle
   Swapchains[handle] = swapchainObject
 
-
-
   return ?
 }
 
@@ -6871,6 +6870,8 @@ cmd VkResult vkGetSwapchainImagesKHR(
       object := new!ImageObject(BoundMemory: null,
         Device:              device,
         VulkanHandle:        images[i],
+        BoundMemoryOffset:   0,
+        Size:                0,
         Info:                swapchainObject.Info,
         ImageAspect:         as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
       )
@@ -7409,7 +7410,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 
 @internal class BoundIndexBuffer {
   VkIndexType Type
-  BoundBuffer Buffer
+  BoundBuffer BoundBuffer
 }
 
 // Dispatchable objects.
@@ -7448,7 +7449,7 @@ ref!FramebufferObject LastUsedFramebuffer
 ref!QueueObject       LastBoundQueue
 BoundIndexBuffer      CurrentIndexBuffer
 // This is a map of binding number to buffer bound do that binding.
-map!(u32, BoundBuffer)     CurrentVertexBuffers
+map!(u32, BoundBuffer)     CurrentBoundVertexBuffers
 ref!GraphicsPipelineObject CurrentGraphicsPipeline
 ref!ComputePipelineObject  CurrentComputePipeline
 
@@ -7547,7 +7548,6 @@ enum RecordingState {
   @unused VkDevice       Device
   @unused VkBuffer       VulkanHandle
   @unused BufferInfo     Info
-
   ref!DeviceMemoryObject Memory
   VkDeviceSize           MemoryOffset
   @unused ref!QueueObject       LastBoundQueue
@@ -7582,7 +7582,8 @@ enum RecordingState {
   @unused VkDevice              Device
   @unused ref!QueueObject       LastBoundQueue
   ref!DeviceMemoryObject        BoundMemory
-  @unused VkDeviceSize          BoundMemoryOffset
+  VkDeviceSize                  BoundMemoryOffset
+  VkDeviceSize                  Size
   @unused bool                  IsSwapchainImage
   VkImage                       VulkanHandle
   ImageInfo                     Info

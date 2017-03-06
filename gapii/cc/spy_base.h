@@ -33,6 +33,10 @@
 #include "core/cc/coder/memory.h"
 #include "core/cc/coder/atom.h"
 
+#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+#include <core/memory_tracker/cc/memory_tracker.h>
+#endif // TARGET_OS
+
 #include <stdint.h>
 
 #include <memory>
@@ -186,6 +190,10 @@ protected:
     // Used by the generated code to indicate that the API file compute t as the
     // return for this call. The actual return value comes from the driver.
     template <typename T> void setExpectedReturn(const T& t);
+
+#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+    TrackMemory::MemoryTracker mMemoryTracker;
+#endif // TARGET_OS
 private:
     template <class T> bool shouldObserve(const Slice<T>& slice) const;
 
