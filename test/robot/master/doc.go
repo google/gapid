@@ -18,3 +18,9 @@
 // It's main job is to manage and control the set of satellites.
 // A satellite is a server that offers any of the other robot services.
 package master
+
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
+import (
+	_ "github.com/golang/protobuf/proto"
+)

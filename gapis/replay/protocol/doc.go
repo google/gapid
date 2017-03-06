@@ -18,3 +18,13 @@
 // Any changes to the values in this package must also be made to the replay
 // source.
 package protocol
+
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
+import (
+	_ "github.com/golang/protobuf/proto"
+	_ "github.com/google/gapid/core/data/id"
+	_ "github.com/google/gapid/core/data/pod"
+	_ "github.com/google/gapid/framework/binary/registry"
+	_ "github.com/google/gapid/framework/binary/schema"
+)

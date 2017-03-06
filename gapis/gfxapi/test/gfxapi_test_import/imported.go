@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gfxapi_test_import represents an API imported by the test API.
 package gfxapi_test_import
 
 import (

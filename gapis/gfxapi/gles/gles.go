@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gles implementes the API interface for the OpenGL ES graphics library.
 package gles
-
-// binary: cpp = gles
 
 import (
 	"fmt"

@@ -12,15 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package atom provides the fundamental types used to describe a capture stream.
 package atom
-
-// binary: cpp = atom
-// binary: java.source = service
-// binary: java.package = com.google.gapid.service.atom
-// binary: java.indent = "  "
-// binary: java.member_prefix = my
-// binary: java.disable.ID = true
 
 import (
 	"github.com/google/gapid/core/log"

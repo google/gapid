@@ -19,3 +19,12 @@
 // simplicity matters would follow this approach.
 
 package main
+
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
+import (
+	_ "github.com/google/gapid/core/app"
+	_ "github.com/google/gapid/core/fault/cause"
+	_ "github.com/google/gapid/core/log"
+	_ "github.com/google/gapid/core/text/lingo"
+)

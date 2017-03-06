@@ -17,7 +17,10 @@ package any
 
 import (
 	"github.com/google/gapid/core/data/id"
+	_ "github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/framework/binary"
+	_ "github.com/google/gapid/framework/binary/registry"
+	_ "github.com/google/gapid/framework/binary/schema"
 )
 
 // binary: java.source = rpclib
