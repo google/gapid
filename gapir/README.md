@@ -11,7 +11,7 @@ our needs, and compared it to a number of existing, lightweight, open-source VMs
 
 We opted for building a custom VM because:
 
-* Our [required instruction set](#vm-instruction-set) was significantly
+* Our [required instruction set](#opcodes) was significantly
   smaller than those provided by other VMs. We have no need for functions or
   any type of control flow, and by reducing the instruction set to only what
   we absolutely require, we’ve avoided unnecessary complexity in testing, and
@@ -22,8 +22,8 @@ We opted for building a custom VM because:
   difficult to fit into other VMs.
 * Some of the VMs of interest had licences that were incompatible with our
   needs.
-* Our speed requirements are very high, we do profiling based on the vm
-  playback, we need as little vm overhead as possible per draw call.
+* Our speed requirements are very high, we do profiling based on the VM
+  playback, we need as little overhead as possible per draw call.
 
 
 ## Memory pools
@@ -46,7 +46,7 @@ immutable for the entire replay.
 
 Memory that’s not allocated by the replay system may still need to be read or
 written to in order to perform a replay. Pointers returned by [`glGetString`]
-[glGetString.xml] or [`glMapBufferRange`][glMapBufferRange.xhtml] are examples
+[glGetString] or [`glMapBufferRange`][glMapBufferRange] are examples
 of memory that’s not allocated by the replay system, but may need to be
 accessed.
 
@@ -78,7 +78,7 @@ The VM uses a standard LIFO stack where each element is a type-value pair.
 The size of the stored elements are unified to the size of the largest storable
 type and all of the elements are aligned.
 
-Each operation, except for CLONE, consumes the operands from the current stack
+Each operation, except for `CLONE`, consumes the operands from the current stack
 and pushes the result back to the stack.
 
 ## Opcodes
@@ -92,18 +92,21 @@ Notation: `<field_name:field_size_in_bits>`
 ### `CALL(push-return, api, function)` [-{arg-count} (any type) / +{push-return} (any type)]
 `<code:6> <padding:1> <push-return:1> <padding:4> <api:4> <function id:16>`
 
-* Calls the specified function in the given api and if push-return is 1 then save the
-  return value to the stack; otherwise discard the return value.
-* The arguments are popped from the stack and they are type checked with the arguments
-  of the called function.
-* The arguments have to be pushed onto the stack in order (the last argument is on the
-  top of the stack).
-* Function IDs in range 0xff00-0xffff are reserved.
+Calls the specified function in the given API and if push-return is 1 then saves the
+return value to the stack; otherwise the return value is discarded.
+
+The arguments are popped from the stack and they are type-checked with the arguments
+of the called function.
+
+The arguments have to be pushed onto the stack in order (the last argument is on the
+top of the stack).
+
+Function IDs in range 0xff00-0xffff are reserved.
 
 ### `PUSH_I(type, data)` [+1 (type)]
 `<code:6> <type:6> <data:20>`
 
-Pushes the data specified inside the opcode to the stack.
+Pushes `data` to the top of the stack.
 
 If the data type is an integer or a pointer type, then the data is copied into the
 least-significant-bits of the target word, sign-extending if the type is signed.
@@ -114,12 +117,12 @@ exponent bits of the floating point number, and the fractional bits are set to 0
 ### `LOAD_C(type, address)` [+1 (type)]
 `<code:6> <type:6> <constant-address:20>`
 
-Pushes data from the given constant memory address to the stack.
+Pushes data loaded from `constant-address` to the top of the stack.
 
 ### `LOAD_V(type, address)` [+1 (type)]
 `<code:6> <type:6> <volatile-address:20>`
 
-Pushes data from the given volatile memory address to the stack.
+Pushes data loaded from `volatile-address` to the top of the stack.
 
 ### `LOAD(type)` [-1 (pointer) / +1 (type)]
 `<code:6> <type:6> <padding:20>`
@@ -135,7 +138,7 @@ Pops and discards `count` values from the top of the stack.
 ### `STORE_V(volatile-address)` [-1 (any type)]
 `<code:6> <volatile-address:26>`
 
-Pops the top value from the the stack and saves it to the given volatile memory address.
+Pops the top value from the the stack and saves it to `volatile-address`.
 All pointer values, regardless of the pointer type on the stack, will be stored as an
 absolute pointer address.
 
@@ -150,8 +153,8 @@ absolute pointer address.
 ### `RESOURCE(resource-id)` [-1 (pointer)]
 `<code:6> <resource-id:26>`
 
-Pops the address from the top of the stack and then loads the resource with the
-given id to that address.
+Pops the address from the top of the stack and then loads the resource `resource-id`
+to that address.
 
 ### `POST()` [-2 (uint32_t, pointer)]
 `<code:6> <padding:26>`
@@ -233,3 +236,5 @@ those that are missing.
 [Neko]:                   http://nekovm.org/
 [Lua]:                    http://www.lua.org/
 [Parrot]:                 http://www.parrot.org/
+[glGetString]:            https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glGetString.xhtml
+[glMapBufferRange]:       https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glMapBufferRange.xhtml
