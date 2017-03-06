@@ -6,7 +6,7 @@ GAPID is a collection of tools that allows you to inspect, tweak and replay call
 GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
 
 The UI runs on Windows, Linux and MacOS and can currently be used to trace on Android.
-We also plan to be able to trace OpenGL ES and Vulkan applications on host OSes that support those APIs in the near future.
+We also plan to be able to trace OpenGL ES and Vulkan applications on hosts that support those APIs.
 
 Downloadable prebuilts will be available once the project reaches the beta milestone.
 
