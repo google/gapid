@@ -181,15 +181,20 @@ func newTask(entry map[string]interface{}, kind Item) *task {
 		trace:      traceInfo{host: nilItem, subject: nilItem, target: nilItem, gapidApk: nilItem, gapit: nilItem},
 	}
 
-	switch int(entry["status"].(float64)) {
-	case 1:
-		t.status = grid.InProgress
-		t.result = grid.Unknown
-	case 2:
-		t.status = grid.Current
-		t.result = grid.Succeeded
-	case 3:
-		t.status = grid.Current
+	if st, ok := entry["status"].(float64); ok {
+		switch int(st) {
+		case 1:
+			t.status = grid.InProgress
+			t.result = grid.Unknown
+		case 2:
+			t.status = grid.Current
+			t.result = grid.Succeeded
+		case 3:
+			t.status = grid.Current
+			t.result = grid.Failed
+		}
+	} else {
+		t.status = grid.Stale
 		t.result = grid.Failed
 	}
 	return t
