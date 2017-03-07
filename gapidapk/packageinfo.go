@@ -65,5 +65,8 @@ func PackageList(ctx log.Context, d adb.Device, includeIcons bool, iconDensitySc
 	if err := jsonpb.Unmarshal(sock, out); err != nil {
 		return nil, cause.Explain(ctx, err, "unmarshal json data")
 	}
+
+	out.Sort()
+
 	return out, nil
 }
