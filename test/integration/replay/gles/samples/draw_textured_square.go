@@ -22,7 +22,7 @@ import (
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx log.Context) (atoms *atom.List, draw atom.ID) {
+func DrawTexturedSquare(ctx log.Context) (atoms *atom.List, draw atom.ID, swap atom.ID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -115,8 +115,10 @@ func DrawTexturedSquare(ctx log.Context) (atoms *atom.List, draw atom.ID) {
 		gles.NewGlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
+	)
+	swap = b.Add(
 		gles.NewEglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
 
-	return &b.List, draw
+	return &b.List, draw, swap
 }

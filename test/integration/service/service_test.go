@@ -21,8 +21,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/fault/cause"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -35,66 +39,34 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/google/gapid/test/integration/replay/gles/samples"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-// adapter convertes a GapidServer to a GapidClient interface (drops the opts
-// args and uses a new context)
-type adapter struct{ service.GapidServer }
+func startServerAndGetGrpcClient(ctx log.Context, config server.Config) (service.Service, error, func()) {
+	l := grpcutil.NewPipeListener("pipe:servicetest")
 
-func (a adapter) GetServerInfo(ctx context.Context, in *service.GetServerInfoRequest, opts ...grpc.CallOption) (*service.GetServerInfoResponse, error) {
-	return a.GapidServer.GetServerInfo(context.Background(), in)
-}
-func (a adapter) Get(ctx context.Context, in *service.GetRequest, opts ...grpc.CallOption) (*service.GetResponse, error) {
-	return a.GapidServer.Get(context.Background(), in)
-}
-func (a adapter) Set(ctx context.Context, in *service.SetRequest, opts ...grpc.CallOption) (*service.SetResponse, error) {
-	return a.GapidServer.Set(context.Background(), in)
-}
-func (a adapter) Follow(ctx context.Context, in *service.FollowRequest, opts ...grpc.CallOption) (*service.FollowResponse, error) {
-	return a.GapidServer.Follow(context.Background(), in)
-}
-func (a adapter) BeginCPUProfile(ctx context.Context, in *service.BeginCPUProfileRequest, opts ...grpc.CallOption) (*service.BeginCPUProfileResponse, error) {
-	return a.GapidServer.BeginCPUProfile(context.Background(), in)
-}
-func (a adapter) EndCPUProfile(ctx context.Context, in *service.EndCPUProfileRequest, opts ...grpc.CallOption) (*service.EndCPUProfileResponse, error) {
-	return a.GapidServer.EndCPUProfile(context.Background(), in)
-}
-func (a adapter) GetPerformanceCounters(ctx context.Context, in *service.GetPerformanceCountersRequest, opts ...grpc.CallOption) (*service.GetPerformanceCountersResponse, error) {
-	return a.GapidServer.GetPerformanceCounters(context.Background(), in)
-}
-func (a adapter) GetProfile(ctx context.Context, in *service.GetProfileRequest, opts ...grpc.CallOption) (*service.GetProfileResponse, error) {
-	return a.GapidServer.GetProfile(context.Background(), in)
-}
-func (a adapter) GetSchema(ctx context.Context, in *service.GetSchemaRequest, opts ...grpc.CallOption) (*service.GetSchemaResponse, error) {
-	return a.GapidServer.GetSchema(context.Background(), in)
-}
-func (a adapter) GetAvailableStringTables(ctx context.Context, in *service.GetAvailableStringTablesRequest, opts ...grpc.CallOption) (*service.GetAvailableStringTablesResponse, error) {
-	return a.GapidServer.GetAvailableStringTables(context.Background(), in)
-}
-func (a adapter) GetStringTable(ctx context.Context, in *service.GetStringTableRequest, opts ...grpc.CallOption) (*service.GetStringTableResponse, error) {
-	return a.GapidServer.GetStringTable(context.Background(), in)
-}
-func (a adapter) ImportCapture(ctx context.Context, in *service.ImportCaptureRequest, opts ...grpc.CallOption) (*service.ImportCaptureResponse, error) {
-	return a.GapidServer.ImportCapture(context.Background(), in)
-}
-func (a adapter) LoadCapture(ctx context.Context, in *service.LoadCaptureRequest, opts ...grpc.CallOption) (*service.LoadCaptureResponse, error) {
-	return a.GapidServer.LoadCapture(context.Background(), in)
-}
-func (a adapter) GetDevices(ctx context.Context, in *service.GetDevicesRequest, opts ...grpc.CallOption) (*service.GetDevicesResponse, error) {
-	return a.GapidServer.GetDevices(context.Background(), in)
-}
-func (a adapter) GetDevicesForReplay(ctx context.Context, in *service.GetDevicesForReplayRequest, opts ...grpc.CallOption) (*service.GetDevicesForReplayResponse, error) {
-	return a.GapidServer.GetDevicesForReplay(context.Background(), in)
-}
-func (a adapter) GetFramebufferAttachment(ctx context.Context, in *service.GetFramebufferAttachmentRequest, opts ...grpc.CallOption) (*service.GetFramebufferAttachmentResponse, error) {
-	return a.GapidServer.GetFramebufferAttachment(context.Background(), in)
+	schan := make(chan *grpc.Server, 1)
+	go server.NewWithListener(ctx, l, config, schan)
+	svr := <-schan
+
+	conn, err := grpcutil.Dial(ctx, "pipe:servicetest",
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(auth.ClientInterceptor(config.AuthToken)),
+		grpc.WithDialer(grpcutil.GetDialer(ctx)),
+	)
+	if err != nil {
+		return nil, cause.Explain(ctx, err, "Dialing GAPIS"), nil
+	}
+	client := gapis.Bind(conn)
+
+	return client, nil, func() {
+		client.Close()
+		svr.GracefulStop()
+	}
 }
 
-func setup(t *testing.T) (log.Context, server.Server) {
+func setup(t *testing.T) (log.Context, server.Server, func()) {
 	ctx := log.Testing(t)
-
 	m, r := replay.New(ctx), bind.NewRegistry()
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
@@ -102,7 +74,10 @@ func setup(t *testing.T) (log.Context, server.Server) {
 
 	r.AddDevice(ctx, bind.Host(ctx))
 
-	return ctx, gapis.New(adapter{server.NewGapidServer(ctx, cfg)})
+	client, err, shutdown := startServerAndGetGrpcClient(ctx, cfg)
+	assert.With(ctx).ThatError(err).Succeeded()
+
+	return ctx, client, shutdown
 }
 
 func text(text string) *stringtable.Node {
@@ -134,6 +109,7 @@ var (
 	}
 	testCaptureData []byte
 	drawAtomIndex   uint64
+	swapAtomIndex   uint64
 )
 
 func init() {
@@ -143,59 +119,71 @@ func init() {
 		}
 	}
 	ctx := log.Background()
+
+	deviceScanDone, onDeviceScanDone := task.NewSignal()
+	onDeviceScanDone(ctx)
+	cfg.DeviceScanDone = deviceScanDone
+
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	atoms, draw := samples.DrawTexturedSquare(ctx)
+	atoms, draw, swap := samples.DrawTexturedSquare(ctx)
 	p, err := capture.ImportAtomList(ctx, "sample", atoms)
 	check(err)
 	buf := bytes.Buffer{}
 	check(capture.Export(ctx, p, &buf))
-	testCaptureData, drawAtomIndex = buf.Bytes(), uint64(draw)
+	testCaptureData, drawAtomIndex, swapAtomIndex = buf.Bytes(), uint64(draw), uint64(swap)
 }
 
 func TestGetServerInfo(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.GetServerInfo(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).DeepEquals(cfg.Info)
 }
 
 func TestGetSchema(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.GetSchema(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).IsNotNil()
 }
 
 func TestGetAvailableStringTables(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.GetAvailableStringTables(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).DeepEquals([]*stringtable.Info{stringtables[0].Info})
 }
 
 func TestGetStringTable(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.GetStringTable(ctx, stringtables[0].Info)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).DeepEquals(stringtables[0])
 }
 
 func TestImportCapture(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).IsNotNil()
 }
 
 func TestGetDevices(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	got, err := server.GetDevices(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).ThatSlice(got).IsNotEmpty()
 }
 
 func TestGetDevicesForReplay(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(capture).IsNotNil()
@@ -205,14 +193,15 @@ func TestGetDevicesForReplay(t *testing.T) {
 }
 
 func TestGetFramebufferAttachment(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(capture).IsNotNil()
 	devices, err := server.GetDevices(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).ThatSlice(devices).IsNotEmpty()
-	after := capture.Commands().Index(drawAtomIndex)
+	after := capture.Commands().Index(swapAtomIndex)
 	attachment := gfxapi.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
 	got, err := server.GetFramebufferAttachment(ctx, devices[0], after, attachment, settings)
@@ -221,11 +210,13 @@ func TestGetFramebufferAttachment(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(capture).IsNotNil()
 	T, any := reflect.TypeOf, reflect.TypeOf(struct{}{})
+
 	for _, test := range []struct {
 		path path.Node
 		ty   reflect.Type
@@ -233,9 +224,9 @@ func TestGet(t *testing.T) {
 		{capture, T((*service.Capture)(nil))},
 		{capture.Contexts(), T([]*service.Context{})},
 		{capture.Commands(), T((*atom.List)(nil))},
-		{capture.Commands().Index(drawAtomIndex), T((*atom.Atom)(nil)).Elem()},
-		{capture.Commands().Index(drawAtomIndex).StateAfter(), any},
-		{capture.Commands().Index(drawAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.MemoryInfo)(nil))},
+		{capture.Commands().Index(swapAtomIndex), T((*atom.Atom)(nil)).Elem()},
+		{capture.Commands().Index(swapAtomIndex).StateAfter(), any},
+		{capture.Commands().Index(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.MemoryInfo)(nil))},
 		{capture.Commands().Index(drawAtomIndex).Mesh(false), T((*gfxapi.Mesh)(nil))},
 		{capture.Hierarchies(), T([]*service.Hierarchy{})},
 		{capture.Report(nil), T((*service.Report)(nil))},
@@ -261,7 +252,8 @@ func TestFollow(t *testing.T) {
 }
 
 func TestCPUProfile(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	err := server.BeginCPUProfile(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	data, err := server.EndCPUProfile(ctx)
@@ -270,7 +262,8 @@ func TestCPUProfile(t *testing.T) {
 }
 
 func TestGetPerformanceCounters(t *testing.T) {
-	ctx, server := setup(t)
+	ctx, server, shutdown := setup(t)
+	defer shutdown()
 	data, err := server.GetPerformanceCounters(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(data).IsNotNil()

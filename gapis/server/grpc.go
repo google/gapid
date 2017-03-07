@@ -30,11 +30,25 @@ import (
 // Listen starts a new GRPC server listening on addr.
 // This is a blocking call.
 func Listen(ctx log.Context, addr string, cfg Config) error {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		ctx.V("server", addr).Fatalf("Could not start grpc server: %s", err.Error())
+	}
+	return NewWithListener(ctx, listener, cfg, nil)
+}
+
+func NewWithListener(ctx log.Context, l net.Listener, cfg Config, srvChan chan<- *grpc.Server) error {
 	s := NewGapidServer(ctx, cfg)
-	return grpcutil.Serve(ctx, addr, func(ctx log.Context, listener net.Listener, server *grpc.Server) error {
-		// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
-		fmt.Printf("Bound on port '%d'\n", listener.Addr().(*net.TCPAddr).Port)
+	return grpcutil.ServeWithListener(ctx, l, func(ctx log.Context, listener net.Listener, server *grpc.Server) error {
+		if addr, ok := listener.Addr().(*net.TCPAddr); ok {
+			// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
+			fmt.Printf("Bound on port '%d'\n", addr.Port)
+		}
 		service.RegisterGapidServer(server, s)
+
+		if srvChan != nil {
+			srvChan <- server
+		}
 		return nil
 	}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
 }

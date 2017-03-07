@@ -416,7 +416,7 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 
 func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier) {
 	ctx := f.ctx
-	atoms, square := samples.DrawTexturedSquare(ctx)
+	atoms, _, square := samples.DrawTexturedSquare(ctx)
 
 	verifyTrace := func(ctx log.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
