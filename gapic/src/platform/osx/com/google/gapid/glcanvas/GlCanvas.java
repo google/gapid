@@ -48,6 +48,8 @@ public class GlCanvas extends Canvas {
 
   public GlCanvas(Composite parent, int style) {
     super(parent, style);
+    OS.objc_msgSend(view.id, OS.sel_registerName("setWantsBestResolutionOpenGLSurface:"), true);
+
     int attrib [] = new int[] {
         NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
         OS.NSOpenGLPFAColorSize, 24,
