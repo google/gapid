@@ -759,6 +759,8 @@ TEST(MemoryTrackerTest, GetAndResetInRange) {
       t.GetAndResetDirtyPagesInRange(m.mem(), t.page_size());
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
+  dirty_pages = t.GetAndResetDirtyPagesInRange(m.mem(), t.page_size());
+  EXPECT_EQ(0u, dirty_pages.size());
   // Starting at a lower address without no overlap:
   memset(m.mem(), 0xFF, t.page_size());
   dirty_pages = t.GetAndResetDirtyPagesInRange(
