@@ -20,11 +20,17 @@ import static org.lwjgl.BufferUtils.createIntBuffer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.IntBuffer;
 
 public class Util {
   private Util() {
+  }
+
+  public static boolean isAtLeastVersion(int major, int minor) {
+    int val = GL11.glGetInteger(GL30.GL_MAJOR_VERSION);
+    return (val > major) || (val == major && GL11.glGetInteger(GL30.GL_MINOR_VERSION) >= minor);
   }
 
   public static int createBuffer() {
