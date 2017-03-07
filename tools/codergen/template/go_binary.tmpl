@@ -384,6 +384,16 @@ func doDecode{{.Name}}(d binary.Decoder, o *{{.Name}}) error {»¶
     {{end}}
     ¶
     func init() {»¶
+      binary_init()
+    «}¶
+    ¶
+    var binary_init_done = false¶
+    ¶
+    func binary_init() {»¶
+      if binary_init_done {»¶
+        return¶
+      «}¶
+      binary_init_done = true¶
       {{if not .IsTest}}
         registry.Global.AddFallbacks(Namespace)¶
       {{end}}

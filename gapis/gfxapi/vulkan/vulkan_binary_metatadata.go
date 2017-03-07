@@ -48,10 +48,8 @@ func AddMetadata(n *registry.Namespace) {
 	})
 }
 
-// Note vulkan_binary.go must initialize first. We really on the Go's
-// lexigraphical provision; that is "metadata.go" > "vulkan_binary.go"
-// for correct order of initialization.
 func init() {
+	binary_init()
 	AddMetadata(Namespace)
 	if err := atom.AddSnippetsFromBase64String(
 		Namespace, embedded[snippets_base64_file]); err != nil {
