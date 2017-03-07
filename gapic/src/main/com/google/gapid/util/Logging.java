@@ -34,15 +34,18 @@ import java.util.logging.StreamHandler;
 
 public class Logging {
   public static enum LogLevel {
-    OFF(Level.OFF, "Emergency"), ERROR(Level.SEVERE, "Error"), WARNING(Level.WARNING, "Warning"),
-    INFO(Level.INFO, "Info"), DEBUG(Level.FINE, "Debug"), ALL(Level.ALL, "Debug");
+    OFF(Level.OFF, "Emergency", "F"), ERROR(Level.SEVERE, "Error", "E"),
+    WARNING(Level.WARNING, "Warning", "W"), INFO(Level.INFO, "Info", "I"),
+    DEBUG(Level.FINE, "Debug", "D"), ALL(Level.ALL, "Debug", "V");
 
     public final Level level;
     public final String gapisLevel;
+    public final String gapirLevel;
 
-    private LogLevel(Level level, String gapisLevel) {
+    private LogLevel(Level level, String gapisLevel, String gapirLevel) {
       this.level = level;
       this.gapisLevel = gapisLevel;
+      this.gapirLevel = gapirLevel;
     }
   }
 
