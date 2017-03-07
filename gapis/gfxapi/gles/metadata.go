@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"reflect"
 
-	_ "github.com/google/gapid/gapil/snippets"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/registry"
 	"github.com/google/gapid/gapis/atom"
@@ -52,10 +51,8 @@ func AddMetadata(n *registry.Namespace) {
 	})
 }
 
-// Note gles_binary.go must initialize first. We really on the Go's
-// lexigraphical provision; that is "metadata.go" > "gles_binary.go"
-// for correct order of initialization.
 func init() {
+	binary_init()
 	AddMetadata(Namespace)
 	if err := atom.AddSnippetsFromBase64String(
 		Namespace, embedded[snippets_base64_file]); err != nil {
