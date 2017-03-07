@@ -19,6 +19,7 @@ import com.google.gapid.glcanvas.GlCanvas;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -44,7 +45,7 @@ public class GlComposite extends Composite {
   public void addListener(Listener listener) {
     canvas.addListener(SWT.Resize, e -> {
       render(() -> {
-        Point size = getSize();
+        Point size = DPIUtil.autoScaleUp(getSize());
         listener.reshape(0, 0, size.x, size.y);
         listener.display();
       }, true);
@@ -58,7 +59,7 @@ public class GlComposite extends Composite {
 
     render(() -> {
       listener.init();
-      Point size = canvas.getSize();
+      Point size = DPIUtil.autoScaleUp(getSize());
       listener.reshape(0, 0, size.x, size.y);
       listener.display();
     }, true);
