@@ -21,6 +21,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.LineProcessor;
 import com.google.common.io.Resources;
 import com.google.gapid.glviewer.gl.Shader;
+import com.google.gapid.glviewer.gl.Util;
 
 import java.io.IOException;
 import java.net.URL;
@@ -28,6 +29,8 @@ import java.util.logging.Logger;
 
 public class ShaderSource {
   private static final Logger LOG = Logger.getLogger(ShaderSource.class.getName());
+  private static final String VERSION_130 = "#version 130\n";
+  private static final String VERSION_150 = "#version 150\n";
 
   private ShaderSource() {
   }
@@ -37,16 +40,17 @@ public class ShaderSource {
   }
 
   public static Shader loadShader(URL resource) {
+    String version = Util.isAtLeastVersion(3, 2) ? VERSION_150 : VERSION_130;
     try {
       Source source = Resources.readLines(resource, Charsets.US_ASCII, new LineProcessor<Source>() {
         private static final int MODE_COMMON = 0;
         private static final int MODE_VERTEX = 1;
         private static final int MODE_FRAGMENT = 2;
-        private static final String VERTEX_PREAMBLE = "#version 150\n#define varying out\n";
-        private static final String FRAGMENT_PREAMBLE = "#version 150\n#define varying in\n";
+        private static final String VERTEX_PREAMBLE = "#define varying out\n";
+        private static final String FRAGMENT_PREAMBLE = "#define varying in\n";
 
-        private final StringBuilder vertexSource = new StringBuilder(VERTEX_PREAMBLE);
-        private final StringBuilder fragmentSource = new StringBuilder(FRAGMENT_PREAMBLE);
+        private final StringBuilder vertexSource = new StringBuilder(version + VERTEX_PREAMBLE);
+        private final StringBuilder fragmentSource = new StringBuilder(version + FRAGMENT_PREAMBLE);
 
         private int mode = MODE_COMMON;
 
