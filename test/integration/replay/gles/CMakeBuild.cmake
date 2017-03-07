@@ -15,3 +15,17 @@
 build_subdirectory(samples)
 
 go_package()
+
+embed(
+    OUTPUT "reference_embed.go"
+    reference/one-depth.png
+    reference/solid-black.png
+    reference/solid-blue.png
+    reference/solid-green.png
+    reference/solid-red.png
+    reference/textured-square.png
+    reference/triangle.png
+    reference/triangle-180.png
+    reference/triangle-depth.png
+    reference/triangle_2.png
+)
