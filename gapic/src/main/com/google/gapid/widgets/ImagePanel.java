@@ -43,7 +43,6 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
-import com.google.gapid.util.OS;
 import com.google.gapid.util.UiErrorCallback;
 
 import org.eclipse.swt.SWT;
@@ -605,7 +604,7 @@ public class ImagePanel extends Composite {
     }
 
     private static void withSciscor(int x, int y, int w, int h, Runnable run) {
-      if (!OS.isMac && DPIUtil.getDeviceZoom() != 100) {
+      if (DPIUtil.getDeviceZoom() != 100) {
         // Translate SWT points to GL pixels.
         Rectangle scaled = DPIUtil.autoScaleUp(new Rectangle(x, y, w, h));
         x = scaled.x; y = scaled.y; w = scaled.width; h = scaled.height;
