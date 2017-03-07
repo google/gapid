@@ -33,8 +33,6 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
-const referenceImageDir = "reference"
-
 // storeReferenceImage replaces the reference image with img.
 func storeReferenceImage(ctx log.Context, outputDir string, name string, img *gpuimg.Image2D) {
 	ctx = ctx.S("Name", name)
@@ -55,20 +53,14 @@ func storeReferenceImage(ctx log.Context, outputDir string, name string, img *gp
 	}
 }
 
-func readFile(path string) ([]byte, error) {
-	b64, found := embedded[path]
-	if found {
-		return base64.StdEncoding.DecodeString(b64)
-	} else {
-		return ioutil.ReadFile(path)
-	}
-}
-
 // loadReferenceImage loads the reference image with the specified name.
 func loadReferenceImage(ctx log.Context, name string) *gpuimg.Image2D {
 	ctx = ctx.S("Name", name)
-	path := filepath.Join(referenceImageDir, name+".png")
-	data, err := readFile(path)
+	b64, found := embedded[fmt.Sprintf("reference/%s.png", name)]
+	if !found {
+		jot.Fatalf(ctx, nil, "Embedded reference image '%s' not found", name)
+	}
+	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		jot.Fatal(ctx, err, "Failed to load reference image")
 	}
