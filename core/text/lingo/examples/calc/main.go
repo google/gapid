@@ -21,12 +21,11 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	_ "github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	_ "github.com/google/gapid/core/text/lingo"
 )
@@ -36,7 +35,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing expression")
@@ -47,6 +46,6 @@ func run(ctx log.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(ctx.Raw("").Writer(), "%v = %v\n", value, value.Eval())
+	log.I(ctx, "%v = %v\n", value, value.Eval())
 	return nil
 }

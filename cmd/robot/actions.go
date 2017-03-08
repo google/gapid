@@ -15,10 +15,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/test/robot/master"
 	"google.golang.org/grpc"
@@ -66,8 +66,8 @@ func init() {
 	stopVerb.Flags.Raw.BoolVar(&stopNow, "now", false, "Immediate shutdown")
 }
 
-func doStop(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doStop(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		if stopNow {
 			return client.Kill(ctx, flags.Args()...)
@@ -76,8 +76,8 @@ func doStop(ctx log.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func doRestart(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doRestart(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		return client.Restart(ctx, flags.Args()...)
 	}, grpc.WithInsecure())

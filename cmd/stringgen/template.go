@@ -48,8 +48,8 @@ func (l EntryList) Less(i, j int) bool { return l[i].Key < l[j].Key }
 // Swap switches the i'th and j'th element.
 func (l EntryList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 
-// context is the template execution context.
-type context struct {
+// tmplCtx is the template execution context.
+type tmplCtx struct {
 	Entries   []Entry
 	Package   string
 	Copyright string
@@ -66,7 +66,7 @@ func Execute(templateRoutine, templateStr, pkg string, entries []Entry, w io.Wri
 		return err
 	}
 
-	ctx := context{
+	ctx := tmplCtx{
 		Entries:   entries,
 		Package:   pkg,
 		Copyright: copyright.Build("generated_by", copyright.Info{Year: "2016", Tool: "stringgen"}),

@@ -15,7 +15,8 @@
 package record
 
 import (
-	"github.com/google/gapid/core/fault/cause"
+	"context"
+
 	"github.com/google/gapid/core/log"
 )
 
@@ -23,9 +24,9 @@ import (
 // It manages a set of shelves, and uses them to open and create ledgers.
 type Library interface {
 	// Add appends new shelves to the library.
-	Add(ctx log.Context, shelf ...Shelf)
+	Add(ctx context.Context, shelf ...Shelf)
 	// Open opens a ledger from a shelf in the library.
-	Open(ctx log.Context, name string, null interface{}) (Ledger, error)
+	Open(ctx context.Context, name string, null interface{}) (Ledger, error)
 }
 
 // library is the default implementation of Library, it just holds a list of shelves.
@@ -34,21 +35,21 @@ type library struct {
 }
 
 // NewLibrary returns a new record library.
-func NewLibrary(ctx log.Context) Library {
+func NewLibrary(ctx context.Context) Library {
 	return &library{}
 }
 
 // Add implements Shelf.Add for the default library implementation.
-func (l *library) Add(ctx log.Context, shelf ...Shelf) {
+func (l *library) Add(ctx context.Context, shelf ...Shelf) {
 	l.shelves = append(l.shelves, shelf...)
 }
 
 // Open implements Library.Open for the default library implementation.
 // All shelves are searched for a matching ledger, if none is found then a new ledger is
 // opened in the first shelf that was added.
-func (l *library) Open(ctx log.Context, name string, null interface{}) (Ledger, error) {
+func (l *library) Open(ctx context.Context, name string, null interface{}) (Ledger, error) {
 	if len(l.shelves) == 0 {
-		return nil, cause.Explain(ctx, nil, "Cannot open ledger with no shelves")
+		return nil, log.Err(ctx, nil, "Cannot open ledger with no shelves")
 	}
 	for _, shelf := range l.shelves {
 		if ledger, err := shelf.Open(ctx, name, null); err != nil {

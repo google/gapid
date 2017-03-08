@@ -15,46 +15,43 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
-
-	"github.com/google/gapid/core/fault/severity"
-	"github.com/google/gapid/core/log"
+	"os"
 )
 
 // Usage prints message with the formatting args to stderr, and then prints the command usage information and
 // terminates the program.
-func Usage(ctx log.Context, message string, args ...interface{}) {
+func Usage(ctx context.Context, message string, args ...interface{}) {
 	usage(ctx, message, false, args...)
 	panic(UsageExit)
 }
 
-func usage(ctx log.Context, message string, verbose bool, args ...interface{}) {
-	level := severity.Notice
+func usage(ctx context.Context, message string, verbose bool, args ...interface{}) {
+	w := os.Stdout
 	if len(message) > 0 || len(args) > 0 {
-		level = severity.Error
+		w = os.Stderr
 	}
-	raw := ctx.Severity(level).Raw("").Writer()
-	defer raw.Close()
 	if len(message) > 0 {
-		fmt.Fprintln(raw)
-		fmt.Fprintf(raw, message, args...)
-		fmt.Fprintln(raw)
-		fmt.Fprintln(raw)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, message, args...)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w)
 	} else if len(args) > 0 {
-		fmt.Fprintln(raw)
-		fmt.Fprint(raw, args...)
-		fmt.Fprintln(raw)
-		fmt.Fprintln(raw)
+		fmt.Fprintln(w)
+		fmt.Fprint(w, args...)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w)
 	}
-	verbShorthelp(raw, &globalVerbs, verbose)
-	fmt.Fprint(raw, "Usage: ")
-	verbUsage(raw, &globalVerbs, verbose)
-	verbHelp(raw, &globalVerbs, verbose)
-	fmt.Fprintf(raw, UsageFooter)
+	verbShorthelp(w, &globalVerbs, verbose)
+	fmt.Fprint(w, "Usage: ")
+	verbUsage(w, &globalVerbs, verbose)
+	verbHelp(w, &globalVerbs, verbose)
+	fmt.Fprintf(w, UsageFooter)
 }
 
-func autoHelp(ctx log.Context, args ...string) {
+func autoHelp(ctx context.Context, args ...string) {
 	if len(args) == 0 {
 		usage(ctx, "", false)
 		panic(SuccessExit)

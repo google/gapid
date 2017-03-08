@@ -15,10 +15,10 @@
 package adb_test
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
@@ -197,7 +197,7 @@ untagSocket(48) failed with errno -22
 
 // expectedCommand uses the standard response for an unexpected command to the stub in order to check the command itself
 // was as expected.
-func expectedCommand(ctx log.Context, expect string, err error) {
+func expectedCommand(ctx context.Context, expect string, err error) {
 	assert.For(ctx, "Expected an unmatched command").
 		ThatError(err).HasMessage(fmt.Sprintf("Error:Failed:Start<unmatched:%s>", expect))
 }

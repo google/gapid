@@ -15,11 +15,11 @@
 package client
 
 import (
+	"context"
 	"io"
 	"sync"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -53,7 +53,7 @@ type Client struct {
 }
 
 // New returns a newly construct Client.
-func New(ctx log.Context) *Client {
+func New(ctx context.Context) *Client {
 	c := &Client{sessions: map[deviceArch]*session{}}
 	app.AddCleanup(ctx, c.shutdown)
 	return c
@@ -65,7 +65,7 @@ type deviceArch struct {
 }
 
 // Connect opens a connection to the replay device.
-func (c *Client) Connect(ctx log.Context, d bind.Device, abi *device.ABI) (io.ReadWriteCloser, error) {
+func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (io.ReadWriteCloser, error) {
 	s, isNew, err := c.getOrCreateSession(ctx, d, abi)
 	if err != nil {
 		return nil, err
@@ -80,12 +80,12 @@ func (c *Client) Connect(ctx log.Context, d bind.Device, abi *device.ABI) (io.Re
 	return s.connect(ctx)
 }
 
-func (c *Client) getOrCreateSession(ctx log.Context, d bind.Device, abi *device.ABI) (*session, bool, error) {
+func (c *Client) getOrCreateSession(ctx context.Context, d bind.Device, abi *device.ABI) (*session, bool, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if c.sessions == nil {
-		return nil, false, cause.Explain(ctx, nil, "Client has been shutdown")
+		return nil, false, log.Err(ctx, nil, "Client has been shutdown")
 	}
 
 	key := deviceArch{d, abi.Architecture}

@@ -16,6 +16,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"reflect"
 
@@ -32,9 +33,9 @@ type ReadWriteTests struct {
 
 type Factory func(io.Reader, io.Writer) (pod.Reader, pod.Writer)
 
-func ReadWrite(ctx log.Context, tests []ReadWriteTests, factory Factory) {
+func ReadWrite(ctx context.Context, tests []ReadWriteTests, factory Factory) {
 	for _, e := range tests {
-		ctx := ctx.S("name", e.Name)
+		ctx := log.V{"name": e.Name}.Bind(ctx)
 		b := &bytes.Buffer{}
 		reader, writer := factory(b, b)
 		r := reflect.ValueOf(reader).MethodByName(e.Name)
@@ -45,7 +46,7 @@ func ReadWrite(ctx log.Context, tests []ReadWriteTests, factory Factory) {
 		}
 		assert.With(ctx).ThatSlice(b.Bytes()).Equals(e.Data)
 		for i := 0; i < s.Len(); i++ {
-			ctx := ctx.I("index", i)
+			ctx := log.V{"index": i}.Bind(ctx)
 			expected := s.Index(i)
 			result := r.Call(nil)
 			got := result[0]
@@ -55,9 +56,9 @@ func ReadWrite(ctx log.Context, tests []ReadWriteTests, factory Factory) {
 	}
 }
 
-func ReadWriteData(ctx log.Context, tests []ReadWriteTests, factory Factory) {
+func ReadWriteData(ctx context.Context, tests []ReadWriteTests, factory Factory) {
 	for _, e := range tests {
-		ctx := ctx.S("name", e.Name)
+		ctx := log.V{"name": e.Name}.Bind(ctx)
 		b := &bytes.Buffer{}
 		reader, writer := factory(b, b)
 		writer.Data(e.Data)
@@ -68,7 +69,7 @@ func ReadWriteData(ctx log.Context, tests []ReadWriteTests, factory Factory) {
 	}
 }
 
-func ReadWriteCount(ctx log.Context, values []uint32, raw []byte, factory Factory) {
+func ReadWriteCount(ctx context.Context, values []uint32, raw []byte, factory Factory) {
 	b := &bytes.Buffer{}
 	reader, writer := factory(b, b)
 	for _, v := range values {
@@ -81,7 +82,7 @@ func ReadWriteCount(ctx log.Context, values []uint32, raw []byte, factory Factor
 	}
 }
 
-func ReadWriteSimple(ctx log.Context, values []Simple, raw []byte, factory Factory) {
+func ReadWriteSimple(ctx context.Context, values []Simple, raw []byte, factory Factory) {
 	b := &bytes.Buffer{}
 	reader, writer := factory(b, b)
 	for _, v := range values {
@@ -95,9 +96,9 @@ func ReadWriteSimple(ctx log.Context, values []Simple, raw []byte, factory Facto
 	}
 }
 
-func ReadWriteErrors(ctx log.Context, tests []ReadWriteTests, factory Factory) {
+func ReadWriteErrors(ctx context.Context, tests []ReadWriteTests, factory Factory) {
 	for _, e := range tests {
-		ctx := ctx.S("name", e.Name)
+		ctx := log.V{"name": e.Name}.Bind(ctx)
 		b := &bytes.Buffer{}
 		reader, writer := factory(b, b)
 		r := reflect.ValueOf(reader).MethodByName(e.Name)
@@ -127,9 +128,9 @@ func ReadWriteErrors(ctx log.Context, tests []ReadWriteTests, factory Factory) {
 	assert.With(ctx).ThatError(reader.Error()).Equals(ReadError)
 }
 
-func ReadWriteIOErrors(ctx log.Context, tests []ReadWriteTests, factory Factory) {
+func ReadWriteIOErrors(ctx context.Context, tests []ReadWriteTests, factory Factory) {
 	for _, e := range tests {
-		ctx := ctx.S("name", e.Name)
+		ctx := log.V{"name": e.Name}.Bind(ctx)
 		reader, writer := factory(&Bytes{}, &LimitedWriter{})
 		r := reflect.ValueOf(reader).MethodByName(e.Name)
 		w := reflect.ValueOf(writer).MethodByName(e.Name)

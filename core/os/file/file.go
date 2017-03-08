@@ -15,10 +15,10 @@
 package file
 
 import (
+	"context"
 	"io"
 	"os"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -67,20 +67,20 @@ func Move(dst, src Path) error {
 }
 
 // Copy copies src to dst, replacing any existing file at dst.
-func Copy(ctx log.Context, dst Path, src Path) error {
-	ctx = ctx.V("Source", src).V("Destination", dst)
+func Copy(ctx context.Context, dst Path, src Path) error {
+	l := log.Bind(ctx, log.V{"Source": src, "Destination": dst})
 	s, err := os.Open(src.value)
 	if err != nil {
-		return cause.Explain(ctx, err, "Opening source")
+		return l.Err(err, "Opening source")
 	}
 	defer s.Close()
 	d, err := os.OpenFile(dst.System(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, src.Info().Mode())
 	if err != nil {
-		return cause.Explain(ctx, err, "Creating destination")
+		return l.Err(err, "Creating destination")
 	}
 	defer d.Close()
 	if _, err = io.Copy(d, s); err != nil {
-		return cause.Explain(ctx, err, "Copying data")
+		return l.Err(err, "Copying data")
 	}
 	return nil
 }

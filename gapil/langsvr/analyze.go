@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -23,17 +24,16 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
+	ls "github.com/google/gapid/core/langsvr"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/validate"
-	ls "github.com/google/gapid/core/langsvr"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/core/text/parse"
 )
 
 const (
@@ -86,17 +86,17 @@ func (da *docAnalysis) contains(n ast.Node) bool {
 	return da.doc.Path() == da.full.mappings.CST(n).Token().Source.Filename
 }
 
-func (s *server) docAnalysis(ctx log.Context, doc *ls.Document) (*docAnalysis, error) {
+func (s *server) docAnalysis(ctx context.Context, doc *ls.Document) (*docAnalysis, error) {
 	analysis := s.analyzer.results(ctx, s)
 	if analysis == nil {
 		return nil, nil
 	}
 	da, ok := analysis.docs[doc.Path()]
 	if !ok {
-		return nil, cause.Explain(ctx, nil, "Document not found")
+		return nil, log.Err(ctx, nil, "Document not found")
 	}
 	if da.ast == nil {
-		return nil, cause.Explain(ctx, nil, "Parsing failed")
+		return nil, log.Err(ctx, nil, "Parsing failed")
 	}
 	return da, nil
 }
@@ -137,7 +137,7 @@ func newAnalyzer() *analyzer {
 
 // results returns the last analysis results, starting a new analysis if there
 // were no last results.
-func (a *analyzer) results(ctx log.Context, s *server) *fullAnalysis {
+func (a *analyzer) results(ctx context.Context, s *server) *fullAnalysis {
 	if a.lastResults != nil {
 		return a.lastResults
 	}
@@ -147,7 +147,7 @@ func (a *analyzer) results(ctx log.Context, s *server) *fullAnalysis {
 }
 
 // begin starts a new analysis of the API documents.
-func (a *analyzer) begin(ctx log.Context, s *server) error {
+func (a *analyzer) begin(ctx context.Context, s *server) error {
 	if s.config == nil {
 		// We're still waiting for the configuration. Don't do anything yet,
 		// we'll restart analysis when this comes through.
@@ -208,14 +208,14 @@ func (l docsLoader) Load(path file.Path) ([]byte, error) {
 // doAnalysis is the internal analysis function.
 // Must only be called from analyzer.begin().
 func (a *analyzer) doAnalysis(
-	ctx log.Context,
+	ctx context.Context,
 	docs map[string]*ls.Document,
 	va validate.Options,
 	done task.Task) {
 	defer handlePanic(ctx)
 	defer done(ctx)
 
-	ctx, start := ctx.Enter("analyse"), time.Now()
+	ctx, start := log.Enter(ctx, "analyse"), time.Now()
 	var parseDuration, resolveDuration time.Duration
 
 	res := &fullAnalysis{}
@@ -252,8 +252,8 @@ func (a *analyzer) doAnalysis(
 		executor := task.Batch(pool, events)
 
 		for path, da := range das {
-			path, da, ctx := path, da, ctx.S("file", path)
-			executor(ctx, func(ctx log.Context) error {
+			path, da, ctx := path, da, log.V{"file": path}.Bind(ctx)
+			executor(ctx, func(ctx context.Context) error {
 				defer handlePanic(ctx)
 				ast, errs := processor.Parse(path)
 				da.ast = ast
@@ -387,7 +387,7 @@ func (a *analyzer) doAnalysis(
 
 	// Check we didn't take too long.
 	if d := time.Since(start); d > analysisWarnDuration {
-		ctx.Warning().Logf("Full analysis took %v (parse: %v, resolve: %v)", d, parseDuration, resolveDuration)
+		log.W(ctx, "Full analysis took %v (parse: %v, resolve: %v)", d, parseDuration, resolveDuration)
 	}
 
 	res.docs = das
@@ -398,14 +398,14 @@ func (a *analyzer) doAnalysis(
 
 // stackdumpTimebomb prints the entire stack of all executing goroutines if it
 // isn't defused within timeout duration.
-func stackdumpTimebomb(ctx log.Context, timeout time.Duration) (defuse func()) {
+func stackdumpTimebomb(ctx context.Context, timeout time.Duration) (defuse func()) {
 	stop := make(chan struct{})
 	go func() {
 		select {
 		case <-time.Tick(timeout):
 			buf := make([]byte, 64<<10)
 			buf = buf[:runtime.Stack(buf[:], true)]
-			ctx.Printf("Stack dump:\n%v", string(buf[:]))
+			log.E(ctx, "Stack dump:\n%v", string(buf[:]))
 		case <-stop:
 		}
 	}()

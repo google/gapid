@@ -15,6 +15,7 @@
 package test
 
 import (
+	"context"
 	"unicode/utf8"
 
 	"github.com/google/gapid/core/assert"
@@ -22,12 +23,12 @@ import (
 	"github.com/google/gapid/core/text/parse"
 )
 
-func VerifyTokens(ctx log.Context, got parse.Node) {
+func VerifyTokens(ctx context.Context, got parse.Node) {
 	next := 0
 	VerifyNodeTokens(ctx, got, &next)
 }
 
-func VerifyNodeTokens(ctx log.Context, n parse.Node, next *int) {
+func VerifyNodeTokens(ctx context.Context, n parse.Node, next *int) {
 	// walk the prefix
 	for _, f := range n.Prefix() {
 		VerifyFragmentTokens(ctx, f, next)
@@ -52,10 +53,10 @@ func VerifyNodeTokens(ctx log.Context, n parse.Node, next *int) {
 	}
 }
 
-func VerifyFragmentTokens(ctx log.Context, f parse.Fragment, next *int) {
+func VerifyFragmentTokens(ctx context.Context, f parse.Fragment, next *int) {
 	tok := f.Token()
 	str := tok.String()
-	ctx = ctx.S("token", str)
+	ctx = log.V{"token": str}.Bind(ctx)
 	length := utf8.RuneCountInString(str)
 	assert.For(ctx, "start").That(tok.Start).Equals(*next)
 	assert.For(ctx, "start").That(tok.End).Equals(*next + length)

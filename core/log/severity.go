@@ -14,59 +14,64 @@
 
 package log
 
-import "github.com/google/gapid/core/fault/severity"
+import "github.com/google/gapid/core/app/flags"
 
-// GetSeverity gets the severity stored in the given context.
-func GetSeverity(ctx Context) severity.Level {
-	return severity.FromContext(ctx.Unwrap())
+// Severity defines the severity of a logging message.
+type Severity int32
+
+const (
+	// Debug indicates verbose debug-level messages.
+	Debug Severity = 0
+	// Info indicates minor informational messages that should generally be ignored.
+	Info Severity = 1
+	// Warning indicates issues that might affect performance or compatibility, but could be ignored.
+	Warning Severity = 2
+	// Error indicates non terminal failure conditions that may have an effect on results.
+	Error Severity = 3
+	// Fatal indicates a fatal error and the process should be terminated.
+	Fatal Severity = 4
+)
+
+func (s Severity) String() string {
+	switch s {
+	case Debug:
+		return "Debug"
+	case Info:
+		return "Info"
+	case Warning:
+		return "Warning"
+	case Error:
+		return "Error"
+	case Fatal:
+		return "Fatal"
+	}
+	return "?"
 }
 
-// Severity returns a context with the given Severity set on it.
-func (ctx logContext) Severity(level severity.Level) Context {
-	return Wrap(severity.NewContext(ctx.Unwrap(), level))
+// Short returns the severity string with a single character.
+func (s Severity) Short() string {
+	switch s {
+	case Debug:
+		return "D"
+	case Info:
+		return "I"
+	case Warning:
+		return "W"
+	case Error:
+		return "E"
+	case Fatal:
+		return "F"
+	}
+	return "?"
 }
 
-// Emergency is shorthand for ctx.At(EmergencyLevel)
-func (ctx logContext) Emergency() Logger {
-	return ctx.At(severity.Emergency)
-}
+// Choose allows *Severity to be used as a command line flag.
+func (s *Severity) Choose(c interface{}) { *s = c.(Severity) }
 
-// Alert is is shorthand for ctx.At(AlertLevel)
-func (ctx logContext) Alert() Logger {
-	return ctx.At(severity.Alert)
-}
-
-// Critical is shorthand for ctx.At(CriticalLevel)
-func (ctx logContext) Critical() Logger {
-	return ctx.At(severity.Critical)
-}
-
-// Error is shorthand for ctx.At(ErrorLevel).Cause(err)
-func (ctx logContext) Error() Logger {
-	return ctx.At(severity.Error)
-}
-
-// Warning is shorthand for ctx.At(WarningLevel)
-func (ctx logContext) Warning() Logger {
-	return ctx.At(severity.Warning)
-}
-
-// Notice is shorthand for ctx.At(NoticeLevel)
-func (ctx logContext) Notice() Logger {
-	return ctx.At(severity.Notice)
-}
-
-// Info is shorthand for ctx.At(InfoLevel)
-func (ctx logContext) Info() Logger {
-	return ctx.At(severity.Info)
-}
-
-// Debug is shorthand for ctx.At(DebugLevel)
-func (ctx logContext) Debug() Logger {
-	return ctx.At(severity.Debug)
-}
-
-// DebugN is shorthand for ctx.At(DebugLevel + n)
-func (ctx logContext) DebugN(n int) Logger {
-	return ctx.At(severity.Level(int(severity.Debug) + n))
+// Chooser returns a chooser for the set of severities.
+func (s *Severity) Chooser() flags.Chooser {
+	return flags.Chooser{
+		Value:   s,
+		Choices: flags.Choices{Debug, Info, Warning, Error, Fatal},
+	}
 }

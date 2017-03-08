@@ -15,10 +15,11 @@
 package build
 
 import (
+	"context"
+
+	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/data/search"
 	"google.golang.org/grpc"
 )
 
@@ -27,14 +28,14 @@ type remote struct {
 }
 
 // NewRemote returns a Store that talks to a remote grpc build service.
-func NewRemote(ctx log.Context, conn *grpc.ClientConn) Store {
+func NewRemote(ctx context.Context, conn *grpc.ClientConn) Store {
 	return &remote{client: NewServiceClient(conn)}
 }
 
 // SearchArtifacts implements Store.SearchArtifacts
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) SearchArtifacts(ctx log.Context, query *search.Query, handler ArtifactHandler) error {
-	stream, err := m.client.SearchArtifacts(ctx.Unwrap(), query)
+func (m *remote) SearchArtifacts(ctx context.Context, query *search.Query, handler ArtifactHandler) error {
+	stream, err := m.client.SearchArtifacts(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -43,8 +44,8 @@ func (m *remote) SearchArtifacts(ctx log.Context, query *search.Query, handler A
 
 // SearchPackages implements Store.SearchPackages
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) SearchPackages(ctx log.Context, query *search.Query, handler PackageHandler) error {
-	stream, err := m.client.SearchPackages(ctx.Unwrap(), query)
+func (m *remote) SearchPackages(ctx context.Context, query *search.Query, handler PackageHandler) error {
+	stream, err := m.client.SearchPackages(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -53,8 +54,8 @@ func (m *remote) SearchPackages(ctx log.Context, query *search.Query, handler Pa
 
 // SearchTracks implements Store.SearchTracks
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) SearchTracks(ctx log.Context, query *search.Query, handler TrackHandler) error {
-	stream, err := m.client.SearchTracks(ctx.Unwrap(), query)
+func (m *remote) SearchTracks(ctx context.Context, query *search.Query, handler TrackHandler) error {
+	stream, err := m.client.SearchTracks(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -63,9 +64,9 @@ func (m *remote) SearchTracks(ctx log.Context, query *search.Query, handler Trac
 
 // Add implements Store.Add
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Add(ctx log.Context, id string, info *Information) (string, bool, error) {
+func (m *remote) Add(ctx context.Context, id string, info *Information) (string, bool, error) {
 	request := &AddRequest{Id: id, Information: info}
-	response, err := m.client.Add(ctx.Unwrap(), request)
+	response, err := m.client.Add(ctx, request)
 	if err != nil {
 		return "", false, err
 	}
@@ -74,9 +75,9 @@ func (m *remote) Add(ctx log.Context, id string, info *Information) (string, boo
 
 // UpdateTrack implements store.UpdateTrack
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) UpdateTrack(ctx log.Context, entry *Track) (*Track, error) {
+func (m *remote) UpdateTrack(ctx context.Context, entry *Track) (*Track, error) {
 	request := &UpdateTrackRequest{Track: entry}
-	response, err := m.client.UpdateTrack(ctx.Unwrap(), request)
+	response, err := m.client.UpdateTrack(ctx, request)
 	if err != nil {
 		return nil, err
 	}

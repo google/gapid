@@ -15,23 +15,24 @@
 package validate_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/validate"
-	"github.com/google/gapid/core/log"
 )
 
 const maxErrors = 10
 
-func compile(ctx log.Context, source string) (*semantic.API, *resolver.Mappings, error) {
+func compile(ctx context.Context, source string) (*semantic.API, *resolver.Mappings, error) {
 	m := resolver.NewMappings()
 	parsed, errs := parser.Parse("no_unreachables_test.api", source, m)
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
@@ -299,7 +300,7 @@ no_unreachables_test.api:6:21 Unreachable block
 		expected := strings.TrimSpace(test.expected)
 		ok = assert.With(ctx).ThatString(got).Equals(expected) && ok
 		if !ok {
-			ctx.S("source", test.source).V("got", got).Error().Log("test failed")
+			log.E(ctx, "test failed.\n  source: %v\n  got:  %v", test.source, got)
 		}
 	}
 }

@@ -17,6 +17,7 @@
 package scan
 
 import (
+	"context"
 	"go/ast"
 	"go/build"
 	"go/token"
@@ -26,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/log"
+
 	"golang.org/x/tools/go/types"
 )
 
@@ -74,7 +76,7 @@ type Scanner struct {
 }
 
 // New creates a new go source scanner.
-func New(ctx log.Context, path string, gopath string) *Scanner {
+func New(ctx context.Context, path string, gopath string) *Scanner {
 	l := &Scanner{
 		Path:        path,
 		Directories: map[string]*Directory{},
@@ -98,13 +100,13 @@ func New(ctx log.Context, path string, gopath string) *Scanner {
 // Scan loads and scans the specified package.
 // If entry ends in ... then the directory is recursively walked and all the
 // children are loaded and scanned as well.
-func (s *Scanner) Scan(ctx log.Context, entry string) error {
+func (s *Scanner) Scan(ctx context.Context, entry string) error {
 	base := strings.TrimSuffix(entry, "...")
 	pkg, err := s.context.Import(base, s.Path, build.FindOnly)
 	if err != nil {
 		return err
 	}
-	ctx.V("Import", pkg.ImportPath).V("Dir", pkg.Dir).Print("Scanning")
+	log.I(ctx, "Scanning import: %v, dir: %v", pkg.ImportPath, pkg.Dir)
 	if len(base) == len(entry) {
 		s.ScanPackage(pkg.ImportPath)
 		return nil
@@ -119,14 +121,14 @@ func (s *Scanner) Scan(ctx log.Context, entry string) error {
 		base := filepath.Base(p)
 		// Horribly ugly workaround
 		if base[0] == '.' || base[0] == '_' || base == "vendor" || base == "third_party" {
-			ctx.V("Base", base).Print("Skipping")
+			log.I(ctx, "Skipping: %v", base)
 			return filepath.SkipDir
 		}
 		if !s.hasGoFiles(p) {
 			return nil
 		}
 		name := path.Join(pkg.ImportPath, filepath.ToSlash(strings.TrimPrefix(p, pkg.Dir)))
-		ctx.V("Package", name).Print("Reading")
+		log.I(ctx, "Reading: %v", name)
 		s.ScanPackage(name)
 		return nil
 	})

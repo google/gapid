@@ -15,12 +15,12 @@
 package gfxapi
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/framework/binary"
@@ -59,7 +59,7 @@ type State struct {
 	OnError func(err interface{})
 
 	// NewMessage is called when there is a message to be passed to a report.
-	NewMessage func(level severity.Level, msg *stringtable.Msg) uint32
+	NewMessage func(level log.Severity, msg *stringtable.Msg) uint32
 
 	// AddTag is called when we want to tag report item.
 	AddTag func(msgID uint32, msg *stringtable.Msg)
@@ -105,7 +105,7 @@ func (st State) String() string {
 }
 
 // MemoryDecoder returns an endian reader that uses the byte-order of the capture device to decode from the slice s.
-func (st State) MemoryDecoder(ctx log.Context, s memory.Slice) pod.Reader {
+func (st State) MemoryDecoder(ctx context.Context, s memory.Slice) pod.Reader {
 	return endian.Reader(s.NewReader(ctx), st.MemoryLayout.GetEndian())
 }
 

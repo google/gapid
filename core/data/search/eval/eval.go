@@ -15,16 +15,16 @@
 package eval
 
 import (
+	"context"
 	"reflect"
 	"regexp"
 
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
-type eval func(log.Context, interface{}) interface{}
+type eval func(context.Context, interface{}) interface{}
 
 var (
 	boolType     = reflect.TypeOf(true)
@@ -36,12 +36,12 @@ var (
 
 // Compile takes a search query and a a value type and produces a function that will perform the
 // query against values of that type.
-func Compile(ctx log.Context, query *search.Query, klass reflect.Type) (event.Predicate, error) {
+func Compile(ctx context.Context, query *search.Query, klass reflect.Type) (event.Predicate, error) {
 	m, res, err := compileExpression(ctx, query.Expression, klass)
 	if res.Kind() != reflect.Bool {
-		return nil, cause.Explain(ctx, nil, "Expression result not a bool")
+		return nil, log.Err(ctx, nil, "Expression result not a bool")
 	}
-	return func(ctx log.Context, value interface{}) bool {
+	return func(ctx context.Context, value interface{}) bool {
 		got := reflect.TypeOf(value)
 		if got != klass {
 			return false
@@ -52,33 +52,33 @@ func Compile(ctx log.Context, query *search.Query, klass reflect.Type) (event.Pr
 
 // Filter uses a search query and returns a handler that filters events before passing them to
 // the output handler.
-func Filter(ctx log.Context, query *search.Query, klass reflect.Type, handler event.Handler) event.Handler {
+func Filter(ctx context.Context, query *search.Query, klass reflect.Type, handler event.Handler) event.Handler {
 	pred, err := Compile(ctx, query, klass)
 	if err != nil {
-		return func(ctx log.Context, event interface{}) error {
+		return func(ctx context.Context, event interface{}) error {
 			return err
 		}
 	}
 	return event.Filter(ctx, pred, handler)
 }
 
-func compileExpression(ctx log.Context, expr *search.Expression, t reflect.Type) (eval, reflect.Type, error) {
+func compileExpression(ctx context.Context, expr *search.Expression, t reflect.Type) (eval, reflect.Type, error) {
 	if expr == nil {
-		return func(log.Context, interface{}) interface{} { return true }, boolType, nil
+		return func(context.Context, interface{}) interface{} { return true }, boolType, nil
 	}
 	switch et := expr.Is.(type) {
 	case nil:
-		return func(log.Context, interface{}) interface{} { return true }, boolType, nil
+		return func(context.Context, interface{}) interface{} { return true }, boolType, nil
 	case *search.Expression_Boolean:
-		return func(log.Context, interface{}) interface{} { return et.Boolean }, boolType, nil
+		return func(context.Context, interface{}) interface{} { return et.Boolean }, boolType, nil
 	case *search.Expression_String_:
-		return func(log.Context, interface{}) interface{} { return et.String_ }, stringType, nil
+		return func(context.Context, interface{}) interface{} { return et.String_ }, stringType, nil
 	case *search.Expression_Signed:
-		return func(log.Context, interface{}) interface{} { return et.Signed }, signedType, nil
+		return func(context.Context, interface{}) interface{} { return et.Signed }, signedType, nil
 	case *search.Expression_Unsigned:
-		return func(log.Context, interface{}) interface{} { return et.Unsigned }, unsignedType, nil
+		return func(context.Context, interface{}) interface{} { return et.Unsigned }, unsignedType, nil
 	case *search.Expression_Double:
-		return func(log.Context, interface{}) interface{} { return et.Double }, doubleType, nil
+		return func(context.Context, interface{}) interface{} { return et.Double }, doubleType, nil
 	case *search.Expression_Name:
 		return compileGetMember(ctx, et.Name, t)
 	case *search.Expression_And:
@@ -108,31 +108,31 @@ func compileExpression(ctx log.Context, expr *search.Expression, t reflect.Type)
 	case *search.Expression_Not:
 		return compileNot(ctx, et.Not, t)
 	default:
-		return nil, boolType, cause.Explainf(ctx, nil, "Invalid expression %v", et)
+		return nil, boolType, log.Errf(ctx, nil, "Invalid expression %v", et)
 	}
 }
 
-func compileBinaryBool(ctx log.Context, expr *search.Binary, t reflect.Type, test func(bool, bool) bool) (eval, reflect.Type, error) {
+func compileBinaryBool(ctx context.Context, expr *search.Binary, t reflect.Type, test func(bool, bool) bool) (eval, reflect.Type, error) {
 	lhs, res, err := compileExpression(ctx, expr.Lhs, t)
 	if err != nil {
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, cause.Explain(ctx, nil, "lhs was not bool")
+		return nil, boolType, log.Err(ctx, nil, "lhs was not bool")
 	}
 	rhs, res, err := compileExpression(ctx, expr.Rhs, t)
 	if err != nil {
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, cause.Explain(ctx, nil, "rhs was not bool")
+		return nil, boolType, log.Err(ctx, nil, "rhs was not bool")
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return test(lhs(ctx, value).(bool), rhs(ctx, value).(bool))
 	}, boolType, nil
 }
 
-func compileEqual(ctx log.Context, expr *search.Binary, t reflect.Type) (eval, reflect.Type, error) {
+func compileEqual(ctx context.Context, expr *search.Binary, t reflect.Type) (eval, reflect.Type, error) {
 	lhs, lt, err := compileExpression(ctx, expr.Lhs, t)
 	if err != nil {
 		return nil, boolType, err
@@ -142,14 +142,14 @@ func compileEqual(ctx log.Context, expr *search.Binary, t reflect.Type) (eval, r
 		return nil, boolType, err
 	}
 	if lt != rt {
-		return nil, boolType, cause.Explain(ctx, nil, "Types to equal do not match")
+		return nil, boolType, log.Err(ctx, nil, "Types to equal do not match")
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return reflect.DeepEqual(lhs(ctx, value), rhs(ctx, value))
 	}, boolType, nil
 }
 
-func compileBinaryNumeric(ctx log.Context, expr *search.Binary, t reflect.Type,
+func compileBinaryNumeric(ctx context.Context, expr *search.Binary, t reflect.Type,
 	testS func(int64, int64) bool,
 	testU func(uint64, uint64) bool,
 	testD func(float64, float64) bool,
@@ -163,37 +163,37 @@ func compileBinaryNumeric(ctx log.Context, expr *search.Binary, t reflect.Type,
 		return nil, boolType, err
 	}
 	if lt.AssignableTo(signedType) && rt.AssignableTo(signedType) {
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			return testS(lhs(ctx, value).(int64), rhs(ctx, value).(int64))
 		}, boolType, nil
 	}
 	if lt.AssignableTo(unsignedType) && rt.AssignableTo(unsignedType) {
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			return testU(lhs(ctx, value).(uint64), rhs(ctx, value).(uint64))
 		}, boolType, nil
 	}
 	if lt.AssignableTo(doubleType) && rt.AssignableTo(doubleType) {
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			return testD(lhs(ctx, value).(float64), rhs(ctx, value).(float64))
 		}, boolType, nil
 	}
-	return nil, boolType, cause.Explain(ctx, nil, "no numeric comparison possible")
+	return nil, boolType, log.Err(ctx, nil, "no numeric comparison possible")
 }
 
-func compileNot(ctx log.Context, expr *search.Expression, t reflect.Type) (eval, reflect.Type, error) {
+func compileNot(ctx context.Context, expr *search.Expression, t reflect.Type) (eval, reflect.Type, error) {
 	rhs, res, err := compileExpression(ctx, expr, t)
 	if err != nil {
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, cause.Explain(ctx, nil, "Not only applies to bool")
+		return nil, boolType, log.Err(ctx, nil, "Not only applies to bool")
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return !rhs(ctx, value).(bool)
 	}, boolType, nil
 }
 
-func compileSubscript(ctx log.Context, expr *search.Subscript, t reflect.Type) (eval, reflect.Type, error) {
+func compileSubscript(ctx context.Context, expr *search.Subscript, t reflect.Type) (eval, reflect.Type, error) {
 	container, ct, err := compileExpression(ctx, expr.Container, t)
 	if err != nil {
 		return nil, boolType, err
@@ -206,10 +206,10 @@ func compileSubscript(ctx log.Context, expr *search.Subscript, t reflect.Type) (
 	switch ct.Kind() {
 	case reflect.Slice:
 		if !kt.AssignableTo(signedType) {
-			return nil, boolType, cause.Explain(ctx, nil, "Slices must be indexed by int64")
+			return nil, boolType, log.Err(ctx, nil, "Slices must be indexed by int64")
 		}
 		zeroValue := reflect.Zero(vt).Interface()
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			cv := reflect.ValueOf(container(ctx, value))
 			index := (int)(key(ctx, value).(int64))
 			if index >= cv.Len() {
@@ -219,34 +219,34 @@ func compileSubscript(ctx log.Context, expr *search.Subscript, t reflect.Type) (
 		}, vt, nil
 	case reflect.Map:
 		if !kt.AssignableTo(ct.Key()) {
-			return nil, boolType, cause.Explain(ctx, nil, "Map index type does not match")
+			return nil, boolType, log.Err(ctx, nil, "Map index type does not match")
 		}
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			return reflect.ValueOf(container(ctx, value)).MapIndex(reflect.ValueOf(key(ctx, value))).Interface()
 		}, vt, nil
 	default:
-		return nil, boolType, cause.Explain(ctx, nil, "Can only subscript map or slice")
+		return nil, boolType, log.Err(ctx, nil, "Can only subscript map or slice")
 	}
 }
 
-func compileRegex(ctx log.Context, expr *search.Regex, t reflect.Type) (eval, reflect.Type, error) {
+func compileRegex(ctx context.Context, expr *search.Regex, t reflect.Type) (eval, reflect.Type, error) {
 	val, vt, err := compileExpression(ctx, expr.Value, t)
 	if err != nil {
 		return nil, boolType, err
 	}
 	if vt.Kind() != reflect.String {
-		return nil, boolType, cause.Explain(ctx, nil, "Regex only applies to string")
+		return nil, boolType, log.Err(ctx, nil, "Regex only applies to string")
 	}
 	re, err := regexp.Compile(expr.Pattern)
 	if err != nil {
 		return nil, boolType, err
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return re.MatchString(val(ctx, value).(string))
 	}, boolType, nil
 }
 
-func compileMember(ctx log.Context, expr *search.Member, t reflect.Type) (eval, reflect.Type, error) {
+func compileMember(ctx context.Context, expr *search.Member, t reflect.Type) (eval, reflect.Type, error) {
 	obj, ot, err := compileExpression(ctx, expr.Object, t)
 	if err != nil {
 		return nil, boolType, err
@@ -255,29 +255,29 @@ func compileMember(ctx log.Context, expr *search.Member, t reflect.Type) (eval, 
 	if err != nil {
 		return nil, boolType, err
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return get(ctx, obj(ctx, value))
 	}, mt, nil
 }
 
-func compileGetMember(ctx log.Context, name string, t reflect.Type) (eval, reflect.Type, error) {
+func compileGetMember(ctx context.Context, name string, t reflect.Type) (eval, reflect.Type, error) {
 	wasPtr := t.Kind() == reflect.Ptr
 	if wasPtr {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return nil, boolType, cause.Explain(ctx, nil, "Field access on non struct type"+t.String())
+		return nil, boolType, log.Err(ctx, nil, "Field access on non struct type"+t.String())
 	}
 	field, found := t.FieldByName(name)
 	if !found {
-		return nil, boolType, cause.Explain(ctx, nil, "Invalid field name "+name)
+		return nil, boolType, log.Err(ctx, nil, "Invalid field name "+name)
 	}
 	if wasPtr {
-		return func(ctx log.Context, value interface{}) interface{} {
+		return func(ctx context.Context, value interface{}) interface{} {
 			return reflect.ValueOf(value).Elem().FieldByIndex(field.Index).Interface()
 		}, field.Type, nil
 	}
-	return func(ctx log.Context, value interface{}) interface{} {
+	return func(ctx context.Context, value interface{}) interface{} {
 		return reflect.ValueOf(value).FieldByIndex(field.Index).Interface()
 	}, field.Type, nil
 }

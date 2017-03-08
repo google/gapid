@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/google/gapid/core/log"
@@ -25,7 +26,7 @@ import (
 )
 
 type externs struct {
-	ctx log.Context // Allowed because the externs struct is only a parameter proxy for a single call
+	ctx context.Context // Allowed because the externs struct is only a parameter proxy for a single call
 	a   atom.Atom
 	s   *gfxapi.State
 	b   *rb.Builder
@@ -54,7 +55,7 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice slice) {
 			b.Load(protocol.Type_AbsolutePointer, value.value(e.b, e.a, e.s))
 			b.MapMemory(slice.Range(e.s))
 		default:
-			ctx.Error().V("atom", e.a).Log("mapBuffer extern called for unsupported atom")
+			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
 		}
 	}
 }
@@ -144,4 +145,3 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	}
 	return counter
 }
-

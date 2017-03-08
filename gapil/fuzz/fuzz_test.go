@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/resolver"
@@ -35,21 +34,21 @@ func TestCrashers(t *testing.T) {
 	ctx := log.Testing(t)
 	files, err := filepath.Glob("./fuzz-wd/crashers/*")
 	if err != nil {
-		jot.Fail(ctx, err, "failed to find crashers")
+		log.F(ctx, "failed to find crashers. Error: %v", err)
 		return
 	}
 	for _, file := range files {
-		ctx := ctx.S("file", file)
+		ctx = log.V{"file": file}.Bind(ctx)
 		if filepath.Ext(file) != "" {
 			continue
 		}
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
-			jot.Fail(ctx, err, "failed to open file")
+			log.F(ctx, "failed to open file. Error: %v", err)
 			return
 		}
 		if err := compile(data); err != nil {
-			jot.Fail(ctx, err, "crashed")
+			log.F(ctx, "crashed. Error: %v", err)
 		}
 	}
 }

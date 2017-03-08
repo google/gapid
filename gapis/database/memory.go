@@ -15,18 +15,18 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/config"
 )
 
 // NewInMemory builds a new in memory database.
-func NewInMemory(ctx log.Context) Database {
+func NewInMemory(ctx context.Context) Database {
 	m := &memory{}
 	m.records = map[id.ID]*record{}
 	m.resolveCtx = Put(ctx, m)
@@ -39,29 +39,29 @@ type record struct {
 }
 
 type resolveState struct {
-	ctx      log.Context   // Context for the resolve
-	valID    id.ID         // Identifier of the resolved result
-	err      error         // Error raised when resolving
-	finished chan struct{} // Signal that resolve has finished. Set to nil when done.
-	waiting  uint32        // Number of go-routines waiting for the resolve
-	cancel   func()        // Cancels ctx
+	ctx      context.Context // Context for the resolve
+	valID    id.ID           // Identifier of the resolved result
+	err      error           // Error raised when resolving
+	finished chan struct{}   // Signal that resolve has finished. Set to nil when done.
+	waiting  uint32          // Number of go-routines waiting for the resolve
+	cancel   func()          // Cancels ctx
 }
 
 type memory struct {
 	mutex      sync.Mutex
 	records    map[id.ID]*record
-	resolveCtx log.Context
+	resolveCtx context.Context
 }
 
 // Implements Database
-func (d *memory) Store(ctx log.Context, id id.ID, v interface{}) error {
+func (d *memory) Store(ctx context.Context, id id.ID, v interface{}) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	return d.store(ctx, id, v)
 }
 
 // store function must be called with a locked mutex
-func (d *memory) store(ctx log.Context, id id.ID, v interface{}) error {
+func (d *memory) store(ctx context.Context, id id.ID, v interface{}) error {
 	if v == nil {
 		panic(fmt.Errorf("Store nil in database (that is bad), id '%v'", id))
 	}
@@ -77,7 +77,7 @@ func (d *memory) store(ctx log.Context, id id.ID, v interface{}) error {
 }
 
 // Implements Database
-func (d *memory) Resolve(ctx log.Context, id id.ID) (interface{}, error) {
+func (d *memory) Resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	return d.resolve(ctx, id)
@@ -85,7 +85,7 @@ func (d *memory) Resolve(ctx log.Context, id id.ID) (interface{}, error) {
 
 // resolve function must be called with a locked mutex and returns with a locked
 // mutex.
-func (d *memory) resolve(ctx log.Context, id id.ID) (interface{}, error) {
+func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	// Look up the record with the provided identifier.
 	r, got := d.records[id]
 	if !got {
@@ -170,7 +170,7 @@ func (d *memory) resolve(ctx log.Context, id id.ID) (interface{}, error) {
 }
 
 // Implements Database
-func (d *memory) Contains(ctx log.Context, id id.ID) (res bool) {
+func (d *memory) Contains(ctx context.Context, id id.ID) (res bool) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	_, got := d.records[id]

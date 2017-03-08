@@ -20,9 +20,9 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/pkg/errors"
 )
@@ -91,9 +91,7 @@ func Run(main task.Task) {
 			panic(cause)
 		}
 	}()
-	flags := &AppFlags{
-		Log: LogDefaults(),
-	}
+	flags := &AppFlags{Log: logDefaults()}
 	// install all the common application flags
 	ctx, closeLogs, cancel := prepareContext(&flags.Log)
 	defer closeLogs()
@@ -107,7 +105,7 @@ func Run(main task.Task) {
 	globalVerbs.Flags.ForceCommandLine()
 	// apply the flags
 	if flags.Version {
-		fmt.Fprint(ctx.Raw("").Writer(), Name, " version ", Version, "\n")
+		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
 		return
 	}
 	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
@@ -126,7 +124,7 @@ func Run(main task.Task) {
 		err = doRestart()
 	}
 	if err != nil {
-		jot.Fatal(ctx, err, "Main failed")
+		log.F(ctx, "Main failed\nError: %v", err)
 	}
 }
 

@@ -15,21 +15,20 @@
 package task
 
 import (
+	"context"
 	"sync"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Task is the unit of work used in the task system.
 // Tasks should generally be reentrant, they may be run more than once in more than one executor, and should generally
 // be agnostic as to whether they are run in parallel.
-type Task func(log.Context) error
+type Task func(context.Context) error
 
 // Once wraps a task so that only the first invocation of the outer task invokes the inner task.
 func Once(task Task) Task {
 	once := sync.Once{}
 	var err error
-	return func(ctx log.Context) error {
+	return func(ctx context.Context) error {
 		once.Do(func() { err = task(ctx) })
 		return err
 	}

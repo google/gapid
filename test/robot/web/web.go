@@ -15,6 +15,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -42,13 +43,13 @@ type listener struct {
 	*net.TCPListener
 }
 
-func Create(ctx log.Context, config Config) (*Server, error) {
+func Create(ctx context.Context, config Config) (*Server, error) {
 	server := &Server{Config: config}
 
 	server.o = monitor.NewDataOwner()
 	go func() {
 		if err := monitor.Run(ctx, server.Managers, server.o, nil); err != nil {
-			ctx.Error().Logf("Monitoring failed")
+			log.E(ctx, "Monitoring failed")
 		}
 	}()
 
@@ -57,11 +58,11 @@ func Create(ctx log.Context, config Config) (*Server, error) {
 		return nil, err
 	}
 	if config.StaticRoot.IsEmpty() {
-		ctx.Notice().Log("Serving internal web content")
+		log.I(ctx, "Serving internal web content")
 		http.Handle("/", http.FileServer(static("www")))
 	} else {
 		path := config.StaticRoot.System()
-		ctx.Notice().Logf("Serving web content from %s", path)
+		log.I(ctx, "Serving web content from %s", path)
 		http.Handle("/", http.FileServer(http.Dir(path)))
 	}
 	http.HandleFunc("/tracks/", server.handleTracks)
@@ -79,7 +80,7 @@ func Create(ctx log.Context, config Config) (*Server, error) {
 	return server, nil
 }
 
-func (s *Server) Serve(ctx log.Context) error {
+func (s *Server) Serve(ctx context.Context) error {
 	return http.Serve(s.listener, nil)
 }
 

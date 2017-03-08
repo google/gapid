@@ -15,6 +15,7 @@
 package local
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -24,7 +25,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -41,18 +41,18 @@ func init() {
 }
 
 // DialFileService returns a file backed implementation of stash.Service from a url.
-func DialFileService(ctx log.Context, location *url.URL) (*stash.Client, error) {
+func DialFileService(ctx context.Context, location *url.URL) (*stash.Client, error) {
 	if location.Host != "" {
-		return nil, cause.Explain(ctx, nil, "Host not supported for file servers")
+		return nil, log.Err(ctx, nil, "Host not supported for file servers")
 	}
 	if location.Path == "" {
-		return nil, cause.Explain(ctx, nil, "Path must be specified for file servers")
+		return nil, log.Err(ctx, nil, "Path must be specified for file servers")
 	}
 	return NewFileService(ctx, file.Abs(location.Path))
 }
 
 // NewFileService returns a file backed implementation of stash.Service for a path.
-func NewFileService(ctx log.Context, directory file.Path) (*stash.Client, error) {
+func NewFileService(ctx context.Context, directory file.Path) (*stash.Client, error) {
 	s := &fileStore{directory: directory}
 	s.entityIndex.init()
 	os.MkdirAll(directory.System(), 0755)
@@ -80,7 +80,7 @@ func NewFileService(ctx log.Context, directory file.Path) (*stash.Client, error)
 
 func (c *fileStore) Close() {}
 
-func (s *fileStore) Open(ctx log.Context, id string) (io.ReadSeeker, error) {
+func (s *fileStore) Open(ctx context.Context, id string) (io.ReadSeeker, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, found := s.byID[id]; !found {
@@ -89,7 +89,7 @@ func (s *fileStore) Open(ctx log.Context, id string) (io.ReadSeeker, error) {
 	return os.Open(s.directory.Join(id).System())
 }
 
-func (s *fileStore) Read(ctx log.Context, id string) ([]byte, error) {
+func (s *fileStore) Read(ctx context.Context, id string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, found := s.byID[id]; !found {
@@ -98,11 +98,11 @@ func (s *fileStore) Read(ctx log.Context, id string) ([]byte, error) {
 	return ioutil.ReadFile(s.directory.Join(id).System())
 }
 
-func (s *fileStore) Create(ctx log.Context, info *stash.Upload) (io.WriteCloser, error) {
+func (s *fileStore) Create(ctx context.Context, info *stash.Upload) (io.WriteCloser, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, found := s.byID[info.Id]; found {
-		return nil, cause.Explain(ctx, nil, "Stash entity already exists")
+		return nil, log.Err(ctx, nil, "Stash entity already exists")
 	}
 	filename := s.directory.Join(info.Id)
 	mode := os.FileMode(0666)
@@ -111,7 +111,7 @@ func (s *fileStore) Create(ctx log.Context, info *stash.Upload) (io.WriteCloser,
 	}
 	f, err := os.OpenFile(filename.System(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Stash could not create file")
+		return nil, log.Err(ctx, err, "Stash could not create file")
 	}
 	now, _ := ptypes.TimestampProto(time.Now())
 	w := &fileStoreWriter{
@@ -127,11 +127,11 @@ func (s *fileStore) Create(ctx log.Context, info *stash.Upload) (io.WriteCloser,
 	// Write the meta data to the disk
 	meta, err := proto.Marshal(w.entity)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Stash could not marshal meta data")
+		return nil, log.Err(ctx, err, "Stash could not marshal meta data")
 	}
 	err = ioutil.WriteFile(w.meta.System(), meta, 0666)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Stash could not save meta data")
+		return nil, log.Err(ctx, err, "Stash could not save meta data")
 	}
 	// and finally add the entry into the map
 	s.lockedAddEntry(ctx, w.entity)

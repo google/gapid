@@ -19,6 +19,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -38,7 +39,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doValidate(ctx log.Context, flags flag.FlagSet) error {
+func doValidate(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
@@ -50,7 +51,7 @@ func doValidate(ctx log.Context, flags flag.FlagSet) error {
 		if err := gapil.CheckErrors(apiName, errs, maxErrors); err != nil {
 			return err
 		}
-		ctx.Info().S("api", apiName).Log("Validating")
+		log.I(ctx, "Validating %v", apiName)
 		issues := validate.Validate(compiled, processor.Mappings, nil)
 		fmt.Fprintf(os.Stderr, "%v\n", issues)
 		if c := len(issues); c > 0 {

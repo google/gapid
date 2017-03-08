@@ -16,10 +16,10 @@ package jdwp
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"reflect"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -30,7 +30,7 @@ import (
 // to the corresponding chans. recv is blocking and should be run on a new
 // go routine.
 // recv returns when ctx is stopped or there's an IO error.
-func (c *Connection) recv(ctx log.Context) {
+func (c *Connection) recv(ctx context.Context) {
 	for !task.Stopped(ctx) {
 		packet, err := c.readPacket()
 		switch err {
@@ -39,7 +39,7 @@ func (c *Connection) recv(ctx log.Context) {
 			return
 		default:
 			if !task.Stopped(ctx) {
-				jot.Warning(ctx).Cause(err).Print("Failed to read packet")
+				log.W(ctx, "Failed to read packet. Error: %v", err)
 			}
 			return
 		}
@@ -50,7 +50,7 @@ func (c *Connection) recv(ctx log.Context) {
 			out, ok := c.replies[packet.id]
 			c.Unlock()
 			if !ok {
-				jot.Warning(ctx).With("id", packet.id).Cause(err).Print("Unexpected reply")
+				log.W(ctx, "Unexpected reply for packet %d", packet.id)
 				continue
 			}
 			out <- packet
@@ -61,7 +61,7 @@ func (c *Connection) recv(ctx log.Context) {
 				d := endian.Reader(bytes.NewReader(packet.data), device.BigEndian)
 				events := Events{}
 				if err := c.decode(d, reflect.ValueOf(&events)); err != nil {
-					jot.Fail(ctx, err, "Couldn't decode composite event data")
+					log.F(ctx, "Couldn't decode composite event data. Error: %v", err)
 					continue
 				}
 				c.Lock()

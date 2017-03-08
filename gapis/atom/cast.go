@@ -15,15 +15,15 @@
 package atom
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"unicode"
 
-	"github.com/google/gapid/gapil/snippets"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
+	"github.com/google/gapid/gapil/snippets"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -64,7 +64,7 @@ func (a *Dynamic) Extras() *Extras {
 
 // Mutate is not supported by the Dynamic type, but is exposed in order to comform
 // to the Atom interface. Mutate will always return an error.
-func (*Dynamic) Mutate(log.Context, *gfxapi.State, *builder.Builder) error {
+func (*Dynamic) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return fmt.Errorf("Mutate not implemented for client atoms")
 }
 

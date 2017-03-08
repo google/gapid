@@ -16,7 +16,8 @@
 package atom
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
@@ -47,7 +48,7 @@ type Aborted struct {
 	Reason   string
 }
 
-func (a *Aborted) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (a *Aborted) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, &atom_pb.Aborted{
 		IsAssert: a.IsAssert,
 		Reason:   a.Reason,
@@ -116,7 +117,7 @@ func WithExtras(a Atom, extras ...Extra) Atom {
 }
 
 // Convert calls the Convert method on all the extras in the list.
-func (e *Extras) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (e *Extras) Convert(ctx context.Context, out atom_pb.Handler) error {
 	for _, o := range e.All() {
 		c, ok := o.(Convertible)
 		if !ok {

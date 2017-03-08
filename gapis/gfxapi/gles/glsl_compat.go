@@ -15,11 +15,11 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl"
@@ -230,7 +230,7 @@ type GLSLParseResult struct {
 	Errors  []string
 }
 
-func (lt *GLSLParseResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (lt *GLSLParseResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	tree, _, _, errs := glsl.Parse(lt.ShaderSource, ast.Language(lt.Language))
 	errors := make([]string, len(errs))
 	for i, e := range errs {
@@ -239,7 +239,7 @@ func (lt *GLSLParseResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	return &GLSLParseResult{Program: tree, Errors: errors}, nil
 }
 
-func glslCompat(ctx log.Context, src string, lang ast.Language, device *device.Instance) (string, error) {
+func glslCompat(ctx context.Context, src string, lang ast.Language, device *device.Instance) (string, error) {
 	robj, err := database.Build(
 		ctx,
 		&GLSLParseResolvable{

@@ -16,10 +16,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/lingo/generator"
 )
 
@@ -33,7 +33,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Expect at least one lingo file")

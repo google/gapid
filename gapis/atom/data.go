@@ -16,10 +16,10 @@ package atom
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -29,7 +29,7 @@ import (
 // Data encodes and stores the value v to the database d, returning the
 // memory range and new resource identifier. Data can be used to as a helper
 // to AddRead and AddWrite methods on atoms.
-func Data(ctx log.Context, a *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
+func Data(ctx context.Context, a *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, a.GetEndian())
 	if _, err := memory.Write(w, a, v); err != nil {
@@ -86,7 +86,7 @@ func (r AllocResult) Address() uint64 {
 // memory range big enough to store it using the Allocator associated with
 // the given State, and returns a helper that can be used to access the
 // database ID, pointer, and range.
-func AllocData(ctx log.Context, s *gfxapi.State, v ...interface{}) (AllocResult, error) {
+func AllocData(ctx context.Context, s *gfxapi.State, v ...interface{}) (AllocResult, error) {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, s.MemoryLayout.GetEndian())
 	if _, err := memory.Write(w, s.MemoryLayout, v); err != nil {
@@ -119,7 +119,7 @@ func Must(result AllocResult, err error) AllocResult {
 // Alloc allocates a memory range using the Allocator associated with
 // the given State, and returns a helper that can be used to access the
 // pointer, and range.
-func Alloc(ctx log.Context, s *gfxapi.State, count uint64) (AllocResult, error) {
+func Alloc(ctx context.Context, s *gfxapi.State, count uint64) (AllocResult, error) {
 	at, err := s.Allocator.Alloc(count, 8)
 	if err != nil {
 		return AllocResult{}, err

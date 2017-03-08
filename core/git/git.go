@@ -16,11 +16,11 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -48,11 +48,11 @@ func New(wd string) (Git, error) {
 	}, nil
 }
 
-func (g Git) run(ctx log.Context, args ...interface{}) (string, string, error) {
+func (g Git) run(ctx context.Context, args ...interface{}) (string, string, error) {
 	return g.runWithStdin(ctx, nil, args...)
 }
 
-func (g Git) runWithStdin(ctx log.Context, stdin io.Reader, args ...interface{}) (string, string, error) {
+func (g Git) runWithStdin(ctx context.Context, stdin io.Reader, args ...interface{}) (string, string, error) {
 	argstrs := make([]string, len(args))
 	for i := range args {
 		argstrs[i] = fmt.Sprint(args[i])

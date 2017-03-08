@@ -15,10 +15,10 @@
 package adb
 
 import (
+	"context"
 	"regexp"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 )
@@ -31,7 +31,7 @@ const (
 var screenOnRegex = regexp.MustCompile("mScreenOnFully=(true|false)")
 
 // IsScreenOn returns true if the device's screen is currently on.
-func (b *binding) IsScreenOn(ctx log.Context) (bool, error) {
+func (b *binding) IsScreenOn(ctx context.Context) (bool, error) {
 	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
 	if err != nil {
 		return false, err
@@ -42,11 +42,11 @@ func (b *binding) IsScreenOn(ctx log.Context) (bool, error) {
 	case "mScreenOnFully=false":
 		return false, nil
 	}
-	return false, cause.Wrap(ctx, ErrScreenOnState)
+	return false, log.Err(ctx, ErrScreenOnState, "")
 }
 
 // TurnScreenOn turns the device's screen on.
-func (b *binding) TurnScreenOn(ctx log.Context) error {
+func (b *binding) TurnScreenOn(ctx context.Context) error {
 	if isOn, err := b.IsScreenOn(ctx); err != nil || isOn {
 		return err
 	}
@@ -54,7 +54,7 @@ func (b *binding) TurnScreenOn(ctx log.Context) error {
 }
 
 // TurnScreenOff turns the device's screen off.
-func (b *binding) TurnScreenOff(ctx log.Context) error {
+func (b *binding) TurnScreenOff(ctx context.Context) error {
 	if isOn, err := b.IsScreenOn(ctx); err != nil || !isOn {
 		return err
 	}
@@ -64,7 +64,7 @@ func (b *binding) TurnScreenOff(ctx log.Context) error {
 var lockscreenRegex = regexp.MustCompile("mShowingLockscreen=(true|false)")
 
 // IsShowingLockscreen returns true if the device's lockscreen is currently showing.
-func (b *binding) IsShowingLockscreen(ctx log.Context) (bool, error) {
+func (b *binding) IsShowingLockscreen(ctx context.Context) (bool, error) {
 	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
 	if err != nil {
 		return false, err
@@ -75,5 +75,5 @@ func (b *binding) IsShowingLockscreen(ctx log.Context) (bool, error) {
 	case "mShowingLockscreen=false":
 		return false, nil
 	}
-	return false, cause.Wrap(ctx, ErrLockScreenState)
+	return false, log.Err(ctx, ErrLockScreenState, "")
 }

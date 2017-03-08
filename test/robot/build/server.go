@@ -15,10 +15,12 @@
 package build
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	xctx "golang.org/x/net/context"
 )
 
 type server struct {
@@ -26,7 +28,7 @@ type server struct {
 }
 
 // Serve wraps a store in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, store Store) error {
+func Serve(ctx context.Context, grpcServer *grpc.Server, store Store) error {
 	RegisterServiceServer(grpcServer, &server{store: store})
 	return nil
 }
@@ -34,28 +36,28 @@ func Serve(ctx log.Context, grpcServer *grpc.Server, store Store) error {
 // SearchArtifacts implements ServiceServer.SearchArtifacts
 // It delegates the call to the provided Store implementation.
 func (s *server) SearchArtifacts(query *search.Query, stream Service_SearchArtifactsServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.store.SearchArtifacts(ctx, query, func(ctx log.Context, e *Artifact) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.store.SearchArtifacts(ctx, query, func(ctx context.Context, e *Artifact) error { return stream.Send(e) })
 }
 
 // SearchPackages implements ServiceServer.SearchPackages
 // It delegates the call to the provided Store implementation.
 func (s *server) SearchPackages(query *search.Query, stream Service_SearchPackagesServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.store.SearchPackages(ctx, query, func(ctx log.Context, e *Package) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.store.SearchPackages(ctx, query, func(ctx context.Context, e *Package) error { return stream.Send(e) })
 }
 
 // SearchTracks implements ServiceServer.SearchTrackst
 // It delegates the call to the provided Store implementation.
 func (s *server) SearchTracks(query *search.Query, stream Service_SearchTracksServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.store.SearchTracks(ctx, query, func(ctx log.Context, e *Track) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.store.SearchTracks(ctx, query, func(ctx context.Context, e *Track) error { return stream.Send(e) })
 }
 
 // Add implements ServiceServer.Add
 // It delegates the call to the provided Store implementation.
-func (s *server) Add(outer context.Context, request *AddRequest) (*AddResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) Add(outer xctx.Context, request *AddRequest) (*AddResponse, error) {
+	ctx := outer
 	id, merged, err := s.store.Add(ctx, request.Id, request.Information)
 	if err != nil {
 		return nil, err
@@ -68,8 +70,8 @@ func (s *server) Add(outer context.Context, request *AddRequest) (*AddResponse, 
 
 // UpdateTrack implements ServiceServer.UpdateTrack
 // It delegates the call to the provided Store implementation.
-func (s *server) UpdateTrack(outer context.Context, request *UpdateTrackRequest) (*UpdateTrackResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) UpdateTrack(outer xctx.Context, request *UpdateTrackRequest) (*UpdateTrackResponse, error) {
+	ctx := outer
 	track, err := s.store.UpdateTrack(ctx, request.Track)
 	if err != nil {
 		return nil, err

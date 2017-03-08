@@ -15,15 +15,13 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/text/note"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/atom"
@@ -38,37 +36,37 @@ import (
 
 type Service interface {
 	// GetServerInfo returns information about the running server.
-	GetServerInfo(ctx log.Context) (*ServerInfo, error)
+	GetServerInfo(ctx context.Context) (*ServerInfo, error)
 
 	// The GetSchema returns the type and constant schema descriptions for all
 	// objects used in the api.
 	// This includes all the types included in or referenced from the atom stream.
-	GetSchema(ctx log.Context) (*schema.Message, error)
+	GetSchema(ctx context.Context) (*schema.Message, error)
 
 	// GetAvailableStringTables returns list of available string table descriptions.
-	GetAvailableStringTables(ctx log.Context) ([]*stringtable.Info, error)
+	GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error)
 
 	// GetStringTable returns the requested string table.
-	GetStringTable(ctx log.Context, info *stringtable.Info) (*stringtable.StringTable, error)
+	GetStringTable(ctx context.Context, info *stringtable.Info) (*stringtable.StringTable, error)
 
 	// Import imports capture data emitted by the graphics spy, returning the new
 	// capture identifier.
-	ImportCapture(ctx log.Context, name string, data []uint8) (*path.Capture, error)
+	ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error)
 
 	// LoadCapture imports capture data from a local file, returning the new
 	// capture identifier.
-	LoadCapture(ctx log.Context, path string) (*path.Capture, error)
+	LoadCapture(ctx context.Context, path string) (*path.Capture, error)
 
 	// GetDevices returns the full list of replay devices avaliable to the server.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
-	GetDevices(ctx log.Context) ([]*path.Device, error)
+	GetDevices(ctx context.Context) ([]*path.Device, error)
 
 	// GetDevicesForReplay returns the list of replay devices avaliable to the
 	// server that are capable of replaying the given capture.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
-	GetDevicesForReplay(ctx log.Context, p *path.Capture) ([]*path.Device, error)
+	GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error)
 
 	// GetFramebufferAttachment returns the ImageInfo identifier describing the
 	// given framebuffer attachment and device, immediately following the atom
@@ -76,40 +74,40 @@ type Service interface {
 	// The provided RenderSettings structure can be used to adjust maximum desired
 	// dimensions of the image, as well as applying debug visualizations.
 	GetFramebufferAttachment(
-		ctx log.Context,
+		ctx context.Context,
 		device *path.Device,
 		after *path.Command,
 		attachment gfxapi.FramebufferAttachment,
 		settings *RenderSettings) (*path.ImageInfo, error)
 
 	// Get resolves and returns the object, value or memory at the path p.
-	Get(ctx log.Context, p *path.Any) (interface{}, error)
+	Get(ctx context.Context, p *path.Any) (interface{}, error)
 
 	// Set creates a copy of the capture referenced by p, but with the object, value
 	// or memory at p replaced with v. The path returned is identical to p, but with
 	// the base changed to refer to the new capture.
-	Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, error)
+	Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error)
 
 	// Follow returns the path to the object that the value at p links to.
 	// If the value at p does not link to anything then nil is returned.
-	Follow(ctx log.Context, p *path.Any) (*path.Any, error)
+	Follow(ctx context.Context, p *path.Any) (*path.Any, error)
 
 	// BeginCPUProfile starts CPU self-profiling of the server.
 	// If the CPU is already being profiled then this function will return an
 	// error.
 	// This is a debug API, and may be removed in the future.
-	BeginCPUProfile(ctx log.Context) error
+	BeginCPUProfile(ctx context.Context) error
 
 	// EndCPUProfile ends the CPU profile, returning the pprof samples.
 	// This is a debug API, and may be removed in the future.
-	EndCPUProfile(ctx log.Context) ([]byte, error)
+	EndCPUProfile(ctx context.Context) ([]byte, error)
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a JSON blob.
-	GetPerformanceCounters(ctx log.Context) ([]byte, error)
+	GetPerformanceCounters(ctx context.Context) ([]byte, error)
 
 	// GetProfile returns the pprof profile with the given name.
-	GetProfile(ctx log.Context, name string, debug int32) ([]byte, error)
+	GetProfile(ctx context.Context, name string, debug int32) ([]byte, error)
 }
 
 // NewError attempts to box and return err into an Error.
@@ -126,8 +124,6 @@ func NewError(err error) *Error {
 		return &Error{&Error_ErrInvalidArgument{err}}
 	case *ErrPathNotFollowable:
 		return &Error{&Error_ErrPathNotFollowable{err}}
-	case cause.Error:
-		return &Error{&Error_ErrInternal{&ErrInternal{note.Normal.Print(err.Page)}}}
 	default:
 		return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
 	}
@@ -268,7 +264,7 @@ func NewHierarchy(name string, context id.ID, root atom.Group) *Hierarchy {
 
 // Link returns the link to the atom pointed by a report item.
 // If nil, nil is returned then the path cannot be followed.
-func (i ReportItem) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (i ReportItem) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if capture := path.FindCapture(p); capture != nil {
 		return capture.Commands().Index(i.Command), nil
 	}

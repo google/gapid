@@ -15,6 +15,8 @@
 package gles
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
@@ -82,7 +84,7 @@ func getLuminanceAlphaSwizzle(internalformat GLenum) map[GLenum]GLenum {
 type textureCompat struct {
 	f   features
 	v   *Version
-	ctx log.Context
+	ctx context.Context
 
 	// Original user-defined swizzle which would be used without compatibility layer.
 	// (GL_TEXTURE_SWIZZLE_{R,G,B,A}, Texture) -> GL_{RED,GREEN,BLUE,ALPHA,ONE,ZERO}
@@ -112,7 +114,7 @@ func (tc *textureCompat) getSwizzle(t *Texture, parameter GLenum) (orig, curr GL
 	return init, curr
 }
 
-func (tc *textureCompat) writeCompatSwizzle(ctx log.Context, t *Texture, parameter GLenum, out transform.Writer) {
+func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, parameter GLenum, out transform.Writer) {
 	target := t.Kind
 	orig, curr := tc.getSwizzle(t, parameter)
 	compat := orig
@@ -199,14 +201,14 @@ func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transfor
 			tc.writeCompatSwizzle(tc.ctx, t, parameter, out)
 		}
 	case GLenum_GL_TEXTURE_SWIZZLE_RGBA:
-		tc.ctx.Error().Log("Unexpected GL_TEXTURE_SWIZZLE_RGBA")
+		log.E(tc.ctx, "Unexpected GL_TEXTURE_SWIZZLE_RGBA")
 	}
 }
 
 // decompressTexImage2D writes a glTexImage2D using the decompressed data for
 // the given glCompressedTexImage2D.
-func decompressTexImage2D(ctx log.Context, i atom.ID, a *GlCompressedTexImage2D, s *gfxapi.State, out transform.Writer) error {
-	ctx = ctx.Enter("decompressTexImage2D")
+func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImage2D, s *gfxapi.State, out transform.Writer) error {
+	ctx = log.Enter(ctx, "decompressTexImage2D")
 	c := GetContext(s)
 
 	data := a.Data
@@ -251,8 +253,8 @@ func decompressTexImage2D(ctx log.Context, i atom.ID, a *GlCompressedTexImage2D,
 
 // decompressTexSubImage2D writes a glTexSubImage2D using the decompressed data for
 // the given glCompressedTexSubImage2D.
-func decompressTexSubImage2D(ctx log.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *gfxapi.State, out transform.Writer) error {
-	ctx = ctx.Enter("decompressTexSubImage2D")
+func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *gfxapi.State, out transform.Writer) error {
+	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	c := GetContext(s)
 
 	data := a.Data

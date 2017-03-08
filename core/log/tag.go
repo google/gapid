@@ -14,15 +14,23 @@
 
 package log
 
-import "github.com/google/gapid/core/context/memo"
+import (
+	"context"
 
-// Tag returns a context with the tag set.
-func (ctx logContext) Tag(tag string) Context {
-	ctx.internal = memo.Tag(ctx.Unwrap(), tag)
-	return ctx
+	"github.com/google/gapid/core/context/keys"
+)
+
+type tagKeyTy string
+
+const tagKey tagKeyTy = "log.tagKey"
+
+// PutTag returns a new context with the tag assigned to w.
+func PutTag(ctx context.Context, w string) context.Context {
+	return keys.WithValue(ctx, tagKey, w)
 }
 
-// Tag returns a logger with the tag set if the logger is active.
-func (l Logger) Tag(tag string) Logger {
-	return Logger{J: l.J.Tag(tag)}
+// GetTag returns the Tag assigned to ctx.
+func GetTag(ctx context.Context) string {
+	out, _ := ctx.Value(tagKey).(string)
+	return out
 }

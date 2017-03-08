@@ -15,7 +15,8 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
@@ -25,9 +26,9 @@ import (
 
 // undefinedFramebuffer adds a transform that will render a pattern into the
 // color buffer at the end of each frame.
-func undefinedFramebuffer(ctx log.Context, device *device.Instance) transform.Transformer {
+func undefinedFramebuffer(ctx context.Context, device *device.Instance) transform.Transformer {
 	seenSurfaces := make(map[EGLSurface]bool)
-	return transform.Transform("DirtyFramebuffer", func(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		out.MutateAndWrite(ctx, i, a)
 		s := out.State()
 		c := GetState(s).getContext()
@@ -47,7 +48,7 @@ func undefinedFramebuffer(ctx log.Context, device *device.Instance) transform.Tr
 	})
 }
 
-func drawUndefinedFramebuffer(ctx log.Context, a atom.Atom, device *device.Instance, s *gfxapi.State, c *Context, out transform.Writer) error {
+func drawUndefinedFramebuffer(ctx context.Context, a atom.Atom, device *device.Instance, s *gfxapi.State, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 

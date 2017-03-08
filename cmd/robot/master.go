@@ -15,18 +15,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
 	"net"
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/record"
 	"github.com/google/gapid/core/data/search/script"
 	"github.com/google/gapid/core/data/stash"
 	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -74,14 +73,14 @@ func init() {
 	searchVerb.Add(masterSearch)
 }
 
-func doMasterStart(ctx log.Context, flags flag.FlagSet) error {
+func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
 	tempName, err := ioutil.TempDir("", "robot")
 	if err != nil {
 		return err
 	}
 	tempDir := file.Abs(tempName)
 	restart := false
-	err = grpcutil.Serve(ctx, serverAddress, func(ctx log.Context, listener net.Listener, server *grpc.Server) error {
+	err = grpcutil.Serve(ctx, serverAddress, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		managers := monitor.Managers{}
 		err := error(nil)
 		if stashAddr == "" {
@@ -93,11 +92,11 @@ func doMasterStart(ctx log.Context, flags flag.FlagSet) error {
 		library := record.NewLibrary(ctx)
 		shelf, err := record.NewShelf(ctx, shelfAddr)
 		if err != nil {
-			return cause.Explain(ctx, err, "Could not open shelf").With("shelf", shelfAddr)
+			return log.Errf(ctx, err, "Could not open shelf: %v", shelfAddr)
 		}
 		library.Add(ctx, shelf)
 		if managers.Stash, err = stash.Dial(ctx, stashAddr); err != nil {
-			return cause.Explain(ctx, err, "Could not open stash").With("stash", stashAddr)
+			return log.Errf(ctx, err, "Could not open stash: %v", stashAddr)
 		}
 		managers.Master = master.NewLocal(ctx)
 		if managers.Subject, err = subject.NewLocal(ctx, library, managers.Stash); err != nil {
@@ -128,7 +127,7 @@ func doMasterStart(ctx log.Context, flags flag.FlagSet) error {
 		}
 		go func() {
 			if err := monitor.Run(ctx, managers, monitor.NewDataOwner(), scheduler.Tick); err != nil {
-				jot.Fatal(ctx, err, "Scheduler died")
+				log.E(ctx, "Scheduler died. Error: %v", err)
 			}
 		}()
 
@@ -154,16 +153,16 @@ func doMasterStart(ctx log.Context, flags flag.FlagSet) error {
 		go func() {
 			shutdown, err := c.Orbit(ctx, services)
 			if err != nil {
-				ctx.Notice().Log("Orbit failed")
+				log.I(ctx, "Orbit failed")
 				server.Stop()
 				return
 			}
 			restart = shutdown.Restart
 			if shutdown.Now {
-				ctx.Notice().Log("Kill now")
+				log.I(ctx, "Kill now")
 				server.Stop()
 			} else {
-				ctx.Notice().Log("Graceful stop")
+				log.I(ctx, "Graceful stop")
 				server.GracefulStop()
 			}
 		}()
@@ -175,7 +174,7 @@ func doMasterStart(ctx log.Context, flags flag.FlagSet) error {
 	return err
 }
 
-func serveAll(ctx log.Context, server *grpc.Server, managers monitor.Managers) error {
+func serveAll(ctx context.Context, server *grpc.Server, managers monitor.Managers) error {
 	if err := master.Serve(ctx, server, managers.Master); err != nil {
 		return err
 	}
@@ -203,17 +202,16 @@ func serveAll(ctx log.Context, server *grpc.Server, managers monitor.Managers) e
 	return nil
 }
 
-func doMasterSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doMasterSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		m := master.NewRemoteMaster(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("")
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return m.Search(ctx, expr.Query(), func(ctx log.Context, entry *master.Satellite) error {
-			out.Log(entry.String())
+		return m.Search(ctx, expr.Query(), func(ctx context.Context, entry *master.Satellite) error {
+			log.I(ctx, "%s", entry.String())
 			return nil
 		})
 	}, grpc.WithInsecure())

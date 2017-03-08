@@ -16,6 +16,8 @@ package asm
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -37,12 +39,16 @@ func (testPtrResolver) ResolvePointerIndex(value.PointerIndex) value.VolatilePoi
 	return 0
 }
 
-func test(ctx log.Context, Instructions []Instruction, expected ...interface{}) {
+func test(ctx context.Context, Instructions []Instruction, expected ...interface{}) {
 	buf := &bytes.Buffer{}
 	b := endian.Writer(buf, device.LittleEndian)
 	for _, instruction := range Instructions {
 		err := instruction.Encode(testPtrResolver{}, b)
-		assert.With(ctx.V("Instruction", instruction).T("Type", instruction)).ThatError(err).Succeeded()
+		ctx := log.V{
+			"instruction": instruction,
+			"type":        fmt.Sprintf("%T", instruction),
+		}.Bind(ctx)
+		assert.With(ctx).ThatError(err).Succeeded()
 	}
 	got, err := opcode.Disassemble(buf, device.LittleEndian)
 	assert.With(ctx).ThatError(err).Succeeded()

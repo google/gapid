@@ -15,17 +15,18 @@
 package resolver_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/semantic/printer"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/parse"
 )
 
 func err(msg string) parse.ErrorList {
@@ -39,8 +40,8 @@ type test struct {
 	errors parse.ErrorList
 }
 
-func (t test) check(ctx log.Context) *semantic.API {
-	ctx.Info().Logf("-------%s-------", t.name)
+func (t test) check(ctx context.Context) *semantic.API {
+	log.I(ctx, "-------%s-------", t.name)
 	m := resolver.NewMappings()
 	astAPI, errs := parser.Parse("resolve_test.api", t.source, m)
 	assert.For(ctx, "parse errors").That(errs).IsNil()
@@ -287,7 +288,7 @@ cmd void C(u32 a) {
 }`,
 		},
 	} {
-		ctx.Info().Logf("-------%s-------", test.name)
+		log.I(ctx, "-------%s-------", test.name)
 		m := resolver.NewMappings()
 		astAPI, errs := parser.Parse("resolve_test.api", test.source, m)
 		assert.For(ctx, "parse errors").That(errs).IsNil()

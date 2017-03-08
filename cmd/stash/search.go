@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"strings"
@@ -22,7 +23,6 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/data/search/script"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -38,22 +38,21 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doInfo(ctx log.Context, flags flag.FlagSet) error {
-	return withStore(ctx, false, func(ctx log.Context, client *stash.Client) error {
+func doInfo(ctx context.Context, flags flag.FlagSet) error {
+	return withStore(ctx, false, func(ctx context.Context, client *stash.Client) error {
 		return getInfo(ctx, client, strings.Join(flags.Args(), " "))
 	})
 }
 
-func getInfo(ctx log.Context, client *stash.Client, expression string) error {
-	out := ctx.Raw("")
+func getInfo(ctx context.Context, client *stash.Client, expression string) error {
 	expr, err := script.Parse(ctx, expression)
 	if err != nil {
-		return cause.Explain(ctx, err, "Malformed search query")
+		return log.Err(ctx, err, "Malformed search query")
 	}
 	query := expr.Query()
 	query.Monitor = monitor
-	err = client.Search(ctx, query, func(ctx log.Context, entry *stash.Entity) error {
-		out.Logf("%s", entry)
+	err = client.Search(ctx, query, func(ctx context.Context, entry *stash.Entity) error {
+		log.I(ctx, "%s", entry)
 		return nil
 	})
 	if err == nil && monitor {

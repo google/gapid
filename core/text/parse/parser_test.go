@@ -16,6 +16,7 @@ package parse_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -148,7 +149,7 @@ func TestErrorLimit(t *testing.T) {
 		for i := 0; true; i++ {
 			p.ErrorAt(cst, "failure")
 			if i >= parse.ParseErrorLimit {
-				ctx.Critical().I("errors", i).Log("Parsing not terminated")
+				log.F(ctx, "Parsing not terminated. %d errors", i)
 			}
 		}
 	}, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
@@ -169,7 +170,7 @@ func TestCursor(t *testing.T) {
 	content += "@  \n  "
 	errs := parse.Parse(root.Parse, filename, content, parse.NewSkip("//", "/*", "*/"), nil)
 	if len(errs) == 0 {
-		ctx.Error().Log("Expected errors")
+		log.E(ctx, "Expected errors")
 	}
 	l, c := errs[0].At.Token().Cursor()
 	assert.For(ctx, "Line").That(l).Equals(line)
@@ -186,8 +187,8 @@ func TestCustomPanic(t *testing.T) {
 	parse.Parse(func(p *parse.Parser, _ *parse.Branch) { panic(custom) }, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
 }
 
-func testParse(ctx log.Context, content string, cst parse.Node, ast *test.ListNode) {
-	ctx = ctx.S("content", content)
+func testParse(ctx context.Context, content string, cst parse.Node, ast *test.ListNode) {
+	ctx = log.V{"content": content}.Bind(ctx)
 	root := List()
 	var gotCst *parse.Branch
 	rootParse := func(p *parse.Parser, cst *parse.Branch) {
@@ -208,19 +209,19 @@ func testParse(ctx log.Context, content string, cst parse.Node, ast *test.ListNo
 	}
 }
 
-func testCustomFail(ctx log.Context, content string, do parse.BranchParser) {
+func testCustomFail(ctx context.Context, content string, do parse.BranchParser) {
 	errs := parse.Parse(do, "parser_test.api", content, parse.NewSkip("//", "/*", "*/"), nil)
 	if len(errs) == 0 {
-		ctx.Error().Log("Expected errors")
+		log.E(ctx, "Expected errors")
 	} else {
 		for _, e := range errs {
 			line, column := e.At.Token().Cursor()
-			ctx.Printf("%v:%v: %s\n", line, column, e.Message)
+			log.I(ctx, "%v:%v: %s\n", line, column, e.Message)
 		}
 	}
 }
 
-func testFail(ctx log.Context, content string) {
+func testFail(ctx context.Context, content string) {
 	root := List()
 	testCustomFail(ctx, content, root.Parse)
 }

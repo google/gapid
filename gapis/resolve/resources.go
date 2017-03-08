@@ -15,10 +15,10 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -27,7 +27,7 @@ import (
 )
 
 // Resources resolves all the resources used by the specified capture.
-func Resources(ctx log.Context, c *path.Capture) (*service.Resources, error) {
+func Resources(ctx context.Context, c *path.Capture) (*service.Resources, error) {
 	obj, err := database.Build(ctx, &ResourcesResolvable{c})
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func Resources(ctx log.Context, c *path.Capture) (*service.Resources, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *ResourcesResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
 	c, err := capture.Resolve(ctx)

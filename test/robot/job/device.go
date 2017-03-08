@@ -15,6 +15,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -23,7 +24,6 @@ import (
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -35,7 +35,7 @@ type devices struct {
 	onChange event.Broadcast
 }
 
-func (l *devices) init(ctx log.Context, library record.Library) error {
+func (l *devices) init(ctx context.Context, library record.Library) error {
 	ledger, err := library.Open(ctx, "devices", &Device{})
 	if err != nil {
 		return err
@@ -50,14 +50,14 @@ func (l *devices) init(ctx log.Context, library record.Library) error {
 	return nil
 }
 
-func (l *devices) apply(ctx log.Context, entry *Device) error {
+func (l *devices) apply(ctx context.Context, entry *Device) error {
 	l.entries = append(l.entries, entry)
 	l.byID[entry.Id] = entry
 	l.onChange.Send(ctx, entry)
 	return nil
 }
 
-func (l *devices) search(ctx log.Context, query *search.Query, handler DeviceHandler) error {
+func (l *devices) search(ctx context.Context, query *search.Query, handler DeviceHandler) error {
 	filter := eval.Filter(ctx, query, reflect.TypeOf(&Device{}), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, l.entries)
 	if query.Monitor {
@@ -66,7 +66,7 @@ func (l *devices) search(ctx log.Context, query *search.Query, handler DeviceHan
 	return event.Feed(ctx, filter, initial)
 }
 
-func (l *devices) uniqueName(ctx log.Context, name string) string {
+func (l *devices) uniqueName(ctx context.Context, name string) string {
 	index := 0
 	id := name
 	for {
@@ -88,7 +88,7 @@ func sameDevice(match *Device, info *device.Instance) bool {
 	return match.Information.SameAs(info)
 }
 
-func (l *devices) find(ctx log.Context, info *device.Instance) *Device {
+func (l *devices) find(ctx context.Context, info *device.Instance) *Device {
 	for _, entry := range l.entries {
 		if sameDevice(entry, info) {
 			return entry
@@ -97,7 +97,7 @@ func (l *devices) find(ctx log.Context, info *device.Instance) *Device {
 	return nil
 }
 
-func (l *devices) get(ctx log.Context, info *device.Instance) (*Device, error) {
+func (l *devices) get(ctx context.Context, info *device.Instance) (*Device, error) {
 	if info == nil {
 		return nil, nil
 	}

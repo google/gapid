@@ -15,10 +15,10 @@
 package master
 
 import (
+	"context"
 	"io"
 
 	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/pkg/errors"
 )
@@ -33,7 +33,7 @@ type Client struct {
 }
 
 // NewClient returns a new master client object that talks to the provided Master.
-func NewClient(ctx log.Context, m Master) *Client {
+func NewClient(ctx context.Context, m Master) *Client {
 	return &Client{
 		Master: m,
 	}
@@ -41,22 +41,22 @@ func NewClient(ctx log.Context, m Master) *Client {
 
 // Orbit registers a satellite with the master.
 // The function will only return when the connection is lost.
-func (c *Client) Orbit(ctx log.Context, services ServiceList) (Shutdown, error) {
+func (c *Client) Orbit(ctx context.Context, services ServiceList) (Shutdown, error) {
 	err := c.Master.Orbit(ctx, services,
-		func(ctx log.Context, command *Command) error {
+		func(ctx context.Context, command *Command) error {
 			switch do := command.Do.(type) {
 			case *Command_Ping:
 				return nil
 			case *Command_Identify:
 				c.name = do.Identify.Name
-				ctx.Notice().Logf("Identified as %s", c.name)
+				log.I(ctx, "Identified as %s", c.name)
 				return nil
 			case *Command_Shutdown:
 				// abort the report stream
 				c.shutdown = *do.Shutdown
 				return io.EOF
 			default:
-				return cause.Explain(ctx, nil, "Unknown command type")
+				return log.Err(ctx, nil, "Unknown command type")
 			}
 		},
 	)
@@ -67,7 +67,7 @@ func (c *Client) Orbit(ctx log.Context, services ServiceList) (Shutdown, error) 
 }
 
 // Shutdown causes a graceful shutdown of the server.
-func (c *Client) Shutdown(ctx log.Context, to ...string) error {
+func (c *Client) Shutdown(ctx context.Context, to ...string) error {
 	_, err := c.Master.Shutdown(ctx, &ShutdownRequest{
 		Shutdown: &Shutdown{
 			Now:     false,
@@ -79,7 +79,7 @@ func (c *Client) Shutdown(ctx log.Context, to ...string) error {
 }
 
 // Restart causes a graceful shutdown and restart of the server.
-func (c *Client) Restart(ctx log.Context, to ...string) error {
+func (c *Client) Restart(ctx context.Context, to ...string) error {
 	_, err := c.Master.Shutdown(ctx, &ShutdownRequest{
 		Shutdown: &Shutdown{
 			Now:     false,
@@ -91,7 +91,7 @@ func (c *Client) Restart(ctx log.Context, to ...string) error {
 }
 
 // Kill causes an immediate shutdown of the server.
-func (c *Client) Kill(ctx log.Context, to ...string) error {
+func (c *Client) Kill(ctx context.Context, to ...string) error {
 	_, err := c.Master.Shutdown(ctx, &ShutdownRequest{
 		Shutdown: &Shutdown{
 			Now:     true,
@@ -103,6 +103,6 @@ func (c *Client) Kill(ctx log.Context, to ...string) error {
 }
 
 // Search delivers the set of satellites that match the query to the supplied function.
-func (c *Client) Search(ctx log.Context, query *search.Query, handler SatelliteHandler) error {
+func (c *Client) Search(ctx context.Context, query *search.Query, handler SatelliteHandler) error {
 	return c.Master.Search(ctx, query, handler)
 }

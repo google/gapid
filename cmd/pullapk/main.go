@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 )
@@ -42,24 +42,24 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	pkg := flag.Arg(0)
 	if pkg == "" {
-		return cause.Wrap(ctx, ErrMissingPackage)
+		return log.Err(ctx, ErrMissingPackage, "")
 	}
 	devices, err := adb.Devices(ctx)
 	if err != nil {
 		return err
 	}
 	if len(devices) == 0 {
-		return cause.Wrap(ctx, ErrNoDevices)
+		return log.Err(ctx, ErrNoDevices, "")
 	}
 
 	device := devices[0]
 	if *serial != "" {
 		device = devices.FindBySerial(*serial)
 		if device == nil {
-			return cause.Wrap(ctx, ErrNoMatchingDevice).With("Serial", *serial)
+			return log.Errf(ctx, ErrNoMatchingDevice, "serial: %v", *serial)
 		}
 	}
 

@@ -233,7 +233,7 @@ func TestRevertPostbackAtom(t *testing.T) {
 			[]asm.Instruction{},
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
 		assert.With(ctx).ThatSlice(b.instructions).Equals(test.expected)
@@ -317,7 +317,7 @@ func TestMapMemory(t *testing.T) {
 			},
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
 		assert.With(ctx).ThatSlice(b.instructions).Equals(test.expected)

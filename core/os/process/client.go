@@ -15,14 +15,13 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"regexp"
-
 	"strconv"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -57,8 +56,7 @@ func (w *portWatcher) Write(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-func Start(ctx log.Context, name string, extraEnv map[string][]string, args ...string) (int, error) {
-
+func Start(ctx context.Context, name string, extraEnv map[string][]string, args ...string) (int, error) {
 	// Append extra environment variable values
 	env := shell.CloneEnv()
 	for key, vals := range extraEnv {
@@ -67,7 +65,7 @@ func Start(ctx log.Context, name string, extraEnv map[string][]string, args ...s
 	return StartWithEnv(ctx, name, env, args...)
 }
 
-func StartWithEnv(ctx log.Context, name string, env *shell.Env, args ...string) (int, error) {
+func StartWithEnv(ctx context.Context, name string, env *shell.Env, args ...string) (int, error) {
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
 	stdout := &portWatcher{portChan: portChan}

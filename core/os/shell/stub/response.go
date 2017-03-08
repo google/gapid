@@ -15,11 +15,11 @@
 package stub
 
 import (
+	"context"
 	"io"
 	"sync"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -54,7 +54,7 @@ type responseProcess struct {
 	response *Response
 }
 
-func (p *responseProcess) Wait(ctx log.Context) error {
+func (p *responseProcess) Wait(ctx context.Context) error {
 	if p.response.WaitSignal != nil {
 		p.response.WaitSignal.Wait(ctx)
 	}
@@ -71,7 +71,7 @@ func (p *responseProcess) Wait(ctx log.Context) error {
 
 func (p *responseProcess) Kill() error {
 	if p.response.KillTask != nil {
-		p.response.KillTask(log.Background())
+		p.response.KillTask(context.Background())
 	}
 	return p.response.KillErr
 }

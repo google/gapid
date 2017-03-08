@@ -15,14 +15,11 @@
 package stacktrace_test
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/memo"
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/fault/stacktrace"
 	"github.com/google/gapid/core/text/note"
 )
@@ -138,46 +135,4 @@ func hasTrace(page note.Page) bool {
 		}
 	}
 	return false
-}
-
-func TestCaptureOn(t *testing.T) {
-	assert := assert.To(t)
-	ctx := context.Background()
-	ctx = severity.NewContext(ctx, severity.Error)
-	for _, test := range traces {
-		ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{Source: test.FilteredCapture})
-		trace, _ := memo.From(ctx)
-		assert.For("trace found").ThatSlice(trace).IsNotEmpty()
-		trace.Sort()
-		testStyle(assert, note.Brief, trace, test.brief)
-		testStyle(assert, note.Normal, trace, test.normal)
-		testStyle(assert, note.Detailed, trace, test.detailed)
-	}
-	ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{Source: traces[0].FilteredCapture, Condition: func(context.Context) bool { return false }})
-	page, _ := memo.From(ctx)
-	assert.For("false trace condition").Printf("Expect trace not found").Test(!hasTrace(page))
-	ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{Source: func() []stacktrace.Entry { return nil }, Condition: func(context.Context) bool { return true }})
-	page, _ = memo.From(ctx)
-	assert.For("empty trace source").Printf("Expect trace not found").Test(!hasTrace(page))
-	ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{Source: stacktrace.Capture, Condition: func(context.Context) bool { return true }})
-	page, _ = memo.From(ctx)
-	assert.For("normal trace").Printf("Expect trace found").Test(hasTrace(page))
-}
-
-func TestOnError(t *testing.T) {
-	assert := assert.To(t)
-	ctx := context.Background()
-	for level := severity.Level(0); level <= 10; level = severity.Level(int(level) + 1) {
-		ctx := severity.NewContext(ctx, level)
-		got := stacktrace.OnError(ctx)
-		expect := false
-		switch level {
-		case severity.Emergency,
-			severity.Critical,
-			severity.Alert,
-			severity.Error:
-			expect = true
-		}
-		assert.For("OnError at %s", level).That(got).Equals(expect)
-	}
 }

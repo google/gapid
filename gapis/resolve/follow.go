@@ -15,7 +15,8 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -23,7 +24,7 @@ import (
 
 // Follow resolves the path to the object that the value at Path links to.
 // If the value at Path does not link to anything then nil is returned.
-func Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
+func Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 	obj, err := database.Build(ctx, &FollowResolvable{p})
 	if err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *FollowResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *FollowResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	obj, err := Resolve(ctx, r.Path.Node())
 	if err != nil {
 		return nil, err

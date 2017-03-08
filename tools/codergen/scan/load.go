@@ -15,13 +15,13 @@
 package scan
 
 import (
+	"context"
 	"go/parser"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/copyright"
 	"golang.org/x/tools/go/types"
@@ -86,7 +86,7 @@ func (s *Scanner) preParse(module *Module) {
 
 var directive = regexp.MustCompile(`binary: *([^= ]+) *(= *(.+))? *`)
 
-func (s *Scanner) parse(ctx log.Context, module *Module) error {
+func (s *Scanner) parse(ctx context.Context, module *Module) error {
 	for i := range module.Sources {
 		src := &module.Sources[i]
 		<-src.Parsed
@@ -111,7 +111,7 @@ func (s *Scanner) parse(ctx log.Context, module *Module) error {
 	return nil
 }
 
-func (s *Scanner) importer(ctx log.Context, pkgs map[string]*types.Package, importPath string) (*types.Package, error) {
+func (s *Scanner) importer(ctx context.Context, pkgs map[string]*types.Package, importPath string) (*types.Package, error) {
 	if importPath == "unsafe" {
 		pkgs[importPath] = types.Unsafe
 		return types.Unsafe, nil
@@ -121,7 +121,7 @@ func (s *Scanner) importer(ctx log.Context, pkgs map[string]*types.Package, impo
 		return nil, err
 	}
 	if dir.Module.Types == nil {
-		return nil, cause.Wrap(ctx, fault.Const("Cyclic import")).With("Package", dir.ImportPath)
+		return nil, log.Errf(ctx, fault.Const("Cyclic import"), "package: %v", dir.ImportPath)
 	}
 	pkgs[importPath] = dir.Module.Types
 	return dir.Module.Types, nil

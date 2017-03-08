@@ -17,6 +17,7 @@ package build
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"io"
 	"reflect"
 	"strings"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
@@ -41,7 +41,7 @@ type artifacts struct {
 	onAdd   event.Broadcast
 }
 
-func (a *artifacts) init(ctx log.Context, store *stash.Client, library record.Library) error {
+func (a *artifacts) init(ctx context.Context, store *stash.Client, library record.Library) error {
 	ledger, err := library.Open(ctx, "artifacts", &Artifact{})
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (a *artifacts) init(ctx log.Context, store *stash.Client, library record.Li
 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
-func (a *artifacts) apply(ctx log.Context, artifact *Artifact) error {
+func (a *artifacts) apply(ctx context.Context, artifact *Artifact) error {
 	old := a.byID[artifact.Id]
 	if old == nil {
 		a.entries = append(a.entries, artifact)
@@ -71,7 +71,7 @@ func (a *artifacts) apply(ctx log.Context, artifact *Artifact) error {
 	return nil
 }
 
-func (a *artifacts) search(ctx log.Context, query *search.Query, handler ArtifactHandler) error {
+func (a *artifacts) search(ctx context.Context, query *search.Query, handler ArtifactHandler) error {
 	filter := eval.Filter(ctx, query, reflect.TypeOf(&Artifact{}), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, a.entries)
 	if query.Monitor {
@@ -146,7 +146,7 @@ func (z *zipReader) Close() error {
 	return err
 }
 
-func (z *zipEntry) GetID(ctx log.Context, a *artifacts) string {
+func (z *zipEntry) GetID(ctx context.Context, a *artifacts) string {
 	if z.id != "" {
 		return z.id
 	}
@@ -176,7 +176,7 @@ func toolIsEmpty(t *ToolSet) bool {
 		t.Gapit == ""
 }
 
-func (a *artifacts) matchTool(ctx log.Context, z *zipEntry, pattern string, target *string) {
+func (a *artifacts) matchTool(ctx context.Context, z *zipEntry, pattern string, target *string) {
 	if pattern == "" {
 		return
 	}
@@ -186,7 +186,7 @@ func (a *artifacts) matchTool(ctx log.Context, z *zipEntry, pattern string, targ
 	*target = z.GetID(ctx, a)
 }
 
-func (a *artifacts) matchTools(ctx log.Context, z *zipEntry, pattern *ToolSet, target *ToolSet) {
+func (a *artifacts) matchTools(ctx context.Context, z *zipEntry, pattern *ToolSet, target *ToolSet) {
 	a.matchTool(ctx, z, pattern.Interceptor, &target.Interceptor)
 	a.matchTool(ctx, z, pattern.Gapii, &target.Gapii)
 	a.matchTool(ctx, z, pattern.Gapir, &target.Gapir)
@@ -195,7 +195,7 @@ func (a *artifacts) matchTools(ctx log.Context, z *zipEntry, pattern *ToolSet, t
 	a.matchTool(ctx, z, pattern.GapidApk, &target.GapidApk)
 }
 
-func (a *artifacts) get(ctx log.Context, id string) (*Artifact, error) {
+func (a *artifacts) get(ctx context.Context, id string) (*Artifact, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if entry := a.byID[id]; entry != nil {
@@ -206,11 +206,11 @@ func (a *artifacts) get(ctx log.Context, id string) (*Artifact, error) {
 		return nil, err
 	}
 	if len(data) == 0 {
-		return nil, cause.Explain(ctx, nil, "Build not in the stash")
+		return nil, log.Err(ctx, nil, "Build not in the stash")
 	}
 	zipFile, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, cause.Explain(ctx, nil, "File is not a build artifact.")
+		return nil, log.Err(ctx, nil, "File is not a build artifact.")
 	}
 	tools := make([]*ToolSet, len(toolPatterns))
 	for i := range tools {

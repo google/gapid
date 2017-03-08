@@ -15,12 +15,13 @@
 package memory
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/database"
 )
 
 // Resolve implements the database.Resolver interface.
-func (s *SubsliceResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (s *SubsliceResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	slice, err := database.Resolve(ctx, s.Slice.ID())
 	if err != nil {
 		return nil, err

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/gapid/core/context/jot"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text/reflow"
 	"golang.org/x/tools/imports"
@@ -37,7 +37,7 @@ const (
 
 // NewReflow reformats the value using the reflow package.
 func (f *Functions) NewReflow(indent string, value string) (string, error) {
-	f.ctx.Print("Reflowing string")
+	log.I(f.ctx, "Reflowing string")
 	buf := &bytes.Buffer{}
 	flow := reflow.New(buf)
 	flow.Indent = indent
@@ -47,7 +47,7 @@ func (f *Functions) NewReflow(indent string, value string) (string, error) {
 
 // Reflow does the primitive reflow, but no language specific handling.
 func (f *Functions) Reflow(indentSize int, value string) (string, error) {
-	f.ctx.Print("Reflowing string")
+	log.I(f.ctx, "Reflowing string")
 	result, err := legacyReflow(value, indentSize)
 	if err != nil {
 		return "", fmt.Errorf("%s : %s", f.active.Name(), err)
@@ -59,7 +59,7 @@ const goIndent = 2 // Required by go style guide
 
 // GoFmt reflows the string as if it were go code using the standard go fmt library.
 func (f *Functions) GoFmt(value string) (string, error) {
-	f.ctx.Print("Reflowing go code")
+	log.I(f.ctx, "Reflowing go code")
 	result, err := legacyReflow(value, goIndent)
 	if err != nil {
 		return "", fmt.Errorf("%s : %s", f.active.Name(), err)
@@ -72,7 +72,7 @@ func (f *Functions) GoFmt(value string) (string, error) {
 	}
 	formatted, err := imports.Process(f.active.Name(), result, opt)
 	if err != nil {
-		jot.Info(f.ctx).Cause(err).Print("GoFmt")
+		log.I(f.ctx, "GoFmt errored: %v", err)
 		return string(result), nil
 	}
 	return string(formatted), nil
@@ -84,7 +84,7 @@ func (f *Functions) Format(command stringList, value string) (string, error) {
 		return "", fmt.Errorf("%s : Invalid Format command", f.active.Name())
 	}
 	binary := command[0]
-	f.ctx.Info().S("binary", binary).Log("Reflowing code")
+	log.I(f.ctx, "Reflowing code. Binary: %v", binary)
 	// indent level is arbitrary, because we expect the external formatter to redo it anyway
 	result, err := legacyReflow(value, 4)
 	if err != nil {
@@ -95,7 +95,7 @@ func (f *Functions) Format(command stringList, value string) (string, error) {
 	stderr := &bytes.Buffer{}
 	err = shell.Command(binary, command[1:]...).Capture(stdout, stderr).Read(stdin).Run(f.ctx)
 	if err != nil {
-		jot.Info(f.ctx).With("stderr", stderr.String()).Cause(err).Print("Reformat")
+		log.I(f.ctx, "Reformat errored: %v", stderr.String())
 		return string(result), nil
 	}
 	return stdout.String(), nil

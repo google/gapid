@@ -15,7 +15,9 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -23,7 +25,6 @@ import (
 	"github.com/google/gapid/core/data/search/script"
 	"github.com/google/gapid/core/data/stash"
 	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"google.golang.org/grpc"
@@ -48,22 +49,22 @@ func init() {
 
 type stashUploader struct{}
 
-func (stashUploader) prepare(log.Context, *grpc.ClientConn) error { return nil }
-func (stashUploader) process(log.Context, string) error           { return nil }
+func (stashUploader) prepare(context.Context, *grpc.ClientConn) error { return nil }
+func (stashUploader) process(context.Context, string) error           { return nil }
 
-func doStashSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doStashSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		store, err := stashgrpc.Connect(ctx, conn)
 		if err != nil {
 			return err
 		}
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return store.Search(ctx, expr.Query(), func(ctx log.Context, entry *stash.Entity) error {
+		return store.Search(ctx, expr.Query(), func(ctx context.Context, entry *stash.Entity) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})

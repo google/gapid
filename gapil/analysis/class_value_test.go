@@ -18,9 +18,9 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/log"
 )
 
 type field struct {
@@ -63,7 +63,7 @@ func TestClassGlobalAnalysis(t *testing.T) {
 		{`cmd void c() { G.b = Y(1) }`, class("X", field{"a", u32(0)}, field{"b", class("Y", field{"c", u32(0, 1)})})},
 		{`cmd void c() { x := X(1, Y(2))  G = x }`, class("X", field{"a", u32(0, 1)}, field{"b", class("Y", field{"c", u32(0, 2)})})},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)

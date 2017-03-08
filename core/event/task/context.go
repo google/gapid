@@ -17,8 +17,6 @@ package task
 import (
 	"context"
 	"time"
-
-	"github.com/google/gapid/core/log"
 )
 
 // CancelFunc is a function type that can be used to stop a context.
@@ -26,38 +24,38 @@ type CancelFunc context.CancelFunc
 
 // WithCancel returns a copy of ctx with a new Done channel.
 // See context.WithCancel for more details.
-func WithCancel(ctx log.Context) (log.Context, CancelFunc) {
-	c, cancel := context.WithCancel(ctx.Unwrap())
-	return log.Wrap(c), CancelFunc(cancel)
+func WithCancel(ctx context.Context) (context.Context, CancelFunc) {
+	c, cancel := context.WithCancel(ctx)
+	return c, CancelFunc(cancel)
 }
 
 // WithDeadline returns a copy of ctx with the deadline adjusted to be no later than deadline.
 // See context.WithDeadline for more details.
-func WithDeadline(ctx log.Context, deadline time.Time) (log.Context, CancelFunc) {
-	c, cancel := context.WithDeadline(ctx.Unwrap(), deadline)
-	return log.Wrap(c), CancelFunc(cancel)
+func WithDeadline(ctx context.Context, deadline time.Time) (context.Context, CancelFunc) {
+	c, cancel := context.WithDeadline(ctx, deadline)
+	return c, CancelFunc(cancel)
 }
 
 // WithTimeout is shorthand for ctx.WithDeadline(time.Now().Add(duration)).
 // See context.Context.WithTimeout for more details.
-func WithTimeout(ctx log.Context, duration time.Duration) (log.Context, CancelFunc) {
+func WithTimeout(ctx context.Context, duration time.Duration) (context.Context, CancelFunc) {
 	return WithDeadline(ctx, time.Now().Add(duration))
 }
 
 // ShouldStop returns a chan that's closed when work done on behalf of this
 // context should be stopped.
 // See context.Context.Done for more details.
-func ShouldStop(ctx log.Context) <-chan struct{} {
-	return ctx.Unwrap().Done()
+func ShouldStop(ctx context.Context) <-chan struct{} {
+	return ctx.Done()
 }
 
 // StopReason returns a non-nil error value after Done is closed.
 // See context.Context.Err for more details.
-func StopReason(ctx log.Context) error {
-	return ctx.Unwrap().Err()
+func StopReason(ctx context.Context) error {
+	return ctx.Err()
 }
 
 // Stopped is shorthand for StopReason(ctx) != nil because it increases the readability of common use cases.
-func Stopped(ctx log.Context) bool {
-	return ctx.Unwrap().Err() != nil
+func Stopped(ctx context.Context) bool {
+	return ctx.Err() != nil
 }

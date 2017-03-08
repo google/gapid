@@ -15,11 +15,10 @@
 package gapidapk
 
 import (
+	"context"
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
@@ -35,7 +34,7 @@ func init() {
 	adb.RegisterDeviceInfoProvider(fetchDeviceInfo)
 }
 
-func fetchDeviceInfo(ctx log.Context, d adb.Device) error {
+func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	apk, err := EnsureInstalled(ctx, d, device.UnknownABI)
 	if err != nil {
 		// The gapid.apk was not found. This can happen with partial builds used
@@ -43,33 +42,33 @@ func fetchDeviceInfo(ctx log.Context, d adb.Device) error {
 		// Don't return an error as this will prevent the device from being
 		// registered and the device already comes with basic usable
 		// information.
-		jot.Warning(ctx).Cause(err).Print("Couldn't find gapid.apk for device")
+		log.W(ctx, "Couldn't find gapid.apk for device. Error: %v", err)
 		return nil
 	}
 
 	action := apk.ServiceActions.FindByName(sendDevInfoAction, sendDevInfoService)
 	if action == nil {
-		return cause.Explain(ctx, nil, "Service intent was not found")
+		return log.Err(ctx, nil, "Service intent was not found")
 	}
 
 	if err := d.StartService(ctx, *action); err != nil {
-		return cause.Explain(ctx, err, "Starting service")
+		return log.Err(ctx, err, "Starting service")
 	}
 
 	sock, err := adb.ForwardAndConnect(ctx, d, sendDevInfoPort)
 	if err != nil {
-		return cause.Explain(ctx, err, "Connecting to service port")
+		return log.Err(ctx, err, "Connecting to service port")
 	}
 
 	defer sock.Close()
 
 	data, err := ioutil.ReadAll(sock)
 	if err != nil {
-		return cause.Explain(ctx, err, "Reading data")
+		return log.Err(ctx, err, "Reading data")
 	}
 
 	if err := proto.Unmarshal(data, d.Instance()); err != nil {
-		return cause.Explain(ctx, err, "Unmarshalling device Instance")
+		return log.Err(ctx, err, "Unmarshalling device Instance")
 	}
 
 	return nil

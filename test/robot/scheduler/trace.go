@@ -15,6 +15,8 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
@@ -22,8 +24,8 @@ import (
 	"github.com/google/gapid/test/robot/trace"
 )
 
-func (s schedule) getTraceTargetTools(ctx log.Context, subj *monitor.Subject) *build.ToolSet {
-	ctx = ctx.V("Target", s.worker.Target)
+func (s schedule) getTraceTargetTools(ctx context.Context, subj *monitor.Subject) *build.ToolSet {
+	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
 	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Target), subj.GetAPK())
 
 	if tools == nil {
@@ -35,12 +37,12 @@ func (s schedule) getTraceTargetTools(ctx log.Context, subj *monitor.Subject) *b
 	return tools
 }
 
-func (s schedule) doTrace(ctx log.Context, subj *monitor.Subject) error {
+func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject) error {
 	if !s.worker.Supports(job.Trace) {
 		return nil
 	}
-	ctx = ctx.Enter("Trace")
-	ctx = ctx.V("Package", s.pkg.Id)
+	ctx = log.Enter(ctx, "Trace")
+	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
 	hostTools := s.getHostTools(ctx)
 	targetTools := s.getTraceTargetTools(ctx, subj)
 	if hostTools == nil || targetTools == nil {

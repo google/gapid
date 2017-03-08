@@ -15,18 +15,17 @@
 package langsvr
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/langsvr/protocol"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/note"
 )
 
 // InitConfig is returned by Server.Initialize().
@@ -50,25 +49,25 @@ type InitConfig struct {
 // Server is the interface implemented by language servers.
 type Server interface {
 	// Initialize is called when the server is first initialized by the client.
-	Initialize(ctx log.Context, rootPath string) (InitConfig, error)
+	Initialize(ctx context.Context, rootPath string) (InitConfig, error)
 
 	// Shutdown is called to shutdown the server.
-	Shutdown(log.Context) error
+	Shutdown(context.Context) error
 
 	// OnConfigChange is called when the configuration settings change.
-	OnConfigChange(log.Context, map[string]interface{}) error
+	OnConfigChange(context.Context, map[string]interface{}) error
 
 	// OnDocumentsAdded is called when new documents of interest are discovered.
-	OnDocumentsAdded(log.Context, []*Document) error
+	OnDocumentsAdded(context.Context, []*Document) error
 
 	// OnDocumentsChanged is called when documents are changed.
-	OnDocumentsChanged(log.Context, []*Document) error
+	OnDocumentsChanged(context.Context, []*Document) error
 
 	// OnDocumentsRemoved is called when documents are no longer monitored.
-	OnDocumentsRemoved(log.Context, []*Document) error
+	OnDocumentsRemoved(context.Context, []*Document) error
 
 	// OnDocumentSaved is called when an open document is saved.
-	OnDocumentSaved(log.Context, *Document) error
+	OnDocumentSaved(context.Context, *Document) error
 }
 
 // HoverProvider is the interface implemented by servers that support hover
@@ -76,7 +75,7 @@ type Server interface {
 type HoverProvider interface {
 	// Hover returns a list of source code snippets and range for the given
 	// symbol at the specified position.
-	Hover(log.Context, *Document, Position) (SourceCodeList, Range, error)
+	Hover(context.Context, *Document, Position) (SourceCodeList, Range, error)
 }
 
 // CompletionProvider is the interface implemented by servers that support
@@ -84,7 +83,7 @@ type HoverProvider interface {
 type CompletionProvider interface {
 	// Completions returns completion items at a given cursor position.
 	// Completion items are presented in the IntelliSense user interface.
-	Completions(log.Context, *Document, Position) (CompletionList, error)
+	Completions(context.Context, *Document, Position) (CompletionList, error)
 }
 
 // SignatureProvider is the interface implemented by servers that support
@@ -94,7 +93,7 @@ type SignatureProvider interface {
 	// at the given cursor position. The activeSig and activeParam are indices
 	// of the signature and parameter to highlight for the given cursor
 	// position.
-	Signatures(log.Context, *Document, Position) (sigs SignatureList, activeSig, activeParam int, err error)
+	Signatures(context.Context, *Document, Position) (sigs SignatureList, activeSig, activeParam int, err error)
 }
 
 // DefinitionProvider is the interface implemented by servers that support
@@ -102,7 +101,7 @@ type SignatureProvider interface {
 type DefinitionProvider interface {
 	// Definitions returns the list of definition locations for the given symbol
 	// in the specified document at position.
-	Definitions(log.Context, *Document, Position) ([]Location, error)
+	Definitions(context.Context, *Document, Position) ([]Location, error)
 }
 
 // ReferencesProvider is the interface implemented by servers that support
@@ -110,7 +109,7 @@ type DefinitionProvider interface {
 type ReferencesProvider interface {
 	// References returns a list of references for the given symbol in the
 	// specified document at position.
-	References(log.Context, *Document, Position) ([]Location, error)
+	References(context.Context, *Document, Position) ([]Location, error)
 }
 
 // HighlightsProvider is the interface implemented by servers that support
@@ -118,21 +117,21 @@ type ReferencesProvider interface {
 type HighlightsProvider interface {
 	// Highlights returns a list of highlights for the given symbol in the
 	// specified document at position.
-	Highlights(log.Context, *Document, Position) (HighlightList, error)
+	Highlights(context.Context, *Document, Position) (HighlightList, error)
 }
 
 // SymbolsProvider is the interface implemented by servers that support
 // document symbol information.
 type SymbolsProvider interface {
 	// Symbols returns symbolic information about the specified document.
-	Symbols(log.Context, *Document) (SymbolList, error)
+	Symbols(context.Context, *Document) (SymbolList, error)
 }
 
 // WorkspaceSymbolsProvider is the interface implemented by servers that support
 // whole-workspace symbol information.
 type WorkspaceSymbolsProvider interface {
 	// WorkspaceSymbols returns all project-wide symbols.
-	WorkspaceSymbols(ctx log.Context) (SymbolList, error)
+	WorkspaceSymbols(ctx context.Context) (SymbolList, error)
 }
 
 // CodeActionsProvider is the interface implemented by servers that support
@@ -141,21 +140,21 @@ type CodeActionsProvider interface {
 	// CodeActions compute commands for a given document and range.
 	// The request is triggered when the user moves the cursor into an problem
 	// marker in the editor or presses the lightbulb associated with a marker.
-	CodeActions(log.Context, *Document, Range, []Diagnostic) ([]Command, error)
+	CodeActions(context.Context, *Document, Range, []Diagnostic) ([]Command, error)
 }
 
 // CodeLensProvider is the interface implemented by servers that support
 // code lenes.
 type CodeLensProvider interface {
 	// CodeLenses returns a list of CodeLens for the specified document.
-	CodeLenses(log.Context, *Document) ([]CodeLens, error)
+	CodeLenses(context.Context, *Document) ([]CodeLens, error)
 }
 
 // FormatProvider is the interface implemented by servers that support
 // whole-document reformatting.
 type FormatProvider interface {
 	// Format returns a list of edits required to format the entire document.
-	Format(ctx log.Context, doc *Document, opts FormattingOptions) (TextEditList, error)
+	Format(ctx context.Context, doc *Document, opts FormattingOptions) (TextEditList, error)
 }
 
 // FormatRangeProvider is the interface implemented by servers that support
@@ -163,7 +162,7 @@ type FormatProvider interface {
 type FormatRangeProvider interface {
 	// FormatRange returns a list of edits required to format the specified
 	// range in the specified document.
-	FormatRange(ctx log.Context, doc *Document, rng Range, opts FormattingOptions) (TextEditList, error)
+	FormatRange(ctx context.Context, doc *Document, rng Range, opts FormattingOptions) (TextEditList, error)
 }
 
 // FormatOnTypeProvider is the interface implemented by servers that support
@@ -178,12 +177,12 @@ type FormatOnTypeProvider interface {
 // symbols.
 type RenameProvider interface {
 	// Rename is called to rename the symbol at pos with newName.
-	Rename(ctx log.Context, doc *Document, pos Position, newName string) (WorkspaceEdit, error)
+	Rename(ctx context.Context, doc *Document, pos Position, newName string) (WorkspaceEdit, error)
 }
 
 // Connect creates a connection to between server and the client (code editor)
 // communicating on stream.
-func Connect(ctx log.Context, stream io.ReadWriter, server Server) error {
+func Connect(ctx context.Context, stream io.ReadWriter, server Server) error {
 	ctx, terminate := task.WithCancel(ctx)
 	conn := protocol.NewConnection(stream)
 	ls := &langsvr{
@@ -194,25 +193,38 @@ func Connect(ctx log.Context, stream io.ReadWriter, server Server) error {
 		terminate,
 	}
 	handler := log.GetHandler(ctx)
-	ctx = ctx.Handler(func(page note.Page) error {
-		msg := note.Raw.Print(page)
-		if ls.languageID != "" {
-			fmt.Sprintf("%v: %v", ls.languageID, msg)
-		}
-		switch severity.FindLevel(page) {
-		case severity.Emergency, severity.Alert, severity.Critical, severity.Error:
-			conn.ShowMessage(protocol.ErrorType, msg)
-		case severity.Warning:
-			conn.LogMessage(protocol.WarningType, msg)
-		case severity.Notice, severity.Info:
-			conn.LogMessage(protocol.InfoType, msg)
-		case severity.Debug:
-			conn.LogMessage(protocol.LogType, msg)
-		}
-		return handler(page)
-	})
+	ctx = log.PutHandler(ctx, logHandler{handler, conn, ls.languageID})
 	return conn.Serve(ctx, ls)
 }
+
+type logHandler struct {
+	to         log.Handler
+	conn       *protocol.Connection
+	languageID string
+}
+
+func (h logHandler) Handle(m *log.Message) {
+	buf := bytes.Buffer{}
+	to := log.Raw.Handler(&buf, &buf)
+	to.Handle(m)
+	to.Close()
+	msg := buf.String()
+	if h.languageID != "" {
+		msg = fmt.Sprintf("%v: %v", h.languageID, msg)
+	}
+	switch m.Severity {
+	case log.Error:
+		h.conn.ShowMessage(protocol.ErrorType, msg)
+	case log.Warning:
+		h.conn.LogMessage(protocol.WarningType, msg)
+	case log.Info:
+		h.conn.LogMessage(protocol.InfoType, msg)
+	case log.Debug:
+		h.conn.LogMessage(protocol.LogType, msg)
+	}
+	h.to.Handle(m)
+}
+func (h logHandler) Close() { h.to.Close() }
 
 // langsvr is an implementation of protocol.Server.
 type langsvr struct {
@@ -231,8 +243,8 @@ func runesToStrings(in []rune) []string {
 	return out
 }
 
-func (s *langsvr) Initialize(ctx log.Context, processID int, rootPath string) (protocol.ServerCapabilities, error) {
-	ctx = ctx.Enter("Initialize")
+func (s *langsvr) Initialize(ctx context.Context, processID int, rootPath string) (protocol.ServerCapabilities, error) {
+	ctx = log.Enter(ctx, "Initialize")
 	cfg, err := s.server.Initialize(ctx, rootPath)
 	if err != nil {
 		return protocol.ServerCapabilities{}, err
@@ -242,10 +254,10 @@ func (s *langsvr) Initialize(ctx log.Context, processID int, rootPath string) (p
 
 	added := make([]*Document, 0, len(cfg.WorkspaceDocuments))
 	for _, path := range cfg.WorkspaceDocuments {
-		ctx := ctx.S("path", path)
+		ctx := log.V{"path": path}.Bind(ctx)
 		body, err := ioutil.ReadFile(path)
 		if err != nil {
-			ctx.Error().Log("Couldn't open workspace document")
+			log.E(ctx, "Couldn't open workspace document")
 			continue
 		}
 		doc := s.newDocument(PathToURI(path), cfg.LanguageID, 0, NewBody(string(body)))
@@ -293,13 +305,13 @@ func (s *langsvr) Initialize(ctx log.Context, processID int, rootPath string) (p
 
 }
 
-func (s langsvr) Shutdown(ctx log.Context) error {
-	ctx = ctx.Enter("Shutdown")
+func (s langsvr) Shutdown(ctx context.Context) error {
+	ctx = log.Enter(ctx, "Shutdown")
 	return s.server.Shutdown(ctx)
 }
 
-func (s langsvr) Completion(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) (protocol.CompletionList, error) {
-	ctx = ctx.Enter("Completion")
+func (s langsvr) Completion(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) (protocol.CompletionList, error) {
+	ctx = log.Enter(ctx, "Completion")
 	cp, ok := s.server.(CompletionProvider)
 	if !ok {
 		return protocol.CompletionList{}, nil
@@ -315,13 +327,13 @@ func (s langsvr) Completion(ctx log.Context, uri protocol.TextDocumentIdentifier
 	return list.toProtocol(), nil
 }
 
-func (s langsvr) CompletionItemResolve(ctx log.Context, item protocol.CompletionItem) (protocol.CompletionItem, error) {
-	ctx = ctx.Enter("CompletionItemResolve")
+func (s langsvr) CompletionItemResolve(ctx context.Context, item protocol.CompletionItem) (protocol.CompletionItem, error) {
+	ctx = log.Enter(ctx, "CompletionItemResolve")
 	return item, nil
 }
 
-func (s langsvr) Hover(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.MarkedString, *protocol.Range, error) {
-	ctx = ctx.Enter("Hover")
+func (s langsvr) Hover(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.MarkedString, *protocol.Range, error) {
+	ctx = log.Enter(ctx, "Hover")
 	hp, ok := s.server.(HoverProvider)
 	if !ok {
 		return []protocol.MarkedString{}, nil, nil
@@ -338,8 +350,8 @@ func (s langsvr) Hover(ctx log.Context, uri protocol.TextDocumentIdentifier, pos
 	return sources.toProtocol(), &rngOut, nil
 }
 
-func (s langsvr) SignatureHelp(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.SignatureInformation, *int, *int, error) {
-	ctx = ctx.Enter("SignatureHelp")
+func (s langsvr) SignatureHelp(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.SignatureInformation, *int, *int, error) {
+	ctx = log.Enter(ctx, "SignatureHelp")
 	sp, ok := s.server.(SignatureProvider)
 	if !ok {
 		return []protocol.SignatureInformation{}, nil, nil, nil
@@ -358,8 +370,8 @@ func (s langsvr) SignatureHelp(ctx log.Context, uri protocol.TextDocumentIdentif
 	return []protocol.SignatureInformation{}, nil, nil, err
 }
 
-func (s langsvr) GotoDefinition(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.Location, error) {
-	ctx = ctx.Enter("GotoDefinition")
+func (s langsvr) GotoDefinition(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.Location, error) {
+	ctx = log.Enter(ctx, "GotoDefinition")
 	dp, ok := s.server.(DefinitionProvider)
 	if !ok {
 		return []protocol.Location{}, nil
@@ -379,8 +391,8 @@ func (s langsvr) GotoDefinition(ctx log.Context, uri protocol.TextDocumentIdenti
 	return out, nil
 }
 
-func (s langsvr) FindReferences(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position, includeDecl bool) ([]protocol.Location, error) {
-	ctx = ctx.Enter("FindReferences")
+func (s langsvr) FindReferences(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position, includeDecl bool) ([]protocol.Location, error) {
+	ctx = log.Enter(ctx, "FindReferences")
 	rp, ok := s.server.(ReferencesProvider)
 	if !ok {
 		return []protocol.Location{}, nil
@@ -400,8 +412,8 @@ func (s langsvr) FindReferences(ctx log.Context, uri protocol.TextDocumentIdenti
 	return out, nil
 }
 
-func (s langsvr) DocumentHighlights(ctx log.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.DocumentHighlight, error) {
-	ctx = ctx.Enter("DocumentHighlights")
+func (s langsvr) DocumentHighlights(ctx context.Context, uri protocol.TextDocumentIdentifier, position protocol.Position) ([]protocol.DocumentHighlight, error) {
+	ctx = log.Enter(ctx, "DocumentHighlights")
 	hp, ok := s.server.(HighlightsProvider)
 	if !ok {
 		return []protocol.DocumentHighlight{}, nil
@@ -414,8 +426,8 @@ func (s langsvr) DocumentHighlights(ctx log.Context, uri protocol.TextDocumentId
 	return highlights.toProtocol(), err
 }
 
-func (s langsvr) DocumentSymbols(ctx log.Context, docID protocol.TextDocumentIdentifier) ([]protocol.SymbolInformation, error) {
-	ctx = ctx.Enter("DocumentSymbols")
+func (s langsvr) DocumentSymbols(ctx context.Context, docID protocol.TextDocumentIdentifier) ([]protocol.SymbolInformation, error) {
+	ctx = log.Enter(ctx, "DocumentSymbols")
 	sp, ok := s.server.(SymbolsProvider)
 	if !ok {
 		return []protocol.SymbolInformation{}, nil
@@ -431,8 +443,8 @@ func (s langsvr) DocumentSymbols(ctx log.Context, docID protocol.TextDocumentIde
 	return symbols.toProtocol(), nil
 }
 
-func (s langsvr) WorkspaceSymbols(ctx log.Context, query string) ([]protocol.SymbolInformation, error) {
-	ctx = ctx.Enter("WorkspaceSymbols")
+func (s langsvr) WorkspaceSymbols(ctx context.Context, query string) ([]protocol.SymbolInformation, error) {
+	ctx = log.Enter(ctx, "WorkspaceSymbols")
 	sp, ok := s.server.(WorkspaceSymbolsProvider)
 	if !ok {
 		return []protocol.SymbolInformation{}, nil
@@ -446,8 +458,8 @@ func (s langsvr) WorkspaceSymbols(ctx log.Context, query string) ([]protocol.Sym
 	return symbols.toProtocol(), nil
 }
 
-func (s langsvr) CodeAction(ctx log.Context, docID protocol.TextDocumentIdentifier, inRng protocol.Range, context protocol.CodeActionContext) ([]protocol.Command, error) {
-	ctx = ctx.Enter("CodeAction")
+func (s langsvr) CodeAction(ctx context.Context, docID protocol.TextDocumentIdentifier, inRng protocol.Range, context protocol.CodeActionContext) ([]protocol.Command, error) {
+	ctx = log.Enter(ctx, "CodeAction")
 	doc, err := s.getDoc(docID.URI)
 	if err != nil {
 		return nil, err
@@ -471,8 +483,8 @@ func (s langsvr) CodeAction(ctx log.Context, docID protocol.TextDocumentIdentifi
 	return out, nil
 }
 
-func (s langsvr) CodeLens(ctx log.Context, docID protocol.TextDocumentIdentifier) ([]protocol.CodeLens, error) {
-	ctx = ctx.Enter("CodeLens")
+func (s langsvr) CodeLens(ctx context.Context, docID protocol.TextDocumentIdentifier) ([]protocol.CodeLens, error) {
+	ctx = log.Enter(ctx, "CodeLens")
 	doc, err := s.getDoc(docID.URI)
 	if err != nil {
 		return nil, err
@@ -495,20 +507,20 @@ func (s langsvr) CodeLens(ctx log.Context, docID protocol.TextDocumentIdentifier
 	return out, nil
 }
 
-func (s langsvr) CodeLensResolve(ctx log.Context, codelens protocol.CodeLens) (protocol.CodeLens, error) {
-	ctx = ctx.Enter("CodeLensResolve")
+func (s langsvr) CodeLensResolve(ctx context.Context, codelens protocol.CodeLens) (protocol.CodeLens, error) {
+	ctx = log.Enter(ctx, "CodeLensResolve")
 	return codelens, nil
 }
 
-func (s langsvr) DocumentFormatting(ctx log.Context, item protocol.TextDocumentIdentifier, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
-	ctx = ctx.Enter("DocumentFormatting")
+func (s langsvr) DocumentFormatting(ctx context.Context, item protocol.TextDocumentIdentifier, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
+	ctx = log.Enter(ctx, "DocumentFormatting")
 	fp, ok := s.server.(FormatProvider)
 	if !ok {
 		return []protocol.TextEdit{}, nil
 	}
 	doc, err := s.getDoc(item.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return []protocol.TextEdit{}, nil
 	}
 	edits, err := fp.Format(ctx, doc, FormattingOptions{
@@ -521,15 +533,15 @@ func (s langsvr) DocumentFormatting(ctx log.Context, item protocol.TextDocumentI
 	return edits.toProtocol(), nil
 }
 
-func (s langsvr) DocumentRangeFormatting(ctx log.Context, item protocol.TextDocumentIdentifier, fmtrng protocol.Range, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
-	ctx = ctx.Enter("DocumentRangeFormatting")
+func (s langsvr) DocumentRangeFormatting(ctx context.Context, item protocol.TextDocumentIdentifier, fmtrng protocol.Range, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
+	ctx = log.Enter(ctx, "DocumentRangeFormatting")
 	fp, ok := s.server.(FormatRangeProvider)
 	if !ok {
 		return []protocol.TextEdit{}, nil
 	}
 	doc, err := s.getDoc(item.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return []protocol.TextEdit{}, nil
 	}
 	edits, err := fp.FormatRange(ctx, doc, rng(fmtrng), FormattingOptions{
@@ -542,15 +554,15 @@ func (s langsvr) DocumentRangeFormatting(ctx log.Context, item protocol.TextDocu
 	return edits.toProtocol(), nil
 }
 
-func (s langsvr) DocumentOnTypeFormatting(ctx log.Context, item protocol.TextDocumentIdentifier, position protocol.Position, char string, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
-	ctx = ctx.Enter("DocumentOnTypeFormatting")
+func (s langsvr) DocumentOnTypeFormatting(ctx context.Context, item protocol.TextDocumentIdentifier, position protocol.Position, char string, opts protocol.FormattingOptions) ([]protocol.TextEdit, error) {
+	ctx = log.Enter(ctx, "DocumentOnTypeFormatting")
 	fp, ok := s.server.(FormatOnTypeProvider)
 	if !ok {
 		return []protocol.TextEdit{}, nil
 	}
 	doc, err := s.getDoc(item.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return []protocol.TextEdit{}, nil
 	}
 	r, _ := utf8.DecodeRuneInString(char)
@@ -564,34 +576,34 @@ func (s langsvr) DocumentOnTypeFormatting(ctx log.Context, item protocol.TextDoc
 	return edits.toProtocol(), nil
 }
 
-func (s langsvr) Rename(ctx log.Context, item protocol.TextDocumentIdentifier, position protocol.Position, newName string) (protocol.WorkspaceEdit, error) {
-	ctx = ctx.Enter("Rename")
+func (s langsvr) Rename(ctx context.Context, item protocol.TextDocumentIdentifier, position protocol.Position, newName string) (protocol.WorkspaceEdit, error) {
+	ctx = log.Enter(ctx, "Rename")
 	rp, ok := s.server.(RenameProvider)
 	if !ok {
 		return protocol.WorkspaceEdit{Changes: []protocol.TextEdit{}}, nil
 	}
 	doc, err := s.getDoc(item.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return protocol.WorkspaceEdit{Changes: []protocol.TextEdit{}}, nil
 	}
 	edits, err := rp.Rename(ctx, doc, pos(position), newName)
 	return edits.toProtocol(), nil
 }
 
-func (s langsvr) OnExit(ctx log.Context) error {
-	ctx = ctx.Enter("OnExit")
+func (s langsvr) OnExit(ctx context.Context) error {
+	ctx = log.Enter(ctx, "OnExit")
 	s.terminate()
 	return nil
 }
 
-func (s langsvr) OnChangeConfiguration(ctx log.Context, config map[string]interface{}) {
-	ctx = ctx.Enter("OnChangeConfiguration")
+func (s langsvr) OnChangeConfiguration(ctx context.Context, config map[string]interface{}) {
+	ctx = log.Enter(ctx, "OnChangeConfiguration")
 	s.server.OnConfigChange(ctx, config)
 }
 
-func (s langsvr) OnOpenTextDocument(ctx log.Context, item protocol.TextDocumentItem) {
-	ctx = ctx.Enter("OnOpenTextDocument")
+func (s langsvr) OnOpenTextDocument(ctx context.Context, item protocol.TextDocumentItem) {
+	ctx = log.Enter(ctx, "OnOpenTextDocument")
 	doc := s.documents[item.URI]
 	if doc == nil {
 		doc = s.newDocument(item.URI, item.LanguageID, item.Version, NewBody(item.Text))
@@ -600,11 +612,11 @@ func (s langsvr) OnOpenTextDocument(ctx log.Context, item protocol.TextDocumentI
 	doc.open = true
 }
 
-func (s langsvr) OnChangeTextDocument(ctx log.Context, item protocol.VersionedTextDocumentIdentifier, changes []protocol.TextDocumentContentChangeEvent) {
-	ctx = ctx.Enter("OnChangeTextDocument")
+func (s langsvr) OnChangeTextDocument(ctx context.Context, item protocol.VersionedTextDocumentIdentifier, changes []protocol.TextDocumentContentChangeEvent) {
+	ctx = log.Enter(ctx, "OnChangeTextDocument")
 	doc, err := s.getDoc(item.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return
 	}
 	body := doc.Body()
@@ -628,11 +640,11 @@ func (s langsvr) OnChangeTextDocument(ctx log.Context, item protocol.VersionedTe
 	s.server.OnDocumentsChanged(ctx, []*Document{doc})
 }
 
-func (s langsvr) OnCloseTextDocument(ctx log.Context, docID protocol.TextDocumentIdentifier) {
-	ctx = ctx.Enter("OnCloseTextDocument")
+func (s langsvr) OnCloseTextDocument(ctx context.Context, docID protocol.TextDocumentIdentifier) {
+	ctx = log.Enter(ctx, "OnCloseTextDocument")
 	doc, err := s.getDoc(docID.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return
 	}
 	doc.open = false
@@ -642,30 +654,30 @@ func (s langsvr) OnCloseTextDocument(ctx log.Context, docID protocol.TextDocumen
 	}
 }
 
-func (s langsvr) OnSaveTextDocument(ctx log.Context, docID protocol.TextDocumentIdentifier) {
-	ctx = ctx.Enter("OnSaveTextDocument")
+func (s langsvr) OnSaveTextDocument(ctx context.Context, docID protocol.TextDocumentIdentifier) {
+	ctx = log.Enter(ctx, "OnSaveTextDocument")
 	doc, err := s.getDoc(docID.URI)
 	if err != nil {
-		jot.Fail(ctx, err, "Unknown document")
+		log.E(ctx, "Unknown document. Error: %v", err)
 		return
 	}
 	s.server.OnDocumentSaved(ctx, doc)
 }
 
-func (s langsvr) OnChangeWatchedFiles(ctx log.Context, changes []protocol.FileEvent) {
-	ctx = ctx.Enter("OnChangeWatchedFiles")
+func (s langsvr) OnChangeWatchedFiles(ctx context.Context, changes []protocol.FileEvent) {
+	ctx = log.Enter(ctx, "OnChangeWatchedFiles")
 
 	created := make([]*Document, 0, len(changes))
 	for _, change := range changes {
 		if change.Type == protocol.Created {
 			path, err := URItoPath(change.URI)
 			if err != nil {
-				jot.Fail(ctx, err, "Couldn't get path from change URI")
+				log.E(ctx, "Couldn't get path from change URI. Error: %v", err)
 				continue
 			}
 			body, err := ioutil.ReadFile(path)
 			if err != nil {
-				jot.Fail(ctx, err, "Couldn't read created file")
+				log.E(ctx, "Couldn't read created file. Error: %v", err)
 				continue
 			}
 			doc := s.newDocument(change.URI, s.languageID, 0, NewBody(string(body)))
@@ -682,7 +694,7 @@ func (s langsvr) OnChangeWatchedFiles(ctx log.Context, changes []protocol.FileEv
 		if change.Type == protocol.Changed {
 			doc, err := s.getDoc(change.URI)
 			if err != nil {
-				jot.Fail(ctx, err, "Unknown document")
+				log.E(ctx, "Unknown document. Error: %v", err)
 				continue
 			}
 			if doc.open {
@@ -691,7 +703,7 @@ func (s langsvr) OnChangeWatchedFiles(ctx log.Context, changes []protocol.FileEv
 			}
 			body, err := ioutil.ReadFile(doc.path)
 			if err != nil {
-				jot.Fail(ctx, err, "Couldn't read changed file")
+				log.E(ctx, "Couldn't read changed file. Error: %v", err)
 				continue
 			}
 			doc.body = NewBody(string(body))
@@ -707,7 +719,7 @@ func (s langsvr) OnChangeWatchedFiles(ctx log.Context, changes []protocol.FileEv
 		if change.Type == protocol.Deleted {
 			doc, err := s.getDoc(change.URI)
 			if err != nil {
-				jot.Fail(ctx, err, "Unknown document")
+				log.E(ctx, "Unknown document. Error: %v", err)
 				continue
 			}
 			doc.watched = false

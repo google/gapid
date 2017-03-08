@@ -15,7 +15,8 @@
 package atom
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -44,7 +45,7 @@ type Atom interface {
 
 	// Mutate mutates the State using the atom. If the builder argument is
 	// not nil then it will call the replay function on the builder.
-	Mutate(log.Context, *gfxapi.State, *builder.Builder) error
+	Mutate(context.Context, *gfxapi.State, *builder.Builder) error
 }
 
 // ID is the index of an atom in an atom stream.

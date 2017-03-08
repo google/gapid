@@ -15,14 +15,14 @@
 package stash
 
 import (
+	"context"
 	"net/url"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
 // Builder is the function type that opens a stash from a url.
-type Builder func(log.Context, *url.URL) (*Client, error)
+type Builder func(context.Context, *url.URL) (*Client, error)
 
 var schemeMap = map[string]Builder{}
 
@@ -33,11 +33,11 @@ func RegisterHandler(scheme string, builder Builder) {
 }
 
 // Dial returns a new client for the given url.
-func Dial(ctx log.Context, address string) (*Client, error) {
-	ctx = ctx.V("Store", address)
+func Dial(ctx context.Context, address string) (*Client, error) {
+	ctx = log.V{"Store": address}.Bind(ctx)
 	location, err := url.Parse(address)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Invalid server location")
+		return nil, log.Err(ctx, err, "Invalid server location")
 	}
 	if location.Scheme == "" {
 		switch {
@@ -51,7 +51,7 @@ func Dial(ctx log.Context, address string) (*Client, error) {
 	}
 	builder, found := schemeMap[location.Scheme]
 	if !found {
-		return nil, cause.Explainf(ctx, nil, "Invalid stash scheme")
+		return nil, log.Errf(ctx, nil, "Invalid stash scheme")
 	}
 	return builder(ctx, location)
 }

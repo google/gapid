@@ -15,13 +15,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
@@ -39,7 +40,7 @@ func init() {
 	})
 }
 
-func dumpMemory(ctx log.Context, client service.Service, stdout io.Writer, capture *path.Capture, o atom.Observation, i int) error {
+func dumpMemory(ctx context.Context, client service.Service, stdout io.Writer, capture *path.Capture, o atom.Observation, i int) error {
 	memoryPath := capture.Commands().Index(uint64(i)).MemoryAfter(0, o.Range.Base, o.Range.Size)
 	memory, err := client.Get(ctx, memoryPath.Path())
 	if err != nil {
@@ -50,7 +51,7 @@ func dumpMemory(ctx log.Context, client service.Service, stdout io.Writer, captu
 	return nil
 }
 
-func (verb *dumpVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
 		return nil
@@ -83,7 +84,7 @@ func (verb *dumpVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 	}
 	atoms := boxedAtoms.(*atom.List).Atoms
 
-	stdout := ctx.Raw("").Writer()
+	stdout := os.Stdout
 
 	if verb.ShowDeviceInfo {
 		for _, a := range atoms {

@@ -15,7 +15,8 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -28,7 +29,7 @@ import (
 
 // GlobalState resolves the global *gfxapi.State at a requested point in a
 // capture.
-func GlobalState(ctx log.Context, p *path.State) (*gfxapi.State, error) {
+func GlobalState(ctx context.Context, p *path.State) (*gfxapi.State, error) {
 	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
 	if err != nil {
 		return nil, err
@@ -37,7 +38,7 @@ func GlobalState(ctx log.Context, p *path.State) (*gfxapi.State, error) {
 }
 
 // APIState resolves the specific API state at a requested point in a capture.
-func APIState(ctx log.Context, p *path.State) (binary.Object, error) {
+func APIState(ctx context.Context, p *path.State) (binary.Object, error) {
 	obj, err := database.Build(ctx, &APIStateResolvable{p})
 	if err != nil {
 		return nil, err
@@ -46,7 +47,7 @@ func APIState(ctx log.Context, p *path.State) (binary.Object, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *GlobalStateResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
 	list, err := NCommands(ctx, r.Path.After.Commands, r.Path.After.Index+1)
 	if err != nil {
@@ -60,7 +61,7 @@ func (r *GlobalStateResolvable) Resolve(ctx log.Context) (interface{}, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *APIStateResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
 	list, err := NCommands(ctx, r.Path.After.Commands, r.Path.After.Index+1)
 	if err != nil {
@@ -69,7 +70,7 @@ func (r *APIStateResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	return apiState(ctx, list.Atoms, r.Path)
 }
 
-func apiState(ctx log.Context, atoms []atom.Atom, p *path.State) (binary.Object, error) {
+func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (binary.Object, error) {
 	if p.After.Index >= uint64(len(atoms)) {
 		return nil, &service.ErrInvalidPath{
 			Reason: messages.ErrValueOutOfBounds(p.After.Index, "Index", uint64(0), uint64(len(atoms)-1)),

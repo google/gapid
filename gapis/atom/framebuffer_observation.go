@@ -15,9 +15,9 @@
 package atom
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -42,11 +42,11 @@ func (a *FramebufferObservation) String() string {
 func (a *FramebufferObservation) API() gfxapi.API  { return nil }
 func (a *FramebufferObservation) AtomFlags() Flags { return 0 }
 func (a *FramebufferObservation) Extras() *Extras  { return nil }
-func (a *FramebufferObservation) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *FramebufferObservation) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	return nil
 }
 
-func (a *FramebufferObservation) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (a *FramebufferObservation) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, &atom_pb.FramebufferObservation{
 		OriginalWidth:  a.OriginalWidth,
 		OriginalHeight: a.OriginalHeight,

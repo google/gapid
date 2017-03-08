@@ -15,21 +15,21 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
 	"github.com/google/gapid/test/robot/trace"
 )
 
 func (s *Server) handleReplays(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*replay.Action{}
 
-	if err := s.Replay.Search(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *replay.Action) error {
+	if err := s.Replay.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *replay.Action) error {
 		result = append(result, entry)
 		return nil
 	}); err != nil {
@@ -41,10 +41,10 @@ func (s *Server) handleReplays(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTraces(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*trace.Action{}
 
-	if err := s.Trace.Search(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *trace.Action) error {
+	if err := s.Trace.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *trace.Action) error {
 		result = append(result, entry)
 		return nil
 	}); err != nil {
@@ -56,10 +56,10 @@ func (s *Server) handleTraces(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReports(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*report.Action{}
 
-	if err := s.Report.Search(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *report.Action) error {
+	if err := s.Report.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *report.Action) error {
 		result = append(result, entry)
 		return nil
 	}); err != nil {

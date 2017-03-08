@@ -16,12 +16,14 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/google/gapid/core/fault/cause"
+	"path/filepath"
+
 	"github.com/google/gapid/core/log"
 )
 
@@ -103,28 +105,29 @@ func (cmd Cmd) With(args ...string) Cmd {
 }
 
 // Run executes the command, and blocks until it completes or the context is cancelled.
-func (cmd Cmd) Run(ctx log.Context) error {
+func (cmd Cmd) Run(ctx context.Context) error {
 	// Deliberately a value receiver so the cmd object can be updated prior to execution
 	if cmd.Target == nil {
 		cmd.Target = LocalTarget
 	} else if cmd.Target != LocalTarget {
-		ctx = ctx.V("On", cmd.Target)
+		ctx = log.V{"On": cmd.Target}.Bind(ctx)
 	}
 
 	if cmd.Dir != "" {
-		ctx = ctx.S("Dir", cmd.Dir)
+		ctx = log.V{"Dir": cmd.Dir}.Bind(ctx)
 	}
 	// build our stdout and stderr handling
 	var logStdout, logStderr io.WriteCloser
 	if cmd.Verbosity {
-		logStdout = ctx.Raw("stdout").Writer()
+		ctx := log.PutProcess(ctx, filepath.Base(cmd.Name))
+		logStdout = log.From(ctx).Writer(log.Info)
 		defer logStdout.Close()
 		if cmd.Stdout != nil {
 			cmd.Stdout = io.MultiWriter(cmd.Stdout, logStdout)
 		} else {
 			cmd.Stdout = logStdout
 		}
-		logStderr = ctx.Raw("stderr").Writer()
+		logStderr = log.From(ctx).Writer(log.Error)
 		defer logStderr.Close()
 		if cmd.Stderr != nil {
 			cmd.Stderr = io.MultiWriter(cmd.Stderr, logStderr)
@@ -133,18 +136,18 @@ func (cmd Cmd) Run(ctx log.Context) error {
 		}
 	}
 	// Ready to start
-	ctx = ctx.V("Command", cmd)
+	ctx = log.V{"Command": cmd}.Bind(ctx)
 	if cmd.Verbosity {
-		ctx.Print("Exec")
+		log.I(ctx, "Exec")
 	}
 	// We build a child context that we always cancel, so that the watchdog quits even on normal process exit
 	process, err := cmd.Target.Start(cmd)
 	if err != nil {
-		return cause.Explain(ctx, err, "Start")
+		return log.From(ctx).Err(err, "Failed to start process")
 	}
 	err = process.Wait(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Wait")
+		return log.From(ctx).Err(err, "Process returned error")
 	}
 	return nil
 }
@@ -152,7 +155,7 @@ func (cmd Cmd) Run(ctx log.Context) error {
 // Call executes the command, capturing its output.
 // This is a helper for the common case where you want to run a command, capture all its output into a string and
 // see if it succeeded.
-func (cmd Cmd) Call(ctx log.Context) (string, error) {
+func (cmd Cmd) Call(ctx context.Context) (string, error) {
 	buf := &bytes.Buffer{}
 	err := cmd.Capture(buf, buf).Run(ctx)
 	output := strings.TrimSpace(buf.String())

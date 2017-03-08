@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -38,7 +38,7 @@ type packages struct {
 	onChange event.Broadcast
 }
 
-func (p *packages) init(ctx log.Context, library record.Library) error {
+func (p *packages) init(ctx context.Context, library record.Library) error {
 	ledger, err := library.Open(ctx, "packages", &Package{})
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (p *packages) init(ctx log.Context, library record.Library) error {
 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
-func (p *packages) apply(ctx log.Context, pkg *Package) error {
+func (p *packages) apply(ctx context.Context, pkg *Package) error {
 	old := p.byID[pkg.Id]
 	if old == nil {
 		p.entries = append(p.entries, pkg)
@@ -82,7 +82,7 @@ func (p *packages) apply(ctx log.Context, pkg *Package) error {
 	return nil
 }
 
-func (p *packages) search(ctx log.Context, query *search.Query, handler PackageHandler) error {
+func (p *packages) search(ctx context.Context, query *search.Query, handler PackageHandler) error {
 	filter := eval.Filter(ctx, query, packageClass, event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, p.entries)
 	if query.Monitor {
@@ -91,13 +91,13 @@ func (p *packages) search(ctx log.Context, query *search.Query, handler PackageH
 	return event.Feed(ctx, filter, initial)
 }
 
-func (p *packages) update(ctx log.Context, pkg *Package) error {
+func (p *packages) update(ctx context.Context, pkg *Package) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.ledger.Add(ctx, pkg)
 }
 
-func (p *packages) addArtifact(ctx log.Context, a *Artifact, info *Information) (*Package, bool, error) {
+func (p *packages) addArtifact(ctx context.Context, a *Artifact, info *Information) (*Package, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -120,7 +120,7 @@ func (p *packages) addArtifact(ctx log.Context, a *Artifact, info *Information) 
 	return p.byID[pkg.Id], merged, nil
 }
 
-func (p *packages) findArtifactPackage(ctx log.Context, a *Artifact, info *Information) *Package {
+func (p *packages) findArtifactPackage(ctx context.Context, a *Artifact, info *Information) *Package {
 	// Search for a set to merge into
 	if info.Tag != "" {
 		// if we have a tag, that's the only thing that matters
@@ -146,7 +146,7 @@ func (p *packages) findArtifactPackage(ctx log.Context, a *Artifact, info *Infor
 	return nil
 }
 
-func (pkg *Package) mergeTool(ctx log.Context, tool *ToolSet) {
+func (pkg *Package) mergeTool(ctx context.Context, tool *ToolSet) {
 	for _, t := range pkg.Tool {
 		if t.Abi.SameAs(tool.Abi) {
 			// merge into existing tool

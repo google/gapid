@@ -15,6 +15,7 @@
 package stash
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/log"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 type (
 	// EntityHandler is a fuction that can be invoked for each entry in a
 	// stream of entities.
-	EntityHandler func(log.Context, *Entity) error
+	EntityHandler func(context.Context, *Entity) error
 
 	// Service is the interface to a stash storage implementation.
 	// It abstracts away the actual storage part from the service logic.
@@ -45,20 +45,20 @@ type (
 		// Behaviour of any other method after close is called is undefined.
 		Close()
 		// Lookup returns information about a single entity by id from the store.
-		Lookup(ctx log.Context, id string) (*Entity, error)
+		Lookup(ctx context.Context, id string) (*Entity, error)
 		// Search returns a channel of matching entities from the store.
 		// The handler will be invoked once per matching entry.
 		// If the handler returns an error, the search will be terminated.
-		Search(ctx log.Context, query *search.Query, handler EntityHandler) error
+		Search(ctx context.Context, query *search.Query, handler EntityHandler) error
 		// Open returns a reader to an entity's data.
 		// The reader may be nil if the entity is not present.
-		Open(ctx log.Context, id string) (io.ReadSeeker, error)
+		Open(ctx context.Context, id string) (io.ReadSeeker, error)
 		// Read returns a complete entity from the store.
 		// It may return an empty byte array if the entity is not present.
-		Read(ctx log.Context, id string) ([]byte, error)
+		Read(ctx context.Context, id string) ([]byte, error)
 		// Create is used to add a new entity to the store.
 		// It returns a writer that can be used to write the content of the entity.
-		Create(ctx log.Context, info *Upload) (io.WriteCloser, error)
+		Create(ctx context.Context, info *Upload) (io.WriteCloser, error)
 	}
 )
 

@@ -15,13 +15,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	"encoding/json"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
@@ -37,30 +38,30 @@ func init() {
 	})
 }
 
-func (verb *devicesVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to connect to the GAPIS server")
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	defer client.Close()
 
 	devices, err := client.GetDevices(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to get device list")
+		return log.Err(ctx, err, "Failed to get device list")
 	}
 
-	stdout := ctx.Raw("").Writer()
+	stdout := os.Stdout
 	for i, p := range devices {
 		fmt.Fprintf(stdout, "-- Device %v: %v --\n", i, p.Id.ID())
 		o, err := client.Get(ctx, p.Path())
 		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", cause.Explain(ctx, err, "Couldn't resolve device"))
+			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
 			continue
 		}
 		d := o.(*device.Instance)
 		jsonBytes, err := json.MarshalIndent(d, "", "  ")
 		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", cause.Explain(ctx, err, "Couldn't marshal device to JSON"))
+			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't marshal device to JSON"))
 			continue
 		}
 		fmt.Fprintln(stdout, string(jsonBytes))

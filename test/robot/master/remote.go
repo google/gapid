@@ -15,10 +15,11 @@
 package master
 
 import (
+	"context"
+
+	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/data/search"
 	"google.golang.org/grpc"
 )
 
@@ -27,7 +28,7 @@ type remote struct {
 }
 
 // NewRemoteMaster returns a Master that talks to a remote grpc Master service.
-func NewRemoteMaster(ctx log.Context, conn *grpc.ClientConn) Master {
+func NewRemoteMaster(ctx context.Context, conn *grpc.ClientConn) Master {
 	return &remote{
 		client: NewServiceClient(conn),
 	}
@@ -35,8 +36,8 @@ func NewRemoteMaster(ctx log.Context, conn *grpc.ClientConn) Master {
 
 // Search implements Master.Search
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Search(ctx log.Context, query *search.Query, handler SatelliteHandler) error {
-	stream, err := m.client.Search(ctx.Unwrap(), query)
+func (m *remote) Search(ctx context.Context, query *search.Query, handler SatelliteHandler) error {
+	stream, err := m.client.Search(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -45,9 +46,9 @@ func (m *remote) Search(ctx log.Context, query *search.Query, handler SatelliteH
 
 // Orbit implements Master.Orbit
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Orbit(ctx log.Context, services ServiceList, handler CommandHandler) error {
+func (m *remote) Orbit(ctx context.Context, services ServiceList, handler CommandHandler) error {
 	request := &OrbitRequest{Services: &services}
-	stream, err := m.client.Orbit(ctx.Unwrap(), request)
+	stream, err := m.client.Orbit(ctx, request)
 	if err != nil {
 		return err
 	}
@@ -56,6 +57,6 @@ func (m *remote) Orbit(ctx log.Context, services ServiceList, handler CommandHan
 
 // Shutdown implements Master.Shutdown
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Shutdown(ctx log.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
-	return m.client.Shutdown(ctx.Unwrap(), request)
+func (m *remote) Shutdown(ctx context.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
+	return m.client.Shutdown(ctx, request)
 }

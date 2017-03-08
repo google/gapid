@@ -15,12 +15,11 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -78,16 +77,16 @@ type imgRes struct {
 
 // CanReplayOnLocalAndroidDevice returns true if the API can be replayed on a
 // locally connected Android device.
-func (a api) CanReplayOnLocalAndroidDevice(log.Context) bool { return false }
+func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return false }
 
 // CanReplayOn returns true if the API can be replayed on the specified device.
 // GLES can currently cannot replay on Android devices.
-func (a api) CanReplayOn(ctx log.Context, i *device.Instance) bool {
+func (a api) CanReplayOn(ctx context.Context, i *device.Instance) bool {
 	return i.GetConfiguration().GetOS().GetKind() != device.Android
 }
 
 func (a api) Replay(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
 	requests []replay.Request,
@@ -99,7 +98,7 @@ func (a api) Replay(
 
 	atoms, err := capture.Atoms(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to load atom stream")
+		return log.Err(ctx, err, "Failed to load atom stream")
 	}
 
 	transforms := transform.Transforms{}
@@ -180,16 +179,16 @@ func (a api) Replay(
 	if c, err := compat(ctx, device); err == nil {
 		transforms.Add(c)
 	} else {
-		jot.Fail(ctx, err, "Creating compatability transform")
+		log.E(ctx, "Error creating compatability transform: %v", err)
 	}
 
 	// Cleanup
 	transforms.Add(&destroyResourcesAtEOS{})
 
 	if config.DebugReplay {
-		ctx.Info().Logf("Replaying %d atoms using transform chain:", len(atoms.Atoms))
+		log.I(ctx, "Replaying %d atoms using transform chain:", len(atoms.Atoms))
 		for i, t := range transforms {
-			ctx.Info().Logf("(%d) %#v", i, t)
+			log.I(ctx, "(%d) %#v", i, t)
 		}
 	}
 
@@ -214,7 +213,7 @@ func (a api) Replay(
 }
 
 func (a api) QueryIssues(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
 	out chan<- replay.Issue) {
@@ -228,7 +227,7 @@ func (a api) QueryIssues(
 }
 
 func (a api) QueryFramebufferAttachment(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
 	after atom.ID,
@@ -259,11 +258,11 @@ func (a api) QueryFramebufferAttachment(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, a)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx log.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	id := atom.NoID
 	s := out.State()
 	c := GetContext(s)

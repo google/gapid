@@ -18,6 +18,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +29,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -123,7 +123,7 @@ func writeConfig(cfg Config) {
 	}
 }
 
-func fetchValidConfig(ctx log.Context, options ConfigOptions) Config {
+func fetchValidConfig(ctx context.Context, options ConfigOptions) Config {
 	cfg, found := readConfig()
 	if options.Reset {
 		cfg = defaults()
@@ -141,7 +141,7 @@ func fetchValidConfig(ctx log.Context, options ConfigOptions) Config {
 	}
 }
 
-func validateConfig(ctx log.Context, cfg Config) error {
+func validateConfig(ctx context.Context, cfg Config) error {
 	for _, test := range []struct {
 		name string
 		path file.Path
@@ -160,7 +160,7 @@ func validateConfig(ctx log.Context, cfg Config) error {
 	return nil
 }
 
-func interactiveStructConfig(ctx log.Context, v reflect.Value, options ConfigOptions) {
+func interactiveStructConfig(ctx context.Context, v reflect.Value, options ConfigOptions) {
 	t := v.Type()
 	for i, c := 0, t.NumField(); i < c; i++ {
 		f, t := v.Field(i), t.Field(i)
@@ -217,7 +217,7 @@ func interactiveStructConfig(ctx log.Context, v reflect.Value, options ConfigOpt
 	}
 }
 
-func interactiveConfig(ctx log.Context, cfg Config, options ConfigOptions) Config {
+func interactiveConfig(ctx context.Context, cfg Config, options ConfigOptions) Config {
 	v := reflect.ValueOf(&cfg).Elem()
 	interactiveStructConfig(ctx, v, options)
 	writeConfig(cfg)

@@ -16,66 +16,62 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/google/gapid/core/app/output"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/severity"
-	"github.com/google/gapid/core/fault/stacktrace"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/note"
 )
 
 const (
 	// FatalSeverity Is the level at which logging causes panics.
-	FatalSeverity = severity.Critical
+	FatalSeverity = log.Fatal
 )
 
-func LogDefaults() LogFlags {
+func logDefaults() LogFlags {
 	return LogFlags{
-		Level:  severity.Notice,
-		Style:  note.DefaultStyle,
+		Level:  log.Info,
+		Style:  log.Normal,
 		Stacks: true,
 	}
 }
 
-func wrapHandler(to note.Handler) (note.Handler, func()) {
-	// TODO: should this be a buffered channel?
-	out, closer := note.Channel(note.Sorter(to), 0)
-	return func(page note.Page) error {
-		err := out(page)
-		if severity.FindLevel(page) <= FatalSeverity {
-			closer()
-			panic(FatalExit)
-		}
-		return err
-	}, closer
+func wrapHandler(to log.Handler) log.Handler {
+	h := log.Channel(to, 0) // TODO: should this be a buffered channel?
+	return fatalHandler{h}
 }
 
-func prepareContext(flags *LogFlags) (log.Context, func(), task.CancelFunc) {
+type fatalHandler struct{ log.Handler }
+
+func (h fatalHandler) Handle(m *log.Message) {
+	h.Handler.Handle(m)
+	if m.Severity >= FatalSeverity {
+		h.Handler.Close()
+		panic(FatalExit)
+	}
+}
+
+func prepareContext(flags *LogFlags) (context.Context, func(), task.CancelFunc) {
 	// now build the initial root context
-	handler, closeLogs := wrapHandler(output.Std(flags.Style))
-	output.Default = handler
+	handler := wrapHandler(flags.Style.Handler(os.Stdout, os.Stderr))
 	ctx := context.Background()
-	ctx = severity.Filter(ctx, flags.Level)
+	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
+	ctx = log.PutHandler(ctx, handler)
 	ctx, cancel := context.WithCancel(ctx)
-	return log.Wrap(ctx), closeLogs, task.CancelFunc(cancel)
+	return ctx, handler.Close, task.CancelFunc(cancel)
 }
 
-func updateContext(legacy log.Context, flags *LogFlags, closeLogs func()) (log.Context, func()) {
-	ctx := legacy.Unwrap()
-	ctx = severity.Filter(ctx, flags.Level)
+func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (context.Context, func()) {
+	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
 	if flags.Stacks {
-		ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{
-			Condition: stacktrace.OnError,
-			Source: stacktrace.TrimTop(stacktrace.MatchPackage("runtime"),
-				stacktrace.TrimBottom(stacktrace.MatchPackage("github.com/google/gapid/core/context/jot"),
-					stacktrace.Capture)),
-		})
+		ctx = log.PutStacktracer(ctx, log.SeverityStacktracer(log.Error))
+		// TODO
+		// ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{
+		// 	Condition: stacktrace.OnError,
+		// 	Source: stacktrace.TrimTop(stacktrace.MatchPackage("runtime"),
+		// 		stacktrace.TrimBottom(stacktrace.MatchPackage("github.com/google/gapid/core/context/jot"),
+		// 			stacktrace.Capture)),
+		// })
 	}
 	if flags.File != "" {
 		// Create the server logfile.
@@ -84,46 +80,20 @@ func updateContext(legacy log.Context, flags *LogFlags, closeLogs func()) (log.C
 		if err != nil {
 			panic(err)
 		}
-		jot.To(ctx).With("File", flags.File).Print("Switching to log file")
+		log.I(ctx, "Logging to: %v", flags.File)
 		// Build the logging context
-		style := flags.Style.Scribe(file)
-		handler, closer := wrapHandler(func(p note.Page) error {
-			err := style(p)
-			fmt.Fprintln(file)
-			return err
-		})
+		handler := wrapHandler(flags.Style.Handler(file, file))
+		ctx = log.PutHandler(ctx, handler)
 		closeLogs()
 		closeLogs = func() {
-			closer()
+			handler.Close()
 			file.Close()
 		}
-		ctx = output.NewContext(ctx, handler)
-	} else if flags.Style.Name != note.DefaultStyle.Name {
-		handler, closer := wrapHandler(output.Std(flags.Style))
+	} else {
+		handler := wrapHandler(flags.Style.Handler(os.Stdout, os.Stderr))
+		ctx = log.PutHandler(ctx, handler)
 		closeLogs()
-		closeLogs = closer
-		ctx = output.NewContext(ctx, handler)
+		closeLogs = handler.Close
 	}
-	return log.Wrap(ctx), closeLogs
-}
-
-func autoScribe(w io.Writer) note.Handler {
-	low := note.Normal.Scribe(w)
-	high := note.Detailed.Scribe(w)
-	return func(page note.Page) error {
-		level := severity.FindLevel(page)
-		if level <= severity.Error {
-			return high(page)
-		}
-		return low(page)
-	}
-}
-
-func init() {
-	autoStyle := note.Style{
-		Name:   "Auto",
-		Scribe: autoScribe,
-	}
-	note.RegisterStyle(autoStyle)
-	note.DefaultStyle = autoStyle
+	return ctx, closeLogs
 }

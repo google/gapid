@@ -15,11 +15,11 @@
 package adb
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 )
 
@@ -40,18 +40,18 @@ const (
 )
 
 // KeyEvent simulates a key-event on the device.
-func (b *binding) KeyEvent(ctx log.Context, key android.KeyCode) error {
+func (b *binding) KeyEvent(ctx context.Context, key android.KeyCode) error {
 	return b.Shell("input", "keyevent", strconv.Itoa(int(key))).Run(ctx)
 }
 
 // SendEvent simulates low-level user-input to the device.
-func (b *binding) SendEvent(ctx log.Context, deviceId, eventType, eventCode, value int) error {
+func (b *binding) SendEvent(ctx context.Context, deviceId, eventType, eventCode, value int) error {
 	args := fmt.Sprintf("/dev/input/event%v %v %v %v", deviceId, eventType, eventCode, value)
 	return b.Shell("sendevent", args).Run(ctx)
 }
 
 // SendTouch simulates touch-screen press or release.
-func (b *binding) SendTouch(ctx log.Context, deviceId, x, y int, pressed bool) {
+func (b *binding) SendTouch(ctx context.Context, deviceId, x, y int, pressed bool) {
 	b.SendEvent(ctx, deviceId, EV_ABS, ABS_MT_TRACKING_ID, 0)
 	b.SendEvent(ctx, deviceId, EV_ABS, ABS_MT_POSITION_X, x)
 	b.SendEvent(ctx, deviceId, EV_ABS, ABS_MT_POSITION_Y, y)
@@ -74,7 +74,7 @@ func atoi(s string) int {
 
 // GetTouchDimensions returns the resolution of the touch sensor.
 // This may be different to the dimensions of the LCD screen.
-func (b *binding) GetTouchDimensions(ctx log.Context) (deviceId, minX, maxX, minY, maxY int, ok bool) {
+func (b *binding) GetTouchDimensions(ctx context.Context) (deviceId, minX, maxX, minY, maxY int, ok bool) {
 	for i := 0; i < 10; i++ {
 		device := "/dev/input/event" + strconv.Itoa(i)
 		if info, err := b.Shell("getevent", "-lp", device).Call(ctx); err == nil {
@@ -91,7 +91,7 @@ func (b *binding) GetTouchDimensions(ctx log.Context) (deviceId, minX, maxX, min
 }
 
 // GetScreenDimensions returns the resolution of the display.
-func (b *binding) GetScreenDimensions(ctx log.Context) (orientation, width, height int, ok bool) {
+func (b *binding) GetScreenDimensions(ctx context.Context) (orientation, width, height int, ok bool) {
 	if info, err := b.Shell("dumpsys", "display").Call(ctx); err == nil {
 		re := regexp.MustCompile("mDefaultViewport.*orientation=([0-9]+).*deviceWidth=([0-9]+).*deviceHeight=([0-9]+)")
 		if match := re.FindStringSubmatch(info); match != nil {

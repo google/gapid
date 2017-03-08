@@ -15,14 +15,15 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // instances returns the path to the Instances field of the currently bound
 // context, and the context at p.
-func instances(ctx log.Context, p path.Node) (*path.Field, *Context, error) {
+func instances(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
@@ -43,7 +44,7 @@ func instances(ctx log.Context, p path.Node) (*path.Field, *Context, error) {
 
 // Link returns the link to the attribute vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o AttributeLocation) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (o AttributeLocation) Link(ctx log.Context, p path.Node) (path.Node, error)
 
 // Link returns the link to the buffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o BufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Buffers.Contains(o) {
 		return nil, err
@@ -71,7 +72,7 @@ func (o BufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the framebuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o FramebufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Framebuffers.Contains(o) {
 		return nil, err
@@ -81,7 +82,7 @@ func (o FramebufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the program in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o ProgramId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Programs.Contains(o) {
 		return nil, err
@@ -91,7 +92,7 @@ func (o ProgramId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the query object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o QueryId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Queries.Contains(o) {
 		return nil, err
@@ -101,7 +102,7 @@ func (o QueryId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the renderbuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o RenderbufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Renderbuffers.Contains(o) {
 		return nil, err
@@ -111,7 +112,7 @@ func (o RenderbufferId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the shader object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o ShaderId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Shaders.Contains(o) {
 		return nil, err
@@ -121,7 +122,7 @@ func (o ShaderId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the texture object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o TextureId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.Textures.Contains(o) {
 		return nil, err
@@ -131,7 +132,7 @@ func (o TextureId) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the uniform in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o UniformLocation) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil {
 		return nil, err
@@ -166,7 +167,7 @@ func (o UniformLocation) Link(ctx log.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o VertexArrayId) Link(ctx log.Context, p path.Node) (path.Node, error) {
+func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
 	if i == nil || !c.Instances.VertexArrays.Contains(o) {
 		return nil, err

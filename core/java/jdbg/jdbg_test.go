@@ -15,11 +15,11 @@
 package jdbg_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/java/jdbg"
 	"github.com/google/gapid/core/java/jdwp"
 	"github.com/google/gapid/core/java/jdwp/test"
@@ -52,16 +52,16 @@ public class Calculator {
 }
 
 func TestMain(m *testing.M) {
-	os.Exit(test.BuildRunAndConnect(source, func(ctx log.Context, c *jdwp.Connection) int {
+	os.Exit(test.BuildRunAndConnect(source, func(ctx context.Context, c *jdwp.Connection) int {
 		if err := c.ResumeAll(); err != nil {
-			jot.Fatal(ctx, err, "Failed resume VM")
+			log.F(ctx, "Failed resume VM. Error: %v", err)
 			return -1
 		}
 
 		// Wait for java to load the prepare class
 		t, err := c.WaitForClassPrepare(ctx, "Calculator")
 		if err != nil {
-			jot.Fatal(ctx, err, "Failed to wait for Calculator prepare")
+			log.F(ctx, "Failed to wait for Calculator prepare. Error: %v", err)
 			return -1
 		}
 

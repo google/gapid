@@ -14,14 +14,14 @@
 
 package adb
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Pushes the local file to the remote one.
-func (b *binding) Push(ctx log.Context, local, remote string) error {
+func (b *binding) Push(ctx context.Context, local, remote string) error {
 	return b.Command("push", local, remote).Run(ctx)
 }
 
 // Pulls the remote file to the local one.
-func (b *binding) Pull(ctx log.Context, remote, local string) error {
+func (b *binding) Pull(ctx context.Context, remote, local string) error {
 	return b.Command("pull", remote, local).Run(ctx)
 }

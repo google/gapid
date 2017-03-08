@@ -16,6 +16,7 @@ package adb
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -23,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 )
 
@@ -76,7 +76,7 @@ func parseLogcatPriority(r byte) android.LogcatPriority {
 
 // Logcat writes all logcat messages reported by the device to the chan msgs,
 // blocking until the context is stopped.
-func (b *binding) Logcat(ctx log.Context, msgs chan<- android.LogcatMessage) error {
+func (b *binding) Logcat(ctx context.Context, msgs chan<- android.LogcatMessage) error {
 	reader, stdout := io.Pipe()
 	buf := bufio.NewReader(reader)
 	err := make(chan error, 1)

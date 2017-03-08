@@ -15,7 +15,8 @@
 package transform
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -26,7 +27,7 @@ type Transforms []Transformer
 
 // Transform sequentially transforms the atoms by each of the transformers in
 // the list, before writing the final output to the output atom Writer.
-func (l Transforms) Transform(ctx log.Context, atoms atom.List, out Writer) {
+func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) {
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
 		s := out.State()
@@ -61,20 +62,20 @@ func (l *Transforms) Prepend(t Transformer) {
 
 // Transform is a helper for building simple Transformers that are implemented
 // by function f. name is used to identify the transform when logging.
-func Transform(name string, f func(ctx log.Context, id atom.ID, atom atom.Atom, output Writer)) Transformer {
+func Transform(name string, f func(ctx context.Context, id atom.ID, atom atom.Atom, output Writer)) Transformer {
 	return transform{name, f}
 }
 
 type transform struct {
-	N string                                                           // Transform name. Used for debugging.
-	F func(ctx log.Context, id atom.ID, atom atom.Atom, output Writer) // The transform function.
+	N string                                                               // Transform name. Used for debugging.
+	F func(ctx context.Context, id atom.ID, atom atom.Atom, output Writer) // The transform function.
 }
 
-func (t transform) Transform(ctx log.Context, id atom.ID, atom atom.Atom, output Writer) {
+func (t transform) Transform(ctx context.Context, id atom.ID, atom atom.Atom, output Writer) {
 	t.F(ctx, id, atom, output)
 }
 
-func (t transform) Flush(ctx log.Context, output Writer) {}
+func (t transform) Flush(ctx context.Context, output Writer) {}
 
 func (t transform) Name() string { return t.N }
 
@@ -90,7 +91,7 @@ func (p TransformWriter) State() *gfxapi.State {
 	return p.S
 }
 
-func (p TransformWriter) MutateAndWrite(ctx log.Context, id atom.ID, a atom.Atom) {
+func (p TransformWriter) MutateAndWrite(ctx context.Context, id atom.ID, a atom.Atom) {
 	if config.SeparateMutateStates {
 		a.Mutate(ctx, p.S, nil /* no builder, just mutate */)
 	}

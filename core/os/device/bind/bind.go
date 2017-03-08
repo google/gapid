@@ -15,9 +15,9 @@
 package bind
 
 import (
+	"context"
 	"sync"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -27,7 +27,7 @@ var (
 )
 
 // Host returns the Device to the host.
-func Host(ctx log.Context) Device {
+func Host(ctx context.Context) Device {
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
 	if host == nil {

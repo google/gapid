@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha1"
 	"flag"
 	"fmt"
@@ -24,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -41,7 +41,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) == 0 {
 		flag.Usage()

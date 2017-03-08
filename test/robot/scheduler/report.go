@@ -15,18 +15,20 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/monitor"
 	"github.com/google/gapid/test/robot/report"
 )
 
-func (s schedule) doReport(ctx log.Context, t *monitor.Trace) error {
+func (s schedule) doReport(ctx context.Context, t *monitor.Trace) error {
 	if !s.worker.Supports(job.Report) {
 		return nil
 	}
-	ctx = ctx.Enter("Report")
-	ctx = ctx.V("Package", s.pkg.Id)
+	ctx = log.Enter(ctx, "Report")
+	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
 	hostTools := s.getHostTools(ctx)
 	if hostTools == nil {
 		return nil

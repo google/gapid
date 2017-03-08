@@ -15,16 +15,17 @@
 package grpcutil
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"google.golang.org/grpc"
 )
 
 // ClientTask is invoked with an open grpc connection by Client.
-type ClientTask func(log.Context, *grpc.ClientConn) error
+type ClientTask func(context.Context, *grpc.ClientConn) error
 
 // Dial connects to a grpc server, and returns the connection.
 // It also installs the standard options we normally use.
-func Dial(ctx log.Context, target string, options ...grpc.DialOption) (*grpc.ClientConn, error) {
+func Dial(ctx context.Context, target string, options ...grpc.DialOption) (*grpc.ClientConn, error) {
 	options = append([]grpc.DialOption{
 		grpc.WithCompressor(grpc.NewGZIPCompressor()),
 		grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
@@ -35,7 +36,7 @@ func Dial(ctx log.Context, target string, options ...grpc.DialOption) (*grpc.Cli
 // Client dials a grpc server, and runs the task with the connection, and closes the connection
 // again before returning.
 // It also installs the standard options we normally use.
-func Client(ctx log.Context, target string, task ClientTask, options ...grpc.DialOption) error {
+func Client(ctx context.Context, target string, task ClientTask, options ...grpc.DialOption) error {
 	conn, err := Dial(ctx, target, options...)
 	if err != nil {
 		return err

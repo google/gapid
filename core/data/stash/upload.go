@@ -15,6 +15,7 @@
 package stash
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"hash"
@@ -23,7 +24,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/google/gapid/core/log"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func hashStream(r io.Reader) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func uploadStream(ctx log.Context, service Service, info Upload, r Uploadable) (string, error) {
+func uploadStream(ctx context.Context, service Service, info Upload, r Uploadable) (string, error) {
 	// first calculate an id for the file
 	info.Id = hashStream(r)
 	// now check if the file is already in the stash

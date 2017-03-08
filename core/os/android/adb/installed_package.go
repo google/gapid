@@ -15,19 +15,19 @@
 package adb
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 )
 
 // InstalledPackages returns the sorted list of installed packages on the device.
-func (b *binding) InstalledPackages(ctx log.Context) (android.InstalledPackages, error) {
+func (b *binding) InstalledPackages(ctx context.Context) (android.InstalledPackages, error) {
 	str, err := b.Shell("dumpsys", "package").Call(ctx)
 	if err != nil {
 		return nil, err

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +29,6 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -50,7 +50,7 @@ func init() {
 	})
 }
 
-func (verb *traceVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	options := client.Options{
 		ObserveFrameFrequency: uint32(verb.Observe.Frames),
 		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
@@ -77,7 +77,7 @@ func (verb *traceVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 	return verb.captureADB(ctx, flags, options)
 }
 
-func (verb *traceVerb) startLocalApp(ctx log.Context) error {
+func (verb *traceVerb) startLocalApp(ctx context.Context) error {
 	// Run the local application with VK_LAYER_PATH, VK_INSTANCE_LAYERS,
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
@@ -115,7 +115,7 @@ func (verb *traceVerb) startLocalApp(ctx log.Context) error {
 	return nil
 }
 
-func (verb *traceVerb) captureLocal(ctx log.Context, flags flag.FlagSet, port int, options client.Options) error {
+func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, options client.Options) error {
 	output := verb.Out
 	if output == "" {
 		output = "capture.gfxtrace"
@@ -123,7 +123,7 @@ func (verb *traceVerb) captureLocal(ctx log.Context, flags flag.FlagSet, port in
 	return doCapture(ctx, options, port, output, verb.For)
 }
 
-func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options client.Options) error {
+func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, options client.Options) error {
 	d, err := getADBDevice(ctx, verb.Gapii.Device)
 	if err != nil {
 		return err
@@ -132,17 +132,18 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 	switch {
 	case !options.APK.IsEmpty():
 		// Install APK, trace it, uninstall
-		ctx.V("Source", options.APK).Print("Installing APK")
+		ctx := log.V{"source": options.APK}.Bind(ctx)
+		log.I(ctx, "Installing APK")
 		data, err := ioutil.ReadFile(options.APK.System())
 		if err != nil {
-			return cause.Explain(ctx, err, "Read APK")
+			return log.Err(ctx, err, "Read APK")
 		}
 		info, err := apk.Analyze(ctx, data)
 		if err != nil {
-			return cause.Explain(ctx, err, "Analyse APK")
+			return log.Err(ctx, err, "Analyse APK")
 		}
 		if err := d.InstallAPK(ctx, options.APK.System(), true, true); err != nil {
-			return cause.Explain(ctx, err, "Install APK")
+			return log.Err(ctx, err, "Install APK")
 		}
 		pkg := &android.InstalledPackage{
 			Name:       info.Name,
@@ -151,7 +152,7 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 			Debuggable: info.Debuggable,
 		}
 		defer func() {
-			ctx.Notice().V("apk", options.APK).Log("Uninstall APK")
+			log.I(ctx, "Uninstall APK")
 			pkg.Uninstall(ctx)
 		}()
 		a = &android.ActivityAction{
@@ -192,7 +193,7 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 		}
 	}
 	if a.Package.Debuggable {
-		ctx.Print("Package is debuggable")
+		log.I(ctx, "Package is debuggable")
 	} else {
 		err = d.Root(ctx)
 		switch err {
@@ -202,7 +203,7 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 		default:
 			return fmt.Errorf("Failed to restart ADB as root: %v", err)
 		}
-		ctx.Print("Device is rooted")
+		log.I(ctx, "Device is rooted")
 	}
 
 	// Filenames - if no name specified, use package name.
@@ -216,7 +217,7 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 	}
 
 	if verb.Clear.Cache {
-		ctx.Print("Clearing package cache")
+		log.I(ctx, "Clearing package cache")
 		if err := a.Package.ClearCache(ctx); err != nil {
 			return err
 		}
@@ -234,14 +235,14 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 
 	ctx, stop := task.WithCancel(ctx)
 	if verb.Record.Inputs {
-		ctx.Print("Starting input recorder")
+		log.I(ctx, "Starting input recorder")
 		cleanup, err := startRecordingInputs(ctx, d, inputFile)
 		if err != nil {
 			return err
 		}
 		defer cleanup()
 	} else if verb.Replay.Inputs {
-		ctx.Print("Starting input replayer")
+		log.I(ctx, "Starting input replayer")
 		if err := startReplayingInputs(ctx, d, inputFile, stop); err != nil {
 			return err
 		}
@@ -250,8 +251,8 @@ func (verb *traceVerb) captureADB(ctx log.Context, flags flag.FlagSet, options c
 	return doCapture(ctx, options, int(port), output, verb.For)
 }
 
-func doCapture(ctx log.Context, options client.Options, port int, out string, duration time.Duration) error {
-	ctx.Info().S("file", out).Log("Creating file")
+func doCapture(ctx context.Context, options client.Options, port int, out string, duration time.Duration) error {
+	log.I(ctx, "Creating file '%v'", out)
 	os.MkdirAll(filepath.Dir(out), 0755)
 	file, err := os.Create(out)
 	if err != nil {
@@ -277,7 +278,7 @@ func doCapture(ctx log.Context, options client.Options, port int, out string, du
 	return nil
 }
 
-func getAction(ctx log.Context, d adb.Device, pattern string) (*android.ActivityAction, error) {
+func getAction(ctx context.Context, d adb.Device, pattern string) (*android.ActivityAction, error) {
 	re := regexp.MustCompile("(?i)" + pattern)
 	packages, err := d.InstalledPackages(ctx)
 	if err != nil {
@@ -304,6 +305,6 @@ func getAction(ctx log.Context, d adb.Device, pattern string) (*android.Activity
 		}
 		return nil, fmt.Errorf("Multiple actions matching %q found", pattern)
 	}
-	ctx.Info().WithValue("action", matchingActions[0]).Log("")
+	log.I(ctx, "action: %v", matchingActions[0])
 	return matchingActions[0], nil
 }

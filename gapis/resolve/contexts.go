@@ -15,12 +15,11 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/atom"
@@ -33,7 +32,7 @@ import (
 )
 
 // Contexts resolves the list of contexts belonging to a capture.
-func Contexts(ctx log.Context, p *path.Contexts) ([]*service.Context, error) {
+func Contexts(ctx context.Context, p *path.Contexts) ([]*service.Context, error) {
 	obj, err := database.Build(ctx, &ContextListResolvable{p.Capture})
 	if err != nil {
 		return nil, err
@@ -42,7 +41,7 @@ func Contexts(ctx log.Context, p *path.Contexts) ([]*service.Context, error) {
 }
 
 // Context resolves the single context.
-func Context(ctx log.Context, p *path.Context) (*service.Context, error) {
+func Context(ctx context.Context, p *path.Context) (*service.Context, error) {
 	contexts, err := Contexts(ctx, p.Contexts)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func Context(ctx log.Context, p *path.Context) (*service.Context, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *ContextListResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
 	c, err := capture.Resolve(ctx)
@@ -86,7 +85,7 @@ func (r *ContextListResolvable) Resolve(ctx log.Context) (interface{}, error) {
 			if !ok {
 				err = fault.Const(fmt.Sprint(r))
 			}
-			panic(cause.Wrap(ctx, err).With("atomID", currentAtomIndex).With("atom", reflect.TypeOf(currentAtom)))
+			panic(log.Errf(ctx, err, "panic at atomID: %v, type: %T", currentAtomIndex, currentAtom))
 		}
 	}()
 

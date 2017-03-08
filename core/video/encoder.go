@@ -15,6 +15,7 @@
 package video
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"io"
@@ -41,7 +42,7 @@ func init() {
 
 // Encode will encode the frames written to the returned chan to a video that
 // can be read from the Reader.
-func Encode(ctx log.Context, settings Settings) (chan<- image.Image, io.Reader, error) {
+func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Reader, error) {
 	if encoder == "" {
 		return nil, nil, fmt.Errorf("neither avconv or ffmpeg was found")
 	}
@@ -77,7 +78,7 @@ func Encode(ctx log.Context, settings Settings) (chan<- image.Image, io.Reader, 
 			return
 		}
 
-		stderr := ctx.Raw("encoder").Writer()
+		stderr := log.From(ctx).Writer(log.Error)
 		defer stderr.Close()
 
 		stdin, pixels := io.Pipe()
@@ -97,21 +98,21 @@ func Encode(ctx log.Context, settings Settings) (chan<- image.Image, io.Reader, 
 				"pipe:1", // stdout
 			).Read(stdin).Capture(mpg, stderr).Run(ctx)
 
-			ctx.Info().Logf("%v exited. Error: %v", encoder, err)
+			log.E(ctx, "%v exited. Error: %v", encoder, err)
 			mpg.CloseWithError(err)
 		}()
 
 		i := 0
-		ctx.Info().Logf("Encoding frame 0")
+		log.E(ctx, "Encoding frame 0")
 		pixels.Write(data(frame))
 		i++
 		for frame := range in {
-			ctx.Info().Logf("Encoding frame %d", i)
+			log.E(ctx, "Encoding frame %d", i)
 			pixels.Write(data(frame))
 			i++
 		}
 
-		ctx.Info().Log("Done")
+		log.I(ctx, "Done")
 	}()
 	return in, out, nil
 }

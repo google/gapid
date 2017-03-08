@@ -15,14 +15,13 @@
 package capture
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/framework/binary/cyclic"
@@ -51,7 +50,7 @@ const FileTag = "GapiiTraceFile_V1.1"
 
 // NewState returns a new, default-initialized State object built for the
 // capture held by the context.
-func NewState(ctx log.Context) *gfxapi.State {
+func NewState(ctx context.Context) *gfxapi.State {
 	c, err := Resolve(ctx)
 	if err != nil {
 		panic(err)
@@ -68,7 +67,7 @@ func (c *Capture) NewState() *gfxapi.State {
 }
 
 // Atoms resolves and returns the atom list for the capture.
-func (c *Capture) Atoms(ctx log.Context) (*atom.List, error) {
+func (c *Capture) Atoms(ctx context.Context) (*atom.List, error) {
 	obj, err := database.Resolve(ctx, c.Commands.ID())
 	if err != nil {
 		return nil, err
@@ -77,7 +76,7 @@ func (c *Capture) Atoms(ctx log.Context) (*atom.List, error) {
 }
 
 // Service returns the service.Capture description for this capture.
-func (c *Capture) Service(ctx log.Context, p *path.Capture) *service.Capture {
+func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture {
 	apis := make([]*path.API, len(c.Apis))
 	for i, a := range c.Apis {
 		apis[i] = &path.API{Id: path.NewID(a.ID())}
@@ -98,7 +97,7 @@ func (c *Capture) Service(ctx log.Context, p *path.Capture) *service.Capture {
 // AtomsImportHandler is the interface optionally implements by APIs that want
 // to process the atom stream on import.
 type AtomsImportHandler interface {
-	TransformAtomStream(log.Context, []atom.Atom) ([]atom.Atom, error)
+	TransformAtomStream(context.Context, []atom.Atom) ([]atom.Atom, error)
 }
 
 // Captures returns all the captures stored by the database by identifier.
@@ -113,7 +112,7 @@ func Captures() []*path.Capture {
 }
 
 // ResolveFromID resolves a single capture with the ID id.
-func ResolveFromID(ctx log.Context, id id.ID) (*Capture, error) {
+func ResolveFromID(ctx context.Context, id id.ID) (*Capture, error) {
 	obj, err := database.Resolve(ctx, id)
 	if err != nil {
 		return nil, err
@@ -122,13 +121,13 @@ func ResolveFromID(ctx log.Context, id id.ID) (*Capture, error) {
 }
 
 // ResolveFromPath resolves a single capture with the path p.
-func ResolveFromPath(ctx log.Context, p *path.Capture) (*Capture, error) {
+func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
 	return ResolveFromID(ctx, p.Id.ID())
 }
 
 // Import reads capture data from an io.Reader, imports into the given
 // database and returns the new capture identifier.
-func Import(ctx log.Context, name string, in io.ReadSeeker) (*path.Capture, error) {
+func Import(ctx context.Context, name string, in io.ReadSeeker) (*path.Capture, error) {
 	list, err := ReadAny(ctx, in)
 	if err != nil {
 		return nil, err
@@ -141,7 +140,7 @@ func Import(ctx log.Context, name string, in io.ReadSeeker) (*path.Capture, erro
 
 // ImportAtomList builds a new capture containing a, stores it into d and
 // returns the new capture path.
-func ImportAtomList(ctx log.Context, name string, a *atom.List) (*path.Capture, error) {
+func ImportAtomList(ctx context.Context, name string, a *atom.List) (*path.Capture, error) {
 	a, observed, err := process(ctx, a)
 	if err != nil {
 		return nil, err
@@ -194,7 +193,7 @@ func ImportAtomList(ctx log.Context, name string, a *atom.List) (*path.Capture, 
 }
 
 // ReadAny attempts to auto detect the capture stream type and read it.
-func ReadAny(ctx log.Context, in io.ReadSeeker) (*atom.List, error) {
+func ReadAny(ctx context.Context, in io.ReadSeeker) (*atom.List, error) {
 	atoms, err := ReadPack(ctx, in)
 	switch err {
 	case nil:
@@ -208,7 +207,7 @@ func ReadAny(ctx log.Context, in io.ReadSeeker) (*atom.List, error) {
 }
 
 // ReadPack converts the contents of a proto capture stream to an atom list.
-func ReadPack(ctx log.Context, in io.Reader) (*atom.List, error) {
+func ReadPack(ctx context.Context, in io.Reader) (*atom.List, error) {
 	reader, err := pack.NewReader(in)
 	if err != nil {
 		return nil, err
@@ -223,7 +222,7 @@ func ReadPack(ctx log.Context, in io.Reader) (*atom.List, error) {
 			break
 		}
 		if err != nil {
-			return nil, cause.Explain(ctx, err, "Failed to unmarshal")
+			return nil, log.Err(ctx, err, "Failed to unmarshal")
 		}
 		converter(ctx, atom)
 	}
@@ -232,7 +231,7 @@ func ReadPack(ctx log.Context, in io.Reader) (*atom.List, error) {
 }
 
 // ReadLegacy converts the contents of a legacy capture stream to an atom list.
-func ReadLegacy(ctx log.Context, in io.Reader) (*atom.List, error) {
+func ReadLegacy(ctx context.Context, in io.Reader) (*atom.List, error) {
 	list := atom.NewList()
 	d := cyclic.Decoder(vle.Reader(in))
 	tag := d.String()
@@ -246,10 +245,10 @@ func ReadLegacy(ctx log.Context, in io.Reader) (*atom.List, error) {
 		obj := d.Variant()
 		if d.Error() != nil {
 			if d.Error() != io.EOF {
-				jot.Warning(ctx).With("len", len(list.Atoms)).Cause(d.Error()).Print("Decode of capture errored")
+				log.W(ctx, "Decode of capture errored after %d atoms: %v", len(list.Atoms), d.Error())
 				if len(list.Atoms) > 0 {
 					a := list.Atoms[len(list.Atoms)-1]
-					ctx.Notice().V("atom", a).Log("Last atom successfully decoded")
+					log.I(ctx, "Last atom successfully decoded: %T", a)
 				}
 			}
 			break
@@ -270,15 +269,15 @@ func ReadLegacy(ctx log.Context, in io.Reader) (*atom.List, error) {
 	return list, nil
 }
 
-type atomWriter func(ctx log.Context, a atom.Atom) error
+type atomWriter func(ctx context.Context, a atom.Atom) error
 
 func packWriter(w io.Writer) (atomWriter, error) {
 	writer, err := pack.NewWriter(w)
 	if err != nil {
 		return nil, err
 	}
-	out := func(ctx log.Context, a atom_pb.Atom) error { return writer.Marshal(a) }
-	return func(ctx log.Context, a atom.Atom) error {
+	out := func(ctx context.Context, a atom_pb.Atom) error { return writer.Marshal(a) }
+	return func(ctx context.Context, a atom.Atom) error {
 		c, ok := a.(atom.Convertible)
 		if !ok {
 			return atom.ErrNotConvertible
@@ -290,13 +289,13 @@ func packWriter(w io.Writer) (atomWriter, error) {
 func legacyWriter(w io.Writer) atomWriter {
 	encoder := cyclic.Encoder(vle.Writer(w))
 	encoder.String(FileTag)
-	return func(ctx log.Context, a atom.Atom) error {
+	return func(ctx context.Context, a atom.Atom) error {
 		encoder.Variant(a)
 		return encoder.Error()
 	}
 }
 
-func writeAll(ctx log.Context, atoms *atom.List, w atomWriter) error {
+func writeAll(ctx context.Context, atoms *atom.List, w atomWriter) error {
 	for _, atom := range atoms.Atoms {
 		if err := w(ctx, atom); err != nil {
 			return err
@@ -308,7 +307,7 @@ func writeAll(ctx log.Context, atoms *atom.List, w atomWriter) error {
 // Export encodes the given capture and associated resources
 // and writes it to the supplied io.Writer in the .gfxtrace format,
 // producing output suitable for use with Import or opening in the trace editor.
-func export(ctx log.Context, p *path.Capture, to atomWriter) error {
+func export(ctx context.Context, p *path.Capture, to atomWriter) error {
 	capture, err := ResolveFromPath(ctx, p)
 	if err != nil {
 		return err
@@ -356,7 +355,7 @@ func export(ctx log.Context, p *path.Capture, to atomWriter) error {
 }
 
 // WritePack writes the supplied atoms directly to the writer in the pack file format.
-func WritePack(ctx log.Context, atoms *atom.List, w io.Writer) error {
+func WritePack(ctx context.Context, atoms *atom.List, w io.Writer) error {
 	writer, err := packWriter(w)
 	if err != nil {
 		return err
@@ -365,21 +364,21 @@ func WritePack(ctx log.Context, atoms *atom.List, w io.Writer) error {
 }
 
 // WriteLegacy writes the supplied atoms directly to the writer in the legacy .gfxtrace format.
-func WriteLegacy(ctx log.Context, atoms *atom.List, w io.Writer) error {
+func WriteLegacy(ctx context.Context, atoms *atom.List, w io.Writer) error {
 	return writeAll(ctx, atoms, legacyWriter(w))
 }
 
 // Export encodes the given capture and associated resources
 // and writes it to the supplied io.Writer in the default format,
 // producing output suitable for use with Import or opening in the trace editor.
-func Export(ctx log.Context, p *path.Capture, w io.Writer) error {
+func Export(ctx context.Context, p *path.Capture, w io.Writer) error {
 	return export(ctx, p, legacyWriter(w))
 }
 
 // ExportPack encodes the given capture and associated resources
 // and writes it to the supplied io.Writer in the pack file format,
 // producing output suitable for use with Import or opening in the trace editor.
-func ExportPack(ctx log.Context, p *path.Capture, w io.Writer) error {
+func ExportPack(ctx context.Context, p *path.Capture, w io.Writer) error {
 	writer, err := packWriter(w)
 	if err != nil {
 		return err
@@ -390,14 +389,14 @@ func ExportPack(ctx log.Context, p *path.Capture, w io.Writer) error {
 // ExportLegacy encodes the given capture and associated resources
 // and writes it to the supplied io.Writer in the legacy .gfxtrace format,
 // producing output suitable for use with Import or opening in the trace editor.
-func ExportLegacy(ctx log.Context, p *path.Capture, w io.Writer) error {
+func ExportLegacy(ctx context.Context, p *path.Capture, w io.Writer) error {
 	return export(ctx, p, legacyWriter(w))
 }
 
 // process returns a new atom list with all the resources extracted and placed
 // into the database. process also returns the merged interval list of all
 // observed memory ranges.
-func process(ctx log.Context, a *atom.List) (*atom.List, []*MemoryRange, error) {
+func process(ctx context.Context, a *atom.List) (*atom.List, []*MemoryRange, error) {
 	out := atom.NewList(make([]atom.Atom, 0, len(a.Atoms))...)
 	rngs := interval.U64RangeList{}
 	idmap := map[id.ID]id.ID{}

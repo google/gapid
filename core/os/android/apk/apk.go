@@ -17,11 +17,11 @@ package apk
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"io/ioutil"
 	"strings"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/binaryxml"
 	"github.com/google/gapid/core/os/android/manifest"
@@ -35,22 +35,22 @@ const (
 )
 
 // Read parses the APK file, returning its contents.
-func Read(ctx log.Context, apkData []byte) ([]*zip.File, error) {
+func Read(ctx context.Context, apkData []byte) ([]*zip.File, error) {
 	apkZip, err := zip.NewReader(bytes.NewReader(apkData), int64(len(apkData)))
 	if err != nil {
-		return nil, cause.Wrap(ctx, ErrInvalidAPK)
+		return nil, log.Err(ctx, ErrInvalidAPK, "")
 	}
 	return apkZip.File, nil
 }
 
-func GetManifestXML(ctx log.Context, files []*zip.File) (string, error) {
+func GetManifestXML(ctx context.Context, files []*zip.File) (string, error) {
 	manifestZipFile := findManifest(files)
 	if manifestZipFile == nil {
-		return "", cause.Wrap(ctx, ErrMissingManifest)
+		return "", log.Err(ctx, ErrMissingManifest, "")
 	}
 	manifestFile, err := manifestZipFile.Open()
 	if err != nil {
-		return "", cause.Explain(ctx, err, "Couldn't open APK's manifest")
+		return "", log.Err(ctx, err, "Couldn't open APK's manifest")
 	}
 	defer manifestFile.Close()
 
@@ -59,7 +59,7 @@ func GetManifestXML(ctx log.Context, files []*zip.File) (string, error) {
 	return binaryxml.Decode(ctx, manifestData)
 }
 
-func GetManifest(ctx log.Context, files []*zip.File) (manifest.Manifest, error) {
+func GetManifest(ctx context.Context, files []*zip.File) (manifest.Manifest, error) {
 	manifestXML, err := GetManifestXML(ctx, files)
 	if err != nil {
 		return manifest.Manifest{}, err

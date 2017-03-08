@@ -15,10 +15,9 @@
 package task
 
 import (
+	"context"
 	"sync"
 	"time"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Event is the interface to things that can be used to wait for conditions to occur.
@@ -28,10 +27,10 @@ type Event interface {
 	// Wait blocks until the signal has been fired or the context has been
 	// cancelled.
 	// Returns true if the signal was fired, false if the context was cancelled.
-	Wait(ctx log.Context) bool
+	Wait(ctx context.Context) bool
 	// TryWait waits for the signal to fire, the context to be cancelled or the
 	// timeout, whichever comes first.
-	TryWait(ctx log.Context, timeout time.Duration) bool
+	TryWait(ctx context.Context, timeout time.Duration) bool
 }
 
 // Events is a thread safe list of Event entries.
@@ -73,7 +72,7 @@ func (e *Events) Pending() int {
 
 // Join the current list of events into a signal you can wait on.
 // Subsequent calls to Add will not affect the returned signal.
-func (e *Events) Join(ctx log.Context) Signal {
+func (e *Events) Join(ctx context.Context) Signal {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.purge()
@@ -92,12 +91,12 @@ func (e *Events) Join(ctx log.Context) Signal {
 
 // Wait blocks until the all events in the list have been fired.
 // This is a helper for e.Join(ctx).Wait(ctx)
-func (e *Events) Wait(ctx log.Context) bool {
+func (e *Events) Wait(ctx context.Context) bool {
 	return e.Join(ctx).Wait(ctx)
 }
 
 // TryWait waits for either timeout or all the events to fire, whichever comes first.
 // This is a helper for e.Join(ctx).Wait(timeout)
-func (e *Events) TryWait(ctx log.Context, timeout time.Duration) bool {
+func (e *Events) TryWait(ctx context.Context, timeout time.Duration) bool {
 	return e.Join(ctx).TryWait(ctx, timeout)
 }

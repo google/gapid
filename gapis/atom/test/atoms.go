@@ -16,7 +16,8 @@
 package test
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -32,7 +33,7 @@ type AtomA struct {
 func (a *AtomA) API() gfxapi.API       { return nil }
 func (a *AtomA) AtomFlags() atom.Flags { return a.Flags }
 func (a *AtomA) Extras() *atom.Extras  { return nil }
-func (a *AtomA) Mutate(log.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomA) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return nil
 }
 
@@ -45,7 +46,7 @@ type AtomB struct {
 func (a *AtomB) API() gfxapi.API       { return nil }
 func (a *AtomB) AtomFlags() atom.Flags { return 0 }
 func (a *AtomB) Extras() *atom.Extras  { return nil }
-func (a *AtomB) Mutate(log.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomB) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return nil
 }
 
@@ -57,6 +58,6 @@ type AtomC struct {
 func (a *AtomC) API() gfxapi.API       { return nil }
 func (a *AtomC) AtomFlags() atom.Flags { return 0 }
 func (a *AtomC) Extras() *atom.Extras  { return nil }
-func (a *AtomC) Mutate(log.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomC) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return nil
 }

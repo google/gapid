@@ -15,9 +15,9 @@
 package gles
 
 import (
+	"context"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -26,7 +26,7 @@ import (
 
 var _ = (capture.AtomsImportHandler)(api{})
 
-func (api) TransformAtomStream(ctx log.Context, atoms []atom.Atom) ([]atom.Atom, error) {
+func (api) TransformAtomStream(ctx context.Context, atoms []atom.Atom) ([]atom.Atom, error) {
 	out := make([]atom.Atom, 0, len(atoms))
 	for i, a := range atoms {
 		switch a := a.(type) {
@@ -50,7 +50,7 @@ func (api) TransformAtomStream(ctx log.Context, atoms []atom.Atom) ([]atom.Atom,
 // ContextInfoToContextState is a backwards-compatibility function that converts
 // the deprecated ContextInfo atom into a StaticContextState and
 // DynamicContextState extra.
-func ContextInfoToContextState(ctx log.Context, info *ContextInfo) (scs *StaticContextState, dcs *DynamicContextState) {
+func ContextInfoToContextState(ctx context.Context, info *ContextInfo) (scs *StaticContextState, dcs *DynamicContextState) {
 	scs = &StaticContextState{
 		Constants: Constants{
 			// Constants which we need, but which are not fetched in GLES2 (they error)

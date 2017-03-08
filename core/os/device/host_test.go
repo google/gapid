@@ -53,6 +53,6 @@ func TestHostConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 	for i, h := range hosts[1:] {
-		assert.With(ctx.I("i", i)).That(h).DeepEquals(hosts[0])
+		assert.For(ctx, "i=%v", i).That(h).DeepEquals(hosts[0])
 	}
 }

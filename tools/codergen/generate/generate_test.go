@@ -16,6 +16,7 @@ package generate
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -23,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
@@ -60,7 +60,7 @@ var (
 )
 var testId int
 
-func parseStructs(ctx log.Context, source string) []*Struct {
+func parseStructs(ctx context.Context, source string) []*Struct {
 	testId++
 	fakeFile := fmt.Sprintf(`
 	package fake
@@ -73,29 +73,29 @@ func parseStructs(ctx log.Context, source string) []*Struct {
 	scanner := scan.New(ctx, pwd, "")
 	scanner.ScanFile(name, fakeFile)
 	if err := scanner.Process(ctx); err != nil {
-		jot.Fatal(ctx, err, "Process failed")
+		log.E(ctx, "Process failed: %v", err)
 	}
 	modules, err := From(scanner)
 	if err != nil {
-		jot.Fatal(ctx, err, "Scan failed")
+		log.E(ctx, "Scan failed: %v", err)
 	}
 	for _, m := range modules {
 		if m.Source.Directory.ImportPath == name && !m.IsTest {
 			return m.Structs
 		}
 	}
-	jot.Fatal(ctx, nil, "Module find failed")
+	log.F(ctx, "Module find failed")
 	return nil
 }
 
-func parseStruct(ctx log.Context, name string, source string) *Struct {
+func parseStruct(ctx context.Context, name string, source string) *Struct {
 	s := parseStructs(ctx, source)
 	for _, entry := range s {
 		if entry.Name() == name {
 			return entry
 		}
 	}
-	ctx.V("Structs", len(s)).V("Finding", name).Fatal("No structs match")
+	log.F(ctx, "No structs match %v in %v candidates.", name, len(s))
 	return nil
 }
 
@@ -147,10 +147,10 @@ func TestInterfaceVsAny(t *testing.T) {
 		_, isAny := f.Type.(*schema.Any)
 		_, isInt := f.Type.(*schema.Interface)
 		if strings.HasPrefix(f.Name(), "any") && !isAny {
-			ctx.Error().Logf("Field '%s' has unexpected type %T", f.Name(), f.Type)
+			log.E(ctx, "Field '%s' has unexpected type %T", f.Name(), f.Type)
 		}
 		if strings.HasPrefix(f.Name(), "obj") && !isInt {
-			ctx.Error().Logf("Field '%s' has unexpected type %T", f.Name(), f.Type)
+			log.E(ctx, "Field '%s' has unexpected type %T", f.Name(), f.Type)
 		}
 	}
 }

@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/data/stash"
 	_ "github.com/google/gapid/core/data/stash/grpc"
 	_ "github.com/google/gapid/core/data/stash/local"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -40,9 +40,9 @@ func main() {
 	app.Run(app.VerbMain)
 }
 
-type storeTask func(log.Context, *stash.Client) error
+type storeTask func(context.Context, *stash.Client) error
 
-func withStore(ctx log.Context, isServer bool, task storeTask) error {
+func withStore(ctx context.Context, isServer bool, task storeTask) error {
 	if stashAddr == "" {
 		if isServer {
 			stashAddr = defaultStash

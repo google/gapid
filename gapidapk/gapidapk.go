@@ -15,13 +15,13 @@
 package gapidapk
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"sync"
 
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -42,85 +42,87 @@ type APK struct {
 // EnsureInstalled ensures that gapid.apk with the specified ABI is installed on
 // d with the same version as the host APK and returns the installed APK.
 // If abi is nil or UnknownABI then the preferred ABI of the device is used.
-func EnsureInstalled(ctx log.Context, d adb.Device, abi *device.ABI) (*APK, error) {
+func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
 	ensureInstalledMutex.Lock()
 	defer ensureInstalledMutex.Unlock()
 
-	ctx = ctx.Enter("gapidapk.EnsureInstalled")
+	ctx = log.Enter(ctx, "gapidapk.EnsureInstalled")
 
 	if abi.SameAs(device.UnknownABI) {
 		abi = d.Instance().GetConfiguration().PreferredABI(nil)
 	}
 
-	ctx = ctx.S("abi", abi.Name)
+	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
 	// Check the device actually supports the requested ABI.
 	if !d.Instance().Configuration.SupportsABI(abi) {
-		return nil, cause.Explain(ctx, nil, "Device does not support requested ABI.").With("abi", abi.Name)
+		return nil, log.Errf(ctx, nil, "Device does not support requested abi: %v", abi.Name)
 	}
 
 	name := pkgName(abi)
 
-	ctx.Info().Log("Examining gapid.apk on host...")
+	log.I(ctx, "Examining gapid.apk on host...")
 	apkPath, err := layout.GapidApk(ctx, abi)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Finding gapid.apk on host")
+		return nil, log.Err(ctx, err, "Finding gapid.apk on host")
 	}
 
-	ctx = ctx.S("gapid.apk", apkPath.System())
+	ctx = log.V{"gapid.apk": apkPath.System()}.Bind(ctx)
 	apkData, err := ioutil.ReadFile(apkPath.System())
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Opening gapid.apk")
+		return nil, log.Err(ctx, err, "Opening gapid.apk")
 	}
 
 	apkFiles, err := apk.Read(ctx, apkData)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Reading gapid.apk")
+		return nil, log.Err(ctx, err, "Reading gapid.apk")
 	}
 
 	apkManifest, err := apk.GetManifest(ctx, apkFiles)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Reading gapid.apk manifest")
+		return nil, log.Err(ctx, err, "Reading gapid.apk manifest")
 	}
 
-	ctx = ctx.
-		S("target-version-name", apkManifest.VersionName).
-		I("target-version-code", apkManifest.VersionCode)
+	ctx = log.V{
+		"target-version-name": apkManifest.VersionName,
+		"target-version-code": apkManifest.VersionCode,
+	}.Bind(ctx)
 
 	for attempts := installAttempts; attempts > 0; attempts-- {
-		ctx.Info().Log("Looking at installed packages...")
+		log.I(ctx, "Looking at installed packages...")
 		packages, err := d.InstalledPackages(ctx)
 		if err != nil {
-			return nil, cause.Explain(ctx, err, "Listing installed packages")
+			return nil, log.Err(ctx, err, "Listing installed packages")
 		}
 
 		if gapid := packages.FindByName(name); gapid == nil {
-			ctx.Info().Log("Installing gapid.apk...")
+			log.I(ctx, "Installing gapid.apk...")
 			if err := d.InstallAPK(ctx, apkPath.System(), false, true); err != nil {
-				return nil, cause.Explain(ctx, err, "Installing gapid.apk")
+				return nil, log.Err(ctx, err, "Installing gapid.apk")
 			}
 		} else {
-			ctx = ctx.
-				S("installed-version-name", gapid.VersionName).
-				I("installed-version-code", gapid.VersionCode)
+			ctx = log.V{
+				"installed-version-name": gapid.VersionName,
+				"installed-version-code": gapid.VersionCode,
+			}.Bind(ctx)
 
 			if gapid.VersionCode != apkManifest.VersionCode ||
 				gapid.VersionName != apkManifest.VersionName {
-				ctx.Info().Log("Uninstalling existing gapid.apk as version has changed.")
+				log.I(ctx, "Uninstalling existing gapid.apk as version has changed.")
 				gapid.Uninstall(ctx)
 				continue
 			}
 
 			apkPath, err := gapid.Path(ctx)
 			if err != nil {
-				return nil, cause.Explain(ctx, err, "Obtaining GAPID package path")
+				return nil, log.Err(ctx, err, "Obtaining GAPID package path")
 			}
-			ctx.Info().Log("Found gapid package...")
+			log.I(ctx, "Found gapid package...")
 			return &APK{gapid, path.Dir(apkPath)}, nil
 		}
 	}
 
-	return nil, cause.Explain(ctx, nil, "Unable to install GAPID")
+	return nil, log.Err(ctx, nil, "Unable to install GAPID")
 }
 
 // LibsPath returns the path on the Android device to the GAPID libs directory.

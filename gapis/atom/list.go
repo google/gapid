@@ -15,7 +15,8 @@
 package atom
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 )
 
@@ -31,7 +32,7 @@ func NewList(atoms ...Atom) *List {
 
 // WriteTo writes all atoms in the list to w, terminating with a single EOS
 // atom.
-func (l *List) WriteTo(ctx log.Context, w Writer) {
+func (l *List) WriteTo(ctx context.Context, w Writer) {
 	for i, a := range l.Atoms {
 		w.Write(ctx, ID(i), a)
 	}

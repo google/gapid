@@ -16,13 +16,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"io"
 	"os"
 	"time"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/atom"
@@ -46,7 +46,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	var (
 		atoms, legacyAtoms, packAtoms *atom.List
 		protos                        []atom_pb.Atom
@@ -56,28 +56,28 @@ func run(ctx log.Context) error {
 	)
 	args := flag.Args()
 	if len(args) != 1 {
-		return cause.Explainf(ctx, nil, "Expected 1 argument, got %d", len(args))
+		return log.Errf(ctx, nil, "Expected 1 argument, got %d", len(args))
 	}
 	readTime := delta(func() { atoms, size, err = readAtoms(ctx, args[0]) })
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable to read source")
+		return log.Err(ctx, err, "Unable to read source")
 	}
-	ctx.Notice().Logf("Read %d atoms from %d bytes in %v", len(atoms.Atoms), size, readTime)
+	log.I(ctx, "Read %d atoms from %d bytes in %v", len(atoms.Atoms), size, readTime)
 	atomsSummary := Summary{}.Compute(atoms.Atoms).List()
 
 	if !legacyFile.IsEmpty() {
 		d := delta(func() { err = writeAtoms(ctx, legacyFile.System(), atoms, capture.WriteLegacy) })
 		if err != nil {
-			return cause.Explain(ctx, err, "Unable write legacy")
+			return log.Err(ctx, err, "Unable write legacy")
 		}
-		ctx.Notice().Logf("Wrote %v atoms to legacy file in %v", len(atoms.Atoms), d)
+		log.I(ctx, "Wrote %v atoms to legacy file in %v", len(atoms.Atoms), d)
 	}
 	if !packFile.IsEmpty() {
 		d := delta(func() { err = writeAtoms(ctx, packFile.System(), atoms, capture.WritePack) })
 		if err != nil {
-			return cause.Explain(ctx, err, "Unable write pack")
+			return log.Err(ctx, err, "Unable write pack")
 		}
-		ctx.Notice().Logf("Wrote %v atoms to pack file in %v", len(atoms.Atoms), d)
+		log.I(ctx, "Wrote %v atoms to pack file in %v", len(atoms.Atoms), d)
 	}
 
 	if !timing {
@@ -90,15 +90,15 @@ func run(ctx log.Context) error {
 	// Lets time the pure conversions
 	protos = make([]atom_pb.Atom, 0, len(atoms.Atoms)*2)
 	toProtoTime := delta(func() {
-		err = atom.ConvertAllTo(ctx, atoms, func(ctx log.Context, a atom_pb.Atom) error {
+		err = atom.ConvertAllTo(ctx, atoms, func(ctx context.Context, a atom_pb.Atom) error {
 			protos = append(protos, a)
 			return nil
 		})
 	})
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable convert to proto")
+		return log.Err(ctx, err, "Unable convert to proto")
 	}
-	ctx.Notice().Logf("Live[%d]->Proto[%d] in %v", len(atoms.Atoms), len(protos), toProtoTime)
+	log.I(ctx, "Live[%d]->Proto[%d] in %v", len(atoms.Atoms), len(protos), toProtoTime)
 
 	live = make([]atom.Atom, 0, len(atoms.Atoms)*2)
 	toLiveTime := delta(func() {
@@ -107,50 +107,50 @@ func run(ctx log.Context) error {
 		})
 	})
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable convert to live")
+		return log.Err(ctx, err, "Unable convert to live")
 	}
-	ctx.Notice().Logf("Proto[%d]->Live[%d] in %v", len(protos), len(live), toLiveTime)
+	log.I(ctx, "Proto[%d]->Live[%d] in %v", len(protos), len(live), toLiveTime)
 	liveSummary := Summary{}.Compute(live).List()
 
 	// Time writing in legacy format
 	toLegacyTime := delta(func() { err = capture.WriteLegacy(ctx, atoms, legacyData) })
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable write legacy")
+		return log.Err(ctx, err, "Unable write legacy")
 	}
-	ctx.Notice().Logf("Live[%d]->Legacy[%d] in %v", len(atoms.Atoms), legacyData.Len(), toLegacyTime)
+	log.I(ctx, "Live[%d]->Legacy[%d] in %v", len(atoms.Atoms), legacyData.Len(), toLegacyTime)
 
 	// Time writing in pack format
 	toPackTime := delta(func() { err = capture.WritePack(ctx, atoms, packData) })
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable write pack")
+		return log.Err(ctx, err, "Unable write pack")
 	}
-	ctx.Notice().Logf("Live[%d]->Pack[%d] in %v", len(atoms.Atoms), packData.Len(), toPackTime)
+	log.I(ctx, "Live[%d]->Pack[%d] in %v", len(atoms.Atoms), packData.Len(), toPackTime)
 
 	// Time reading legacy format
 	fromLegacyTime := delta(func() { legacyAtoms, err = capture.ReadLegacy(ctx, legacyData) })
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable read legacy")
+		return log.Err(ctx, err, "Unable read legacy")
 	}
-	ctx.Notice().Logf("Legacy->Live[%d] in %v", len(legacyAtoms.Atoms), fromLegacyTime)
+	log.I(ctx, "Legacy->Live[%d] in %v", len(legacyAtoms.Atoms), fromLegacyTime)
 	legacySummary := Summary{}.Compute(legacyAtoms.Atoms).List()
 
 	// Time reading pack format
 	fromPackTime := delta(func() { packAtoms, err = capture.ReadPack(ctx, packData) })
 	if err != nil {
-		return cause.Explain(ctx, err, "Unable read pack")
+		return log.Err(ctx, err, "Unable read pack")
 	}
-	ctx.Notice().Logf("Pack->Live[%d] in %v", len(packAtoms.Atoms), fromPackTime)
+	log.I(ctx, "Pack->Live[%d] in %v", len(packAtoms.Atoms), fromPackTime)
 	packSummary := Summary{}.Compute(packAtoms.Atoms).List()
 
 	//Summarise
-	SummaryDiff(ctx.Enter("Live"), atomsSummary, liveSummary)
-	SummaryDiff(ctx.Enter("Legacy"), atomsSummary, legacySummary)
-	SummaryDiff(ctx.Enter("Pack"), atomsSummary, packSummary)
-	//AtomDiff(ctx.Enter("Atom"), atoms.List, packAtoms.List)
+	SummaryDiff(log.Enter(ctx, "Live"), atomsSummary, liveSummary)
+	SummaryDiff(log.Enter(ctx, "Legacy"), atomsSummary, legacySummary)
+	SummaryDiff(log.Enter(ctx, "Pack"), atomsSummary, packSummary)
+	//AtomDiff(log.Enter(ctx,"Atom"), atoms.List, packAtoms.List)
 	return nil
 }
 
-func readAtoms(ctx log.Context, name string) (*atom.List, int64, error) {
+func readAtoms(ctx context.Context, name string) (*atom.List, int64, error) {
 	// intial read into memory
 	f, err := os.Open(name)
 	if err != nil {
@@ -162,7 +162,7 @@ func readAtoms(ctx log.Context, name string) (*atom.List, int64, error) {
 	return atoms, stat.Size(), err
 }
 
-func writeAtoms(ctx log.Context, name string, atoms *atom.List, w func(log.Context, *atom.List, io.Writer) error) error {
+func writeAtoms(ctx context.Context, name string, atoms *atom.List, w func(context.Context, *atom.List, io.Writer) error) error {
 	f, err := os.Create(name)
 	if err != nil {
 		return err

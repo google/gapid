@@ -16,6 +16,7 @@ package protocol
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -110,10 +110,10 @@ type Server interface {
 	// processID is the parent process that started the server.
 	// rootPath is the root path of the workspace - it is null if no folder is open.
 	// capabilities are the capabilities of the client.
-	Initialize(ctx log.Context, processID int, rootPath string) (ServerCapabilities, error)
+	Initialize(ctx context.Context, processID int, rootPath string) (ServerCapabilities, error)
 
 	// Shutdown is a request to shutdown the server, but not exit.
-	Shutdown(ctx log.Context) error
+	Shutdown(ctx context.Context) error
 
 	// Completion is a request for completion items as the given cursor
 	// position. If computing complete completion items is expensive,
@@ -122,49 +122,49 @@ type Server interface {
 	// user interface.
 	// uri is the document identifier.
 	// pos is the position in the document to complete.
-	Completion(ctx log.Context, uri TextDocumentIdentifier, pos Position) (CompletionList, error)
+	Completion(ctx context.Context, uri TextDocumentIdentifier, pos Position) (CompletionList, error)
 
 	// CompletionItemResolve is a request to resolve additional information on
 	// the completion item.
 	// item is the completion item to resolve additional information.
-	CompletionItemResolve(ctx log.Context, item CompletionItem) (CompletionItem, error)
+	CompletionItemResolve(ctx context.Context, item CompletionItem) (CompletionItem, error)
 
 	// Hover is a request for hover information as the given position.
 	// uri is the document identifier.
 	// pos is the position in the document to get hover information for.
-	Hover(ctx log.Context, uri TextDocumentIdentifier, position Position) ([]MarkedString, *Range, error)
+	Hover(ctx context.Context, uri TextDocumentIdentifier, position Position) ([]MarkedString, *Range, error)
 
 	// SignatureHelp is a request for function signature information at the given position.
 	// uri is the document identifier.
 	// pos is the position in the document to get signature information for.
-	SignatureHelp(ctx log.Context, uri TextDocumentIdentifier, position Position) (sigs []SignatureInformation, activeSig *int, activeParam *int, err error)
+	SignatureHelp(ctx context.Context, uri TextDocumentIdentifier, position Position) (sigs []SignatureInformation, activeSig *int, activeParam *int, err error)
 
 	// GotoDefinition is a request to resolve the definition location(s) of the
 	// symbol at the given position.
 	// uri is the document identifier.
 	// pos is the position in the document of the symbol.
-	GotoDefinition(ctx log.Context, uri TextDocumentIdentifier, position Position) ([]Location, error)
+	GotoDefinition(ctx context.Context, uri TextDocumentIdentifier, position Position) ([]Location, error)
 
 	// FindReferences is a request to resolve project-wide reference
 	// location(s) for the symbol at the given position.
 	// uri is the document identifier.
 	// pos is the position in the document of the symbol.
-	FindReferences(ctx log.Context, uri TextDocumentIdentifier, position Position, includeDecl bool) ([]Location, error)
+	FindReferences(ctx context.Context, uri TextDocumentIdentifier, position Position, includeDecl bool) ([]Location, error)
 
 	// DocumentHighlights is a request to resolve document highlights at the
 	// given position.
 	// uri is the document identifier.
 	// pos is the position in the document to get highlight information.
-	DocumentHighlights(ctx log.Context, uri TextDocumentIdentifier, position Position) ([]DocumentHighlight, error)
+	DocumentHighlights(ctx context.Context, uri TextDocumentIdentifier, position Position) ([]DocumentHighlight, error)
 
 	// DocumentSymbols is a request to list all the symbols for the given
 	// document.
 	// uri is the document identifier to get symbols for.
-	DocumentSymbols(ctx log.Context, doc TextDocumentIdentifier) ([]SymbolInformation, error)
+	DocumentSymbols(ctx context.Context, doc TextDocumentIdentifier) ([]SymbolInformation, error)
 
 	// WorkspaceSymbols is a request to list all the project-wide symbols that
 	// match the query string.
-	WorkspaceSymbols(ctx log.Context, query string) ([]SymbolInformation, error)
+	WorkspaceSymbols(ctx context.Context, query string) ([]SymbolInformation, error)
 
 	// CodeAction is a request to compute commands for the given text document
 	// and range. The request is triggered when the user moves the cursor into
@@ -173,27 +173,27 @@ type Server interface {
 	// doc is the document to compute commands for.
 	// rng is the range in the document.
 	// context holds additional information about the request.
-	CodeAction(ctx log.Context, doc TextDocumentIdentifier, rng Range, context CodeActionContext) ([]Command, error)
+	CodeAction(ctx context.Context, doc TextDocumentIdentifier, rng Range, context CodeActionContext) ([]Command, error)
 
 	// CodeLens is a request to compute code-lenses for a given text document.
 	// doc is the document to compute code-lenses for.
-	CodeLens(ctx log.Context, doc TextDocumentIdentifier) ([]CodeLens, error)
+	CodeLens(ctx context.Context, doc TextDocumentIdentifier) ([]CodeLens, error)
 
 	// CodeLensResolve is a request to resolve the command for a given code
 	// lens item.
-	CodeLensResolve(ctx log.Context, codelens CodeLens) (CodeLens, error)
+	CodeLensResolve(ctx context.Context, codelens CodeLens) (CodeLens, error)
 
 	// DocumentFormatting is a request to format the entire document.
 	// doc is the document to format.
 	// opts are the formatting options.
-	DocumentFormatting(ctx log.Context, doc TextDocumentIdentifier, opts FormattingOptions) ([]TextEdit, error)
+	DocumentFormatting(ctx context.Context, doc TextDocumentIdentifier, opts FormattingOptions) ([]TextEdit, error)
 
 	// DocumentRangeFormatting is a request to format the given range in a
 	// document.
 	// doc is the document to format.
 	// rng is the range to format.
 	// opts are the formatting options.
-	DocumentRangeFormatting(ctx log.Context, doc TextDocumentIdentifier, rng Range, opts FormattingOptions) ([]TextEdit, error)
+	DocumentRangeFormatting(ctx context.Context, doc TextDocumentIdentifier, rng Range, opts FormattingOptions) ([]TextEdit, error)
 
 	// DocumentOnTypeFormatting is a request to format parts of the document
 	// during typing.
@@ -201,42 +201,42 @@ type Server interface {
 	// pos is the position at which the character was typed.
 	// char is the character that was typed.
 	// ops are the formatting options.
-	DocumentOnTypeFormatting(ctx log.Context, doc TextDocumentIdentifier, pos Position, char string, opts FormattingOptions) ([]TextEdit, error)
+	DocumentOnTypeFormatting(ctx context.Context, doc TextDocumentIdentifier, pos Position, char string, opts FormattingOptions) ([]TextEdit, error)
 
 	// Rename is a request to perform a workspace-wide rename of a symbol.
 	// doc is the document holding the symbol of reference.
 	// pos is the position of the symbol.
 	// newName is the new name of the symbol.
-	Rename(ctx log.Context, doc TextDocumentIdentifier, pos Position, newName string) (WorkspaceEdit, error)
+	Rename(ctx context.Context, doc TextDocumentIdentifier, pos Position, newName string) (WorkspaceEdit, error)
 
 	// OnExit is a request for the server to exit its process.
-	OnExit(ctx log.Context) error
+	OnExit(ctx context.Context) error
 
 	// OnChangeConfiguration is a notification that the configuration settings
 	// have changed.
-	OnChangeConfiguration(ctx log.Context, settings map[string]interface{})
+	OnChangeConfiguration(ctx context.Context, settings map[string]interface{})
 
 	// OnOpenTextDocument is a notification that signals when a document is
 	// opened. The document's truth is now managed by the client and the
 	// server must not try to read the document's truth using the document's
 	// URI.
-	OnOpenTextDocument(ctx log.Context, item TextDocumentItem)
+	OnOpenTextDocument(ctx context.Context, item TextDocumentItem)
 
 	// OnChangeTextDocument is a notification that signals changes to a text
 	// document.
-	OnChangeTextDocument(ctx log.Context, item VersionedTextDocumentIdentifier, changes []TextDocumentContentChangeEvent)
+	OnChangeTextDocument(ctx context.Context, item VersionedTextDocumentIdentifier, changes []TextDocumentContentChangeEvent)
 
 	// OnCloseTextDocument is a notification that signals when a document is
 	// closed.
-	OnCloseTextDocument(ctx log.Context, item TextDocumentIdentifier)
+	OnCloseTextDocument(ctx context.Context, item TextDocumentIdentifier)
 
 	// OnSaveTextDocument is a notification that signals when a document is
 	// saved.
-	OnSaveTextDocument(ctx log.Context, item TextDocumentIdentifier)
+	OnSaveTextDocument(ctx context.Context, item TextDocumentIdentifier)
 
 	// OnChangeWatchedFiles is a notification that signals changes to files
 	// watched by the lanaguage client.
-	OnChangeWatchedFiles(ctx log.Context, changes []FileEvent)
+	OnChangeWatchedFiles(ctx context.Context, changes []FileEvent)
 }
 
 // Connection sends and receives messages from the client.
@@ -253,7 +253,7 @@ type Connection struct {
 }
 
 type recvItem struct {
-	ctx log.Context
+	ctx context.Context
 	msg interface{}
 }
 
@@ -277,7 +277,7 @@ func NewConnection(stream io.ReadWriter) *Connection {
 
 // Serve listens on the connection for all incomming requests and notifications
 // and dispatches messages to server.
-func (c *Connection) Serve(ctx log.Context, server Server) error {
+func (c *Connection) Serve(ctx context.Context, server Server) error {
 	stopped, stop := task.NewSignal()
 	defer stop(ctx)
 	c.stopped = stopped
@@ -294,9 +294,9 @@ func (c *Connection) Serve(ctx log.Context, server Server) error {
 		case <-task.ShouldStop(ctx):
 			return nil
 		case err := <-sendErr:
-			return cause.Explain(ctx, err, "sending")
+			return log.Err(ctx, err, "sending")
 		case err := <-recvErr:
-			return cause.Explain(ctx, err, "receiving")
+			return log.Err(ctx, err, "receiving")
 		case item := <-c.recvChan:
 			c.dispatch(item.ctx, item.msg, server)
 			if request, ok := item.msg.(Request); ok {
@@ -308,17 +308,17 @@ func (c *Connection) Serve(ctx log.Context, server Server) error {
 	}
 }
 
-func (c *Connection) recvRoutine(ctx log.Context) (err error) {
+func (c *Connection) recvRoutine(ctx context.Context) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = cause.Explain(ctx, ErrCaughtPanic, "recvRoutine").With("Caught", r)
+			err = log.Errf(ctx, ErrCaughtPanic, "recvRoutine: %v", r)
 		}
 	}()
 
 	for !task.Stopped(ctx) {
 		packet, err := c.readPacket()
 		if err != nil {
-			return cause.Explain(ctx, err, "reading packet")
+			return log.Err(ctx, err, "reading packet")
 		}
 		msg, err := c.decode(packet)
 		switch err := err.(type) {
@@ -326,7 +326,7 @@ func (c *Connection) recvRoutine(ctx log.Context) (err error) {
 		case ErrUnknownMethod:
 			continue
 		default:
-			return cause.Explain(ctx, err, "decoding packet")
+			return log.Err(ctx, err, "decoding packet")
 		}
 		switch msg := msg.(type) {
 		case *CancelNotification:
@@ -351,19 +351,19 @@ func (c *Connection) recvRoutine(ctx log.Context) (err error) {
 			c.recvChan <- recvItem{ctx, msg}
 		}
 	}
-	return cause.Wrap(ctx, ErrStopped)
+	return log.Err(ctx, ErrStopped, "")
 }
 
-func (c *Connection) sendRoutine(ctx log.Context) (err error) {
+func (c *Connection) sendRoutine(ctx context.Context) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = cause.Explain(ctx, ErrCaughtPanic, "sendRoutine").With("Caught", r)
+			err = log.Errf(ctx, ErrCaughtPanic, "sendRoutine: %v", r)
 		}
 	}()
 	for {
 		select {
 		case <-task.ShouldStop(ctx):
-			return cause.Wrap(ctx, ErrStopped)
+			return log.Err(ctx, ErrStopped, "")
 		case item := <-c.sendChan:
 			packet, err := json.Marshal(item.msg)
 			if err != nil {
@@ -460,9 +460,9 @@ func (c *Connection) decode(buf []byte) (interface{}, error) {
 	return obj, nil
 }
 
-func (c *Connection) dispatch(ctx log.Context, msg interface{}, server Server) error {
+func (c *Connection) dispatch(ctx context.Context, msg interface{}, server Server) error {
 	if request, ok := msg.(Request); ok {
-		ctx = ctx.V("id", request.RequestID())
+		ctx = log.V{"id": request.RequestID()}.Bind(ctx)
 	}
 
 	switch msg := msg.(type) {

@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/replay"
 )
@@ -35,7 +36,7 @@ func (r *Replays) All() []*Replay {
 	return r.entries
 }
 
-func (o *DataOwner) updateReplay(ctx log.Context, action *replay.Action) error {
+func (o *DataOwner) updateReplay(ctx context.Context, action *replay.Action) error {
 	o.Write(func(data *Data) {
 		data.Replays.entries = append(data.Replays.entries, &Replay{Action: *action})
 	})
@@ -44,7 +45,7 @@ func (o *DataOwner) updateReplay(ctx log.Context, action *replay.Action) error {
 
 // Find searches the replays for the one that matches the supplied action.
 // See worker.EquivalentAction for more information about how actions are compared.
-func (r *Replays) Find(ctx log.Context, action *replay.Action) *Replay {
+func (r *Replays) Find(ctx context.Context, action *replay.Action) *Replay {
 	for _, entry := range r.entries {
 		if worker.EquivalentAction(&entry.Action, action) {
 			return entry
@@ -57,7 +58,7 @@ func (r *Replays) Find(ctx log.Context, action *replay.Action) *Replay {
 // it creates a new replay object, and returns it.
 // It does not register the newly created replay object for you, that will happen only if
 // a call is made to trigger the action on the replay service.
-func (r *Replays) FindOrCreate(ctx log.Context, action *replay.Action) (*Replay, bool) {
+func (r *Replays) FindOrCreate(ctx context.Context, action *replay.Action) (*Replay, bool) {
 	entry := r.Find(ctx, action)
 	if entry != nil {
 		return entry, true

@@ -44,7 +44,7 @@ func TestOSXOS(t *testing.T) {
 		{10, 2, 0, "Jaguar", "Jaguar 10.2.0"},
 		{10, 1, 0, "Puma", "Puma 10.1.0"},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		os := device.OSXOS(test.major, test.minor, 0)
 		assert.For(ctx, "Kind").That(os.Kind).Equals(device.OSX)
 		assert.For(ctx, "Name").That(os.Name).Equals(test.name)

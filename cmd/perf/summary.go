@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -25,7 +26,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/benchmark"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -183,7 +183,7 @@ func diffSamplers(a Multisample, b Multisample) interface{} {
 	}
 }
 
-func summaryVerb(ctx log.Context, flags flag.FlagSet) error {
+func summaryVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected.")
 		return nil

@@ -15,10 +15,10 @@
 package manifest
 
 import (
+	"context"
 	"encoding/xml"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -50,10 +50,10 @@ type Manifest struct {
 }
 
 // Parse parses the AndroidManifest XML string.
-func Parse(ctx log.Context, s string) (Manifest, error) {
+func Parse(ctx context.Context, s string) (Manifest, error) {
 	m := Manifest{}
 	if err := xml.Unmarshal([]byte(s), &m); err != nil {
-		return Manifest{}, cause.Explain(ctx, err, "Parsing manifest")
+		return Manifest{}, log.Err(ctx, err, "Parsing manifest")
 	}
 	return m, nil
 }
@@ -98,7 +98,7 @@ type Permission struct {
 	Name string `xml:"name,attr"`
 }
 
-func (m Manifest) MainActivity(ctx log.Context) (activity, action string, err error) {
+func (m Manifest) MainActivity(ctx context.Context) (activity, action string, err error) {
 	search := func(category string) (activity, action string, ok bool) {
 		for _, a := range m.Application.Activities {
 			for _, i := range a.IntentFilters {
@@ -124,5 +124,5 @@ func (m Manifest) MainActivity(ctx log.Context) (activity, action string, err er
 		return
 	}
 	// Not found.
-	return "", "", cause.Wrap(ctx, ErrNoActivityFound)
+	return "", "", log.Err(ctx, ErrNoActivityFound, "")
 }

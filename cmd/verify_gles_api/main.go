@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/resolver"
@@ -43,7 +43,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	if *apiPath == "" {
 		app.Usage(ctx, "Mustsupply api path")
 	}

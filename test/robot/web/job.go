@@ -15,18 +15,18 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/job"
 )
 
 func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*job.Device{}
-	if err := s.Job.SearchDevices(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *job.Device) error {
+	if err := s.Job.SearchDevices(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *job.Device) error {
 		result = append(result, entry)
 		return nil
 	}); err != nil {

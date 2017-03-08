@@ -15,9 +15,9 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -26,7 +26,7 @@ import (
 
 // ResourceData resolves the data of the specified resource at the specified
 // point in the capture.
-func ResourceData(ctx log.Context, p *path.ResourceData) (interface{}, error) {
+func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error) {
 	obj, err := database.Build(ctx, &ResourceDataResolvable{p})
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func ResourceData(ctx log.Context, p *path.ResourceData) (interface{}, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *ResourceDataResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
 
 	state := capture.NewState(ctx)
@@ -48,7 +48,7 @@ func (r *ResourceDataResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	return resource.ResourceData(ctx, state, IDMap)
 }
 
-func buildResource(ctx log.Context, state *gfxapi.State, p *path.ResourceData, IDMap gfxapi.ResourceMap) (gfxapi.Resource, error) {
+func buildResource(ctx context.Context, state *gfxapi.State, p *path.ResourceData, IDMap gfxapi.ResourceMap) (gfxapi.Resource, error) {
 	list, err := NCommands(ctx, p.After.Commands, p.After.Index+1)
 	if err != nil {
 		return nil, err

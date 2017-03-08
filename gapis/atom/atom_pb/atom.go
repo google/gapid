@@ -15,8 +15,9 @@
 package atom_pb
 
 import (
+	"context"
+
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/log"
 )
 
 // Atom is the interface implemented by all atom storage objects.
@@ -25,7 +26,7 @@ type Atom interface {
 }
 
 // Handler is a function to which a stream of atoms can be handed.
-type Handler func(log.Context, Atom) error
+type Handler func(context.Context, Atom) error
 
 // InvokeMarker is the singleton instance of Invoke that can be used to avoid allocations.
 var InvokeMarker Atom = &Invoke{}

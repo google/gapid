@@ -15,10 +15,10 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 )
@@ -27,13 +27,13 @@ import (
 type drawCall interface {
 	atom.Atom
 	getIndices(
-		ctx log.Context,
+		ctx context.Context,
 		c *Context,
 		s *gfxapi.State) ([]uint32, GLenum, error)
 }
 
 func (a *GlDrawArrays) getIndices(
-	ctx log.Context,
+	ctx context.Context,
 	c *Context,
 	s *gfxapi.State) ([]uint32, GLenum, error) {
 
@@ -45,7 +45,7 @@ func (a *GlDrawArrays) getIndices(
 }
 
 func (a *GlDrawElements) getIndices(
-	ctx log.Context,
+	ctx context.Context,
 	c *Context,
 	s *gfxapi.State) ([]uint32, GLenum, error) {
 
@@ -112,96 +112,96 @@ func decodeIndices(r pod.Reader, indicesType GLenum) ([]uint32, error) {
 }
 
 // The draw calls below are stubbed.
-func (GlDrawArraysIndirect) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysIndirect) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysIndirect.getIndices() not implemented")
 }
-func (GlDrawArraysInstanced) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysInstanced) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysInstanced.getIndices() not implemented")
 }
-func (GlDrawArraysInstancedANGLE) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysInstancedANGLE) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysInstancedANGLE.getIndices() not implemented")
 }
-func (GlDrawArraysInstancedBaseInstanceEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysInstancedBaseInstanceEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysInstancedBaseInstanceEXT.getIndices() not implemented")
 }
-func (GlDrawArraysInstancedEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysInstancedEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysInstancedEXT.getIndices() not implemented")
 }
-func (GlDrawArraysInstancedNV) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawArraysInstancedNV) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawArraysInstancedNV.getIndices() not implemented")
 }
-func (GlDrawElementsBaseVertex) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsBaseVertex) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsBaseVertex.getIndices() not implemented")
 }
-func (GlDrawElementsBaseVertexEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsBaseVertexEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsBaseVertexEXT.getIndices() not implemented")
 }
-func (GlDrawElementsBaseVertexOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsBaseVertexOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsBaseVertexOES.getIndices() not implemented")
 }
-func (GlDrawElementsIndirect) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsIndirect) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsIndirect.getIndices() not implemented")
 }
-func (GlDrawElementsInstanced) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstanced) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstanced.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedANGLE) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedANGLE) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedANGLE.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedBaseInstanceEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedBaseInstanceEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedBaseInstanceEXT.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedBaseVertex) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedBaseVertex) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedBaseVertex.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedBaseVertexBaseInstanceEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedBaseVertexBaseInstanceEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedBaseVertexBaseInstanceEXT.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedBaseVertexEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedBaseVertexEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedBaseVertexEXT.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedBaseVertexOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedBaseVertexOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedBaseVertexOES.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedEXT.getIndices() not implemented")
 }
-func (GlDrawElementsInstancedNV) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawElementsInstancedNV) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawElementsInstancedNV.getIndices() not implemented")
 }
-func (GlDrawRangeElements) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawRangeElements) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawRangeElements.getIndices() not implemented")
 }
-func (GlDrawRangeElementsBaseVertex) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawRangeElementsBaseVertex) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawRangeElementsBaseVertex.getIndices() not implemented")
 }
-func (GlDrawRangeElementsBaseVertexEXT) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawRangeElementsBaseVertexEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawRangeElementsBaseVertexEXT.getIndices() not implemented")
 }
-func (GlDrawRangeElementsBaseVertexOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawRangeElementsBaseVertexOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawRangeElementsBaseVertexOES.getIndices() not implemented")
 }
-func (GlDrawTexfOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexfOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexfOES.getIndices() not implemented")
 }
-func (GlDrawTexfvOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexfvOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexfvOES.getIndices() not implemented")
 }
-func (GlDrawTexiOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexiOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexiOES.getIndices() not implemented")
 }
-func (GlDrawTexivOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexivOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexivOES.getIndices() not implemented")
 }
-func (GlDrawTexsOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexsOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexsOES.getIndices() not implemented")
 }
-func (GlDrawTexsvOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexsvOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexsvOES.getIndices() not implemented")
 }
-func (GlDrawTexxOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexxOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexxOES.getIndices() not implemented")
 }
-func (GlDrawTexxvOES) getIndices(log.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+func (GlDrawTexxvOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexxvOES.getIndices() not implemented")
 }

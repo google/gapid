@@ -15,14 +15,15 @@
 package image
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/database"
 )
 
 // Resolve returns the byte array holding the resized image for the
 // ResizeResolver request.
 // TODO: Can this be moved to the resolve package?
-func (r *ResizeResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ResizeResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	data, err := database.Resolve(ctx, r.Data.ID())
 	if err != nil {
 		return nil, err

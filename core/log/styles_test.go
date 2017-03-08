@@ -12,34 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package output_test
+package log_test
 
 import (
-	"context"
+	"bytes"
 	"testing"
 
-	"github.com/google/gapid/core/app/output"
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/text/note"
+	"github.com/google/gapid/core/log"
 )
 
-func TestLog(t *testing.T) {
-	assert := assert.To(t)
-	ctx := context.Background()
-	l := &logger{}
-	ctx = output.NewContext(ctx, output.Log(l, note.Normal))
-	for _, test := range tests {
-		testHandler(ctx, test)
-		assert.For(test.severity.String()).That(l.out).Equals(test.expect)
-		l.out = ""
+func TestStyles(t *testing.T) {
+	var buf bytes.Buffer
+
+	for _, test := range testMessages {
+		for _, w := range []struct {
+			handler  log.Handler
+			name     string
+			expected string
+		}{
+			{log.Raw.Handler(&buf, &buf), "Raw", test.raw},
+			{log.Brief.Handler(&buf, &buf), "Brief", test.brief},
+			{log.Normal.Handler(&buf, &buf), "Normal", test.normal},
+			{log.Detailed.Handler(&buf, &buf), "Detailed", test.detailed},
+		} {
+			buf.Reset()
+			test.send(w.handler)
+			assert.To(t).
+				For("%s(%s)", w.name, test.msg).
+				ThatString(buf.String()).Equals(w.expected)
+		}
 	}
-}
-
-type logger struct {
-	out string
-}
-
-func (l *logger) Output(calldepth int, s string) error {
-	l.out += s
-	return nil
 }

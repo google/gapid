@@ -15,14 +15,14 @@
 package main
 
 import (
+	"context"
 	"strconv"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/lingo"
 )
 
-func Parse(ctx log.Context, name string, input string) (Expression, error) {
+func Parse(ctx context.Context, name string, input string) (Expression, error) {
 	s := lingo.NewStringScanner(ctx, name, input, nil)
 	s.SetSkip(skip)
 	value, err := expression(s)
@@ -30,7 +30,7 @@ func Parse(ctx log.Context, name string, input string) (Expression, error) {
 		return nil, err
 	}
 	if !s.EOF() {
-		return nil, cause.Explain(ctx, nil, "Input not consumed")
+		return nil, log.Err(ctx, nil, "Input not consumed")
 	}
 	return value, nil
 }

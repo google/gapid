@@ -15,16 +15,15 @@
 package event
 
 import (
+	"context"
 	"reflect"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
 var (
-	contextType = reflect.TypeOf((*log.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 	boolType    = reflect.TypeOf(true)
 )
@@ -34,15 +33,15 @@ var (
 // You indicate the parameterised entry by having a nil for that type record, and the matching type is
 // returned from the fuction.
 // It is an error to try to parameterise on more than one, behaviour is undefined in that case.
-func checkSignature(ctx log.Context, f reflect.Type, in []reflect.Type, out []reflect.Type) (reflect.Type, error) {
+func checkSignature(ctx context.Context, f reflect.Type, in []reflect.Type, out []reflect.Type) (reflect.Type, error) {
 	if !(f.Kind() == reflect.Func) {
-		return nil, cause.Explain(ctx, nil, "Expected a function").With("type", f)
+		return nil, log.Errf(ctx, nil, "Expected a function. Got: %v", f)
 	}
 	if f.NumIn() != len(in) {
-		return nil, cause.Explain(ctx, nil, "Invalid argument count").With("args", f.NumIn())
+		return nil, log.Errf(ctx, nil, "Invalid argument count: %d", f.NumIn())
 	}
 	if f.NumOut() != len(out) {
-		return nil, cause.Explain(ctx, nil, "Invalid return count").With("args", f.NumIn())
+		return nil, log.Errf(ctx, nil, "Invalid return count: %v", f.NumIn())
 	}
 	var res reflect.Type
 	for i, t := range in {
@@ -50,7 +49,7 @@ func checkSignature(ctx log.Context, f reflect.Type, in []reflect.Type, out []re
 		if t == nil {
 			res = check
 		} else if check != t {
-			return nil, cause.Explain(ctx, nil, "Incorrect parameter type").With("type", check)
+			return nil, log.Errf(ctx, nil, "Incorrect parameter type: %v", check)
 		}
 	}
 	for i, t := range out {
@@ -58,7 +57,7 @@ func checkSignature(ctx log.Context, f reflect.Type, in []reflect.Type, out []re
 		if t == nil {
 			res = check
 		} else if check != t {
-			return nil, cause.Explain(ctx, nil, "Incorrect return type").With("type", check)
+			return nil, log.Errf(ctx, nil, "Incorrect return type: %v", check)
 		}
 	}
 	return res, nil
@@ -78,21 +77,21 @@ func safeObject(v reflect.Value) interface{} {
 	return v.Interface()
 }
 
-func funcToHandler(ctx log.Context, f reflect.Value) Handler {
+func funcToHandler(ctx context.Context, f reflect.Value) Handler {
 	t, err := checkSignature(ctx, f.Type(),
 		[]reflect.Type{contextType, nil},
 		[]reflect.Type{errorType},
 	)
 	if err != nil {
-		jot.Fatal(ctx, err, "Checking handler signature")
+		log.F(ctx, "Checking handler signature. Error: %v", err)
 	}
-	return func(ctx log.Context, event interface{}) error {
+	return func(ctx context.Context, event interface{}) error {
 		args := []reflect.Value{
 			reflect.ValueOf(ctx),
 			safeValue(event, t),
 		}
 		if !args[1].Type().AssignableTo(t) {
-			return cause.Explain(ctx, nil, "Invalid event type").With("type", args[1].Type()).With("expected", t)
+			return log.Errf(ctx, nil, "Invalid event type: %v. Expected: %v", args[1].Type(), t)
 		}
 		result := f.Call(args)
 		if !result[0].IsNil() {
@@ -102,29 +101,29 @@ func funcToHandler(ctx log.Context, f reflect.Value) Handler {
 	}
 }
 
-func funcToProducer(ctx log.Context, f reflect.Value) Producer {
+func funcToProducer(ctx context.Context, f reflect.Value) Producer {
 	_, err := checkSignature(ctx, f.Type(),
 		[]reflect.Type{contextType},
 		[]reflect.Type{nil},
 	)
 	if err != nil {
-		jot.Fatal(ctx, err, "Checking producer signature")
+		log.F(ctx, "Checking producer signature. Error: %v", err)
 	}
-	return func(ctx log.Context) interface{} {
+	return func(ctx context.Context) interface{} {
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 		return safeObject(f.Call(args)[0])
 	}
 }
 
-func funcToPredicate(ctx log.Context, f reflect.Value) Predicate {
+func funcToPredicate(ctx context.Context, f reflect.Value) Predicate {
 	t, err := checkSignature(ctx, f.Type(),
 		[]reflect.Type{contextType, nil},
 		[]reflect.Type{boolType},
 	)
 	if err != nil {
-		jot.Fatal(ctx, err, "Checking handler signature")
+		log.F(ctx, "Checking handler signature. Error: %v", err)
 	}
-	return func(ctx log.Context, event interface{}) bool {
+	return func(ctx context.Context, event interface{}) bool {
 		args := []reflect.Value{reflect.ValueOf(ctx), safeValue(event, t)}
 		if args[1].Type() != t {
 			return false

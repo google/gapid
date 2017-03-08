@@ -16,6 +16,8 @@ package test
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -48,7 +50,7 @@ type test struct {
 	expected expected
 }
 
-func (test test) check(ctx log.Context, ca, ra *device.MemoryLayout) {
+func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	b := builder.New(ra)
 	s := gfxapi.NewStateWithEmptyAllocator()
 	s.MemoryLayout = ca
@@ -61,7 +63,8 @@ func (test test) check(ctx log.Context, ca, ra *device.MemoryLayout) {
 		func() {
 			defer func() {
 				err := recover()
-				if !assert.For(ctx.V("Atom", i).T("Type", a), "Panic in replay").That(err).IsNil() {
+				ctx := log.V{"atom": i, "type": fmt.Sprintf("%T", a)}.Bind(ctx)
+				if !assert.For(ctx, "Panic in replay").That(err).IsNil() {
 					panic(err)
 				}
 			}()
@@ -83,12 +86,12 @@ func (test test) check(ctx log.Context, ca, ra *device.MemoryLayout) {
 	assert.For(ctx, "Constants").ThatSlice(payload.Constants).Equals(test.expected.constants)
 }
 
-func checkResource(ctx log.Context, gotInfos []protocol.ResourceInfo, expectedIDs []id.ID) {
+func checkResource(ctx context.Context, gotInfos []protocol.ResourceInfo, expectedIDs []id.ID) {
 	var err error
 
 	got := make([]interface{}, len(gotInfos))
 	for i, g := range gotInfos {
-		ctx := ctx.V("ID", g.ID)
+		ctx := log.V{"id": g.ID}.Bind(ctx)
 		id, err := id.Parse(g.ID)
 		assert.For(ctx, "Parse resource ID").ThatError(err).Succeeded()
 		got[i], err = database.Resolve(ctx, id)
@@ -97,7 +100,7 @@ func checkResource(ctx log.Context, gotInfos []protocol.ResourceInfo, expectedID
 
 	expected := make([]interface{}, len(expectedIDs))
 	for i, e := range expectedIDs {
-		ctx := ctx.V("ID", e)
+		ctx := log.V{"id": e}.Bind(ctx)
 		expected[i], err = database.Resolve(ctx, e)
 		assert.For(ctx, "Get resource").ThatError(err).Succeeded()
 	}

@@ -15,18 +15,18 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/master"
 )
 
 func (s *Server) handleSatellites(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*master.Satellite(nil)
-	s.Master.Search(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *master.Satellite) error {
+	s.Master.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *master.Satellite) error {
 		result = append(result, entry)
 		return nil
 	})

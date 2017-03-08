@@ -15,7 +15,8 @@
 package test
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 )
@@ -30,7 +31,7 @@ func (m *MockAtomWriter) State() *gfxapi.State {
 	return m.S
 }
 
-func (m *MockAtomWriter) MutateAndWrite(ctx log.Context, id atom.ID, a atom.Atom) {
+func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id atom.ID, a atom.Atom) {
 	if m.S != nil {
 		a.Mutate(ctx, m.S, nil)
 	}
@@ -65,7 +66,7 @@ func List(atoms ...interface{}) AtomAtomIDList {
 	return l
 }
 
-func (l *AtomAtomIDList) Write(ctx log.Context, id atom.ID, a atom.Atom) {
+func (l *AtomAtomIDList) Write(ctx context.Context, id atom.ID, a atom.Atom) {
 	*l = append(*l, AtomAtomID{a, id})
 }
 

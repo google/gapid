@@ -15,17 +15,17 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // Thumbnail resolves and returns the thumbnail from the path p.
-func Thumbnail(ctx log.Context, p *path.Thumbnail) (*image.Info2D, error) {
+func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err

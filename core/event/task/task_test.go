@@ -15,12 +15,12 @@
 package task_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 )
@@ -38,13 +38,13 @@ type testTask struct {
 	ran     bool
 }
 
-func (t *testTask) submit(ctx log.Context, blocked bool, e task.Executor, expect error) {
+func (t *testTask) submit(ctx context.Context, blocked bool, e task.Executor, expect error) {
 	t.in = nil
 	if blocked {
 		t.in, t.unblock = task.NewSignal()
 	}
 	t.ran = false
-	ctx = ctx.S("Task", t.name)
+	ctx = log.V{"Task": t.name}.Bind(ctx)
 	handle := e(ctx, t.run)
 	t.handle = handle
 	if expect != nil {
@@ -52,7 +52,7 @@ func (t *testTask) submit(ctx log.Context, blocked bool, e task.Executor, expect
 	}
 }
 
-func (t *testTask) run(ctx log.Context) error {
+func (t *testTask) run(ctx context.Context) error {
 	if t.in != nil {
 		t.in.Wait(ctx)
 	}
@@ -68,7 +68,7 @@ func makeTasks(count int) []*testTask {
 	return tasks
 }
 
-func yieldTasks(ctx log.Context, tasks []*testTask) {
+func yieldTasks(ctx context.Context, tasks []*testTask) {
 	for _, t := range tasks {
 		if !t.handle.TryWait(ctx, ExpectBlocking) {
 			return
@@ -76,13 +76,13 @@ func yieldTasks(ctx log.Context, tasks []*testTask) {
 	}
 }
 
-func verifyTaskStates(ctx log.Context, tasks []*testTask, states ...bool) {
+func verifyTaskStates(ctx context.Context, tasks []*testTask, states ...bool) {
 	if len(tasks) != len(states) {
-		jot.Fatal(ctx, nil, "State count does not match task count")
+		log.E(ctx, "State count does not match task count")
 	}
 	yieldTasks(ctx, tasks)
 	for i, t := range tasks {
-		ctx := ctx.Enter(t.name)
+		ctx := log.Enter(ctx, t.name)
 		assert.For(ctx, "Run state").That(t.ran).Equals(states[i])
 		assert.For(ctx, "Fired state").That(t.handle.Fired()).Equals(t.ran)
 	}
@@ -91,7 +91,7 @@ func verifyTaskStates(ctx log.Context, tasks []*testTask, states ...bool) {
 func TestOnce(t *testing.T) {
 	ctx := log.Testing(t)
 	count := 0
-	counter := func(log.Context) error { count++; return nil }
+	counter := func(context.Context) error { count++; return nil }
 	assert.For(ctx, "Count before run").That(count).Equals(0)
 	counter(ctx)
 	assert.For(ctx, "Count after run").That(count).Equals(1)

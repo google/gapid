@@ -16,10 +16,9 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 type Status struct {
@@ -100,7 +99,7 @@ func (s Status) String() string {
 }
 
 // Status performs a `git status` call.
-func (g Git) Status(ctx log.Context) (Status, error) {
+func (g Git) Status(ctx context.Context) (Status, error) {
 	str, _, err := g.run(ctx, "status", "-z")
 	if err != nil {
 		return Status{}, err

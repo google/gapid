@@ -15,10 +15,10 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -34,13 +34,13 @@ type client struct {
 }
 
 // Run starts new replay client if any hardware is available.
-func Run(ctx log.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
+func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
 	c := &client{store: store, manager: manager, tempDir: tempDir}
 	host := device.Host(ctx)
 	return manager.Register(ctx, host, host, c.replay)
 }
 
-func (c *client) replay(ctx log.Context, t *Task) error {
+func (c *client) replay(ctx context.Context, t *Task) error {
 	if err := c.manager.Update(ctx, t.Action, job.Running, nil); err != nil {
 		return err
 	}
@@ -48,12 +48,12 @@ func (c *client) replay(ctx log.Context, t *Task) error {
 	status := job.Succeeded
 	if err != nil {
 		status = job.Failed
-		jot.Fail(ctx, err, "Running replay")
+		log.E(ctx, "Error running replay: %v", err)
 	}
 	return c.manager.Update(ctx, t.Action, status, output)
 }
 
-func doReplay(ctx log.Context, action string, in *Input, store *stash.Client, tempDir file.Path) (*Output, error) {
+func doReplay(ctx context.Context, action string, in *Input, store *stash.Client, tempDir file.Path) (*Output, error) {
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	videofile := tempDir.Join(action + "_replay.mp4")
 
@@ -98,7 +98,7 @@ func doReplay(ctx log.Context, action string, in *Input, store *stash.Client, te
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)
 	output = fmt.Sprintf("%s\n\n%s", cmd, output)
-	ctx.Notice().Log(output)
+	log.I(ctx, output)
 
 	outputObj := &Output{}
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"replay.log"}}, output)

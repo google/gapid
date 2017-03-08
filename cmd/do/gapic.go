@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,7 +24,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -54,7 +54,7 @@ func findOrExit(p file.Path) file.Path {
 	return p
 }
 
-func gapic(ctx log.Context, cfg Config) *gapicEnv {
+func gapic(ctx context.Context, cfg Config) *gapicEnv {
 	if cfg.JavaHome.IsEmpty() {
 		fmt.Println("Error building gapic: the JDK is required")
 		os.Exit(1)
@@ -79,7 +79,7 @@ func gapic(ctx log.Context, cfg Config) *gapicEnv {
 	}
 }
 
-func (e *gapicEnv) build(ctx log.Context, options BuildOptions) {
+func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 	if options.DryRun {
 		return
 	}
@@ -144,7 +144,7 @@ func (e *gapicEnv) build(ctx log.Context, options BuildOptions) {
 	}
 }
 
-func (e *gapicEnv) run(ctx log.Context, args ...string) {
+func (e *gapicEnv) run(ctx context.Context, args ...string) {
 	jar := e.out.Join("gapic-" + e.platform + ".jar")
 
 	jargs := make([]string, 0)

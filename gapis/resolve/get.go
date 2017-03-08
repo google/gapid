@@ -15,19 +15,20 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // Get resolves the object, value or memory at p.
-func Get(ctx log.Context, p *path.Any) (interface{}, error) {
+func Get(ctx context.Context, p *path.Any) (interface{}, error) {
 	return database.Build(ctx, &GetResolvable{p})
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *GetResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *GetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if c := path.FindCapture(r.Path.Node()); c != nil {
 		ctx = capture.Put(ctx, c)
 	}

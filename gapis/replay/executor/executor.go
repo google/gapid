@@ -17,13 +17,12 @@ package executor
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
@@ -44,7 +43,7 @@ type executor struct {
 // response is decoded, the corresponding handler in the handlers map will be
 // called.
 func Execute(
-	ctx log.Context,
+	ctx context.Context,
 	payload protocol.Payload,
 	decoder builder.ResponseDecoder,
 	connection io.ReadWriteCloser,
@@ -58,7 +57,7 @@ func Execute(
 	}.execute(ctx)
 }
 
-func (r executor) execute(ctx log.Context) error {
+func (r executor) execute(ctx context.Context) error {
 	// Encode the payload
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, r.memoryLayout.GetEndian())
@@ -79,13 +78,13 @@ func (r executor) execute(ctx log.Context) error {
 	go func() {
 		err := r.handleReplayCommunication(ctx, id, uint32(len(data)), responseW)
 		if err != nil {
-			jot.Warning(ctx).Cause(err).Print("Replay communication failed with error")
+			log.W(ctx, "Replay communication failed: %v", err)
 			if closeErr := responseW.CloseWithError(err); closeErr != nil {
-				jot.Warning(ctx).With("err", err).Cause(closeErr).Print("Replay execute pipe writer CloseWithError")
+				log.W(ctx, "Replay execute pipe writer CloseWithError: %v", closeErr)
 			}
 		} else {
 			if closeErr := responseW.Close(); closeErr != nil {
-				jot.Warning(ctx).Cause(closeErr).Print("Replay execute pipe writer Close failed")
+				log.W(ctx, "Replay execute pipe writer Close failed: %v", closeErr)
 			}
 		}
 		comErr <- err
@@ -96,15 +95,15 @@ func (r executor) execute(ctx log.Context) error {
 
 	err = <-comErr
 	if closeErr := responseR.Close(); closeErr != nil {
-		jot.Warning(ctx).Cause(closeErr).Print("Replay execute pipe reader Close failed")
+		log.W(ctx, "Replay execute pipe reader Close failed: %v", closeErr)
 	}
 	if err != nil {
-		return cause.Explain(ctx, err, "Communicating with gapir")
+		return log.Err(ctx, err, "Communicating with gapir")
 	}
 	return nil
 }
 
-func (r executor) handleReplayCommunication(ctx log.Context, replayID id.ID, replaySize uint32, postbacks io.WriteCloser) error {
+func (r executor) handleReplayCommunication(ctx context.Context, replayID id.ID, replaySize uint32, postbacks io.WriteCloser) error {
 	connection := r.connection
 	defer connection.Close()
 	e := endian.Writer(connection, r.memoryLayout.GetEndian())
@@ -141,7 +140,7 @@ func (r executor) handleReplayCommunication(ctx log.Context, replayID id.ID, rep
 	}
 }
 
-func (r executor) handleDataResponse(ctx log.Context, postbacks io.Writer) error {
+func (r executor) handleDataResponse(ctx context.Context, postbacks io.Writer) error {
 	d := endian.Reader(r.connection, r.memoryLayout.GetEndian())
 
 	n := d.Uint32()
@@ -157,18 +156,18 @@ func (r executor) handleDataResponse(ctx log.Context, postbacks io.Writer) error
 	return nil
 }
 
-func (r executor) handleGetData(ctx log.Context) error {
-	ctx = ctx.Enter("handleGetData")
+func (r executor) handleGetData(ctx context.Context) error {
+	ctx = log.Enter(ctx, "handleGetData")
 	d := endian.Reader(r.connection, r.memoryLayout.GetEndian())
 
 	resourceCount := d.Uint32()
 	if err := d.Error(); err != nil {
-		return cause.Explain(ctx, err, "Failed to decode resource count")
+		return log.Err(ctx, err, "Failed to decode resource count")
 	}
 
 	totalExpectedSize := d.Uint64()
 	if err := d.Error(); err != nil {
-		return cause.Explain(ctx, err, "Failed to decode total expected size")
+		return log.Err(ctx, err, "Failed to decode total expected size")
 	}
 
 	resourceIDs := make([]id.ID, resourceCount)
@@ -180,7 +179,7 @@ func (r executor) handleGetData(ctx log.Context) error {
 		var err error
 		resourceIDs[i], err = id.Parse(idString)
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed to parse resource ID").With("id", idString)
+			return log.Errf(ctx, err, "Failed to parse resource id: %v", idString)
 		}
 	}
 
@@ -188,22 +187,21 @@ func (r executor) handleGetData(ctx log.Context) error {
 	for _, rid := range resourceIDs {
 		obj, err := database.Resolve(ctx, rid)
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed to resolve resource with ID").With("id", rid)
+			return log.Errf(ctx, err, "Failed to resolve resource with id: %v", rid)
 		}
 
 		data := obj.([]byte)
 		n, err := r.connection.Write(data)
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed to send resource with ID").With("id", rid)
+			return log.Errf(ctx, err, "Failed to send resource with id: %v", rid)
 		}
 
 		totalReturnedSize += uint64(n)
 	}
 
 	if totalExpectedSize != totalReturnedSize {
-		return cause.Explain(ctx, nil, "Total resources size mismatch").
-			With("expected", totalExpectedSize).
-			With("resolved", totalReturnedSize)
+		return log.Errf(ctx, nil, "Total resources size mismatch. expected: %v, got: %v",
+			totalExpectedSize, totalReturnedSize)
 	}
 	return nil
 }

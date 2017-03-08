@@ -15,13 +15,13 @@
 package trace
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -63,33 +63,33 @@ func (c *client) getRunner(d bind.Device) (r *runner, existing bool) {
 }
 
 // TODO: not assume all android devices are valid trace targets
-func (c *client) OnDeviceAdded(ctx log.Context, d bind.Device) {
+func (c *client) OnDeviceAdded(ctx context.Context, d bind.Device) {
 	host := device.Host(ctx)
 	inst := d.Instance()
 
 	r, existing := c.getRunner(d)
 	if !existing {
-		ctx.Notice().Logf("Device added: %s", inst.GetName())
+		log.I(ctx, "Device added: %s", inst.GetName())
 		go func() {
 			if err := c.manager.Register(ctx, host, inst, r.trace); err != nil {
-				jot.Fail(ctx, err, "Running trace client")
+				log.E(ctx, "Error running trace client: %v", err)
 			}
 		}()
 	} else {
-		ctx.Notice().Logf("Device restored: %s", inst.GetName())
+		log.I(ctx, "Device restored: %s", inst.GetName())
 		r.device = d
 	}
 }
 
-func (c *client) OnDeviceRemoved(ctx log.Context, d bind.Device) {
-	ctx.Notice().Logf("Device removed: %s", d.Instance().GetName())
+func (c *client) OnDeviceRemoved(ctx context.Context, d bind.Device) {
+	log.I(ctx, "Device removed: %s", d.Instance().GetName())
 	// TODO: find a more graceful way to handle this.
 	// r, _ := c.getRunner(d)
 	// r.device = offlineDevice{d}
 }
 
 // Run starts new trace client if any hardware is available.
-func Run(ctx log.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
+func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
 	c := &client{
 		store:    store,
 		manager:  manager,
@@ -101,16 +101,16 @@ func Run(ctx log.Context, store *stash.Client, manager Manager, tempDir file.Pat
 
 	go func() {
 		if err := adb.Monitor(ctx, c.registry, 15*time.Second); err != nil {
-			jot.Fail(ctx, err, "adb.Monitor failed")
+			log.E(ctx, "adb.Monitor failed: %v", err)
 		}
 	}()
 
 	return nil
 }
 
-func (r *runner) trace(ctx log.Context, t *Task) (err error) {
+func (r *runner) trace(ctx context.Context, t *Task) (err error) {
 	if r.device.Status() != bind.Status_Online {
-		ctx.Notice().Logf("Trying to trace %s on %s not started, device status %s", t.Input.Subject, r.device.Instance().GetSerial(), r.device.Status().String())
+		log.I(ctx, "Trying to trace %s on %s not started, device status %s", t.Input.Subject, r.device.Instance().GetSerial(), r.device.Status().String())
 		return nil
 	}
 
@@ -121,12 +121,12 @@ func (r *runner) trace(ctx log.Context, t *Task) (err error) {
 	status := job.Succeeded
 	if err != nil {
 		status = job.Failed
-		jot.Fail(ctx, err, "Running trace")
+		log.F(ctx, "Error running trace: %v", err)
 	}
 	return r.manager.Update(ctx, t.Action, status, output)
 }
 
-func doTrace(ctx log.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
+func doTrace(ctx context.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
 	subject := tempDir.Join(action + ".apk")
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	extractedDir := tempDir.Join(action + "_tools")

@@ -15,16 +15,15 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
@@ -61,7 +60,7 @@ func newSession(d bind.Device) *session {
 	return &session{device: d, inited: make(chan struct{})}
 }
 
-func (s *session) init(ctx log.Context, d bind.Device, abi *device.ABI) error {
+func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI) error {
 	defer close(s.inited)
 
 	var err error
@@ -70,7 +69,7 @@ func (s *session) init(ctx log.Context, d bind.Device, abi *device.ABI) error {
 	} else if d, ok := d.(adb.Device); ok {
 		err = s.newADB(ctx, d, abi)
 	} else {
-		err = cause.Explainf(ctx, nil, "Cannot connect to device type %v", d)
+		err = log.Errf(ctx, nil, "Cannot connect to device type %v", d)
 	}
 	if err != nil {
 		s.close()
@@ -82,7 +81,7 @@ func (s *session) init(ctx log.Context, d bind.Device, abi *device.ABI) error {
 }
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func (s *session) newHost(ctx log.Context, d bind.Device, gapirArgs ...string) error {
+func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...string) error {
 	authToken := auth.GenToken()
 	args := []string{
 		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
@@ -94,7 +93,7 @@ func (s *session) newHost(ctx log.Context, d bind.Device, gapirArgs ...string) e
 	}
 
 	if !GapirPath.Exists() {
-		jot.Fail(ctx, nil, "Couldn't locate gapir executable")
+		log.F(ctx, "Couldn't locate gapir executable")
 		return nil
 	}
 
@@ -105,7 +104,7 @@ func (s *session) newHost(ctx log.Context, d bind.Device, gapirArgs ...string) e
 
 	port, err := process.Start(ctx, GapirPath.System(), extraEnv, args...)
 	if err != nil {
-		jot.Fail(ctx, err, "Starting gapir")
+		log.E(ctx, "Starting gapir. Error: %v", err)
 		return nil
 	}
 
@@ -121,49 +120,49 @@ var socketNames = map[device.Architecture]string{
 	device.X86_64: "gapir-x86-64",
 }
 
-func (s *session) newADB(ctx log.Context, d adb.Device, abi *device.ABI) error {
-	ctx = ctx.V("abi", abi)
+func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) error {
+	ctx = log.V{"abi": abi}.Bind(ctx)
 
-	ctx.Info().Log("Checking gapid.apk is installed...")
+	log.I(ctx, "Checking gapid.apk is installed...")
 	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
 		return err
 	}
 
-	ctx.Info().Log("Setting up port forwarding...")
+	log.I(ctx, "Setting up port forwarding...")
 	localPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return cause.Explain(ctx, err, "Finding free port")
+		return log.Err(ctx, err, "Finding free port")
 	}
 	s.port = int(localPort)
 	socket, ok := socketNames[abi.Architecture]
-	ctx = ctx.S("socket", socket)
+	ctx = log.V{"socket": socket}.Bind(ctx)
 	if !ok {
-		return cause.Explain(ctx, nil, "Unsupported architecture").With("architecture", abi.Architecture)
+		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
 	if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
-		return cause.Explain(ctx, err, "Forwarding port")
+		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
 
-	ctx.Info().Log("Launching GAPIR...")
+	log.I(ctx, "Launching GAPIR...")
 	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
 		return err
 	}
 
-	ctx.Info().Log("Waiting for connection to GAPIR...")
+	log.I(ctx, "Waiting for connection to GAPIR...")
 	for i := 0; i < 10; i++ {
 		if _, err := s.ping(ctx); err == nil {
-			ctx.Info().Log("Connected to GAPIR")
+			log.I(ctx, "Connected to GAPIR")
 			return nil
 		}
 		time.Sleep(time.Second)
 	}
 
-	return cause.Explain(ctx, nil, "Timeout waiting for connection")
+	return log.Err(ctx, nil, "Timeout waiting for connection")
 }
 
-func (s *session) connect(ctx log.Context) (io.ReadWriteCloser, error) {
+func (s *session) connect(ctx context.Context) (io.ReadWriteCloser, error) {
 	<-s.inited
 	return process.Connect(s.port, s.auth)
 }
@@ -179,7 +178,7 @@ func (s *session) close() {
 	s.closeCBs = nil
 }
 
-func (s *session) ping(ctx log.Context) (time.Duration, error) {
+func (s *session) ping(ctx context.Context) (time.Duration, error) {
 	connection, err := process.Connect(s.port, s.auth)
 	if err != nil {
 		return 0, err
@@ -197,7 +196,7 @@ func (s *session) ping(ctx log.Context) (time.Duration, error) {
 	return time.Since(start), nil
 }
 
-func (s *session) heartbeat(ctx log.Context, pingInterval time.Duration) {
+func (s *session) heartbeat(ctx context.Context, pingInterval time.Duration) {
 	defer s.close()
 	for {
 		select {
@@ -206,7 +205,7 @@ func (s *session) heartbeat(ctx log.Context, pingInterval time.Duration) {
 		case <-time.Tick(pingInterval):
 			_, err := s.ping(ctx)
 			if err != nil {
-				jot.Fail(ctx, err, "Error sending keep-alive ping")
+				log.E(ctx, "Error sending keep-alive ping. Error: %v", err)
 				return
 			}
 		}

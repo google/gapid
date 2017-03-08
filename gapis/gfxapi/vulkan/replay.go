@@ -15,11 +15,11 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -41,11 +41,11 @@ var (
 
 // CanReplayOnLocalAndroidDevice returns true if the API can be replayed on a
 // locally connected Android device.
-func (a api) CanReplayOnLocalAndroidDevice(log.Context) bool { return true }
+func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return true }
 
 // CanReplayOn returns true if the API can be replayed on the specified device.
 // Vulkan can currently only replay on Android devices.
-func (a api) CanReplayOn(ctx log.Context, i *device.Instance) bool {
+func (a api) CanReplayOn(ctx context.Context, i *device.Instance) bool {
 	return i.GetConfiguration().GetOS().GetKind() == device.Android
 }
 
@@ -86,7 +86,7 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	return usage, false
 }
 
-func (t *makeAttachementReadable) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	s := out.State()
 	a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	if image, ok := a.(*VkCreateImage); ok {
@@ -201,18 +201,18 @@ func (t *makeAttachementReadable) Transform(ctx log.Context, id atom.ID, a atom.
 	out.MutateAndWrite(ctx, id, a)
 }
 
-func (t *makeAttachementReadable) Flush(ctx log.Context, out transform.Writer) {}
+func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) {}
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, a)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx log.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	s := out.State()
 	so := getStateObject(s)
 	id := atom.NoID
@@ -338,7 +338,7 @@ type issuesRequest struct {
 }
 
 func (a api) Replay(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
 	requests []replay.Request,
@@ -348,7 +348,7 @@ func (a api) Replay(
 
 	atoms, err := capture.Atoms(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to load atom stream")
+		return log.Err(ctx, err, "Failed to load atom stream")
 	}
 
 	transforms := transform.Transforms{}
@@ -395,9 +395,9 @@ func (a api) Replay(
 	transforms.Add(&destroyResourcesAtEOS{})
 
 	if config.DebugReplay {
-		ctx.Info().Logf("Replaying %d atoms using transform chain:", len(atoms.Atoms))
+		log.I(ctx, "Replaying %d atoms using transform chain:", len(atoms.Atoms))
 		for i, t := range transforms {
-			ctx.Info().Logf("(%d) %#v", i, t)
+			log.I(ctx, "(%d) %#v", i, t)
 		}
 	}
 
@@ -421,10 +421,10 @@ func (a api) Replay(
 	return catchPanics(ctx, func() { transforms.Transform(ctx, *atoms, out) })
 }
 
-func catchPanics(ctx log.Context, do func()) (err error) {
+func catchPanics(ctx context.Context, do func()) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = cause.Explainf(ctx, nil, "Panic raised: %v", e)
+			err = log.Errf(ctx, nil, "Panic raised: %v", e)
 		}
 	}()
 	do()
@@ -432,7 +432,7 @@ func catchPanics(ctx log.Context, do func()) (err error) {
 }
 
 func (a api) QueryFramebufferAttachment(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
 	after atom.ID,
@@ -455,7 +455,7 @@ func (a api) QueryFramebufferAttachment(
 }
 
 func (a api) QueryIssues(
-	ctx log.Context,
+	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
 	out chan<- replay.Issue) {

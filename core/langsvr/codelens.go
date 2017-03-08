@@ -14,7 +14,7 @@
 
 package langsvr
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // CodeLens represents a command that should be shown along with source text,
 // like the number of references, a way to run tests, etc.
@@ -23,5 +23,5 @@ type CodeLens struct {
 	Range Range
 
 	// Resolve returns the Command for this CodeLens
-	Resolve func(log.Context) Command
+	Resolve func(context.Context) Command
 }

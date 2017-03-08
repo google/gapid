@@ -16,6 +16,7 @@ package apk
 
 import (
 	"archive/zip"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -34,13 +35,13 @@ import (
 // as well as providing a log context.
 // Intended use is ApkDebugifier{Ctx: ..., JarSignCmd: "jarsigner", ..., KeyStorePath: "..."}.Run(...).
 type ApkDebugifier struct {
-	Ctx          log.Context // log context
-	JarSignCmd   string      // path to the jarsigner binary
-	ZipAlignCmd  string      // path to the zipalign binary
-	KeyPass      string      // key passphrase
-	KeyAlias     string      // key alias for signing
-	StorePass    string      // keystore passphrase
-	KeyStorePath string      // path to keystore (e.g. /path/to/debug.keystore)
+	Ctx          context.Context // log context
+	JarSignCmd   string          // path to the jarsigner binary
+	ZipAlignCmd  string          // path to the zipalign binary
+	KeyPass      string          // key passphrase
+	KeyAlias     string          // key alias for signing
+	StorePass    string          // keystore passphrase
+	KeyStorePath string          // path to keystore (e.g. /path/to/debug.keystore)
 }
 
 // Run takes the path (src) to an APK, sets the debuggable flag in its manifest,
@@ -52,19 +53,19 @@ func (a ApkDebugifier) Run(src string, dst string) error {
 	}
 	defer os.Remove(tempFile.Name())
 
-	a.Ctx.Printf("Making apk %s debuggable and saving to %s", src, tempFile.Name())
+	log.I(a.Ctx, "Making apk %s debuggable and saving to %s", src, tempFile.Name())
 	err = a.makeApkDebuggableAndRemoveSignatureFiles(src, tempFile)
 	if err != nil {
 		return err
 	}
 
-	a.Ctx.Printf("Signing apk %s", tempFile.Name())
+	log.I(a.Ctx, "Signing apk %s", tempFile.Name())
 	err = a.jarSign(tempFile.Name())
 	if err != nil {
 		return err
 	}
 
-	a.Ctx.Printf("Zipaligning %s to %s", tempFile.Name(), dst)
+	log.I(a.Ctx, "Zipaligning %s to %s", tempFile.Name(), dst)
 	err = a.zipAlign(tempFile.Name(), dst)
 	if err != nil {
 		return err
@@ -86,13 +87,13 @@ func expandHomeDir(p string) string {
 
 func (a ApkDebugifier) execCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
-	a.Ctx.Printf("Executing %v", cmd.Args)
+	log.I(a.Ctx, "Executing %v", cmd.Args)
 	out, err := cmd.CombinedOutput()
-	logger := a.Ctx.Debug()
+	logger := log.From(a.Ctx).Writer(log.Debug)
 	if err != nil {
-		logger = a.Ctx.Error()
+		logger = log.From(a.Ctx).Writer(log.Error)
 	}
-	logger.Writer().Write(out)
+	logger.Write(out)
 	return err
 }
 
@@ -128,7 +129,7 @@ func (a ApkDebugifier) makeApkDebuggableAndRemoveSignatureFiles(src string, outF
 
 	for _, zf := range inZip.File {
 		if jarSignatureFilePattern.MatchString(zf.Name) {
-			a.Ctx.Debug().Logf("Skipping file %s", zf.Name)
+			log.I(a.Ctx, "Skipping file %s", zf.Name)
 			continue
 		}
 
@@ -149,7 +150,7 @@ func (a ApkDebugifier) makeApkDebuggableAndRemoveSignatureFiles(src string, outF
 		}
 
 		if zf.Name == "AndroidManifest.xml" {
-			a.Ctx.Debug().Logf("Modifying manifest file")
+			log.I(a.Ctx, "Modifying manifest file")
 			err := binaryxml.SetDebuggableFlag(fr, fw)
 			if err != nil {
 				return err
@@ -166,7 +167,7 @@ func (a ApkDebugifier) makeApkDebuggableAndRemoveSignatureFiles(src string, outF
 	return nil
 }
 
-func IsApkDebuggable(ctx log.Context, apk string) (bool, error) {
+func IsApkDebuggable(ctx context.Context, apk string) (bool, error) {
 	inZip, err := zip.OpenReader(apk)
 	if err != nil {
 		return false, err

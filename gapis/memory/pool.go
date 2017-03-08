@@ -15,12 +15,12 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/framework/binary"
@@ -99,7 +99,7 @@ func (m *Pool) String() string {
 	return strings.Join(l, "\n")
 }
 
-func (m poolSlice) Get(ctx log.Context, offset uint64, dst []byte) error {
+func (m poolSlice) Get(ctx context.Context, offset uint64, dst []byte) error {
 	orng := Range{Base: m.rng.Base + offset, Size: m.rng.Size - offset}
 	i, c := interval.Intersect(&m.writes, orng.Span())
 	for _, w := range m.writes[i : i+c] {
@@ -116,7 +116,7 @@ func (m poolSlice) Get(ctx log.Context, offset uint64, dst []byte) error {
 	return nil
 }
 
-func (m poolSlice) ResourceID(ctx log.Context) (id.ID, error) {
+func (m poolSlice) ResourceID(ctx context.Context) (id.ID, error) {
 	bytes := make([]byte, m.Size())
 	if err := m.Get(ctx, 0, bytes); err != nil {
 		return id.ID{}, err
@@ -151,7 +151,7 @@ func (m poolSlice) String() string {
 	return fmt.Sprintf("Slice(%v)", m.rng)
 }
 
-func (m poolSlice) NewReader(ctx log.Context) io.Reader {
+func (m poolSlice) NewReader(ctx context.Context) io.Reader {
 	r := &poolSliceReader{ctx: ctx, writes: m.writes, rng: m.rng}
 	r.readImpl = r.prepareAndRead
 	return r
@@ -160,7 +160,7 @@ func (m poolSlice) NewReader(ctx log.Context) io.Reader {
 type readFunction func([]byte) (int, error)
 
 type poolSliceReader struct {
-	ctx      log.Context
+	ctx      context.Context
 	writes   poolWriteList
 	rng      Range
 	readImpl readFunction

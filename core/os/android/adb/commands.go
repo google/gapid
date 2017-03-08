@@ -15,11 +15,11 @@
 package adb
 
 import (
+	"context"
 	"strings"
 	"time"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 )
@@ -36,7 +36,7 @@ const (
 
 // Root restarts adb as root. If the device is running a production build then
 // Root will return ErrDeviceNotRooted.
-func (b *binding) Root(ctx log.Context) error {
+func (b *binding) Root(ctx context.Context) error {
 	const expected = "adbd is already running as root"
 	output, err := b.Command("root").Call(ctx)
 	if err != nil {
@@ -53,17 +53,17 @@ func (b *binding) Root(ctx log.Context) error {
 				return nil
 			}
 		}
-		return cause.Wrap(ctx, ErrRootTimeout)
+		return log.Err(ctx, ErrRootTimeout, "")
 	case expected:
 		return nil
 	default:
-		return cause.Explain(ctx, ErrRootFailed, output)
+		return log.Err(ctx, ErrRootFailed, output)
 	}
 }
 
 // InstallAPK installs the specified APK to the device. If reinstall is true
 // and the package is already installed on the device then it will be replaced.
-func (b *binding) InstallAPK(ctx log.Context, path string, reinstall bool, grantPermissions bool) error {
+func (b *binding) InstallAPK(ctx context.Context, path string, reinstall bool, grantPermissions bool) error {
 	args := []string{}
 	if reinstall {
 		args = append(args, "-r")
@@ -80,13 +80,13 @@ func (b *binding) InstallAPK(ctx log.Context, path string, reinstall bool, grant
 // SELinuxEnforcing returns true if the device is currently in a
 // SELinux enforcing mode, or false if the device is currently in a SELinux
 // permissive mode.
-func (b *binding) SELinuxEnforcing(ctx log.Context) (bool, error) {
+func (b *binding) SELinuxEnforcing(ctx context.Context) (bool, error) {
 	res, err := b.Shell("getenforce").Call(ctx)
 	return strings.Contains(strings.ToLower(res), "enforcing"), err
 }
 
 // SetSELinuxEnforcing changes the SELinux-enforcing mode.
-func (b *binding) SetSELinuxEnforcing(ctx log.Context, enforce bool) error {
+func (b *binding) SetSELinuxEnforcing(ctx context.Context, enforce bool) error {
 	if enforce {
 		return b.Shell("setenforce", "1").Run(ctx)
 	}
@@ -94,7 +94,7 @@ func (b *binding) SetSELinuxEnforcing(ctx log.Context, enforce bool) error {
 }
 
 // StartActivity launches the specified activity action.
-func (b *binding) StartActivity(ctx log.Context, a android.ActivityAction, extras ...android.ActionExtra) error {
+func (b *binding) StartActivity(ctx context.Context, a android.ActivityAction, extras ...android.ActionExtra) error {
 	args := append([]string{
 		"start",
 		"-S", // Force-stop the target app before starting the activity
@@ -105,7 +105,7 @@ func (b *binding) StartActivity(ctx log.Context, a android.ActivityAction, extra
 }
 
 // StartActivityForDebug launches the specified activity in debug mode.
-func (b *binding) StartActivityForDebug(ctx log.Context, a android.ActivityAction, extras ...android.ActionExtra) error {
+func (b *binding) StartActivityForDebug(ctx context.Context, a android.ActivityAction, extras ...android.ActionExtra) error {
 	args := append([]string{
 		"start",
 		"-S", // Force-stop the target app before starting the activity
@@ -117,7 +117,7 @@ func (b *binding) StartActivityForDebug(ctx log.Context, a android.ActivityActio
 }
 
 // StartService launches the specified service action.
-func (b *binding) StartService(ctx log.Context, a android.ServiceAction, extras ...android.ActionExtra) error {
+func (b *binding) StartService(ctx context.Context, a android.ServiceAction, extras ...android.ActionExtra) error {
 	args := append([]string{
 		"startservice",
 		"-a", a.Name,

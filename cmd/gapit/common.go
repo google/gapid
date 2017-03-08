@@ -15,20 +15,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"regexp"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-func getGapis(ctx log.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
+func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
 	args := strings.Fields(gapisFlags.Args)
 	if gapirFlags.Args != "" {
 		// Pass the arguments for gapir further to gapis. Add flag to tag the
@@ -51,26 +51,26 @@ func getGapis(ctx log.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (cl
 		Token: token,
 	})
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Failed to connect to the GAPIS server")
+		return nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	return client, nil
 }
 
-func getDevice(ctx log.Context, client client.Client, capture *path.Capture, flags GapirFlags) (*path.Device, error) {
-	ctx = ctx.S("device", flags.Device)
+func getDevice(ctx context.Context, client client.Client, capture *path.Capture, flags GapirFlags) (*path.Device, error) {
+	ctx = log.V{"device": flags.Device}.Bind(ctx)
 	paths, err := client.GetDevicesForReplay(ctx, capture)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Failed query list of devices")
+		return nil, log.Err(ctx, err, "Failed query list of devices")
 	}
 
 	if len(paths) > 0 {
 		return paths[0], nil
 	}
 
-	return nil, cause.Explain(ctx, nil, "No compatible devices found")
+	return nil, log.Err(ctx, nil, "No compatible devices found")
 }
 
-func getADBDevice(ctx log.Context, pattern string) (adb.Device, error) {
+func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
 	devices, err := adb.Devices(ctx)
 	if err != nil {
 		return nil, err
@@ -78,12 +78,9 @@ func getADBDevice(ctx log.Context, pattern string) (adb.Device, error) {
 	if len(devices) == 0 {
 		return nil, fmt.Errorf("No devices found")
 	}
-	info := ctx.Info()
-	if info.Active() {
-		info.Log("Device list:")
-		for _, test := range devices {
-			info.S("serial", test.Instance().Serial).Log("")
-		}
+	log.I(ctx, "Device list:")
+	for _, test := range devices {
+		log.I(ctx, "  %v", test.Instance().Serial)
 	}
 	matchingDevices := []adb.Device{}
 	if pattern == "" {

@@ -16,12 +16,12 @@ package memory
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 )
@@ -31,12 +31,12 @@ type blob struct {
 	id   id.ID
 }
 
-func (r *blob) Get(ctx log.Context, offset uint64, out []byte) error {
+func (r *blob) Get(ctx context.Context, offset uint64, out []byte) error {
 	copy(out, r.data[offset:])
 	return nil
 }
 
-func (r *blob) ResourceID(ctx log.Context) (id.ID, error) {
+func (r *blob) ResourceID(ctx context.Context) (id.ID, error) {
 	if !r.id.IsValid() {
 		ident, err := database.Store(ctx, r.data)
 		if err != nil {
@@ -63,7 +63,7 @@ func (r *blob) String() string {
 	return fmt.Sprintf("Blob[% x]", r.data)
 }
 
-func (r *blob) NewReader(ctx log.Context) io.Reader {
+func (r *blob) NewReader(ctx context.Context) io.Reader {
 	return bytes.NewReader(r.data)
 }
 

@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -45,7 +46,7 @@ If the -n flag is not specified, the file will then be removed.
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -79,7 +80,7 @@ func run(ctx log.Context) error {
 				}
 			}
 			if len(sections) > 0 {
-				ctx.Printf("rewrite %s", path)
+				log.I(ctx, "rewrite %s", path)
 				if !*noactions {
 					out, err := os.Create(path)
 					if err != nil {
@@ -106,7 +107,7 @@ func run(ctx log.Context) error {
 					}
 				}
 			} else {
-				ctx.Printf("rm %s", path)
+				log.I(ctx, "rm %s", path)
 				if !*noactions {
 					os.Remove(path)
 				}

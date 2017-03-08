@@ -15,15 +15,15 @@
 package master
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
+	"github.com/google/gapid/core/event"
 )
 
 const masterName = "Master"
@@ -40,7 +40,7 @@ type local struct {
 }
 
 // NewLocal creates a new local Master that manages it's own satellites.
-func NewLocal(ctx log.Context) Master {
+func NewLocal(ctx context.Context) Master {
 	l := &local{
 		keepalive: time.NewTicker(keepaliveFrequency),
 	}
@@ -48,13 +48,13 @@ func NewLocal(ctx log.Context) Master {
 	return l
 }
 
-func (m *local) Close(ctx log.Context) {
+func (m *local) Close(ctx context.Context) {
 	m.keepalive.Stop()
 }
 
 // Search implements Master.Search
 // It searches the set of active satellites, and supports monitoring of satellites as they start orbiting.
-func (m *local) Search(ctx log.Context, query *search.Query, handler SatelliteHandler) error {
+func (m *local) Search(ctx context.Context, query *search.Query, handler SatelliteHandler) error {
 	filter := eval.Filter(ctx, query, satelliteClass, event.AsHandler(ctx, handler))
 	initial := m.producer(ctx)
 	if query.Monitor {
@@ -65,7 +65,7 @@ func (m *local) Search(ctx log.Context, query *search.Query, handler SatelliteHa
 
 // Orbit implements Master.Orbit
 // It will start orbiting the master, and will not return until it leaves orbit.
-func (m *local) Orbit(ctx log.Context, services ServiceList, commands CommandHandler) error {
+func (m *local) Orbit(ctx context.Context, services ServiceList, commands CommandHandler) error {
 	sat := m.addSatellite(ctx, services)
 	defer m.removeSatellite(ctx, sat)
 	go sat.sendCommand(ctx, &Command{Do: &Command_Identify{Identify: &Identify{Name: sat.info.Name}}})
@@ -75,7 +75,7 @@ func (m *local) Orbit(ctx log.Context, services ServiceList, commands CommandHan
 
 // Shutdown implements Master.Shutdown
 // It broadcasts the shutdown message to all satellites currently orbiting the master.
-func (m *local) Shutdown(ctx log.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
+func (m *local) Shutdown(ctx context.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
 	command := &Command{Do: &Command_Shutdown{Shutdown: request.Shutdown}}
 	response := &ShutdownResponse{}
 	return response, m.broadcast(ctx, command, request.To)
@@ -87,9 +87,9 @@ func (m *local) getSatellites() []*satellite {
 	return append([]*satellite(nil), m.satellites...)
 }
 
-func (m *local) producer(ctx log.Context) event.Producer {
+func (m *local) producer(ctx context.Context) event.Producer {
 	i := 0
-	return func(ctx log.Context) interface{} {
+	return func(ctx context.Context) interface{} {
 		if i >= len(m.satellites) {
 			return nil
 		}
@@ -99,7 +99,7 @@ func (m *local) producer(ctx log.Context) event.Producer {
 	}
 }
 
-func (m *local) addSatellite(ctx log.Context, services ServiceList) *satellite {
+func (m *local) addSatellite(ctx context.Context, services ServiceList) *satellite {
 	m.satelliteLock.Lock()
 	defer m.satelliteLock.Unlock()
 	// generate the name and modify the list under the lock
@@ -118,7 +118,7 @@ func (m *local) addSatellite(ctx log.Context, services ServiceList) *satellite {
 	return sat
 }
 
-func (m *local) removeSatellite(ctx log.Context, sat *satellite) error {
+func (m *local) removeSatellite(ctx context.Context, sat *satellite) error {
 	m.satelliteLock.Lock()
 	defer m.satelliteLock.Unlock()
 	// find and remove the satellite from the list
@@ -143,7 +143,7 @@ func serverInList(name string, servers []string) bool {
 	return false
 }
 
-func (m *local) broadcast(ctx log.Context, command *Command, to []string) error {
+func (m *local) broadcast(ctx context.Context, command *Command, to []string) error {
 	// First send the command to all the registered services that match the to list
 	for _, sat := range m.getSatellites() {
 		if !serverInList(sat.info.Name, to) {
@@ -154,7 +154,7 @@ func (m *local) broadcast(ctx log.Context, command *Command, to []string) error 
 	return nil
 }
 
-func (m *local) run(ctx log.Context) {
+func (m *local) run(ctx context.Context) {
 	ping := &Command{Do: &Command_Ping{Ping: &Ping{}}}
 	// each time a tick happens
 	for _ = range m.keepalive.C {

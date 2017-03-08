@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/test/robot/job"
 )
 
@@ -54,7 +55,7 @@ func (data *Data) FindDevice(id string) *Device {
 	return nil
 }
 
-func (o *DataOwner) updateDevice(ctx log.Context, device *job.Device) error {
+func (o *DataOwner) updateDevice(ctx context.Context, device *job.Device) error {
 	o.Write(func(data *Data) {
 		data.Devices.entries = append(data.Devices.entries, &Device{Device: *device})
 	})
@@ -66,7 +67,7 @@ func (w *Workers) All() []*Worker {
 	return w.entries
 }
 
-func (o *DataOwner) updateWorker(ctx log.Context, worker *job.Worker) error {
+func (o *DataOwner) updateWorker(ctx context.Context, worker *job.Worker) error {
 	o.Write(func(data *Data) {
 		for i, e := range data.Workers.entries {
 			if worker.Host == e.Host && worker.Target == e.Target {

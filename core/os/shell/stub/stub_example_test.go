@@ -17,12 +17,12 @@
 package stub_test
 
 import (
+	"context"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/os/shell/stub"
@@ -31,123 +31,132 @@ import (
 // TestNothing exists because some tools don't like packages that don't have any tests in them.
 func TestNothing(t *testing.T) {}
 
+func newCtx() context.Context {
+	ctx := context.Background()
+	ctx = log.PutClock(ctx, log.NoClock)
+	ctx = log.PutHandler(ctx, log.Normal.Handler(os.Stdout, os.Stdout))
+	ctx = log.Enter(ctx, "Example")
+	return ctx
+}
+
 // This example shows how to use a stub command target to fake an starting error.
 func ExampleAlways() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal)).Enter("Example")
+	ctx := newCtx()
 	s, err := shell.Command("echo", "Hello from the shell").On(stub.Respond("Hello")).Call(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say hello")
+		log.F(ctx, "Unable to say hello. Error: ", err)
 	}
-	ctx.Print(s)
-	ctx.Print("Done")
+	log.I(ctx, s)
+	log.I(ctx, "Done")
 	// Output:
-	//Info:Example:Hello
-	//Info:Example:Done
+	//I: [Example] Hello
+	//I: [Example] Done
 }
 
 // This example shows how to use simple exact matches with a fallback to the command echo.
 func ExampleHello() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal)).Enter("Example")
+	ctx := newCtx()
 	target := stub.OneOf(
 		stub.RespondTo(`echo "Hello from the shell"`, "Nice to meet you"),
 		stub.Echo{},
 	)
 	s, err := shell.Command("echo", "Hello from the shell").On(target).Call(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say hello")
+		log.F(ctx, "Unable to say hello. Error: ", err)
 	}
-	ctx.Print(s)
+	log.I(ctx, s)
 	s, err = shell.Command("echo", "Goodbye now").On(target).Call(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say goodbye")
+		log.F(ctx, "Unable to say goodbye. Error: ", err)
 	}
-	ctx.Print(s)
-	ctx.Print("Done")
+	log.I(ctx, s)
+	log.I(ctx, "Done")
 	// Output:
-	//Info:Example:Nice to meet you
-	//Info:Example:Goodbye now
-	//Info:Example:Done
+	//I: [Example] Nice to meet you
+	//I: [Example] Goodbye now
+	//I: [Example] Done
 }
 
 // This example shows how to use simple exact matches with a fallback to the command echo.
 func ExampleRegexp() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal)).Enter("Example")
+	ctx := newCtx()
 	target := stub.OneOf(
 		stub.Regex(`smalltalk`, stub.Respond("Nice to meet you")),
 		stub.Echo{},
 	)
 	s, _ := shell.Command("echo", "Hello").On(target).Call(ctx)
-	ctx.Print(s)
+	log.I(ctx, s)
 	s, _ = shell.Command("echo", "Insert smalltalk here").On(target).Call(ctx)
-	ctx.Print(s)
+	log.I(ctx, s)
 	s, _ = shell.Command("echo", "Goodbye").On(target).Call(ctx)
-	ctx.Print(s)
-	ctx.Print("Done")
+	log.I(ctx, s)
+	log.I(ctx, "Done")
 	// Output:
-	//Info:Example:Hello
-	//Info:Example:Nice to meet you
-	//Info:Example:Goodbye
-	//Info:Example:Done
+	//I: [Example] Hello
+	//I: [Example] Nice to meet you
+	//I: [Example] Goodbye
+	//I: [Example] Done
 }
 
 // This example shows how to use a stub command target to fake an starting error.
 func ExampleStartError() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal))
-	ctx = ctx.Enter("Example")
+	ctx := newCtx()
 	target := stub.OneOf(
-		stub.Match(`echo Goodbye`, &stub.Response{StartErr: cause.Explain(ctx, nil, "bad command")}),
+		stub.Match(`echo Goodbye`, &stub.Response{StartErr: log.Err(ctx, nil, "bad command")}),
 		stub.Echo{},
 	)
 	output, err := shell.Command("echo", "Hello").On(target).Call(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say hello")
+		log.E(ctx, "Unable to say hello. Error: %v", err)
 	}
-	ctx.Info().Log(output)
+	log.I(ctx, output)
 	err = shell.Command("echo", "Goodbye").On(target).Run(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say goodbye")
+		log.E(ctx, "Unable to say goodbye. Error: %v", err)
 	}
-	ctx.Print("Done")
+	log.I(ctx, "Done")
 	// Output:
-	//Info:Example:Hello
-	//Error:Example:Unable to say goodbye:{Example:Start:{Example:⦕bad command⦖}:Command=echo Goodbye,On=stub}
-	//Info:Example:Done
+	// I: [Example] Hello
+	// E: [Example] Unable to say goodbye. Error: Failed to start process
+	//    Cause: bad command
+	// I: [Example] Done
 }
 
 // This example shows how to use a stub command target to fake an blocking process, and cancelling it.
 func ExampleBlockingCancel() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal))
-	ctx, cancel := task.WithCancel(ctx.Enter("Example"))
+	ctx := newCtx()
+	ctx, cancel := task.WithCancel(ctx)
 	go func() {
 		time.Sleep(time.Millisecond)
 		cancel()
 	}()
-	response := &stub.Response{WaitErr: cause.Explain(ctx, nil, "Cancelled")}
+	response := &stub.Response{WaitErr: log.Err(ctx, nil, "Cancelled")}
 	response.WaitSignal, response.KillTask = task.NewSignal()
 	target := stub.OneOf(stub.Match(`echo "Hello from the shell"`, response))
 	err := shell.Command("echo", "Hello from the shell").On(target).Run(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say hello")
+		log.E(ctx, "Unable to say hello. Error: %v", err)
 	}
-	ctx.Print("Done")
+	log.I(ctx, "Done")
 	// Output:
-	//Error:Example:Unable to say hello:{Example:Wait:{Example:⦕Cancelled⦖}:Command=echo "Hello from the shell",On=stub}
-	//Info:Example:Done
+	// E: [Example] Unable to say hello. Error: Process returned error
+	//    Cause: Cancelled
+	// I: [Example] Done
 }
 
 // This example shows what happens if you attempt a command that has no response.
 func ExampleUnmatchedCommand() {
-	ctx := log.Background().PreFilter(log.NoLimit).Filter(log.Pass).Handler(log.Stdout(log.Normal))
-	ctx = ctx.Enter("Example")
+	ctx := newCtx()
 	target := stub.OneOf(
 		stub.RespondTo(`echo "Hello from the shell"`, "Nice to meet you"),
 	)
 	err := shell.Command("echo", "Not hello from the shell").On(target).Run(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to say hello")
+		log.E(ctx, "Unable to say hello. Error: %v", err)
 	}
-	ctx.Print("Done")
+	log.I(ctx, "Done")
 	// Output:
-	//Error:Example:Unable to say hello:{Example:Start:⦕unmatched:echo "Not hello from the shell"⦖:Command=echo "Not hello from the shell",On=stub}
-	//Info:Example:Done
+	// E: [Example] Unable to say hello. Error: Failed to start process
+	//    Cause: unmatched:echo "Not hello from the shell"
+	// I: [Example] Done
 }

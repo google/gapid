@@ -14,12 +14,12 @@
 
 package atom
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Writer is the interface that wraps the basic Write method.
 //
 // Write writes or processes the given atom and identifier. Write must not
 // modify the atom in any way.
 type Writer interface {
-	Write(ctx log.Context, id ID, atom Atom)
+	Write(ctx context.Context, id ID, atom Atom)
 }

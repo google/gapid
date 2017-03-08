@@ -22,13 +22,13 @@
   {{template "Go.GeneratedHeader" (Global "OutputDir")}}
 
   import (
+    "context"
     "fmt"
     "io"
     "io/ioutil"
     "strings"
 
     "github.com/google/gapid/framework/binary"
-    "github.com/google/gapid/core/log"
     "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/gapis/database"
     "github.com/google/gapid/gapis/gfxapi"
@@ -42,7 +42,7 @@
   )
 
   type callable interface {
-    Call(log.Context, *gfxapi.State, *builder.Builder)
+    Call(context.Context, *gfxapi.State, *builder.Builder)
   }
 
   // GetState returns the {{$.Name}} state from the gfxapi.State.
@@ -89,7 +89,7 @@
   {{AssertType $ "Function"}}
 
   func {{Template "Go.Subroutine" $}}(§
-      ϟctx log.Context, §
+      ϟctx context.Context, §
       ϟa atom.Atom, §
       ϟo *atom.Observations, §
       ϟs *gfxapi.State, §
@@ -140,7 +140,7 @@
       {{end}}
       func (ϟa *{{$name}}) Mutate(§
     {{end}}
-        ϟctx log.Context, ϟs *gfxapi.State, ϟb *builder.Builder) error {
+        ϟctx context.Context, ϟs *gfxapi.State, ϟb *builder.Builder) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -161,7 +161,7 @@
       // Call builds the replay instructions to push the arguments to the stack and invoke {{$.Name}}().
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟs.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
-      func (ϟa *{{$name}}) Call(ϟctx log.Context, ϟs *gfxapi.State, ϟb *builder.Builder) {
+      func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *gfxapi.State, ϟb *builder.Builder) {
         {{/* Push all the parameters on the stack */}}
         {{range $p := $.CallParameters}}
           {{$type := TypeOf $p}}

@@ -15,12 +15,13 @@
 package vertex
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/stream"
 )
 
 // ConvertTo converts the vertex buffer to the requested format.
-func (s *Buffer) ConvertTo(ctx log.Context, f *BufferFormat) (*Buffer, error) {
+func (s *Buffer) ConvertTo(ctx context.Context, f *BufferFormat) (*Buffer, error) {
 	streams := make(map[Semantic]*Stream, len(s.Streams))
 	for _, s := range s.Streams {
 		streams[*s.Semantic] = s
@@ -39,7 +40,7 @@ func (s *Buffer) ConvertTo(ctx log.Context, f *BufferFormat) (*Buffer, error) {
 }
 
 // ConvertTo converts the vertex stream to the requested format.
-func (s *Stream) ConvertTo(ctx log.Context, f *stream.Format) (*Stream, error) {
+func (s *Stream) ConvertTo(ctx context.Context, f *stream.Format) (*Stream, error) {
 	data, err := stream.Convert(f, s.Format, s.Data)
 	if err != nil {
 		return nil, err

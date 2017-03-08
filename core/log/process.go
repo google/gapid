@@ -15,28 +15,22 @@
 package log
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/context/memo"
 )
 
-// The context key used to store detail text in the log context
-const DetailKey = memo.TextValue("detail")
+type processKeyTy string
 
-// GetDetail gets the detail text stored in the given context.
-func GetDetail(ctx Context) string {
-	tag, _ := ctx.Value(DetailKey).(string)
-	return tag
+const processKey processKeyTy = "log.processKey"
+
+// PutProcess returns a new context with the process assigned to w.
+func PutProcess(ctx context.Context, w string) context.Context {
+	return keys.WithValue(ctx, processKey, w)
 }
 
-// Detail returns a context with the detail text set.
-func (ctx logContext) Detail(tag string) Context {
-	return Wrap(keys.WithValue(ctx.Unwrap(), DetailKey, tag))
-}
-
-// Detail returns a logger with the detail text set if the logger is active.
-func (l Logger) Detail(tag string) Logger {
-	if l.Active() {
-		l.J = l.J.With(DetailKey, tag)
-	}
-	return l
+// GetProcess returns the process assigned to ctx.
+func GetProcess(ctx context.Context) string {
+	out, _ := ctx.Value(processKey).(string)
+	return out
 }

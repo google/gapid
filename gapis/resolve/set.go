@@ -15,10 +15,10 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -31,7 +31,7 @@ import (
 // Set creates a copy of the capture referenced by the request's path, but
 // with the object, value or memory at p replaced with v. The path returned is
 // identical to p, but with the base changed to refer to the new capture.
-func Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, error) {
+func Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
 	obj, err := database.Build(ctx, &SetResolvable{p, service.NewValue(v)})
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, error) {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *SetResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if c := path.FindCapture(r.Path.Node()); c != nil {
 		ctx = capture.Put(ctx, c)
 	}
@@ -51,7 +51,7 @@ func (r *SetResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	return p.Path(), nil
 }
 
-func change(ctx log.Context, p path.Node, val interface{}) (path.Node, error) {
+func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error) {
 	switch p := p.(type) {
 	case *path.Report:
 		return nil, fmt.Errorf("Reports are immutable")
@@ -239,7 +239,7 @@ func change(ctx log.Context, p path.Node, val interface{}) (path.Node, error) {
 	return nil, fmt.Errorf("Unknown path type %T", p)
 }
 
-func setField(ctx log.Context, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
+func setField(ctx context.Context, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
 	dst, err := field(ctx, str, name, p)
 	if err != nil {
 		return nil, err

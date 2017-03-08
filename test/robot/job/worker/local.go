@@ -15,8 +15,9 @@
 package worker
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/record"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/job"
 )
@@ -34,7 +35,7 @@ type Manager struct {
 // It loads the action ledger and prepares the empty worker list.
 // The op is the type of action this manager supports, the nullAction is the empty version of the action the manager
 // holds, and the nullTask is the empty version of the task sent to the managers workers.
-func (m *Manager) Init(ctx log.Context, library record.Library, jobs job.Manager, op job.Operation, nullAction Action, nullTask Task) error {
+func (m *Manager) Init(ctx context.Context, library record.Library, jobs job.Manager, op job.Operation, nullAction Action, nullTask Task) error {
 	m.Workers.init(ctx, jobs, op)
 	return m.Actions.init(ctx, library, op, nullAction, nullTask)
 }
@@ -43,16 +44,16 @@ func (m *Manager) Init(ctx log.Context, library record.Library, jobs job.Manager
 // It is handed the id of the target device to run it on, and the inputs to the action.
 // The active worker that owns the target device will be looked up, and then a new action
 // created for the target worker and provided input will be added to the store.
-func (m *Manager) Do(ctx log.Context, device string, input Input) (string, error) {
-	ctx = ctx.V("device", device)
+func (m *Manager) Do(ctx context.Context, device string, input Input) (string, error) {
+	ctx = log.V{"device": device}.Bind(ctx)
 	w := m.Workers.Find(ctx, device)
 	if w == nil {
-		return "", cause.Explain(ctx, nil, "Could not find worker device")
+		return "", log.Err(ctx, nil, "Could not find worker device")
 	}
 	return m.Actions.do(ctx, w, input)
 }
 
 // Update is used to update an existing action, normally to update it status and/or set it's outputs.
-func (m *Manager) Update(ctx log.Context, action Action) error {
+func (m *Manager) Update(ctx context.Context, action Action) error {
 	return m.Actions.update(ctx, action)
 }

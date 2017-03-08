@@ -16,22 +16,25 @@
 // configurations.
 package main
 
-import "github.com/google/gapid/core/log"
-import "github.com/google/gapid/core/os/file"
-import "github.com/google/gapid/core/os/shell"
+import (
+	"context"
 
-func doGapit(ctx log.Context, cfg Config, options GapitOptions, args ...string) {
+	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/os/shell"
+)
+
+func doGapit(ctx context.Context, cfg Config, options GapitOptions, args ...string) {
 	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "gapit", args...)
 }
 
-func doRobot(ctx log.Context, cfg Config, options RobotOptions, args ...string) {
+func doRobot(ctx context.Context, cfg Config, options RobotOptions, args ...string) {
 	if options.WD.IsEmpty() {
 		options.WD = cfg.OutRoot.Join("robot")
 	}
 	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "robot", args...)
 }
 
-func doRunTarget(ctx log.Context, cfg Config, options BuildAndRunOptions, target string, args ...string) {
+func doRunTarget(ctx context.Context, cfg Config, options BuildAndRunOptions, target string, args ...string) {
 	doBuild(ctx, cfg, options.BuildOptions, target)
 
 	if target == "gapic" {
@@ -41,7 +44,7 @@ func doRunTarget(ctx log.Context, cfg Config, options BuildAndRunOptions, target
 	}
 }
 
-func doGo(ctx log.Context, cfg Config, options RunOptions, args ...string) {
+func doGo(ctx context.Context, cfg Config, options RunOptions, args ...string) {
 	if options.WD.IsEmpty() {
 		options.WD = file.Abs("")
 	}
@@ -49,7 +52,7 @@ func doGo(ctx log.Context, cfg Config, options RunOptions, args ...string) {
 	run(ctx, options.WD, goExePath, nil, args...)
 }
 
-func doRun(ctx log.Context, cfg Config, options RunOptions, name string, args ...string) {
+func doRun(ctx context.Context, cfg Config, options RunOptions, name string, args ...string) {
 	if options.WD.IsEmpty() {
 		options.WD = file.Abs("")
 	}

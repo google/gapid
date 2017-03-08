@@ -24,7 +24,8 @@
   package {{Global "OutputDir"}}¶
   ¶
   import (»¶
-    "github.com/google/gapid/core/log"¶
+    "context"¶
+¶
     "github.com/google/gapid/gapis/atom"¶
     "github.com/google/gapid/gapis/atom/atom_pb"¶
     "github.com/google/gapid/gapis/gfxapi"¶
@@ -98,7 +99,7 @@
   «}¶
   ¶
   // Convert produces all the storage atoms from from the in memory form.¶
-  func (ϟa *{{$name}}) Convert(ctx log.Context, out atom_pb.Handler) error {»¶
+  func (ϟa *{{$name}}) Convert(ctx context.Context, out atom_pb.Handler) error {»¶
     if err := out(ctx, ϟa.ToProto()); err != nil {»¶
       return err¶
     «}¶
@@ -135,7 +136,7 @@
   «}¶
 
   // Convert produces the storage form from the in memory form.¶
-  func (ϟa *{{$name}}) Convert(ctx log.Context, out atom_pb.Handler) error {»¶
+  func (ϟa *{{$name}}) Convert(ctx context.Context, out atom_pb.Handler) error {»¶
     return out(ctx, ϟa.ToProto())¶
   «}¶
   ¶

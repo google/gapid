@@ -15,8 +15,9 @@
 package jdwp
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 )
 
 // OnEvent is the callback passed to WatchEvents. If no more events need to be
@@ -25,7 +26,7 @@ type OnEvent func(Event, SuspendPolicy) bool
 
 // WatchEvents calls cb each time a new event arrives.
 // WatchEvents will block until cb returns false, or the ctx is cancelled.
-func (c *Connection) WatchEvents(ctx log.Context, cb OnEvent) {
+func (c *Connection) WatchEvents(ctx context.Context, cb OnEvent) {
 	id, events := c.newEventsHandler()
 	defer c.deleteEventsHandler(id)
 

@@ -15,6 +15,7 @@
 package atom_test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -35,7 +36,7 @@ type writeRecord struct {
 }
 type writeRecordList []writeRecord
 
-func (t *writeRecordList) Write(ctx log.Context, id atom.ID, atom atom.Atom) {
+func (t *writeRecordList) Write(ctx context.Context, id atom.ID, atom atom.Atom) {
 	*t = append(*t, writeRecord{id, atom})
 }
 

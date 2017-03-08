@@ -15,10 +15,10 @@
 package stash
 
 import (
+	"context"
 	"io"
 	"os"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -40,33 +40,33 @@ type (
 // UploadStream is a helper used to upload a stream to the stash.
 // It will return an error if the upload fails, otherwise it will return the stash
 // id for the bytes.
-func (c *Client) UploadStream(ctx log.Context, info Upload, r Uploadable) (string, error) {
+func (c *Client) UploadStream(ctx context.Context, info Upload, r Uploadable) (string, error) {
 	return uploadStream(ctx, c, info, r)
 }
 
 // UploadSeekable is a helper used to upload a single seekable stream.
 // It will return an error if either the stream cannot be read, or the upload fails, otherwise
 // it will return the stash id for the file.
-func (c *Client) UploadSeekable(ctx log.Context, info Upload, r io.ReadSeeker) (string, error) {
+func (c *Client) UploadSeekable(ctx context.Context, info Upload, r io.ReadSeeker) (string, error) {
 	return uploadStream(ctx, c, info, seekadapter{r})
 }
 
 // UploadBytes is a helper used to upload a byte array.
 // It will return an error if the upload fails, otherwise it will return the stash id for the file.
-func (c *Client) UploadBytes(ctx log.Context, info Upload, data []byte) (string, error) {
+func (c *Client) UploadBytes(ctx context.Context, info Upload, data []byte) (string, error) {
 	return uploadStream(ctx, c, info, &bytesAdapter{data: data})
 }
 
 // UploadString is a helper used to upload a string.
 // It will return an error if the upload fails, otherwise it will return the stash id for the file.
-func (c *Client) UploadString(ctx log.Context, info Upload, content string) (string, error) {
+func (c *Client) UploadString(ctx context.Context, info Upload, content string) (string, error) {
 	return uploadStream(ctx, c, info, &bytesAdapter{data: ([]byte)(content)})
 }
 
 // UploadFile is a helper used to upload a single file to the stash.
 // It will return an error if either the file cannot be read, or the upload fails, otherwise
 // it will return the stash id for the file.
-func (c *Client) UploadFile(ctx log.Context, filename file.Path) (string, error) {
+func (c *Client) UploadFile(ctx context.Context, filename file.Path) (string, error) {
 	file, err := os.Open(filename.System())
 	if err != nil {
 		return "", err
@@ -82,14 +82,14 @@ func (c *Client) UploadFile(ctx log.Context, filename file.Path) (string, error)
 
 // GetFile retrieves the data for an entity in the given Store and
 // saves it to a file.
-func (c *Client) GetFile(ctx log.Context, id string, filename file.Path) error {
+func (c *Client) GetFile(ctx context.Context, id string, filename file.Path) error {
 	entity, err := c.Lookup(ctx, id)
 	if err != nil || entity == nil {
 		return nil
 	}
 
 	if err := file.Mkdir(filename.Parent()); err != nil {
-		return cause.Explain(ctx, err, "file.Path.Mkdir failed")
+		return log.Err(ctx, err, "file.Path.Mkdir failed")
 	}
 
 	mode := os.FileMode(0644)
@@ -103,7 +103,7 @@ func (c *Client) GetFile(ctx log.Context, id string, filename file.Path) error {
 		return err
 	}
 	if _, err := io.Copy(f, r); err != nil {
-		return cause.Explain(ctx, err, "io.Copy failed")
+		return log.Err(ctx, err, "io.Copy failed")
 	}
 	return nil
 }

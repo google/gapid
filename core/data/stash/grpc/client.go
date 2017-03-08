@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -57,7 +56,7 @@ func init() {
 }
 
 // Connect returns a remote grpc backed implementation of stash.Service using the supplied connection.
-func Connect(ctx log.Context, conn *grpc.ClientConn) (*stash.Client, error) {
+func Connect(ctx context.Context, conn *grpc.ClientConn) (*stash.Client, error) {
 	remote, err := connect(ctx, conn)
 	if err != nil {
 		return nil, err
@@ -67,7 +66,7 @@ func Connect(ctx log.Context, conn *grpc.ClientConn) (*stash.Client, error) {
 
 // MustConnect returns a remote grpc backed implementation of a stash client using the supplied connection.
 // It panics if the connection fails for any reason.
-func MustConnect(ctx log.Context, conn *grpc.ClientConn) *stash.Client {
+func MustConnect(ctx context.Context, conn *grpc.ClientConn) *stash.Client {
 	s, err := Connect(ctx, conn)
 	if err != nil {
 		panic(err)
@@ -76,12 +75,12 @@ func MustConnect(ctx log.Context, conn *grpc.ClientConn) *stash.Client {
 }
 
 // Dial returns a remote grpc backed stash client from a url.
-func Dial(ctx log.Context, location *url.URL) (*stash.Client, error) {
+func Dial(ctx context.Context, location *url.URL) (*stash.Client, error) {
 	if location.Host == "" {
-		return nil, cause.Explain(ctx, nil, "Host not supported for memory servers")
+		return nil, log.Err(ctx, nil, "Host not supported for memory servers")
 	}
 	if location.Path != "" {
-		return nil, cause.Explain(ctx, nil, "Path not supported for grpc servers")
+		return nil, log.Err(ctx, nil, "Path not supported for grpc servers")
 	}
 	conn, err := grpcutil.Dial(ctx, location.Host, grpc.WithInsecure())
 	if err != nil {
@@ -97,7 +96,7 @@ func Dial(ctx log.Context, location *url.URL) (*stash.Client, error) {
 	}}, nil
 }
 
-func connect(ctx log.Context, conn *grpc.ClientConn) (remoteStore, error) {
+func connect(ctx context.Context, conn *grpc.ClientConn) (remoteStore, error) {
 	tmp, err := ioutil.TempDir("", "stash_")
 	if err != nil {
 		return remoteStore{}, err
@@ -113,9 +112,9 @@ func (s *connectedStore) Close() { s.conn.Close() }
 
 var uploadQuery = script.MustParse("Upload.Id == $").Using("$")
 
-func (s *remoteStore) Lookup(ctx log.Context, id string) (*stash.Entity, error) {
+func (s *remoteStore) Lookup(ctx context.Context, id string) (*stash.Entity, error) {
 	query := uploadQuery(id).Query()
-	stream, err := s.client.Search(ctx.Unwrap(), query)
+	stream, err := s.client.Search(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +129,8 @@ func (s *remoteStore) Lookup(ctx log.Context, id string) (*stash.Entity, error) 
 	return entity, err
 }
 
-func (s *remoteStore) Search(ctx log.Context, query *search.Query, handler stash.EntityHandler) error {
-	stream, err := s.client.Search(ctx.Unwrap(), query)
+func (s *remoteStore) Search(ctx context.Context, query *search.Query, handler stash.EntityHandler) error {
+	stream, err := s.client.Search(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -139,19 +138,19 @@ func (s *remoteStore) Search(ctx log.Context, query *search.Query, handler stash
 	return event.Feed(ctx, event.AsHandler(ctx, handler), p)
 }
 
-func (s *remoteStore) Open(ctx log.Context, id string) (io.ReadSeeker, error) {
+func (s *remoteStore) Open(ctx context.Context, id string) (io.ReadSeeker, error) {
 	e, err := s.Lookup(ctx, id)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "entity lookup")
+		return nil, log.Err(ctx, err, "entity lookup")
 	}
 	if e.Status != stash.Status_Present {
-		return nil, cause.Explain(ctx, err, "entity not ready")
+		return nil, log.Err(ctx, err, "entity not ready")
 	}
 	return &remoteStoreReadSeeker{ctx: ctx, id: id, len: e.GetLength(), s: s}, nil
 }
 
 type remoteStoreReadSeeker struct {
-	ctx log.Context
+	ctx context.Context
 	s   *remoteStore
 	id  string
 	len int64
@@ -201,12 +200,12 @@ func (r *remoteStoreReadSeeker) Seek(offset int64, whence int) (int64, error) {
 func (r *remoteStoreReadSeeker) Read(b []byte) (int, error) {
 	for len(r.data) == 0 {
 		if r.stream == nil {
-			ctx, cancel := context.WithCancel(r.ctx.Unwrap())
+			ctx, cancel := context.WithCancel(r.ctx)
 			stream, err := r.s.client.Download(ctx, &DownloadRequest{Id: r.id, Offset: uint64(r.offset)})
 			r.cancel = cancel
 			r.stream = stream
 			if err != nil {
-				return 0, cause.Explain(r.ctx, err, "Remote store download")
+				return 0, log.Err(r.ctx, err, "Remote store download")
 			}
 		}
 
@@ -227,7 +226,7 @@ func (r *remoteStoreReadSeeker) Read(b []byte) (int, error) {
 	return n, nil
 }
 
-func (s *remoteStore) Read(ctx log.Context, id string) ([]byte, error) {
+func (s *remoteStore) Read(ctx context.Context, id string) ([]byte, error) {
 	r, err := s.Open(ctx, id)
 	if err != nil {
 		return nil, err
@@ -235,14 +234,14 @@ func (s *remoteStore) Read(ctx log.Context, id string) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func (s *remoteStore) Create(ctx log.Context, info *stash.Upload) (io.WriteCloser, error) {
-	stream, err := s.client.Upload(ctx.Unwrap())
+func (s *remoteStore) Create(ctx context.Context, info *stash.Upload) (io.WriteCloser, error) {
+	stream, err := s.client.Upload(ctx)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Remote store upload start")
+		return nil, log.Err(ctx, err, "Remote store upload start")
 	}
 	err = stream.Send(&UploadChunk{Of: &UploadChunk_Upload{Upload: info}})
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Remote store upload header")
+		return nil, log.Err(ctx, err, "Remote store upload header")
 	}
 	return &remoteStoreWriter{stream: stream}, nil
 }
@@ -274,10 +273,10 @@ func (w *remoteStoreWriter) Close() error {
 	return w.stream.CloseSend()
 }
 
-func (s *remoteStore) Upload(ctx log.Context, info *stash.Upload, reader io.Reader) error {
-	stream, err := s.client.Upload(ctx.Unwrap())
+func (s *remoteStore) Upload(ctx context.Context, info *stash.Upload, reader io.Reader) error {
+	stream, err := s.client.Upload(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Remote store upload")
+		return log.Err(ctx, err, "Remote store upload")
 	}
 	buf := make([]byte, uploadLimit)
 	chunk := &UploadChunk{
@@ -286,7 +285,7 @@ func (s *remoteStore) Upload(ctx log.Context, info *stash.Upload, reader io.Read
 	for {
 		err = stream.Send(chunk)
 		if err != nil {
-			return cause.Explain(ctx, err, "Remote store upload")
+			return log.Err(ctx, err, "Remote store upload")
 		}
 		n, err := reader.Read(buf)
 		if errors.Cause(err) == io.EOF {
@@ -294,7 +293,7 @@ func (s *remoteStore) Upload(ctx log.Context, info *stash.Upload, reader io.Read
 			return nil
 		}
 		if err != nil {
-			return cause.Explain(ctx, err, "Data read")
+			return log.Err(ctx, err, "Data read")
 		}
 		chunk.Of = &UploadChunk_Data{Data: buf[:n]}
 	}

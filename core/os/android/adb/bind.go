@@ -15,7 +15,8 @@
 package adb
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
@@ -28,11 +29,11 @@ type Device interface {
 	Command(name string, args ...string) shell.Cmd
 	// Root restarts adb as root. If the device is running a production build then
 	// Root will return ErrDeviceNotRooted.
-	Root(ctx log.Context) error
+	Root(ctx context.Context) error
 	// Forward will forward the specified device Port to the specified local Port.
-	Forward(ctx log.Context, local, device Port) error
+	Forward(ctx context.Context, local, device Port) error
 	// RemoveForward removes a port forward made by Forward.
-	RemoveForward(ctx log.Context, local Port) error
+	RemoveForward(ctx context.Context, local Port) error
 }
 
 // DeviceList is a list of devices.

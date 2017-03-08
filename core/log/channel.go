@@ -12,5 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package cause holds code for wrapping errors in context based details.
-package cause
+package log
+
+import (
+	"sync"
+)
+
+// Channel is a log handler that passes log messages to another Handler through
+// a chan.
+// This makes this Handler safe to use from multiple threads.
+func Channel(to Handler, size int) (h Handler) {
+	c := make(chan *Message, size)
+	done := make(chan struct{})
+	go func() {
+		for r := range c {
+			to.Handle(r)
+		}
+		close(done)
+	}()
+	once := sync.Once{}
+	closer := func() {
+		once.Do(func() {
+			close(c)
+			<-done
+		})
+		to.Close()
+	}
+	return &handler{func(m *Message) { c <- m }, closer}
+}

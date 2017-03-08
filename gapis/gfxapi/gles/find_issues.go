@@ -15,6 +15,7 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -45,7 +46,7 @@ type findIssues struct {
 	lastGlError GLenum
 }
 
-func newFindIssues(ctx log.Context, device *device.Instance) *findIssues {
+func newFindIssues(ctx context.Context, device *device.Instance) *findIssues {
 	transform := &findIssues{
 		state:  capture.NewState(ctx),
 		device: device,
@@ -87,8 +88,8 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 		e.DriverError.ErrorString(), e.ExpectedError.ErrorString())
 }
 
-func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
-	ctx = ctx.Enter("findIssues")
+func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+	ctx = log.Enter(ctx, "findIssues")
 	t.lastGlError = GLenum_GL_NO_ERROR
 	if err := a.Mutate(ctx, t.state, nil /* no builder */); err != nil {
 		if atom.IsAbortedError(err) && t.lastGlError != GLenum_GL_NO_ERROR {
@@ -107,7 +108,7 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 	}
 
 	// Check the result of glGetError after every command.
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		ptr := b.AllocateTemporaryMemory(4)
 		b.Call(funcInfoGlGetError)
 		b.Store(ptr)
@@ -194,7 +195,7 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 
 		infoLog := make([]byte, 2048)
 		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -208,7 +209,7 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 
 		source := make([]byte, 2048)
 		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -221,7 +222,7 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 		}))
 
 		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -245,7 +246,7 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 		tmp := atom.Must(atom.Alloc(ctx, t.state, 4+buflen))
 		out.MutateAndWrite(ctx, atom.NoID, NewGlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, atom.NoID, NewGlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -287,8 +288,8 @@ func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out tran
 	}
 }
 
-func (t *findIssues) Flush(ctx log.Context, out transform.Writer) {
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last

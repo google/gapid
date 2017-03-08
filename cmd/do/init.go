@@ -17,13 +17,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
 
-func doInit(ctx log.Context, options InitOptions) Config {
+func doInit(ctx context.Context, options InitOptions) Config {
 	cfg := fetchValidConfig(ctx, ConfigOptions{})
 	// We do the build version first in case we need to delete the output
 	initBuildVersion(ctx, &cfg, options)
@@ -34,7 +34,7 @@ func doInit(ctx log.Context, options InitOptions) Config {
 	return cfg
 }
 
-func initOutput(ctx log.Context, cfg *Config, options InitOptions) {
+func initOutput(ctx context.Context, cfg *Config, options InitOptions) {
 	file.Mkdir(cfg.bin())
 	file.Mkdir(cfg.pkg())
 	must(file.Relink(cfg.OutRoot.Join("current"), cfg.out(), file.Junction))
@@ -42,7 +42,7 @@ func initOutput(ctx log.Context, cfg *Config, options InitOptions) {
 	must(file.Relink(cfg.OutRoot.Join("pkg"), cfg.pkg(), file.Junction))
 }
 
-func initBuildVersion(ctx log.Context, cfg *Config, options InitOptions) {
+func initBuildVersion(ctx context.Context, cfg *Config, options InitOptions) {
 	// Has the do major version changed since the last build?
 	lastMajor, _ := cfg.loadBuildVersion()
 	if lastMajor != versionMajor {

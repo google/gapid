@@ -15,10 +15,10 @@
 package event
 
 import (
+	"context"
 	"io"
 	"reflect"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 )
 
@@ -27,7 +27,7 @@ import (
 // without waiting for the underlying handler to be invoked and complete.
 // This is a *very* dangerous function to use, as it fully uncouples the handlers, and can result in
 // unbounded memory consumption with no ability to flow control.
-func Buffer(ctx log.Context, handler Handler) Handler {
+func Buffer(ctx context.Context, handler Handler) Handler {
 	in := make(chan interface{})  // returned handler to buffer
 	out := make(chan interface{}) // buffer to passed in handler
 	closer := make(chan struct{}) // close signal
@@ -47,7 +47,7 @@ func Buffer(ctx log.Context, handler Handler) Handler {
 					// TODO: teardown
 				}
 				events = append(events, event) // and store it
-			case <-ctx.Unwrap().Done():
+			case <-ctx.Done():
 				// TODO: teardown
 			}
 		}
@@ -62,7 +62,7 @@ func Buffer(ctx log.Context, handler Handler) Handler {
 					return
 				}
 				handler(ctx, out)
-			case <-ctx.Unwrap().Done():
+			case <-ctx.Done():
 				close(closer)
 				return
 			}
@@ -73,18 +73,18 @@ func Buffer(ctx log.Context, handler Handler) Handler {
 }
 
 func chanProducer(from <-chan interface{}) Producer {
-	return func(ctx log.Context) interface{} {
+	return func(ctx context.Context) interface{} {
 		select {
 		case event := <-from:
 			return event
-		case <-ctx.Unwrap().Done():
+		case <-ctx.Done():
 			return nil
 		}
 	}
 }
 
 func chanHandler(to chan<- interface{}, closer <-chan struct{}) Handler {
-	return func(ctx log.Context, event interface{}) error {
+	return func(ctx context.Context, event interface{}) error {
 		select {
 		case to <- event:
 			if event == nil {
@@ -95,19 +95,19 @@ func chanHandler(to chan<- interface{}, closer <-chan struct{}) Handler {
 		case <-closer:
 			close(to)
 			return io.EOF
-		case <-ctx.Unwrap().Done():
+		case <-ctx.Done():
 			close(to)
-			return ctx.Unwrap().Err()
+			return ctx.Err()
 		}
 	}
 }
 
-func chanToHandler(ctx log.Context, f reflect.Value) Handler {
-	jot.Fatal(ctx, nil, "Typed channels not yet supported")
+func chanToHandler(ctx context.Context, f reflect.Value) Handler {
+	log.F(ctx, "Typed channels not yet supported")
 	return nil
 }
 
-func chanToProducer(ctx log.Context, f reflect.Value) Producer {
-	jot.Fatal(ctx, nil, "Typed channels not yet supported")
+func chanToProducer(ctx context.Context, f reflect.Value) Producer {
+	log.F(ctx, "Typed channels not yet supported")
 	return nil
 }

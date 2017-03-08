@@ -14,24 +14,24 @@
 
 package task
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Executor is the signature for a function that executes a Task.
 // When the task is invoked depends on the specific Executor.
 // The returned handle can be used to wait for the task to complete and collect it's error return value.
-type Executor func(ctx log.Context, task Task) Handle
+type Executor func(ctx context.Context, task Task) Handle
 
 // Direct is a synchronous implementation of an Executor that runs the task before returning.
 // In general it is easier to just invoke the task directly, so this is only used in cases where you want to hand
 // the Exectuor to something that is agnostic about how tasks are scheduled.
-func Direct(ctx log.Context, task Task) Handle {
+func Direct(ctx context.Context, task Task) Handle {
 	h, r := Prepare(ctx, task)
 	r()
 	return h
 }
 
 // Go is an asynchronous implementation of an Executor that starts a new go routine to run the task.
-func Go(ctx log.Context, task Task) Handle {
+func Go(ctx context.Context, task Task) Handle {
 	h, r := Prepare(ctx, task)
 	go r()
 	return h
@@ -52,12 +52,12 @@ func Pool(queue int, parallel int) (Executor, Task) {
 			}
 		}()
 	}
-	executor := func(ctx log.Context, task Task) Handle {
+	executor := func(ctx context.Context, task Task) Handle {
 		h, r := Prepare(ctx, task)
 		q <- r
 		return h
 	}
-	shutdown := func(log.Context) error {
+	shutdown := func(context.Context) error {
 		close(q)
 		return nil
 	}
@@ -67,7 +67,7 @@ func Pool(queue int, parallel int) (Executor, Task) {
 // Batch returns an executor that uses the supplied executor to run tasks, and automatically adds the completion signals
 // for those tasks to the supplied Signals list.
 func Batch(executor Executor, signals *Events) Executor {
-	batch := func(ctx log.Context, task Task) Handle {
+	batch := func(ctx context.Context, task Task) Handle {
 		s := executor(ctx, task)
 		signals.Add(s)
 		return s

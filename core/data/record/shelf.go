@@ -15,9 +15,9 @@
 package record
 
 import (
+	"context"
 	"net/url"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -27,34 +27,34 @@ import (
 type Shelf interface {
 	// Open is used to open a ledger by name.
 	// All records in the ledger must be of the same type as the null value.
-	Open(ctx log.Context, name string, null interface{}) (Ledger, error)
+	Open(ctx context.Context, name string, null interface{}) (Ledger, error)
 	// Create is used to make and return a new ledger in the shelf.
 	// All records in the ledger must be of the same type as the null value.
-	Create(ctx log.Context, name string, null interface{}) (Ledger, error)
+	Create(ctx context.Context, name string, null interface{}) (Ledger, error)
 }
 
 // NewShelf returns a new record shelf from the supplied url.
 // The type of shelf will depend on the url given.
-func NewShelf(ctx log.Context, shelfURL string) (Shelf, error) {
-	ctx = ctx.V("ShelfURL", shelfURL)
+func NewShelf(ctx context.Context, shelfURL string) (Shelf, error) {
+	ctx = log.V{"ShelfURL": shelfURL}.Bind(ctx)
 	location, err := url.Parse(shelfURL)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Invalid record shelf location")
+		return nil, log.Err(ctx, err, "Invalid record shelf location")
 	}
 	switch location.Scheme {
 	case "", "file":
 		if location.Host != "" {
-			return nil, cause.Explain(ctx, nil, "Host not supported for file shelves")
+			return nil, log.Err(ctx, nil, "Host not supported for file shelves")
 		}
 		if location.Path == "" {
-			return nil, cause.Explain(ctx, nil, "Path must be specified for file shelves")
+			return nil, log.Err(ctx, nil, "Path must be specified for file shelves")
 		}
-		ctx.Notice().Logf("Build a file record shelf on %s", location.Path)
+		log.I(ctx, "Build a file record shelf on %s", location.Path)
 		return NewFileShelf(ctx, file.Abs(location.Path))
 	case "memory":
-		ctx.Notice().Logf("Start an in memory record shelf")
+		log.I(ctx, "Start an in memory record shelf")
 		return NewNullShelf(ctx)
 	default:
-		return nil, cause.Explain(ctx, nil, "Unknown record shelf url type")
+		return nil, log.Err(ctx, nil, "Unknown record shelf url type")
 	}
 }

@@ -14,10 +14,10 @@
 
 package git
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // ResetToHead performs a 'git clean -f -d' followed by 'git checkout .'.
-func (g Git) ResetToHead(ctx log.Context) error {
+func (g Git) ResetToHead(ctx context.Context) error {
 	if _, _, err := g.run(ctx, "clean", "-f", "-d"); err != nil {
 		return err
 	}

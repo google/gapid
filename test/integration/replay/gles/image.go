@@ -16,6 +16,7 @@ package gles
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	goimg "image"
@@ -25,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/endian"
 	gpuimg "github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
@@ -34,43 +34,43 @@ import (
 )
 
 // storeReferenceImage replaces the reference image with img.
-func storeReferenceImage(ctx log.Context, outputDir string, name string, img *gpuimg.Image2D) {
-	ctx = ctx.S("Name", name)
+func storeReferenceImage(ctx context.Context, outputDir string, name string, img *gpuimg.Image2D) {
+	ctx = log.V{"name": name}.Bind(ctx)
 	data := &bytes.Buffer{}
 	i, err := toGoImage(img)
 	if err != nil {
-		jot.Fatal(ctx, err, "Failed to convert GPU image to Go image")
+		log.F(ctx, "Failed to convert GPU image to Go image: %v", err)
 	}
 	if err := png.Encode(data, i); err != nil {
-		jot.Fatal(ctx, err, "Failed to encode reference image")
+		log.F(ctx, "Failed to encode reference image: %v", err)
 	}
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		jot.Fatal(ctx, err, "Failed to create reference image directory")
+		log.F(ctx, "Failed to create reference image directory: %v", err)
 	}
 	path := filepath.Join(outputDir, name+".png")
 	if err := ioutil.WriteFile(path, data.Bytes(), 0666); err != nil {
-		jot.Fatal(ctx, err, "Failed to store reference image")
+		log.F(ctx, "Failed to store reference image: %v", err)
 	}
 }
 
 // loadReferenceImage loads the reference image with the specified name.
-func loadReferenceImage(ctx log.Context, name string) *gpuimg.Image2D {
-	ctx = ctx.S("Name", name)
+func loadReferenceImage(ctx context.Context, name string) *gpuimg.Image2D {
+	ctx = log.V{"name": name}.Bind(ctx)
 	b64, found := embedded[fmt.Sprintf("reference/%s.png", name)]
 	if !found {
-		jot.Fatalf(ctx, nil, "Embedded reference image '%s' not found", name)
+		log.F(ctx, "Embedded reference image '%s' not found", name)
 	}
 	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		jot.Fatal(ctx, err, "Failed to load reference image")
+		log.F(ctx, "Failed to load reference image: %v", err)
 	}
 	img, err := png.Decode(bytes.NewBuffer(data))
 	if err != nil {
-		jot.Fatal(ctx, err, "Failed to decode reference image")
+		log.F(ctx, "Failed to decode reference image: %v", err)
 	}
 	out, err := toGPUImage(img)
 	if err != nil {
-		jot.Fatal(ctx, err, "Failed to convert Go image to GPU image")
+		log.F(ctx, "Failed to convert Go image to GPU image: %v", err)
 	}
 	return out
 }

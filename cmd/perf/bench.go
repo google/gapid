@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -23,8 +24,6 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary/schema"
@@ -42,7 +41,7 @@ const (
 )
 
 type session struct {
-	ctx       log.Context
+	ctx       context.Context
 	bench     *Benchmark
 	tracefile string
 	runIdx    int
@@ -62,7 +61,7 @@ type session struct {
 	hierarchies     interface{}
 }
 
-func fullRun(ctx log.Context, bench *Benchmark) (err error) {
+func fullRun(ctx context.Context, bench *Benchmark) (err error) {
 	// Update Gapis link.
 	g, err := newGapisLink(bench, bench.Input.Gapis.Get().Bundle)
 	if err != nil {
@@ -82,9 +81,9 @@ func fullRun(ctx log.Context, bench *Benchmark) (err error) {
 
 	bench.Meta.DateStarted = time.Now()
 	for runIdx := 0; runIdx < bench.Input.Runs; runIdx++ {
-		ctx.Info().Logf("Benchmark run: %d/%d", (runIdx + 1), bench.Input.Runs)
+		log.I(ctx, "Benchmark run: %d/%d", (runIdx + 1), bench.Input.Runs)
 		if err := singleRun(ctx, bench, runIdx, traceFile); err != nil {
-			return cause.Explain(ctx, err, "singleRun")
+			return log.Err(ctx, err, "singleRun")
 		}
 	}
 	bench.TotalTimeTaken.Set(time.Since(bench.Meta.DateStarted))
@@ -107,7 +106,7 @@ func stringOrEmpty(s fmt.Stringer) string {
 	}
 }
 
-func singleRun(ctx log.Context, bench *Benchmark, runIdx int, tracefile string) error {
+func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile string) error {
 	s := &session{ctx: ctx, bench: bench, tracefile: tracefile, runIdx: runIdx}
 	if err := s.gapisConnect(); err != nil {
 		return err
@@ -216,12 +215,13 @@ func (s *session) saveProfileDataEntry(data []byte, key string) error {
 	return nil
 }
 
-type sampleGrabber func(log.Context, *session, *path.Command) error
+type sampleGrabber func(context.Context, *session, *path.Command) error
 
 func (s *session) gapisConnect() error {
-	s.ctx.Info().Logf("Connecting to GAPIS...")
+	log.I(s.ctx, "Connecting to GAPIS...")
 	start := time.Now()
-	client, _, err := client.Connect(s.ctx.Severity(severity.Info), client.Config{})
+	ctx := log.PutFilter(s.ctx, log.SeverityFilter(log.Info))
+	client, _, err := client.Connect(ctx, client.Config{})
 	if err != nil {
 		return fmt.Errorf("Failed to connect to the GAPIS server: %v", err)
 	}
@@ -231,11 +231,11 @@ func (s *session) gapisConnect() error {
 }
 
 func (s *session) getDevices() error {
-	s.ctx.Info().Logf("Getting devices...")
+	log.I(s.ctx, "Getting devices...")
 	start := time.Now()
 	devices, err := s.client.GetDevices(s.ctx)
 	if err != nil {
-		return cause.Explain(s.ctx, err, "GetDevices")
+		return log.Err(s.ctx, err, "GetDevices")
 	}
 	s.bench.Metric("GetDevices", time.Since(start))
 	if len(devices) != 0 {
@@ -245,11 +245,11 @@ func (s *session) getDevices() error {
 }
 
 func (s *session) getSchema() error {
-	s.ctx.Info().Logf("Getting schema...")
+	log.I(s.ctx, "Getting schema...")
 	start := time.Now()
 	schema, err := s.client.GetSchema(s.ctx)
 	if err != nil {
-		return cause.Explain(s.ctx, err, "GetSchema")
+		return log.Err(s.ctx, err, "GetSchema")
 	}
 	s.bench.Metric("GetSchema", time.Since(start))
 	s.schema = schema
@@ -257,12 +257,12 @@ func (s *session) getSchema() error {
 }
 
 func (s *session) getStringTables() error {
-	s.ctx.Info().Logf("Getting string tables...")
+	log.I(s.ctx, "Getting string tables...")
 
 	start := time.Now()
 	stringTableInfos, err := s.client.GetAvailableStringTables(s.ctx)
 	if err != nil {
-		return cause.Explain(s.ctx, err, "GetAvailableStringTables")
+		return log.Err(s.ctx, err, "GetAvailableStringTables")
 	}
 	s.bench.Metric("GetAvailableStringTables", time.Since(start))
 
@@ -279,11 +279,11 @@ func (s *session) getStringTables() error {
 }
 
 func (s *session) loadCapture() error {
-	s.ctx.Info().Logf("Loading capture file %s...", s.tracefile)
+	log.I(s.ctx, "Loading capture file %s...", s.tracefile)
 	start := time.Now()
 	capture, err := s.client.LoadCapture(s.ctx, s.tracefile)
 	if err != nil {
-		return cause.Explain(s.ctx, err, "Failed to load the capture file")
+		return log.Err(s.ctx, err, "Failed to load the capture file")
 	}
 	s.bench.Metric("LoadCapture", time.Since(start))
 	s.capture = capture
@@ -292,12 +292,12 @@ func (s *session) loadCapture() error {
 
 func (s *session) get(what string, p path.Node, dest *interface{}) error {
 	metric := fmt.Sprintf("Get%s", what)
-	s.ctx.Info().Logf("Getting: %s...", what)
+	log.I(s.ctx, "Getting: %s...", what)
 	start := time.Now()
 	var err error
 	*dest, err = s.client.Get(s.ctx, p.Path())
 	if err != nil {
-		return cause.Explain(s.ctx, err, metric)
+		return log.Err(s.ctx, err, metric)
 	}
 	s.bench.Metric(metric, time.Since(start))
 	return nil
@@ -352,7 +352,7 @@ func (s *session) grabSamples() error {
 		return err
 	}
 
-	ctx.Info().Logf("Getting samples...")
+	log.I(ctx, "Getting samples...")
 	start := time.Now()
 
 	// Map atom indices to frames.
@@ -371,7 +371,7 @@ func (s *session) grabSamples() error {
 	}
 
 	for i, index := range as {
-		ctx.Debug().Logf("Index %d [%d/%d]", index, (i + 1), len(as))
+		log.I(ctx, "Index %d [%d/%d]", index, (i + 1), len(as))
 		if task.Stopped(ctx) {
 			break
 		}
@@ -383,16 +383,16 @@ func (s *session) grabSamples() error {
 		s.bench.Samples.Add(int64(index), time.Since(start))
 	}
 	s.bench.Metric("GrabSamples", time.Since(start))
-	ctx.Info().Logf("Benchmark complete.")
+	log.I(ctx, "Benchmark complete.")
 	return nil
 }
 
-func getStateAfter(ctx log.Context, session *session, cmd *path.Command) error {
+func getStateAfter(ctx context.Context, session *session, cmd *path.Command) error {
 	_, err := session.client.Get(ctx, cmd.StateAfter().Path())
 	return err
 }
 
-func getFrame(ctx log.Context, session *session, cmd *path.Command) error {
+func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 	settings := &service.RenderSettings{
 		MaxWidth:  uint32(session.bench.Input.MaxFrameWidth),
 		MaxHeight: uint32(session.bench.Input.MaxFrameHeight),

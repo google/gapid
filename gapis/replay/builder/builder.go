@@ -17,6 +17,7 @@ package builder
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
@@ -536,10 +536,10 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 // Build compiles the replay instructions, returning a Payload that can be
 // sent to the replay virtual-machine and a ResponseDecoder for interpreting
 // the responses.
-func (b *Builder) Build(ctx log.Context) (protocol.Payload, ResponseDecoder, error) {
-	ctx = ctx.Enter("Build")
+func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder, error) {
+	ctx = log.Enter(ctx, "Build")
 	if config.DebugReplayBuilder {
-		ctx.Info().Logf("Instruction count: %d", len(b.instructions))
+		log.I(ctx, "Instruction count: %d", len(b.instructions))
 		b.assertResourceSizesAreAsExpected(ctx)
 	}
 
@@ -570,11 +570,11 @@ func (b *Builder) Build(ctx log.Context) (protocol.Payload, ResponseDecoder, err
 	}
 
 	if config.DebugReplayBuilder {
-		ctx.Info().Logf("Stack size:           0x%x", payload.StackSize)
-		ctx.Info().Logf("Volatile memory size: 0x%x", payload.VolatileMemorySize)
-		ctx.Info().Logf("Constant memory size: 0x%x", len(payload.Constants))
-		ctx.Info().Logf("Opcodes size:         0x%x", len(payload.Opcodes))
-		ctx.Info().Logf("Resource count:         %d", len(payload.Resources))
+		log.I(ctx, "Stack size:           0x%x", payload.StackSize)
+		log.I(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
+		log.I(ctx, "Constant memory size: 0x%x", len(payload.Constants))
+		log.I(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
+		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
 	// TODO: check that each Postback consumes its expected number of bytes.
@@ -597,28 +597,28 @@ func (b *Builder) Build(ctx log.Context) (protocol.Payload, ResponseDecoder, err
 
 const ErrInvalidResource = fault.Const("Invaid resource")
 
-func (b *Builder) assertResourceSizesAreAsExpected(ctx log.Context) {
+func (b *Builder) assertResourceSizesAreAsExpected(ctx context.Context) {
 	for _, r := range b.resources {
-		ctx := ctx.S("resource-id", r.ID)
+		ctx := log.V{"resource-id": r.ID}.Bind(ctx)
 		id, err := id.Parse(r.ID)
 		if err != nil {
-			panic(cause.Explain(ctx, ErrInvalidResource, "Couldn't parse identifier"))
+			panic(log.Err(ctx, ErrInvalidResource, "Couldn't parse identifier"))
 		}
 		obj, err := database.Resolve(ctx, id)
 		if err != nil {
-			panic(cause.Explain(ctx, ErrInvalidResource, "Couldn't resolve"))
+			panic(log.Err(ctx, ErrInvalidResource, "Couldn't resolve"))
 		}
 		data, ok := obj.([]byte)
 		if !ok {
-			panic(cause.Explain(ctx, ErrInvalidResource, "Didn't resolve to byte slice"))
+			panic(log.Err(ctx, ErrInvalidResource, "Didn't resolve to byte slice"))
 		}
 		if len(data) != int(r.Size) {
-			panic(cause.Explain(ctx, ErrInvalidResource, "Resource size mismatch").With("expected", r.Size).With("got", len(data)))
+			panic(log.Errf(ctx, ErrInvalidResource, "Resource size mismatch. expected: %v, got: %v", r.Size, len(data)))
 		}
 	}
 }
 
-func (b *Builder) layoutVolatileMemory(ctx log.Context, w pod.Writer) *volatileMemoryLayout {
+func (b *Builder) layoutVolatileMemory(ctx context.Context, w pod.Writer) *volatileMemoryLayout {
 	// Volatile memory layout:
 	//
 	//  low ┌──────────────────┐
@@ -679,16 +679,16 @@ func (b *Builder) layoutVolatileMemory(ctx log.Context, w pod.Writer) *volatileM
 	}
 
 	if config.DebugReplayBuilder {
-		ctx.Info().Logf("Volatile memory layout: [0x%x, 0x%x]", 0, size-1)
-		ctx.Info().Logf("  Heap:      [0x%x, 0x%x]", heapStart, heapEnd)
-		ctx.Info().Logf("  Temporary: [0x%x, 0x%x]", tempStart, tempEnd)
-		ctx.Info().Logf("  Reserved:  [0x%x, 0x%x]", reservedStart, reservedEnd)
+		log.I(ctx, "Volatile memory layout: [0x%x, 0x%x]", 0, size-1)
+		log.I(ctx, "  Heap:      [0x%x, 0x%x]", heapStart, heapEnd)
+		log.I(ctx, "  Temporary: [0x%x, 0x%x]", tempStart, tempEnd)
+		log.I(ctx, "  Reserved:  [0x%x, 0x%x]", reservedStart, reservedEnd)
 		for _, m := range b.reservedMemory {
-			ctx.Info().Logf("    Block:   %v", m)
+			log.I(ctx, "    Block:   %v", m)
 		}
-		ctx.Info().Logf("  Pointers:  [0x%x, 0x%x]", pointerStart, pointerEnd)
+		log.I(ctx, "  Pointers:  [0x%x, 0x%x]", pointerStart, pointerEnd)
 		for _, m := range b.pointerMemory {
-			ctx.Info().Logf("    Block:   %v", m)
+			log.I(ctx, "    Block:   %v", m)
 		}
 	}
 

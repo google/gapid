@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -73,18 +74,18 @@ func (l SummaryList) Format(f fmt.State, c rune) {
 	}
 }
 
-func SummaryDiff(ctx log.Context, a, b SummaryList) {
+func SummaryDiff(ctx context.Context, a, b SummaryList) {
 	for {
 		if len(a) == 0 {
 			if len(b) == 0 {
 				return
 			}
-			ctx.Warning().Logf("Extra %s : %d", b[0].Name, b[0].Count)
+			log.W(ctx, "Extra %s : %d", b[0].Name, b[0].Count)
 			b = b[1:]
 			continue
 		}
 		if len(b) == 0 {
-			ctx.Warning().Logf("Missing %s : %d", a[0].Name, a[0].Count)
+			log.W(ctx, "Missing %s : %d", a[0].Name, a[0].Count)
 			a = a[1:]
 			continue
 		}
@@ -92,22 +93,22 @@ func SummaryDiff(ctx log.Context, a, b SummaryList) {
 		switch {
 		case match == 0:
 			if a[0].Count != b[0].Count {
-				ctx.Warning().Logf("Different %s : in %d out %d", a[0].Name, a[0].Count, b[0].Count)
+				log.W(ctx, "Different %s : in %d out %d", a[0].Name, a[0].Count, b[0].Count)
 			}
 			a = a[1:]
 			b = b[1:]
 		case match < 0:
-			ctx.Warning().Logf("Missing %s : %d", a[0].Name, a[0].Count)
+			log.W(ctx, "Missing %s : %d", a[0].Name, a[0].Count)
 			a = a[1:]
 		default:
-			ctx.Warning().Logf("Extra %s : %d", b[0].Name, b[0].Count)
+			log.W(ctx, "Extra %s : %d", b[0].Name, b[0].Count)
 			b = b[1:]
 		}
 	}
 }
 
-func AtomDiff(ctx log.Context, in, out interface{}) {
+func AtomDiff(ctx context.Context, in, out interface{}) {
 	for i, d := range compare.Diff(in, out, 100) {
-		ctx.Notice().Logf("# %v : %v", i, d)
+		log.I(ctx, "# %v : %v", i, d)
 	}
 }

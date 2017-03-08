@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/note"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -30,12 +29,12 @@ const contextKey = contextKeyTy("captureID")
 func (contextKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
 
 // Put attaches a capture path to a Context.
-func Put(ctx log.Context, c *path.Capture) log.Context {
-	return log.Wrap(keys.WithValue(ctx.Unwrap(), contextKey, c))
+func Put(ctx context.Context, c *path.Capture) context.Context {
+	return keys.WithValue(ctx, contextKey, c)
 }
 
 // Get retrieves the capture path from a context previously annotated by Put.
-func Get(ctx log.Context) *path.Capture {
+func Get(ctx context.Context) *path.Capture {
 	val := ctx.Value(contextKey)
 	if val == nil {
 		panic(contextKey + " not present")
@@ -44,6 +43,6 @@ func Get(ctx log.Context) *path.Capture {
 }
 
 // Resolve resolves the capture from a context previously annotated by Put.
-func Resolve(ctx log.Context) (*Capture, error) {
+func Resolve(ctx context.Context) (*Capture, error) {
 	return ResolveFromPath(ctx, Get(ctx))
 }

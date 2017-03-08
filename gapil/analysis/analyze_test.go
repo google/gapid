@@ -15,18 +15,19 @@
 package analysis_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
 )
 
 func u32Rng(s, e int) analysis.Value {
@@ -74,7 +75,7 @@ func toValue(v interface{}) analysis.Value {
 	panic(fmt.Errorf("toValue does not support type %T", v))
 }
 
-func compile(ctx log.Context, source string) (*semantic.API, *resolver.Mappings, error) {
+func compile(ctx context.Context, source string) (*semantic.API, *resolver.Mappings, error) {
 	const maxErrors = 10
 	mappings := resolver.NewMappings()
 	parsed, errs := parser.Parse("analysis_test.api", source, mappings)
@@ -159,7 +160,7 @@ func TestU32GlobalAnalysis(t *testing.T) {
 		{`cmd void c(u32 a, u32 b) { if a >= b { G = b } }`, u32Rng(0, 0x100000000)},
 		{`cmd void c(u32 a, u32 b) { if a <= b { G = b } }`, u32Rng(0, 0x100000000)},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
@@ -198,7 +199,7 @@ func TestEnumGlobalAnalysis(t *testing.T) {
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)

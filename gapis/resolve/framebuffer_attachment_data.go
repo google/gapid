@@ -15,7 +15,8 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/fault/cause"
+	"context"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/messages"
@@ -24,7 +25,7 @@ import (
 )
 
 // Resolve implements the database.Resolver interface.
-func (r *FramebufferAttachmentDataResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	intent := replay.Intent{
 		Device:  r.Device,
 		Capture: r.After.Commands.Capture,
@@ -42,7 +43,7 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx log.Context) (interfac
 
 	query, ok := api.(replay.QueryFramebufferAttachment)
 	if !ok {
-		ctx.Error().Logf("API %s does not implement FramebufferAttachmentDataResolvable", api.Name())
+		log.E(ctx, "API %s does not implement FramebufferAttachmentDataResolvable", api.Name())
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
@@ -64,7 +65,7 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx log.Context) (interfac
 		if _, ok := err.(*service.ErrDataUnavailable); ok {
 			return nil, err
 		}
-		return nil, cause.Explain(ctx, err, "Couldn't get framebuffer attachment")
+		return nil, log.Err(ctx, err, "Couldn't get framebuffer attachment")
 	}
 
 	return res.Data, nil

@@ -15,6 +15,7 @@
 package resolve
 
 import (
+	"context"
 	"sort"
 
 	"github.com/google/gapid/core/image"
@@ -29,7 +30,7 @@ import (
 // FramebufferAttachment resolves the specified framebuffer attachment at the
 // specified point in a capture.
 func FramebufferAttachment(
-	ctx log.Context,
+	ctx context.Context,
 	device *path.Device,
 	after *path.Command,
 	attachment gfxapi.FramebufferAttachment,
@@ -52,7 +53,7 @@ func FramebufferAttachment(
 // The first call to getFramebufferInfo for a given capture/context
 // will trigger a computation for all atoms of this capture, which will be
 // cached to the database for subsequent calls, regardless of the given atom.
-func FramebufferAttachmentInfo(ctx log.Context, after *path.Command, att gfxapi.FramebufferAttachment) (framebufferAttachmentInfo, error) {
+func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att gfxapi.FramebufferAttachment) (framebufferAttachmentInfo, error) {
 	changes, err := FramebufferChanges(ctx, after.Commands.Capture)
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
@@ -69,7 +70,7 @@ func FramebufferAttachmentInfo(ctx log.Context, after *path.Command, att gfxapi.
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *FramebufferAttachmentResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	fbInfo, err := FramebufferAttachmentInfo(ctx, r.After, r.Attachment)
 	if err != nil {
 		return nil, err
@@ -125,11 +126,11 @@ type framebufferAttachmentInfo struct {
 	valid  bool
 }
 
-func (c framebufferAttachmentChanges) after(ctx log.Context, i uint64) (framebufferAttachmentInfo, error) {
+func (c framebufferAttachmentChanges) after(ctx context.Context, i uint64) (framebufferAttachmentInfo, error) {
 	idx := sort.Search(len(c.changes), func(x int) bool { return c.changes[x].after > i }) - 1
 
 	if idx < 0 {
-		ctx.Warning().Logf("No dimension records found after atom %d. FB dimension records = %d", i, len(c.changes))
+		log.W(ctx, "No dimension records found after atom %d. FB dimension records = %d", i, len(c.changes))
 		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 

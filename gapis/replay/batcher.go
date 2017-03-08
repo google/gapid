@@ -15,12 +15,12 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -65,8 +65,8 @@ var (
 	batcherSendInvocationCounter = benchmark.GlobalCounters.Integer("batcher.send.invocations")
 )
 
-func (b *batcher) run(ctx log.Context) {
-	ctx = ctx.V("capture", b.context.Capture)
+func (b *batcher) run(ctx context.Context) {
+	ctx = log.V{"capture": b.context.Capture}.Bind(ctx)
 
 	// Gather all the batchEntries that are added to feed within maxBatchDelay.
 	for j := range b.feed {
@@ -91,7 +91,7 @@ func (b *batcher) run(ctx log.Context) {
 			requests[i] = job.request
 		}
 
-		ctx.Info().Log("Replay batch")
+		log.I(ctx, "Replay batch")
 		err := b.send(ctx, requests)
 		for _, job := range jobs {
 			job.result <- err
@@ -103,7 +103,7 @@ func (b *batcher) run(ctx log.Context) {
 // atoms. This function assumes there's an architecture atom at the beginning of
 // the capture. TODO: Replace this with a proper capture header containing
 // device and process information.
-func captureMemoryLayout(ctx log.Context, list *atom.List) *device.MemoryLayout {
+func captureMemoryLayout(ctx context.Context, list *atom.List) *device.MemoryLayout {
 	s := capture.NewState(ctx)
 	if len(list.Atoms) > 0 {
 		list.Atoms[0].Mutate(ctx, s, nil)
@@ -122,7 +122,7 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 	return nil
 }
 
-func (b *batcher) send(ctx log.Context, requests []Request) (err error) {
+func (b *batcher) send(ctx context.Context, requests []Request) (err error) {
 	batcherSendInvocationCounter.Increment()
 
 	devPath := path.NewDevice(b.context.Device)
@@ -132,33 +132,33 @@ func (b *batcher) send(ctx log.Context, requests []Request) (err error) {
 	ctx = capture.Put(ctx, capPath)
 
 	device := b.device.Instance()
-	ctx = ctx.S("device", device.Name)
+	ctx = log.V{"device": device.Name}.Bind(ctx)
 
-	ctx.Info().Logf("Replaying...")
+	log.I(ctx, "Replaying...")
 
 	c, err := capture.ResolveFromPath(ctx, capPath)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to load capture")
+		return log.Err(ctx, err, "Failed to load capture")
 	}
 
 	list, err := c.Atoms(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to load atom stream")
+		return log.Err(ctx, err, "Failed to load atom stream")
 	}
 
 	cml := captureMemoryLayout(ctx, list)
-	ctx = ctx.V("capture memory layout", cml)
+	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
 
 	if len(device.Configuration.ABIs) == 0 {
-		return cause.Explain(ctx, nil, "Replay device doesn't list any ABIs")
+		return log.Err(ctx, nil, "Replay device doesn't list any ABIs")
 	}
 
 	replayABI := findABI(cml, device.Configuration.ABIs)
 	if replayABI == nil {
-		ctx.Info().Log("Replay device does not have a memory layout matching device used to trace")
+		log.I(ctx, "Replay device does not have a memory layout matching device used to trace")
 		replayABI = device.Configuration.ABIs[0]
 	}
-	ctx = ctx.V("replay target ABI", replayABI)
+	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
 	builder := builder.New(replayABI.MemoryLayout)
 
@@ -176,18 +176,18 @@ func (b *batcher) send(ctx log.Context, requests []Request) (err error) {
 		device,
 		c,
 		out); err != nil {
-		return cause.Explain(ctx, err, "Replay returned error")
+		return log.Err(ctx, err, "Replay returned error")
 	}
 	generatorReplayCounter.Stop(t0)
 
 	if config.DebugReplay {
-		ctx.Print("Building payload...")
+		log.I(ctx, "Building payload...")
 	}
 
 	t0 = builderBuildCounter.Start()
 	payload, decoder, err := builder.Build(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to build replay payload")
+		return log.Err(ctx, err, "Failed to build replay payload")
 	}
 	builderBuildCounter.Stop(t0)
 
@@ -213,12 +213,12 @@ func (b *batcher) send(ctx log.Context, requests []Request) (err error) {
 
 	connection, err := b.gapir.Connect(ctx, b.device, replayABI)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to connect to device")
+		return log.Err(ctx, err, "Failed to connect to device")
 	}
 	defer connection.Close()
 
 	if config.DebugReplay {
-		ctx.Info().Log("Sending payload")
+		log.I(ctx, "Sending payload")
 	}
 
 	if Events.OnReplay != nil {
@@ -248,12 +248,12 @@ func (w *adapter) State() *gfxapi.State {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx log.Context, i atom.ID, a atom.Atom) {
+func (w *adapter) MutateAndWrite(ctx context.Context, i atom.ID, a atom.Atom) {
 	w.builder.BeginAtom(uint64(i))
 	if err := a.Mutate(ctx, w.state, w.builder); err == nil {
 		w.builder.CommitAtom()
 	} else {
 		w.builder.RevertAtom(err)
-		ctx.Warning().Logf("Failed to write atom %d (%T) for replay: %v", i, a, err)
+		log.W(ctx, "Failed to write atom %d (%T) for replay: %v", i, a, err)
 	}
 }

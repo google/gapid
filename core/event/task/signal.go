@@ -15,9 +15,8 @@
 package task
 
 import (
+	"context"
 	"time"
-
-	"github.com/google/gapid/core/log"
 )
 
 // FiredSignal is a signal that is always in the fired state.
@@ -37,7 +36,7 @@ type Signal <-chan struct{}
 // The returned fire Task must only be called once.
 func NewSignal() (Signal, Task) {
 	c := make(chan struct{})
-	return c, func(log.Context) error { close(c); return nil }
+	return c, func(context.Context) error { close(c); return nil }
 }
 
 // Fired returns true if the signal has been fired.
@@ -53,7 +52,7 @@ func (s Signal) Fired() bool {
 // Wait blocks until the signal has been fired or the context has been
 // cancelled.
 // Returns true if the signal was fired, false if the context was cancelled.
-func (s Signal) Wait(ctx log.Context) bool {
+func (s Signal) Wait(ctx context.Context) bool {
 	select {
 	case <-s:
 		return true
@@ -66,7 +65,7 @@ func (s Signal) Wait(ctx log.Context) bool {
 // timeout, whichever comes first.
 // Returns true if the signal was fired, false if the context was cancelled or
 // the timeout was reached.
-func (s Signal) TryWait(ctx log.Context, timeout time.Duration) bool {
+func (s Signal) TryWait(ctx context.Context, timeout time.Duration) bool {
 	select {
 	case <-s:
 		return true

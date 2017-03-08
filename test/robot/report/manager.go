@@ -15,26 +15,27 @@
 package report
 
 import (
-	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/test/robot/job"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/test/robot/job"
 )
 
 // ActionHandler is a function that handles a stream of Actions.
-type ActionHandler func(log.Context, *Action) error
+type ActionHandler func(context.Context, *Action) error
 
 // TaskHandler is a function that handles a stream of Tasks.
-type TaskHandler func(log.Context, *Task) error
+type TaskHandler func(context.Context, *Task) error
 
 // Manager is the interface to a trace manager.
 type Manager interface {
 	// Search invokes handler with each output that matches the query.
-	Search(ctx log.Context, query *search.Query, handler ActionHandler) error
+	Search(ctx context.Context, query *search.Query, handler ActionHandler) error
 	// Register a handler that will accept incoming tasks.
-	Register(ctx log.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error
+	Register(ctx context.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error
 	// Do asks the manager to send a task to a device.
-	Do(ctx log.Context, device string, input *Input) (string, error)
+	Do(ctx context.Context, device string, input *Input) (string, error)
 	// Update adjusts the state of an action.
-	Update(ctx log.Context, action string, status job.Status, output *Output) error
+	Update(ctx context.Context, action string, status job.Status, output *Output) error
 }

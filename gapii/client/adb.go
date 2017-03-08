@@ -15,11 +15,10 @@
 package client
 
 import (
+	"context"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -39,47 +38,48 @@ const (
 // and device.
 // GAPII will attempt to connect back on the returned host port to write the
 // trace.
-func Start(ctx log.Context, a *android.ActivityAction) (port adb.TCPPort, cleanup task.Task, err error) {
+func Start(ctx context.Context, a *android.ActivityAction) (port adb.TCPPort, cleanup task.Task, err error) {
 	p := a.Package
-	ctx = ctx.Enter("start").S("activity", a.Activity).S("on", p.Name)
+	ctx = log.Enter(ctx, "start")
+	ctx = log.V{"activity": a.Activity, "on": p.Name}.Bind(ctx)
 	d := p.Device.(adb.Device)
 
 	abi := a.Package.ABI
 	if abi.SameAs(device.UnknownABI) {
 		abi = a.Package.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
-	ctx = ctx.V("abi", abi.Name)
+	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
-	ctx.Print("Turning device screen on")
+	log.I(ctx, "Turning device screen on")
 	if err := d.TurnScreenOn(ctx); err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Couldn't turn device screen on")
+		return 0, nil, log.Err(ctx, err, "Couldn't turn device screen on")
 	}
 
-	ctx.Print("Checking for lockscreen")
+	log.I(ctx, "Checking for lockscreen")
 	locked, err := d.IsShowingLockscreen(ctx)
 	if err != nil {
-		jot.Warning(ctx).Cause(err).Print("Couldn't determine lockscreen state")
+		log.W(ctx, "Couldn't determine lockscreen state: %v", err)
 	}
 	if locked {
-		return 0, nil, cause.Explain(ctx, nil, "Cannot trace app on locked device")
+		return 0, nil, log.Err(ctx, nil, "Cannot trace app on locked device")
 	}
 
 	port, err = adb.LocalFreeTCPPort()
 	if err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Finding free port")
+		return 0, nil, log.Err(ctx, err, "Finding free port")
 	}
 
-	ctx.Print("Checking gapid.apk is installed")
+	log.I(ctx, "Checking gapid.apk is installed")
 	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Installing gapid.apk")
+		return 0, nil, log.Err(ctx, err, "Installing gapid.apk")
 	}
 
-	ctx = ctx.I("port", int(port))
+	ctx = log.V{"port": port}.Bind(ctx)
 
-	ctx.Print("Forwarding")
+	log.I(ctx, "Forwarding")
 	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("gapii")); err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Setting up port forwarding")
+		return 0, nil, log.Err(ctx, err, "Setting up port forwarding")
 	}
 
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
@@ -87,10 +87,10 @@ func Start(ctx log.Context, a *android.ActivityAction) (port adb.TCPPort, cleanu
 	// if we aren't debuggable regardless.
 	if err := d.Command("shell", "setprop", "debug.vulkan.layers", "VkGraphicsSpy").Run(ctx); err != nil {
 		d.RemoveForward(ctx, adb.TCPPort(port))
-		return 0, nil, cause.Explain(ctx, err, "Setting up vulkan layer")
+		return 0, nil, log.Err(ctx, err, "Setting up vulkan layer")
 	}
 
-	doCleanup := func(ctx log.Context) error {
+	doCleanup := func(ctx context.Context) error {
 		d.Command("shell", "setprop", "debug.vulkan.layers", "\"\"").Run(ctx)
 		return d.RemoveForward(ctx, adb.TCPPort(port))
 	}
@@ -100,9 +100,9 @@ func Start(ctx log.Context, a *android.ActivityAction) (port adb.TCPPort, cleanu
 		}
 	}()
 
-	ctx.Print("Starting activity in debug mode")
+	log.I(ctx, "Starting activity in debug mode")
 	if err := d.StartActivityForDebug(ctx, *a); err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Starting activity in debug mode")
+		return 0, nil, log.Err(ctx, err, "Starting activity in debug mode")
 	}
 
 	var pid int
@@ -112,9 +112,9 @@ func Start(ctx log.Context, a *android.ActivityAction) (port adb.TCPPort, cleanu
 		pid, err = p.Pid(ctx)
 	}
 	if err != nil {
-		return 0, nil, cause.Explain(ctx, err, "Getting pid")
+		return 0, nil, log.Err(ctx, err, "Getting pid")
 	}
-	ctx = ctx.I("pid", pid)
+	ctx = log.V{"pid": pid}.Bind(ctx)
 
 	if err := loadLibrariesViaJDWP(ctx, apk, pid, d); err != nil {
 		return 0, nil, err

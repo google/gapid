@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapidapk"
 )
@@ -43,7 +43,7 @@ func init() {
 	})
 }
 
-func (verb *packagesVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	d, err := getADBDevice(ctx, verb.Device)
 	if err != nil {
 		return err
@@ -51,14 +51,14 @@ func (verb *packagesVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 
 	pkgs, err := gapidapk.PackageList(ctx, d, verb.Icons, float32(verb.IconDensity))
 	if err != nil {
-		return cause.Explain(ctx, err, "getting package list")
+		return log.Err(ctx, err, "getting package list")
 	}
 
 	w := os.Stdout
 	if verb.Out != "" {
 		f, err := os.OpenFile(verb.Out, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed to open package list output file")
+			return log.Err(ctx, err, "Failed to open package list output file")
 		}
 		w = f
 		defer w.Close()
@@ -71,7 +71,7 @@ func (verb *packagesVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 	case Proto:
 		data, err := proto.Marshal(pkgs)
 		if err != nil {
-			return cause.Explain(ctx, err, "marshal protobuf")
+			return log.Err(ctx, err, "marshal protobuf")
 		}
 		w.Write(data)
 
@@ -79,7 +79,7 @@ func (verb *packagesVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 		e := json.NewEncoder(w)
 		e.SetIndent("", "  ")
 		if err := e.Encode(pkgs); err != nil {
-			return cause.Explain(ctx, err, "marshal json")
+			return log.Err(ctx, err, "marshal json")
 		}
 
 	case SimpleList:

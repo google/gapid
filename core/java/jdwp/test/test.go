@@ -15,6 +15,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,7 +24,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/java/jdwp"
 	"github.com/google/gapid/core/log"
@@ -48,42 +48,43 @@ func findFreePort() (int, error) {
 // JavaSource is a map of file name 'foo.java' to the source code.
 type JavaSource map[string]string
 
-func runJavaServer(ctx log.Context, sources JavaSource, port int) task.Signal {
+func runJavaServer(ctx context.Context, sources JavaSource, port int) task.Signal {
 	signal, done := task.NewSignal()
 	go func() {
 		defer done(ctx)
 		tmp, err := ioutil.TempDir("", "jdwp")
 		if err != nil {
-			jot.Fatal(ctx, err, "Couldn't get temporary directory")
+			log.E(ctx, "Couldn't get temporary directory. Error: %v", err)
 			return
 		}
 		defer os.RemoveAll(tmp)
 		sourceNames := make([]string, 0, len(sources))
 		for name, source := range sources {
 			if err := ioutil.WriteFile(filepath.Join(tmp, name), []byte(source), 0777); err != nil {
-				jot.Fatal(ctx, err, "Couldn't write to temporary source file")
+				log.E(ctx, "Couldn't write to temporary source file. Error: %v", err)
 				return
 			}
 			sourceNames = append(sourceNames, name)
 		}
+		l := log.From(ctx)
 		if err := shell.
 			Command("javac", sourceNames...).
 			In(tmp).
-			Capture(nil, ctx.Error().Writer()).
+			Capture(nil, l.Writer(log.Error)).
 			Run(ctx); err != nil {
 
-			jot.Fatal(ctx, err, "Couldn't compile java source")
+			log.E(ctx, "Couldn't compile java source. Error: %v", err)
 			return
 		}
 		agentlib := fmt.Sprintf("-agentlib:jdwp=transport=dt_socket,suspend=y,server=y,address=%v", port)
 		if err := shell.
 			Command("java", agentlib, "main").
 			In(tmp).
-			Capture(ctx.Info().Writer(), ctx.Error().Writer()).
+			Capture(l.Writer(log.Info), l.Writer(log.Error)).
 			Run(ctx); err != nil {
 
 			if !task.Stopped(ctx) {
-				jot.Fatal(ctx, err, "Couldn't start java server")
+				log.E(ctx, "Couldn't start java server. Error: %v", err)
 			}
 			return
 		}
@@ -93,13 +94,13 @@ func runJavaServer(ctx log.Context, sources JavaSource, port int) task.Signal {
 
 // BuildRunAndConnect builds all the source files with javac, executes them with
 // java, attaches to it via JDWP, then calls onConnect with the connection.
-func BuildRunAndConnect(source JavaSource, onConnect func(ctx log.Context, conn *jdwp.Connection) int) int {
+func BuildRunAndConnect(source JavaSource, onConnect func(ctx context.Context, conn *jdwp.Connection) int) int {
 	ctx := log.Testing(nil)
 	ctx, stop := task.WithTimeout(ctx, time.Second*30)
 
 	port, err := findFreePort()
 	if err != nil {
-		jot.Fatal(ctx, nil, "Failed to find a free port")
+		log.E(ctx, "Failed to find a free port. Error: %v", err)
 		return -1
 	}
 
@@ -119,13 +120,13 @@ func BuildRunAndConnect(source JavaSource, onConnect func(ctx log.Context, conn 
 	}
 
 	if socket == nil {
-		jot.Fatal(ctx, nil, "Failed to connect to the socket")
+		log.E(ctx, "Failed to connect to the socket. Error: %v", err)
 		return -1
 	}
 
 	conn, err := jdwp.Open(ctx, socket)
 	if err != nil {
-		jot.Fatal(ctx, err, "Failed to open the JDWP connection")
+		log.E(ctx, "Failed to open the JDWP connection. Error: %v", err)
 		return -1
 	}
 

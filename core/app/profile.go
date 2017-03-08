@@ -19,24 +19,22 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/log"
 )
 
 func applyProfiler(ctx context.Context, flags *ProfileFlags) func() {
 	closers := []func(){}
 	if flags.CPU != "" {
-		ctx := keys.WithValue(ctx, "CPUProfile", flags.CPU)
-		jot.Print(ctx, "CPU profiling enabled")
+		log.I(ctx, "CPU profiling enabled")
 		f, err := os.Create(flags.CPU)
 		if err != nil {
-			jot.Fail(ctx, err, "CPU profiling failed to start")
+			log.F(ctx, "CPU profiling failed to start.\nError: %v", err)
 		}
 		pprof.StartCPUProfile(f)
 		closers = append(closers, func() {
 			pprof.StopCPUProfile()
 			f.Close()
-			jot.Print(ctx, "CPU profile written")
+			log.I(ctx, "CPU profile written")
 		})
 	}
 	return func() {

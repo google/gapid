@@ -16,6 +16,7 @@ package gles
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"math"
@@ -108,22 +109,22 @@ var (
 
 	generateReferenceImages = flag.String("generate", "", "directory in which to generate reference images, empty to disable")
 	exportCaptures          = flag.String("export-captures", "", "directory to export captures to, empty to disable")
-	rootCtx                 log.Context
+	rootCtx                 context.Context
 
 	eglDisplay = p(1)
 )
 
-func storeAtoms(ctx log.Context, a *atom.List) id.ID {
+func storeAtoms(ctx context.Context, a *atom.List) id.ID {
 	id, err := database.Store(ctx, a)
 	if err != nil {
-		ctx.Fatalf("Failed to store atom stream: %v", err)
+		log.F(ctx, "Failed to store atom stream: %v", err)
 	}
 	return id
 }
 
 // storeCapture encodes and writes the atom list to the database, returning an
 // identifier to the newly constructed and stored Capture.
-func storeCapture(ctx log.Context, a *atom.List) *path.Capture {
+func storeCapture(ctx context.Context, a *atom.List) *path.Capture {
 	out, err := capture.ImportAtomList(ctx, "test-capture", a)
 	assert.With(ctx).ThatError(err).Succeeded()
 	return out
@@ -137,7 +138,7 @@ func simpleFSSource(fr, fg, fb gles.GLfloat) string {
 	return fmt.Sprintf(simpleFSSourceTemplate, fr, fg, fb)
 }
 
-func maybeExportCapture(ctx log.Context, name string, c *path.Capture) {
+func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
 	if *exportCaptures == "" {
 		return
 	}
@@ -149,7 +150,7 @@ func maybeExportCapture(ctx log.Context, name string, c *path.Capture) {
 }
 
 type Fixture struct {
-	ctx          log.Context
+	ctx          context.Context
 	mgr          *replay.Manager
 	device       bind.Device
 	memoryLayout *device.MemoryLayout
@@ -166,7 +167,7 @@ func (f *Fixture) p() memory.Pointer {
 	return memory.Pointer{Address: base, Pool: memory.ApplicationPool}
 }
 
-func newFixture(ctx log.Context) (log.Context, *Fixture) {
+func newFixture(ctx context.Context) (context.Context, *Fixture) {
 	r := bind.NewRegistry()
 	ctx = bind.PutRegistry(ctx, r)
 	m := replay.New(ctx)
@@ -203,7 +204,7 @@ func p(addr uint64) memory.Pointer {
 	return memory.Pointer{Address: addr, Pool: memory.ApplicationPool}
 }
 
-func checkImage(ctx log.Context, name string, got *image.Image2D, threshold float64) {
+func checkImage(ctx context.Context, name string, got *image.Image2D, threshold float64) {
 	if *generateReferenceImages != "" {
 		storeReferenceImage(ctx, *generateReferenceImages, name, got)
 	} else {
@@ -215,7 +216,7 @@ func checkImage(ctx log.Context, name string, got *image.Image2D, threshold floa
 	}
 }
 
-func checkIssues(ctx log.Context, intent replay.Intent, mgr *replay.Manager, expected []replay.Issue, done *sync.WaitGroup) {
+func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager, expected []replay.Issue, done *sync.WaitGroup) {
 	if done != nil {
 		defer done.Done()
 	}
@@ -239,7 +240,7 @@ func checkIssues(ctx log.Context, intent replay.Intent, mgr *replay.Manager, exp
 	}
 }
 
-func checkReport(ctx log.Context, intent replay.Intent, mgr *replay.Manager, atoms *atom.List, expected []string, done *sync.WaitGroup) {
+func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager, atoms *atom.List, expected []string, done *sync.WaitGroup) {
 	if done != nil {
 		defer done.Done()
 	}
@@ -258,8 +259,9 @@ func checkReport(ctx log.Context, intent replay.Intent, mgr *replay.Manager, ato
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
 
-func checkColorBuffer(ctx log.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
-	ctx = ctx.Enter("ColorBuffer").V("Name", name).V("After", after)
+func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
+	ctx = log.Enter(ctx, "ColorBuffer")
+	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {
 		defer done.Done()
 	}
@@ -272,8 +274,9 @@ func checkColorBuffer(ctx log.Context, intent replay.Intent, mgr *replay.Manager
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkDepthBuffer(ctx log.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
-	ctx = ctx.Enter("DepthBuffer").V("Name", name).V("After", after)
+func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
+	ctx = log.Enter(ctx, "DepthBuffer")
+	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {
 		defer done.Done()
 	}
@@ -295,7 +298,7 @@ func (c intentCfg) String() string {
 	return fmt.Sprintf("Context: %+v, Config: %+v", c.intent, c.config)
 }
 
-func checkReplay(ctx log.Context, expectedIntent replay.Intent, expectedBatchCount int) func() {
+func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatchCount int) func() {
 	batchCount := 0
 	uniqueIntentConfigs := map[intentCfg]struct{}{}
 	replay.Events.OnReplay = func(device bind.Device, intent replay.Intent, config replay.Config, requests []replay.Request) {
@@ -306,9 +309,9 @@ func checkReplay(ctx log.Context, expectedIntent replay.Intent, expectedBatchCou
 	return func() {
 		replay.Events.OnReplay = nil // Avoid stale assertions in subsequent tests that don't use checkReplay.
 		if assert.For(ctx, "Batch count").That(batchCount).Equals(expectedBatchCount) {
-			ctx.Printf("%d unique intent-config pairs:", len(uniqueIntentConfigs))
+			log.I(ctx, "%d unique intent-config pairs:", len(uniqueIntentConfigs))
 			for cc := range uniqueIntentConfigs {
-				ctx.Printf(" • %v", cc)
+				log.I(ctx, " • %v", cc)
 			}
 		}
 	}
@@ -365,7 +368,7 @@ func TestClear(t *testing.T) {
 	maybeExportCapture(ctx, "clear", capture)
 }
 
-type traceVerifier func(log.Context, *path.Capture, *replay.Manager, bind.Device)
+type traceVerifier func(context.Context, *path.Capture, *replay.Manager, bind.Device)
 type traceGenerator func(f *Fixture) (*path.Capture, traceVerifier)
 
 // mergeCaptures creates a capture from the atoms of several existing captures, by interleaving them
@@ -416,7 +419,7 @@ func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier
 	ctx := f.ctx
 	atoms, _, square := samples.DrawTexturedSquare(ctx)
 
-	verifyTrace := func(ctx log.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
+	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
 			Capture: cap,
 			Device:  path.NewDevice(dev.Instance().Id.ID()),
@@ -486,7 +489,7 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 		gles.NewEglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
 
-	verifyTrace := func(ctx log.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
+	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
 			Capture: cap,
 			Device:  path.NewDevice(dev.Instance().Id.ID()),
@@ -559,7 +562,7 @@ func generateDrawTriangleCaptureEx(f *Fixture, br, bg, bb, fr, fg, fb gles.GLflo
 	}
 	rotatedTriangle := atoms.Add()
 
-	verifyTrace := func(ctx log.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
+	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
 			Capture: cap,
 			Device:  path.NewDevice(dev.Instance().Id.ID()),

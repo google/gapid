@@ -15,10 +15,12 @@
 package job
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	xctx "golang.org/x/net/context"
 )
 
 type server struct {
@@ -26,7 +28,7 @@ type server struct {
 }
 
 // Serve wraps a manager in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, manager Manager) error {
+func Serve(ctx xctx.Context, grpcServer *grpc.Server, manager Manager) error {
 	RegisterServiceServer(grpcServer, &server{manager: manager})
 	return nil
 }
@@ -34,21 +36,20 @@ func Serve(ctx log.Context, grpcServer *grpc.Server, manager Manager) error {
 // SearchDevices implements ServiceServer.SearchDevicess
 // It delegates the call to the provided Manager implementation.
 func (s *server) SearchDevices(query *search.Query, stream Service_SearchDevicesServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.manager.SearchDevices(ctx, query, func(ctx log.Context, e *Device) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.manager.SearchDevices(ctx, query, func(ctx context.Context, e *Device) error { return stream.Send(e) })
 }
 
 // SearchWorkers implements ServiceServer.SearchWorkers
 // It delegates the call to the provided Manager implementation.
 func (s *server) SearchWorkers(query *search.Query, stream Service_SearchWorkersServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.manager.SearchWorkers(ctx, query, func(ctx log.Context, e *Worker) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.manager.SearchWorkers(ctx, query, func(ctx context.Context, e *Worker) error { return stream.Send(e) })
 }
 
 // GetWorker implements ServiceServer.GetWorker
 // It delegates the call to the provided Manager implementation.
-func (s *server) GetWorker(outer context.Context, request *GetWorkerRequest) (*GetWorkerResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) GetWorker(ctx xctx.Context, request *GetWorkerRequest) (*GetWorkerResponse, error) {
 	d, err := s.manager.GetWorker(ctx, request.Host, request.Target, request.Operation)
 	if err != nil {
 		return nil, err

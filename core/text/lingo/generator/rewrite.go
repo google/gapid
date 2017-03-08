@@ -15,12 +15,11 @@
 package generator
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 type rewriter struct {
@@ -29,7 +28,7 @@ type rewriter struct {
 	fun   *entry
 }
 
-func (info *introspection) rewrite(ctx log.Context) {
+func (info *introspection) rewrite(ctx context.Context) {
 	// Do the initial rewrites
 	for _, e := range info.entries {
 		if e.Func != nil {

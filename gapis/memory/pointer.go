@@ -15,9 +15,9 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/memory/memory_pb"
@@ -65,7 +65,7 @@ func (p Pointer) String() string {
 }
 
 // Link return the path to the memory pointed-to by p.
-func (p Pointer) Link(ctx log.Context, n path.Node) (path.Node, error) {
+func (p Pointer) Link(ctx context.Context, n path.Node) (path.Node, error) {
 	if cmd := path.FindCommand(n); cmd != nil {
 		return cmd.MemoryAfter(uint32(p.Pool), p.Address, 0), nil
 	}
@@ -79,7 +79,7 @@ func (p Pointer) ToProto() *memory_pb.Pointer {
 	}
 }
 
-func (p *Pointer) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (p *Pointer) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, p.ToProto())
 }
 

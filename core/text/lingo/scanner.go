@@ -16,10 +16,9 @@ package lingo
 
 import (
 	"bytes"
+	"context"
 	"regexp"
 	"unicode/utf8"
-
-	"github.com/google/gapid/core/log"
 )
 
 type Skipper func(*Scanner)
@@ -33,7 +32,7 @@ type Marker struct {
 // Scanner is a basic implementation of the functions used by generated parsers.
 // It expects a the full byte slice of the source file.
 type Scanner struct {
-	ctx       log.Context
+	ctx       context.Context
 	name      string
 	data      []byte
 	offset    int
@@ -45,13 +44,13 @@ type Scanner struct {
 
 // NewByteScanner builds a scanner over an input byte slice.
 // If records is nil, the cst will not be maintained, otherwise it will be filled in with the parse Record list.
-func NewByteScanner(ctx log.Context, name string, input []byte, records *Records) *Scanner {
+func NewByteScanner(ctx context.Context, name string, input []byte, records *Records) *Scanner {
 	return &Scanner{ctx: ctx, name: name, data: input, records: records}
 }
 
-// NewByteScanner builds a scanner over an input string.
+// NewStringScanner builds a scanner over an input string.
 // If records is nil, the cst will not be maintained, otherwise it will be filled in with the parse Record list.
-func NewStringScanner(ctx log.Context, name string, input string, records *Records) *Scanner {
+func NewStringScanner(ctx context.Context, name string, input string, records *Records) *Scanner {
 	return NewByteScanner(ctx, name, []byte(input), records)
 }
 

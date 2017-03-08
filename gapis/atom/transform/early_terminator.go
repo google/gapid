@@ -15,7 +15,8 @@
 package transform
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 )
 
@@ -35,7 +36,7 @@ func (t *EarlyTerminator) Add(id atom.ID) {
 	t.requests.Add(id)
 }
 
-func (t *EarlyTerminator) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Writer) {
+func (t *EarlyTerminator) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
 	if len(t.requests) == 0 {
 		// Seen all the atoms we want, ignore remaining ones
 		return
@@ -44,4 +45,4 @@ func (t *EarlyTerminator) Transform(ctx log.Context, id atom.ID, a atom.Atom, ou
 	t.requests.Remove(id)
 }
 
-func (t *EarlyTerminator) Flush(ctx log.Context, out Writer) {}
+func (t *EarlyTerminator) Flush(ctx context.Context, out Writer) {}

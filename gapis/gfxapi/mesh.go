@@ -16,10 +16,10 @@ package gfxapi
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/f32"
 	"github.com/google/gapid/core/os/device"
@@ -33,12 +33,12 @@ import (
 type MeshProvider interface {
 	// Mesh returns the mesh representation of the object o.
 	// If nil, nil is returned then the type cannot be converted to p.
-	Mesh(ctx log.Context, o interface{}, p *path.Mesh) (*Mesh, error)
+	Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*Mesh, error)
 }
 
 // Faceted returns a new mesh with each shared vertex split, and each normal set
 // to the triangle's normal.
-func (m *Mesh) Faceted(ctx log.Context) (*Mesh, error) {
+func (m *Mesh) Faceted(ctx context.Context) (*Mesh, error) {
 	switch m.DrawPrimitive {
 	case DrawPrimitive_Lines, DrawPrimitive_LineStrip, DrawPrimitive_LineLoop:
 		return m, nil // These are already as faceted as they're going to get.
@@ -92,7 +92,7 @@ func (m *Mesh) Faceted(ctx log.Context) (*Mesh, error) {
 			// Convert position stream to something we can work with
 			posData, err := stream.Convert(fmts.XYZ_F32, s.Format, vertices)
 			if err != nil {
-				return nil, cause.Explain(ctx, err, "Couldn't convert position stream")
+				return nil, log.Err(ctx, err, "Couldn't convert position stream")
 			}
 			vectors := bytesToVec3Ds(posData)
 			// Build the per-triangle normals
@@ -188,7 +188,7 @@ func vec3DsToBytes(vecs []f32.Vec3) []byte {
 }
 
 // ConvertTo converts the vertex buffer to the requested format.
-func (m *Mesh) ConvertTo(ctx log.Context, f *vertex.BufferFormat) (*Mesh, error) {
+func (m *Mesh) ConvertTo(ctx context.Context, f *vertex.BufferFormat) (*Mesh, error) {
 	vb, err := m.VertexBuffer.ConvertTo(ctx, f)
 	if err != nil {
 		return nil, err

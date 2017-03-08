@@ -16,9 +16,9 @@ package apk
 
 import (
 	"archive/zip"
+	"context"
 	"path/filepath"
 
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -30,7 +30,7 @@ var engineSignatures = map[string]string{
 }
 
 // Analyze parses the APK file and returns the APK's information.
-func Analyze(ctx log.Context, apkData []byte) (*Information, error) {
+func Analyze(ctx context.Context, apkData []byte) (*Information, error) {
 	files, err := Read(ctx, apkData)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func Analyze(ctx log.Context, apkData []byte) (*Information, error) {
 
 	activity, action, err := m.MainActivity(ctx)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Finding launch activity")
+		return nil, log.Err(ctx, err, "Finding launch activity")
 	}
 	return &Information{
 		Name:        m.Package, // TODO

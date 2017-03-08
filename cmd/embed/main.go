@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -71,7 +72,7 @@ var (
 	)
 )
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	args := flag.Args()
 	entries := []*embed{}
 	if len(args) == 0 {
@@ -161,7 +162,7 @@ func run(ctx log.Context) error {
 		fmt.Fprintf(b, "const %s_file = `%s`\n", entry.name, entry.filename)
 		fmt.Fprintf(b, "const %s_utf8 = %v\n", entry.name, validUTF8)
 		fmt.Fprintf(b, "const %s = `%s`\n", entry.name, encoded)
-		ctx.Printf("Embed %s from %s\n", entry.name, entry.path)
+		log.I(ctx, "Embed %s from %s\n", entry.name, entry.path)
 	}
 	// reformat the output
 	result, err := imports.Process("", b.Bytes(), nil)

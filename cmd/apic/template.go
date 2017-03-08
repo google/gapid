@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"go/build"
@@ -56,7 +57,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doTemplate(ctx log.Context, flags flag.FlagSet) error {
+func doTemplate(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
@@ -71,7 +72,7 @@ func doTemplate(ctx log.Context, flags flag.FlagSet) error {
 		build.Default.GOPATH = filepath.FromSlash(gopath)
 	}
 	mainTemplate := args[1]
-	ctx.Info().S("api", apiName).Log("Reading")
+	log.I(ctx, "Reading %v", apiName)
 	processor := gapil.NewProcessor()
 	if len(searchPath) > 0 {
 		processor.Loader = gapil.NewSearchLoader(searchPath)
@@ -107,11 +108,11 @@ func cwd() string {
 	return p
 }
 
-func writeDeps(ctx log.Context) error {
+func writeDeps(ctx context.Context) error {
 	if len(deps) == 0 {
 		return nil
 	}
-	ctx.Info().S("deps", deps).Log("Write")
+	log.I(ctx, "Writing deps %v", deps)
 	file, err := os.Create(deps)
 	if err != nil {
 		return err
@@ -121,11 +122,11 @@ func writeDeps(ctx log.Context) error {
 	return file.Close()
 }
 
-func writeCMake(ctx log.Context) error {
+func writeCMake(ctx context.Context) error {
 	if len(cmake) == 0 {
 		return nil
 	}
-	ctx.Info().S("cmake", cmake).Log("Write")
+	log.I(ctx, "Writing cmake %v", cmake)
 	file, err := os.Create(cmake)
 	if err != nil {
 		return err

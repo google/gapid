@@ -18,6 +18,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -56,7 +57,7 @@ type Server interface {
 }
 
 // New constructs and returns a new Server.
-func New(ctx log.Context, cfg Config) Server {
+func New(ctx context.Context, cfg Config) Server {
 	return &server{cfg.Info, cfg.StringTables, cfg.DeviceScanDone, bytes.Buffer{}}
 }
 
@@ -67,11 +68,11 @@ type server struct {
 	profile        bytes.Buffer
 }
 
-func (s *server) GetServerInfo(ctx log.Context) (*service.ServerInfo, error) {
+func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
 	return s.info, nil
 }
 
-func (s *server) GetSchema(ctx log.Context) (*schema.Message, error) {
+func (s *server) GetSchema(ctx context.Context) (*schema.Message, error) {
 	result := &schema.Message{}
 	result.Entities = make([]*binary.Entity, 0, registry.Global.Count())
 	all.GraphicsNamespace.Visit(func(c binary.Class) {
@@ -86,7 +87,7 @@ func (s *server) GetSchema(ctx log.Context) (*schema.Message, error) {
 	return result, nil
 }
 
-func (s *server) GetAvailableStringTables(ctx log.Context) ([]*stringtable.Info, error) {
+func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
 	infos := make([]*stringtable.Info, len(s.stbs))
 	for i, table := range s.stbs {
 		infos[i] = table.Info
@@ -94,7 +95,7 @@ func (s *server) GetAvailableStringTables(ctx log.Context) ([]*stringtable.Info,
 	return infos, nil
 }
 
-func (s *server) GetStringTable(ctx log.Context, info *stringtable.Info) (*stringtable.StringTable, error) {
+func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*stringtable.StringTable, error) {
 	for _, table := range s.stbs {
 		if table.Info.CultureCode == info.CultureCode {
 			return table, nil
@@ -103,11 +104,11 @@ func (s *server) GetStringTable(ctx log.Context, info *stringtable.Info) (*strin
 	return nil, fmt.Errorf("String table not found")
 }
 
-func (s *server) ImportCapture(ctx log.Context, name string, data []uint8) (*path.Capture, error) {
+func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error) {
 	return capture.Import(ctx, name, bytes.NewReader(data))
 }
 
-func (s *server) LoadCapture(ctx log.Context, path string) (*path.Capture, error) {
+func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	name := filepath.Base(path)
 	in, err := os.Open(path)
 	if err != nil {
@@ -116,7 +117,7 @@ func (s *server) LoadCapture(ctx log.Context, path string) (*path.Capture, error
 	return capture.Import(ctx, name, in)
 }
 
-func (s *server) GetDevices(ctx log.Context) ([]*path.Device, error) {
+func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
 	devices := bind.GetRegistry(ctx).Devices()
 	paths := make([]*path.Device, len(devices))
@@ -126,7 +127,7 @@ func (s *server) GetDevices(ctx log.Context) ([]*path.Device, error) {
 	return paths, nil
 }
 
-func (s *server) GetDevicesForReplay(ctx log.Context, p *path.Capture) ([]*path.Device, error) {
+func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
@@ -148,11 +149,14 @@ nextDevice:
 		for _, api := range apis {
 			instance := device.Instance()
 			// TODO: Check if device is a LAD, and if so filter by supportsLAD.
-			ctx := ctx.T("api", api).V("device", instance)
+			ctx := log.V{
+				"api":    fmt.Sprintf("%T", api),
+				"device": instance,
+			}.Bind(ctx)
 			if api.CanReplayOn(ctx, instance) {
-				ctx.Info().Log("Compatible")
+				log.I(ctx, "Compatible")
 			} else {
-				ctx.Info().Log("Incompatible")
+				log.I(ctx, "Incompatible")
 				continue nextDevice
 			}
 		}
@@ -167,7 +171,7 @@ nextDevice:
 }
 
 func (s *server) GetFramebufferAttachment(
-	ctx log.Context,
+	ctx context.Context,
 	device *path.Device,
 	after *path.Command,
 	attachment gfxapi.FramebufferAttachment,
@@ -183,7 +187,7 @@ func (s *server) GetFramebufferAttachment(
 	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings)
 }
 
-func (s *server) Get(ctx log.Context, p *path.Any) (interface{}, error) {
+func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 	// TODO: Path validation
 	// if err := p.Validate(); err != nil {
 	// 	return nil, err
@@ -195,7 +199,7 @@ func (s *server) Get(ctx log.Context, p *path.Any) (interface{}, error) {
 	return v, nil
 }
 
-func (s *server) Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, error) {
+func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
 	// TODO: Path validation
 	// if err := p.Validate(); err != nil {
 	// 	return nil, err
@@ -203,7 +207,7 @@ func (s *server) Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, er
 	return resolve.Set(ctx, p, v)
 }
 
-func (s *server) Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
+func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 	// TODO: Path validation
 	// if err := p.Validate(); err != nil {
 	// 	return nil, err
@@ -211,21 +215,21 @@ func (s *server) Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
 	return resolve.Follow(ctx, p)
 }
 
-func (s *server) BeginCPUProfile(ctx log.Context) error {
+func (s *server) BeginCPUProfile(ctx context.Context) error {
 	s.profile.Reset()
 	return pprof.StartCPUProfile(&s.profile)
 }
 
-func (s *server) EndCPUProfile(ctx log.Context) ([]byte, error) {
+func (s *server) EndCPUProfile(ctx context.Context) ([]byte, error) {
 	pprof.StopCPUProfile()
 	return s.profile.Bytes(), nil
 }
 
-func (s *server) GetPerformanceCounters(ctx log.Context) ([]byte, error) {
+func (s *server) GetPerformanceCounters(ctx context.Context) ([]byte, error) {
 	return json.Marshal(benchmark.GlobalCounters)
 }
 
-func (s *server) GetProfile(ctx log.Context, name string, debug int32) ([]byte, error) {
+func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]byte, error) {
 	p := pprof.Lookup(name)
 	if p == nil {
 		return []byte{}, fmt.Errorf("Profile not found: %s", name)

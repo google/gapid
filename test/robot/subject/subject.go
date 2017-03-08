@@ -15,17 +15,18 @@
 package subject
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/log"
 )
 
 // Handler is a function that handles a stream of Subjects.
-type Handler func(log.Context, *Subject) error
+type Handler func(context.Context, *Subject) error
 
 // Subjects is the interface to a subject manager.
 type Subjects interface {
 	// Search returns a iterator of matching subjects from the store.
-	Search(log.Context, *search.Query, Handler) error
+	Search(context.Context, *search.Query, Handler) error
 	// Add adds a new subject to the set.
-	Add(ctx log.Context, id string, hints *Hints) (*Subject, bool, error)
+	Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error)
 }

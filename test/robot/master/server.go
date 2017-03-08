@@ -15,10 +15,12 @@
 package master
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	xctx "golang.org/x/net/context"
 )
 
 type server struct {
@@ -27,7 +29,7 @@ type server struct {
 }
 
 // Serve wraps a Master in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, m Master) error {
+func Serve(ctx context.Context, grpcServer *grpc.Server, m Master) error {
 	s := &server{master: m}
 	RegisterServiceServer(grpcServer, s)
 	return nil
@@ -36,23 +38,21 @@ func Serve(ctx log.Context, grpcServer *grpc.Server, m Master) error {
 // Search implements ServiceServer.Search
 // It delegates the call to the provided Master implementation.
 func (s *server) Search(query *search.Query, stream Service_SearchServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.master.Search(ctx, query, func(ctx log.Context, e *Satellite) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.master.Search(ctx, query, func(ctx context.Context, e *Satellite) error { return stream.Send(e) })
 }
 
 // Orbit implements ServiceServer.Orbit
 // It delegates the call to the provided Master implementation.
 func (s *server) Orbit(request *OrbitRequest, stream Service_OrbitServer) error {
-	ctx := log.Wrap(stream.Context())
+	ctx := stream.Context()
 	return s.master.Orbit(ctx, *request.Services,
-		func(ctx log.Context, command *Command) error {
-			return stream.Send(command)
-		},
+		func(ctx context.Context, command *Command) error { return stream.Send(command) },
 	)
 }
 
 // Shutdown implements ServiceServer.Shutdown
 // It delegates the call to the provided Master implementation.
-func (s *server) Shutdown(outer context.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
-	return s.master.Shutdown(log.Wrap(outer), request)
+func (s *server) Shutdown(ctx xctx.Context, request *ShutdownRequest) (*ShutdownResponse, error) {
+	return s.master.Shutdown(ctx, request)
 }

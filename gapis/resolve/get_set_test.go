@@ -15,22 +15,18 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
-	_ "github.com/google/gapid/core/data/id"
-	_ "github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	_ "github.com/google/gapid/framework/binary/any"
 	"github.com/google/gapid/framework/binary/registry"
-	_ "github.com/google/gapid/framework/binary/registry"
-	_ "github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -39,6 +35,15 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+)
+
+// The following are the imports that generated source files pull in when present
+// Having these here helps out tools that can't cope with missing dependancies
+import (
+	_ "github.com/google/gapid/core/data/id"
+	_ "github.com/google/gapid/core/data/pod"
+	_ "github.com/google/gapid/framework/binary/registry"
+	_ "github.com/google/gapid/framework/binary/schema"
 )
 
 var Namespace = registry.NewNamespace()
@@ -111,14 +116,14 @@ func (testAPI) Context(*gfxapi.State) gfxapi.Context { return nil }
 func (a testAtom) API() gfxapi.API     { return gfxapi.Find(a.api) }
 func (testAtom) AtomFlags() atom.Flags { return 0 }
 func (testAtom) Extras() *atom.Extras  { return nil }
-func (testAtom) Mutate(log.Context, *gfxapi.State, *builder.Builder) error {
+func (testAtom) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return nil
 }
 
-func newPathTest(ctx log.Context, a *atom.List) *path.Capture {
+func newPathTest(ctx context.Context, a *atom.List) *path.Capture {
 	p, err := capture.ImportAtomList(ctx, "test", a)
 	if err != nil {
-		jot.Fatal(ctx, err, "Creating capture")
+		log.E(ctx, "Couldn't create capture: %v", err)
 	}
 	return p
 }
@@ -223,7 +228,7 @@ func TestGet(t *testing.T) {
 			Path:   p.Commands().Index(1).Parameter("Ptr").MapIndex("foo").Path(),
 		}},
 	} {
-		ctx := ctx.V("path", test.path.Text())
+		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
 		got, err := Get(ctx, test.path.Path())
 		assert.With(ctx).That(got).DeepEquals(test.val)
 		assert.With(ctx).ThatError(err).DeepEquals(test.err)
@@ -316,20 +321,20 @@ func TestSet(t *testing.T) {
 		{p.Commands().Index(1).Parameter("Map").MapIndex("bird"), 10.0, fmt.Errorf(
 			"Map at capture<%v>.commands[1].Map has value of type string, got type float64", p.Id.ID())},
 	} {
-		ctx := ctx.V("path", test.path.Text()).V("value", test.val)
+		ctx := log.V{"path": test.path.Text(), "value": test.val}.Bind(ctx)
 
 		path, err := Set(ctx, test.path.Path(), test.val)
 		assert.With(ctx).ThatError(err).DeepEquals(test.err)
 
 		if (path == nil) == (err == nil) {
-			ctx.Error().Logf("Set returned %T %v and %v.", path, path, err)
+			log.E(ctx, "Set returned %T %v and %v.", path, path, err)
 		}
 
 		if err == nil {
 			// Check the paths have changed
 			assert.With(ctx).That(p).DeepNotEquals(test.path)
 
-			ctx := ctx.V("changed_path", path.Text())
+			ctx := log.V{"changed_path": path.Text()}.Bind(ctx)
 
 			// Get the changed value
 			got, err := Get(ctx, path)

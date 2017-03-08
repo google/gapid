@@ -15,19 +15,18 @@
 package task
 
 import (
+	"context"
 	"sync"
-
-	"github.com/google/gapid/core/log"
 )
 
 // ExecutorFactory returns an executor for the specified channel id, and a Task to shut the executor down again.
 // The Task may be nil for executors that don't need to be shutdown.
-type ExecutorFactory func(ctx log.Context, id interface{}) (Executor, Task)
+type ExecutorFactory func(ctx context.Context, id interface{}) (Executor, Task)
 
 // PoolExecutorFactory builds an ExecutorFactory that makes a new Pool executor each time it is invoked.
 // The returned ExecutorFactory ignores the channel id.
-func PoolExecutorFactory(ctx log.Context, queue int, parallel int) ExecutorFactory {
-	return func(ctx log.Context, id interface{}) (Executor, Task) {
+func PoolExecutorFactory(ctx context.Context, queue int, parallel int) ExecutorFactory {
+	return func(ctx context.Context, id interface{}) (Executor, Task) {
 		return Pool(queue, parallel)
 	}
 }
@@ -35,10 +34,10 @@ func PoolExecutorFactory(ctx log.Context, queue int, parallel int) ExecutorFacto
 // CachedExecutorFactory builds an ExecutorFactory that makes new executors on demand using the underlying factory.
 // It guarantees that all concurrent tasks delivered to the same id go to the same Executor, but it will drop
 // executors that have no active tasks any more.
-func CachedExecutorFactory(ctx log.Context, factory ExecutorFactory) ExecutorFactory {
+func CachedExecutorFactory(ctx context.Context, factory ExecutorFactory) ExecutorFactory {
 	mutex := sync.Mutex{}
 	pipes := map[interface{}]Executor{}
-	return func(ctx log.Context, id interface{}) (Executor, Task) {
+	return func(ctx context.Context, id interface{}) (Executor, Task) {
 		mutex.Lock()
 		defer mutex.Unlock()
 		pipe, found := pipes[id]
@@ -51,7 +50,7 @@ func CachedExecutorFactory(ctx log.Context, factory ExecutorFactory) ExecutorFac
 		batch := Batch(executor, &signals)
 		first, start := NewSignal()
 		start = Once(start)
-		pipe = func(ctx log.Context, task Task) Handle {
+		pipe = func(ctx context.Context, task Task) Handle {
 			h := batch(ctx, task)
 			// Tell the cleanup we have an entry
 			start(ctx)

@@ -15,11 +15,11 @@
 package jdwp_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/java/jdwp"
 	"github.com/google/gapid/core/java/jdwp/test"
 	"github.com/google/gapid/core/log"
@@ -51,16 +51,16 @@ public class Calculator {
 }
 
 func TestMain(m *testing.M) {
-	os.Exit(test.BuildRunAndConnect(source, func(ctx log.Context, c *jdwp.Connection) int {
+	os.Exit(test.BuildRunAndConnect(source, func(ctx context.Context, c *jdwp.Connection) int {
 		if err := c.ResumeAll(); err != nil {
-			jot.Fatal(ctx, err, "Failed resume VM")
+			log.F(ctx, "Failed resume VM. Error: %v", err)
 			return -1
 		}
 
 		// Wait for java to load the prepare class
 		t, err := c.WaitForClassPrepare(ctx, "Calculator")
 		if err != nil {
-			jot.Fatal(ctx, err, "Failed to wait for Calculator prepare")
+			log.F(ctx, "Failed to wait for Calculator prepare. Error: %v", err)
 			return -1
 		}
 
@@ -77,7 +77,7 @@ func TestGetClassBySignature(t *testing.T) {
 
 	calculator, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		jot.Fail(ctx, err, "GetClassesBySignature returned error")
+		log.F(ctx, "GetClassesBySignature returned error: %v", err)
 	}
 
 	assert.For(ctx, "Calculator kind").That(calculator.Kind).Equals(jdwp.Class)
@@ -89,25 +89,25 @@ func TestInvokeStaticMethod(t *testing.T) {
 
 	class, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		jot.Fail(ctx, err, "GetClassesBySignature returned error")
+		log.F(ctx, "GetClassesBySignature returned error: %v", err)
 		return
 	}
 
 	methods, err := connection.GetMethods(class.TypeID)
 	if err != nil {
-		jot.Fail(ctx, err, "GetMethods returned error")
+		log.F(ctx, "GetMethods returned error: %v", err)
 		return
 	}
 
 	add := methods.FindBySignature("Add", "(II)I")
 	if add == nil {
-		jot.Fail(ctx, err, "Couldn't find method Add")
+		log.F(ctx, "Couldn't find method Add: %v", err)
 		return
 	}
 
 	result, err := connection.InvokeStaticMethod(class.ClassID(), add.ID, thread, jdwp.InvokeSingleThreaded, 3, 7)
 	if err != nil {
-		jot.Fail(ctx, err, "InvokeStaticMethod returned error")
+		log.F(ctx, "InvokeStaticMethod returned error: %v", err)
 		return
 	}
 	assert.For(ctx, "Add(3, 7)").That(result.Result).Equals(10)
@@ -118,33 +118,33 @@ func TestInvokeMethod(t *testing.T) {
 
 	class, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		jot.Fail(ctx, err, "GetClassesBySignature returned error")
+		log.F(ctx, "GetClassesBySignature returned error: %v", err)
 		return
 	}
 
 	methods, err := connection.GetMethods(class.TypeID)
 	if err != nil {
-		jot.Fail(ctx, err, "GetMethods returned error")
+		log.F(ctx, "GetMethods returned error: %v", err)
 		return
 	}
 
 	constructor := methods.FindBySignature("<init>", "()V")
 	if constructor == nil {
-		jot.Fail(ctx, err, "Couldn't find constructor")
-		ctx.Printf("Available methods:\n%v", methods)
+		log.F(ctx, "Couldn't find constructor: %v", err)
+		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
 
 	instance, err := connection.NewInstance(class.ClassID(), constructor.ID, thread, jdwp.InvokeSingleThreaded)
 	if err != nil {
-		jot.Fail(ctx, err, "NewInstance returned error")
+		log.F(ctx, "NewInstance returned error: %v", err)
 		return
 	}
 
 	add := methods.FindBySignature("Add", "(I)V")
 	if add == nil {
-		jot.Fail(ctx, err, "Couldn't find method Add")
-		ctx.Printf("Available methods:\n%v", methods)
+		log.F(ctx, "Couldn't find method Add: %v", err)
+		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
 
@@ -157,15 +157,15 @@ func TestInvokeMethod(t *testing.T) {
 			jdwp.InvokeSingleThreaded,
 			i)
 		if err != nil {
-			jot.Fail(ctx, err, "InvokeMethod returned error")
+			log.F(ctx, "InvokeMethod returned error: %v", err)
 			return
 		}
 	}
 
 	resultf := methods.FindBySignature("Result", "()I")
 	if resultf == nil {
-		jot.Fail(ctx, err, "Couldn't find method Result")
-		ctx.Printf("Available methods:\n%v", methods)
+		log.F(ctx, "Couldn't find method Result: %v", err)
+		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
 
@@ -176,7 +176,7 @@ func TestInvokeMethod(t *testing.T) {
 		thread,
 		jdwp.InvokeSingleThreaded)
 	if err != nil {
-		jot.Fail(ctx, err, "InvokeMethod returned error")
+		log.F(ctx, "InvokeMethod returned error: %v", err)
 		return
 	}
 	assert.For(ctx, "Result").That(result.Result).Equals(3 + 6 + 8)

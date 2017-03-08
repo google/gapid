@@ -15,14 +15,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/lingo"
 )
@@ -59,7 +60,7 @@ const (
 	ErrorParenOrNumber = "Expected parenthesis or number"
 )
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing expression")
@@ -72,11 +73,11 @@ func run(ctx log.Context) error {
 		return err
 	}
 	if !s.EOF() {
-		return cause.Explain(ctx, nil, "Input not consumed")
+		return log.Err(ctx, nil, "Input not consumed")
 	}
 	cst := r.ToCST()
 	result := eval(ctx, cst)
-	fmt.Fprintf(ctx.Raw("").Writer(), "%v = %d\n", cst, result.value)
+	fmt.Fprintf(os.Stderr, "%v = %d\n", cst, result.value)
 	return nil
 }
 
@@ -86,7 +87,7 @@ type Eval struct {
 	op       Operator
 }
 
-func eval(ctx log.Context, node *lingo.Node) Eval {
+func eval(ctx context.Context, node *lingo.Node) Eval {
 	result := Eval{}
 	switch obj := node.Object.(type) {
 	case int:
@@ -111,7 +112,7 @@ func eval(ctx log.Context, node *lingo.Node) Eval {
 				case opDivide:
 					result.value /= got.value
 				default:
-					ctx.Fatalf("Cannot combine values without operator")
+					log.F(ctx, "Cannot combine values without operator")
 				}
 			}
 			result.hasValue = true

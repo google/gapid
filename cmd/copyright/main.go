@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -45,8 +46,8 @@ It will not touch file extensions that it does not know the header type for.
 	app.Run(run)
 }
 
-func update(ctx log.Context, path string, reason string, header string, body []byte) error {
-	ctx.Notice().Logf("Copyright on %s was %s", path, reason)
+func update(ctx context.Context, path string, reason string, header string, body []byte) error {
+	log.I(ctx, "Copyright on %s was %s", path, reason)
 	if *noactions {
 		return nil
 	}
@@ -66,7 +67,7 @@ func update(ctx log.Context, path string, reason string, header string, body []b
 	return nil
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
