@@ -46,34 +46,6 @@
 #define GAPID_STR(S) GAPID_STR2(S)
 #define GAPID_STR2(S) #S
 
-// Template meta-programming (tmp) used to strip absolute path from __FILE__.
-// The main difficulty is that we need to make copy of the string since
-// any live reference to __FILE__ will keep the whole path in the binary.
-// We also want to avoid storing the string again for each log message.
-namespace tmp {
-  // Returns the filename and extension only without directories.
-  constexpr const char* Basename(const char *str, unsigned i = 0) {
-    return str[i] == '/' || str[i] == '\\' ? Basename(str + i + 1) :
-           str[i] == '\0' ? str : Basename(str, i + 1);
-  }
-  // Returns the length of string literal excluding the zero-terminator.
-  constexpr unsigned Strlen(const char *str) {
-    return str[0] == '\0' ? 0 : 1 + Strlen(str + 1);
-  }
-  // Represents unique string literal. For example: String<'H','e','l','l','o'>
-  template<char... C> struct String {
-    static const char* value() { static const char str[] = {C...}; return str; }
-  };
-  // Represents consecutive index list. For example: Indices<0,1,2,3,4,5,6,7,8>
-  template<int... I> struct Indices{};
-  template<int N, int... I> struct MakeIndices : MakeIndices<N-1, N-1, I...>{};
-  template<int... I> struct MakeIndices<0, I...> : Indices<I...>{};
-  // Makes compile-time copy of a string (which is stored as boxed value in S).
-  // Indices specify the characters to copy - that is, range 0 to strlen(S)+1
-  template<typename S, int... I> constexpr const char* Strcpy(Indices<I...> i) {
-    return String<S::value()[I]...>::value();
-  }
-}
 
 #if TARGET_OS == GAPID_OS_ANDROID
 
@@ -82,15 +54,12 @@ namespace tmp {
 #define GAPID_LOGGER_INIT(...)
 #define GAPID_LOG(LEVEL, ANDROID_LOG_LEVEL, FORMAT, ...)                                          \
   if (LOG_LEVEL >= LEVEL) {                                                                       \
-    /* Literal string is very difficult pass to any function, but it works if we box it. */       \
-    struct boxedStr { constexpr static const char* value() { return tmp::Basename(__FILE__); } }; \
-    auto basename = tmp::Strcpy<boxedStr>(tmp::MakeIndices<tmp::Strlen(boxedStr{}.value())+1>{}); \
     if (LEVEL == LOG_LEVEL_FATAL) {                                                               \
       __android_log_assert(nullptr, "GAPID", "%s:%u : " FORMAT,                                   \
-                           basename, __LINE__, ##__VA_ARGS__);                                    \
+                           __func__, __LINE__, ##__VA_ARGS__);                                    \
     } else {                                                                                      \
       __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "%s:%u : " FORMAT,                          \
-                          basename, __LINE__, ##__VA_ARGS__);                                     \
+                          __func__, __LINE__, ##__VA_ARGS__);                                     \
     }                                                                                             \
   }
 #define GAPID_FATAL(FORMAT, ...) GAPID_LOG(LOG_LEVEL_FATAL, ANDROID_LOG_FATAL, FORMAT, ##__VA_ARGS__)
@@ -140,10 +109,7 @@ private:
 #define GAPID_LOGGER_INIT(...) ::core::Logger::init(__VA_ARGS__)
 #define GAPID_LOG(LEVEL, FORMAT, ...)                                                             \
   if (::core::Logger::level() >= LEVEL) {                                                         \
-    /* Literal string is very difficult pass to any function, but it works if we box it. */       \
-    struct boxedStr { constexpr static const char* value() { return tmp::Basename(__FILE__); } }; \
-    auto basename = tmp::Strcpy<boxedStr>(tmp::MakeIndices<tmp::Strlen(boxedStr{}.value())+1>{}); \
-    ::core::Logger::instance().log(LEVEL, basename, __LINE__, FORMAT, ##__VA_ARGS__);             \
+    ::core::Logger::instance().log(LEVEL, __func__, __LINE__, FORMAT, ##__VA_ARGS__);             \
   }
 #define GAPID_FATAL(FORMAT, ...) GAPID_LOG(LOG_LEVEL_FATAL, FORMAT, ##__VA_ARGS__)
 #define GAPID_ERROR(FORMAT, ...) GAPID_LOG(LOG_LEVEL_ERROR, FORMAT, ##__VA_ARGS__)
