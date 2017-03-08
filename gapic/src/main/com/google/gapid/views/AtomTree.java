@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Ranges.count;
@@ -237,7 +238,7 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
       }
 
       private ListenableFuture<ImageData> loadImage(FilteredGroup group) {
-        return models.thumbs.getThumbnail(group.getIndexOfLastLeaf(), THUMB_SIZE);
+        return noAlpha(models.thumbs.getThumbnail(group.getIndexOfLastLeaf(), THUMB_SIZE));
       }
     };
     tree.addMouseListener(mouseHandler);
@@ -432,7 +433,7 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
       if (index < 0) {
         index = group.getIndexOfLastLeaf();
       }
-      return thumbs.getThumbnail(index, PREVIEW_SIZE);
+      return noAlpha(thumbs.getThumbnail(index, PREVIEW_SIZE));
     }
 
     public void reset() {
