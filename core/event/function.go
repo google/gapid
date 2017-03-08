@@ -41,7 +41,7 @@ func checkSignature(ctx context.Context, f reflect.Type, in []reflect.Type, out 
 		return nil, log.Errf(ctx, nil, "Invalid argument count: %d", f.NumIn())
 	}
 	if f.NumOut() != len(out) {
-		return nil, log.Errf(ctx, nil, "Invalid return count: %v", f.NumIn())
+		return nil, log.Errf(ctx, nil, "Invalid return count: %v", f.NumOut())
 	}
 	var res reflect.Type
 	for i, t := range in {

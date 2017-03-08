@@ -18,23 +18,10 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    canonical.go
-    channel.go
-    channel_test.go
-    collect.go
-    collect_test.go
-    doc.go
-    json.go
-    note.go
-    note_test.go
-    page_test.go
-    print.go
-    relevance.go
-    style.go
-    style_test.go
-    writer.go
-    writer_test.go
+    log.pb.go
+    log.proto
+    pb.go
 )
 set(dirs
-
+    
 )

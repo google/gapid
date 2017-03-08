@@ -46,4 +46,4 @@ func GetFilter(ctx context.Context) Filter {
 type SeverityFilter Severity
 
 // ShowSeverity returns true if the message of severity s should be shown.
-func (f SeverityFilter) ShowSeverity(s Severity) bool { return Severity(f) < s }
+func (f SeverityFilter) ShowSeverity(s Severity) bool { return Severity(f) <= s }

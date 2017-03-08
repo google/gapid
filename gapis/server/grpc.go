@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/gapis/service"
 	"google.golang.org/grpc"
@@ -212,4 +213,10 @@ func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.Get
 		return &service.GetFramebufferAttachmentResponse{Res: &service.GetFramebufferAttachmentResponse_Error{Error: err}}, nil
 	}
 	return &service.GetFramebufferAttachmentResponse{Res: &service.GetFramebufferAttachmentResponse_Image{Image: image}}, nil
+}
+
+func (s *grpcServer) GetLogStream(req *service.GetLogStreamRequest, server service.Gapid_GetLogStreamServer) error {
+	ctx := server.Context()
+	h := log.NewHandler(func(m *log.Message) { server.Send(log_pb.From(m)) }, nil)
+	return s.handler.GetLogStream(s.bindCtx(ctx), h)
 }

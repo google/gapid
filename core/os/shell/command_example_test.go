@@ -19,7 +19,6 @@ package shell_test
 import (
 	"bytes"
 	"context"
-	"os"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
@@ -28,7 +27,7 @@ import (
 func newCtx() context.Context {
 	ctx := context.Background()
 	ctx = log.PutClock(ctx, log.NoClock)
-	ctx = log.PutHandler(ctx, log.Normal.Handler(os.Stdout, os.Stderr))
+	ctx = log.PutHandler(ctx, log.Normal.Handler(log.Stdout()))
 	ctx = log.Enter(ctx, "Example")
 	return ctx
 }

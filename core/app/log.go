@@ -26,6 +26,8 @@ import (
 const (
 	// FatalSeverity Is the level at which logging causes panics.
 	FatalSeverity = log.Fatal
+
+	logChanBufferSize = 100
 )
 
 func logDefaults() LogFlags {
@@ -37,23 +39,19 @@ func logDefaults() LogFlags {
 }
 
 func wrapHandler(to log.Handler) log.Handler {
-	h := log.Channel(to, 0) // TODO: should this be a buffered channel?
-	return fatalHandler{h}
-}
-
-type fatalHandler struct{ log.Handler }
-
-func (h fatalHandler) Handle(m *log.Message) {
-	h.Handler.Handle(m)
-	if m.Severity >= FatalSeverity {
-		h.Handler.Close()
-		panic(FatalExit)
-	}
+	to = log.Channel(to, logChanBufferSize)
+	return log.NewHandler(func(m *log.Message) {
+		to.Handle(m)
+		if m.Severity >= FatalSeverity {
+			to.Close()
+			panic(FatalExit)
+		}
+	}, to.Close)
 }
 
 func prepareContext(flags *LogFlags) (context.Context, func(), task.CancelFunc) {
 	// now build the initial root context
-	handler := wrapHandler(flags.Style.Handler(os.Stdout, os.Stderr))
+	handler := wrapHandler(flags.Style.Handler(log.Std()))
 	ctx := context.Background()
 	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
 	ctx = log.PutHandler(ctx, handler)
@@ -82,16 +80,19 @@ func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (cont
 		}
 		log.I(ctx, "Logging to: %v", flags.File)
 		// Build the logging context
-		handler := wrapHandler(flags.Style.Handler(file, file))
-		ctx = log.PutHandler(ctx, handler)
+		handler := flags.Style.Handler(func(s string, _ log.Severity) {
+			file.WriteString(s)
+			file.WriteString("\n")
+		})
+		ctx = log.PutHandler(ctx, wrapHandler(handler))
 		closeLogs()
 		closeLogs = func() {
 			handler.Close()
 			file.Close()
 		}
 	} else {
-		handler := wrapHandler(flags.Style.Handler(os.Stdout, os.Stderr))
-		ctx = log.PutHandler(ctx, handler)
+		handler := flags.Style.Handler(log.Std())
+		ctx = log.PutHandler(ctx, wrapHandler(handler))
 		closeLogs()
 		closeLogs = handler.Close
 	}

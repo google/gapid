@@ -30,6 +30,8 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
+	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapis/replay/protocol"
 )
@@ -97,12 +99,16 @@ func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...strin
 		return nil
 	}
 
-	// Set the VK_LAYER_PATH for replaying Vulkan applications.
-	var extraEnv = map[string][]string{
-		"VK_LAYER_PATH": {VirtualSwapchainLayerPath.String()},
-	}
+	stdout := text.Writer(func(line string) error { log.I(ctx, "%v", line); return nil })
+	stderr := text.Writer(func(line string) error { log.E(ctx, "%v", line); return nil })
 
-	port, err := process.Start(ctx, GapirPath.System(), extraEnv, args...)
+	port, err := process.Start(ctx, GapirPath.System(), process.StartOptions{
+		// Set the VK_LAYER_PATH for replaying Vulkan applications.
+		Env:    shell.CloneEnv().Set("VK_LAYER_PATH", VirtualSwapchainLayerPath.System()),
+		Args:   args,
+		Stdout: stdout,
+		Stderr: stderr,
+	})
 	if err != nil {
 		log.E(ctx, "Starting gapir. Error: %v", err)
 		return nil

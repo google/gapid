@@ -15,7 +15,6 @@
 package log_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -23,24 +22,22 @@ import (
 )
 
 func TestStyles(t *testing.T) {
-	var buf bytes.Buffer
-
 	for _, test := range testMessages {
-		for _, w := range []struct {
-			handler  log.Handler
+		for _, s := range []struct {
+			style    log.Style
 			name     string
 			expected string
 		}{
-			{log.Raw.Handler(&buf, &buf), "Raw", test.raw},
-			{log.Brief.Handler(&buf, &buf), "Brief", test.brief},
-			{log.Normal.Handler(&buf, &buf), "Normal", test.normal},
-			{log.Detailed.Handler(&buf, &buf), "Detailed", test.detailed},
+			{log.Raw, "Raw", test.raw},
+			{log.Brief, "Brief", test.brief},
+			{log.Normal, "Normal", test.normal},
+			{log.Detailed, "Detailed", test.detailed},
 		} {
-			buf.Reset()
-			test.send(w.handler)
+			w, b := log.Buffer()
+			test.send(s.style.Handler(w))
 			assert.To(t).
-				For("%s(%s)", w.name, test.msg).
-				ThatString(buf.String()).Equals(w.expected)
+				For("%s(%s)", s.name, test.msg).
+				ThatString(b.String()).Equals(s.expected)
 		}
 	}
 }

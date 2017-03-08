@@ -17,6 +17,7 @@ package process
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"regexp"
 	"strconv"
@@ -29,11 +30,15 @@ var portPattern = regexp.MustCompile(`^Bound on port '(\d+)'$`)
 
 type portWatcher struct {
 	portChan chan<- string
+	stdout   io.Writer
 	fragment string
 	done     bool
 }
 
 func (w *portWatcher) Write(b []byte) (n int, err error) {
+	if stdout := w.stdout; stdout != nil {
+		stdout.Write(b)
+	}
 	if w.done {
 		return len(b), nil
 	}
@@ -56,23 +61,41 @@ func (w *portWatcher) Write(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-func Start(ctx context.Context, name string, extraEnv map[string][]string, args ...string) (int, error) {
-	// Append extra environment variable values
-	env := shell.CloneEnv()
-	for key, vals := range extraEnv {
-		env.AddPathStart(key, vals...)
-	}
-	return StartWithEnv(ctx, name, env, args...)
+// StartOptions holds the options that can be passed to Start.
+type StartOptions struct {
+	// Command line arguments for starting the process.
+	Args []string
+
+	// Environment variables for starting the process.
+	Env *shell.Env
+
+	// Standard output pipe for the new process.
+	Stdout io.Writer
+
+	// Standard error pipe for the new process.
+	Stderr io.Writer
 }
 
-func StartWithEnv(ctx context.Context, name string, env *shell.Env, args ...string) (int, error) {
+// Start runs the application with the given path and options, waits for
+// the "Bound on port {port}" string to be printed to stdout, and then returns
+// the port number.
+func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
+	// Append extra environment variable values
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
-	stdout := &portWatcher{portChan: portChan}
+	stdout := &portWatcher{
+		portChan: portChan,
+		stdout:   opts.Stdout,
+	}
 
 	go func() {
-		errChan <- shell.Command(name, args...).Verbose().Env(env).Capture(stdout, nil).Run(ctx)
+		errChan <- shell.
+			Command(name, opts.Args...).
+			Env(opts.Env).
+			Capture(stdout, opts.Stderr).
+			Run(ctx)
 	}()
+
 	select {
 	case port := <-portChan:
 		return strconv.Atoi(port)

@@ -33,7 +33,17 @@ type handler struct {
 }
 
 func (h handler) Handle(m *Message) { h.handle(m) }
-func (h handler) Close()            { h.close() }
+func (h handler) Close() {
+	if h.close != nil {
+		h.close()
+	}
+}
+
+// NewHandler returns a Handler that calls handle for each message and close
+// when the handler is closed. close can be nil.
+func NewHandler(handle func(*Message), close func()) Handler {
+	return handler{handle, close}
+}
 
 type handlerKeyTy string
 

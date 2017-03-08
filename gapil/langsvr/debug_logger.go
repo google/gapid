@@ -92,7 +92,10 @@ func (d *debugLogger) setEnabled(enabled bool) error {
 			}
 			*io = f
 		}
-		logHandler := log.Channel(log.Normal.Handler(d.msgLog, d.msgLog), 0)
+		logHandler := log.Channel(log.Normal.Handler(func(s string, _ log.Severity) {
+			d.msgLog.Write([]byte(s))
+			d.msgLog.Write([]byte("\n"))
+		}), 0)
 		d.logHandler = logHandler
 		d.stop = func() {
 			logHandler.Close()

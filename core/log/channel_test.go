@@ -15,7 +15,6 @@
 package log_test
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -25,15 +24,15 @@ import (
 
 func TestChannel(t *testing.T) {
 	assert := assert.To(t)
-	buf := &bytes.Buffer{}
+	w, b := log.Buffer()
 	ping := make(chan struct{})
-	handler := log.Channel(pingHandler{log.Normal.Handler(buf, buf), ping}, 0)
+	handler := log.Channel(pingHandler{log.Normal.Handler(w), ping}, 0)
 	defer handler.Close()
 	for _, test := range testMessages {
-		buf.Reset()
+		b.Reset()
 		test.send(handler)
 		<-ping
-		got := strings.TrimLeft(buf.String(), "\n")
+		got := strings.TrimRight(b.String(), "\n")
 		assert.For(test.msg).That(got).Equals(test.normal)
 	}
 }

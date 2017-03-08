@@ -14,9 +14,7 @@
 
 package text
 
-import (
-	"io"
-)
+import "io"
 
 // Writer returns a io writer that collects lines out of a stream and hands
 // them to the supplied function.

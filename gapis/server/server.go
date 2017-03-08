@@ -49,6 +49,7 @@ type Config struct {
 	StringTables   []*stringtable.StringTable
 	AuthToken      auth.Token
 	DeviceScanDone task.Signal
+	LogBroadcaster *log.Broadcaster
 }
 
 // Server is the server interface to GAPIS.
@@ -58,13 +59,20 @@ type Server interface {
 
 // New constructs and returns a new Server.
 func New(ctx context.Context, cfg Config) Server {
-	return &server{cfg.Info, cfg.StringTables, cfg.DeviceScanDone, bytes.Buffer{}}
+	return &server{
+		cfg.Info,
+		cfg.StringTables,
+		cfg.DeviceScanDone,
+		cfg.LogBroadcaster,
+		bytes.Buffer{},
+	}
 }
 
 type server struct {
 	info           *service.ServerInfo
 	stbs           []*stringtable.StringTable
 	deviceScanDone task.Signal
+	logBroadcaster *log.Broadcaster
 	profile        bytes.Buffer
 }
 
@@ -239,4 +247,11 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 		return []byte{}, err
 	}
 	return b.Bytes(), nil
+}
+
+func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
+	unregister := s.logBroadcaster.Listen(handler)
+	defer unregister()
+	<-task.ShouldStop(ctx)
+	return task.StopReason(ctx)
 }

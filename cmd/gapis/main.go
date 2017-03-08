@@ -58,6 +58,10 @@ func main() {
 var features = []string{}
 
 func run(ctx context.Context) error {
+	// Insert a log.Broadcaster between the context and it's current handler.
+	logBroadcaster := log.Broadcast(log.GetHandler(ctx))
+	ctx = log.PutHandler(ctx, logBroadcaster)
+
 	m, r := replay.New(ctx), bind.NewRegistry()
 	ctx = replay.PutManager(ctx, m)
 	ctx = bind.PutRegistry(ctx, r)
@@ -84,6 +88,7 @@ func run(ctx context.Context) error {
 		StringTables:   loadStrings(ctx),
 		AuthToken:      auth.Token(*gapisAuthToken),
 		DeviceScanDone: deviceScanDone,
+		LogBroadcaster: logBroadcaster,
 	})
 }
 

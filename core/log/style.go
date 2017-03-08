@@ -17,7 +17,6 @@ package log
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -100,11 +99,7 @@ func RegisterStyle(s Style) { styles = append(styles, s) }
 
 // Handler returns a new Handler configured to write to out and err with the
 // given style.
-func (s Style) Handler(out, err io.Writer) Handler {
-	nlOut, nlErr := &newliner{w: out}, &newliner{w: err}
-	if out == err {
-		nlErr = nlOut
-	}
+func (s Style) Handler(w Writer) Handler {
 	return handler{
 		handle: func(msg *Message) {
 			var parts [8]string
@@ -128,11 +123,7 @@ func (s Style) Handler(out, err io.Writer) Handler {
 			if s.Values != NoValues && len(msg.Values) > 0 {
 				m = append(m, s.Values.print(msg.Values))
 			}
-			if msg.Severity < Error {
-				nlOut.print(strings.Join(m, " "))
-			} else {
-				nlErr.print(strings.Join(m, " "))
-			}
+			w(strings.Join(m, " "), msg.Severity)
 		},
 		close: func() {},
 	}
@@ -140,32 +131,9 @@ func (s Style) Handler(out, err io.Writer) Handler {
 
 // Print returns the message msg printed with the style s.
 func (s Style) Print(msg *Message) string {
-	buf := bytes.Buffer{}
-	h := s.Handler(&buf, &buf)
-	h.Handle(msg)
-	h.Close()
-	return string(buf.String())
-}
-
-type newliner struct {
-	w  io.Writer
-	ml bool
-}
-
-func (n *newliner) print(s string) {
-	if n.ml {
-		fmt.Fprint(n.w, "\n")
-	}
-	fmt.Fprint(n.w, s)
-	n.ml = true
-}
-
-func (n *newliner) printf(s string, args ...interface{}) {
-	if n.ml {
-		fmt.Fprint(n.w, "\n")
-	}
-	fmt.Fprintf(n.w, s, args...)
-	n.ml = true
+	w, b := Buffer()
+	s.Handler(w).Handle(msg)
+	return string(b.String())
 }
 
 // HHMMSSsss prints the time as a HH:MM:SS.sss

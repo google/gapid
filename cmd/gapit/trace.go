@@ -99,13 +99,13 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	env := shell.CloneEnv()
-	env.AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy")
-	env.AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
-	env.AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System())
-	env.Set("LD_PRELOAD", libgapii.System())
-
-	boundPort, err := process.StartWithEnv(ctx, verb.Local.App.System(), env)
+	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
+		Env: shell.CloneEnv().
+			AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
+			AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
+			AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System()).
+			Set("LD_PRELOAD", libgapii.System()),
+	})
 	if err != nil {
 		return err
 	}

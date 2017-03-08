@@ -15,7 +15,6 @@
 package langsvr
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -204,11 +203,7 @@ type logHandler struct {
 }
 
 func (h logHandler) Handle(m *log.Message) {
-	buf := bytes.Buffer{}
-	to := log.Raw.Handler(&buf, &buf)
-	to.Handle(m)
-	to.Close()
-	msg := buf.String()
+	msg := log.Raw.Print(m)
 	if h.languageID != "" {
 		msg = fmt.Sprintf("%v: %v", h.languageID, msg)
 	}

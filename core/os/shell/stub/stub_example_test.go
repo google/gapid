@@ -18,7 +18,6 @@ package stub_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -34,7 +33,7 @@ func TestNothing(t *testing.T) {}
 func newCtx() context.Context {
 	ctx := context.Background()
 	ctx = log.PutClock(ctx, log.NoClock)
-	ctx = log.PutHandler(ctx, log.Normal.Handler(os.Stdout, os.Stdout))
+	ctx = log.PutHandler(ctx, log.Normal.Handler(log.Stdout()))
 	ctx = log.Enter(ctx, "Example")
 	return ctx
 }

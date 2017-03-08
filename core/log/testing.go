@@ -14,10 +14,7 @@
 
 package log
 
-import (
-	"bytes"
-	"context"
-)
+import "context"
 
 // Testing returns a default context with a TestHandler installed.
 func Testing(t delegate) context.Context {
@@ -31,17 +28,13 @@ func Testing(t delegate) context.Context {
 func TestHandler(t delegate, s Style) Handler {
 	return handler{
 		handle: func(m *Message) {
-			buf := bytes.Buffer{}
-			h := s.Handler(&buf, &buf)
-			h.Handle(m)
-			h.Close()
 			switch {
 			case m.Severity >= Fatal:
-				t.Fatal(buf.String())
+				t.Fatal(s.Print(m))
 			case m.Severity >= Error:
-				t.Error(buf.String())
+				t.Error(s.Print(m))
 			default:
-				t.Log(buf.String())
+				t.Log(s.Print(m))
 			}
 		},
 		close: func() {},

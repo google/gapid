@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
@@ -108,6 +109,10 @@ type Service interface {
 
 	// GetProfile returns the pprof profile with the given name.
 	GetProfile(ctx context.Context, name string, debug int32) ([]byte, error)
+
+	// GetLogStream calls the handler with each log record raised until the
+	// context is cancelled.
+	GetLogStream(context.Context, log.Handler) error
 }
 
 // NewError attempts to box and return err into an Error.

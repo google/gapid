@@ -22,9 +22,9 @@ package log;
 option java_package = "com.google.gapid.proto.log";
 option java_outer_classname = "Log";
 
-message Message {
+message Record {
     // The message text.
-    string text = 1;
+    string message = 1;
 
     // The time the message was logged.
     google.protobuf.Timestamp time = 2;
@@ -61,19 +61,23 @@ message Value {
 }
 
 // Severity defines the severity of a logging message.
+// The levels match the ones defined in rfc5424 for syslog.
+// They must be identical to the values in the logging package.
 enum Severity {
-    // Debug indicates verbose debug-level messages.
-    Debug = 0;
-
-    // Info indicates minor informational messages that should generally be ignored.
-    Info = 1;
-
-    // Warning indicates issues that might affect performance or compatibility, but could be ignored.
-    Warning = 2;
-
-    // Error indicates non terminal failure conditions that may have an effect on results.
-    Error = 3;
-
-    // Fatal indicates a fatal error and the process should be terminated.
-    Fatal = 4;
+    // EmergencyLevel indicates the system is unusable, no further data should be trusted.
+    EmergencyLevel = 0;
+    // AlertLevel indicates action must be taken immediately.
+    AlertLevel = 1;
+    // CriticalLevel indicates errors severe enough to terminate processing.
+    CriticalLevel = 2;
+    // ErrorLevel indicates non terminal failure conditions that may have an effect on results.
+    ErrorLevel = 3;
+    // WarningLevel indicates issues that might affect performance or compatibility, but could be ignored.
+    WarningLevel = 4;
+    // NoticeLevel indicates normal but significant conditions.
+    NoticeLevel = 5;
+    // InfoLevel indicates minor informational messages that should generally be ignored.
+    InfoLevel = 6;
+    // DebugLevel indicates verbose debug-level messages.
+    DebugLevel = 7;
 }

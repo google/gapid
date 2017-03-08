@@ -17,6 +17,10 @@ package client
 import (
 	"context"
 
+	"github.com/google/gapid/core/event"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/log/log_pb"
+	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
@@ -248,4 +252,16 @@ func (c *client) GetFramebufferAttachment(
 		return nil, err.Get()
 	}
 	return res.GetImage(), nil
+}
+
+func (c *client) GetLogStream(ctx context.Context, handler log.Handler) error {
+	stream, err := c.client.GetLogStream(ctx, &service.GetLogStreamRequest{})
+	if err != nil {
+		return err
+	}
+	h := func(ctx context.Context, m *log_pb.Message) error {
+		handler.Handle(m.Message())
+		return nil
+	}
+	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }

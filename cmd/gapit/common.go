@@ -53,6 +53,11 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
+
+	if h := log.GetHandler(ctx); h != nil {
+		go client.GetLogStream(ctx, h)
+	}
+
 	return client, nil
 }
 
