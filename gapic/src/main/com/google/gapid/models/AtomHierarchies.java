@@ -359,7 +359,7 @@ public class AtomHierarchies extends CaptureDependentModel<Service.Hierarchy[]> 
       List<Service.CommandGroup> newGroups = Lists.newArrayList();
       List<FilteredGroup> newFilteredGroups = Lists.newArrayList();
       long next = first(group.getRange());
-      for (int idx = 0, groupIdx = 1; idx < count; idx += SUBGROUP_SIZE, groupIdx++) {
+      for (int idx = 0; idx < count; idx += SUBGROUP_SIZE) {
         Lookup subGroupLookup = groupLookup.subrange(idx, idx + SUBGROUP_SIZE - 1, true);
         Lookup subAtomLookup = atomLookup.subrange(idx, idx + SUBGROUP_SIZE - 1, false);
         List<Service.CommandGroup> subGroups = subGroupLookup.map(group.getSubgroupsList());
@@ -370,7 +370,7 @@ public class AtomHierarchies extends CaptureDependentModel<Service.Hierarchy[]> 
             end(subGroups.get(subGroupIdx).getRange());
 
         CommandGroup subGroup = CommandGroup.newBuilder()
-            .setName("Sub Group " + groupIdx)
+            .setName("Commands [" + next + " - " + (newNext - 1) + "]")
             .setRange(CommandRange.newBuilder()
                 .setFirst(next)
                 .setCount(newNext - next))
