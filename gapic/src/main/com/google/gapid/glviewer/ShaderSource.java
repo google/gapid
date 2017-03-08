@@ -42,8 +42,8 @@ public class ShaderSource {
         private static final int MODE_COMMON = 0;
         private static final int MODE_VERTEX = 1;
         private static final int MODE_FRAGMENT = 2;
-        private static final String VERTEX_PREAMBLE = "#version 150\n#define varying out\n";
-        private static final String FRAGMENT_PREAMBLE = "#version 150\n#define varying in\n";
+        private static final String VERTEX_PREAMBLE = "#version 130\n#define varying out\n";
+        private static final String FRAGMENT_PREAMBLE = "#version 130\n#define varying in\n";
 
         private final StringBuilder vertexSource = new StringBuilder(VERTEX_PREAMBLE);
         private final StringBuilder fragmentSource = new StringBuilder(FRAGMENT_PREAMBLE);
