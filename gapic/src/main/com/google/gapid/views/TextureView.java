@@ -84,7 +84,8 @@ public class TextureView extends Composite
     super(parent, SWT.NONE);
     this.client = client;
     this.models = models;
-    this.gotoAction = new GotoAction(this, widgets.theme, a -> models.atoms.selectAtoms(a, 1));
+    this.gotoAction =
+        new GotoAction(this, widgets.theme, a -> models.atoms.selectAtoms(a, 1, true));
 
     setLayout(new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);

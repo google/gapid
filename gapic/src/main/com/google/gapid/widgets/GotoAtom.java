@@ -42,7 +42,7 @@ public class GotoAtom {
   public static void showGotoAtomDialog(Shell shell, AtomStream atoms) {
     GotoDialog dialog = new GotoDialog(shell, atoms);
     if (dialog.open() == Window.OK) {
-      atoms.selectAtoms(dialog.value, 1);
+      atoms.selectAtoms(dialog.value, 1, true);
     }
   }
 
