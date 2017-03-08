@@ -69,6 +69,7 @@ import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
@@ -76,6 +77,7 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
@@ -169,8 +171,17 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
 
       @Override
       public void mouseScrolled(MouseEvent e) {
-        // Wait for scroll.
-        getDisplay().asyncExec(() -> updateHover(e.x, e.y));
+        updateHover(e.x, e.y);
+      }
+
+      @Override
+      public void widgetSelected(SelectionEvent e) {
+        // Scrollbar was moved / mouse wheel caused scrolling. This is required for systems with
+        // a touchpad with scrolling inertia, where the view keeps scrolling long after the mouse
+        // wheel event has been processed.
+        Display disp = getDisplay();
+        Point mouse = disp.map(null, tree, disp.getCursorLocation());
+        updateHover(mouse.x, mouse.y);
       }
 
       @Override
@@ -244,6 +255,7 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
     tree.addMouseListener(mouseHandler);
     tree.addMouseMoveListener(mouseHandler);
     tree.addMouseWheelListener(mouseHandler);
+    tree.getVerticalBar().addSelectionListener(mouseHandler);
 
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
       if (object instanceof FilteredGroup) {

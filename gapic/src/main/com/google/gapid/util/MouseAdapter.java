@@ -20,9 +20,11 @@ import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.MouseMoveListener;
 import org.eclipse.swt.events.MouseTrackListener;
 import org.eclipse.swt.events.MouseWheelListener;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 
-public class MouseAdapter
-    implements MouseListener, MouseMoveListener, MouseWheelListener, MouseTrackListener {
+public class MouseAdapter implements MouseListener, MouseMoveListener, MouseWheelListener,
+    MouseTrackListener, SelectionListener {
   @Override
   public void mouseEnter(MouseEvent e) {
     // Empty.
@@ -60,6 +62,16 @@ public class MouseAdapter
 
   @Override
   public void mouseUp(MouseEvent e) {
+    // Empty.
+  }
+
+  @Override
+  public void widgetDefaultSelected(SelectionEvent e) {
+    // Empty.
+  }
+
+  @Override
+  public void widgetSelected(SelectionEvent e) {
     // Empty.
   }
 }
