@@ -381,7 +381,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     public static enum Type {
-      ApiCalls(Location.Left, "API Calls", (p, c, m, w) -> new AtomTree(p, m, w)),
+      ApiCalls(Location.Left, "Commands", (p, c, m, w) -> new AtomTree(p, m, w)),
 
       Framebuffer(Location.Center, "Framebuffer", (p, c, m, w) -> new FramebufferView(p, c, m, w)),
       Textures(Location.Center, "Textures", (p, c, m, w) -> new TextureView(p, c, m, w)),
@@ -389,7 +389,7 @@ public class MainWindow extends ApplicationWindow {
       Shaders(Location.Center, "Shaders", (p, c, m, w) -> new ShaderView(p, c, m, w)),
       Report(Location.Center, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
 
-      ApiState(Location.Right, "API State", (p, c, m, w) -> new StateView(p, m, w)),
+      ApiState(Location.Right, "State", (p, c, m, w) -> new StateView(p, m, w)),
       Memory(Location.Right, "Memory", (p, c, m, w) -> new MemoryView(p, c, m, w));
 
       public final Location defaultLocation;
