@@ -100,7 +100,7 @@ public class ReportView extends Composite
     viewer.getTree().addListener(SWT.MouseDown, e -> {
       Long atomId = (Long)labelProvider.getFollow(new Point(e.x, e.y));
       if (atomId != null) {
-        models.atoms.selectAtoms(atomId, 1);
+        models.atoms.selectAtoms(atomId, 1, true);
       }
     });
     viewer.getTree().addListener(SWT.Selection, e -> {

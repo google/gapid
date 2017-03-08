@@ -77,7 +77,7 @@ public class ThumbnailScrubber extends Composite
     scroll.addContentListener(SWT.MouseDown, e -> {
       Data frame = carousel.selectFrame(scroll.getLocation(e));
       if (frame != null) {
-        models.atoms.selectAtoms(frame.range);
+        models.atoms.selectAtoms(frame.range, false);
       }
     });
     scroll.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));

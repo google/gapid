@@ -134,9 +134,9 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
       protected void updateModel(Event e) {
         Object selection = (tree.getSelectionCount() > 0) ? tree.getSelection()[0].getData() : null;
         if (selection instanceof FilteredGroup) {
-          models.atoms.selectAtoms(((FilteredGroup)selection).group.getRange());
+          models.atoms.selectAtoms(((FilteredGroup)selection).group.getRange(), false);
         } else if (selection instanceof AtomNode) {
-          models.atoms.selectAtoms(((AtomNode)selection).index, 1);
+          models.atoms.selectAtoms(((AtomNode)selection).index, 1, false);
         }
       }
     };
@@ -279,7 +279,7 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
       }
 
       if (range != null) {
-        models.atoms.selectAtoms(range);
+        models.atoms.selectAtoms(range, true);
       }
     }
   }

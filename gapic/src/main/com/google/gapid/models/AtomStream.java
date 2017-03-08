@@ -108,12 +108,12 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
     return selection;
   }
 
-  public void selectAtoms(long from, long count) {
-    selectAtoms(commands(from, count));
+  public void selectAtoms(long from, long count, boolean force) {
+    selectAtoms(commands(from, count), force);
   }
 
-  public void selectAtoms(CommandRange range) {
-    if (!Objects.equal(selection, range)) {
+  public void selectAtoms(CommandRange range, boolean force) {
+    if (force || !Objects.equal(selection, range)) {
       selection = range;
       context.selectContextContaining(range);
       listeners.fire().onAtomsSelected(selection);
