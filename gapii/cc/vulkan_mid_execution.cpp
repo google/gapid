@@ -1337,6 +1337,25 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
     }
 
+    for (auto& queryPool: QueryPools) {
+        auto& pool = *queryPool.second;
+        VkQueryPoolCreateInfo create_info = {
+            VkStructureType::VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            nullptr,
+            0,
+            pool.mQueryType,
+            pool.mQueryCount,
+            pool.mPipelineStatistics
+        };
+
+        std::vector<uint32_t> queries(pool.mQueryCount);
+        for (size_t i = 0; i < pool.mStatus.size(); ++i) {
+            queries[i] = pool.mStatus[i];
+        }
+        RecreateQueryPool(observer, pool.mDevice, &create_info, queries.data(),
+            &pool.mVulkanHandle);
+    }
+
     for (auto& commandBuffer: CommandBuffers) {
         auto& cmdBuff = *commandBuffer.second;
         VkCommandBufferAllocateInfo allocate_info {
