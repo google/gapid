@@ -3236,6 +3236,19 @@ cmd VkResult vkResetEvent(
   return ?
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateQueryPool(
+    VkDevice device,
+    const VkQueryPoolCreateInfo* pCreateInfo,
+    const QueryStatus* pQueryStatuses
+    VkQueryPool* pPool) {
+  create_info := pCreateInfo[0]
+  read(pQueryStatuses[0:create_info.queryCount])
+  write(pPool[0:1])
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateQueryPool(
@@ -3243,12 +3256,20 @@ cmd VkResult vkCreateQueryPool(
     const VkQueryPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkQueryPool*                 pQueryPool) {
-  _ = pCreateInfo[0]
-  // TODO: pCreateInfo[0].pNext
-  // TODO: pAllocator
+  info := pCreateInfo[0]
 
   handle := ?
-  QueryPools[handle] = new!QueryPoolObject(device, handle)
+  pool := new!QueryPoolObject(
+    Device: device,
+    VulkanHandle: handle,
+    QueryType: info.queryType,
+    QueryCount: info.queryCount,
+    PipelineStatistics: info.pipelineStatistics)
+  for i in (0 .. info.queryCount) {
+    pool.Status[i] = QUERY_STATUS_INACTIVE
+  }
+
+  QueryPools[handle] = pool
   pQueryPool[0] = handle
 
   return ?
@@ -6405,9 +6426,33 @@ sub void doCmdPipelineBarrier(CmdPipelineBarrier args) {
   }
 }
 
-@threadSafety("app")
-@indirect("VkCommandBuffer", "VkDevice")
-cmd void vkCmdBeginQuery(
+@internal class
+RecreateCmdBeginQueryData {
+  VkQueryPool QueryPool
+  u32         Query
+  VkQueryControlFlags Flags
+}
+
+sub void doCmdBeginQuery(RecreateCmdBeginQueryData args) {
+  pool := QueryPools[args.QueryPool]
+  pool.Status[args.Query] = QUERY_STATUS_ACTIVE
+}
+
+@internal class
+RecreateCmdEndQueryData {
+  VkQueryPool QueryPool
+  u32         Query
+}
+
+sub void doCmdEndQuery(RecreateCmdEndQueryData args) {
+  pool := QueryPools[args.QueryPool]
+  pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdBeginQuery(
     VkCommandBuffer     commandBuffer,
     VkQueryPool         queryPool,
     u32                 query,
@@ -6416,10 +6461,62 @@ cmd void vkCmdBeginQuery(
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBeginQuery(
+    VkCommandBuffer     commandBuffer,
+    VkQueryPool         queryPool,
+    u32                 query,
+    VkQueryControlFlags flags) {
+  addCmd(commandBuffer, new!RecreateCmdBeginQueryData(
+    queryPool, query, flags
+  ), RecreateCmdBeginQueryData(queryPool, query, flags), doCmdBeginQuery)
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdEndQuery(
+    VkCommandBuffer commandBuffer,
+    VkQueryPool     queryPool,
+    u32             query) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndQuery(
     VkCommandBuffer commandBuffer,
     VkQueryPool     queryPool,
     u32             query) {
+  addCmd(commandBuffer, new!RecreateCmdEndQueryData(
+    queryPool, query
+  ), RecreateCmdEndQueryData(queryPool, query), doCmdEndQuery)
+}
+
+@internal class
+RecreateCmdResetQueryPoolData {
+  VkQueryPool QueryPool
+  u32         FirstQuery
+  u32         QueryCount
+}
+
+sub void doCmdResetQueryPool(RecreateCmdResetQueryPoolData args) {
+  pool := QueryPools[args.QueryPool]
+  for i in (0 .. args.QueryCount) {
+    pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
+  }
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdResetQueryPool(
+    VkCommandBuffer commandBuffer,
+    VkQueryPool     queryPool,
+    u32             firstQuery
+    u32             queryCount) {
+  addCmd(commandBuffer, new!RecreateCmdResetQueryPoolData(
+    queryPool, firstQuery, queryCount
+  ), RecreateCmdResetQueryPoolData(queryPool, firstQuery, queryCount),
+  doCmdResetQueryPool)
 }
 
 @threadSafety("app")
@@ -7814,9 +7911,19 @@ enum RecordingState {
   @unused VkEvent  VulkanHandle
 }
 
+enum QueryStatus {
+  QUERY_STATUS_INACTIVE = 0
+  QUERY_STATUS_ACTIVE = 1
+  QUERY_STATUS_COMPLETE = 2
+}
+
 @internal class QueryPoolObject {
   @unused VkDevice    Device
   @unused VkQueryPool VulkanHandle
+  @unused VkQueryType QueryType
+  @unused u32         QueryCount
+  @unused VkQueryPipelineStatisticFlags PipelineStatistics
+  @unused map!(u32, QueryStatus) Status
 }
 
 @internal class FramebufferObject {
@@ -7891,6 +7998,3 @@ enum SurfaceType {
   @unused VkDisplayModeKHR VulkanHandle
 }
 
-sub VkQueueFlags AddQueueFlag(VkQueueFlags flags, VkQueueFlagBits bit) {
-  return as!VkQueueFlags(as!u32(flags) | as!u32(bit))
-}

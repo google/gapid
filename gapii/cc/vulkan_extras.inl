@@ -65,6 +65,7 @@ void SpyOverride_RecreateGraphicsPipeline(VkDevice, VkPipelineCache, const VkGra
 void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache, const VkComputePipelineCreateInfo*, VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkQueue, VkDeviceMemory, VkDeviceSize, uint32_t, void*, VkBuffer*) {}
 void SpyOverride_RecreatePhysicalDeviceProperties(VkPhysicalDevice, uint32_t*, VkQueueFamilyProperties*, VkPhysicalDeviceMemoryProperties*) {}
+void SpyOverride_RecreateQueryPool(VkDevice, const VkQueryPoolCreateInfo*, uint32_t*, VkQueryPool*) {}
 
 void SpyOverride_RecreateUpdateBuffer(VkCommandBuffer, VkBuffer, VkDeviceSize, VkDeviceSize, const void*) {}
 void SpyOverride_RecreateCmdPipelineBarrier(VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags,
@@ -90,6 +91,9 @@ void SpyOverride_RecreateCmdSetScissor(VkCommandBuffer, uint32_t, uint32_t, cons
 void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*) {}
 void SpyOverride_RecreateCmdSetDepthBias(VkCommandBuffer, float, float, float) {}
 void SpyOverride_RecreateCmdPushConstants(VkCommandBuffer, VkPipelineLayout, uint32_t, uint32_t, uint32_t, const void*) {}
+void SpyOverride_RecreateCmdBeginQuery(VkCommandBuffer, VkQueryPool, uint32_t, uint32_t) {}
+void SpyOverride_RecreateCmdEndQuery(VkCommandBuffer, VkQueryPool, uint32_t) {}
+void SpyOverride_RecreateCmdResetQueryPool(VkCommandBuffer, VkQueryPool, uint32_t, uint32_t) {}
 
 void SpyOverride_RecreateCmdDrawIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdDrawIndexedIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}

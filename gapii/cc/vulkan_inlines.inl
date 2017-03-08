@@ -232,6 +232,39 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdBeginQueryData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdBeginQueryData>& t) {
+    if (!spy->QueryPools.count(t->mQueryPool)) {
+        return;
+    }
+    spy->RecreateCmdBeginQuery(observer, commandBuf,
+        t->mQueryPool, t->mQuery, t->mFlags);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdEndQueryData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdEndQueryData>& t) {
+    if (!spy->QueryPools.count(t->mQueryPool)) {
+        return;
+    }
+    spy->RecreateCmdEndQuery(observer, commandBuf,
+        t->mQueryPool, t->mQuery);
+}
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdResetQueryPoolData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdResetQueryPoolData>& t) {
+    if (!spy->QueryPools.count(t->mQueryPool)) {
+        return;
+    }
+    spy->RecreateCmdResetQueryPool(observer, commandBuf,
+        t->mQueryPool, t->mFirstQuery, t->mQueryCount);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCopyBufferToImageData>& t) {

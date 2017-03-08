@@ -557,6 +557,35 @@ func (a *RecreateCmdSetViewport) Mutate(ctx log.Context, s *gfxapi.State, b *bui
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdBeginQuery) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdBeginQuery(
+		a.CommandBuffer,
+		a.QueryPool,
+		a.Query,
+		a.Flags)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdEndQuery) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdEndQuery(
+		a.CommandBuffer,
+		a.QueryPool,
+		a.Query)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdResetQueryPool) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdResetQueryPool(
+		a.CommandBuffer,
+		a.QueryPool,
+		a.FirstQuery,
+		a.QueryCount)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkGetPhysicalDeviceQueueFamilyProperties(
 		a.PhysicalDevice,
@@ -1372,6 +1401,99 @@ func (a *RecreateBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Bui
 		s.Allocator.Free(mem)
 	}
 	return nil
+}
+
+// Returns a queue capable of graphics and compute operations if it could be
+// found, a compute only queue or copy queue will be returned if it could not
+// be found
+func findGraphicsAndComputeQueueForDevice(device VkDevice, s *gfxapi.State) VkQueue {
+	c := GetState(s)
+	backupQueue := VkQueue(0)
+	backupQueueFlags := uint32(0)
+	for _, v := range c.Queues {
+		if v.Device == device {
+			family := c.PhysicalDevices[c.Devices[device].PhysicalDevice].QueueFamilyProperties[v.Family]
+			expected := uint32(VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT) | uint32(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
+			if (uint32(family.QueueFlags) & expected) == expected {
+				return v.VulkanHandle
+			}
+			if (uint32(family.QueueFlags) & uint32(VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)) != 0 {
+				backupQueue = v.VulkanHandle
+				backupQueueFlags = uint32(family.QueueFlags)
+			} else if backupQueueFlags == 0 {
+				backupQueue = v.VulkanHandle
+				backupQueueFlags = uint32(family.QueueFlags)
+			}
+		}
+	}
+	return backupQueue
+}
+
+func (a *RecreateQueryPool) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	createInfo := memory.Pointer(a.PCreateInfo)
+	allocator := memory.Pointer{}
+	pQueryPool := memory.Pointer(a.PPool)
+
+	hijack := NewVkCreateQueryPool(a.Device, createInfo, allocator, pQueryPool, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	if err := hijack.Mutate(ctx, s, b); err != nil {
+		return err
+	}
+
+	createInfoObject := a.PCreateInfo.Read(ctx, a, s, b)
+	queryStates := a.PQueryStatuses.Slice(0, uint64(createInfoObject.QueryCount), s).Read(ctx, a, s, b)
+	pool := a.PPool.Read(ctx, a, s, b)
+
+	anyActive := false
+	for i := uint32(0); i < createInfoObject.QueryCount; i++ {
+		if queryStates[i] != QueryStatus_QUERY_STATUS_INACTIVE {
+			anyActive = true
+			break
+		}
+	}
+
+	if !anyActive {
+		return nil
+	}
+
+	queue := findGraphicsAndComputeQueueForDevice(a.Device, s)
+	commandPool, err := createCommandPool(ctx, s, b, queue, a.Device)
+	if err != nil {
+		return err
+	}
+	commandBuffer, err := createAndBeginCommandBuffer(ctx, s, b, a.Device, commandPool)
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < createInfoObject.QueryCount; i++ {
+		if queryStates[i] != QueryStatus_QUERY_STATUS_INACTIVE {
+			if err := NewVkCmdBeginQuery(commandBuffer,
+				pool, i, VkQueryControlFlags(0)).Mutate(ctx, s, b); err != nil {
+				return err
+			}
+
+			if queryStates[i] == QueryStatus_QUERY_STATUS_COMPLETE {
+				if err := NewVkCmdEndQuery(commandBuffer,
+					pool, i).Mutate(ctx, s, b); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if err := createEndCommandBufferAndQueueSubmit(ctx, s, b, queue, commandBuffer); err != nil {
+		return err
+	}
+	if err := NewVkQueueWaitIdle(queue, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if err := destroyCommandPool(ctx, s, b, a.Device, commandPool); err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 func (a *RecreateSwapchain) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
