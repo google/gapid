@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -309,7 +310,7 @@ public class ThumbnailScrubber extends Composite
         Data data = datas.get(i);
         if (data.image == null && thumbs.isReady()) {
           data.image = LoadableImage.forImageData(parent,
-              thumbs.getThumbnail(data.previewAtomIndex, THUMB_SIZE), loading, repainter);
+              noAlpha(thumbs.getThumbnail(data.previewAtomIndex, THUMB_SIZE)), loading, repainter);
         }
         Image toDraw;
         if (data.image != null) {

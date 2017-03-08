@@ -16,6 +16,8 @@
 package com.google.gapid.image;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.util.Streams;
@@ -103,6 +105,13 @@ public class Images {
   public static Point getSize(org.eclipse.swt.graphics.Image image) {
     Rectangle bounds = image.getBounds();
     return new Point(bounds.width, bounds.height);
+  }
+
+  public static ListenableFuture<ImageData> noAlpha(ListenableFuture<ImageData> image) {
+    return Futures.transform(image, data -> {
+      data.alphaData = null;
+      return data;
+    });
   }
 
   public static Image.Format getFormatToRequest(Image.Format format) {
