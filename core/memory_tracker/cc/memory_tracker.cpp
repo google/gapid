@@ -114,6 +114,9 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
 void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
   void* fault_addr = info->si_addr;
   if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_)) {
+#ifndef NDEBUG
+    raise(SIGTRAP);
+#endif // NDEBUG
     return (*orig_action_.sa_sigaction)(sig, info, unused);
   }
 
@@ -125,6 +128,9 @@ void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
   if (!dirty_pages_.Record(page_addr)) {
     // The dirty page table does not have enough space pre-allocated,
     // fallback to the original handler.
+#ifndef NDEBUG
+    raise(SIGTRAP);
+#endif // NDEBUG
     return (*orig_action_.sa_sigaction)(sig, info, unused);
   }
   mprotect(page_addr, page_size_, PROT_READ | PROT_WRITE);
