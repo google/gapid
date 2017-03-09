@@ -78,6 +78,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Command (atom) editing dialog. Allows the user to change the parameters of a command in the
+ * capture.
+ */
 public class AtomEditor {
   private static final Logger LOG = Logger.getLogger(AtomEditor.class.getName());
 
@@ -126,6 +130,9 @@ public class AtomEditor {
     }
   }
 
+  /**
+   * The dialog containing the editors for a given command.
+   */
   private static class EditDialog extends TitleAreaDialog {
     private final Atom atom;
     private final List<Editor<?>> editors = Lists.newArrayList();
@@ -192,6 +199,9 @@ public class AtomEditor {
       super.okPressed();
     }
 
+    /**
+     * Base class for the different types of editors.
+     */
     private abstract static class Editor<C extends Control> {
       private static final int MAX_DROP_DOWN_SIZE = 1000;
 
@@ -267,6 +277,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for read-only values.
+     */
     private static class NoEditEditor extends Editor<Label> {
       public NoEditEditor(Composite parent, Type type, SnippetObject value) {
         super(-1, new Label(parent, SWT.NONE));
@@ -279,6 +292,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for enums using a drop down.
+     */
     private static class EnumEditor extends Editor<Combo> {
       private final ComboViewer viewer;
 
@@ -300,6 +316,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for enums using a free from text box with auto completion suggestions.
+     */
     private static class ConstantEditor extends Editor<Text> {
       private static final int MAX_PROPOSALS = 1000;
 
@@ -353,6 +372,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for flag/bitmask values.
+     */
     private static class FlagEditor extends Editor<Composite> {
       private final List<Constant> constants;
 
@@ -379,6 +401,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for boolean values.
+     */
     private static class BooleanEditor extends Editor<Button> {
       public BooleanEditor(Composite parent, boolean value, int fieldIndex) {
         super(fieldIndex, createCheckbox(parent, value));
@@ -390,6 +415,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for integer values.
+     */
     private static class IntEditor extends Editor<Spinner> {
       public IntEditor(Composite parent, int value, int min, int max, int fieldIndex) {
         super(fieldIndex, createSpinner(parent, value, min, max));
@@ -401,6 +429,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for long values.
+     */
     private static class LongEditor extends Editor<Text> {
       public LongEditor(Composite parent, BigInteger value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, String.valueOf(value)));
@@ -416,6 +447,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for floating point values.
+     */
     private static class FloatEditor extends Editor<Text> {
       public FloatEditor(Composite parent, double value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, String.valueOf(value)));
@@ -431,6 +465,9 @@ public class AtomEditor {
       }
     }
 
+    /**
+     * {@link Editor} for string values.
+     */
     private static class StringEditor extends Editor<Text> {
       public StringEditor(Composite parent, String value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, value));

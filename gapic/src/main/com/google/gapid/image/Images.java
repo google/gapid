@@ -33,6 +33,9 @@ import org.eclipse.swt.internal.DPIUtil;
 
 import java.util.Set;
 
+/**
+ * Utilities to deal with images.
+ */
 public class Images {
   public static final Image.Format FMT_RGBA_U8_NORM = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_RGBA_U8_NORM))
@@ -207,7 +210,9 @@ public class Images {
     return true;
   }
 
-
+  /**
+   * Image formats handled by the UI.
+   */
   public static enum Format {
     Color8(FMT_RGBA_U8_NORM, 4 * 1) {
       @Override

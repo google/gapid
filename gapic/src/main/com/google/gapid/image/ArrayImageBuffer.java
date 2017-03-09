@@ -34,6 +34,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+/**
+ * An {@link ImageBuffer} backed by a byte array.
+ */
 public abstract class ArrayImageBuffer implements ImageBuffer {
   public final int width, height;
   private final byte[] data;
@@ -80,6 +83,9 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     return ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
   }
 
+  /**
+   * An {@link ArrayImageBuffer} builder.
+   */
   public abstract static class Builder {
     public final int width, height;
     public final byte[] data;
@@ -119,6 +125,9 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     protected abstract ArrayImageBuffer build();
   }
 
+  /**
+   * An {@link ArrayImageBuffer} that represents an RGBA image with 8bit color channels.
+   */
   public static class RGBA8ImageBuffer extends ArrayImageBuffer {
     public RGBA8ImageBuffer(int width, int height, byte[] data) {
       super(width, height, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
@@ -171,6 +180,9 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
   }
 
+  /**
+   * An {@link ArrayImageBuffer} that represents an RGBA image with 32bit float color channels.
+   */
   public static class RGBAFloatImageBuffer extends ArrayImageBuffer {
     private final FloatBuffer buffer;
     private final PixelInfo info;
@@ -227,6 +239,9 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
   }
 
+  /**
+   * An {@link ArrayImageBuffer} that represents an 8bit luminance image.
+   */
   // TODO: The client may not actually need to distinguish between luminance and RGBA
   public static class Luminance8ImageBuffer extends ArrayImageBuffer {
     public Luminance8ImageBuffer(int width, int height, byte[] data) {
@@ -281,6 +296,9 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
   }
 
+  /**
+   * An {@link ArrayImageBuffer} that represents a 32bit float luminance image.
+   */
   //TODO: The client may not actually need to distinguish between luminance and RGBA
   public static class LuminanceFloatImageBuffer extends ArrayImageBuffer {
     private final FloatBuffer buffer;

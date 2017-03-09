@@ -27,6 +27,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Utilities for various {@link CopySource copy sources}.
+ */
 public class CopySources {
   private CopySources() {
   }
@@ -92,10 +95,19 @@ public class CopySources {
     return node;
   }
 
+  /**
+   * Provides text representations of the copy data from the tree.
+   */
   public static interface ColumnTextProvider {
-    String[] getColumns(Object element);
+    /**
+     * @return text representation of the columns for the given tree element.
+     */
+    public String[] getColumns(Object element);
   }
 
+  /**
+   * A copied node in the tree.
+   */
   private static class Node {
     private static final int INDENT_SIZE = 4;
     private static final String INDENT = "│   ";

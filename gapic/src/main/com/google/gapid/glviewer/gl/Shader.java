@@ -16,17 +16,21 @@
 package com.google.gapid.glviewer.gl;
 
 import static java.util.logging.Level.WARNING;
+import static org.lwjgl.BufferUtils.createIntBuffer;
 
 import com.google.common.collect.Maps;
-import com.google.gapid.glviewer.gl.Util.AttributeOrUniform;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
+import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
 
+/**
+ * Helper object for GL shaders and programs.
+ */
 public class Shader {
   protected static Logger LOG = Logger.getLogger(Shader.class.getName());
 
@@ -93,7 +97,7 @@ public class Shader {
   }
 
   private void detachShaders() {
-    int[] shaders = Util.getAttachedShaders(handle);
+    int[] shaders = getAttachedShaders(handle);
     for (int i = 0; i < shaders.length; i++) {
       GL20.glDetachShader(handle, shaders[i]);
       GL20.glDeleteShader(shaders[i]);
@@ -119,8 +123,8 @@ public class Shader {
 
   private boolean link() {
     GL20.glLinkProgram(handle);
-    if (Util.getProgramiv(handle, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
-      LOG.log(WARNING, "Failed to link program:\n" + Util.getProgramInfoLog(handle));
+    if (GL20.glGetProgrami(handle, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+      LOG.log(WARNING, "Failed to link program:\n" + GL20.glGetProgramInfoLog(handle));
       return false;
     }
     return true;
@@ -128,15 +132,15 @@ public class Shader {
 
   private void getAttributes() {
     attributes.clear();
-    for (AttributeOrUniform attribute : Util.getActiveAttributes(handle)) {
-      attributes.put(attribute.name, new Attribute(attribute));
+    for (Attribute attribute : getActiveAttributes(handle)) {
+      attributes.put(attribute.name, attribute);
     }
   }
 
   private void getUniforms() {
     uniforms.clear();
-    for (AttributeOrUniform uniform : Util.getActiveUniforms(handle)) {
-      uniforms.put(uniform.name, new Uniform(uniform));
+    for (Uniform uniform : getActiveUniforms(handle)) {
+      uniforms.put(uniform.name, uniform);
     }
   }
 
@@ -144,8 +148,8 @@ public class Shader {
     int shader = GL20.glCreateShader(type);
     GL20.glShaderSource(shader, source);
     GL20.glCompileShader(shader);
-    if (Util.getShaderiv(shader, GL20.GL_COMPILE_STATUS) != GL11.GL_TRUE) {
-      LOG.log(WARNING, "Failed to compile shader:\n" + Util.getShaderInfoLog(shader) +
+    if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) != GL11.GL_TRUE) {
+      LOG.log(WARNING, "Failed to compile shader:\n" + GL20.glGetShaderInfoLog(shader) +
           "\n\nSource:\n" + source);
       GL20.glDeleteShader(shader);
       return -1;
@@ -153,41 +157,88 @@ public class Shader {
     return shader;
   }
 
-  private static class Attribute {
-    private AttributeOrUniform attribute;
-
-    public Attribute(AttributeOrUniform attribute) {
-      this.attribute = attribute;
+  private static int[] getAttachedShaders(int program) {
+    int numShaders = GL20.glGetProgrami(program, GL20.GL_ATTACHED_SHADERS);
+    if (numShaders > 0) {
+      int[] shaders = new int[numShaders], count = new int[1];
+      GL20.glGetAttachedShaders(program, count, shaders);
+      return shaders;
     }
+    return new int[0];
+  }
 
-    public void set(float x, float y, float z) {
-      GL20.glDisableVertexAttribArray(attribute.location);
-      GL20.glVertexAttrib3f(attribute.location, x, y, z);
+  private static Attribute[] getActiveAttributes(int program) {
+    int maxAttribNameLength = GL20.glGetProgrami(program, GL20.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH);
+    int numAttributes = GL20.glGetProgrami(program, GL20.GL_ACTIVE_ATTRIBUTES);
+    IntBuffer size = createIntBuffer(1), type = createIntBuffer(1);
+
+    Attribute[] result = new Attribute[numAttributes];
+    for (int i = 0; i < numAttributes; i++) {
+      String name = GL20.glGetActiveAttrib(program, i, maxAttribNameLength, size, type);
+      result[i] = new Attribute(GL20.glGetAttribLocation(program, name), name, type.get(0));
     }
+    return result;
+  }
 
-    public void bind(int elementSize, int elementType, int strideBytes, int offsetBytes) {
-      GL20.glEnableVertexAttribArray(attribute.location);
-      GL20.glVertexAttribPointer(
-          attribute.location, elementSize, elementType, false, strideBytes, offsetBytes);
+  private static Uniform[] getActiveUniforms(int program) {
+    int maxUniformNameLength = GL20.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORM_MAX_LENGTH);
+    int numUniforms = GL20.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORMS);
+    IntBuffer size = createIntBuffer(1), type = createIntBuffer(1);
+
+    Uniform[] result = new Uniform[numUniforms];
+    for (int i = 0; i < numUniforms; i++) {
+      String name = GL20.glGetActiveUniform(program, i, maxUniformNameLength, size, type);
+      if (name.endsWith("[0]")) {
+        name = name.substring(0, name.length() - 3);
+      }
+      result[i] = new Uniform(GL20.glGetUniformLocation(program, name), name, type.get(0));
     }
+    return result;
+  }
 
-    public void unbind() {
-      GL20.glDisableVertexAttribArray(attribute.location);
+  private static class AttributeOrUniform {
+    public final int location;
+    public final String name;
+    public final int type;
+
+    public AttributeOrUniform(int location, String name, int type) {
+      this.location = location;
+      this.name = name;
+      this.type = type;
     }
   }
 
-  private static class Uniform {
-    private final AttributeOrUniform uniform;
+  private static class Attribute extends AttributeOrUniform {
+    public Attribute(int location, String name, int type) {
+      super(location, name, type);
+    }
+
+    public void set(float x, float y, float z) {
+      GL20.glDisableVertexAttribArray(location);
+      GL20.glVertexAttrib3f(location, x, y, z);
+    }
+
+    public void bind(int elementSize, int elementType, int strideBytes, int offsetBytes) {
+      GL20.glEnableVertexAttribArray(location);
+      GL20.glVertexAttribPointer(
+          location, elementSize, elementType, false, strideBytes, offsetBytes);
+    }
+
+    public void unbind() {
+      GL20.glDisableVertexAttribArray(location);
+    }
+  }
+
+  private static class Uniform extends AttributeOrUniform {
     private final Setter setter;
 
-    public Uniform(AttributeOrUniform uniform) {
-      this.uniform = uniform;
+    public Uniform(int location, String name, int type) {
+      super(location, name, type);
       this.setter = getSetter();
     }
 
     private Setter getSetter() {
-      final int location = uniform.location;
-      switch (uniform.type) {
+      switch (type) {
         case GL11.GL_SHORT:
         case GL11.GL_UNSIGNED_INT:
         case GL11.GL_FLOAT:
@@ -358,7 +409,7 @@ public class Shader {
             }
           };
         default:
-          LOG.log(WARNING, "Unexpected shader uniform type: " + uniform.type);
+          LOG.log(WARNING, "Unexpected shader uniform type: " + type);
           throw new AssertionError();
       }
     }

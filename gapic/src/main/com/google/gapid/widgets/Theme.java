@@ -38,6 +38,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 
+/**
+ * Contains themable resources that need to be loaded and disposed (such as {@link Image images},
+ * {@link Color colors}, etc.).
+ */
 public interface Theme {
   @Icon("gapid/arrow.png") public Image arrow();
   @Icon("gapid/color_buffer0.png") public Image colorBuffer0();
@@ -159,27 +163,39 @@ public interface Theme {
     });
   }
 
+  /**
+   * Annotation for an icon image resource.
+   */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Icon {
-    String value();
+    public String value();
   }
 
+  /**
+   * Annotation for a color resource.
+   */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface RGB {
-    int argb();
+    public int argb();
   }
 
+  /**
+   * Annotation for a text style resource.
+   */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface TextStyle {
-    int foreground() default -1;
-    int background() default -1;
-    boolean underline() default false;
-    boolean bold() default false;
+    public int foreground() default -1;
+    public int background() default -1;
+    public boolean underline() default false;
+    public boolean bold() default false;
   }
 
+  /**
+   * A {@link Styler} that will dispose its resources.
+   */
   public static class DisposableStyler extends Styler {
     private final Color foreground, background;
     private final boolean underline, bold;

@@ -64,6 +64,9 @@ import org.eclipse.swt.widgets.ToolItem;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * View that displays the framebuffer at the current selection in an {@link ImagePanel}.
+ */
 public class FramebufferView extends Composite
     implements Capture.Listener, Devices.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());

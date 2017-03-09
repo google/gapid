@@ -21,13 +21,16 @@ import org.lwjgl.opengl.GL33;
 
 import java.nio.ByteBuffer;
 
+/**
+ * Helper object for GL textures.
+ */
 public class Texture {
   private final int target;
   private final int handle;
 
   public Texture(int target) {
     this.target = target;
-    this.handle = Util.createTexture();
+    this.handle = GL11.glGenTextures();
   }
 
   public Texture bind() {

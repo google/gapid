@@ -32,7 +32,13 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.StreamHandler;
 
+/**
+ * Logging setup and utilities.
+ */
 public class Logging {
+  /**
+   * Possible log level flag values.
+   */
   public static enum LogLevel {
     OFF(Level.OFF, "Emergency", "F"), ERROR(Level.SEVERE, "Error", "E"),
     WARNING(Level.WARNING, "Warning", "W"), INFO(Level.INFO, "Info", "I"),
@@ -54,6 +60,9 @@ public class Logging {
   public static final Flag<String> logDir = Flags.value(
       "logDir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
 
+  /**
+   * Initializes the Java logging system.
+   */
   public static void init() {
     LogManager.getLogManager().reset();
 
@@ -80,6 +89,10 @@ public class Logging {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
   }
 
+  /**
+   * {@link Formatter} implementation for our logs. Contains special handling for logging proto
+   * messages in a nice compact format.
+   */
   private static class LogFormatter extends Formatter {
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmssSSS");
 
@@ -170,6 +183,10 @@ public class Logging {
     }
   }
 
+  /**
+   * Similar to {@link java.util.logging.ConsoleHandler}, except that we log to standard output
+   * rather than standard error.
+   */
   private static class ConsoleHandler extends StreamHandler {
     public ConsoleHandler() {
       setOutputStream(System.out);

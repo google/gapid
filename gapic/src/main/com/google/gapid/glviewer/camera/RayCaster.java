@@ -17,6 +17,9 @@ package com.google.gapid.glviewer.camera;
 
 import com.google.gapid.glviewer.vec.VecD;
 
+/**
+ * Casts rays to find intersections with the isosurface of an {@link Emitter}.
+ */
 public class RayCaster {
   private static final int MAX_LINEAR_STEPS = 128;
   private static final int MAX_BINARY_STEPS = 32;

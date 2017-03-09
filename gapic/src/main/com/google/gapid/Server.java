@@ -47,6 +47,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+/**
+ * Starts the {@link GapisProcess} and manages the connections to it.
+ */
 public class Server {
   private static final Logger LOG = Logger.getLogger(Server.class.getName());
 
@@ -173,6 +176,9 @@ public class Server {
     }
   }
 
+  /**
+   * Exception thrown if the application fails to launch the GAPIS server.
+   */
   public static class GapisInitException extends Exception {
     public static final String MESSAGE_FAILED_CONNECT = "Failed to connect to the graphics debugger";
     public static final String MESSAGE_FAILED_INIT = "Failed to initialize the graphics debugger";

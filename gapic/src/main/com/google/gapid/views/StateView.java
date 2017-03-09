@@ -74,6 +74,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+/**
+ * View that displays the API state as a tree.
+ */
 public class StateView extends Composite
     implements Capture.Listener, AtomStream.Listener, ApiState.Listener {
   private static final Logger LOG = Logger.getLogger(StateView.class.getName());
@@ -301,7 +304,10 @@ public class StateView extends Composite
     return result.toArray(new SnippetObject[result.size()]);
   }
 
-   private static class TypedValue {
+  /**
+   * A {@link SnippetObject value} with a {@link Type} that is displayed in the state tree.
+   */
+  private static class TypedValue {
     public final Type type;
     public final SnippetObject value;
 
@@ -311,6 +317,10 @@ public class StateView extends Composite
     }
   }
 
+  /**
+   * A single element in the state tree consisting of a name (such as GL_DEPTH_TEST) and its current
+   * value (e.g. GL_TRUE or GL_FLASE).
+   */
   private static class Element {
     public final TypedValue key;
     public final TypedValue value;
@@ -410,6 +420,9 @@ public class StateView extends Composite
     }
   }
 
+  /**
+   * Content provider for the state tree.
+   */
   private static class StateContentProvider implements ILazyTreeContentProvider {
     private final TreeViewer viewer;
 
@@ -437,6 +450,9 @@ public class StateView extends Composite
     }
   }
 
+  /**
+   * Label provider for the state tree.
+   */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider {
     public ViewLabelProvider(TreeViewer viewer, Theme theme) {
       super(viewer, theme);

@@ -21,6 +21,10 @@ import com.google.gapid.glviewer.vec.MatD;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+/**
+ * Binds the projection and model-view transforms to a {@link Shader}. Maintains a matrix stack for
+ * the model-view transform.
+ */
 public class ModelViewProjection {
   private final boolean invertNormals;
   private MatD modelView = MatD.IDENTITY;

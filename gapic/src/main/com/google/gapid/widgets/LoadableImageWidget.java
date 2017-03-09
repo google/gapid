@@ -27,6 +27,9 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 
+/**
+ * A {@link Canvas} displaying a {@link LoadableImage}.
+ */
 public class LoadableImageWidget extends Canvas {
   private LoadableImage image;
 

@@ -26,6 +26,9 @@ import org.eclipse.swt.widgets.Event;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
+/**
+ * {@link Composite} containing a {@link GlCanvas} to use OpenGL to render the contents.
+ */
 public class GlComposite extends Composite {
   private final GlCanvas canvas;
   private final GLCapabilities caps;

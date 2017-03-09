@@ -15,11 +15,26 @@
  */
 package com.google.gapid.util;
 
+/**
+ * Widget mixin for widgets that show loadable data. Typical implementations should show a loading
+ * animation to the user while the data is loading.
+ */
 public interface Loadable {
   public static final Loadable NULL_LOADABLE = new Loadable() { /* empty */ };
 
+  /**
+   * Indicates that the data is being loaded.
+   */
   public default void startLoading() { /* empty */ }
+
+  /**
+   * Indicates that the data has finished loading.
+   */
   public default void stopLoading() { /* empty */ }
+
+  /**
+   * Shows a message to the user instead of the loading animation.
+   */
   @SuppressWarnings("unused")
   public default void showMessage(MessageType type, String text) { /* empty */ }
 

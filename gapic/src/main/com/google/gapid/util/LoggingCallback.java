@@ -21,7 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Warning: this class will ignore and just log errors.
+ * {@link FutureCallback} implementation that simply logs errors, but otherwise ignores them.
  */
 public abstract class LoggingCallback<T> implements FutureCallback<T> {
   private final Logger log;

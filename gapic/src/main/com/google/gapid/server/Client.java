@@ -52,6 +52,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * Client interface to the RPC server.
+ */
 public class Client {
   private static final Logger LOG = Logger.getLogger(Client.class.getName());
 

@@ -221,11 +221,24 @@ type textureDataKey struct {
 
 func (k textureDataKey) Parent() stateKey { return nil }
 
+type textureSizeKey struct {
+	texture *Texture
+	id      TextureId // For debugging, as 0 is not unique identifier.
+}
+
+func (k textureSizeKey) Parent() stateKey { return nil }
+
 type eglImageDataKey struct {
 	address GLeglImageOES
 }
 
 func (k eglImageDataKey) Parent() stateKey { return nil }
+
+type eglImageSizeKey struct {
+	address GLeglImageOES
+}
+
+func (k eglImageSizeKey) Parent() stateKey { return nil }
 
 // getBehaviour returns state reads/writes that the given atom performs.
 //
@@ -242,7 +255,7 @@ func (k eglImageDataKey) Parent() stateKey { return nil }
 func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
 	b := AtomBehaviour{}
 	c := GetContext(s)
-	if c != nil {
+	if c != nil && c.Info.Initialized {
 		_, isEglSwapBuffers := a.(*EglSwapBuffers)
 		_, isEglSwapBuffersWithDamageKHR := a.(*EglSwapBuffersWithDamageKHR)
 		if isEglSwapBuffers || isEglSwapBuffersWithDamageKHR {
@@ -259,7 +272,7 @@ func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom
 		} else if a.AtomFlags().IsDrawCall() {
 			b.read(g, uniformGroupKey{c, c.BoundProgram})
 			b.read(g, vertexAttribGroupKey{c, c.BoundVertexArray})
-			for _, stateKey := range g.getTextureData(ctx, a, s, c) {
+			for _, stateKey := range getAllUsedTextureData(ctx, a, s, c) {
 				b.read(g, stateKey)
 			}
 			fb := c.Instances.Framebuffers[c.BoundDrawFramebuffer]
@@ -287,9 +300,26 @@ func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom
 			case *GlBindFramebuffer:
 				// It may act as "resolve" of EGLImage - i.e. save the content in one context.
 				b.KeepAlive = true
+			case *GlFramebufferTexture2D:
+				b.read(g, textureSizeKey{c.Instances.Textures[a.Texture], a.Texture})
+				b.KeepAlive = true // Changes untracked state
 			case *GlBindTexture:
 				// It may act as "load" of EGLImage - i.e. load the content in other context.
 				b.KeepAlive = true
+			case *GlCompressedTexImage2D:
+				texData, texSize := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				b.modify(g, texData)
+				b.write(g, texSize)
+			case *GlCompressedTexSubImage2D:
+				texData, _ := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				b.modify(g, texData)
+			case *GlTexImage2D:
+				texData, texSize := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				b.modify(g, texData)
+				b.write(g, texSize)
+			case *GlTexSubImage2D:
+				texData, _ := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				b.modify(g, texData)
 			case *GlUniform1fv:
 				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
 			case *GlUniform2fv:
@@ -317,7 +347,7 @@ func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom
 	return b
 }
 
-func (g *DependencyGraph) getTextureData(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
+func getAllUsedTextureData(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
 	// Look for samplers used by the current program.
 	if prog, ok := c.Instances.Programs[c.BoundProgram]; ok {
 		for _, activeUniform := range prog.ActiveUniforms {
@@ -335,22 +365,27 @@ func (g *DependencyGraph) getTextureData(ctx log.Context, a atom.Atom, s *gfxapi
 					}
 					for _, unit := range units {
 						unit := GLenum(unit) + GLenum_GL_TEXTURE0
-						tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
-						if tex == nil || err != nil {
-							ctx.Error().Logf("Can not find texture for sampler %v", activeUniform)
-							continue
-						}
-						if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
-							stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
-						} else {
-							stateKeys = append(stateKeys, textureDataKey{tex, tex.ID})
-						}
+						texData, _ := getTextureDataAndSize(ctx, a, s, c, unit, target)
+						stateKeys = append(stateKeys, texData)
 					}
 				}
 			}
 		}
 	}
 	return
+}
+
+func getTextureDataAndSize(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Context, unit, target GLenum) (stateKey, stateKey) {
+	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
+	if tex == nil || err != nil {
+		ctx.Error().Logf("Can not find texture %v in unit %v", target, unit)
+		return nil, nil
+	}
+	if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
+	} else {
+		return textureDataKey{tex, tex.ID}, textureSizeKey{tex, tex.ID}
+	}
 }
 
 func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment) (key stateKey) {

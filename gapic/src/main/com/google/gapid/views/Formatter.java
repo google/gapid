@@ -58,7 +58,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Formats varies values to {@link StylingString StylingStrings}.
+ */
 public class Formatter {
+  private Formatter() {
+  }
+
   public static String toString(SnippetObject value, Type type) {
     NoStyleStylingString string = new NoStyleStylingString();
     format(value, type, string, null);
@@ -543,25 +549,76 @@ public class Formatter {
     return null;
   }
 
+  /**
+   * Tagging interface implemented by the various styles.
+   */
   public static interface Style {
     // Empty tagging interface.
   }
 
+  /**
+   * String consisting of styled segments.
+   */
   public static interface StylingString {
+    /**
+     * @return the default "no style" style.
+     */
     public Style defaultStyle();
+
+    /**
+     * @return the style to use for structure elements like '{' or ','.
+     */
     public Style structureStyle();
+
+    /**
+     * @return the style to use for identifiers.
+     */
     public Style identifierStyle();
+
+    /**
+     * @return the style to use for labels.
+     */
     public Style labelStyle();
+
+    /**
+     * @return the style to use for links.
+     */
     public Style linkStyle();
+
+    /**
+     * @return the style to use for errors (e.g. in the report view).
+     */
     public Style errorStyle();
+
+    /**
+     * @return the style to use for warnings (e.g. in the report view).
+     */
     public Style warningStyle();
 
+    /**
+     * Appends the given segment with the given style to this string.
+     */
     public StylingString append(String text, Style style);
+
+    /**
+     * Appends the given segment with the given style to this string, optionally eliding it.
+     */
     public StylingString appendWithEllipsis(String text, Style style);
+
+    /**
+     * Indicates the start of a link with the given target.
+     */
     public void startLink(Object target);
+
+    /**
+     * Indicates the end of the most recently started link.
+     */
     public void endLink();
   }
 
+  /**
+   * {@link StylingString} that doesn't actually style.
+   */
   private static class NoStyleStylingString implements StylingString {
     private final StringBuilder string = new StringBuilder();
 
@@ -631,6 +688,9 @@ public class Formatter {
     }
   }
 
+  /**
+   * {@link StylingString} that uses the {@link Theme} stylers to style the string.
+   */
   private abstract static class ThemedStylingString implements StylingString {
     private final StylerStyle deflt;
     private final StylerStyle structure;
@@ -694,6 +754,9 @@ public class Formatter {
     }
   }
 
+  /**
+   * {@link StylingString} implementations.
+   */
   public static interface LinkableStyledString extends StylingString {
     public static final int MAX_STR_LEN = 45;
 

@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
+/**
+ * Utility for locating the various GAPID binaries and associated files.
+ */
 public final class GapiPaths {
   public static final Flag<String> gapidPath = Flags.value("gapid", "", "Path to the gapid binaries.");
 

@@ -33,6 +33,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
+/**
+ * A widget that displays an {@link Image} that may need to be loaded. While the image is being
+ * loaded, a loading indicator is drawn.
+ */
 public class LoadableImage {
   protected static final Logger LOG = Logger.getLogger(LoadableImage.class.getName());
 

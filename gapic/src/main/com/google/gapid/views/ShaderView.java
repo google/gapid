@@ -80,7 +80,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-public class ShaderView extends Composite implements Capture.Listener, AtomStream.Listener, Resources.Listener {
+/**
+ * View allowing the inspection and editing of the shader resources.
+ */
+public class ShaderView extends Composite
+    implements Capture.Listener, AtomStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
   protected static final String EMPTY_SHADER =
       "// No source attached to this shader at this point in the trace.";
@@ -257,6 +261,9 @@ public class ShaderView extends Composite implements Capture.Listener, AtomStrea
     }
   }
 
+  /**
+   * Panel displaying the source code of a shader or program.
+   */
   private static class ShaderPanel extends Composite
       implements Resources.Listener, AtomStream.Listener {
     private final Models models;
@@ -396,6 +403,9 @@ public class ShaderView extends Composite implements Capture.Listener, AtomStrea
     }
   }
 
+  /**
+   * Panel displaying the uniforms of the current shader program.
+   */
   private static class UniformsPanel extends Composite {
     private final TableViewer table;
 
@@ -454,6 +464,9 @@ public class ShaderView extends Composite implements Capture.Listener, AtomStrea
     }
   }
 
+  /**
+   * Distinguishes between shaders and programs.
+   */
   private static class Type implements ShaderPanel.UpdateShader {
     public final ResourceType type;
     public final String selectMessage;
@@ -483,6 +496,9 @@ public class ShaderView extends Composite implements Capture.Listener, AtomStrea
     }
   }
 
+  /**
+   * Shader or program data.
+   */
   private static class Data {
     public final Path.Any path;
     public final Service.Resource info;

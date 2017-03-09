@@ -37,6 +37,9 @@ import org.eclipse.swt.widgets.Text;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+/**
+ * Dialog to display the licenses used by the application in an HTML browser window.
+ */
 public class Licenses {
   private static final Logger LOG = Logger.getLogger(Licenses.class.getName());
 

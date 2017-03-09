@@ -27,6 +27,9 @@ import com.google.gapid.service.memory.MemoryRange;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.TextFormat;
 
+/**
+ * Path utilities.
+ */
 public class Paths {
   public static final Path.ID ZERO_ID = Path.ID.newBuilder()
       .setData(ByteString.copyFrom(new byte[20]))

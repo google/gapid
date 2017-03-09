@@ -90,6 +90,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+/**
+ * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
+ */
 public class AtomTree extends Composite implements Capture.Listener, AtomStream.Listener,
     ApiContext.Listener, AtomHierarchies.Listener, Thumbnails.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
@@ -368,6 +371,9 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
     viewer.getTree().showSelection();
   }
 
+  /**
+   * Content provider for the command tree.
+   */
   private static class AtomContentProvider implements ILazyTreeContentProvider {
     private final TreeViewer viewer;
 
@@ -395,6 +401,10 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
     }
   }
 
+  /**
+   * Image provider for the command tree. Groups that represent frames or draw calls will have
+   * a thumbnail preview of the framebuffer in the tree.
+   */
   private static class ImageProvider implements LoadingIndicator.Repaintable {
     private static final int PREVIEW_SIZE = 18;
 
@@ -456,6 +466,9 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
     }
   }
 
+  /**
+   * Label provider for the command tree.
+   */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider {
     private final ImageProvider imageProvider;
 

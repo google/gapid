@@ -25,6 +25,9 @@ import org.eclipse.swt.widgets.Display;
 import java.io.File;
 import java.util.List;
 
+/**
+ * Handles capturing an API trace.
+ */
 public class Tracer {
   public static Trace trace(Display display, TraceRequest request, Listener listener) {
     GapitTraceProcess process = new GapitTraceProcess(request, message ->
@@ -52,14 +55,30 @@ public class Tracer {
 
   @SuppressWarnings("unused")
   public static interface Listener {
+    /**
+     * Event indicating output from the tracing process.
+     */
     public default void onProgress(String message) { /* empty */ }
+
+    /**
+     * Event indicating that tracing has failed.
+     */
     public default void onFailure(Throwable error) { /* empty */ }
   }
 
+  /**
+   * Trace callback interface.
+   */
   public static interface Trace {
+    /**
+     * Requests the current trace to be stopped.
+     */
     public void stop();
   }
 
+  /**
+   * Contains information about how and what application to trace.
+   */
   public static class TraceRequest {
     public final Device.Instance device;
     public final String pkg;

@@ -40,6 +40,9 @@ import org.eclipse.swt.widgets.Shell;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+/**
+ * Model containing the API commands (atoms) of the capture.
+ */
 public class AtomStream extends CaptureDependentModel<AtomList> {
   private static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
 
@@ -84,6 +87,9 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
     return getData().get(index);
   }
 
+  /**
+   * @return the index of the first command of the frame that contains the given command.
+   */
   public int getStartOfFrame(long index) {
     Atom[] atoms = getData().getAtoms();
     for (int i = (int)index; i > 0; i--) {
@@ -94,6 +100,9 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
     return 0;
   }
 
+  /**
+   * @retrn the index of the last command of the frame that contains the given command.
+   */
   public int getEndOfFrame(long index) {
     Atom[] atoms = getData().getAtoms();
     for (int i = (int)index; i < atoms.length; i++) {
@@ -128,6 +137,9 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
     return (selection == null || getData() == null) ? null : getData().get(last(selection));
   }
 
+  /**
+   * @return the path to the last draw command within the current selection or {@code null}.
+   */
   public Path.Command getLastSelectedDrawCall() {
     if (selection == null || getData() == null) {
       return null;
@@ -163,6 +175,10 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
   }
 
   private static final TypedObservation[] NO_OBSERVATIONS = new TypedObservation[0];
+
+  /**
+   * Read or write memory observation at a specific command.
+   */
   public static class TypedObservation {
     public static final TypedObservation NULL_OBSERVATION = new TypedObservation(
         0, false, new Observation().setRange(new MemoryRange().setBase(0).setSize(0))) {
@@ -207,7 +223,14 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
   }
 
   public interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the commands have finished loading.
+     */
     public default void onAtomsLoaded() { /* empty */ }
+
+    /**
+     * Event indicating that the currently selected command range has changed.
+     */
     @SuppressWarnings("unused")
     public default void onAtomsSelected(CommandRange range) { /* empty */ }
   }

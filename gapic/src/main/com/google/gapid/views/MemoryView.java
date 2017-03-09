@@ -79,6 +79,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
+/**
+ * View that displays the observed memory contents in an infinte scrolling panel.
+ */
 public class MemoryView extends Composite
     implements Capture.Listener, AtomStream.Listener, Follower.Listener {
   private final Client client;
@@ -208,6 +211,9 @@ public class MemoryView extends Composite
         .add(UnsignedLong.fromLongBits(memoryData.getAddress()).bigIntegerValue()).longValue();
   }
 
+  /**
+   * Bookkeeping of the current user selections.
+   */
   private static class Selections extends Composite {
     private final Label poolLabel;
     private final Combo typeCombo;
@@ -291,6 +297,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * Bookkeeping of the current UI state.
+   */
   private static class State {
     public DataType dataType = DataType.Bytes;
     public Path.Command atomPath;
@@ -344,6 +353,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * The memory data can be visualized as different atomic data types to ease buffer inspection.
+   */
   private static enum DataType {
     Bytes() {
       @Override
@@ -391,6 +403,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * Panel displaying the actual memory data.
+   */
   private static class MemoryPanel implements InfiniteScrolledComposite.Scrollable {
     public final int lineHeight;
     private final int[] charOffset = new int[256];
@@ -485,13 +500,35 @@ public class MemoryView extends Composite
     }
   }
 
-  private interface MemoryDataModel {
-    long getAddress();
-    long getEndAddress();
-    ListenableFuture<MemorySegment> get(long offset, int length);
-    MemoryDataModel align(int byteAlign);
+  /**
+   * Model responsible for loading the observed memory data.
+   */
+  private static interface MemoryDataModel {
+    /**
+     * @return the current address to show.
+     */
+    public long getAddress();
+
+    /**
+     * @return the last address (highest) possible memory address.
+     */
+    public long getEndAddress();
+
+    /**
+     * Fetches the memory data starting at the given offset with the given length.
+     */
+    public ListenableFuture<MemorySegment> get(long offset, int length);
+
+    /**
+     * @return a {@link MemoryDataModel} aligned to the given number of bytes.
+     */
+    public MemoryDataModel align(int byteAlign);
   }
 
+  /**
+   * {@link MemoryDataModel} that requests segments as equally sized pages and maintains a cache of
+   * fetched pages.
+   */
   private static class PagedMemoryDataModel implements MemoryDataModel {
     private static final int PAGE_SIZE = 0x10000;
 
@@ -591,15 +628,44 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * Model responsible for converting memory data bytes to displayable strings.
+   */
   private static interface MemoryModel {
-    long getLineCount();
-    int getLineLength();
-    Iterator<Segment> getLines(long start, long end, Loadable loadable);
-    IntRange getSelectableRegion(int column);
-    Selection[] getReads(long startRow, long endRow, Loadable loadable);
-    Selection[] getWrites(long startRow, long endRow, Loadable loadable);
+    /**
+     * @return the number of lines in this models.
+     */
+    public long getLineCount();
+
+    /**
+     * @return the number of character in each line.
+     */
+    public int getLineLength();
+
+    /**
+     * @return an {@link Iterator} over the given range of lines.
+     */
+    public Iterator<Segment> getLines(long start, long end, Loadable loadable);
+
+    /**
+     * @return the range of columns containing the given column that can be selected as a group.
+     */
+    public IntRange getSelectableRegion(int column);
+
+    /**
+     * @return the read selections within the given range of rows.
+     */
+    public Selection[] getReads(long startRow, long endRow, Loadable loadable);
+
+    /**
+     * @return the write selections within the given range of rows.
+     */
+    public Selection[] getWrites(long startRow, long endRow, Loadable loadable);
   }
 
+  /**
+   * {@link MemoryModel} displaying a fixed amount of bytes per line.
+   */
   private static abstract class FixedMemoryModel implements MemoryModel {
     protected static final char UNKNOWN_CHAR = '?';
     protected static final int BYTES_PER_ROW = 16;
@@ -721,6 +787,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * A {@link MemoryModel} that uses a char array as a buffer to compute the displayed strings.
+   */
   private static abstract class CharBufferMemoryModel extends FixedMemoryModel {
     protected static final int CHARS_PER_ADDRESS = 16; // 8 byte addresses
     protected static final int ADDRESS_SEPARATOR = 1;
@@ -784,6 +853,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * {@link MemoryModel} formatting the data as bytes.
+   */
   private static class BytesMemoryModel extends CharBufferMemoryModel {
     private static final int CHARS_PER_BYTE = 2; // 2 hex chars per byte
 
@@ -839,6 +911,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * {@link MemoryModel} formatting the data as multi-byte integers.
+   */
   private static class IntegersMemoryModel extends CharBufferMemoryModel {
     // Little endian assumption
     private static final ByteOrder ENDIAN = ByteOrder.LITTLE_ENDIAN;
@@ -902,24 +977,36 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * {@link IntegersMemoryModel} for 2 byte shorts.
+   */
   private static class ShortsMemoryModel extends IntegersMemoryModel {
     public ShortsMemoryModel(MemoryDataModel data) {
       super(data, 2);
     }
   }
 
+  /**
+   * {@link IntegersMemoryModel} for 4 byte ints.
+   */
   private static class IntsMemoryModel extends IntegersMemoryModel {
     public IntsMemoryModel(MemoryDataModel data) {
       super(data, 4);
     }
   }
 
+  /**
+   * {@link IntegersMemoryModel} for 4 byte longs.
+   */
   private static class LongsMemoryModel extends IntegersMemoryModel {
     public LongsMemoryModel(MemoryDataModel data) {
       super(data, 8);
     }
   }
 
+  /**
+   * {@link MemoryModel} displaying the data as 32bit floating point values.
+   */
   private static class FloatsMemoryModel extends CharBufferMemoryModel {
     private static final int FLOATS_PER_ROW = BYTES_PER_ROW / 4;
     private static final int CHARS_PER_FLOAT = 15;
@@ -953,6 +1040,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * {@link MemoryModel} displaying the data as 64bit floating point values.
+   */
   private static class DoublesMemoryModel extends CharBufferMemoryModel {
     private static final int DOUBLES_PER_ROW = BYTES_PER_ROW / 8;
     private static final int CHARS_PER_DOUBLE = 24;
@@ -986,6 +1076,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * A text selection range.
+   */
   private static class Selection {
     public final IntRange range;
 
@@ -1019,6 +1112,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * A segment of memory data.
+   */
   private static class MemorySegment {
     private final byte[] data;
     private final BitSet known;
@@ -1143,6 +1239,9 @@ public class MemoryView extends Composite
     }
   }
 
+  /**
+   * A segment of character data.
+   */
   private static class Segment {
     public char[] array;
     public int offset;

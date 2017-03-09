@@ -35,6 +35,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * {@link ChildProcess} running the Graphics API Server (GAPIS) executable. The result of the
+ * future returned by {@link #start()} is the port the GAPIS server listens to.
+ */
 public class GapisProcess extends ChildProcess<Integer> {
   private static final Logger LOG = Logger.getLogger(GapisProcess.class.getName());
 

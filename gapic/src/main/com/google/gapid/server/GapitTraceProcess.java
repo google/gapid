@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
+/**
+ * {@link ChildProcess} for the "gapit trace" command to handle capturing an API trace.
+ */
 public class GapitTraceProcess extends ChildProcess<Boolean> {
   private static final Logger LOG = Logger.getLogger(GapitTraceProcess.class.getName());
 

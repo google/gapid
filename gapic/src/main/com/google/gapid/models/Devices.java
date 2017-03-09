@@ -41,6 +41,9 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
+/**
+ * Model containing information about capture and replay devices.
+ */
 public class Devices {
   protected static final Logger LOG = Logger.getLogger(Devices.class.getName());
 
@@ -176,7 +179,14 @@ public class Devices {
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the selected replay device has changed.
+     */
     public default void onReplayDeviceChanged() { /* empty */ }
+
+    /**
+     * Event indicating that the capture devices have been loaded.
+     */
     public default void onCaptureDevicesLoaded() { /* empty */ }
   }
 }

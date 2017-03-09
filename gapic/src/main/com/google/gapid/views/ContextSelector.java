@@ -27,6 +27,9 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 
+/**
+ * Dropdown that allows the user to select which API context to filter the commands by.
+ */
 public class ContextSelector extends Composite implements ApiContext.Listener {
   private final Models models;
   private final ComboViewer contextCombo;

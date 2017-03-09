@@ -17,6 +17,9 @@ package com.google.gapid.glviewer.vec;
 
 import static java.lang.Double.doubleToLongBits;
 
+/**
+ * A 3 element double precision vector.
+ */
 public class VecD {
   public final double x, y, z;
   private final int h;

@@ -17,6 +17,9 @@ package com.google.gapid.glviewer.geo;
 
 import com.google.gapid.proto.service.gfxapi.GfxAPI.DrawPrimitive;
 
+/**
+ * The geometry data of a model to be displayed.
+ */
 public class Model {
   private final DrawPrimitive primitive;
   private final float[] positions; // x, y, z

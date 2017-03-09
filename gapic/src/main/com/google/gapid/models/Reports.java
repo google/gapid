@@ -26,6 +26,9 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.util.logging.Logger;
 
+/**
+ * Model containing the report details of the current capture.
+ */
 public class Reports extends CaptureDependentModel<Service.Report> {
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
@@ -75,6 +78,9 @@ public class Reports extends CaptureDependentModel<Service.Report> {
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the report items have been loaded.
+     */
     public default void onReportLoaded() { /* empty */ }
   }
 }

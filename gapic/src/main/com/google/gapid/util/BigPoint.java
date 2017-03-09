@@ -17,6 +17,9 @@ package com.google.gapid.util;
 
 import java.math.BigInteger;
 
+/**
+ * Sibling to {@link org.eclipse.swt.graphics.Point} that uses {@link BigInteger} coordinates.
+ */
 public class BigPoint {
   public final BigInteger x, y;
 

@@ -17,6 +17,9 @@ package com.google.gapid.util;
 
 import java.util.Iterator;
 
+/**
+ * Fast prefix lookup (Trie) data structure.
+ */
 public class PrefixTree<V extends PrefixTree.Value> {
   private String key;
   private V value;
@@ -32,10 +35,16 @@ public class PrefixTree<V extends PrefixTree.Value> {
     this.firstChar = (key.length() == 0) ? '\0' : key.charAt(0);
   }
 
+  /**
+   * @return a {@link PrefixTree} containing the values of the given {@link Iterable}.
+   */
   public static <V extends Value> PrefixTree<V> of(Iterable<V> values) {
     return of(values.iterator());
   }
 
+  /**
+   * @return a {@link PrefixTree} containing the values of the given {@link Iterator}.
+   */
   public static <V extends Value> PrefixTree<V> of(Iterator<V> values) {
     PrefixTree<V> tree = new PrefixTree<V>("", null, null, null);
     while (values.hasNext()) {
@@ -44,10 +53,16 @@ public class PrefixTree<V extends PrefixTree.Value> {
     return tree;
   }
 
+  /**
+   * Adds the given value to this tree.
+   */
   public void put(V newValue) {
     put(newValue.getKey(), newValue);
   }
 
+  /**
+   * Looks up all values in this tree that have the given prefix.
+   */
   public void find(String search, MatchCollector<V> collector) {
     if (search.length() <= key.length()) {
       if (key.startsWith(search)) {
@@ -62,6 +77,9 @@ public class PrefixTree<V extends PrefixTree.Value> {
     }
   }
 
+  /**
+   * @return the value with the given exact match key or {@code null}.
+   */
   public V get(String search) {
     if (!search.startsWith(key)) {
       return null;
@@ -133,12 +151,23 @@ public class PrefixTree<V extends PrefixTree.Value> {
     return true;
   }
 
+  /**
+   * Value that can be stored in this tree.
+   */
   public static interface Value {
+    /**
+     * @return the string key associated with this value.
+     */
     public String getKey();
   }
 
+  /**
+   * Collects results of a prefix based search.
+   */
   public static interface MatchCollector<V extends Value> {
-    /** @return whether to continue reporting matches */
+    /**
+     * @return whether to continue reporting matches.
+     */
     public boolean collect(V value);
   }
 }

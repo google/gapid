@@ -30,6 +30,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.logging.Logger;
 
+/**
+ * Manages the invocation and bookkeeping of a child process.
+ */
 public abstract class ChildProcess<T> {
   private static final Logger LOG = Logger.getLogger(ChildProcess.class.getName());
 
@@ -122,6 +125,11 @@ public abstract class ChildProcess<T> {
     serverThread.interrupt();
   }
 
+  /**
+   * Handler for the child process' standard and error output. The handler is responsible for
+   * producing the process result returned as a future from {@link ChildProcess#start()}. This is
+   * typically done by parsing the output produces by the process.
+   */
   protected static abstract class OutputHandler<T> implements Closeable {
     private Thread thread;
 
@@ -153,6 +161,9 @@ public abstract class ChildProcess<T> {
     }
   }
 
+  /**
+   * String line based {@link ChildProcess.OutputHandler}.
+   */
   protected static class StringHandler<T> extends OutputHandler<T> {
     private final Parser<T> parser;
 
@@ -179,6 +190,9 @@ public abstract class ChildProcess<T> {
     }
   }
 
+  /**
+   * {@link ChildProcess.OutputHandler} that forward the output to the log.
+   */
   protected static class LoggingStringHandler<T> extends StringHandler<T> {
     public LoggingStringHandler(Logger logger, String name, boolean warn, Parser<T> parser) {
       super(line -> {
@@ -195,6 +209,9 @@ public abstract class ChildProcess<T> {
     }
   }
 
+  /**
+   * {@link ChildProcess.OutputHandler} for binary (non text) output.
+   */
   protected static class BinaryHandler<T> extends OutputHandler<T> {
     private final Parser<T> parser;
 

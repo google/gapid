@@ -17,6 +17,9 @@ package com.google.gapid.util;
 
 import com.google.gapid.proto.service.path.Path;
 
+/**
+ * Contains a mutable path reference.
+ */
 public class PathStore {
   private Path.Any path;
 

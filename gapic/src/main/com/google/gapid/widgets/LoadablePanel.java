@@ -31,6 +31,10 @@ import org.eclipse.swt.widgets.Control;
 
 import java.util.function.Function;
 
+/**
+ * A {@link Composite} whith the {@link Loadable} mixin. Will show a loading indicator while the
+ * underlying data is being loaded and then swap over to the main contents once it is done.
+ */
 public class LoadablePanel<C extends Control> extends Composite implements Loadable {
   private static final int LOADING_INDICATOR_DELAY_MS = 250;
 
@@ -117,6 +121,10 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
     }
   }
 
+  /**
+   * {@link Canvas} that renders the
+   * {@link Loadable#showMessage(com.google.gapid.util.Loadable.MessageType, String)} message.
+   */
   private static class MessageWidget extends Canvas {
     private String text = "";
     private Image image;

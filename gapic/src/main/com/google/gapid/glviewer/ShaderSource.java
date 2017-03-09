@@ -21,12 +21,25 @@ import com.google.common.base.Charsets;
 import com.google.common.io.LineProcessor;
 import com.google.common.io.Resources;
 import com.google.gapid.glviewer.gl.Shader;
-import com.google.gapid.glviewer.gl.Util;
+
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.logging.Logger;
 
+/**
+ * Utility to load shaders resources from the classpath. To simplify editing shaders, both the
+ * vertex and fragment shaders of a program are stored in the same file. Special "comment markers"
+ * are used to indicate which shader the following lines of code belong to. This utility also takes
+ * care to insert the correct #version tag at the beginning of the shaders, allows sharing of code
+ * between the shaders (using the "//! COMMON" marker) and simplifies declaration of vertex shader
+ * output to fragment shader input by resurrecting the deprecated "varrying" keyword.
+ *
+ * @see
+ * <a href="https://github.com/google/gapid/blob/master/docs/gapic-shaders.md">GAPIC Shaders</a>
+ */
 public class ShaderSource {
   private static final Logger LOG = Logger.getLogger(ShaderSource.class.getName());
   private static final String VERSION_130 = "#version 130\n";
@@ -40,7 +53,7 @@ public class ShaderSource {
   }
 
   public static Shader loadShader(URL resource) {
-    String version = Util.isAtLeastVersion(3, 2) ? VERSION_150 : VERSION_130;
+    String version = isAtLeastVersion(3, 2) ? VERSION_150 : VERSION_130;
     try {
       Source source = Resources.readLines(resource, Charsets.US_ASCII, new LineProcessor<Source>() {
         private static final int MODE_COMMON = 0;
@@ -96,6 +109,11 @@ public class ShaderSource {
       LOG.log(WARNING, "Failed to load shader source", e);
       return null;
     }
+  }
+
+  private static boolean isAtLeastVersion(int major, int minor) {
+    int val = GL11.glGetInteger(GL30.GL_MAJOR_VERSION);
+    return (val > major) || (val == major && GL11.glGetInteger(GL30.GL_MINOR_VERSION) >= minor);
   }
 
   private static class Source {

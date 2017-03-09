@@ -56,6 +56,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Scrubber view displaying thumbnails of the frames in the current capture.
+ */
 public class ThumbnailScrubber extends Composite
     implements Capture.Listener, AtomStream.Listener, ApiContext.Listener {
   private final Models models;
@@ -175,6 +178,9 @@ public class ThumbnailScrubber extends Composite
     return generatedList;
   }
 
+  /**
+   * Metadata about a frame in the scrubber.
+   */
   private static class Data {
     public final CommandRange range;
     public final long previewAtomIndex;
@@ -219,6 +225,9 @@ public class ThumbnailScrubber extends Composite
     }
   }
 
+  /**
+   * Renders the frame thumbnails.
+   */
   private static class Carousel
       implements InfiniteScrolledComposite.Scrollable, Thumbnails.Listener {
     private static final int MARGIN = 4;

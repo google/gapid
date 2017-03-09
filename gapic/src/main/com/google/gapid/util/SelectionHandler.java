@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
+/**
+ * Helper class to manage user selection and model selection events.
+ */
 public abstract class SelectionHandler<W extends Widget> {
   private final Logger log;
   protected final W widget;

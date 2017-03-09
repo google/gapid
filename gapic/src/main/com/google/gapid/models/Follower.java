@@ -36,6 +36,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Model handling link following throughout the UI.
+ */
 public class Follower {
   protected static final Logger LOG = Logger.getLogger(Follower.class.getName());
   private static final int FOLLOW_TIMEOUT_MS = 1000;
@@ -51,6 +54,11 @@ public class Follower {
     this.client = client;
   }
 
+  /**
+   * Looks up how to follow a path in the background. The idea is to prime the follow cache - on
+   * hover, for example - so that when the user actually requests to follow the link, the UI can
+   * react quickly.
+   */
   public void prepareFollow(Path.Any path) {
     if (path == null || Objects.equals(path, lastFollowCacheRequest)) {
       return;
@@ -77,6 +85,9 @@ public class Follower {
     */
   }
 
+  /**
+   * Requests to follow the given path and update the UI selection.
+   */
   public void follow(Path.Any path) {
     if (path == null) {
       return;
@@ -149,7 +160,14 @@ public class Follower {
 
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that a link with the given path to the API state was followed.
+     */
     public default void onStateFollowed(Path.Any path) { /* empty */ }
+
+    /**
+     * Event indicating that a link with the given path to a memory region was followed.
+     */
     public default void onMemoryFollowed(Path.Memory path)  { /* empty */ }
   }
 }

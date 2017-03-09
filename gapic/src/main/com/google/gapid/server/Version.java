@@ -18,7 +18,10 @@ package com.google.gapid.server;
 import com.google.gapid.proto.service.Service;
 
 /**
- * See $GPUPATH/core/app/run.go's VersionSpec
+ * Version specifier.
+ *
+ * @see <a href="https://github.com/google/gapid/blob/master/core/app/run.go">
+ *   $GPUPATH/core/app/run.go VersionSpec</a>
  */
 public class Version {
   public static final Version GAPIC_VERSION = new Version(0, 1, 0);

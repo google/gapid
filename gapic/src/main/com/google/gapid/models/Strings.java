@@ -23,9 +23,15 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * {@link Stringtable} utilities.
+ */
 public class Strings {
   private static final AtomicReference<Stringtable.StringTable> current =
       new AtomicReference<Stringtable.StringTable>();
+
+  private Strings() {
+  }
 
   public static void setCurrent(Stringtable.StringTable table) {
     current.set(table);

@@ -26,6 +26,9 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.util.function.Consumer;
 
+/**
+ * A popup window without a trim similar to tooltips, but with intractable components.
+ */
 public class Balloon {
   private final Shell shell;
   private final Listener listener;

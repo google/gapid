@@ -34,6 +34,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+/**
+ * Dialog for the goto memory location action.
+ */
 public class GotoMemory {
   private GotoMemory() {
   }
@@ -60,6 +63,9 @@ public class GotoMemory {
     }
   }
 
+  /**
+   * Dialog asking the user for an address and memory pool to jump to.
+   */
   private static class GotoDialog extends MessageDialog {
     private Text addressText, poolText;
     public String addressValue, poolValue;

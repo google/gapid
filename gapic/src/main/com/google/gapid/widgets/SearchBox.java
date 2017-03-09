@@ -27,6 +27,9 @@ import org.eclipse.swt.widgets.Text;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * A search box widget supporting regex searches.
+ */
 public class SearchBox extends Composite {
   public SearchBox(Composite parent) {
     super(parent, SWT.NONE);

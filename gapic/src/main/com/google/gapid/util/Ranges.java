@@ -25,6 +25,9 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * {@link CommandRange} utilities.
+ */
 public class Ranges {
   private Ranges() {
   }
