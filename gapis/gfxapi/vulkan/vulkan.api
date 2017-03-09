@@ -2845,7 +2845,12 @@ cmd void RecreateDeviceMemory(
   if (mappedSize > 0) {
     write(ppData[0:1])
   }
-  write(pMemory[0:1])
+  memory := pMemory[0:1][0]
+
+  memoryObject := DeviceMemories[memory]
+  if (IsMemoryCoherent(memoryObject)) {
+    trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  }
 }
 
 @threadSafety("system")

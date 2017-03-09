@@ -383,6 +383,10 @@ std::shared_ptr<RecreateCmdPushConstantsData> VulkanSpy::createPushConstantsData
     return ret_val;
 }
 void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start, size_val size) {
+  // If the tracing not started yet, do not track the coherent memory
+  if (is_suspended()) {
+      return;
+  }
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
     mMemoryTracker.RegisterSegfaultHandler();
     void* start_addr = reinterpret_cast<void*>(start);
