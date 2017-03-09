@@ -417,5 +417,14 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_
     mMemoryTracker.RemoveTrackingRange(start_addr, size);
 #endif // TARGET_OS
 }
+
+uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
+  uint32_t counter = 0;
+  while (pNext) {
+    counter++;
+    pNext = reinterpret_cast<void*>(reinterpret_cast<uintptr_t*>(pNext)[1]);
+  }
+  return counter;
+}
 }
 {{end}}

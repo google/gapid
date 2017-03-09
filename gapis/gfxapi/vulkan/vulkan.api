@@ -2399,12 +2399,22 @@ class VkDedicatedAllocationBufferCreateInfoNV {
 class VkDedicatedAllocationMemoryAllocateInfoNV {
   @unused VkStructureType sType
   @unused const void*     pNext
-  @unused VkImage         image
-  @unused VkBuffer        buffer
+  VkImage         image
+  VkBuffer        buffer
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+@internal class MutableVoidPtr {
+  void* Ptr
+}
+
+type void* VoidPtr
+// Declare the type so external function: numberOfPNext can use the type.
+type const void** ConstVoidPtrPtr
+// Returns the number of structs in the linked list pointed by the pNext pointer.
+extern u32 numberOfPNext(const void* pNext)
 
 @override
 @custom
@@ -2811,13 +2821,22 @@ cmd void RecreateDeviceMemory(
     void**           ppData,
     VkDeviceMemory* pMemory) {
   allocateInfo := pAllocateInfo[0]
-  if (allocateInfo.pNext != null) {
-    t := as!VkStructureType*(allocateInfo.pNext)[0]
-    switch (t) {
-      case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
-        _ = as!VkDedicatedAllocationMemoryAllocateInfoNV*(allocateInfo.pNext)[0]
+
+  // Handle pNext
+  if allocateInfo.pNext != null {
+    numPNext := numberOfPNext(allocateInfo.pNext)
+    next := MutableVoidPtr(as!void*(allocateInfo.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+          _ = as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
+
   if (mappedSize > as!VkDeviceSize(0)) {
     read(ppData[0:1])
   }
@@ -2837,25 +2856,42 @@ cmd VkResult vkAllocateMemory(
     const VkAllocationCallbacks* pAllocator,
     VkDeviceMemory*              pMemory) {
   allocateInfo := pAllocateInfo[0]
-  if (allocateInfo.pNext != null) {
-    t := as!VkStructureType*(allocateInfo.pNext)[0]
-    switch (t) {
-      case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
-        _ = as!VkDedicatedAllocationMemoryAllocateInfoNV*(allocateInfo.pNext)[0]
-    }
-  }
 
-  memory := ?
-  memoryObject := new!DeviceMemoryObject(Device: device,
-    VulkanHandle:              memory,
+  memoryObject := new!DeviceMemoryObject(
+    Device:                    device,
+    VulkanHandle:              0,
     AllocationSize:            allocateInfo.allocationSize,
     MappedOffset:              0,
     MappedSize:                0,
     MappedLocation:            null,
     MemoryTypeIndex:           allocateInfo.memoryTypeIndex,
-    Data:                      make!u8(allocateInfo.allocationSize))
-  DeviceMemories[memory] = memoryObject
+    Data:                      make!u8(allocateInfo.allocationSize),
+  )
+
+  // Handle pNext
+  if allocateInfo.pNext != null {
+    numPNext := numberOfPNext(allocateInfo.pNext)
+    next := MutableVoidPtr(as!void*(allocateInfo.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+          ext := as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
+          memoryObject.DedicatedAllocationNV = new!DedicatedAllocationMemoryAllocateInfoNV(
+            Image: ext.image,
+            Buffer: ext.buffer,
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
+  memory := ?
   pMemory[0] = memory
+
+  memoryObject.VulkanHandle = memory
+  DeviceMemories[memory] = memoryObject
   return ?
 }
 
@@ -3305,18 +3341,40 @@ cmd VkResult vkGetQueryPoolResults(
 cmd void RecreateBuffer(
     VkDevice device,
     const VkBufferCreateInfo* pCreateInfo,
-    VkQueue lastBoundQueue,
-    VkDeviceMemory memory,
-    VkDeviceSize offset,
-    u32 hostBufferMemoryIndex,
-    void* data,
     VkBuffer* pBuffer) {
-  create_buffer := pCreateInfo[0]
-  if (create_buffer.queueFamilyIndexCount > 0) {
-    read(create_buffer.pQueueFamilyIndices[0:create_buffer.queueFamilyIndexCount])
+  create_info := pCreateInfo[0]
+  if (create_info.queueFamilyIndexCount > 0) {
+    read(create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount])
   }
-  read(as!u8*(data)[0:create_buffer.size])
+  // Handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
+          _ = as!VkDedicatedAllocationBufferCreateInfoNV*(next.Ptr)[0]
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   write(pBuffer[0:1])
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateBindAndFillBufferMemory(
+    VkDevice device,
+    VkBuffer buffer,
+    VkDeviceMemory memory,
+    u32 hostBufferMemoryIndex,
+    VkQueue lastBoundQueue,
+    VkDeviceSize offset,
+    void* data) {
+  read(as!u8*(data)[0:Buffers[buffer].Info.Size])
 }
 
 @threadSafety("system")
@@ -3328,33 +3386,43 @@ cmd VkResult vkCreateBuffer(
     const VkAllocationCallbacks* pAllocator,
     VkBuffer*                    pBuffer) {
   buffer_create_info := pCreateInfo[0]
-  if (buffer_create_info.pNext != null) {
-    t := as!VkStructureType*(buffer_create_info.pNext)[0]
-    switch (t) {
-      case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV:
-        _ = as!VkDedicatedAllocationBufferCreateInfoNV*(buffer_create_info.pNext)[0]
-    }
-  }
 
   queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
       0:buffer_create_info.queueFamilyIndexCount]
 
+  bufferInfo := BufferInfo(
+    CreateFlags: buffer_create_info.flags,
+    Size: buffer_create_info.size,
+    Usage: buffer_create_info.usage,
+    SharingMode: buffer_create_info.sharingMode,
+  )
+  for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
+    bufferInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+  }
+
+  // Handle pNext
+  if buffer_create_info.pNext != null {
+    numPNext := numberOfPNext(buffer_create_info.pNext)
+    next := MutableVoidPtr(as!void*(buffer_create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
+          ext := as!VkDedicatedAllocationBufferCreateInfoNV*(next.Ptr)[0]
+          bufferInfo.DedicatedAllocationNV = new!DedicatedAllocationBufferImageCreateInfoNV(
+              DedicatedAllocation: ext.dedicatedAllocation
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   bufferObject := new!BufferObject(Device: device,
-
     Memory:              null,
     MemoryOffset:        0,
-    Info: BufferInfo(
-      CreateFlags: buffer_create_info.flags,
-      Size: buffer_create_info.size,
-      Usage: buffer_create_info.usage,
-      SharingMode: buffer_create_info.sharingMode,
-    )
+    Info:                bufferInfo,
   )
-
-  for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
-    bufferObject.Info.QueueFamilyIndices[i] = queueFamilyIndices[i]
-  }
 
   buffer := ?
   pBuffer[0] = buffer
@@ -3424,18 +3492,42 @@ sub u32 roundUpTo(u32 dividend, u32 divisor) {
 @no_replay
 cmd void RecreateImage(
     VkDevice device,
-    VkQueue lastBoundQueue,
-    VkImageLayout lastLayout,
-    u32 hostMemoryIndex,
-    VkDeviceMemory memory,
-    VkDeviceSize offset,
-    VkDeviceSize data_size,
-    void* data,
-    const VkImageCreateInfo*     pCreateInfo,
-    VkImage*                     pImage) {
-  read(pCreateInfo[0:1])
-  read(as!u8*(data)[0:data_size])
+    const VkImageCreateInfo* pCreateInfo,
+    VkImage* pImage) {
+  info := pCreateInfo[0]
+
+  // Handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
+          _ = as!VkDedicatedAllocationImageCreateInfoNV*(next.Ptr)[0]
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   write(pImage[0:1])
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateBindAndFillImageMemory(
+    VkDevice device,
+    VkImage image,
+    VkImageLayout lastLayout,
+    VkDeviceMemory memory,
+    u32 hostMemoryIndex,
+    VkQueue lastBoundQueue,
+    VkDeviceSize offset,
+    VkDeviceSize dataSize,
+    void* data) {
+  read(as!u8*(data)[0:dataSize])
 }
 
 @threadSafety("system")
@@ -3449,13 +3541,6 @@ cmd VkResult vkCreateImage(
   // TODO: pAllocator
 
   info := pCreateInfo[0]
-  if (info.pNext != null) {
-    t := as!VkStructureType*(info.pNext)[0]
-    switch (t) {
-      case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV:
-        _ = as!VkDedicatedAllocationImageCreateInfoNV*(info.pNext)[0]
-    }
-  }
 
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
@@ -3470,8 +3555,26 @@ cmd VkResult vkCreateImage(
     Tiling:               info.tiling,
     Usage:                info.usage,
     SharingMode:          info.sharingMode,
-    Layout:               info.initialLayout
+    Layout:               info.initialLayout,
   )
+
+  // Handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
+          ext := as!VkDedicatedAllocationImageCreateInfoNV*(next.Ptr)[0]
+          imageInfo.DedicatedAllocationNV = new!DedicatedAllocationBufferImageCreateInfoNV(
+              DedicatedAllocation: ext.dedicatedAllocation
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   for i in (0 .. info.queueFamilyIndexCount) {
     imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
@@ -7631,6 +7734,7 @@ enum RecordingState {
   void*                   MappedLocation
   u32                     MemoryTypeIndex
   @internal u8[]          Data
+  ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
 }
 
 @internal class BufferInfo {
@@ -7639,6 +7743,7 @@ enum RecordingState {
   @unused VkBufferUsageFlags  Usage
   @unused VkSharingMode       SharingMode
   @unused map!(u32, u32)      QueueFamilyIndices
+  ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
 @internal class BufferObject {
@@ -7672,6 +7777,7 @@ enum RecordingState {
   VkSharingMode         SharingMode
   map!(u32, u32)        QueueFamilyIndices
   VkImageLayout         Layout
+  ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
 @resource
@@ -7998,3 +8104,21 @@ enum SurfaceType {
   @unused VkDisplayModeKHR VulkanHandle
 }
 
+sub VkQueueFlags AddQueueFlag(VkQueueFlags flags, VkQueueFlagBits bit) {
+  return as!VkQueueFlags(as!u32(flags) | as!u32(bit))
+}
+
+@serialize
+class VulkanStructHeader {
+  VkStructureType  SType
+  void*            PNext
+}
+
+@internal class DedicatedAllocationBufferImageCreateInfoNV {
+  VkBool32        DedicatedAllocation
+}
+
+@internal class DedicatedAllocationMemoryAllocateInfoNV {
+  VkImage         Image
+  VkBuffer        Buffer
+}

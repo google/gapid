@@ -56,14 +56,16 @@ void SpyOverride_RecreateRenderPass(VkDevice, const VkRenderPassCreateInfo*, VkR
 void SpyOverride_RecreateShaderModule(VkDevice, const VkShaderModuleCreateInfo*, VkShaderModule*) {}
 void SpyOverride_RecreateDescriptorPool(VkDevice, const VkDescriptorPoolCreateInfo*, VkDescriptorPool*) {}
 void SpyOverride_RecreateSwapchain(VkDevice, const VkSwapchainCreateInfoKHR*, VkImage*, const uint32_t*, const VkQueue*, VkSwapchainKHR*) {}
-void SpyOverride_RecreateImage(VkDevice, VkQueue, uint32_t, uint32_t, VkDeviceMemory, uint64_t, uint64_t data_size, void* data, const VkImageCreateInfo*, VkImage*) {}
+void SpyOverride_RecreateImage(VkDevice, const VkImageCreateInfo*, VkImage*) {}
+void SpyOverride_RecreateBindAndFillImageMemory(VkDevice, VkImage, uint32_t /*VkImageLayout*/, VkDeviceMemory, uint32_t hostMemoryIndex, VkQueue, VkDeviceSize offset, VkDeviceSize dataSize, void* data) {}
 void SpyOverride_RecreateImageView(VkDevice, const VkImageViewCreateInfo*, VkImageView*) {}
 void SpyOverride_RecreateSampler(VkDevice, const VkSamplerCreateInfo*, VkSampler*) {}
 void SpyOverride_RecreateFramebuffer(VkDevice, const VkFramebufferCreateInfo*, VkFramebuffer*) {}
 void SpyOverride_RecreateDescriptorSet(VkDevice, const VkDescriptorSetAllocateInfo*, uint32_t, const VkWriteDescriptorSet*, VkDescriptorSet*) {}
 void SpyOverride_RecreateGraphicsPipeline(VkDevice, VkPipelineCache, const VkGraphicsPipelineCreateInfo*, VkPipeline*) {}
 void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache, const VkComputePipelineCreateInfo*, VkPipeline*) {}
-void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkQueue, VkDeviceMemory, VkDeviceSize, uint32_t, void*, VkBuffer*) {}
+void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkBuffer*) {}
+void SpyOverride_RecreateBindAndFillBufferMemory(VkDevice, VkBuffer, VkDeviceMemory, uint32_t hostBufferMemoryIndex, VkQueue, VkDeviceSize offset, void* data) {}
 void SpyOverride_RecreatePhysicalDeviceProperties(VkPhysicalDevice, uint32_t*, VkQueueFamilyProperties*, VkPhysicalDeviceMemoryProperties*) {}
 void SpyOverride_RecreateQueryPool(VkDevice, const VkQueryPoolCreateInfo*, uint32_t*, VkQueryPool*) {}
 
