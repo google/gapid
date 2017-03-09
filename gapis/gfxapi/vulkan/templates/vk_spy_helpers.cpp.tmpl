@@ -383,39 +383,42 @@ std::shared_ptr<RecreateCmdPushConstantsData> VulkanSpy::createPushConstantsData
     return ret_val;
 }
 void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start, size_val size) {
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+  // If the tracing not started yet, do not track the coherent memory
+  if (is_suspended()) {
+      return;
+  }
+#ifdef COHERENT_TRACKING_ENABLED
     mMemoryTracker.RegisterSegfaultHandler();
     void* start_addr = reinterpret_cast<void*>(start);
     mMemoryTracker.AddTrackingRange(start_addr, size);
-#endif // TARGET_OS
+#endif // COHERENT_TRACKING_ENABLED
 }
 
 
 void VulkanSpy::readMappedCoherentMemory(CallObserver *observer, VkDeviceMemory memory, uint64_t offset_in_mapped, size_val readSize) {
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
-    const size_val page_size = mMemoryTracker.page_size();
     auto &memory_object = this->DeviceMemories[memory];
-    // Get the valid mapped range
     const auto mapped_size = memory_object->mMappedSize;
     const auto mapped_location = (uint64_t)(memory_object->mMappedLocation);
-    const auto mapped_end = (uint64_t)(mapped_location + mapped_size);
-    const auto mapped_offset = (uint64_t)(memory_object->mMappedOffset);
     void *offset_addr = (void *)(offset_in_mapped + mapped_location);
+#ifdef COHERENT_TRACKING_ENABLED
+    const size_val page_size = mMemoryTracker.page_size();
+    // Get the valid mapped range
     const auto dirty_pages = mMemoryTracker.GetAndResetDirtyPagesInRange(offset_addr, readSize);
     for (const void *p : dirty_pages) {
         uint64_t page_start = (uint64_t)(p);
         uint64_t page_end = page_start + page_size;
-
         observer->read(slice((uint8_t *)page_start, 0ULL, page_size));
     }
-#endif // TARGET_OS
+#else
+    observer->read(slice((uint8_t *)offset_addr, 0ULL, readSize));
+#endif // COHERENT_TRACKING_ENABLED
 }
 
 void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_val size) {
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+#ifdef COHERENT_TRACKING_ENABLED
     void* start_addr = reinterpret_cast<void*>(start);
     mMemoryTracker.RemoveTrackingRange(start_addr, size);
-#endif // TARGET_OS
+#endif // COHERENT_TRACKING_ENABLED
 }
 
 uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
