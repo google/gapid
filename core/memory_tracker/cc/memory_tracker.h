@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "core/cc/target.h"
+
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #define COHERENT_TRACKING_ENABLED
 
