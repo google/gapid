@@ -22,6 +22,8 @@ import com.google.gapid.image.Images;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.util.Events;
+import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.UiErrorCallback;
 
 import org.eclipse.swt.SWT;
@@ -40,6 +42,7 @@ import java.util.logging.Logger;
 public class LoadableImage {
   protected static final Logger LOG = Logger.getLogger(LoadableImage.class.getName());
 
+  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
   protected final Widget widget;
   private final Supplier<ListenableFuture<Object>> future;
   protected final LoadingIndicator loading;
@@ -62,6 +65,7 @@ public class LoadableImage {
       return this;
     }
     state = State.LOADING;
+    listeners.fire().onLoadingStart();
 
     Rpc.listen(future.get(), new UiErrorCallback<Object, Object, Void>(widget, LOG) {
       @Override
@@ -191,9 +195,31 @@ public class LoadableImage {
       image = result;
       repaintable.repaint();
       loading.cancelRedraw(repaintable);
+      listeners.fire().onLoaded(result != null);
     } else if (result != null) {
       result.dispose();
     }
+  }
+
+  public void addListener(Listener listener) {
+    listeners.addListener(listener);
+  }
+
+  public void removeListener(Listener listener) {
+    listeners.removeListener(listener);
+  }
+
+  public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the image has started to load.
+     */
+    public default void onLoadingStart() { /* empty */ }
+
+    /**
+     * Event indicating that the image has finished loading.
+     * @param success whether the image was loaded successfully
+     */
+    public default void onLoaded(boolean success) { /* empty */ }
   }
 
   private static enum State {
