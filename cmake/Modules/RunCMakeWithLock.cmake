@@ -15,7 +15,7 @@
 file(LOCK "${RUN_CMAKE_DIR}/run.lock" DIRECTORY GUARD PROCESS RESULT_VARIABLE locked)
 
 execute_process(
-    COMMAND ${CMAKE_COMMAND} "--build" "${RUN_CMAKE_DIR}" "--target" "${RUN_CMAKE_TARGET}"
+    COMMAND "${CMAKE_COMMAND}" "--build" "${RUN_CMAKE_DIR}" "--target" "${RUN_CMAKE_TARGET}"
     OUTPUT_VARIABLE output
     RESULT_VARIABLE result
 )

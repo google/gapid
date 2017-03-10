@@ -15,7 +15,7 @@
 include(${GO_ENV})
 
 execute_process(
-    COMMAND ${CMAKE_Go_COMPILER} list -tags integration -pkgdir ${GO_PKG} -f "
+    COMMAND "${CMAKE_Go_COMPILER}" list -tags integration -pkgdir ${GO_PKG} -f "
 set(Imports {{join .Imports \"\\n    \"}})
 set(TestImports {{join .TestImports \"\\n    \"}})
 set(XTestImports {{join .XTestImports \"\\n    \"}})

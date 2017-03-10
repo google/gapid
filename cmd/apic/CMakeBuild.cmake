@@ -69,7 +69,7 @@ function(apic api)
     add_custom_command(
         OUTPUT ${tag} ${api_outputs}
         COMMAND apic  ${apic_args}
-        COMMAND ${CMAKE_COMMAND} -E touch ${tag}
+        COMMAND "${CMAKE_COMMAND}" -E touch ${tag}
         DEPENDS apic ${api_inputs}
         COMMENT "Apic on ${api} with ${name}"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

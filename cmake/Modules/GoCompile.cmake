@@ -30,7 +30,7 @@ if(NOT BUILDBOT)
     list(APPEND args "-tags" "integration")
 endif()
 execute_process(
-    COMMAND ${CMAKE_Go_COMPILER} ${command} ${args} ${GO_EXTRA_ARGS} ${GO_PACKAGE}
+    COMMAND "${CMAKE_Go_COMPILER}" ${command} ${args} ${GO_EXTRA_ARGS} ${GO_PACKAGE}
     RESULT_VARIABLE result
 )
 if(result)

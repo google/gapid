@@ -14,7 +14,7 @@
 
 set(ENV{GOPATH} "${GO_PATH}")
 execute_process(
-    COMMAND ${TESTER}
+    COMMAND "${TESTER}"
     OUTPUT_VARIABLE output
     RESULT_VARIABLE result
 )

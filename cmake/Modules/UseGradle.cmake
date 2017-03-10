@@ -43,7 +43,7 @@ function (gradle name)
     endif()
     add_custom_command(
         OUTPUT ${GRADLE_OUTPUT}
-        COMMAND ${CMAKE_COMMAND} -DGRADLE_ENV=${GRADLE_ENV} -DGRADLE_ARGS="${args}" -P ${RUN_GRADLE}
+        COMMAND "${CMAKE_COMMAND}" -DGRADLE_ENV=${GRADLE_ENV} -DGRADLE_ARGS="${args}" -P ${RUN_GRADLE}
         DEPENDS ${GRADLE_DEPENDS}
         WORKING_DIRECTORY ${GRADLE_DIRECTORY}
         COMMENT "Gradle: ${name}"

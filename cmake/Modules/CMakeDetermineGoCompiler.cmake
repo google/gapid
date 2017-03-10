@@ -83,7 +83,7 @@ endif()
 
 # Find out which version of go we have
 include(${GO_ENV})
-execute_process(COMMAND ${CMAKE_Go_COMPILER} version OUTPUT_VARIABLE go_version_output)
+execute_process(COMMAND "${CMAKE_Go_COMPILER}" version OUTPUT_VARIABLE go_version_output)
 string(REGEX REPLACE "^.*go([0-9]+\\.[0-9]+)[^0-9].*$" "\\1" GO_VERSION ${go_version_output})
 if (${GO_VERSION} STREQUAL ${go_version_output})
     message(STATUS "Could not determine Go verison, assuming 1.7+")

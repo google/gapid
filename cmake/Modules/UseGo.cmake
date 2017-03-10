@@ -60,7 +60,7 @@ function(_go_deps)
     if(NOT EXISTS ${depsfile})
         message(STATUS "Initial dependancies for ${tag_name}")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -DGO_ENV=${GO_ENV} -DGO_PACKAGE=${package} -DGO_DEPS_FILE=${depsfile} -P ${GO_BUILD_DEPS}
+            COMMAND "${CMAKE_COMMAND}" -DGO_ENV=${GO_ENV} -DGO_PACKAGE=${package} -DGO_DEPS_FILE=${depsfile} -P ${GO_BUILD_DEPS}
         )
     endif()
     set(Imports)
@@ -89,7 +89,7 @@ function(_go_update_deps tgt)
     add_custom_command(
         TARGET ${tgt}
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -DGO_ENV=${GO_ENV} -DGO_PACKAGE=${package} -DGO_DEPS_FILE=${depsfile} -P ${GO_BUILD_DEPS}
+        COMMAND "${CMAKE_COMMAND}" -DGO_ENV=${GO_ENV} -DGO_PACKAGE=${package} -DGO_DEPS_FILE=${depsfile} -P ${GO_BUILD_DEPS}
     )
 endfunction(_go_update_deps)
 
@@ -133,7 +133,7 @@ function(_go_package VAR package)
         add_custom_command(
             TARGET ${test_name}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND "${CMAKE_COMMAND}"
                 "-DTESTER=$<TARGET_FILE:${test_name}>"
                 "-DGO_PATH=\"${GO_PATH}\""
                 -P "${GO_TEST_SCRIPT}"
@@ -146,7 +146,7 @@ function(_go_package VAR package)
     # Add the test to the full testing suite
     add_test(
         NAME test-${tag_name}
-        COMMAND ${test_name}
+        COMMAND "${test_name}"
         # Also need to specify here so tests invoked by ctest directly
         # are run under the correct directory.
         WORKING_DIRECTORY ${path})

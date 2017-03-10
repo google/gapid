@@ -44,7 +44,7 @@ endfunction(add_cmake)
 
 function (add_cmake_step proj tgt)
     ExternalProject_Add_Step(${proj} ${tgt}
-        COMMAND ${CMAKE_COMMAND} "-DRUN_CMAKE_DIR=<BINARY_DIR>" "-DRUN_CMAKE_TARGET=${tgt}" "-P" "${CMAKE_RUN_SCRIPT}"
+        COMMAND "${CMAKE_COMMAND}" "-DRUN_CMAKE_DIR=<BINARY_DIR>" "-DRUN_CMAKE_TARGET=${tgt}" "-P" "${CMAKE_RUN_SCRIPT}"
         DEPENDEES configure
         ${ARGN}
     )
@@ -64,7 +64,7 @@ function (add_cmake_target proj tgt dst name)
         ${ADD_CMAKE_UNPARSED_ARGUMENTS}
     )
     add_custom_command(
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND "${CMAKE_COMMAND}"
         -E copy ${built} ${fulldst}
         DEPENDS ${built} ${proj}
         OUTPUT ${fulldst}

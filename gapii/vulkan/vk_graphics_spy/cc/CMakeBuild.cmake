@@ -48,7 +48,7 @@ if(NOT DISABLED_CXX AND NOT WIN32) # TODO: Windows build not currently supported
 
     if(NOT ANDROID)
         add_custom_command(TARGET VkLayerGraphicsSpy POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 ${CMAKE_CURRENT_SOURCE_DIR}/GraphicsSpyLayer.json
                 $<TARGET_FILE_DIR:VkLayerGraphicsSpy>)
         install(FILES $<TARGET_FILE_DIR:VkLayerGraphicsSpy>/GraphicsSpyLayer.json

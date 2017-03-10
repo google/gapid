@@ -49,7 +49,7 @@ if(NOT DISABLED_CXX)
 
     if(NOT ANDROID)
         add_custom_command(TARGET VkLayer_VirtualSwapchain POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 ${CMAKE_CURRENT_SOURCE_DIR}/VirtualSwapchainLayer.json
                 $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>)
         install(FILES $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>/VirtualSwapchainLayer.json

@@ -46,7 +46,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(libgapir_dest ${jni_libs}/libgapir.so)
     add_custom_command(
         OUTPUT ${libgapir_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libgapir.so
             ${libgapir_dest}
         DEPENDS
@@ -57,7 +57,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(libgapii_dest ${jni_libs}/libgapii.so)
     add_custom_command(
         OUTPUT ${libgapii_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libgapii.so
             ${libgapii_dest}
         DEPENDS
@@ -68,7 +68,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(libinterceptor_dest ${jni_libs}/libinterceptor.so)
     add_custom_command(
         OUTPUT ${libinterceptor_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libinterceptor.so
             ${libinterceptor_dest}
         DEPENDS
@@ -79,7 +79,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(libdeviceinfo_dest ${jni_libs}/libdeviceinfo.so)
     add_custom_command(
         OUTPUT ${libdeviceinfo_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libdeviceinfo.so
             ${libdeviceinfo_dest}
         DEPENDS
@@ -90,7 +90,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(vk_graphics_spy_dest ${jni_libs}/libVkLayerGraphicsSpy.so)
     add_custom_command(
         OUTPUT ${vk_graphics_spy_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libVkLayerGraphicsSpy.so
             ${vk_graphics_spy_dest}
         DEPENDS
@@ -101,7 +101,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(virtual_swapchain_dest ${jni_libs}/libVkLayer_VirtualSwapchain.so)
     add_custom_command(
         OUTPUT ${virtual_swapchain_dest}
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             ${abi_bin}/libVkLayer_VirtualSwapchain.so
             ${virtual_swapchain_dest}
         DEPENDS
@@ -140,7 +140,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(abi_gapid_apk "${abi_bin}/gapid.apk")
     add_custom_command(
         OUTPUT "${abi_gapid_apk}"
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND "${CMAKE_COMMAND}" -E copy
             "${gradle_out}"
             "${abi_gapid_apk}"
         DEPENDS

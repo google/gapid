@@ -46,5 +46,5 @@ function(use_gtest TARGET)
     set_target_properties(${TARGET} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_TEST_OUTPUT_DIRECTORY}
     )
-    add_test(NAME ${TARGET} COMMAND ${TARGET})
+    add_test(NAME "${TARGET}" COMMAND ${TARGET})
 endfunction(use_gtest)

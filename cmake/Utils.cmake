@@ -30,7 +30,7 @@ endfunction(default)
 function(add_file_copy src dst)
     add_custom_command(
         OUTPUT ${dst}
-        COMMAND ${CMAKE_COMMAND} -E copy ${src} ${dst}
+        COMMAND "${CMAKE_COMMAND}" -E copy ${src} ${dst}
         DEPENDS ${src}
     )
 endfunction(add_file_copy)
