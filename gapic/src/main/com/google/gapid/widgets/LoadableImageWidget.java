@@ -69,6 +69,11 @@ public class LoadableImageWidget extends Canvas {
     return result;
   }
 
+  public LoadableImageWidget withImageEventListener(LoadableImage.Listener listener) {
+    image.addListener(listener);
+    return this;
+  }
+
   private void redrawIfNotDisposed() {
     if (!isDisposed()) {
       redraw();

@@ -247,7 +247,16 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
         }
         Rectangle bounds = item.getImageBounds(0);
         lastShownBalloon = Balloon.createAndShow(tree, shell -> {
-          LoadableImageWidget.forImageData(shell, loadImage(group), widgets.loading);
+          LoadableImageWidget.forImageData(shell, loadImage(group), widgets.loading)
+              .withImageEventListener(new LoadableImage.Listener() {
+                @Override
+                public void onLoaded(boolean success) {
+                  if (success) {
+                    Widgets.ifNotDisposed(shell,
+                        () -> shell.setSize(shell.computeSize(SWT.DEFAULT, SWT.DEFAULT)));
+                  }
+                }
+              });
         }, new Point(bounds.x + bounds.width + 2, bounds.y + bounds.height / 2 - THUMB_SIZE / 2));
       }
 
