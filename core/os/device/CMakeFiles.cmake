@@ -34,6 +34,7 @@ set(files
     gpu_test.go
     hardware.go
     host.go
+    host_c.go
     host_darwin.go
     host_linux.go
     host_test.go

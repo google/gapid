@@ -19,8 +19,6 @@ protoc_go("github.com/google/gapid/core/data/record" "core/data/record" "record.
 protoc_go("github.com/google/gapid/core/data/search" "core/data/search" "search.proto")
 protoc_go("github.com/google/gapid/core/data/stash/grpc" "core/data/stash/grpc" "stash.proto")
 protoc_go("github.com/google/gapid/core/data/stash" "core/data/stash" "stash.proto")
-protoc_go("github.com/google/gapid/gapil/snippets" "gapil/snippets" "snippets.proto")
-protoc_java("gapil/snippets" "snippets.proto" "com/google/gapid/proto/service/snippets/SnippetsProtos")
 protoc_go("github.com/google/gapid/core/image" "core/image" "image.proto")
 protoc_java("core/image" "image.proto" "com/google/gapid/proto/image/Image")
 protoc_go("github.com/google/gapid/core/os/android/apk" "core/os/android/apk" "apk.proto")

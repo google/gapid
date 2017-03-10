@@ -34,6 +34,7 @@ set(files
     resolvables.pb.go
     resolvables.proto
     resolve.go
+    resolve_binary_test.go
     resource_data.go
     resource_meta.go
     resources.go

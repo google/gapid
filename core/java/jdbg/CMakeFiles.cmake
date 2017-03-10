@@ -21,7 +21,6 @@ set(files
     assignable.go
     errors.go
     failure.go
-    fake_test.go
     jdbg.go
     jdbg_test.go
     marshal.go

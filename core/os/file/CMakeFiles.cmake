@@ -23,7 +23,11 @@ set(files
     list.go
     path.go
     path_test.go
+    rooted.go
     set.go
+    unix.go
+    windows.go
+    windows_test.go
 )
 set(dirs
     

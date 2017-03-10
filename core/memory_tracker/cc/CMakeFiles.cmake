@@ -19,6 +19,9 @@
 
 set(files
     memory_tracker.cpp
-    memory_tracker_test.cpp
     memory_tracker.h
+    memory_tracker_test.cpp
+)
+set(dirs
+    
 )
