@@ -84,6 +84,7 @@ void SpyOverride_RecreateCmdBindDescriptorSets(VkCommandBuffer, uint32_t,
                                                uint32_t, const uint32_t*) {}
 void SpyOverride_RecreateBindVertexBuffers(VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*) {}
 void SpyOverride_RecreateCmdBindIndexBuffer(VkCommandBuffer, VkBuffer, uint64_t, uint32_t) {}
+void SpyOverride_RecreateCmdBlitImage(VkCommandBuffer, VkImage, uint32_t/*srcImageLayout*/, VkImage, uint32_t/*dstImageLayout*/, uint32_t/*regionCount*/, const VkImageBlit*, uint32_t/*filter*/) {}
 void SpyOverride_RecreateEndRenderPass(VkCommandBuffer) {}
 void SpyOverride_RecreateCmdDrawIndexed(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdCopyBufferToImage(VkCommandBuffer, VkBuffer, VkImage, uint32_t, uint32_t, const VkBufferImageCopy*) {}

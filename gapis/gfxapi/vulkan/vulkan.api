@@ -5215,6 +5215,8 @@ cmd void vkCmdBindPipeline(
 class Unimplemented {
 }
 
+sub void doCmdNop(Unimplemented args) {}
+
 extern void addCmd(VkCommandBuffer cmdBuf, any recreatePayload, any payload, any func)
 extern void setSpecData(ref!SpecializationInfo info, size numBytes, const void* pData)
 extern void resetCmd(VkCommandBuffer cmdBuf)
@@ -6111,6 +6113,31 @@ cmd void vkCmdCopyImage(
   addCmd(commandBuffer, recreate_data, copyArgs, doCmdCopyImage)
 }
 
+@internal
+class RecreateCmdBlitImageData{
+  VkImage                 SrcImage
+  VkImageLayout           SrcImageLayout
+  VkImage                 DstImage
+  VkImageLayout           DstImageLayout
+  map!(u32, VkImageBlit)  Regions
+  VkFilter                Filter
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdBlitImage(
+    VkCommandBuffer    commandBuffer,
+    VkImage            srcImage,
+    VkImageLayout      srcImageLayout,
+    VkImage            dstImage,
+    VkImageLayout      dstImageLayout,
+    u32                regionCount,
+    const VkImageBlit* pRegions,
+    VkFilter           filter) {
+  _ = pRegions[0:regionCount]
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdBlitImage(
@@ -6122,7 +6149,18 @@ cmd void vkCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
-  read(pRegions[0:regionCount])
+  recreate_data := new!RecreateCmdBlitImageData(
+    SrcImage: srcImage,
+    SrcImageLayout: srcImageLayout,
+    DstImage: dstImage,
+    DstImageLayout: dstImageLayout,
+    Filter: filter
+  )
+  regions := pRegions[0:regionCount]
+  for i in (0 .. regionCount) {
+    recreate_data.Regions[as!u32(i)] = regions[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @internal
