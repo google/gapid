@@ -24,7 +24,7 @@ set(files
     types.go
 )
 set(dirs
-    explain
+    cause
     severity
     stacktrace
 )

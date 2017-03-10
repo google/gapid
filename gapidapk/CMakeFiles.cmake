@@ -21,6 +21,7 @@ set(files
     deviceinfo.go
     doc.go
     gapidapk.go
+    packageinfo.go
 )
 set(dirs
     android

@@ -18,9 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    grpc_test.go
     client.go
     doc.go
+    grpc_test.go
     server.go
     stash.pb.go
     stash.proto

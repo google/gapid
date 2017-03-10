@@ -29,5 +29,6 @@ set(files
     snippets_embed.go
 )
 set(dirs
+    core
     core_pb
 )

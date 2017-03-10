@@ -19,9 +19,10 @@
 
 set(files
     doc.go
+    pkginfo.go
     pkginfo.pb.go
     pkginfo.proto
 )
 set(dirs
-
+    
 )

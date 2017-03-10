@@ -22,6 +22,8 @@ set(files
     command_example_test.go
     command_test.go
     doc.go
+    env.go
+    env_test.go
     local.go
     process.go
     target.go

@@ -35,7 +35,6 @@ set(files
     errors.go
     event.go
     event_kind.go
-    fake_test.go
     field.go
     helpers.go
     invoke_options.go

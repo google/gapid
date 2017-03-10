@@ -20,9 +20,9 @@
 set(files
     client.go
     doc.go
-    server.go
     pipe.go
     pipe_test.go
+    server.go
     stream.go
 )
 set(dirs
