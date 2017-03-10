@@ -176,7 +176,7 @@ public class GapisProcess extends ChildProcess<Integer> {
       if (foundPanic && count < MAX_PANIC_DETAIL_LINES) {
         panic.append(line).append('\n');
         count++;
-      } else if (line.startsWith("panic: ")) {
+      } else if (line.startsWith("panic: ") || line.startsWith("fatal error: ")) {
         panic.delete(0, panic.length());
         foundPanic = true;
         count = 0;
