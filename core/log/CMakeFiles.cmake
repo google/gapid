@@ -23,7 +23,6 @@ set(files
     filter.go
     handler.go
     log.go
-    log.pb.go
     logger.go
     message.go
     raw.go
@@ -35,5 +34,5 @@ set(files
     values.go
 )
 set(dirs
-    
+
 )
