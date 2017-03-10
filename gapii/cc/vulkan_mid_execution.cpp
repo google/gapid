@@ -1288,6 +1288,19 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             RecreateImageView(observer, image_view.second->mDevice, &create_info, &image_view.second->mVulkanHandle);
         }
     }
+    // Recreate buffer views.
+    {
+      VkBufferViewCreateInfo create_info = {};
+      create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+      for (auto& buffer_view: BufferViews) {
+        create_info.mbuffer = buffer_view.second->mBuffer->mVulkanHandle;
+        create_info.mformat = buffer_view.second->mFormat;
+        create_info.moffset = buffer_view.second->mOffset;
+        create_info.mrange = buffer_view.second->mRange;
+
+        RecreateBufferView(observer, buffer_view.second->mDevice, &create_info, &buffer_view.second->mVulkanHandle);
+      }
+    }
     {
         VkDescriptorPoolCreateInfo create_info = {
             VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,

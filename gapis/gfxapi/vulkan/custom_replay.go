@@ -1061,6 +1061,15 @@ func createAndBindSourceBuffer(ctx log.Context, s *gfxapi.State, b *builder.Buil
 	return bufferId, memoryId, nil
 }
 
+func (a *RecreateBufferView) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	createInfo := memory.Pointer(a.PCreateInfo)
+	allocator := memory.Pointer{}
+	pBufferView := memory.Pointer(a.PBufferView)
+	hijack := NewVkCreateBufferView(a.Device, createInfo, allocator, pBufferView, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func mapBufferMemory(ctx log.Context, s *gfxapi.State, b *builder.Builder, a atom.Atom, device VkDevice, size VkDeviceSize, memory VkDeviceMemory) (Voidᵖ, uint64, error) {
 	at, err := s.Allocator.Alloc(uint64(size), 8)
 	if err != nil {
