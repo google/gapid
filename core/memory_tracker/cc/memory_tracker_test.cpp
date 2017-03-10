@@ -889,35 +889,43 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingMemory) {
 }
 
 namespace {
-// A helper class that, when being constructed, sets the segfault signal
-// handler to just labels any fault page as readable and writable, when being
-// destoryed, recovers the original segfault handler.
-class SilentSegfaultSignal {
+// A helper class that, when being constructed, sets the signal handler of
+// signal |SIG| to just silently ignore the signal. When being destoryed,
+// recovers the original segfault handler.
+template <int SIG>
+class SilentSignal {
  public:
-  SilentSegfaultSignal() : succeeded_(false), old_sigaction_{0} {
+  SilentSignal() : succeeded_(false), old_sigaction_{0} {
     succeeded_ =
-        RegisterSignalHandler(SIGSEGV, IgnoreSegfault, &old_sigaction_);
+        RegisterSignalHandler(SIG, IgnoreSignal, &old_sigaction_);
   }
-  ~SilentSegfaultSignal() {
+  ~SilentSignal() {
     if (succeeded_) {
-      sigaction(SIGSEGV, &old_sigaction_, nullptr);
+      sigaction(SIG, &old_sigaction_, nullptr);
     }
   }
   bool succeeded() const { return succeeded_; }
 
  private:
-  static void IgnoreSegfault(int, siginfo_t* info, void*) {
-    void* page_start = GetAlignedAddress(info->si_addr, getpagesize());
-    mprotect(page_start, getpagesize(), PROT_READ | PROT_WRITE);
-  }
+  static void IgnoreSignal(int, siginfo_t* info, void*) {}
   bool succeeded_;
   struct sigaction old_sigaction_;
 };
+
+// To silently ignore a SIGSEGV signal, the permission of the fault page
+// will be set to read-write before return.
+template<>
+void SilentSignal<SIGSEGV>::IgnoreSignal(int, siginfo_t* info, void*) {
+  void* page_start = GetAlignedAddress(info->si_addr, getpagesize());
+  mprotect(page_start, getpagesize(), PROT_READ | PROT_WRITE);
+}
 }
 
 TEST(MemoryTrackerTest, RegisterAndUnregister) {
-  SilentSegfaultSignal s;
-  ASSERT_TRUE(s.succeeded());
+  SilentSignal<SIGSEGV> ss;
+  SilentSignal<SIGTRAP> st;
+  ASSERT_TRUE(st.succeeded());
+  ASSERT_TRUE(ss.succeeded());
 
   MemoryTracker t;
   AlignedMemory m(t.page_size(), t.page_size());
@@ -945,8 +953,10 @@ TEST(MemoryTrackerTest, RegisterAndUnregister) {
 // memory range which has overlapping region with the first one. The second
 // range should not be accepted by the tracker.
 TEST(MemoryTrackerTest, OverlappedTrackingRange) {
-  SilentSegfaultSignal s;
-  ASSERT_TRUE(s.succeeded());
+  SilentSignal<SIGSEGV> ss;
+  SilentSignal<SIGTRAP> st;
+  ASSERT_TRUE(st.succeeded());
+  ASSERT_TRUE(ss.succeeded());
 
   const size_t range_size = 2048;
   const size_t second_range_offset = 1024;
@@ -965,8 +975,10 @@ TEST(MemoryTrackerTest, OverlappedTrackingRange) {
 // touches an address higher than the tracking range, the tracker should not
 // record the touched page.
 TEST(MemoryTrackerTest, UnalignedRangeNotTrackingHigherAddress) {
-  SilentSegfaultSignal s;
-  ASSERT_TRUE(s.succeeded());
+  SilentSignal<SIGSEGV> ss;
+  SilentSignal<SIGTRAP> st;
+  ASSERT_TRUE(st.succeeded());
+  ASSERT_TRUE(ss.succeeded());
 
   const size_t start_offset = 128;
   const size_t range_size = 97;
@@ -993,7 +1005,8 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingHigherAddress) {
 // touches an address lower than the tracking range, the tracker should not
 // record the touched page.
 TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
-  SilentSegfaultSignal s;
+  SilentSignal<SIGSEGV> ss;
+  SilentSignal<SIGTRAP> st;
 
   const size_t start_offset = 128;
   const size_t range_size = 97;
