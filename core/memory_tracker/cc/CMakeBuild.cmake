@@ -30,7 +30,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_step(${abi} cc-memory-tracker DEPENDS ${sources} ${android_files})
 endforeach()
 
-if(NOT DISABLED_CXX AND NOT WIN32) # TODO: Windows build not currently supported
+if(NOT DISABLED_CXX)
   add_library(cc-memory-tracker ${sources})
 
   if(ANDROID)

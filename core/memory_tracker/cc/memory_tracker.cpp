@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include "memory_tracker.h"
 
+#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include <map>
 
 namespace gapii {
