@@ -51,7 +51,7 @@ public class Settings {
   public boolean hideRight;
   public int[] splitterWeights = new int[]{ 15, 85 };
   public String[] leftTabs = new String[0], centerTabs = new String[0], rightTabs = new String[0];
-  public String[] hiddenTabs = new String[0];
+  public String[] hiddenTabs = new String[] { "Log" };
   public int[] tabWeights = new int[] { 20, 60, 20 };
   public String lastOpenDir;
   public int[] reportSplitterWeights = new int[] { 75, 25 };

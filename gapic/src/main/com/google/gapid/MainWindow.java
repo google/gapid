@@ -41,6 +41,7 @@ import com.google.gapid.views.AtomTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
+import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
@@ -460,6 +461,7 @@ public class MainWindow extends ApplicationWindow {
       Geometry(Location.Center, "Geometry", (p, c, m, w) -> new GeometryView(p, c, m, w)),
       Shaders(Location.Center, "Shaders", (p, c, m, w) -> new ShaderView(p, c, m, w)),
       Report(Location.Center, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
+      Log(Location.Center, "Log", (p, c, m, w) -> new LogView(p)),
 
       ApiState(Location.Right, "State", (p, c, m, w) -> new StateView(p, m, w)),
       Memory(Location.Right, "Memory", (p, c, m, w) -> new MemoryView(p, c, m, w));
