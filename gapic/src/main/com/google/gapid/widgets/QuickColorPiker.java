@@ -87,11 +87,7 @@ public class QuickColorPiker extends Canvas {
     };
     addMouseListener(mouseHandler);
     addMouseMoveListener(mouseHandler);
-  }
-
-  @Override
-  public void dispose() {
-    image.dispose();
+    addListener(SWT.Dispose, e -> image.dispose());
   }
 
   @Override
