@@ -24,8 +24,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.logging.ErrorManager;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
@@ -60,23 +62,31 @@ public class Logging {
   public static final Flag<String> logDir = Flags.value(
       "logDir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
 
+  private static final MemoryHandler memoryHandler = new MemoryHandler() {{
+    setFormatter(new LogFormatter());
+    setLevel(Level.ALL);
+  }};
+
   /**
    * Initializes the Java logging system.
    */
   public static void init() {
     LogManager.getLogManager().reset();
+    Logger rootLogger = Logger.getLogger("");
+
+    rootLogger.addHandler(memoryHandler);
 
     ConsoleHandler handler = new ConsoleHandler();
     handler.setFormatter(new LogFormatter());
     handler.setLevel(Level.ALL);
-    Logger.getLogger("").addHandler(handler);
+    rootLogger.addHandler(handler);
 
     if (!logDir.get().isEmpty()) {
       try {
         FileHandler fileHandler = new FileHandler(logDir.get() + File.separator + "gapic.log");
         fileHandler.setFormatter(new LogFormatter());
         fileHandler.setLevel(Level.ALL);
-        Logger.getLogger("").addHandler(fileHandler);
+        rootLogger.addHandler(fileHandler);
       } catch (IOException e) {
         // Ignore.
       }
@@ -87,6 +97,14 @@ public class Logging {
 
   public static File getLogDir() {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
+  }
+
+  public static String getLogMessages() {
+    return memoryHandler.getMessages();
+  }
+
+  public static void setListener(Runnable listener) {
+    memoryHandler.listener = (listener == null) ? () -> { /* empty */ } : listener;
   }
 
   /**
@@ -102,11 +120,11 @@ public class Logging {
     @Override
     public String format(LogRecord rec) {
       final StringBuilder buf = new StringBuilder()
-        .append(getLogLevel(rec.getLevel().intValue()))
-        .append(format.format(new Date(rec.getMillis())))
-        .append("[").append(getClassName(Thread.currentThread().getName()))
-        .append("][").append(getClassName(rec.getSourceClassName()))
-        .append('.').append(rec.getSourceMethodName()).append("] ");
+          .append(getLogLevel(rec.getLevel().intValue()))
+          .append(format.format(new Date(rec.getMillis())))
+          .append("[").append(getClassName(Thread.currentThread().getName()))
+          .append("][").append(getClassName(rec.getSourceClassName()))
+          .append('.').append(rec.getSourceMethodName()).append("] ");
       final String prefix = buf.toString();
       protosToString(rec);
       buf.append(formatMessage(rec)).append('\n');
@@ -201,6 +219,66 @@ public class Logging {
     @Override
     public void close() {
       flush();
+    }
+  }
+
+  /**
+   * {@link Handler} that keeps a number of messages in memory for later retrieval.
+   */
+  private static class MemoryHandler extends Handler {
+    private static final int MAX_SIZE = 10 * 1024 * 1024;
+
+    public Runnable listener;
+    private final StringBuilder buffer = new StringBuilder();
+
+    public MemoryHandler() {
+      listener = () -> { /* empty */ };
+    }
+
+    public synchronized String getMessages() {
+      return buffer.toString();
+    }
+
+    @Override
+    public void publish(LogRecord record) {
+      if (!isLoggable(record)) {
+        return;
+      }
+
+      String msg;
+      try {
+        msg = getFormatter().format(record);
+      } catch (Exception e) {
+        reportError(null, e, ErrorManager.FORMAT_FAILURE);
+        return;
+      }
+
+      synchronized (this) {
+        buffer.append(msg);
+        int p = 0;
+        while (buffer.length() - p > MAX_SIZE) {
+          int n = buffer.indexOf("\n", p);
+          if (n < 0) {
+            break;
+          }
+          p = n + 1;
+        }
+        if (p != 0) {
+          buffer.delete(0, p);
+        }
+      }
+
+      listener.run();
+    }
+
+    @Override
+    public void flush() {
+      // Do nothing.
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
     }
   }
 }
