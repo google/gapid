@@ -55,6 +55,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	}
 
 	ctx = capture.Put(ctx, capturePath)
+	ctx = gles.PutUnusedIDMap(ctx)
 
 	a := device.Little32
 
@@ -142,6 +143,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	}
 
 	ctx = capture.Put(ctx, capturePath)
+	ctx = gles.PutUnusedIDMap(ctx)
 
 	a := device.Little32
 

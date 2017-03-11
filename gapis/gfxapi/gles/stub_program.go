@@ -37,11 +37,11 @@ func buildStubProgram(ctx log.Context, e *atom.Extras, s *gfxapi.State, programI
 		jot.Fail(ctx, err, "Unable to build stub shader")
 	}
 	c := GetContext(s)
-	vertexShaderID := ShaderId(newUnusedID('S', func(x uint32) bool {
+	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
 		_, ok := c.Instances.Buffers[BufferId(x)]
 		return ok
 	}))
-	fragmentShaderID := ShaderId(newUnusedID('S', func(x uint32) bool {
+	fragmentShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
 		_, ok := c.Instances.Buffers[BufferId(x)]
 		return ok || x == uint32(vertexShaderID)
 	}))

@@ -17,6 +17,7 @@ package gles
 import (
 	"fmt"
 
+	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
@@ -183,11 +184,23 @@ func mutateAndWriteEach(ctx log.Context, out transform.Writer, atoms ...atom.Ato
 	}
 }
 
-var nextUnusedID = map[rune]uint32{}
+type nextUnusedIDKeyTy string
+
+const nextUnusedIDKey = nextUnusedIDKeyTy("nextUnusedID")
+
+func PutUnusedIDMap(ctx log.Context) log.Context {
+	return log.Wrap(keys.WithValue(ctx.Unwrap(), nextUnusedIDKey, map[rune]uint32{}))
+}
 
 // newUnusedID returns temporary object ID.
 // The tag makes the IDs for given object type more deterministic.
-func newUnusedID(tag rune, existenceTest func(uint32) bool) uint32 {
+func newUnusedID(ctx log.Context, tag rune, existenceTest func(uint32) bool) uint32 {
+	val := ctx.Value(nextUnusedIDKey)
+	if val == nil {
+		panic(nextUnusedIDKey + " missing from context")
+	}
+	nextUnusedID := val.(map[rune]uint32)
+
 	// Use the tag to allocate from different ranges.
 	prefix := uint32(tag)
 	if prefix == 0 || prefix > 128 {

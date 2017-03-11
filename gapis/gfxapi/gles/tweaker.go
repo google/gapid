@@ -189,7 +189,7 @@ func (t *tweaker) makeVertexArray(enabledLocations ...AttributeLocation) {
 }
 
 func (t *tweaker) glGenBuffer() BufferId {
-	id := BufferId(newUnusedID('B', func(x uint32) bool { return t.c.Instances.Buffers[BufferId(x)] != nil }))
+	id := BufferId(newUnusedID(t.ctx, 'B', func(x uint32) bool { return t.c.Instances.Buffers[BufferId(x)] != nil }))
 	tmp := t.AllocData(id)
 	t.doAndUndo(
 		NewGlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -198,7 +198,7 @@ func (t *tweaker) glGenBuffer() BufferId {
 }
 
 func (t *tweaker) glGenRenderbuffer() RenderbufferId {
-	id := RenderbufferId(newUnusedID('R', func(x uint32) bool { return t.c.Instances.Renderbuffers[RenderbufferId(x)] != nil }))
+	id := RenderbufferId(newUnusedID(t.ctx, 'R', func(x uint32) bool { return t.c.Instances.Renderbuffers[RenderbufferId(x)] != nil }))
 	tmp := t.AllocData(id)
 	t.doAndUndo(
 		NewGlGenRenderbuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -207,7 +207,7 @@ func (t *tweaker) glGenRenderbuffer() RenderbufferId {
 }
 
 func (t *tweaker) glGenFramebuffer() FramebufferId {
-	id := FramebufferId(newUnusedID('F', func(x uint32) bool { return t.c.Instances.Framebuffers[FramebufferId(x)] != nil }))
+	id := FramebufferId(newUnusedID(t.ctx, 'F', func(x uint32) bool { return t.c.Instances.Framebuffers[FramebufferId(x)] != nil }))
 	tmp := t.AllocData(id)
 	t.doAndUndo(
 		NewGlGenFramebuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -216,7 +216,7 @@ func (t *tweaker) glGenFramebuffer() FramebufferId {
 }
 
 func (t *tweaker) glGenTexture() TextureId {
-	id := TextureId(newUnusedID('T', func(x uint32) bool { return t.c.Instances.Textures[TextureId(x)] != nil }))
+	id := TextureId(newUnusedID(t.ctx, 'T', func(x uint32) bool { return t.c.Instances.Textures[TextureId(x)] != nil }))
 	tmp := t.AllocData(id)
 	t.doAndUndo(
 		NewGlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -225,7 +225,7 @@ func (t *tweaker) glGenTexture() TextureId {
 }
 
 func (t *tweaker) glGenVertexArray() VertexArrayId {
-	id := VertexArrayId(newUnusedID('V', func(x uint32) bool { return t.c.Instances.VertexArrays[VertexArrayId(x)] != nil }))
+	id := VertexArrayId(newUnusedID(t.ctx, 'V', func(x uint32) bool { return t.c.Instances.VertexArrays[VertexArrayId(x)] != nil }))
 	tmp := t.AllocData(id)
 	t.doAndUndo(
 		NewGlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -234,7 +234,7 @@ func (t *tweaker) glGenVertexArray() VertexArrayId {
 }
 
 func (t *tweaker) glCreateProgram() ProgramId {
-	id := ProgramId(newUnusedID('P', func(x uint32) bool {
+	id := ProgramId(newUnusedID(t.ctx, 'P', func(x uint32) bool {
 		return t.c.Instances.Programs[ProgramId(x)] != nil || t.c.Instances.Shaders[ShaderId(x)] != nil
 	}))
 	t.doAndUndo(
@@ -257,7 +257,7 @@ func (t *tweaker) makeProgram(vertexShaderSource, fragmentShaderSource string) P
 }
 
 func (t *tweaker) glCreateShader(shaderType GLenum) ShaderId {
-	id := ShaderId(newUnusedID('S', func(x uint32) bool {
+	id := ShaderId(newUnusedID(t.ctx, 'S', func(x uint32) bool {
 		return t.c.Instances.Programs[ProgramId(x)] != nil || t.c.Instances.Shaders[ShaderId(x)] != nil
 	}))
 	// We need to mutate the state, as otherwise two consecutive calls can return the same ShaderId.
