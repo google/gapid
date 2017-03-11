@@ -63,6 +63,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
@@ -76,7 +77,7 @@ import java.util.logging.Logger;
 /**
  * View that displays the 3D geometry of the last draw call within the current selection.
  */
-public class GeometryView extends Composite implements Capture.Listener, AtomStream.Listener {
+public class GeometryView extends Composite implements Tab, Capture.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(GeometryView.class.getName());
   private static final Vertex.Semantic POSITION_0 = Vertex.Semantic.newBuilder()
       .setType(Vertex.Semantic.Type.Position)
@@ -127,6 +128,10 @@ public class GeometryView extends Composite implements Capture.Listener, AtomStr
 
     models.capture.addListener(this);
     models.atoms.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+    });
 
     viewer.addMouseListeners(canvas);
 
@@ -197,6 +202,16 @@ public class GeometryView extends Composite implements Capture.Listener, AtomStr
           updateViewer();
         }, "Render normals"));
     return bar;
+  }
+
+  @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    updateModels(false);
   }
 
   @Override

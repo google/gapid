@@ -65,6 +65,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
@@ -78,7 +79,7 @@ import java.util.logging.Logger;
  * View that displays the API state as a tree.
  */
 public class StateView extends Composite
-    implements Capture.Listener, AtomStream.Listener, ApiState.Listener {
+    implements Tab, Capture.Listener, AtomStream.Listener, ApiState.Listener {
   private static final Logger LOG = Logger.getLogger(StateView.class.getName());
   private static final TypedValue ROOT_TYPE = new TypedValue(null, SnippetObject.symbol("state"));
 
@@ -107,6 +108,11 @@ public class StateView extends Composite
     models.capture.addListener(this);
     models.atoms.addListener(this);
     models.state.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.state.removeListener(this);
+    });
 
     selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
       @Override
@@ -171,6 +177,25 @@ public class StateView extends Composite
       }
       return new String[] { String.valueOf(object) };
     });
+  }
+
+  @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    onCaptureLoadingStart();
+    if (models.capture.isLoaded() && models.atoms.isLoaded()) {
+      onAtomsLoaded();
+      if (models.atoms.getSelectedAtoms() != null) {
+        onStateLoadingStart();
+        if (models.state.getState() != null) {
+          onStateLoaded(null);
+        }
+      }
+    }
   }
 
   @Override

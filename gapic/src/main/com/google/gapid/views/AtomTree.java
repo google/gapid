@@ -77,6 +77,7 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
@@ -93,7 +94,7 @@ import java.util.regex.Pattern;
 /**
  * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
  */
-public class AtomTree extends Composite implements Capture.Listener, AtomStream.Listener,
+public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
     ApiContext.Listener, AtomHierarchies.Listener, Thumbnails.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
   private static final int PREVIEW_HOVER_DELAY_MS = 500;
@@ -132,6 +133,14 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
     models.contexts.addListener(this);
     models.hierarchies.addListener(this);
     models.thumbs.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.contexts.removeListener(this);
+      models.hierarchies.removeListener(this);
+      models.thumbs.removeListener(this);
+      imageProvider.reset();
+    });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
 
@@ -310,9 +319,13 @@ public class AtomTree extends Composite implements Capture.Listener, AtomStream.
   }
 
   @Override
-  public void dispose() {
-    imageProvider.reset();
-    super.dispose();
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    updateTree(false);
   }
 
   @Override

@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.GotoMemory.showGotoMemoryDialog;
 import static com.google.gapid.widgets.Licenses.showLicensesDialog;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.Capture;
@@ -44,6 +45,7 @@ import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
+import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
 import com.google.gapid.widgets.CopyPaste;
@@ -68,6 +70,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -80,6 +83,8 @@ public class MainWindow extends ApplicationWindow {
   protected final ModelsAndWidgets maw;
   protected Action gotoAtom, gotoMemory;
   protected Action viewScrubber, viewLeft, viewRight;
+  protected final Map<MainTab.Type, Action> viewTabs = Maps.newHashMap();
+  protected final Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
   protected Action editCopy;
   private Control scrubber;
   protected TabArea tabs;
@@ -99,6 +104,15 @@ public class MainWindow extends ApplicationWindow {
     viewScrubber.setChecked(!models().settings.hideScrubber);
     viewLeft.setChecked(!models().settings.hideLeft);
     viewRight.setChecked(!models().settings.hideRight);
+    for (String hidden : models().settings.hiddenTabs) {
+      try {
+        MainTab.Type type = MainTab.Type.valueOf(hidden);
+        viewTabs.get(type).setChecked(false);
+        hiddenTabs.add(type);
+      } catch (IllegalArgumentException e) {
+        // Ignore invalid tab names in the settings file.
+      }
+    }
 
     shell.setText(Messages.WINDOW_TITLE);
     shell.setImage(widgets().theme.logo());
@@ -180,7 +194,7 @@ public class MainWindow extends ApplicationWindow {
 
       @Override
       public FolderInfo[] restore() {
-        return MainTab.getFolders(client, models(), widgets());
+        return MainTab.getFolders(client, models(), widgets(), hiddenTabs);
       }
     });
     tabs.setLeftVisible(!models().settings.hideLeft);
@@ -280,6 +294,32 @@ public class MainWindow extends ApplicationWindow {
     manager.add(viewScrubber);
     manager.add(viewLeft);
     manager.add(viewRight);
+    manager.add(createViewTabsMenu());
+    return manager;
+  }
+
+  private MenuManager createViewTabsMenu() {
+    MenuManager manager = new MenuManager("&Tabs");
+    for (MainTab.Type type : MainTab.Type.values()) {
+      Action action = type.createAction(shown -> {
+        if (shown) {
+          tabs.addNewTabToCenter(new MainTab(type, parent -> {
+            Tab tab = type.factory.create(parent, client, models(), widgets());
+            tab.reinitialize();
+            return tab.getControl();
+          }));
+          tabs.showTab(type);
+          hiddenTabs.remove(type);
+        } else {
+          tabs.removeTab(type);
+          hiddenTabs.add(type);
+        }
+        models().settings.hiddenTabs =
+            hiddenTabs.stream().map(MainTab.Type::name).toArray(n -> new String[n]);
+      });
+      manager.add(action);
+      viewTabs.put(type, action);
+    }
     return manager;
   }
 
@@ -334,8 +374,10 @@ public class MainWindow extends ApplicationWindow {
       super(type, type.label, contentFactory);
     }
 
-    public static FolderInfo[] getFolders(Client client, Models models, Widgets widgets) {
+    public static FolderInfo[] getFolders(
+        Client client, Models models, Widgets widgets, Set<Type> hidden) {
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
+      allTabs.removeAll(hidden);
       List<TabInfo> left = getTabs(models.settings.leftTabs, allTabs, client, models, widgets);
       List<TabInfo> center = getTabs(models.settings.centerTabs, allTabs, client, models, widgets);
       List<TabInfo> right = getTabs(models.settings.rightTabs, allTabs, client, models, widgets);
@@ -343,16 +385,16 @@ public class MainWindow extends ApplicationWindow {
       for (Type missing : allTabs) {
         switch (missing.defaultLocation) {
           case Left:
-            left.add(new MainTab(
-                missing, parent -> missing.factory.create(parent, client, models, widgets)));
+            left.add(new MainTab(missing,
+                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
             break;
           case Center:
-            center.add(new MainTab(
-                missing, parent -> missing.factory.create(parent, client, models, widgets)));
+            center.add(new MainTab(missing,
+                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
             break;
           case Right:
-            right.add(new MainTab(
-                missing, parent -> missing.factory.create(parent, client, models, widgets)));
+            right.add(new MainTab(missing,
+                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
             break;
           default:
             throw new AssertionError();
@@ -390,8 +432,8 @@ public class MainWindow extends ApplicationWindow {
         try {
           Type type = Type.valueOf(name);
           if (left.remove(type)) {
-            result.add(
-                new MainTab(type, parent -> type.factory.create(parent, client, models, widgets)));
+            result.add(new MainTab(type,
+                parent -> type.factory.create(parent, client, models, widgets).getControl()));
           }
         } catch (IllegalArgumentException e) {
           // Ignore incorrect names in the properties.
@@ -431,13 +473,25 @@ public class MainWindow extends ApplicationWindow {
         this.label = label;
         this.factory = factory;
       }
+
+      public Action createAction(Consumer<Boolean> listener) {
+        Action action = new Action(null, IAction.AS_CHECK_BOX) {
+          @Override
+          public void run() {
+            listener.accept(isChecked());
+          }
+        };
+        action.setChecked(true);
+        action.setText(label);
+        return action;
+      }
     }
 
     /**
      * Factory to create the UI components of a tab.
      */
     public static interface TabFactory {
-      public Control create(Composite parent, Client client, Models models, Widgets widgets);
+      public Tab create(Composite parent, Client client, Models models, Widgets widgets);
     }
   }
 

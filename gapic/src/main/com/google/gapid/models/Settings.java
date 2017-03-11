@@ -51,6 +51,7 @@ public class Settings {
   public boolean hideRight;
   public int[] splitterWeights = new int[]{ 15, 85 };
   public String[] leftTabs = new String[0], centerTabs = new String[0], rightTabs = new String[0];
+  public String[] hiddenTabs = new String[0];
   public int[] tabWeights = new int[] { 20, 60, 20 };
   public String lastOpenDir;
   public int[] reportSplitterWeights = new int[] { 75, 25 };
@@ -101,6 +102,7 @@ public class Settings {
     leftTabs = getStringList(properties, "tabs.left", leftTabs);
     centerTabs = getStringList(properties, "tabs.center", centerTabs);
     rightTabs = getStringList(properties, "tabs.right", rightTabs);
+    hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
     tabWeights = getIntList(properties, "tabs.weights", tabWeights);
     lastOpenDir = properties.getProperty("lastOpenDir", "");
     reportSplitterWeights = getIntList(properties, "report.splitter.weights", reportSplitterWeights);
@@ -124,6 +126,7 @@ public class Settings {
     setStringList(properties, "tabs.left", leftTabs);
     setStringList(properties, "tabs.center", centerTabs);
     setStringList(properties, "tabs.right", rightTabs);
+    setStringList(properties, "tabs.hidden", hiddenTabs);
     setIntList(properties, "tabs.weights", tabWeights);
     properties.setProperty("lastOpenDir", lastOpenDir);
     setIntList(properties, "report.splitter.weights", reportSplitterWeights);

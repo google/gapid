@@ -54,6 +54,7 @@ import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
 
@@ -64,7 +65,7 @@ import java.util.concurrent.ExecutionException;
  * View that shows the capture report items in a tree.
  */
 public class ReportView extends Composite
-    implements Capture.Listener, ApiContext.Listener, Reports.Listener {
+    implements Tab, Capture.Listener, ApiContext.Listener, Reports.Listener {
   private final Models models;
   private final MessageProvider messages = new MessageProvider();
   private final LoadablePanel<SashForm> loading;
@@ -95,6 +96,11 @@ public class ReportView extends Composite
     models.capture.addListener(this);
     models.contexts.addListener(this);
     models.reports.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.contexts.removeListener(this);
+      models.reports.removeListener(this);
+    });
 
     viewer.getTree().addListener(SWT.MouseMove, e -> {
       Object follow = labelProvider.getFollow(new Point(e.x, e.y));
@@ -119,6 +125,17 @@ public class ReportView extends Composite
       }
     });
     addListener(SWT.Dispose, e -> models.settings.reportSplitterWeights = splitter.getWeights());
+  }
+
+  @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    onCaptureLoadingStart();
+    updateReport();
   }
 
   @Override

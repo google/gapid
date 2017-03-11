@@ -45,6 +45,10 @@ public class ContextSelector extends Composite implements ApiContext.Listener {
     contextCombo.setUseHashlookup(true);
 
     models.contexts.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.contexts.removeListener(this);
+    });
+
     contextCombo.getCombo().addListener(SWT.Selection, (e) -> {
       int selection = contextCombo.getCombo().getSelectionIndex();
       if (selection >= 0 && selection < models.contexts.count()) {

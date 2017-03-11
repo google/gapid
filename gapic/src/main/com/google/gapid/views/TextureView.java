@@ -57,6 +57,7 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.ToolBar;
@@ -72,7 +73,7 @@ import java.util.logging.Logger;
  * View that displays the texture resources of the current capture.
  */
 public class TextureView extends Composite
-    implements Capture.Listener, Resources.Listener, AtomStream.Listener {
+    implements Tab, Capture.Listener, Resources.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Client client;
@@ -104,8 +105,14 @@ public class TextureView extends Composite
     gotoAction.createToolItem(toolBar);
 
     models.capture.addListener(this);
-    models.resources.addListener(this);
     models.atoms.addListener(this);
+    models.resources.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.resources.removeListener(this);
+      gotoAction.dispose();
+    });
 
     textureCombo.getCombo().addListener(SWT.Selection, e -> updateSelection());
   }
@@ -129,9 +136,14 @@ public class TextureView extends Composite
   }
 
   @Override
-  public void dispose() {
-    gotoAction.dispose();
-    super.dispose();
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    onCaptureLoadingStart();
+    updateTextures(true);
   }
 
   @Override

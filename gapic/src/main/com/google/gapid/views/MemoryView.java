@@ -65,6 +65,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 
 import java.lang.ref.SoftReference;
@@ -83,7 +84,7 @@ import java.util.function.Consumer;
  * View that displays the observed memory contents in an infinte scrolling panel.
  */
 public class MemoryView extends Composite
-    implements Capture.Listener, AtomStream.Listener, Follower.Listener {
+    implements Tab, Capture.Listener, AtomStream.Listener, Follower.Listener {
   private final Client client;
   private final Models models;
   private final Selections selections;
@@ -127,6 +128,27 @@ public class MemoryView extends Composite
     models.capture.addListener(this);
     models.atoms.addListener(this);
     models.follower.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.follower.removeListener(this);
+    });
+  }
+
+  @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    if (!models.capture.isLoaded() || !models.atoms.isLoaded()) {
+      onCaptureLoadingStart();
+    } else if (models.atoms.getSelectedAtoms() == null) {
+      onAtomsLoaded();
+    } else {
+      onAtomsSelected(models.atoms.getSelectedAtoms());
+    }
   }
 
   @Override
