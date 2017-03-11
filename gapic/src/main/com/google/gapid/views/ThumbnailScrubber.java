@@ -60,7 +60,7 @@ import java.util.List;
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
 public class ThumbnailScrubber extends Composite
-    implements Capture.Listener, AtomStream.Listener, ApiContext.Listener {
+    implements Tab, Capture.Listener, AtomStream.Listener, ApiContext.Listener {
   private final Models models;
   private final LoadablePanel<InfiniteScrolledComposite> loading;
   private final InfiniteScrolledComposite scroll;
@@ -89,6 +89,12 @@ public class ThumbnailScrubber extends Composite
     models.capture.addListener(this);
     models.atoms.addListener(this);
     models.contexts.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.contexts.removeListener(this);
+      carousel.dispose();
+    });
   }
 
   private void redrawScroll() {
@@ -100,9 +106,16 @@ public class ThumbnailScrubber extends Composite
   }
 
   @Override
-  public void dispose() {
-    carousel.dispose();
-    super.dispose();
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    onCaptureLoadingStart();
+    if (models.capture.isLoaded() && models.atoms.isLoaded()) {
+      updateScrubber();
+    }
   }
 
   @Override

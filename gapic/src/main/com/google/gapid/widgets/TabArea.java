@@ -104,6 +104,15 @@ public class TabArea {
     return findAndSelect(left, id) || findAndSelect(center, id) || findAndSelect(right, id);
   }
 
+  public boolean removeTab(Object id) {
+    return findAndDispose(left, id) || findAndDispose(center, id) || findAndDispose(right, id);
+  }
+
+  public void addNewTabToCenter(TabInfo info) {
+    center.addTab(info);
+    center.updateState();
+  }
+
   public void setLeftVisible(boolean visible) {
     if (!visible) {
       moveAllTabs(left.folder, center.folder);
@@ -138,6 +147,24 @@ public class TabArea {
       updateWeights();
     }
     folder.folder.setSelection(item);
+    return true;
+  }
+
+  private boolean findAndDispose(Folder folder, Object id) {
+    CTabItem item = folder.findItem(id);
+    if (item == null) {
+      return false;
+    }
+
+    // The CTabItem's control is only disposed once the parent folder is disposed.
+    // So let's dispose of it early ourselves.
+    Control control = item.getControl();
+    if (control != null) {
+      control.dispose();
+    }
+
+    item.dispose();
+    updateWeights();
     return true;
   }
 
@@ -297,13 +324,17 @@ public class TabArea {
       });
 
       for (TabInfo tab : info.tabs) {
-        CTabItem item = createTabItem(folder, tab.label, tab.contentFactory.apply(folder));
-        item.setData(TabInfo.KEY, tab);
+        addTab(tab);
       }
       if (minimizable && info.minimized) {
         minimize();
       }
       updateState();
+    }
+
+    public void addTab(TabInfo tab) {
+      CTabItem item = createTabItem(folder, tab.label, tab.contentFactory.apply(folder));
+      item.setData(TabInfo.KEY, tab);
     }
 
     public void minimize() {

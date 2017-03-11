@@ -84,7 +84,7 @@ import java.util.logging.Logger;
  * View allowing the inspection and editing of the shader resources.
  */
 public class ShaderView extends Composite
-    implements Capture.Listener, AtomStream.Listener, Resources.Listener {
+    implements Tab, Capture.Listener, AtomStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
   protected static final String EMPTY_SHADER =
       "// No source attached to this shader at this point in the trace.";
@@ -120,6 +120,11 @@ public class ShaderView extends Composite
     models.capture.addListener(this);
     models.atoms.addListener(this);
     models.resources.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.atoms.removeListener(this);
+      models.resources.removeListener(this);
+    });
   }
 
   private Control createShaderTab(Composite parent, Widgets widgets) {
@@ -217,6 +222,17 @@ public class ShaderView extends Composite
   }
 
   @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    onCaptureLoadingStart();
+    updateLoading();
+  }
+
+  @Override
   public void onCaptureLoadingStart() {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
@@ -295,8 +311,12 @@ public class ShaderView extends Composite
         pushButton = null;
       }
 
-      models.resources.addListener(this);
       models.atoms.addListener(this);
+      models.resources.addListener(this);
+      addListener(SWT.Dispose, e -> {
+        models.atoms.removeListener(this);
+        models.resources.removeListener(this);
+      });
 
       shaderCombo.getCombo().addListener(SWT.Selection, e -> updateSelection());
     }

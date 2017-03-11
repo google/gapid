@@ -58,6 +58,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
@@ -68,7 +69,7 @@ import java.util.logging.Logger;
  * View that displays the framebuffer at the current selection in an {@link ImagePanel}.
  */
 public class FramebufferView extends Composite
-    implements Capture.Listener, Devices.Listener, AtomStream.Listener {
+    implements Tab, Capture.Listener, Devices.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
   private static final int MAX_SIZE = 0xffff;
   private static final RenderSettings RENDER_SHADED = RenderSettings.newBuilder()
@@ -112,6 +113,11 @@ public class FramebufferView extends Composite
     models.capture.addListener(this);
     models.devices.addListener(this);
     models.atoms.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
+      models.devices.removeListener(this);
+      models.atoms.removeListener(this);
+    });
   }
 
   private ToolBar createToolBar(Theme theme) {
@@ -152,6 +158,20 @@ public class FramebufferView extends Composite
         }, "Render wireframe geometry"));
     createSeparator(bar);
     return bar;
+  }
+
+  @Override
+  public Control getControl() {
+    return this;
+  }
+
+  @Override
+  public void reinitialize() {
+    if (!models.capture.isLoaded()) {
+      onCaptureLoadingStart();
+    } else {
+      updateBuffer();
+    }
   }
 
   @Override
