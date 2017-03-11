@@ -38,6 +38,7 @@ public class LoadableImageWidget extends Canvas {
 
     setSize(Thumbnails.THUMB_SIZE, Thumbnails.THUMB_SIZE);
     addListener(SWT.Paint, e -> paint(e.gc));
+    addListener(SWT.Dispose, e -> image.dispose());
   }
 
   public static LoadableImageWidget forImageData(
@@ -86,12 +87,6 @@ public class LoadableImageWidget extends Canvas {
     gc.drawImage(toDraw, 0, 0, imageSize.width, imageSize.height,
         (size.width - imageSize.width) / 2, (size.height - imageSize.height) / 2,
         imageSize.width, imageSize.height);
-  }
-
-  @Override
-  public void dispose() {
-    image.dispose();
-    super.dispose();
   }
 
   @Override

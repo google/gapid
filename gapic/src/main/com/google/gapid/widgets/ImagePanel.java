@@ -167,6 +167,8 @@ public class ImagePanel extends Composite {
         }
       }
     });
+
+    addListener(SWT.Dispose, e -> backgroundSelection.dispose());
   }
 
   protected void setPreviewPixel(Pixel pixel) {
@@ -257,12 +259,6 @@ public class ImagePanel extends Composite {
     }
     status.setLevelCount(0);
     imageComponent.setImageData(level);
-  }
-
-  @Override
-  public void dispose() {
-    backgroundSelection.dispose();
-    super.dispose();
   }
 
   private void loadLevel(int index) {
