@@ -34,7 +34,7 @@
 #include "core/cc/coder/atom.h"
 
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
-#include <core/memory_tracker/cc/memory_tracker.h>
+#include "core/memory_tracker/cc/memory_tracker.h"
 #endif // TARGET_OS
 
 #include <stdint.h>
