@@ -32,6 +32,8 @@ import (
 const (
 	cfgPath = ".gapid-config"
 
+	requiredGoVersion = "1.8"
+
 	// Changes to this version will force a full clean build.
 	// This is useful for situations where the CMake flags have changed and
 	// regenerating the files is required.
@@ -118,6 +120,11 @@ func findRootSourcePath() file.Path {
 func init() {
 	if runtime.GOOS == "windows" {
 		hostExeExt = ".exe"
+	}
+
+	if got := strings.TrimLeft(runtime.Version(), "go"); got != requiredGoVersion {
+		fmt.Fprintf(os.Stderr, "Requires Go version '%s', got '%s'", requiredGoVersion, got)
+		os.Exit(1)
 	}
 
 	srcRoot = findRootSourcePath()
