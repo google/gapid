@@ -95,6 +95,8 @@ func (a api) Replay(
 	capture *capture.Capture,
 	out transform.Writer) error {
 
+	ctx = PutUnusedIDMap(ctx)
+
 	atoms, err := capture.Atoms(ctx)
 	if err != nil {
 		return cause.Explain(ctx, err, "Failed to load atom stream")
