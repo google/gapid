@@ -329,7 +329,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     updateTree(true);
   }
 
@@ -391,6 +391,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     viewer.setInput(root);
     viewer.getTree().setSelection(viewer.getTree().getItem(0));
     viewer.getTree().showSelection();
+
+    if (models.atoms.getSelectedAtoms() != null) {
+      onAtomsSelected(models.atoms.getSelectedAtoms());
+    }
   }
 
   /**

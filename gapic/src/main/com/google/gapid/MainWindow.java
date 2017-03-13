@@ -122,7 +122,7 @@ public class MainWindow extends ApplicationWindow {
 
     models().capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart() {
+      public void onCaptureLoadingStart(boolean maintainState) {
         gotoAtom.setEnabled(false);
         gotoMemory.setEnabled(false);
       }
@@ -208,7 +208,7 @@ public class MainWindow extends ApplicationWindow {
 
     models().capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart() {
+      public void onCaptureLoadingStart(boolean maintainState) {
         getShell().setText(Messages.WINDOW_TITLE + " - " + models().capture.getName());
       }
     });

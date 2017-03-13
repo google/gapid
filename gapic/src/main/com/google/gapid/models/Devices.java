@@ -60,7 +60,7 @@ public class Devices {
 
     capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart() {
+      public void onCaptureLoadingStart(boolean maintainState) {
         resetReplayDevice();
       }
 

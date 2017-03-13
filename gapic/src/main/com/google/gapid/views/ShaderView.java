@@ -228,12 +228,12 @@ public class ShaderView extends Composite
 
   @Override
   public void reinitialize() {
-    onCaptureLoadingStart();
+    onCaptureLoadingStart(false);
     updateLoading();
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
 

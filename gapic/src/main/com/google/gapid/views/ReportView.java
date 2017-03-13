@@ -134,12 +134,12 @@ public class ReportView extends Composite
 
   @Override
   public void reinitialize() {
-    onCaptureLoadingStart();
+    onCaptureLoadingStart(false);
     updateReport();
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
 

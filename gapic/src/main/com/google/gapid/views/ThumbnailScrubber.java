@@ -112,14 +112,14 @@ public class ThumbnailScrubber extends Composite
 
   @Override
   public void reinitialize() {
-    onCaptureLoadingStart();
+    onCaptureLoadingStart(false);
     if (models.capture.isLoaded() && models.atoms.isLoaded()) {
       updateScrubber();
     }
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
     carousel.setData(Collections.emptyList());
   }
