@@ -56,9 +56,11 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
   }
 
   @Override
-  protected void reset() {
-    super.reset();
-    selection = null;
+  protected void reset(boolean maintainState) {
+    super.reset(maintainState);
+    if (!maintainState) {
+      selection = null;
+    }
   }
 
   @Override
@@ -77,6 +79,9 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
   @Override
   protected void fireLoadEvent() {
     listeners.fire().onAtomsLoaded();
+    if (selection != null) {
+      listeners.fire().onAtomsSelected(selection);
+    }
   }
 
   public int getAtomCount() {

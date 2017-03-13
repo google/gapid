@@ -72,7 +72,7 @@ public class Capture {
     LOG.log(INFO, "Loading capture " + file + "...");
     path = null;
     name = file.getName();
-    listeners.fire().onCaptureLoadingStart();
+    listeners.fire().onCaptureLoadingStart(false);
     if (file.length() == 0) {
       fireError(new GapisInitException(
           GapisInitException.MESSAGE_TRACE_FILE_EMPTY + file, "empty file"));
@@ -145,7 +145,7 @@ public class Capture {
     } else {
       name = newName;
     }
-    listeners.fire().onCaptureLoadingStart();
+    listeners.fire().onCaptureLoadingStart(newName == null);
     setCapture(newPath);
   }
 
@@ -159,9 +159,11 @@ public class Capture {
 
   public static interface Listener extends Events.Listener {
     /**
-     * Event indicating that the capture is currenlty being loaded.
+     * Event indicating that the capture is currently being loaded.
+     * @param maintainState whether listeners should attempt to maintain their state from a
+     *     previous capture.
      */
-    public default void onCaptureLoadingStart() { /* empty */ }
+    public default void onCaptureLoadingStart(boolean maintainState) { /* empty */ }
 
     /**
      * Event indicating that the capture has finished loading.

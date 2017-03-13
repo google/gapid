@@ -143,7 +143,7 @@ public class MemoryView extends Composite
   @Override
   public void reinitialize() {
     if (!models.capture.isLoaded() || !models.atoms.isLoaded()) {
-      onCaptureLoadingStart();
+      onCaptureLoadingStart(false);
     } else if (models.atoms.getSelectedAtoms() == null) {
       onAtomsLoaded();
     } else {
@@ -152,7 +152,7 @@ public class MemoryView extends Composite
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
 

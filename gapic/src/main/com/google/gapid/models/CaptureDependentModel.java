@@ -58,8 +58,8 @@ abstract class CaptureDependentModel<T> {
 
     capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart() {
-        reset();
+      public void onCaptureLoadingStart(boolean maintainState) {
+        reset(maintainState);
       }
 
       @Override
@@ -67,7 +67,7 @@ abstract class CaptureDependentModel<T> {
         if (error == null) {
           load(getPath(capture.getCapture()));
         } else {
-          reset();
+          reset(false);
         }
       }
     });
@@ -114,7 +114,10 @@ abstract class CaptureDependentModel<T> {
 
   protected abstract T unbox(Value value) throws IOException;
 
-  protected void reset() {
+  /**
+   * @param maintainState whether the model should attempt to maintain its state.
+   */
+  protected void reset(boolean maintainState) {
     pathStore.update(null);
     data = null;
   }

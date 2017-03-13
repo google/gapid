@@ -215,7 +215,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     updateModels(true);
   }
 

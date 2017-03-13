@@ -186,7 +186,7 @@ public class StateView extends Composite
 
   @Override
   public void reinitialize() {
-    onCaptureLoadingStart();
+    onCaptureLoadingStart(false);
     if (models.capture.isLoaded() && models.atoms.isLoaded()) {
       onAtomsLoaded();
       if (models.atoms.getSelectedAtoms() != null) {
@@ -199,7 +199,7 @@ public class StateView extends Composite
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
 

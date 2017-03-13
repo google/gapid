@@ -16,6 +16,7 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Ranges.last;
+import static java.util.Arrays.stream;
 
 import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.Service.Context;
@@ -50,9 +51,11 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
   }
 
   @Override
-  protected void reset() {
-    super.reset();
-    selectedContext = FilteringContext.ALL;
+  protected void reset(boolean maintainState) {
+    super.reset(maintainState);
+    if (!maintainState) {
+      selectedContext = FilteringContext.ALL;
+    }
   }
 
   @Override
@@ -82,8 +85,13 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
 
   @Override
   protected void fireLoadEvent() {
-    if (selectedContext == FilteringContext.ALL && count() == 1) {
+    if (count() == 1) {
       selectedContext = getData()[0];
+    } else if (selectedContext != FilteringContext.ALL) {
+      selectedContext = stream(getData())
+          .filter(c -> c.getId().equals(selectedContext.getId()))
+          .findFirst()
+          .orElse(FilteringContext.ALL);
     }
     listeners.fire().onContextsLoaded();
   }

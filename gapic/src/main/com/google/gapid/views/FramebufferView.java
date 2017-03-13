@@ -168,14 +168,14 @@ public class FramebufferView extends Composite
   @Override
   public void reinitialize() {
     if (!models.capture.isLoaded()) {
-      onCaptureLoadingStart();
+      onCaptureLoadingStart(false);
     } else {
       updateBuffer();
     }
   }
 
   @Override
-  public void onCaptureLoadingStart() {
+  public void onCaptureLoadingStart(boolean maintainState) {
     imagePanel.setImage(null);
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
