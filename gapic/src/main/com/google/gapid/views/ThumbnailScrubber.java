@@ -22,6 +22,7 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Ranges.commands;
 import static com.google.gapid.util.Ranges.end;
 import static com.google.gapid.util.Ranges.first;
+import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
 import com.google.common.collect.Lists;
@@ -55,6 +56,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Scrubber view displaying thumbnails of the frames in the current capture.
@@ -72,8 +74,8 @@ public class ThumbnailScrubber extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    carousel = new Carousel(
-        this, models.thumbs, widgets.loading, this::redrawScroll, this::resizeScroll);
+    carousel = new Carousel(this, models.thumbs, widgets.loading, this::redrawScroll,
+        this::resizeScroll, this::scrollTo);
     loading = new LoadablePanel<>(this, widgets,
         panel -> new InfiniteScrolledComposite(panel, SWT.H_SCROLL | SWT.V_SCROLL, carousel));
     scroll = loading.getContents();
@@ -103,6 +105,12 @@ public class ThumbnailScrubber extends Composite
 
   private void resizeScroll() {
     scroll.updateMinSize();
+  }
+
+  private void scrollTo(BigInteger x) {
+    scroll.scrollTo(
+        x.subtract(BigInteger.valueOf(scroll.getClientArea().width / 2)).max(BigInteger.ZERO),
+        BigInteger.ZERO);
   }
 
   @Override
@@ -142,6 +150,11 @@ public class ThumbnailScrubber extends Composite
   }
 
   @Override
+  public void onAtomsSelected(CommandRange range) {
+    carousel.selectFrame(range);
+  }
+
+  @Override
   public void onContextsLoaded() {
     if (!models.contexts.isLoaded()) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
@@ -164,6 +177,10 @@ public class ThumbnailScrubber extends Composite
         loading.stopLoading();
         carousel.setData(datas);
         scroll.updateMinSize();
+
+        if (models.atoms.getSelectedAtoms() != null) {
+          carousel.selectFrame(models.atoms.getSelectedAtoms());
+        }
       }
     }
   }
@@ -251,17 +268,20 @@ public class ThumbnailScrubber extends Composite
     private final LoadingIndicator loading;
     private final LoadingIndicator.Repaintable repainter;
     private final Runnable updateSize;
+    private final Consumer<BigInteger> scrollTo;
     private List<Data> datas = Collections.emptyList();
     private Point imageSize;
     private int selectedIndex = -1;
 
     public Carousel(Control parent, Thumbnails thumbs, LoadingIndicator loading,
-        LoadingIndicator.Repaintable repainter, Runnable updateSize) {
+        LoadingIndicator.Repaintable repainter, Runnable updateSize,
+        Consumer<BigInteger> scrollTo) {
       this.parent = parent;
       this.thumbs = thumbs;
       this.loading = loading;
       this.repainter = repainter;
       this.updateSize = updateSize;
+      this.scrollTo = scrollTo;
 
       thumbs.addListener(this);
     }
@@ -275,6 +295,16 @@ public class ThumbnailScrubber extends Composite
       selectedIndex = frame;
       repainter.repaint();
       return datas.get(frame);
+    }
+
+    public void selectFrame(CommandRange range) {
+      long search = last(range);
+      int index = Collections.<Data>binarySearch(datas, null, (x, ignored) ->
+        last(x.range) < search ? -1 : first(x.range) > search ? 1 : 0);
+      if (index >= 0) {
+        selectAndScroll(index);
+        repainter.repaint();
+      }
     }
 
     public void setData(List<Data> newDatas) {
@@ -343,10 +373,12 @@ public class ThumbnailScrubber extends Composite
               imageSize =
                   new Point(Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
               updateSize.run();
+              selectAndScroll(selectedIndex);
             } else if (bounds.width > imageSize.x || bounds.height > imageSize.y) {
               imageSize.x = Math.max(bounds.width, imageSize.x);
               imageSize.y = Math.max(bounds.height, imageSize.y);
               updateSize.run();
+              selectAndScroll(selectedIndex);
             }
           }
         } else {
@@ -354,6 +386,14 @@ public class ThumbnailScrubber extends Composite
           loading.scheduleForRedraw(repainter);
         }
         data.paint(gc, toDraw, x + MARGIN, MARGIN / 2, size.x, size.y, i == selectedIndex);
+      }
+    }
+
+    private void selectAndScroll(int index) {
+      selectedIndex = index;
+      if (index >= 0) {
+        scrollTo.accept(
+            BigInteger.valueOf(selectedIndex).multiply(BigInteger.valueOf(getCellWidth())));
       }
     }
   }
