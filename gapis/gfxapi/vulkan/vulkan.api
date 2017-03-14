@@ -2777,9 +2777,16 @@ cmd VkResult vkQueueSubmit(
 
   for i in (0 .. submitCount) {
     info := submitInfo[i]
-    read(info.pWaitSemaphores[0:info.waitSemaphoreCount])
+    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    for j in (0 .. info.waitSemaphoreCount) {
+      Semaphores[wait_semaphores[j]].Signaled = false
+    }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
-    read(info.pSignalSemaphores[0:info.signalSemaphoreCount])
+
+    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    for j in (0 .. info.signalSemaphoreCount) {
+      Semaphores[signal_semaphores[j]].Signaled = true
+    }
 
     command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
 
@@ -3200,6 +3207,7 @@ cmd VkResult vkWaitForFences(
 cmd void RecreateSemaphore(
     VkDevice                     device,
     const VkSemaphoreCreateInfo* pCreateInfo,
+    VkBool32                     signaled,
     VkSemaphore*                 pSemaphore) {
   read(pCreateInfo[0:1])
   write(pSemaphore[0:1])
@@ -7193,7 +7201,7 @@ cmd VkResult vkAcquireNextImageKHR(
     u32*           pImageIndex) {
   _ = pImageIndex[0]
   pImageIndex[0] = ?
-
+  Semaphores[semaphore].Signaled = true
   return ?
 }
 
@@ -7208,7 +7216,10 @@ cmd VkResult vkQueuePresentKHR(
   // TODO: handle pNext
 
   if (info.pWaitSemaphores != null) {
-    read(info.pWaitSemaphores[0:info.waitSemaphoreCount])
+    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    for i in (0 .. info.waitSemaphoreCount) {
+      Semaphores[wait_semaphores[i]].Signaled = false
+    }
   }
   swapchains := info.pSwapchains[0:info.swapchainCount]
   imageIndices := info.pImageIndices[0:info.swapchainCount]
@@ -8091,6 +8102,8 @@ enum RecordingState {
 @internal class SemaphoreObject {
   @unused VkDevice    Device
   @unused VkSemaphore VulkanHandle
+  @unused VkQueue     LastQueue
+  @unused bool        Signaled
 }
 
 @internal class EventObject {

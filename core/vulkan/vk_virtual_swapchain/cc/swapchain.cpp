@@ -276,6 +276,7 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
   // We submit to the queue the commands set up by the virtual swapchain.
   // This will start a copy operation from the image to the swapchain
   // buffers.
+  uint32_t res = VK_SUCCESS;
   std::vector<VkPipelineStageFlags> pipeline_stages(
       pPresentInfo->waitSemaphoreCount, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
   for (size_t i = 0; i < pPresentInfo->swapchainCount; ++i) {
@@ -295,12 +296,12 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
         nullptr                                           // pSemaphores
     };
 
-    GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
+    res |= GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
         queue, 1, &submitInfo, swp->GetFence(image_index));
     swp->NotifySubmitted(image_index);
   }
 
-  return VK_SUCCESS;
+  return VkResult(res);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkQueueSubmit(VkQueue queue,
