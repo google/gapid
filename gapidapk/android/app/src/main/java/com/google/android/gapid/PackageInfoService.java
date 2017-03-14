@@ -217,7 +217,7 @@ public class PackageInfoService extends IntentService {
 
         Map<String, List<IntentFilter>> activityIntents = new HashMap<String, List<IntentFilter>>();
 
-        Intent queryIntent = new Intent();
+        Intent queryIntent = new Intent(Intent.ACTION_MAIN, null);
         queryIntent.setPackage(packageInfo.packageName);
         List<ResolveInfo> resolveInfos = pm.queryIntentActivities(queryIntent, PackageManager.GET_RESOLVED_FILTER);
         for (ResolveInfo resolveInfo : resolveInfos) {
