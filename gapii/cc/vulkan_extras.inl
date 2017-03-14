@@ -46,7 +46,7 @@ void SpyOverride_RecreateQueue(VkDevice, uint32_t, uint32_t, VkQueue*) {}
 void SpyOverride_RecreateVkCmdBindPipeline(VkCommandBuffer, uint32_t, VkPipeline) {}
 void SpyOverride_RecreateVkCommandBuffer(VkDevice, const VkCommandBufferAllocateInfo*, const VkCommandBufferBeginInfo*, VkCommandBuffer*) {}
 void SpyOverride_RecreateVkEndCommandBuffer(VkCommandBuffer) {}
-void SpyOverride_RecreateSemaphore(VkDevice, const VkSemaphoreCreateInfo*, VkSemaphore*) {}
+void SpyOverride_RecreateSemaphore(VkDevice, const VkSemaphoreCreateInfo*, uint32_t, VkSemaphore*) {}
 void SpyOverride_RecreateFence(VkDevice, const VkFenceCreateInfo*, VkFence*) {}
 void SpyOverride_RecreateCommandPool(VkDevice, const VkCommandPoolCreateInfo*, VkCommandPool*) {}
 void SpyOverride_RecreatePipelineCache(VkDevice, const VkPipelineCacheCreateInfo*, VkPipelineCache*) {}

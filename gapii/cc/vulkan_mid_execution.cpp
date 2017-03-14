@@ -617,6 +617,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
             if (image.second->mBoundMemory &&
                 info.mSamples == VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT &&
+                // Don't capture images with undefined layout. The resulting data
+                // itself will be undefined.
+                imageLayout != VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED &&
                 !image.second->mIsSwapchainImage &&
                 image.second->mImageAspect == VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
 
@@ -884,6 +887,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         for (auto& semaphore: Semaphores) {
             RecreateSemaphore(observer, semaphore.second->mDevice,
                                         &create_info,
+                                        semaphore.second->mSignaled,
                                         &semaphore.second->mVulkanHandle);
         }
     }

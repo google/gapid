@@ -607,9 +607,48 @@ func (a *RecreateSemaphore) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	createInfo := memory.Pointer(a.PCreateInfo)
 	allocator := memory.Pointer{}
 	pSemaphore := memory.Pointer(a.PSemaphore)
+
 	hijack := NewVkCreateSemaphore(a.Device, createInfo, allocator, pSemaphore, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
-	return hijack.Mutate(ctx, s, b)
+	if err := hijack.Mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if a.Signaled != VkBool32(0) {
+		queue := findGraphicsAndComputeQueueForDevice(a.Device, s)
+		semaphore := a.PSemaphore.Read(ctx, a, s, b)
+
+		semaphores := atom.Must(atom.AllocData(ctx, s, semaphore))
+		submitInfo := VkSubmitInfo{
+			SType:                VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			PNext:                NewVoidᶜᵖ(0),
+			WaitSemaphoreCount:   0,
+			PWaitSemaphores:      NewVkSemaphoreᶜᵖ(0),
+			PWaitDstStageMask:    NewVkPipelineStageFlagsᶜᵖ(0),
+			CommandBufferCount:   0,
+			PCommandBuffers:      NewVkCommandBufferᶜᵖ(0),
+			SignalSemaphoreCount: 1,
+			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(semaphores.Address()),
+		}
+		submitInfoData := atom.Must(atom.AllocData(ctx, s, submitInfo))
+
+		err := NewVkQueueSubmit(
+			queue,
+			1,
+			submitInfoData.Ptr(),
+			VkFence(0),
+			VkResult_VK_SUCCESS,
+		).AddRead(
+			submitInfoData.Data(),
+		).AddRead(
+			semaphores.Data(),
+		).Mutate(ctx, s, b)
+
+		semaphores.Free()
+		submitInfoData.Free()
+		return err
+	}
+	return nil
+
 }
 
 func (a *RecreateFence) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
