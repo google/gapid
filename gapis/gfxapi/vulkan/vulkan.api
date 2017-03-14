@@ -3452,8 +3452,19 @@ cmd void vkDestroyBuffer(
 }
 
 
-// Buffer view functions
 
+@override
+@custom
+@no_replay
+cmd void RecreateBufferView(
+    VkDevice                      device,
+    const VkBufferViewCreateInfo* pCreateInfo,
+    VkBufferView*                 pBufferView) {
+  read(pCreateInfo[0:1])
+  write(pBufferView[0:1])
+}
+
+// Buffer view functions
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateBufferView(
