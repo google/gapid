@@ -1,5 +1,15 @@
 # Building GAPID
 
+To build GAPID, Android SDK, Android NDK, and JDK 8 are needed. The `do` script
+will try to deduce their locations and populate the default paths via the
+environment variable `ANDROID_HOME`, `ANDROID_NDK_ROOT`, and `JAVA_HOME`,
+respectively. If these environment variables are not defined, you will need to
+manually specify the locations for the *DKs during the `do config` step.
+When manually specifying locations, please note that the `do` script cannot
+resolve paths containing environment variables currently.
+
+Please see the following for detailed steps on each platform.
+
 ## Windows
 
 ### Install [Go 1.8](https://storage.googleapis.com/golang/go1.8.windows-amd64.msi)
@@ -65,6 +75,8 @@ The build output will be in the directory you specified with `do config`.
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip) to a directory of your choosing.
+  * Instead, if you have Homebrew, you can install via `brew install android-sdk` and the default installation location would be
+    `$HOMEBREW_PREFIX/opt/android-sdk`, where `$HOMEBREW_PREFIX` can be found using `brew config`.
 * Using `tools/android` download:
   * Android 5.0.1 (API 21)
     * SDK Platform
@@ -72,15 +84,22 @@ The build output will be in the directory you specified with `do config`.
 
 ### Install Android NDK
 * Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-darwin-x86_64.zip) to a directory of your choosing.
+  * Instead, if you have Homebrew, you can install via `brew install android-ndk` and the default installation location would be
+    `$HOMEBREW_PREFIX/opt/android-ndk`, where `$HOMEBREW_PREFIX` can be found using `brew config`.
 
-### Install [CMake](https://cmake.org/files/v3.7/cmake-3.7.1-Darwin-x86_64.dmg).
+### Install [CMake](https://cmake.org/files/v3.7/cmake-3.7.1-Darwin-x86_64.dmg)
+  * Instead, if you have Homebrew, you can install via `brew install cmake`.
 
 ### Install Ninja
 * Unzip the [Ninja executable](https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-mac.zip) to a directory of your choosing.
+  * Instead, if you have Homebrew, you can install via `brew install ninja`.
 
 ### Install [Python 3.6](https://www.python.org/ftp/python/3.6.0/python-3.6.0-macosx10.6.pkg)
+  * Instead, if you have Homebrew, you can install via `brew install python3`.
 
 ### Install [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+* You can inspect JDK home locations via the `/usr/libexec/java_home` utility.
+  * For JDK 8, the command is `/usr/libexec/java_home -v 1.8`.
 
 ### Get the source
 In a terminal type:
