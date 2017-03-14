@@ -15,11 +15,13 @@
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-windows.zip) to a directory of your choosing.
-* Using `sdk\tools\android.bat` download:
+* Using the unzipped `tools\android.bat` download:
   * Android 5.0.1 (API 21)
+    * SDK Platform
   * Android SDK Build-tools 21.1.2
 
-### Install the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-windows-x86_64.zip)
+### Install the Android NDK
+* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-windows-x86_64.zip) to a directory of your choosing.
 
 ### Install [CMake](https://cmake.org/files/v3.7/cmake-3.7.1-win32-x86.msi).
 
@@ -63,8 +65,9 @@ The build output will be in the directory you specified with `do config`.
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip) to a directory of your choosing.
-* Using `sdk\tools\android` download:
+* Using `tools/android` download:
   * Android 5.0.1 (API 21)
+    * SDK Platform
   * Android SDK Build-tools 21.1.2
 
 ### Install Android NDK
@@ -112,9 +115,10 @@ The build output will be in the directory you specified with `do config`.
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-linux.zip) to a directory of your choosing.
-* Using `sdk\tools\android` download:
- * Android 5.0.1 (API 21)
- * Android SDK Build-tools 21.1.2
+* Using `tools/android` download:
+  * Android 5.0.1 (API 21)
+    * SDK Platform
+  * Android SDK Build-tools 21.1.2
 
 ### Install Android NDK
 * Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip) to a directory of your choosing.
