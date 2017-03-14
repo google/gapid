@@ -6390,6 +6390,28 @@ cmd void vkCmdFillBuffer(
     u32             data) {
 }
 
+@internal
+class RecreateCmdClearColorImageData{
+  VkImage Image
+  VkImageLayout ImageLayout
+  VkClearColorValue Color
+  map!(u32, VkImageSubresourceRange) Ranges
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdClearColorImage(
+    VkCommandBuffer                commandBuffer,
+    VkImage                        image,
+    VkImageLayout                  imageLayout,
+    const VkClearColorValue*       pColor,
+    u32                            rangeCount,
+    const VkImageSubresourceRange* pRanges) {
+  _ = pColor[0]
+  read(pRanges[0:rangeCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdClearColorImage(
@@ -6399,8 +6421,17 @@ cmd void vkCmdClearColorImage(
     const VkClearColorValue*       pColor,
     u32                            rangeCount,
     const VkImageSubresourceRange* pRanges) {
-  _ = pColor[0]
-  read(pRanges[0:rangeCount])
+  color := pColor[0]
+  ranges := pRanges[0:rangeCount]
+  recreate_data := new!RecreateCmdClearColorImageData(
+      Image: image,
+      ImageLayout: imageLayout,
+      Color: color,
+  )
+  for i in (0 .. rangeCount) {
+    recreate_data.Ranges[as!u32(i)] = ranges[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @threadSafety("app")

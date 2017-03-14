@@ -392,6 +392,20 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearAttachmentsData
                                      attachments.data(), rects.size(),
                                      rects.data());
 }
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearColorImageData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdClearColorImageData>& t) {
+    VkClearColorValue& color = t->mColor;
+    std::vector<VkImageSubresourceRange> clear_ranges;
+    for (size_t i = 0; i < t->mRanges.size(); ++i) {
+        clear_ranges.push_back(t->mRanges[i]);
+    }
+    spy->RecreateCmdClearColorImage(observer, commandBuf, t->mImage,
+                                    t->mImageLayout, &color,
+                                    clear_ranges.size(), clear_ranges.data());
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
