@@ -73,6 +73,7 @@ type (
 		DryRun  bool     `help:"Do the build in dry run mode"`
 		Verbose bool     `help:"Do the build in verbose mode"`
 		Install bool     `help:"Run the install step after building"`
+		NumJobs int      `help:"Number of jobs passed to ninja"`
 		Test    TestMode `help:"Control the test mode"`
 	}
 	RunOptions struct {

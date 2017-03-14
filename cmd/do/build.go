@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/gapid/core/log"
@@ -105,6 +106,9 @@ func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	args := targets
 	if options.DryRun {
 		args = append([]string{"-n"}, args...)
+	}
+	if options.NumJobs > 0 {
+		args = append([]string{fmt.Sprintf("-j%d", options.NumJobs)}, args...)
 	}
 	if options.Verbose {
 		args = append([]string{"-v"}, args...)
