@@ -128,6 +128,25 @@
         {{if not (IsVoid $.Return.Type)}}
           {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
           GAPID_DEBUG("Returned: {{Template "C++.PrintfFormatCode" $.Return.Type}}", return_value);
+          {{if (eq (Global "API") "vulkan")}}
+            {{$retType := (Macro "C++.ReturnType" $)}}
+            {{if eq $retType "VkBool"}}
+              if (return_value == 0) {
+                GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
+                GAPID_ERROR("Return Value was 0x%x", return_value);
+              }
+            {{else if eq $retType "VkResult"}}
+              if (return_value != Vulkan::VkResult::VK_SUCCESS) {
+                GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
+                GAPID_ERROR("Return Value was 0x%x", return_value);
+              }
+            {{else if eq $retType "PFN_vkVoidFunction"}}
+              if (return_value == nullptr) {
+                GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
+                GAPID_ERROR("Return Value was 0x%x", return_value);
+              }
+            {{end}}
+          {{end}}
           {{if eq $name "glGetError"}}
             if (return_value != Gles::GLenum::GL_NO_ERROR) {
               GAPID_ERROR("glGetError() returned: 0x%x", return_value);
