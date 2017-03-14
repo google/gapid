@@ -82,7 +82,9 @@ func (r *ResourcesResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	types := map[gfxapi.ResourceType]*service.ResourcesByType{}
 	for _, r := range resources {
 		ty := r.resource.ResourceType()
-		name := r.resource.ResourceName()
+		handle := r.resource.ResourceHandle()
+		label := r.resource.ResourceLabel()
+		order := r.resource.Order()
 		b := types[ty]
 		if b == nil {
 			b = &service.ResourcesByType{Type: ty}
@@ -90,7 +92,9 @@ func (r *ResourcesResolvable) Resolve(ctx log.Context) (interface{}, error) {
 		}
 		b.Resources = append(b.Resources, &service.Resource{
 			Id:       path.NewID(r.id),
-			Name:     name,
+			Handle:   handle,
+			Label:    label,
+			Order:    order,
 			Accesses: r.accesses,
 		})
 	}

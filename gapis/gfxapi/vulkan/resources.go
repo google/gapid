@@ -43,9 +43,19 @@ func (t *ImageObject) IsResource() bool {
 	return t.VulkanHandle != 0 && is_texture
 }
 
-// ResourceName returns the UI name for the resource.
-func (t *ImageObject) ResourceName() string {
+// ResourceHandle returns the UI identity for the resource.
+func (t *ImageObject) ResourceHandle() string {
 	return fmt.Sprintf("Image<%d>", t.VulkanHandle)
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (t *ImageObject) ResourceLabel() string {
+	return ""
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (t *ImageObject) Order() uint64 {
+	return uint64(t.VulkanHandle)
 }
 
 // ResourceType returns the type of this resource.
@@ -165,7 +175,7 @@ func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources g
 	vkFmt := t.Info.Format
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceName())}
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
 	switch t.Info.ImageType {
 	case VkImageType_VK_IMAGE_TYPE_2D:
@@ -186,7 +196,7 @@ func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources g
 						Data:   image.NewID(imageLevel.Data.ResourceID(ctx, s)),
 					}
 					if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceName())}
+						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 					}
 				}
 			}
@@ -204,7 +214,7 @@ func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources g
 			return &gfxapi.Texture2D{Levels: levels}, nil
 		}
 	default:
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceName())}
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
 }
 
@@ -218,9 +228,19 @@ func (s *ShaderModuleObject) IsResource() bool {
 	return true
 }
 
-// ResourceName returns the UI name for the resource.
-func (s *ShaderModuleObject) ResourceName() string {
+// ResourceHandle returns the UI identity for the resource.
+func (s *ShaderModuleObject) ResourceHandle() string {
 	return fmt.Sprintf("Shader<0x%x>", s.VulkanHandle)
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (s *ShaderModuleObject) ResourceLabel() string {
+	return ""
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (s *ShaderModuleObject) Order() uint64 {
+	return uint64(s.VulkanHandle)
 }
 
 // ResourceType returns the type of this resource.

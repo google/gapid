@@ -25,8 +25,15 @@ type ResourceMap map[Resource]id.ID
 
 // Resource represents an asset in a capture.
 type Resource interface {
-	// ResourceName returns the UI name for the resource.
-	ResourceName() string
+	// ResourceHandle returns the UI identity for the resource.
+	// For GL this is the GLuint object name, for Vulkan the pointer.
+	ResourceHandle() string
+
+	// ResourceLabel returns the UI name for the resource.
+	ResourceLabel() string
+
+	// Order returns an integer used to sort the resources for presentation.
+	Order() uint64
 
 	// ResourceType returns the type of this resource.
 	ResourceType() ResourceType

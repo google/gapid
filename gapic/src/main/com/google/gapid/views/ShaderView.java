@@ -553,7 +553,9 @@ public class ShaderView extends Composite
 
     @Override
     public String toString() {
-      return info.getName();
+      String handle = info.getHandle();
+      String label = info.getLabel();
+      return (label.isEmpty()) ? handle : handle + " [" + label + "]";
     }
   }
 }
