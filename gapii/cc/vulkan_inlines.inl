@@ -376,7 +376,22 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndexedData>>::o
         t->mIndexCount, t->mInstanceCount, t->mFirstIndex, t->mVertexOffset, t->mFirstInstance);
 }
 
-
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearAttachmentsData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdClearAttachmentsData>& t) {
+    std::vector<VkClearAttachment> attachments;
+    for (size_t i = 0; i < t->mAttachments.size(); ++i) {
+        attachments.push_back(t->mAttachments[i]);
+    }
+    std::vector<VkClearRect> rects;
+    for (size_t i = 0; i < t->mRects.size(); ++i) {
+        rects.push_back(t->mRects[i]);
+    }
+    spy->RecreateCmdClearAttachments(observer, commandBuf, attachments.size(),
+                                     attachments.data(), rects.size(),
+                                     rects.data());
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
