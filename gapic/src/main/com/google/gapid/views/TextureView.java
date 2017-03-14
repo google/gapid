@@ -309,7 +309,9 @@ public class TextureView extends Composite
 
     @Override
     public String toString() {
-      return typeLabel + " " + info.getName() +
+      String label = info.getLabel();
+      return typeLabel + " " + info.getHandle() +
+             (label.isEmpty() ? "" : " [" + label + "]") +
              (imageInfo == null ? "" : " - " + getInfoString()) +
              (extraLabel == null ? "" : " " + extraLabel);
     }

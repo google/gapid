@@ -34,12 +34,19 @@ func (t *Texture) IsResource() bool {
 	return t.ID != 0
 }
 
-// ResourceName returns the UI name for the resource.
-func (t *Texture) ResourceName() string {
-	if t.Label != "" {
-		return fmt.Sprintf("Texture<%d> [%s]", t.ID, t.Label)
-	}
+// ResourceHandle returns the UI identity for the resource.
+func (t *Texture) ResourceHandle() string {
 	return fmt.Sprintf("Texture<%d>", t.ID)
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (t *Texture) ResourceLabel() string {
+	return t.Label
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (t *Texture) Order() uint64 {
+	return uint64(t.ID)
 }
 
 // ResourceType returns the type of this resource.
@@ -100,7 +107,7 @@ func (t *Texture) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxap
 		return &gfxapi.Cubemap{Levels: levels}, nil
 
 	default:
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceName())}
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
 }
 
@@ -114,12 +121,19 @@ func (s *Shader) IsResource() bool {
 	return s.ID != 0
 }
 
-// ResourceName returns the UI name for the resource.
-func (s *Shader) ResourceName() string {
-	if s.Label != "" {
-		return fmt.Sprintf("Shader<%d> [%s]", s.ID, s.Label)
-	}
+// ResourceHandle returns the UI identity for the resource.
+func (s *Shader) ResourceHandle() string {
 	return fmt.Sprintf("Shader<%d>", s.ID)
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (s *Shader) ResourceLabel() string {
+	return s.Label
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (s *Shader) Order() uint64 {
+	return uint64(s.ID)
 }
 
 // ResourceType returns the type of this resource.
@@ -205,12 +219,19 @@ func (p *Program) IsResource() bool {
 	return p.ID != 0
 }
 
-// ResourceName returns the UI name for the resource.
-func (p *Program) ResourceName() string {
-	if p.Label != "" {
-		return fmt.Sprintf("Program<%d> [%s]", p.ID, p.Label)
-	}
+// ResourceHandle returns the UI identity for the resource.
+func (p *Program) ResourceHandle() string {
 	return fmt.Sprintf("Program<%d>", p.ID)
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (p *Program) ResourceLabel() string {
+	return p.Label
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (p *Program) Order() uint64 {
+	return uint64(p.ID)
 }
 
 // ResourceType returns the type of this resource.
