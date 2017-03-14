@@ -6408,6 +6408,25 @@ cmd void vkCmdClearDepthStencilImage(
   read(pRanges[0:rangeCount])
 }
 
+@internal
+class RecreateCmdClearAttachmentsData{
+  map!(u32, VkClearAttachment) Attachments
+  map!(u32, VkClearRect) Rects
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdClearAttachments(
+    VkCommandBuffer          commandBuffer,
+    u32                      attachmentCount,
+    const VkClearAttachment* pAttachments,
+    u32                      rectCount,
+    const VkClearRect*       pRects) {
+  read(pAttachments[0:attachmentCount])
+  read(pRects[0:rectCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdClearAttachments(
@@ -6416,8 +6435,16 @@ cmd void vkCmdClearAttachments(
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
     const VkClearRect*       pRects) {
-  read(pAttachments[0:attachmentCount])
-  read(pRects[0:rectCount])
+  recreate_data := new!RecreateCmdClearAttachmentsData()
+  attachments := pAttachments[0:attachmentCount]
+  rects := pRects[0:rectCount]
+  for i in (0 .. attachmentCount) {
+    recreate_data.Attachments[as!u32(i)] = attachments[i]
+  }
+  for i in (0 .. rectCount) {
+    recreate_data.Rects[as!u32(i)] = rects[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @override

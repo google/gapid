@@ -591,6 +591,18 @@ func (a *RecreateCmdEndQuery) Mutate(ctx log.Context, s *gfxapi.State, b *builde
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdClearAttachments) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdClearAttachments(
+		a.CommandBuffer,
+		a.AttachmentCount,
+		memory.Pointer(a.PAttachments),
+		a.RectCount,
+		memory.Pointer(a.PRects),
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdResetQueryPool) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdResetQueryPool(
 		a.CommandBuffer,
