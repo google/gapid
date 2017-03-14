@@ -355,37 +355,56 @@ public class ThumbnailScrubber extends Composite
       Rectangle clip = gc.getClipping();
       Point size = (imageSize == null) ? new Point(THUMB_SIZE, THUMB_SIZE) : imageSize;
       int first = (int)((xOffset.longValueExact() + clip.x) / (size.x + 2 * MARGIN));
-      int last = (int)((xOffset.longValueExact() + clip.x + clip.width + size.x - 1) / size.x);
+      int last = Math.min(datas.size(),
+          (int)((xOffset.longValueExact() + clip.x + clip.width + size.x - 1) / size.x));
       int x = (int)(first * ((long)size.x + 2 * MARGIN) - xOffset.longValueExact());
 
-      for (int i = first; i < last && i < datas.size(); i++, x += size.x + 2 * MARGIN) {
+      prepareImages(first, last);
+      for (int i = first; i < last; i++, x += size.x + 2 * MARGIN) {
         Data data = datas.get(i);
-        if (data.image == null && thumbs.isReady()) {
-          data.image = LoadableImage.forImageData(parent,
-              noAlpha(thumbs.getThumbnail(data.previewAtomIndex, THUMB_SIZE)), loading, repainter);
-        }
         Image toDraw;
         if (data.image != null) {
           toDraw = data.image.getImage();
-          if (data.image.hasFinished()) {
-            Rectangle bounds = toDraw.getBounds();
-            if (imageSize == null) {
-              imageSize =
-                  new Point(Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
-              updateSize.run();
-              selectAndScroll(selectedIndex);
-            } else if (bounds.width > imageSize.x || bounds.height > imageSize.y) {
-              imageSize.x = Math.max(bounds.width, imageSize.x);
-              imageSize.y = Math.max(bounds.height, imageSize.y);
-              updateSize.run();
-              selectAndScroll(selectedIndex);
-            }
-          }
         } else {
           toDraw = loading.getCurrentFrame();
           loading.scheduleForRedraw(repainter);
         }
         data.paint(gc, toDraw, x + MARGIN, MARGIN / 2, size.x, size.y, i == selectedIndex);
+      }
+      updateSize(first, last);
+    }
+
+    private void prepareImages(int first, int last) {
+      for (int i = first; i < last; i++) {
+        Data data = datas.get(i);
+        if (data.image == null && thumbs.isReady()) {
+          data.image = LoadableImage.forImageData(parent,
+              noAlpha(thumbs.getThumbnail(data.previewAtomIndex, THUMB_SIZE)), loading, repainter);
+        }
+      }
+    }
+
+    private void updateSize(int first, int last) {
+      boolean dirty = false;
+      for (int i = first; i < last; i++) {
+        Data data = datas.get(i);
+        if (data.image != null && data.image.hasFinished()) {
+          Rectangle bounds = data.image.getImage().getBounds();
+          if (imageSize == null) {
+            imageSize =
+                new Point(Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
+            dirty = true;
+          } else if (bounds.width > imageSize.x || bounds.height > imageSize.y) {
+            imageSize.x = Math.max(bounds.width, imageSize.x);
+            imageSize.y = Math.max(bounds.height, imageSize.y);
+            dirty = true;
+          }
+        }
+      }
+
+      if (dirty) {
+        updateSize.run();
+        selectAndScroll(selectedIndex);
       }
     }
 
