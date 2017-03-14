@@ -19,13 +19,20 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 )
 
-var hashlen = flag.Int("hashlen", 6, "length in characters of the hash output")
+var (
+	hashlen = flag.Int("hashlen", 6, "length in characters of the hash output")
+	in      = flag.String("in", "", "An input template file to replace the hash in")
+	replace = flag.String("replace", "", "The token to replace with the hash")
+	out     = flag.String("out", "", "An output file to write to")
+)
 
 func main() {
 	app.ShortHelp = "filehash produces a SHA1 hash from the list of files"
@@ -53,6 +60,17 @@ func run(ctx log.Context) error {
 	if l := *hashlen; len(hash) > l {
 		hash = hash[:l]
 	}
-	fmt.Print(hash)
-	return nil
+	if *in == "" {
+		fmt.Print(hash)
+		return nil
+	}
+	data, err := ioutil.ReadFile(*in)
+	if err != nil {
+		return err
+	}
+	result := strings.Replace(string(data), *replace, hash, -1)
+	if *out == "" {
+		fmt.Print(result)
+	}
+	return ioutil.WriteFile(*out, []byte(result), 0777)
 }
