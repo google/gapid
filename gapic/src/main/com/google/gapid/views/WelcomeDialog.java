@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.widgets.AboutDialog.showHelp;
+import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 
@@ -27,7 +28,6 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -70,8 +70,7 @@ public class WelcomeDialog {
         createLabel(container, "", widgets.theme.logoBig())
             .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-        Label title = createLabel(container, Messages.WINDOW_TITLE);
-        title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
+        Label title = createBoldLabel(container, Messages.WINDOW_TITLE);
         title.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
         Widgets.createLink(container, "<a>Open Trace...</a>", e -> {

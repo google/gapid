@@ -18,6 +18,7 @@ package com.google.gapid.widgets;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 
+import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -199,6 +200,12 @@ public class Widgets {
     return result;
   }
 
+  public static Label createBoldLabel(Composite parent, String label) {
+    Label result = createLabel(parent, label);
+    result.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
+    return result;
+  }
+
   public static Label createLabel(Composite parent, String label, Image image) {
     Label result = createLabel(parent, label);
     result.setImage(image);
@@ -292,6 +299,7 @@ public class Widgets {
     Group group = new Group(parent, SWT.NONE);
     group.setLayout(new FillLayout(SWT.VERTICAL));
     group.setText(text);
+    group.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
     return group;
   }
 
@@ -347,6 +355,12 @@ public class Widgets {
 
   public static RowLayout centered(RowLayout layout) {
     layout.center = true;
+    return layout;
+  }
+
+  public static RowLayout filling(RowLayout layout, boolean fill, boolean justify) {
+    layout.fill = fill;
+    layout.justify = justify;
     return layout;
   }
 

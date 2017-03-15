@@ -19,6 +19,8 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Ranges.last;
+import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -52,7 +54,6 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
@@ -69,10 +70,10 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TableColumn;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -86,18 +87,6 @@ import java.util.logging.Logger;
 public class ShaderView extends Composite
     implements Tab, Capture.Listener, AtomStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
-  protected static final String EMPTY_SHADER =
-      "// No source attached to this shader at this point in the trace.";
-  protected static final String EMPTY_PROGRAM =
-      "// No shaders attached to this program at this point in the trace.";
-  protected static final char[] SHADER_SEPARATOR;
-  static {
-    SHADER_SEPARATOR = new char[81];
-    SHADER_SEPARATOR[0] = SHADER_SEPARATOR[1] = '/';
-    SHADER_SEPARATOR[2] = ' ';
-    Arrays.fill(SHADER_SEPARATOR, 3, SHADER_SEPARATOR.length - 1, '=');
-    SHADER_SEPARATOR[SHADER_SEPARATOR.length - 1] = '\n';
-  }
 
   private final Client client;
   protected final Models models;
@@ -158,8 +147,7 @@ public class ShaderView extends Composite
     SashForm splitter = new SashForm(parent, SWT.VERTICAL);
 
     ShaderPanel panel = new ShaderPanel(splitter, models, widgets.theme, Type.program());
-    Composite uniformsGroup = Widgets.createGroup(splitter, "Uniforms");
-    uniformsGroup.setLayout(new FillLayout(SWT.VERTICAL));
+    Composite uniformsGroup = createGroup(splitter, "Uniforms");
     UniformsPanel uniforms = new UniformsPanel(uniformsGroup);
 
     splitter.setWeights(models.settings.shaderSplitterWeights);
@@ -171,51 +159,39 @@ public class ShaderView extends Composite
     return splitter;
   }
 
-  private void getShaderSource(Data data, Consumer<String> callback) {
+  private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
     Rpc.listen(client.get(data.path), shaderRpcController,
-        new UiCallback<Service.Value, String>(this, LOG) {
+        new UiCallback<Service.Value, ShaderPanel.Source>(this, LOG) {
       @Override
-      protected String onRpcThread(Result<Service.Value> result)
+      protected ShaderPanel.Source onRpcThread(Result<Service.Value> result)
           throws RpcException, ExecutionException {
         Shader shader = result.get().getShader();
         data.resource = shader;
-        String source = shader.getSource();
-        return source.isEmpty() ? EMPTY_SHADER : source;
+        return ShaderPanel.Source.of(shader);
       }
 
       @Override
-      protected void onUiThread(String result) {
-        callback.accept(result);
+      protected void onUiThread(ShaderPanel.Source result) {
+        callback.accept(new ShaderPanel.Source[] { result });
       }
     });
   }
 
   private void getProgramSource(
-      Data data, Consumer<Program> onProgramLoaded, Consumer<String> callback) {
+      Data data, Consumer<Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
     Rpc.listen(client.get(data.path), programRpcController,
-        new UiCallback<Service.Value, String>(this, LOG) {
+        new UiCallback<Service.Value, ShaderPanel.Source[]>(this, LOG) {
       @Override
-      protected String onRpcThread(Result<Service.Value> result)
+      protected ShaderPanel.Source[] onRpcThread(Result<Service.Value> result)
           throws RpcException, ExecutionException {
         Program program = result.get().getProgram();
         data.resource = program;
         onProgramLoaded.accept(program);
-        StringBuilder sb = new StringBuilder();
-        for (Shader shader : program.getShadersList()) {
-          sb.append(SHADER_SEPARATOR);
-          sb.append("// " + shader.getType() + " Shader\n");
-          sb.append(SHADER_SEPARATOR);
-          sb.append(shader.getSource());
-          if (sb.charAt(sb.length() - 1) != '\n') {
-            sb.append('\n');
-          }
-          sb.append("\n\n");
-        }
-        return (sb.length() == 0) ? EMPTY_PROGRAM : sb.toString();
+        return ShaderPanel.Source.of(program);
       }
 
       @Override
-      protected void onUiThread(String result) {
+      protected void onUiThread(ShaderPanel.Source[] result) {
         callback.accept(result);
       }
     });
@@ -283,28 +259,31 @@ public class ShaderView extends Composite
   private static class ShaderPanel extends Composite
       implements Resources.Listener, AtomStream.Listener {
     private final Models models;
+    private final Theme theme;
     protected final Type type;
     private final ComboViewer shaderCombo;
-    private final SourceViewer sourcePanel;
+    private final Composite sourceComposite;
     private final Button pushButton;
+    private SourceViewer shaderSourceViewer;
 
     public ShaderPanel(Composite parent, Models models, Theme theme, Type type) {
       super(parent, SWT.NONE);
       this.models = models;
+      this.theme = theme;
       this.type = type;
 
       setLayout(new GridLayout(1, false));
       shaderCombo = createShaderSelector();
-      sourcePanel = createSourcePanel(!type.isEditable(), theme);
+      sourceComposite = createComposite(this, new FillLayout(SWT.VERTICAL));
 
       shaderCombo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-      sourcePanel.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      sourceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
       if (type.isEditable()) {
         pushButton = Widgets.createButton(this, "Push Changes",
             e -> type.updateShader(
                 (Data)shaderCombo.getElementAt(shaderCombo.getCombo().getSelectionIndex()),
-                sourcePanel.getDocument().get()));
+                shaderSourceViewer.getDocument().get()));
         pushButton.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
         pushButton.setEnabled(false);
       } else {
@@ -330,24 +309,35 @@ public class ShaderView extends Composite
       return combo;
     }
 
-    private SourceViewer createSourcePanel(boolean readOnly, Theme theme) {
-      SourceViewer viewer = new SourceViewer(this, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-      viewer.setEditable(!readOnly);
+    private SourceViewer createSourcePanel(Composite parent, Source source) {
+      Group group = createGroup(parent, source.label);
+      SourceViewer viewer =
+          new SourceViewer(group, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+      viewer.setEditable(type.isEditable());
       viewer.getTextWidget().setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
       viewer.configure(new GlslSourceConfiguration(theme));
+      viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));
       return viewer;
     }
 
     public void clearSource() {
-      sourcePanel.setDocument(new Document());
+      shaderSourceViewer = null;
+      for (Control child : sourceComposite.getChildren()) {
+        child.dispose();
+      }
       if (pushButton != null) {
         pushButton.setEnabled(false);
       }
     }
 
-    public void setSource(String source) {
-      sourcePanel.setDocument(GlslSourceConfiguration.createDocument(source));
-      if (pushButton != null) {
+    public void setSource(Source[] sources) {
+      clearSource();
+      SashForm sourceSash = new SashForm(sourceComposite, SWT.VERTICAL);
+      for (Source source : sources) {
+        shaderSourceViewer = createSourcePanel(sourceSash, source);
+      }
+      sourceSash.requestLayout();
+      if (sources.length > 0 && pushButton != null) {
         pushButton.setEnabled(true);
       }
     }
@@ -415,6 +405,38 @@ public class ShaderView extends Composite
         Event event = new Event();
         event.data = shaderCombo.getElementAt(index);
         notifyListeners(SWT.Selection, event);
+      }
+    }
+
+    public static class Source {
+      private static final Source EMPTY_PROGRAM = new Source("Program",
+          "// No shaders attached to this program at this point in the trace.");
+      private static final String EMPTY_SHADER =
+          "// No source attached to this shader at this point in the trace.";
+
+      public final String label;
+      public final String source;
+
+      public Source(String label, String source) {
+        this.label = label;
+        this.source = source;
+      }
+
+      public static Source of(Shader shader) {
+        return new Source(shader.getType() + " Shader",
+            shader.getSource().isEmpty() ? EMPTY_SHADER : shader.getSource());
+      }
+
+      public static Source[] of(Program program) {
+        if (program.getShadersCount() == 0) {
+          return new Source[] { EMPTY_PROGRAM };
+        }
+
+        Source[] source = new Source[program.getShadersCount()];
+        for (int i = 0; i < source.length; i++) {
+          source[i] = of(program.getShaders(i));
+        }
+        return source;
       }
     }
 
