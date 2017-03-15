@@ -220,6 +220,13 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetDepthBiasData>>::
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetLineWidthData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetLineWidthData>& t) {
+    spy->RecreateCmdSetLineWidth(observer, commandBuf, t->mLineWidth);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {
