@@ -257,7 +257,7 @@ VK_ANDROID_native_buffer
 
 {{define "IsExtensionSupported"}}
   {{$ext_name := index $.Arguments 0}}
-  {{$filters := Strings (Macro "EnabledExtensions") | SplitOn "\n"}}
+  {{$filters := Strings (Macro "EnabledExtensions") | SplitEOL}}
 
   {{range $f := $filters}}
     {{if eq $ext_name $f}}true{{end}}

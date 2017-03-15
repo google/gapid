@@ -73,7 +73,7 @@ func WriteCMake(ctx log.Context, w io.Writer) {
 // Note isTrimSpace is only testing the Latin1 spaces.
 func isTrimSpace(b byte) bool {
 	switch b {
-	case ' ', '\n':
+	case ' ', '\n', '\r':
 		return true
 	}
 	return false

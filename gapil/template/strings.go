@@ -24,7 +24,8 @@ import (
 
 type stringList []string
 
-// String returns the concatenation of all the string segments with no separator.
+// String returns the concatenation of all the string segments with no
+// separator.
 func (l stringList) String() string {
 	return strings.Join([]string(l), "")
 }
@@ -69,14 +70,15 @@ func (Functions) Strings(v ...interface{}) stringList {
 	return stringify(v...)
 }
 
-// JoinWith returns the concatenation of all the string segments with the specified separator.
+// JoinWith returns the concatenation of all the string segments with the
+// specified separator.
 func (Functions) JoinWith(sep string, v ...interface{}) string {
 	l := stringify(v...)
 	return strings.Join([]string(l), sep)
 }
 
-// SplitOn slices each string segement into all substrings separated by sep. The returned stringList
-// will not contain any occurances of sep.
+// SplitOn slices each string segement into all substrings separated by sep.
+// The returned stringList will not contain any occurances of sep.
 func (Functions) SplitOn(sep string, v ...interface{}) stringList {
 	l := stringify(v...)
 	out := stringList{}
@@ -90,7 +92,15 @@ func (Functions) SplitOn(sep string, v ...interface{}) stringList {
 	return out
 }
 
-// SplitUpperCase slices each string segment before and after each upper-case rune.
+// SplitEOL slices each string segement into all substrings separated by an end
+// of line delimiter (\n or \r\n).
+// The returned stringList will not contain any new lines.
+func (f Functions) SplitEOL(v ...interface{}) stringList {
+	return f.SplitOn("\n", f.SplitOn("\r\n", v...))
+}
+
+// SplitUpperCase slices each string segment before and after each upper-case
+// rune.
 func (Functions) SplitUpperCase(v ...interface{}) stringList {
 	l := stringify(v...)
 	out := stringList{}
@@ -114,8 +124,8 @@ func (Functions) SplitUpperCase(v ...interface{}) stringList {
 	return out
 }
 
-// SplitPascalCase slices each string segment at each transition from an letter rune to a upper-case
-// letter rune.
+// SplitPascalCase slices each string segment at each transition from an letter
+// rune to a upper-case letter rune.
 func (Functions) SplitPascalCase(v ...interface{}) stringList {
 	l := stringify(v...)
 	out := stringList{}

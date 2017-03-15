@@ -28,7 +28,7 @@
   {{AssertType $ "API"}}
 
   {{/* This is the list of functions that OpenGL32.dll needs to export. */}}
-  {{$opengl32_exports := Strings (Macro "OpenGL32Exports") | SplitOn "\n"}}
+  {{$opengl32_exports := Strings (Macro "OpenGL32Exports") | SplitEOL}}
 
   {{/* This is the list of functions that the spy exports. */}}
   {{$api_exports := (ForEach (AllCommands $) "CmdName") | Strings "wglGetProcAddress"}}
