@@ -5327,11 +5327,26 @@ cmd void vkCmdSetScissor(
   addCmd(commandBuffer, recreate_info, as!u32(0), doCmdSetScissor)
 }
 
+
+@internal
+class RecreateCmdSetLineWidthData{
+  f32             LineWidth
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetLineWidth(
+    VkCommandBuffer commandBuffer,
+    f32             lineWidth) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
+  addCmd(commandBuffer, new!RecreateCmdSetLineWidthData(lineWidth),Unimplemented(), doCmdNop)
 }
 
 @internal

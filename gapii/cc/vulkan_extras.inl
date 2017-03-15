@@ -94,6 +94,7 @@ void SpyOverride_RecreateCmdDispatch(VkCommandBuffer, uint32_t, uint32_t, uint32
 void SpyOverride_RecreateCmdSetScissor(VkCommandBuffer, uint32_t, uint32_t, const VkRect2D*) {}
 void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*) {}
 void SpyOverride_RecreateCmdSetDepthBias(VkCommandBuffer, float, float, float) {}
+void SpyOverride_RecreateCmdSetLineWidth(VkCommandBuffer, float) {}
 void SpyOverride_RecreateCmdPushConstants(VkCommandBuffer, VkPipelineLayout, uint32_t, uint32_t, uint32_t, const void*) {}
 void SpyOverride_RecreateCmdBeginQuery(VkCommandBuffer, VkQueryPool, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdEndQuery(VkCommandBuffer, VkQueryPool, uint32_t) {}
