@@ -1,0 +1,21 @@
+---
+title: About
+sidebar: About
+layout: default
+permalink: /about/
+---
+
+GAPID is a developer tool for recording and inspecting calls made by an application to the graphics driver.
+
+Once a capture of the target application has been made, GAPID lets you inspect every call made by the application in an 'offline mode'.
+
+GAPID can 'replay' the command stream, letting you visualize the frame composition draw-call by draw-call, and inspect the driver state at any point in the stream. Replay also supports modifications, allowing you to tweak command parameters and shader source to instantly see what effect this would have on the frame.
+
+GAPID can also visualize the textures, shaders and draw call geometry used by the application.
+
+GAPID support the OpenGL ES and Vulkan graphics APIs.
+GAPID can trace either on Android, and Vulkan applications on Windows, MacOS and Linux.
+
+While GAPID is primarily targetted for games developers, it can also developers to inspect the low-level 2D graphics calls being made by the Android graphics framework.
+
+GAPID is under active development and has [known issues](https://github.com/google/gapid/issues). That said, we believe GAPID is usable and would love for feedback.
