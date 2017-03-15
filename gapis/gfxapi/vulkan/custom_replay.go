@@ -616,6 +616,19 @@ func (a *RecreateCmdClearColorImage) Mutate(ctx log.Context, s *gfxapi.State, b 
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdClearDepthStencilImage(
+		a.CommandBuffer,
+		a.Image,
+		a.ImageLayout,
+		memory.Pointer(a.PDepthStencil),
+		a.RangeCount,
+		memory.Pointer(a.PRanges),
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdResetQueryPool) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdResetQueryPool(
 		a.CommandBuffer,

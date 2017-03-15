@@ -6434,6 +6434,28 @@ cmd void vkCmdClearColorImage(
   addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
+@internal
+class RecreateCmdClearDepthStencilImageData{
+  VkImage Image
+  VkImageLayout ImageLayout
+  VkClearDepthStencilValue DepthStencil
+  map!(u32, VkImageSubresourceRange) Ranges
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdClearDepthStencilImage(
+    VkCommandBuffer                 commandBuffer,
+    VkImage                         image,
+    VkImageLayout                   imageLayout,
+    const VkClearDepthStencilValue* pDepthStencil,
+    u32                             rangeCount,
+    const VkImageSubresourceRange*  pRanges) {
+  _ = pDepthStencil[0]
+  read(pRanges[0:rangeCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdClearDepthStencilImage(
@@ -6443,8 +6465,17 @@ cmd void vkCmdClearDepthStencilImage(
     const VkClearDepthStencilValue* pDepthStencil,
     u32                             rangeCount,
     const VkImageSubresourceRange*  pRanges) {
-  _ = pDepthStencil[0]
-  read(pRanges[0:rangeCount])
+  depthStencil := pDepthStencil[0]
+  ranges := pRanges[0:rangeCount]
+  recreate_data := new!RecreateCmdClearDepthStencilImageData(
+      Image: image,
+      ImageLayout: imageLayout,
+      DepthStencil: depthStencil,
+  )
+  for i in (0 .. rangeCount) {
+    recreate_data.Ranges[as!u32(i)] = ranges[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @internal
