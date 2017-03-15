@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/framework/binary/registry"
@@ -40,6 +41,21 @@ var (
 func init() {
 	// Search directory that this executable is in.
 	if path, err := file.FindExecutable(file.ExecutablePath().Parent().Join(BinaryName).System()); err == nil {
+		GapisPath = path
+		return
+	}
+	// Search standard package structure
+	packagePath := file.Abs(".")
+	switch device.Host(log.Background()).Configuration.OS.Kind {
+	case device.Windows:
+		packagePath = packagePath.Join("windows")
+	case device.OSX:
+		packagePath = packagePath.Join("osx")
+	case device.Linux:
+		packagePath = packagePath.Join("linux")
+	}
+	packagePath = packagePath.Join("x86_64")
+	if path, err := file.FindExecutable(packagePath.Join(BinaryName).System()); err == nil {
 		GapisPath = path
 		return
 	}
