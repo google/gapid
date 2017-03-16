@@ -6,6 +6,33 @@ GAPID is a collection of tools that allows you to inspect, tweak and replay call
 
 GAPID can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
 
+<table>
+  <tr>
+    <td>
+      <a href="https://google.github.io/gapid/images/screenshots/framebuffer.png">
+        <img src="https://google.github.io/gapid/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
+      </a>
+    </td>
+    <td>
+      <a href="https://google.github.io/gapid/images/screenshots/geometry.png">
+        <img src="https://google.github.io/gapid/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://google.github.io/gapid/images/screenshots/textures.png">
+        <img src="https://google.github.io/gapid/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
+      </a>
+    </td>
+    <td>
+      <a href="https://google.github.io/gapid/images/screenshots/shaders.png">
+        <img src="https://google.github.io/gapid/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
+      </a>
+    </td>
+  </tr>
+</table>
+
 ## Status
 GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
 
