@@ -99,6 +99,7 @@ void SpyOverride_RecreateCmdPushConstants(VkCommandBuffer, VkPipelineLayout, uin
 void SpyOverride_RecreateCmdBeginQuery(VkCommandBuffer, VkQueryPool, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdEndQuery(VkCommandBuffer, VkQueryPool, uint32_t) {}
 void SpyOverride_RecreateCmdResetQueryPool(VkCommandBuffer, VkQueryPool, uint32_t, uint32_t) {}
+void SpyOverride_RecreateCmdSetBlendConstants(VkCommandBuffer, float [4]) {}
 
 void SpyOverride_RecreateCmdDrawIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdDrawIndexedIndirect(VkCommandBuffer, VkBuffer, VkDeviceSize, uint32_t, uint32_t) {}
