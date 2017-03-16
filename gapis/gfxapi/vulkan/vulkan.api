@@ -6343,6 +6343,27 @@ cmd void vkCmdCopyBufferToImage(
   addCmd(commandBuffer, recreateArgs, copyArgs, doCmdCopyBufferToImage)
 }
 
+@internal
+class RecreateCopyImageToBufferData {
+  VkImage                       SrcImage
+  VkImageLayout                 SrcImageLayout
+  VkBuffer                      DstBuffer
+  map!(u32, VkBufferImageCopy)  Regions
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdCopyImageToBuffer(
+    VkCommandBuffer          commandBuffer,
+    VkImage                  srcImage,
+    VkImageLayout            srcImageLayout,
+    VkBuffer                 dstBuffer,
+    u32                      regionCount,
+    const VkBufferImageCopy* pRegions) {
+  read(pRegions[0:regionCount])
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyImageToBuffer(
@@ -6352,7 +6373,16 @@ cmd void vkCmdCopyImageToBuffer(
     VkBuffer                 dstBuffer,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
-  read(pRegions[0:regionCount])
+  regions := pRegions[0:regionCount]
+  recreate_data := new!RecreateCopyImageToBufferData(
+      SrcImage: srcImage,
+      SrcImageLayout: srcImageLayout,
+      DstBuffer: dstBuffer,
+  )
+  for i in (0 .. regionCount) {
+    recreate_data.Regions[as!u32(i)] = regions[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 sub void doCmdUpdateBuffer(VkBuffer args) {

@@ -287,6 +287,23 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>
         t->mSrcBuffer, t->mDstImage, t->mLayout, buffers.size(), buffers.data());
 }
 
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCopyImageToBufferData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCopyImageToBufferData>& t) {
+  if (!spy->Images.count(t->mSrcImage) || !spy->Buffers.count(t->mDstBuffer)) {
+    return;
+  }
+  std::vector<VkBufferImageCopy> regions;
+  for (size_t i = 0; i < t->mRegions.size(); ++i) {
+    regions.push_back(t->mRegions[i]);
+  }
+  spy->RecreateCmdCopyImageToBuffer(observer, commandBuf, t->mSrcImage,
+                                    t->mSrcImageLayout, t->mDstBuffer,
+                                    regions.size(), regions.data());
+}
+
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBlitImageData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,

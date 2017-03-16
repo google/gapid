@@ -509,6 +509,18 @@ func (a *RecreateCmdCopyBufferToImage) Mutate(ctx log.Context, s *gfxapi.State, 
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdCopyImageToBuffer(
+		a.CommandBuffer,
+		a.SrcImage,
+		a.SrcImageLayout,
+		a.DstBuffer,
+		a.RegionCount,
+		memory.Pointer(a.PRegions))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdBlitImage) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdBlitImage(
 		a.CommandBuffer,

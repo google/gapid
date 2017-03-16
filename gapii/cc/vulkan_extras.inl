@@ -88,6 +88,7 @@ void SpyOverride_RecreateCmdBlitImage(VkCommandBuffer, VkImage, uint32_t/*srcIma
 void SpyOverride_RecreateEndRenderPass(VkCommandBuffer) {}
 void SpyOverride_RecreateCmdDrawIndexed(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdCopyBufferToImage(VkCommandBuffer, VkBuffer, VkImage, uint32_t, uint32_t, const VkBufferImageCopy*) {}
+void SpyOverride_RecreateCmdCopyImageToBuffer(VkCommandBuffer, VkImage, uint32_t/*srcImageLayout*/, VkBuffer, uint32_t, const VkBufferImageCopy*) {}
 void SpyOverride_RecreateCmdCopyImage(VkCommandBuffer, VkImage, uint32_t, VkImage, uint32_t, uint32_t, const VkImageCopy*) {}
 void SpyOverride_RecreateCmdDraw(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdDispatch(VkCommandBuffer, uint32_t, uint32_t, uint32_t) {}
