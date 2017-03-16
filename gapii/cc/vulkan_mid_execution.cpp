@@ -1364,7 +1364,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
                         for (size_t j = 0 ; j < binding.mImageBinding.size(); ++j) {
-                            if (!binding.mImageBinding[j]->mSampler ||
+                            if (!binding.mImageBinding[j]->mSampler &&
                                 !binding.mImageBinding[j]->mImageView) {
                                     continue;
                             }
