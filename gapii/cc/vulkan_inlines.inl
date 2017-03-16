@@ -406,6 +406,21 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearColorImageData>
                                     t->mImageLayout, &color,
                                     clear_ranges.size(), clear_ranges.data());
 }
+
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdClearDepthStencilImageData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdClearDepthStencilImageData>& t) {
+  VkClearDepthStencilValue& depthStencil = t->mDepthStencil;
+  std::vector<VkImageSubresourceRange> clear_ranges;
+  for (size_t i = 0; i < t->mRanges.size(); ++i) {
+    clear_ranges.push_back(t->mRanges[i]);
+  }
+  spy->RecreateCmdClearDepthStencilImage(
+      observer, commandBuf, t->mImage, t->mImageLayout, &depthStencil,
+      clear_ranges.size(), clear_ranges.data());
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
