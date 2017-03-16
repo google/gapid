@@ -173,8 +173,10 @@ func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources g
 		// represent a cubemap
 		if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
 			// Cubemap
-			ctx.Error().Log("ResourceData for cubemap")
 			cubeMapLevels := make([]*gfxapi.CubemapLevel, len(t.Layers[0].Levels))
+			for l := range cubeMapLevels {
+				cubeMapLevels[l] = &gfxapi.CubemapLevel{}
+			}
 			for layerIndex, imageLayer := range t.Layers {
 				for levelIndex, imageLevel := range imageLayer.Levels {
 					img := &image.Info2D{
