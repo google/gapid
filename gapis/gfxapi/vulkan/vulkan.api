@@ -5383,14 +5383,34 @@ cmd void vkCmdSetDepthBias(
   ), as!u32(0), doCmdSetDepthBias)
 }
 
+
+@internal
+class RecreateCmdSetBlendConstantsData{
+  f32 R
+  f32 G
+  f32 B
+  f32 A
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetBlendConstants(
+    VkCommandBuffer commandBuffer,
+    @readonly f32[4] blendConstants) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetBlendConstants(
     VkCommandBuffer commandBuffer,
-    // TODO(jessehall): apic only supports 'const' on pointer types. Using
-    // an annotation as a quick hack to pass this to the template without
-    // having to modify the AST and semantic model.
     @readonly f32[4] blendConstants) {
+  addCmd(commandBuffer,
+    new!RecreateCmdSetBlendConstantsData(
+      blendConstants[0],
+      blendConstants[1],
+      blendConstants[2],
+      blendConstants[3]), Unimplemented(), doCmdNop)
 }
 
 @threadSafety("app")

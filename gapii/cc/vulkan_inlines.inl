@@ -227,6 +227,19 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetLineWidthData>>::
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetBlendConstantsData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetBlendConstantsData>& t) {
+    float constants[4] = {
+        t->mR,
+        t->mG,
+        t->mB,
+        t->mA
+    };
+    spy->RecreateCmdSetBlendConstants(observer, commandBuf, constants);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindPipelineData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindPipelineData>& t) {
