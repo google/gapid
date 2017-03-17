@@ -5383,7 +5383,6 @@ cmd void vkCmdSetDepthBias(
   ), as!u32(0), doCmdSetDepthBias)
 }
 
-
 @internal
 class RecreateCmdSetBlendConstantsData{
   f32 R
@@ -6445,6 +6444,25 @@ cmd void vkCmdUpdateBuffer(
     doCmdUpdateBuffer)
 }
 
+@internal
+class RecreateCmdFillBufferData{
+  VkBuffer Buffer
+  VkDeviceSize DstBuffer
+  VkDeviceSize Size
+  u32 Data
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdFillBuffer(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        dstBuffer,
+    VkDeviceSize    dstOffset,
+    VkDeviceSize    size,
+    u32             data) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdFillBuffer(
@@ -6453,6 +6471,12 @@ cmd void vkCmdFillBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    size,
     u32             data) {
+  addCmd(commandBuffer,
+    new!RecreateCmdFillBufferData(
+      dstBuffer,
+      dstOffset,
+      size,
+      data), Unimplemented(), doCmdNop)
 }
 
 @internal
