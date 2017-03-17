@@ -667,6 +667,21 @@ func (a *RecreateCmdResetQueryPool) Mutate(ctx log.Context, s *gfxapi.State, b *
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdCopyQueryPoolResults(
+		a.CommandBuffer,
+		a.QueryPool,
+		a.FirstQuery,
+		a.QueryCount,
+		a.DstBuffer,
+		a.DstOffset,
+		a.Stride,
+		a.Flags,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkGetPhysicalDeviceQueueFamilyProperties(
 		a.PhysicalDevice,

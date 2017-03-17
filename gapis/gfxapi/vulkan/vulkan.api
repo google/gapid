@@ -6856,6 +6856,31 @@ cmd void vkCmdWriteTimestamp(
     u32                     query) {
 }
 
+@internal
+class RecreateCmdCopyQueryPoolResultsData{
+  VkQueryPool        QueryPool
+  u32                FirstQuery
+  u32                QueryCount
+  VkBuffer           DstBuffer
+  VkDeviceSize       DstOffset
+  VkDeviceSize       Stride
+  VkQueryResultFlags Flags
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdCopyQueryPoolResults(
+    VkCommandBuffer    commandBuffer,
+    VkQueryPool        queryPool,
+    u32                firstQuery,
+    u32                queryCount,
+    VkBuffer           dstBuffer,
+    VkDeviceSize       dstOffset,
+    VkDeviceSize       stride,
+    VkQueryResultFlags flags) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyQueryPoolResults(
@@ -6867,6 +6892,16 @@ cmd void vkCmdCopyQueryPoolResults(
     VkDeviceSize       dstOffset,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
+  recreate_data := new!RecreateCmdCopyQueryPoolResultsData(
+    QueryPool: queryPool,
+    QueryCount: firstQuery,
+    QueryCount: queryCount,
+    DstBuffer: dstBuffer,
+    DstOffset: dstOffset,
+    Stride: stride,
+    Flags: flags
+  )
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @override
