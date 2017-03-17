@@ -159,7 +159,7 @@ func (a api) Replay(
 
 	if optimize && !config.DisableDeadCodeElimination {
 		atoms = atom.NewList() // DeadAtomRemoval generates atoms.
-		transforms.Add(deadCodeElimination)
+		transforms.Prepend(deadCodeElimination)
 	}
 
 	if issues != nil {

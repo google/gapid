@@ -54,6 +54,11 @@ func (l *Transforms) Add(t ...Transformer) {
 	}
 }
 
+// Prepend adds the given transformer to the beginning of the transform chain.
+func (l *Transforms) Prepend(t Transformer) {
+	*l = append([]Transformer{t}, *l...)
+}
+
 // Transform is a helper for building simple Transformers that are implemented
 // by function f. name is used to identify the transform when logging.
 func Transform(name string, f func(ctx log.Context, id atom.ID, atom atom.Atom, output Writer)) Transformer {
