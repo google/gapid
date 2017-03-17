@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/shell"
 )
 
 func doGlob(ctx log.Context, cfg Config) {
@@ -57,10 +56,7 @@ func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 }
 
 func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
-	env := shell.CloneEnv().AddPathStart("PATH",
-		cfg.bin().System(),
-		cfg.JavaHome.Join("bin").System(),
-	)
+	env := env(cfg)
 	args := []string{
 		"-GNinja",
 		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.Slash(),
@@ -96,13 +92,7 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 }
 
 func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
-	env := shell.CloneEnv().AddPathStart("PATH",
-		cfg.bin().System(),
-		cfg.JavaHome.Join("bin").System(),
-	)
-	if !cfg.MSYS2Path.IsEmpty() {
-		env.AddPathStart("PATH", cfg.MSYS2Path.Join("mingw64/bin").System()) // Required to pick up DLLs
-	}
+	env := env(cfg)
 	args := targets
 	if options.DryRun {
 		args = append([]string{"-n"}, args...)
