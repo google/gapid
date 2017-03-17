@@ -40,6 +40,19 @@ func env(cfg Config) *shell.Env {
 		system32 := cmd.Parent()
 		windows := system32.Parent()
 		path = append(path, system32.System(), windows.System())
+	} else {
+		added := map[file.Path]bool{}
+		for _, name := range []string{"sh", "uname", "sed", "clang", "gcc", "node"} {
+			exe, err := file.FindExecutable(name)
+			if err != nil {
+				continue
+			}
+			dir := exe.Parent()
+			if !added[dir] {
+				path = append(path, dir.System())
+				added[dir] = true
+			}
+		}
 	}
 
 	path = append(path,
