@@ -284,6 +284,19 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdResetQueryPoolData>>
         t->mQueryPool, t->mFirstQuery, t->mQueryCount);
 }
 
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdCopyQueryPoolResultsData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdCopyQueryPoolResultsData>& t) {
+  if (!spy->QueryPools.count(t->mQueryPool)) {
+    return;
+  }
+  spy->RecreateCmdCopyQueryPoolResults(
+      observer, commandBuf, t->mQueryPool, t->mFirstQuery, t->mQueryCount,
+      t->mDstBuffer, t->mDstOffset, t->mStride, t->mFlags);
+}
+
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
