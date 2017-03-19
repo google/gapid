@@ -49,8 +49,6 @@ func doReplay(t *testing.T, f func(*builder.Builder)) {
 
 	device := bind.Host(ctx)
 	client := gapir.New(ctx)
-	client.Connect(ctx, device, nil)
-
 	abi := device.Instance().GetConfiguration().PreferredABI(nil)
 	connection, err := client.Connect(ctx, device, abi)
 	if err != nil {
