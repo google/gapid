@@ -19,9 +19,13 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Ranges.last;
-import static com.google.gapid.widgets.Widgets.withSpans;
+import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createTableColumn;
+import static com.google.gapid.widgets.Widgets.packColumns;
+import static com.google.gapid.widgets.Widgets.sorting;
 
 import com.google.common.collect.Lists;
+import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.AtomStream;
@@ -43,17 +47,20 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.service.atom.AtomList;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.UiErrorCallback;
 import com.google.gapid.widgets.ImagePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -74,13 +81,13 @@ import java.util.logging.Logger;
  */
 public class TextureView extends Composite
     implements Tab, Capture.Listener, Resources.Listener, AtomStream.Listener {
-  private static final Logger LOG = Logger.getLogger(TextureView.class.getName());
+  protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Client client;
   private final Models models;
   private final FutureController rpcController = new SingleInFlight();
   private final GotoAction gotoAction;
-  private final ComboViewer textureCombo;
+  private final TableViewer textureTable;
   protected final Loadable loading;
   private final ImagePanel imagePanel;
 
@@ -91,14 +98,19 @@ public class TextureView extends Composite
     this.gotoAction =
         new GotoAction(this, widgets.theme, a -> models.atoms.selectAtoms(a, 1, true));
 
-    setLayout(new GridLayout(2, false));
-    ToolBar toolBar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
-    textureCombo = createTextureSelector();
-    imagePanel = createImagePanel(widgets);
+    setLayout(new FillLayout(SWT.VERTICAL));
+    SashForm splitter = new SashForm(this, SWT.VERTICAL);
+    textureTable = createTextureSelector(splitter);
+
+    Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
+    ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
+    imagePanel = createImagePanel(imageAndToolbar, widgets);
     loading = imagePanel.getLoading();
 
-    toolBar.setLayoutData(withSpans(new GridData(SWT.LEFT, SWT.FILL, false, true), 1, 2));
-    textureCombo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    splitter.setWeights(models.settings.texturesSplitterWeights);
+    addListener(SWT.Dispose, e -> models.settings.texturesSplitterWeights = splitter.getWeights());
+
+    toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     imagePanel.createToolbar(toolBar, widgets.theme, true);
@@ -114,24 +126,41 @@ public class TextureView extends Composite
       gotoAction.dispose();
     });
 
-    textureCombo.getCombo().addListener(SWT.Selection, e -> updateSelection());
+    textureTable.getTable().addListener(SWT.Selection, e -> updateSelection());
   }
 
   protected void setImage(FetchedImage result) {
     imagePanel.setImage(result);
   }
 
-  private ComboViewer createTextureSelector() {
-    ComboViewer combo = new ComboViewer(this, SWT.READ_ONLY);
-    combo.setContentProvider(ArrayContentProvider.getInstance());
-    combo.setLabelProvider(new LabelProvider());
-    combo.setUseHashlookup(true);
-    combo.getCombo().setVisibleItemCount(10);
-    return combo;
+  private static TableViewer createTextureSelector(Composite parent) {
+    TableViewer viewer = new TableViewer(parent, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+    viewer.setContentProvider(ArrayContentProvider.getInstance());
+    viewer.setUseHashlookup(true);
+    viewer.getTable().setHeaderVisible(true);
+    viewer.getTable().setLinesVisible(true);
+
+    sorting(viewer,
+        createTableColumn(viewer, "Type", Data::getType,
+            (d1, d2) -> d1.getType().compareTo(d2.getType())),
+        createTableColumn(viewer, "ID", Data::getId,
+            (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
+        createTableColumn(viewer, "Name", Data::getLabel,
+            (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())),
+        createTableColumn(viewer, "Width", Data::getWidth,
+            (d1, d2) -> Integer.compare(d1.getSortWidth(), d2.getSortWidth())),
+        createTableColumn(viewer, "Height", Data::getHeight,
+            (d1, d2) -> Integer.compare(d1.getSortHeight(), d2.getSortHeight())),
+        createTableColumn(viewer, "Levels", Data::getLevels,
+            (d1, d2) -> Integer.compare(d1.getSortLevels(), d2.getSortLevels())),
+        createTableColumn(viewer, "Format", Data::getFormat,
+            (d1, d2) -> d1.getFormat().compareTo(d2.getFormat())));
+
+    return viewer;
   }
 
-  private ImagePanel createImagePanel(Widgets widgets) {
-    ImagePanel panel = new ImagePanel(this, widgets);
+  private static ImagePanel createImagePanel(Composite parent, Widgets widgets) {
+    ImagePanel panel = new ImagePanel(parent, widgets);
     return panel;
   }
 
@@ -177,18 +206,20 @@ public class TextureView extends Composite
         addTextures(textures, resources);
       }
 
-      int selection = textureCombo.getCombo().getSelectionIndex();
-      textureCombo.setInput(textures);
-      textureCombo.refresh();
+      ViewerComparator comparator = textureTable.getComparator();
+      textureTable.setComparator(null);
+      int selection = textureTable.getTable().getSelectionIndex();
+      textureTable.setInput(textures);
+      packColumns(textureTable.getTable());
 
       if (!resourcesChanged && selection >= 0 && selection < textures.size()) {
-        textureCombo.getCombo().select(selection);
+        textureTable.getTable().select(selection);
       }
+      textureTable.setComparator(comparator);
 
       if (textures.isEmpty()) {
         loading.showMessage(Info, Messages.NO_TEXTURES);
-      } else if (textureCombo.getCombo().getSelectionIndex() <= 0) {
-        textureCombo.getCombo().select(0);
+      } else if (textureTable.getTable().getSelectionIndex() < 0) {
         loading.showMessage(Info, Messages.SELECT_TEXTURE);
       }
       updateSelection();
@@ -200,20 +231,18 @@ public class TextureView extends Composite
 
   private void clear() {
     gotoAction.clear();
-    textureCombo.setInput(Collections.emptyList());
-    textureCombo.refresh();
+    textureTable.setInput(Collections.emptyList());
+    textureTable.getTable().requestLayout();
   }
 
   private void updateSelection() {
-    int selection = textureCombo.getCombo().getSelectionIndex();
+    int selection = textureTable.getTable().getSelectionIndex();
     if (selection < 0) {
       setImage(null);
       gotoAction.clear();
-    } else if (selection == 0) {
-      // Ignore the null item selection;
     } else {
       loading.startLoading();
-      Data data = (Data)textureCombo.getElementAt(selection);
+      Data data = (Data)textureTable.getElementAt(selection);
       Rpc.listen(FetchedImage.load(client, data.path.getResourceData()), rpcController,
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
         @Override
@@ -256,11 +285,10 @@ public class TextureView extends Composite
     CommandRange range = models.atoms.getSelectedAtoms();
     for (Service.Resource info : resources.getResourcesList()) {
       if (firstAccess(info) <= last(range)) {
-        if (textures.isEmpty()) {
-          textures.add(Data.NULL_DATA);
-        }
-        textures.add(
-            new Data(resourceAfter(models.atoms.getPath(), range, info.getId()), info, typeLabel));
+        Data data =
+            new Data(resourceAfter(models.atoms.getPath(), range, info.getId()), info, typeLabel);
+        textures.add(data);
+        data.load(client, textureTable);
       }
     }
   }
@@ -287,37 +315,120 @@ public class TextureView extends Composite
    * Texture metadata.
    */
   private static class Data {
-    public static final Data NULL_DATA = new Data(null, null, null) {
-      @Override
-      public String toString() {
-        return Messages.SELECT_TEXTURE;
-      }
-    };
-
     public final Path.Any path;
     public final Service.Resource info;
     public final String typeLabel;
-
-    public Image.Info2D imageInfo;
-    public String extraLabel;
+    protected AdditionalInfo imageInfo;
 
     public Data(Path.Any path, Service.Resource info, String typeLabel) {
       this.path = path;
       this.info = info;
       this.typeLabel = typeLabel;
+      this.imageInfo = AdditionalInfo.NULL;
     }
 
-    @Override
-    public String toString() {
-      String label = info.getLabel();
-      return typeLabel + " " + info.getHandle() +
-             (label.isEmpty() ? "" : " [" + label + "]") +
-             (imageInfo == null ? "" : " - " + getInfoString()) +
-             (extraLabel == null ? "" : " " + extraLabel);
+    public String getType() {
+      return typeLabel;
     }
 
-    private String getInfoString() {
-      return imageInfo.getFormat() + " - " + imageInfo.getWidth() + "x" + imageInfo.getHeight();
+    public String getId() {
+      return info.getHandle();
+    }
+
+    public long getSortId() {
+      return info.getOrder();
+    }
+
+    public String getLabel() {
+      return info.getLabel();
+    }
+
+    public String getWidth() {
+      return imageInfo.getWidth();
+    }
+
+    public int getSortWidth() {
+      return imageInfo.level0.getWidth();
+    }
+
+    public String getHeight() {
+      return imageInfo.getHeight();
+    }
+
+    public int getSortHeight() {
+      return imageInfo.level0.getHeight();
+    }
+
+    public String getLevels() {
+      return imageInfo.getLevels();
+    }
+
+    public int getSortLevels() {
+      return imageInfo.levelCount;
+    }
+
+    public String getFormat() {
+      return imageInfo.getFormat();
+    }
+
+    public void load(Client client, TableViewer viewer) {
+      Rpc.listen(
+          client.get(path), new UiCallback<Service.Value, AdditionalInfo>(viewer.getTable(), LOG) {
+        @Override
+        protected AdditionalInfo onRpcThread(Result<Service.Value> result)
+            throws RpcException, ExecutionException {
+          return AdditionalInfo.from(result.get());
+        }
+
+        @Override
+        protected void onUiThread(AdditionalInfo result) {
+          imageInfo = result;
+          viewer.refresh();
+        }
+      });
+    }
+
+    private static class AdditionalInfo {
+      public static final AdditionalInfo NULL =
+          new AdditionalInfo(Image.Info2D.getDefaultInstance(), 0);
+
+      public final Image.Info2D level0;
+      public final int levelCount;
+
+      public AdditionalInfo(Image.Info2D level0, int levelCount) {
+        this.level0 = level0;
+        this.levelCount = levelCount;
+      }
+
+      public static AdditionalInfo from(Service.Value value) {
+        switch (value.getValCase()) {
+          case TEXTURE_2D:
+            GfxAPI.Texture2D t = value.getTexture2D();
+            return (t.getLevelsCount() == 0) ? NULL :
+              new AdditionalInfo(t.getLevels(0), t.getLevelsCount());
+          case CUBEMAP:
+            GfxAPI.Cubemap c = value.getCubemap();
+            return (c.getLevelsCount() == 0) ? NULL :
+              new AdditionalInfo(c.getLevels(0).getNegativeX(), c.getLevelsCount());
+          default: return NULL;
+        }
+      }
+
+      public String getWidth() {
+        return (levelCount == 0) ? "" : String.valueOf(level0.getWidth());
+      }
+
+      public String getHeight() {
+        return (levelCount == 0) ? "" : String.valueOf(level0.getHeight());
+      }
+
+      public String getFormat() {
+        return (levelCount == 0) ? "" : level0.getFormat().getName();
+      }
+
+      public String getLevels() {
+        return (levelCount == 0) ? "" : String.valueOf(levelCount);
+      }
     }
   }
 
