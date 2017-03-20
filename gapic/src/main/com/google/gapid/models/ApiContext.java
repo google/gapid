@@ -15,6 +15,8 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.Ranges.commands;
+import static com.google.gapid.util.Ranges.first;
 import static com.google.gapid.util.Ranges.last;
 import static java.util.Arrays.stream;
 
@@ -185,6 +187,11 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
         public boolean contains(long index) {
           return true;
         }
+
+        @Override
+        public CommandRange findClosest(CommandRange range) {
+          return range;
+        }
       };
     }
 
@@ -202,6 +209,20 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
 
     public boolean contains(long index) {
       return Ranges.contains(context.getRangesList(), index) >= 0;
+    }
+
+    public CommandRange findClosest(CommandRange range) {
+      int index = Ranges.contains(context.getRangesList(), last(range));
+      if (index >= 0) {
+        return commands(last(range), 1);
+      } else if (index == -1) {
+        // The given range ends before any of our commands.
+        return (context.getRangesCount() == 0) ? null : commands(first(context.getRanges(0)), 1);
+      } else {
+        // Return the end of the range just before the given range.
+        // ...] [i - 1] range [i] [...   (i = -index - 1)
+        return commands(last(context.getRanges((-index - 1) - 1)), 1);
+      }
     }
 
     @Override
