@@ -115,7 +115,7 @@ const (
 func (p LogcatPriority) Severity() log.Severity {
 	switch p {
 	case Verbose:
-		return log.Debug
+		return log.Verbose
 	case Debug:
 		return log.Debug
 	case Info:

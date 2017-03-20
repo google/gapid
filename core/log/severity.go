@@ -20,16 +20,18 @@ import "github.com/google/gapid/core/app/flags"
 type Severity int32
 
 const (
-	// Debug indicates verbose debug-level messages.
-	Debug Severity = 0
+	// Verbose indicates extremely verbose level messages.
+	Verbose Severity = 0
+	// Debug indicates debug-level messages.
+	Debug Severity = 1
 	// Info indicates minor informational messages that should generally be ignored.
-	Info Severity = 1
+	Info Severity = 2
 	// Warning indicates issues that might affect performance or compatibility, but could be ignored.
-	Warning Severity = 2
+	Warning Severity = 3
 	// Error indicates non terminal failure conditions that may have an effect on results.
-	Error Severity = 3
+	Error Severity = 4
 	// Fatal indicates a fatal error and the process should be terminated.
-	Fatal Severity = 4
+	Fatal Severity = 5
 )
 
 func (s Severity) String() string {

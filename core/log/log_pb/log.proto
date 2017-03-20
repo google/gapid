@@ -62,18 +62,21 @@ message Value {
 
 // Severity defines the severity of a logging message.
 enum Severity {
-    // Debug indicates verbose debug-level messages.
-    Debug = 0;
+    // Verbose indicates extremely verbose level messages.
+    Verbose = 0;
+
+    // Debug indicates debug-level messages.
+    Debug = 1;
 
     // Info indicates minor informational messages that should generally be ignored.
-    Info = 1;
+    Info = 2;
 
     // Warning indicates issues that might affect performance or compatibility, but could be ignored.
-    Warning = 2;
+    Warning = 3;
 
     // Error indicates non terminal failure conditions that may have an effect on results.
-    Error = 3;
+    Error = 4;
 
     // Fatal indicates a fatal error and the process should be terminated.
-    Fatal = 4;
+    Fatal = 5;
 }
