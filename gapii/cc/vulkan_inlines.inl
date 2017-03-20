@@ -52,10 +52,12 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdPipelineBarrierData>
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdPipelineBarrierData>& t) {
     std::vector<VkMemoryBarrier> memory_barriers;
+    memory_barriers.reserve(t->mMemoryBarriers.size());
     for (size_t i = 0; i < t->mMemoryBarriers.size(); ++i) {
         memory_barriers.push_back(t->mMemoryBarriers[i]);
     }
     std::vector<VkBufferMemoryBarrier> buffer_memory_barriers;
+    memory_barriers.reserve(t->mBufferMemoryBarriers.size());
     for (size_t i = 0; i < t->mBufferMemoryBarriers.size(); ++i) {
         buffer_memory_barriers.push_back(t->mBufferMemoryBarriers[i]);
         if (!spy->Buffers.count(t->mBufferMemoryBarriers[i].mbuffer)) {
@@ -63,6 +65,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdPipelineBarrierData>
         }
     }
     std::vector<VkImageMemoryBarrier> image_memory_barriers;
+    memory_barriers.reserve(t->mImageMemoryBarriers.size());
     for (size_t i = 0; i < t->mImageMemoryBarriers.size(); ++i) {
         image_memory_barriers.push_back(t->mImageMemoryBarriers[i]);
         if (!spy->Images.count(t->mImageMemoryBarriers[i].mimage)) {
@@ -85,6 +88,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdCopyBufferData>>::op
         return;
     }
     std::vector<VkBufferCopy> buffer_copies;
+    buffer_copies.reserve(t->mCopyRegions.size());
     for (size_t i = 0; i < t->mCopyRegions.size(); ++i) {
         buffer_copies.push_back(t->mCopyRegions[i]);
     }
@@ -98,6 +102,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdResolveImageData>>::
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdResolveImageData>& t) {
     std::vector<VkImageResolve> image_resolves;
+    image_resolves.reserve(t->mResolveRegions.size());
     if (!spy->Images.count(t->mSrcImage) ||
         !spy->Images.count(t->mDstImage)) {
         return;
@@ -119,6 +124,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBeginRenderPassData>
         return;
     }
     std::vector<VkClearValue> clear_values;
+    clear_values.reserve(t->mClearValues.size());
     for (size_t i = 0; i < t->mClearValues.size(); ++i) {
         clear_values.push_back(t->mClearValues[i]);
     }
@@ -140,10 +146,12 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindDescriptorSetsDa
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdBindDescriptorSetsData>& t) {
     std::vector<uint32_t> dynamic_offsets;
+    dynamic_offsets.reserve(t->mDynamicOffsets.size());
     for (size_t i = 0; i < t->mDynamicOffsets.size(); ++i) {
         dynamic_offsets.push_back(t->mDynamicOffsets[i]);
     }
     std::vector<VkDescriptorSet> descriptor_sets;
+    descriptor_sets.reserve(t->mDescriptorSets.size());
     for (size_t i = 0; i < t->mDescriptorSets.size(); ++i) {
         if (!spy->DescriptorSets.count(t->mDescriptorSets[i])) {
             return;
@@ -163,19 +171,21 @@ void inline CommandListRecreator<std::shared_ptr<RecreateBindVertexBuffersData>>
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateBindVertexBuffersData>& t) {
     std::vector<VkBuffer> buffers;
+    buffers.reserve(t->mBuffers.size());
     for (size_t i = 0; i < t->mBuffers.size(); ++i) {
         if (!spy->Buffers.count(t->mBuffers[i])) {
             return;
         }
         buffers.push_back(t->mBuffers[i]);
     }
-    std::vector<uint64_t> device_sizes;
+    std::vector<uint64_t> offsets;
+    offsets.reserve(t->mOffsets.size());
     for (size_t i = 0; i < t->mOffsets.size(); ++i) {
-        device_sizes.push_back(t->mOffsets[i]);
+        offsets.push_back(t->mOffsets[i]);
     }
 
     spy->RecreateBindVertexBuffers(observer, commandBuf,
-        t->mFirstBinding, t->mBindingCount, buffers.data(), device_sizes.data());
+        t->mFirstBinding, t->mBindingCount, buffers.data(), offsets.data());
 }
 
 template<>
@@ -305,12 +315,13 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCopyBufferToImageData>>
         !spy->Images.count(t->mDstImage)) {
         return;
     }
-    std::vector<VkBufferImageCopy> buffers;
+    std::vector<VkBufferImageCopy> regions;
+    regions.reserve(t->mRegions.size());
     for (size_t i = 0; i < t->mRegions.size(); ++i) {
-        buffers.push_back(t->mRegions[i]);
+        regions.push_back(t->mRegions[i]);
     }
     spy->RecreateCmdCopyBufferToImage(observer, commandBuf,
-        t->mSrcBuffer, t->mDstImage, t->mLayout, buffers.size(), buffers.data());
+        t->mSrcBuffer, t->mDstImage, t->mLayout, regions.size(), regions.data());
 }
 
 template <>
@@ -322,6 +333,7 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     return;
   }
   std::vector<VkBufferImageCopy> regions;
+  regions.reserve(t->mRegions.size());
   for (size_t i = 0; i < t->mRegions.size(); ++i) {
     regions.push_back(t->mRegions[i]);
   }
@@ -338,13 +350,14 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBlitImageData>>::ope
         !spy->Images.count(t->mDstImage)) {
         return;
     }
-    std::vector<VkImageBlit> buffers;
+    std::vector<VkImageBlit> regions;
+    regions.reserve(t->mRegions.size());
     for (size_t i = 0; i < t->mRegions.size(); ++i) {
-        buffers.push_back(t->mRegions[i]);
+        regions.push_back(t->mRegions[i]);
     }
     spy->RecreateCmdBlitImage(
         observer, commandBuf, t->mSrcImage, t->mSrcImageLayout, t->mDstImage,
-        t->mDstImageLayout, buffers.size(), buffers.data(), t->mFilter);
+        t->mDstImageLayout, regions.size(), regions.data(), t->mFilter);
 }
 
 template<>
@@ -355,14 +368,15 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdCopyImageData>>::ope
         !spy->Images.count(t->mDstImage)) {
         return;
     }
-    std::vector<VkImageCopy> buffers;
+    std::vector<VkImageCopy> regions;
+    regions.reserve(t->mRegions.size());
     for (size_t i = 0; i < t->mRegions.size(); ++i) {
-        buffers.push_back(t->mRegions[i]);
+        regions.push_back(t->mRegions[i]);
     }
     spy->RecreateCmdCopyImage(observer, commandBuf,
         t->mSrcImage, t->mSrcImageLayout,
         t->mDstImage, t->mDstImageLayout,
-        buffers.size(), buffers.data());
+        regions.size(), regions.data());
 }
 
 template<>
@@ -383,6 +397,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetScissorData>>::op
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdSetScissorData>& t) {
     std::vector<VkRect2D> rects;
+    rects.reserve(t->mScissors.size());
     for (size_t i = 0; i < t->mScissors.size(); ++i) {
         rects.push_back(t->mScissors[i]);
     }
@@ -395,6 +410,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetViewportData>>::o
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdSetViewportData>& t) {
     std::vector<VkViewport> viewports;
+    viewports.reserve(t->mViewports.size());
     for (size_t i = 0; i < t->mViewports.size(); ++i) {
         viewports.push_back(t->mViewports[i]);
     }
@@ -440,10 +456,12 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearAttachmentsData
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdClearAttachmentsData>& t) {
     std::vector<VkClearAttachment> attachments;
+    attachments.reserve(t->mAttachments.size());
     for (size_t i = 0; i < t->mAttachments.size(); ++i) {
         attachments.push_back(t->mAttachments[i]);
     }
     std::vector<VkClearRect> rects;
+    rects.reserve(t->mRects.size());
     for (size_t i = 0; i < t->mRects.size(); ++i) {
         rects.push_back(t->mRects[i]);
     }
@@ -458,6 +476,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdClearColorImageData>
     const std::shared_ptr<RecreateCmdClearColorImageData>& t) {
     VkClearColorValue& color = t->mColor;
     std::vector<VkImageSubresourceRange> clear_ranges;
+    clear_ranges.reserve(t->mRanges.size());
     for (size_t i = 0; i < t->mRanges.size(); ++i) {
         clear_ranges.push_back(t->mRanges[i]);
     }
@@ -473,6 +492,7 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
            const std::shared_ptr<RecreateCmdClearDepthStencilImageData>& t) {
   VkClearDepthStencilValue& depthStencil = t->mDepthStencil;
   std::vector<VkImageSubresourceRange> clear_ranges;
+  clear_ranges.reserve(t->mRanges.size());
   for (size_t i = 0; i < t->mRanges.size(); ++i) {
     clear_ranges.push_back(t->mRanges[i]);
   }
@@ -486,6 +506,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdExecuteCommandsData>
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdExecuteCommandsData>& t) {
     std::vector<VkCommandBuffer> command_buffers;
+    command_buffers.reserve(t->mCommandBuffers.size());
     for (size_t i = 0; i < t->mCommandBuffers.size(); ++i) {
         command_buffers.push_back(t->mCommandBuffers[i]);
     }
