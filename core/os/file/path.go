@@ -123,6 +123,12 @@ func (p Path) SplitExt() (Path, string) {
 	return Path{p.value[:len(p.value)-len(ext)]}, ext
 }
 
+// NoExt returns the path excluding the file extension or '.'.
+func (p Path) NoExt() Path {
+	ext := p.Ext()
+	return Path{p.value[:len(p.value)-len(ext)]}
+}
+
 // Join returns a path formed from joining this base with a child path.
 // If there are any / characters in the strings, they will be converted to they system separator.
 func (p Path) Join(join ...string) Path {
