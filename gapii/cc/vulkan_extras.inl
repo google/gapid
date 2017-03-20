@@ -109,6 +109,7 @@ void SpyOverride_RecreateCmdDrawIndexedIndirect(VkCommandBuffer, VkBuffer, VkDev
 void SpyOverride_RecreateCmdClearAttachments(VkCommandBuffer, uint32_t, const VkClearAttachment*, uint32_t, const VkClearRect*) {}
 void SpyOverride_RecreateCmdClearColorImage(VkCommandBuffer, VkImage, uint32_t /*VkImageLayout*/, const VkClearColorValue*, uint32_t, const VkImageSubresourceRange*) {}
 void SpyOverride_RecreateCmdClearDepthStencilImage(VkCommandBuffer, VkImage, uint32_t /*VkImageLayout*/, const VkClearDepthStencilValue*, uint32_t, const VkImageSubresourceRange*) {}
+void SpyOverride_RecreateCmdExecuteCommands(VkCommandBuffer, uint32_t, const VkCommandBuffer*) {}
 
 void SpyOverride_RecreateXCBSurfaceKHR(VkDevice, const VkXcbSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 void SpyOverride_RecreateAndroidSurfaceKHR(VkDevice, const VkAndroidSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
