@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/text/note"
 )
 
 // Database is the interface to a resource store.
@@ -63,8 +62,6 @@ func Build(ctx context.Context, r Resolvable) (interface{}, error) {
 type databaseKeyTy string
 
 const databaseKey = databaseKeyTy("database")
-
-func (databaseKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
 
 // Get returns the Database attached to the given context.
 func Get(ctx context.Context) Database {

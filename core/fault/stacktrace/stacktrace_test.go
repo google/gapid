@@ -15,13 +15,10 @@
 package stacktrace_test
 
 import (
-	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/fault/stacktrace"
-	"github.com/google/gapid/core/text/note"
 )
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -120,19 +117,4 @@ func TestFilter(t *testing.T) {
 	assert.For("invalid top trim").ThatSlice(raw).IsLength(len(badTrimTop))
 	assert.For("valid bottom trim").ThatSlice(goodTrimBottom).IsLength(5)
 	assert.For("valid top trim").ThatSlice(goodTrimTop).IsLength(3)
-}
-
-func testStyle(assert assert.Manager, style note.Style, page note.Page, expect string) {
-	assert.For(style.Name).That(style.Print(page)).Equals(strings.TrimSpace(expect))
-}
-
-func hasTrace(page note.Page) bool {
-	for _, section := range page {
-		for _, item := range section.Content {
-			if reflect.TypeOf(item.Key) == reflect.TypeOf(stacktrace.Key) {
-				return true
-			}
-		}
-	}
-	return false
 }

@@ -21,14 +21,11 @@ import (
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/note"
 )
 
 type registryKeyTy string
 
 const registryKey = registryKeyTy("registryKeyID")
-
-func (registryKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
 
 // PutRegistry attaches a registry to a Context.
 func PutRegistry(ctx context.Context, m *Registry) context.Context {

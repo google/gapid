@@ -18,14 +18,11 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/text/note"
 )
 
 type contextMgrKeyTy string
 
 const contextMgrKey = contextMgrKeyTy("replayMgrID")
-
-func (contextMgrKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
 
 // PutManager attaches a manager to a Context.
 func PutManager(ctx context.Context, m *Manager) context.Context {

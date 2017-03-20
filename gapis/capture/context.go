@@ -18,15 +18,12 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/text/note"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 type contextKeyTy string
 
 const contextKey = contextKeyTy("captureID")
-
-func (contextKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
 
 // Put attaches a capture path to a Context.
 func Put(ctx context.Context, c *path.Capture) context.Context {
