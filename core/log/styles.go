@@ -17,6 +17,7 @@ package log
 var (
 	// Raw is a style that only prints the text of the message.
 	Raw = Style{
+		Name:      "raw",
 		Timestamp: false,
 		Tag:       false,
 		Trace:     false,
@@ -28,6 +29,7 @@ var (
 	// Brief is a style that only prints the text and short severity of the
 	// message.
 	Brief = Style{
+		Name:      "brief",
 		Timestamp: false,
 		Tag:       false,
 		Trace:     false,
@@ -39,6 +41,7 @@ var (
 	// Normal is a style that prints the timestamp, tag, trace, process,
 	// short severity and single line values.
 	Normal = Style{
+		Name:      "normal",
 		Timestamp: true,
 		Tag:       true,
 		Trace:     true,
@@ -50,6 +53,7 @@ var (
 	// Detailed is a style that prints the timestamp, tag, trace, process,
 	// long severity and multi-line values.
 	Detailed = Style{
+		Name:      "detailed",
 		Timestamp: true,
 		Tag:       true,
 		Trace:     true,
