@@ -43,7 +43,7 @@ import java.util.logging.Logger;
 /**
  * Model containing the API commands (atoms) of the capture.
  */
-public class AtomStream extends CaptureDependentModel<AtomList> {
+public class AtomStream extends CaptureDependentModel<AtomList> implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
 
   private final ApiContext context;
@@ -53,6 +53,8 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
   public AtomStream(Shell shell, Client client, Capture capture, ApiContext context) {
     super(LOG, shell, client, capture);
     this.context = context;
+
+    context.addListener(this);
   }
 
   @Override
@@ -81,6 +83,17 @@ public class AtomStream extends CaptureDependentModel<AtomList> {
     listeners.fire().onAtomsLoaded();
     if (selection != null) {
       listeners.fire().onAtomsSelected(selection);
+    }
+  }
+
+  @Override
+  public void onContextSelected(FilteringContext ctx) {
+    if (selection != null && !ctx.contains(selection)) {
+      if (ctx.contains(last(selection))) {
+        selectAtoms(last(selection), 1, false);
+      } else {
+        selectAtoms(ctx.findClosest(selection), false);
+      }
     }
   }
 
