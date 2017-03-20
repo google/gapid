@@ -99,8 +99,31 @@ func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...strin
 		return nil
 	}
 
-	stdout := text.Writer(func(line string) error { log.I(ctx, "%v", line); return nil })
-	stderr := text.Writer(func(line string) error { log.E(ctx, "%v", line); return nil })
+	parser := func(severity log.Severity) io.WriteCloser {
+		h := log.GetHandler(ctx)
+		if h == nil {
+			return nil
+		}
+		ctx := log.PutProcess(ctx, "gapir")
+		return text.Writer(func(line string) error {
+			if m := parseHostLogMsg(line); m != nil {
+				h.Handle(m)
+				return nil
+			}
+			log.From(ctx).Log(severity, line)
+			return nil
+		})
+	}
+
+	stdout := parser(log.Info)
+	if stdout != nil {
+		defer stdout.Close()
+	}
+
+	stderr := parser(log.Error)
+	if stderr != nil {
+		defer stderr.Close()
+	}
 
 	port, err := process.Start(ctx, GapirPath.System(), process.StartOptions{
 		// Set the VK_LAYER_PATH for replaying Vulkan applications.
