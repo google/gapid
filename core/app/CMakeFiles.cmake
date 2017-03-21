@@ -32,5 +32,4 @@ set(dirs
     benchmark
     flags
     layout
-    output
 )

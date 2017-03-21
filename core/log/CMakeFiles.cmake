@@ -18,6 +18,8 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    broadcast.go
+    broadcast_test.go
     channel.go
     channel_test.go
     clock.go
@@ -25,6 +27,7 @@ set(files
     filter.go
     handler.go
     log.go
+    log.proto
     log_test.go
     message.go
     process.go
@@ -37,7 +40,9 @@ set(files
     testing.go
     trace.go
     values.go
+    writer.go
 )
 set(dirs
+    log_pb
     logpb
 )

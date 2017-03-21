@@ -24,7 +24,7 @@ protoc_java("gapil/snippets" "snippets.proto" "com/google/gapid/proto/service/sn
 protoc_go("github.com/google/gapid/core/image" "core/image" "image.proto")
 protoc_java("core/image" "image.proto" "com/google/gapid/proto/image/Image")
 protoc_go("github.com/google/gapid/core/log/log_pb" "core/log/log_pb" "log.proto")
-protoc_java("core/log/log_pb" "log.proto" "com/google/gapid/proto/log/log")
+protoc_java("core/log/log_pb" "log.proto" "com/google/gapid/proto/log/Log")
 protoc_go("github.com/google/gapid/core/os/android/apk" "core/os/android/apk" "apk.proto")
 protoc_go("github.com/google/gapid/core/os/android" "core/os/android" "keycodes.proto")
 protoc_go("github.com/google/gapid/core/os/device/bind" "core/os/device/bind" "bind.proto")

@@ -22,6 +22,7 @@ set(files
     buffer_command.go
     convert.go
     custom_replay.go
+    doc.go
     enum.go
     externs.go
     find_issues.go
