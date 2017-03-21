@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.logging.*;
 
@@ -67,6 +68,13 @@ public class Logging {
     }
   }
 
+  /**
+   * Listener is the interface implemented by types that want to listen to log messages.
+   */
+  public interface Listener {
+    void onNewMessage(Log.Message message);
+  }
+
   public static final Flag<LogLevel> logLevel = Flags.value(
       "logLevel", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
   public static final Flag<String> logDir = Flags.value(
@@ -76,6 +84,10 @@ public class Logging {
     setFormatter(new LogFormatter());
     setLevel(Level.ALL);
   }};
+
+  private static final Listener NULL_LISTENER = (m) -> {};
+
+  private static Listener listener = NULL_LISTENER;
 
   /**
    * Initializes the Java logging system.
@@ -109,12 +121,12 @@ public class Logging {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
   }
 
-  public static Log.Message[] getLogMessages() {
-    return buffer.getMessages();
+  public static Iterator<Log.Message> getMessageIterator() {
+    return buffer.iterator();
   }
 
-  public static void setListener(Runnable listener) {
-    buffer.listener = (listener == null) ? () -> { /* empty */ } : listener;
+  public static void setListener(Listener listener_) {
+    listener = (listener_ == null) ? NULL_LISTENER : listener_;
   }
 
   /**
@@ -123,6 +135,7 @@ public class Logging {
    */
   public static void logMessage(Log.Message message) {
     buffer.add(message);
+    listener.onNewMessage(message);
   }
 
   /**
@@ -222,30 +235,63 @@ public class Logging {
   }
 
   /**
-   * {@link Handler} that keeps a number of messages in memory for later retrieval.
+   * MessageIterator is an iterator for the {@link Buffer}.
+   * As the {@link Buffer} is a fixed size ring buffer, messages can be discarded if the buffer
+   * fills more quickly than it is consumed. This iterator has been implemented to read the next
+   * most recently available messages. Some messages may be skipped if the iterator lags behind
+   * new messages.
    */
-  private static class Buffer extends Handler {
-    public Runnable listener;
-    private final LinkedList<Log.Message> buffer = new LinkedList<>();
-    private final SimpleFormatter simpleFormatter = new SimpleFormatter();
+  private static class MessageIterator implements Iterator<Log.Message> {
+    private final Buffer buffer;
+    private int generation;
 
-    private int maxSize;
-
-    public Buffer(int maxSize) {
-      this.maxSize = maxSize;
-      listener = () -> { /* empty */ };
+    MessageIterator(Buffer buffer) {
+      this.buffer = buffer;
     }
 
-    public synchronized Log.Message[] getMessages() {
-      return buffer.toArray(new Log.Message[buffer.size()]);
+    @Override
+    public boolean hasNext() {
+      synchronized (buffer) {
+        return buffer.generation > generation;
+      }
+    }
+
+    @Override
+    public Log.Message next() {
+      synchronized (buffer) {
+        int remaining = Math.min(buffer.generation - generation, buffer.ring.length);
+        if (remaining == 0) {
+          return null;
+        }
+        // Progress the generation so that it is at least the oldest message.
+        generation = buffer.generation - remaining;
+        Log.Message message = buffer.ring[generation % buffer.ring.length];
+        generation++;
+        return message;
+      }
+    }
+  }
+
+  /**
+   * {@link Handler} that handles and buffers {@link LogRecord}s, converting them to {@link Log.Message}s,
+   * and then broadcasting them to listeners.
+   */
+  private static class Buffer extends Handler {
+    private final Log.Message[] ring;
+    private final SimpleFormatter simpleFormatter = new SimpleFormatter();
+    private int generation;
+
+    public Buffer(int maxSize) {
+      this.ring = new Log.Message[maxSize];
     }
 
     public synchronized void add(Log.Message message) {
-      buffer.addFirst(message);
-      while (buffer.size() > maxSize) {
-        buffer.removeLast();
-      }
-      listener.run();
+      ring[generation % ring.length] = message;
+      generation++;
+    }
+
+    public Iterator iterator() {
+      return new MessageIterator(this);
     }
 
     @Override
@@ -281,7 +327,7 @@ public class Logging {
               .build());
         }
       }
-      add(builder.build());
+      Logging.logMessage(builder.build());
     }
 
     @Override

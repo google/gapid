@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.*;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -39,6 +40,9 @@ public class LogView extends Composite implements Tab {
   private final Theme theme;
   private final Tree tree;
   private final AtomicBoolean dirty = new AtomicBoolean(false);
+  private final int MAX_ITEMS = 1000;
+  private final int MAX_NEW_ITEMS_PER_UPDATE = 100;
+  private Iterator<Log.Message> messageIterator;
 
   private enum Column {
     SEVERITY(0, 35, "Severity"),
@@ -64,6 +68,8 @@ public class LogView extends Composite implements Tab {
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
+    messageIterator = Logging.getMessageIterator();
+
     tree = new Tree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
     tree.setHeaderVisible(true);
     tree.setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
@@ -72,18 +78,23 @@ public class LogView extends Composite implements Tab {
       treeColumn.setText(column.name);
       treeColumn.setWidth(column.width);
     }
-    updateText();
-    Logging.setListener(() -> {
+    updateTree();
+    Logging.setListener((m) -> {
       if (!dirty.getAndSet(true)) {
-        Widgets.scheduleIfNotDisposed(this, this::updateText);
+        Widgets.scheduleIfNotDisposed(this, this::updateTree);
       }
     });
     addListener(SWT.Dispose, e -> Logging.setListener(null));
   }
 
-  private void updateText() {
-    tree.removeAll();
-    for (Log.Message message : Logging.getLogMessages()) {
+  private void updateTree() {
+    for (int i = 0; i < MAX_NEW_ITEMS_PER_UPDATE; i++) {
+      Log.Message message = messageIterator.next();
+      if (message == null) {
+        // All messages consumed.
+        dirty.set(false);
+        return;
+      }
       Log.Severity severity = message.getSeverity();
       TreeItem item = newItem(tree, severity);
       String[] lines = message.getText().split("(\n)|(\r\n)");
@@ -93,9 +104,9 @@ public class LogView extends Composite implements Tab {
       item.setText(Column.TEXT.index, lines[0]);
       item.setText(Column.TAG.index, message.getTag());
       // Additional lines
-      for (int i = 1; i < lines.length; i++) {
+      for (int l = 1; l < lines.length; l++) {
         TreeItem line = newItem(item, severity);
-        line.setText(Column.TEXT.index, lines[i]);
+        line.setText(Column.TEXT.index, lines[l]);
       }
       // Values
       if (message.getValuesCount() > 0) {
@@ -118,8 +129,13 @@ public class LogView extends Composite implements Tab {
           line.setText(Column.TEXT.index, String.format("%s:%d", location.getFile(), location.getLine()));
         }
       }
+      while (tree.getItemCount() > MAX_ITEMS) {
+        tree.getTopItem().dispose();
+      }
     }
-    dirty.set(false);
+    // Too many new messages to display!
+    // Try again next update.
+    Widgets.scheduleIfNotDisposed(this, this::updateTree);
   }
 
   private String formatTime(Timestamp time) {
