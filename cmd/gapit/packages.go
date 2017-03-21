@@ -64,18 +64,26 @@ func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		defer w.Close()
 	}
 
+	header := []byte{}
+	if verb.DataHeader != "" {
+		header = []byte(verb.DataHeader)
+	}
+
 	switch verb.Format {
 	case ProtoString:
-		fmt.Fprintf(w, pkgs.String())
+		w.Write(header)
+		fmt.Fprint(w, pkgs.String())
 
 	case Proto:
 		data, err := proto.Marshal(pkgs)
 		if err != nil {
 			return log.Err(ctx, err, "marshal protobuf")
 		}
+		w.Write(header)
 		w.Write(data)
 
 	case Json:
+		w.Write(header)
 		e := json.NewEncoder(w)
 		e.SetIndent("", "  ")
 		if err := e.Encode(pkgs); err != nil {
@@ -83,6 +91,7 @@ func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 
 	case SimpleList:
+		w.Write(header)
 		for _, a := range pkgs.GetPackages() {
 			fmt.Fprintf(w, "%s\n", a.Name)
 		}

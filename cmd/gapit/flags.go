@@ -158,5 +158,6 @@ type (
 		IconDensity float64        `help:"scale multiplier on icon density."`
 		Format      PackagesOutput `help:"output format"`
 		Out         string         `help:"output file, standard output if none"`
+		DataHeader  string         `help:"marker to write before package data"`
 	}
 )
