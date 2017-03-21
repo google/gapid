@@ -15,34 +15,63 @@
  */
 package com.google.gapid.views;
 
+import com.google.gapid.proto.log.Log;
 import com.google.gapid.util.Logging;
+import com.google.gapid.util.Pods;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
+import com.google.protobuf.Timestamp;
 import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.text.Document;
-import org.eclipse.jface.text.TextViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.*;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A view that shows log messages.
+ * A view that shows logMessage messages.
  */
 public class LogView extends Composite implements Tab {
-  private final TextViewer text;
+  private final Theme theme;
+  private final Tree tree;
   private final AtomicBoolean dirty = new AtomicBoolean(false);
 
-  public LogView(Composite parent) {
+  private enum Column {
+    SEVERITY(0, 35, "Severity"),
+    TIME(1, 100, "Time"),
+    PROCESS(2, 60, "Process"),
+    TEXT(3, 300, "Text"),
+    TAG(4, 100, "Tag");
+
+    final int index;
+    final int width;
+    final String name;
+
+    Column(int index, int width, String name) {
+      this.index = index;
+      this.width = width;
+      this.name = name;
+    }
+  }
+
+  public LogView(Composite parent, Widgets widgets) {
     super(parent, SWT.NONE);
+    theme = widgets.theme;
+
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    text = new TextViewer(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-    text.setEditable(false);
-    text.getTextWidget().setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
-    text.setDocument(new Document());
+    tree = new Tree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+    tree.setHeaderVisible(true);
+    tree.setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
+    for (Column column : Column.values()) {
+      TreeColumn treeColumn = new TreeColumn(tree, SWT.LEFT);
+      treeColumn.setText(column.name);
+      treeColumn.setWidth(column.width);
+    }
     updateText();
     Logging.setListener(() -> {
       if (!dirty.getAndSet(true)) {
@@ -53,10 +82,105 @@ public class LogView extends Composite implements Tab {
   }
 
   private void updateText() {
-    String message = Logging.getLogMessages();
-    text.getDocument().set(message);
-    text.setTopIndex(message.length() - 1);
+    tree.removeAll();
+    for (Log.Message message : Logging.getLogMessages()) {
+      Log.Severity severity = message.getSeverity();
+      TreeItem item = newItem(tree, severity);
+      String[] lines = message.getText().split("(\n)|(\r\n)");
+      item.setText(Column.SEVERITY.index, message.getSeverity().name().substring(0, 1));
+      item.setText(Column.TIME.index, formatTime(message.getTime()));
+      item.setText(Column.PROCESS.index, message.getProcess());
+      item.setText(Column.TEXT.index, lines[0]);
+      item.setText(Column.TAG.index, message.getTag());
+      // Additional lines
+      for (int i = 1; i < lines.length; i++) {
+        TreeItem line = newItem(item, severity);
+        line.setText(Column.TEXT.index, lines[i]);
+      }
+      // Values
+      if (message.getValuesCount() > 0) {
+        TreeItem values = newItem(item, severity);
+        values.setText(2, "Values");
+        for (Log.Value value : message.getValuesList()) {
+          TreeItem entry = newItem(values, severity);
+          String name = value.getName();
+          String val = Pods.unpod(value.getValue()).toString();
+          entry.setText(2, name);
+          entry.setText(Column.TEXT.index, val);
+        }
+      }
+      // Callstack
+      if (message.getCallstackCount() > 0) {
+        TreeItem callstack = newItem(item, severity);
+        callstack.setText(2, "Call Stack");
+        for (Log.SourceLocation location : message.getCallstackList()) {
+          TreeItem line = newItem(callstack, severity);
+          line.setText(Column.TEXT.index, String.format("%s:%d", location.getFile(), location.getLine()));
+        }
+      }
+    }
     dirty.set(false);
+  }
+
+  private String formatTime(Timestamp time) {
+    Date date = new Date(time.getSeconds() * 1000);
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(date);
+    int hour = calendar.get(Calendar.HOUR);
+    int minute = calendar.get(Calendar.MINUTE);
+    int second = calendar.get(Calendar.SECOND);
+    int millis = time.getNanos() / 1000000;
+    return String.format("%02d:%02d:%02d.%03d", hour, minute, second, millis);
+  }
+
+  private TreeItem newItem(Tree parent, Log.Severity severity) {
+    TreeItem item = new TreeItem(parent, 0);
+    item.setBackground(severityBackgroundColor(severity));
+    item.setForeground(severityForegroundColor(severity));
+    return item;
+  }
+
+  private TreeItem newItem(TreeItem parent, Log.Severity severity) {
+    TreeItem item = new TreeItem(parent, 0);
+    item.setBackground(severityBackgroundColor(severity));
+    item.setForeground(severityForegroundColor(severity));
+    return item;
+  }
+
+  private Color severityBackgroundColor(Log.Severity severity) {
+    switch (severity) {
+      case Verbose:
+        return theme.verboseBackground();
+      case Debug:
+        return theme.debugBackground();
+      case Info:
+        return theme.infoBackground();
+      case Warning:
+        return theme.warningBackground();
+      case Error:
+        return theme.errorBackground();
+      case Fatal:
+        return theme.fatalBackground();
+    }
+    return theme.infoBackground();
+  }
+
+  private Color severityForegroundColor(Log.Severity severity) {
+    switch (severity) {
+      case Verbose:
+        return theme.verboseForeground();
+      case Debug:
+        return theme.debugForeground();
+      case Info:
+        return theme.infoForeground();
+      case Warning:
+        return theme.warningForeground();
+      case Error:
+        return theme.errorForeground();
+      case Fatal:
+        return theme.fatalForeground();
+    }
+    return theme.infoForeground();
   }
 
   @Override

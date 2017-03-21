@@ -456,15 +456,15 @@ public class MainWindow extends ApplicationWindow {
     public static enum Type {
       ApiCalls(Location.Left, "Commands", (p, c, m, w) -> new AtomTree(p, m, w)),
 
-      Framebuffer(Location.Center, "Framebuffer", (p, c, m, w) -> new FramebufferView(p, c, m, w)),
-      Textures(Location.Center, "Textures", (p, c, m, w) -> new TextureView(p, c, m, w)),
-      Geometry(Location.Center, "Geometry", (p, c, m, w) -> new GeometryView(p, c, m, w)),
-      Shaders(Location.Center, "Shaders", (p, c, m, w) -> new ShaderView(p, c, m, w)),
+      Framebuffer(Location.Center, "Framebuffer", FramebufferView::new),
+      Textures(Location.Center, "Textures", TextureView::new),
+      Geometry(Location.Center, "Geometry", GeometryView::new),
+      Shaders(Location.Center, "Shaders", ShaderView::new),
       Report(Location.Center, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
-      Log(Location.Center, "Log", (p, c, m, w) -> new LogView(p)),
+      Log(Location.Center, "Log", (p, c, m, w) -> new LogView(p, w)),
 
       ApiState(Location.Right, "State", (p, c, m, w) -> new StateView(p, m, w)),
-      Memory(Location.Right, "Memory", (p, c, m, w) -> new MemoryView(p, c, m, w));
+      Memory(Location.Right, "Memory", MemoryView::new);
 
       public final Location defaultLocation;
       public final String label;

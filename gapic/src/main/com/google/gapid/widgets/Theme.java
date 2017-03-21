@@ -109,6 +109,20 @@ public interface Theme {
   @RGB(argb = 0xff282828) public Color aboutBackground();
   @RGB(argb = 0xffc8c8c8) public Color aboutForeground();
 
+  @RGB(argb = 0xffcecece) public Color verboseBackground();
+  @RGB(argb = 0xffe5e5e5) public Color debugBackground();
+  @RGB(argb = 0xfff2f2f2) public Color infoBackground();
+  @RGB(argb = 0xfffffa82) public Color warningBackground();
+  @RGB(argb = 0xffff8484) public Color errorBackground();
+  @RGB(argb = 0xffcd83ff) public Color fatalBackground();
+
+  @RGB(argb = 0xbb000000) public Color verboseForeground();
+  @RGB(argb = 0xdd000000) public Color debugForeground();
+  @RGB(argb = 0xff000000) public Color infoForeground();
+  @RGB(argb = 0xff4c4a00) public Color warningForeground();
+  @RGB(argb = 0xff4c0100) public Color errorForeground();
+  @RGB(argb = 0xff1b004c) public Color fatalForeground();
+
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();
