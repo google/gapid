@@ -30,11 +30,10 @@ import org.eclipse.swt.widgets.*;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A view that shows logMessage messages.
+ * A view that shows log messages.
  */
 public class LogView extends Composite implements Tab {
   private final Theme theme;
@@ -42,7 +41,7 @@ public class LogView extends Composite implements Tab {
   private final AtomicBoolean dirty = new AtomicBoolean(false);
   private final int MAX_ITEMS = 1000;
   private final int MAX_NEW_ITEMS_PER_UPDATE = 100;
-  private Iterator<Log.Message> messageIterator;
+  private Logging.MessageIterator messageIterator;
 
   private enum Column {
     SEVERITY(0, 35, "Severity"),

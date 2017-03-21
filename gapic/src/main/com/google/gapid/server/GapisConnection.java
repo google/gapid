@@ -24,19 +24,25 @@ import com.google.gapid.proto.service.GapidGrpc;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.google.gapid.proto.service.Service;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.okhttp.OkHttpChannelProvider;
 
 /**
  * A connection to a running Graphics API Server (GAPIS).
  */
 public abstract class GapisConnection implements Closeable {
+  private static final Logger LOG = Logger.getLogger(Client.class.getName());
+
   /**
-   * The interface passed to {@link #setLogMonitor} used to listen for GAPIS logMessage messages.
+   * The interface passed to {@link #setLogMonitor} used to listen for GAPIS log messages.
    */
   public interface LogMonitor {
     void onLogMessage(Log.Message message);
@@ -88,10 +94,10 @@ public abstract class GapisConnection implements Closeable {
   public abstract GapidGrpc.GapidFutureStub createGapidClient() throws IOException;
 
   /**
-   * Begins monitoring GAPIS for logMessage messages. Each logMessage message will be forwarded to the {@link LogMonitor}.
+   * Begins monitoring GAPIS for log messages. Each log message will be forwarded to the {@link LogMonitor}.
    * Only one {@link LogMonitor} can be bound at any time.
    *
-   * @param monitor the {@link LogMonitor} that listens for GAPIS logMessage messages. Pass null to unlisten.
+   * @param monitor the {@link LogMonitor} that listens for GAPIS log messages. Pass null to unlisten.
    */
   public abstract void setLogMonitor(LogMonitor monitor);
 
@@ -158,6 +164,7 @@ public abstract class GapisConnection implements Closeable {
 
     @Override
     public void close() {
+      setLogMonitor(null);
       baseChannel.shutdown();
       super.close();
     }
@@ -174,9 +181,15 @@ public abstract class GapisConnection implements Closeable {
       @Override
       public void run() {
         Service.GetLogStreamRequest request = Service.GetLogStreamRequest.newBuilder().build();
-        Iterator<Log.Message> it = GapidGrpc.newBlockingStub(channel).getLogStream(request);
-        while (it.hasNext()) {
-          monitor.onLogMessage(it.next());
+        try {
+          Iterator<Log.Message> it = GapidGrpc.newBlockingStub(channel).getLogStream(request);
+          while (it.hasNext()) {
+            monitor.onLogMessage(it.next());
+          }
+        } catch(StatusRuntimeException ex) {
+          if (!ex.getStatus().getCode().equals(Status.Code.CANCELLED)) {
+            LOG.log(Level.WARNING, "getLogStream() threw unexpected exception", ex.getStatus());
+          }
         }
       }
     }

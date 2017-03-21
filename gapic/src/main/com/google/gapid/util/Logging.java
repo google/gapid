@@ -26,15 +26,21 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Iterator;
-import java.util.logging.*;
+import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.StreamHandler;
 
 /**
  * Logging setup and utilities.
  */
 public class Logging {
   /**
-   * Possible logMessage level flag values.
+   * Possible log level flag values.
    */
   public enum LogLevel {
     OFF(Level.OFF, Log.Severity.Fatal, "Fatal", "F"),
@@ -87,14 +93,18 @@ public class Logging {
   public static final Flag<LogLevel> logLevel = Flags.value(
       "logLevel", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
   public static final Flag<String> logDir = Flags.value(
-      "logDir", System.getProperty("java.io.tmpdir"), "Directory for logMessage files.");
+      "logDir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
 
-  private static final Buffer buffer = new Buffer(1000) {{
+  private static final int BUFFER_SIZE = 1000;
+
+  private static final RingBuffer buffer = new RingBuffer(BUFFER_SIZE);
+
+  private static final Handler handler = new Handler() {{
     setFormatter(new LogFormatter());
     setLevel(Level.ALL);
   }};
 
-  private static final Listener NULL_LISTENER = (m) -> {};
+  private static final Listener NULL_LISTENER = (m) -> { /* do nothing */ };
 
   private static Listener listener = NULL_LISTENER;
 
@@ -105,7 +115,7 @@ public class Logging {
     LogManager.getLogManager().reset();
     Logger rootLogger = Logger.getLogger("");
 
-    rootLogger.addHandler(buffer);
+    rootLogger.addHandler(handler);
 
     ConsoleHandler handler = new ConsoleHandler();
     handler.setFormatter(new LogFormatter());
@@ -114,7 +124,7 @@ public class Logging {
 
     if (!logDir.get().isEmpty()) {
       try {
-        FileHandler fileHandler = new FileHandler(logDir.get() + File.separator + "gapic.logMessage");
+        FileHandler fileHandler = new FileHandler(logDir.get() + File.separator + "gapic.log");
         fileHandler.setFormatter(new LogFormatter());
         fileHandler.setLevel(Level.ALL);
         rootLogger.addHandler(fileHandler);
@@ -130,12 +140,12 @@ public class Logging {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
   }
 
-  public static Iterator<Log.Message> getMessageIterator() {
+  public static MessageIterator getMessageIterator() {
     return buffer.iterator();
   }
 
-  public static void setListener(Listener listener_) {
-    listener = (listener_ == null) ? NULL_LISTENER : listener_;
+  public static void setListener(Listener newListener) {
+    listener = (newListener == null) ? NULL_LISTENER : newListener;
   }
 
   /**
@@ -223,7 +233,7 @@ public class Logging {
   }
 
   /**
-   * Similar to {@link java.util.logging.ConsoleHandler}, except that we logMessage to standard output
+   * Similar to {@link java.util.logging.ConsoleHandler}, except that we log to standard output
    * rather than standard error.
    */
   private static class ConsoleHandler extends StreamHandler {
@@ -244,37 +254,29 @@ public class Logging {
   }
 
   /**
-   * MessageIterator is an iterator for the {@link Buffer}.
-   * As the {@link Buffer} is a fixed size ring buffer, messages can be discarded if the buffer
+   * MessageIterator is an iterator for the {@link RingBuffer}.
+   * As the {@link RingBuffer} is a fixed size ring buffer, messages can be discarded if the buffer
    * fills more quickly than it is consumed. This iterator has been implemented to read the next
    * most recently available messages. Some messages may be skipped if the iterator lags behind
    * new messages.
    */
-  private static class MessageIterator implements Iterator<Log.Message> {
-    private final Buffer buffer;
+  public static class MessageIterator {
+    private final RingBuffer target;
     private int generation;
 
-    MessageIterator(Buffer buffer) {
-      this.buffer = buffer;
+    MessageIterator(RingBuffer target) {
+      this.target = target;
     }
 
-    @Override
-    public boolean hasNext() {
-      synchronized (buffer) {
-        return buffer.generation > generation;
-      }
-    }
-
-    @Override
     public Log.Message next() {
-      synchronized (buffer) {
-        int remaining = Math.min(buffer.generation - generation, buffer.ring.length);
+      synchronized (target) {
+        int remaining = Math.min(target.generation - generation, target.ring.length);
         if (remaining == 0) {
           return null;
         }
         // Progress the generation so that it is at least the oldest message.
-        generation = buffer.generation - remaining;
-        Log.Message message = buffer.ring[generation % buffer.ring.length];
+        generation = target.generation - remaining;
+        Log.Message message = target.ring[generation % target.ring.length];
         generation++;
         return message;
       }
@@ -282,15 +284,13 @@ public class Logging {
   }
 
   /**
-   * {@link Handler} that handles and buffers {@link LogRecord}s, converting them to {@link Log.Message}s,
-   * and then broadcasting them to listeners.
+   * A ring buffer of {@link LogRecord}s.
    */
-  private static class Buffer extends Handler {
-    private final Log.Message[] ring;
-    private final SimpleFormatter simpleFormatter = new SimpleFormatter();
-    private int generation;
+  protected static class RingBuffer {
+    protected final Log.Message[] ring;
+    protected int generation;
 
-    public Buffer(int maxSize) {
+    public RingBuffer(int maxSize) {
       this.ring = new Log.Message[maxSize];
     }
 
@@ -299,9 +299,17 @@ public class Logging {
       generation++;
     }
 
-    public Iterator iterator() {
+    public MessageIterator iterator() {
       return new MessageIterator(this);
     }
+  }
+
+  /**
+   * {@link Handler} that handles {@link LogRecord}s converting them to
+   * {@link com.google.gapid.proto.log.Log.Message}s and then broadcasting them to listeners.
+   */
+  protected static class Handler extends java.util.logging.Handler {
+    private final SimpleFormatter simpleFormatter = new SimpleFormatter();
 
     @Override
     public void publish(LogRecord record) {
@@ -330,8 +338,9 @@ public class Logging {
       Throwable thrown = record.getThrown();
       if (thrown != null) {
         for (StackTraceElement el : thrown.getStackTrace()) {
+          String file = el.getFileName();
           builder.addCallstack(Log.SourceLocation.newBuilder()
-              .setFile(el.getFileName())
+              .setFile(file == null ? "" : file)
               .setLine(el.getLineNumber())
               .build());
         }
