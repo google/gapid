@@ -16,16 +16,21 @@
 package com.google.gapid.widgets;
 
 import com.google.gapid.util.BigPoint;
+import com.google.gapid.util.MouseAdapter;
+import com.google.gapid.widgets.CopyPaste.CopySource;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ScrollBar;
@@ -74,6 +79,20 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
         yHandler.offset.add(BigInteger.valueOf(e.y)));
   }
 
+  public BigPoint getLocation(MouseEvent e) {
+    return new BigPoint(
+        xHandler.offset.add(BigInteger.valueOf(e.x)),
+        yHandler.offset.add(BigInteger.valueOf(e.y)));
+  }
+
+  public BigPoint getMouseLocation() {
+    Display disp = getDisplay();
+    Point mouse = disp.map(null, canvas, disp.getCursorLocation());
+    return new BigPoint(
+        xHandler.offset.add(BigInteger.valueOf(mouse.x)),
+        yHandler.offset.add(BigInteger.valueOf(mouse.y)));
+  }
+
   public BigPoint getScrollLocation() {
     return new BigPoint(
         xHandler.offset.add(BigInteger.valueOf(xHandler.bar.getSelection())),
@@ -94,6 +113,22 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
 
   public void addContentListener(int type, Listener listener) {
     canvas.addListener(type, listener);
+  }
+
+  /**
+   * Registers the given listener on the contents. Note that the selection events are not included.
+   */
+  public void addContentListener(MouseAdapter listener) {
+    canvas.addMouseListener(listener);
+    canvas.addMouseMoveListener(listener);
+    canvas.addMouseWheelListener(listener);
+    canvas.addMouseTrackListener(listener);
+    xHandler.bar.addSelectionListener(listener);
+    yHandler.bar.addSelectionListener(listener);
+  }
+
+  public void registerContentAsCopySource(CopyPaste copyPaste, CopySource source) {
+    copyPaste.registerCopySource(canvas, source);
   }
 
   public void updateMinSize() {
