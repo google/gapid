@@ -164,7 +164,7 @@ bool createContext(void* platform_data) {
         } else if (primaryABI == "arm64-v8a") {
             gContext.mCpuArchitecture = device::ARMv8a;
         } else {
-            LOG_WARN("Unrecognised ABI: %v", primaryABI.c_str());
+            LOG_WARN("Unrecognised ABI: %s", primaryABI.c_str());
         }
     }
 
@@ -289,7 +289,7 @@ void abi(int idx, device::ABI* abi) {
         abi->set_allocated_memorylayout(memory_layout);
         abi->set_architecture(device::ARMv8a);
     } else {
-        LOG_WARN("Unrecognised ABI: %v", name.c_str());
+        LOG_WARN("Unrecognised ABI: %s", name.c_str());
     }
 }
 
