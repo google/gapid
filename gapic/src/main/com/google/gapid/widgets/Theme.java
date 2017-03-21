@@ -106,6 +106,7 @@ public interface Theme {
   @RGB(argb = 0xff808000) public Color preprocessorColor();
   @RGB(argb = 0xffdcfadc) public Color memoryReadHighlight();
   @RGB(argb = 0xfffadcdc) public Color memoryWriteHighlight();
+  @RGB(argb = 0xffdcdcfa) public Color memorySelectionHighlight();
   @RGB(argb = 0xff282828) public Color aboutBackground();
   @RGB(argb = 0xffc8c8c8) public Color aboutForeground();
 
