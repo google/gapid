@@ -16,7 +16,6 @@
 package com.google.gapid.util;
 
 import com.google.gapid.proto.log.Log;
-import com.google.gapid.rpclib.schema.Method;
 import com.google.gapid.util.Flags.Flag;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Timestamp;
@@ -28,7 +27,6 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.logging.*;
 
 /**
@@ -59,12 +57,23 @@ public class Logging {
     }
 
     static LogLevel fromLevel(Level level) {
-      for (LogLevel logLevel : LogLevel.values()) {
-        if (logLevel.level == level) {
-          return logLevel;
-        }
+      int intLevel = level.intValue();
+      switch (intLevel) {
+        case 1000: return ERROR;
+        case  900: return WARNING;
+        case  800: case  700: return INFO;
+        case  500: case  400: case  300: return DEBUG;
+        default:
+          if (intLevel > 1000) {
+            return ERROR;
+          } else if (intLevel > 900) {
+            return WARNING;
+          } else if (intLevel > 700) {
+            return INFO;
+          } else {
+            return DEBUG;
+          }
       }
-      return INFO;
     }
   }
 
@@ -202,7 +211,7 @@ public class Logging {
   private static final String GAPID_PREFIX = "com.google.gapid.";
   private static final String GOOG_PREFIX = "com.google.";
 
-  private static String shorten(String className) {
+  protected static String shorten(String className) {
     if (className.startsWith(JAVA_PREFIX)) {
       return "j." + className.substring(JAVA_PREFIX.length());
     } else if (className.startsWith(GAPID_PREFIX)) {

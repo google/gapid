@@ -16,7 +16,6 @@
 package com.google.gapid.server;
 
 import static java.util.logging.Level.WARNING;
-import static java.util.logging.Level.parse;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
@@ -27,7 +26,6 @@ import com.google.gapid.proto.pkginfo.PkgInfo.PackageList;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
 import java.util.logging.Logger;
 
 /**
@@ -103,12 +101,13 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   @Override
   protected OutputHandler<PkgInfo.PackageList> createStdoutHandler() {
     return new BinaryHandler<PkgInfo.PackageList>(in -> {
-      SearchingInputStream is = new SearchingInputStream(in);
-      if (!is.search(PACKAGE_DATA_MARKER.getBytes())) {
-        throw new RuntimeException("The gapit command didn't produce the data marker.");
+      try (SearchingInputStream is = new SearchingInputStream(in)) {
+        if (!is.search(PACKAGE_DATA_MARKER.getBytes())) {
+          throw new RuntimeException("The gapit command didn't produce the data marker.");
+        }
+        byte[] data = ByteStreams.toByteArray(is);
+        return (data.length == 0) ? null : PkgInfo.PackageList.parseFrom(data);
       }
-      byte[] data = ByteStreams.toByteArray(is);
-      return (data.length == 0) ? null : PkgInfo.PackageList.parseFrom(data);
     }) {
       @Override
       public void finish(SettableFuture<PackageList> result) throws InterruptedException {

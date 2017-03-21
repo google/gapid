@@ -165,38 +165,26 @@ public class LogView extends Composite implements Tab {
 
   private Color severityBackgroundColor(Log.Severity severity) {
     switch (severity) {
-      case Verbose:
-        return theme.verboseBackground();
-      case Debug:
-        return theme.debugBackground();
-      case Info:
-        return theme.infoBackground();
-      case Warning:
-        return theme.warningBackground();
-      case Error:
-        return theme.errorBackground();
-      case Fatal:
-        return theme.fatalBackground();
+      case Verbose: return theme.verboseBackground();
+      case Debug: return theme.debugBackground();
+      case Info: return theme.infoBackground();
+      case Warning: return theme.warningBackground();
+      case Error: return theme.errorBackground();
+      case Fatal: return theme.fatalBackground();
+      default: return theme.infoBackground();
     }
-    return theme.infoBackground();
   }
 
   private Color severityForegroundColor(Log.Severity severity) {
     switch (severity) {
-      case Verbose:
-        return theme.verboseForeground();
-      case Debug:
-        return theme.debugForeground();
-      case Info:
-        return theme.infoForeground();
-      case Warning:
-        return theme.warningForeground();
-      case Error:
-        return theme.errorForeground();
-      case Fatal:
-        return theme.fatalForeground();
+      case Verbose: return theme.verboseForeground();
+      case Debug: return theme.debugForeground();
+      case Info: return theme.infoForeground();
+      case Warning: return theme.warningForeground();
+      case Error: return theme.errorForeground();
+      case Fatal: return theme.fatalForeground();
+      default: return theme.infoForeground();
     }
-    return theme.infoForeground();
   }
 
   @Override
