@@ -138,7 +138,7 @@ public class LogView extends Composite implements Tab {
     Widgets.scheduleIfNotDisposed(this, this::updateTree);
   }
 
-  private String formatTime(Timestamp time) {
+  private static String formatTime(Timestamp time) {
     Date date = new Date(time.getSeconds() * 1000);
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(date);
