@@ -96,6 +96,8 @@ public class Capture {
       return;
     }
 
+    settings.addToRecent(canonicalPath);
+
     Rpc.listen(client.loadCapture(canonicalPath), rpcController,
         new UiErrorCallback<Path.Capture, Path.Capture, GapisInitException>(shell, LOG) {
       @Override
