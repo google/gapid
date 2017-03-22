@@ -59,7 +59,7 @@ void SpvManager::addOutputForInputs(std::string outs_pref) {
       out_var.name = outs_pref + in_name;
 
       const Type* type = getPointeeIfPointer(def_inst->GetSingleWordOperand(0));
-      out_var.type_id = type_mgr->GetId(type);
+      out_var.type_id = TypeToId(type);
       addGlobalVariable(spv::StorageClassOutput, &out_var);
       // instructions stored in curr_block_insts
       uint32_t ref_id =
@@ -68,7 +68,11 @@ void SpvManager::addOutputForInputs(std::string outs_pref) {
     }
   }
   // add curr_block_insts to first block in main
-  module->begin()->begin()->PrependInstructions(curr_block_insts);
+  auto it = module->begin()->begin()->begin();
+  for (auto& curr_block_inst : curr_block_insts) {
+    it = it.InsertBefore(std::move(curr_block_inst));
+    it++;
+  }
   curr_block_insts.clear();
 }
 
@@ -201,11 +205,13 @@ std::unique_ptr<Instruction> SpvManager::makeInstruction(
  * Returns pointer to created BasicBlock (body of appropriate print function).
  **/
 std::unique_ptr<BasicBlock> SpvManager::makeBasicBlock(uint32_t label_id, Function* parent,
-                                                       std::vector<std::unique_ptr<Instruction>>& body) {
+                                                       std::vector<std::unique_ptr<Instruction>>&& body) {
   auto label_inst = makeInstruction(SpvOpLabel, 0, label_id, {{}});
   std::unique_ptr<BasicBlock> bb = spvtools::MakeUnique<BasicBlock>(std::move(label_inst));
 
-  bb->SetInstructions(std::move(body));
+  for(auto& inst : body) {
+    bb->AddInstruction(std::move(inst));
+  }
 
   bb->SetParent(parent);
   return bb;
@@ -239,9 +245,31 @@ uint32_t SpvManager::addTypeInst(SpvOp_ op, std::initializer_list<std::initializ
                                  uint32_t type_id) {
   uint32_t result_id = getUnique();
   auto inst = makeInstruction(op, type_id, result_id, words);
-  type_mgr->GetRecordIfTypeDefinition(*inst);
+  // Kill type-manager, we will lazily rebuild it.
+  // TODO: Add functions to SPRV-Tool to make sure it stays up to date.
+  type_mgr.reset();
   module->AddType(std::move(inst));
   return result_id;
+}
+
+uint32_t SpvManager::TypeToId(const Type* type) {
+  if (type_mgr == nullptr) {
+    auto print_msg_to_stderr = [](spv_message_level_t, const char*, const spv_position_t&, const char* m) {
+      std::cerr << "error: " << m << std::endl;
+    };
+    type_mgr.reset(new TypeManager(print_msg_to_stderr, *module));
+  }
+  return type_mgr->GetId(type);
+}
+
+Type* SpvManager::IdToType(uint32_t id) {
+  if (type_mgr == nullptr) {
+    auto print_msg_to_stderr = [](spv_message_level_t, const char*, const spv_position_t&, const char* m) {
+      std::cerr << "error: " << m << std::endl;
+    };
+    type_mgr.reset(new TypeManager(print_msg_to_stderr, *module));
+  }
+  return type_mgr->GetType(id);
 }
 
 void SpvManager::addVariable(uint32_t type_id, uint32_t ref_id, spv::StorageClass storage_class) {
@@ -290,28 +318,28 @@ uint32_t SpvManager::addFunction(const char* name, uint32_t result_type_id, uint
         collectInstWithResult(SpvOpISub, {{load_id}, {getConstId(1)}}, globals.curr_step.type_id);
     collectInstWithoutResult(SpvOpStore, {{globals.curr_step.ref_id}, {sub_id}});
     collectCondition(true_label_id, false_label_id);
-    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), curr_block_insts)));
+    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts))));
     curr_block_insts.clear();
 
     // true block
     load_id = collectInstWithResult(SpvOpLoad, {{param.first}}, globals.result.type_id);
     collectInstWithoutResult(SpvOpStore, {{globals.result.ref_id}, {load_id}});
     collectInstWithoutResult(SpvOpBranch, {{false_label_id}});
-    fun->AddBasicBlock(std::move(makeBasicBlock(true_label_id, fun.get(), curr_block_insts)));
+    fun->AddBasicBlock(std::move(makeBasicBlock(true_label_id, fun.get(), std::move(curr_block_insts))));
     curr_block_insts.clear();
 
     // after-if-statement block
     collectInstWithoutResult(SpvOpReturn);
-    fun->AddBasicBlock(std::move(makeBasicBlock(false_label_id, fun.get(), curr_block_insts)));
+    fun->AddBasicBlock(std::move(makeBasicBlock(false_label_id, fun.get(), std::move(curr_block_insts))));
     curr_block_insts.clear();
 
   } else {
     // call-another-print block
-    const Type* arg_type = type_mgr->GetType(param.second);
+    const Type* arg_type = IdToType(param.second);
     uint32_t type_to_convert = getTypeToConvert(arg_type);
     collectPrintCall(param, type_to_convert);
     collectInstWithoutResult(SpvOpReturn);
-    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), curr_block_insts)));
+    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts))));
     curr_block_insts.clear();
   }
 
@@ -342,7 +370,7 @@ void SpvManager::collectInstWithoutResult(SpvOp_ op,
 
 uint32_t SpvManager::collectCompositeConstruct(
     std::initializer_list<std::initializer_list<uint32_t>> data, uint32_t type_id) {
-  const spvtools::opt::analysis::Vector* vec = type_mgr->GetType(type_id)->AsVector();
+  const spvtools::opt::analysis::Vector* vec = IdToType(type_id)->AsVector();
   assert((vec != nullptr && vec->element_count() == data.begin()->size()) &&
          "collectCompositeConstruct: wrong data size to construct vector");
 
@@ -366,7 +394,7 @@ void SpvManager::collectCondition(uint32_t true_label_id, uint32_t false_label_i
  * uint, vec --> uvec4
  **/
 uint32_t SpvManager::collectTypeConversion(name_type from, uint32_t to_type) {
-  const Type* from_type = type_mgr->GetType(from.second);
+  const Type* from_type = IdToType(from.second);
 
   uint32_t ref_id = 0;
   if (from_type->AsBool()) {
@@ -375,14 +403,14 @@ uint32_t SpvManager::collectTypeConversion(name_type from, uint32_t to_type) {
   } else if (from_type->AsFloat()) {
     ref_id = collectInstWithResult(SpvOpBitcast, {{from.first}}, to_type);
   } else if (from_type->AsInteger()) {
-    if (from_type->AsInteger()->isSigned()) {
+    if (from_type->AsInteger()->IsSigned()) {
       ref_id = collectInstWithResult(SpvOpBitcast, {{from.first}}, to_type);
     } else {
       ref_id = collectCompositeConstruct({{from.first, getConstId(0), getConstId(0), getConstId(0)}},
                                          to_type);
     }
   } else if (from_type->AsVector()) {
-    uint32_t elem_type_id = type_mgr->GetId(from_type->AsVector()->element_type());
+    uint32_t elem_type_id = TypeToId(from_type->AsVector()->element_type());
     uint32_t elem_count = from_type->AsVector()->element_count();
     std::vector<uint32_t> components(RESULT_VEC_SIZE);
     for (uint32_t i = 0; i < RESULT_VEC_SIZE; i++) {
@@ -428,7 +456,7 @@ void SpvManager::collectPrintCall(name_type arg, uint32_t fun_param_type_id) {
 }
 
 void SpvManager::collectPrintChain(name_type arg) {
-  const Type* arg_type = type_mgr->GetType(arg.second);
+  const Type* arg_type = IdToType(arg.second);
 
   if (isConvertedType(arg_type)) {
     collectPrintCall(arg);
@@ -441,7 +469,7 @@ void SpvManager::collectPrintChain(name_type arg) {
 
   if (arg_type->AsMatrix()) {
     const spvtools::opt::analysis::Matrix* matrix = arg_type->AsMatrix();
-    print_elem_type = type_mgr->GetId(matrix->element_type());
+    print_elem_type = TypeToId(matrix->element_type());
     elem_count = matrix->element_count();
     for (uint32_t i = 0; i < elem_count; i++) {
       elem_id = collectInstWithResult(SpvOpAccessChain, {{arg.first}, {getConstId(i)}}, print_elem_type);
@@ -452,13 +480,13 @@ void SpvManager::collectPrintChain(name_type arg) {
     const std::vector<Type*>& element_types = arg_type->AsStruct()->element_types();
     elem_count = element_types.size();
     for (uint32_t i = 0; i < elem_count; i++) {
-      print_elem_type = type_mgr->GetId(element_types[i]);
+      print_elem_type = TypeToId(element_types[i]);
       elem_id = collectInstWithResult(SpvOpAccessChain, {{arg.first}, {getConstId(i)}}, print_elem_type);
       collectPrintChain(std::make_pair(elem_id, print_elem_type));
     }
   }
   if (arg_type->AsArray()) {
-    print_elem_type = type_mgr->GetId(arg_type->AsArray()->element_type());
+    print_elem_type = TypeToId(arg_type->AsArray()->element_type());
     elem_count = getArrayLength(arg_type);
     for (uint32_t i = 0; i < elem_count; i++) {
       elem_id = collectInstWithResult(SpvOpAccessChain, {{arg.first}, {getConstId(i)}}, print_elem_type);
@@ -504,8 +532,8 @@ void SpvManager::declarePrints() {
 
   // makes a copy, because iterating through all types insertPrintDeclaration adds new types
   std::set<uint32_t> type_ids;
-  for (auto const& it : type_mgr->type_to_ids()) {
-    type_ids.emplace(it.second);
+  for (auto const& it : *type_mgr) {
+    type_ids.emplace(it.first);
   }
 
   for (uint32_t type_id : type_ids) {
@@ -559,7 +587,7 @@ void SpvManager::moveCollectedBlockInsts(BasicBlock::iterator& it) {
  **/
 void SpvManager::insertPrintCallsIntoBlock(BasicBlock& bb) {
   BasicBlock::iterator it = bb.begin();
-  uint32_t label_id = bb.GetLabelId();
+  uint32_t label_id = bb.Label().result_id();
   // print label id to indicate current BasicBlock
   assert(globals.label_print_id != 0 &&
          "insertPrintCallsIntoBlock: label_print_id has to be bigger then zero.");
@@ -584,7 +612,7 @@ void SpvManager::insertPrintCallsIntoBlock(BasicBlock& bb) {
           }
         }
 
-        uint32_t pointee_type_id = type_mgr->GetId(pointee_type);
+        uint32_t pointee_type_id = TypeToId(pointee_type);
         collectPrintChain(std::make_pair(pointer, pointee_type_id));
       }
     }
@@ -601,17 +629,17 @@ void SpvManager::insertPrintCallsIntoBlock(BasicBlock& bb) {
  * Attention! addFunction uses curr_block_insts vector to collect function body.
  **/
 uint32_t SpvManager::insertPrintDeclaration(uint32_t type_id) {
-  const Type* type = type_mgr->GetType(type_id);
+  const Type* type = IdToType(type_id);
 
   if (isConvertedType(type)) {
     for (map_uint::iterator it = typeid_to_printid.begin(); it != typeid_to_printid.end(); ++it) {
-      if (type->IsSame(type_mgr->GetType(it->first))) {
+      if (type->IsSame(IdToType(it->first))) {
         return it->second;
       }
     }
 
     if (type->AsVector() && type_id != globals.result.type_id) {
-      uint32_t elem_type_id = type_mgr->GetId(type->AsVector()->element_type());
+      uint32_t elem_type_id = TypeToId(type->AsVector()->element_type());
       insertPrintDeclaration(elem_type_id);
     }
 
@@ -634,7 +662,7 @@ uint32_t SpvManager::getVariableTypeId(uint32_t var_id) {
  **/
 uint32_t SpvManager::getTypeToConvert(const Type* type) {
   uint32_t res_id = 0;
-  if ((type->AsInteger() && !type->AsInteger()->isSigned()) || type->AsVector()) {
+  if ((type->AsInteger() && !type->AsInteger()->IsSigned()) || type->AsVector()) {
     res_id = globals.result.type_id;
   } else if (type->AsBool() || type->AsInteger() || type->AsFloat()) {
     res_id = globals.uint_type_id;
@@ -652,7 +680,7 @@ uint32_t SpvManager::getArrayLength(const Type* type) {
 
   if (type->AsArray()) {
     const spvtools::opt::analysis::Array* array = type->AsArray();
-    Instruction* const_inst = def_use_mgr->GetDef(array->length_id());
+    Instruction* const_inst = def_use_mgr->GetDef(array->LengthId());
     assert((const_inst->opcode() == SpvOpConstant && const_inst->NumOperands() == 3) &&
            "getArrayLength: array length must come from constant instruction.");
     length = const_inst->GetSingleWordOperand(2);
@@ -666,7 +694,7 @@ uint32_t SpvManager::getArrayLength(const Type* type) {
  * Returns pointer to pointee_type if given id defines Pointer type.
  **/
 const Type* SpvManager::getPointeeIfPointer(uint32_t id) {
-  const Type* type = type_mgr->GetType(id);
+  const Type* type = IdToType(id);
   if (type) {
     const spvtools::opt::analysis::Pointer* pointer = type->AsPointer();
     if (pointer) {
@@ -688,10 +716,10 @@ uint32_t SpvManager::getPrintFunction(uint32_t type_id) {
   if (it != typeid_to_printid.end()) {
     fun_id = it->second;
   } else {
-    const Type* type = type_mgr->GetType(type_id);
+    const Type* type = IdToType(type_id);
     it = typeid_to_printid.begin();
     while (it != typeid_to_printid.end()) {
-      if (type->IsSame(type_mgr->GetType(it->first))) {
+      if (type->IsSame(IdToType(it->first))) {
         fun_id = it->second;
         break;
       }
@@ -711,7 +739,7 @@ bool SpvManager::isConvertedType(const Type* type) {
  * Checks if given function is print function added for debugging.
  **/
 bool SpvManager::isDebugFunction(Function& f) {
-  std::string name = name_mgr->getStrName(f.GetNameId());
+  std::string name = name_mgr->getStrName(f.DefInst().result_id());
   return name == PRINT_NAME || name == LABEL_PRINT_NAME;
 }
 
@@ -782,7 +810,7 @@ uint32_t SpvManager::getConstId(uint32_t val) {
  **/
 uint32_t SpvManager::getUnique() {
   uint32_t res;
-  res = module->GetIdBound();
+  res = module->IdBound();
   module->SetIdBound(res + 1);
   return res;
 }

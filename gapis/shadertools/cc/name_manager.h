@@ -17,9 +17,11 @@
 #ifndef NAME_MANAGER_H_
 #define NAME_MANAGER_H_
 
-#include "third_party/khronos/SPIRV-Tools/include/spirv-tools/libspirv.h"
-#include "third_party/khronos/SPIRV-Tools/source/opt/iterator.h"
-#include "third_party/khronos/SPIRV-Tools/source/opt/libspirv.hpp"
+#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
+#include "third_party/SPIRV-Tools/source/opt/iterator.h"
+#include "third_party/SPIRV-Tools/source/opt/module.h"
+#include "third_party/SPIRV-Tools/source/opt/instruction.h"
+#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 
 #include <map>
 #include <unordered_set>
