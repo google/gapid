@@ -442,10 +442,14 @@ message ResourcesByType {
 message Resource {
   // The resource instance unique identifier.
   path.ID id = 1;
-  // The resource name.
-  string name = 2;
+  // The resource identifier used for display.
+  string handle = 2;
+  // The resource label.
+  string label = 3;
+  // An int used to sort the resources for presentation.
+  uint64 order = 4;
   // The list of command indices where the resource was used.
-  repeated uint64 accesses = 3;
+  repeated uint64 accesses = 5;
 }
 
 // Context represents a single rendering context in the capture.

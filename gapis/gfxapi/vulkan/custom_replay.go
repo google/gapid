@@ -516,6 +516,17 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx log.Context, s *gfxapi.State, 
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdFillBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdFillBuffer(
+		a.CommandBuffer,
+		a.DstBuffer,
+		a.DstOffset,
+		a.Size,
+		a.Data)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdSetLineWidth) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdSetLineWidth(
 		a.CommandBuffer,
