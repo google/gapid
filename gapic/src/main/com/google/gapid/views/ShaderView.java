@@ -23,8 +23,10 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
+import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.logging.Level.FINE;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.Server.GapisInitException;
@@ -87,21 +89,23 @@ public class ShaderView extends Composite
 
   private final Client client;
   protected final Models models;
+  private final Widgets widgets;
   private final FutureController shaderRpcController = new SingleInFlight();
   private final FutureController programRpcController = new SingleInFlight();
-  private final LoadablePanel<TabFolder> loading;
+  private final LoadablePanel<Composite> loading;
+  private boolean uiBuiltWithPrograms;
 
   public ShaderView(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.client = client;
     this.models = models;
+    this.widgets = widgets;
 
     setLayout(new FillLayout());
 
-    loading = LoadablePanel.create(this, widgets, panel -> createStandardTabFolder(panel));
-    TabFolder folder = loading.getContents();
-    createStandardTabItem(folder, "Shaders", createShaderTab(folder, widgets));
-    createStandardTabItem(folder, "Programs", createProgramTab(folder, widgets));
+    loading = LoadablePanel.create(this, widgets,
+        panel -> createComposite(panel, new FillLayout(SWT.VERTICAL)));
+    updateUi(true);
 
     models.capture.addListener(this);
     models.atoms.addListener(this);
@@ -113,7 +117,7 @@ public class ShaderView extends Composite
     });
   }
 
-  private Control createShaderTab(Composite parent, Widgets widgets) {
+  private Control createShaderTab(Composite parent) {
     ShaderPanel panel = new ShaderPanel(parent, models, widgets.theme, Type.shader((data, src) -> {
       Shader shader = (data == null) ? null : (Shader)data.resource;
       if (shader != null) {
@@ -140,7 +144,7 @@ public class ShaderView extends Composite
     return panel;
   }
 
-  private Control createProgramTab(Composite parent, Widgets widgets) {
+  private Control createProgramTab(Composite parent) {
     SashForm splitter = new SashForm(parent, SWT.VERTICAL);
 
     ShaderPanel panel = new ShaderPanel(splitter, models, widgets.theme, Type.program());
@@ -202,6 +206,7 @@ public class ShaderView extends Composite
   @Override
   public void reinitialize() {
     onCaptureLoadingStart(false);
+    updateUi(false);
     updateLoading();
   }
 
@@ -236,6 +241,7 @@ public class ShaderView extends Composite
     if (!models.resources.isLoaded()) {
       loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
     } else {
+      updateUi(false);
       updateLoading();
     }
   }
@@ -247,6 +253,34 @@ public class ShaderView extends Composite
       } else {
         loading.stopLoading();
       }
+    }
+  }
+
+  private void updateUi(boolean force) {
+    boolean hasPrograms = true;
+    if (models.resources.isLoaded()) {
+      hasPrograms = models.resources.getResources().stream()
+          .filter(r -> r.getType() == ResourceType.ProgramResource)
+          .findAny()
+          .isPresent();
+    } else if (!force) {
+      return;
+    }
+
+    if (force || hasPrograms != uiBuiltWithPrograms) {
+      LOG.log(FINE, "(Re-)creating the shader UI, force: {0}, programs: {1}",
+          new Object[] { force, hasPrograms });
+      uiBuiltWithPrograms = hasPrograms;
+      disposeAllChildren(loading.getContents());
+
+      if (hasPrograms) {
+        TabFolder folder = createStandardTabFolder(loading.getContents());
+        createStandardTabItem(folder, "Shaders", createShaderTab(folder));
+        createStandardTabItem(folder, "Programs", createProgramTab(folder));
+      } else {
+        createShaderTab(loading.getContents());
+      }
+      loading.getContents().requestLayout();
     }
   }
 
@@ -295,6 +329,7 @@ public class ShaderView extends Composite
       });
 
       shaderCombo.getCombo().addListener(SWT.Selection, e -> updateSelection());
+      updateShaders();
     }
 
     private ComboViewer createShaderSelector() {
@@ -319,9 +354,7 @@ public class ShaderView extends Composite
 
     public void clearSource() {
       shaderSourceViewer = null;
-      for (Control child : sourceComposite.getChildren()) {
-        child.dispose();
-      }
+      disposeAllChildren(sourceComposite);
       if (pushButton != null) {
         pushButton.setEnabled(false);
       }
