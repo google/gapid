@@ -498,7 +498,7 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, s *gfxapi.Sta
 	return hijack.Mutate(ctx, s, b)
 }
 
-func (a *RecreateCmdFillBuffer) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdFillBuffer(
 		a.CommandBuffer,
 		a.DstBuffer,
