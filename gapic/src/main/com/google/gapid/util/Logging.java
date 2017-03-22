@@ -149,7 +149,8 @@ public class Logging {
   }
 
   /**
-   * Adds a {@link Log.Message} to the buffer, bypassing the Java {@link LogManager}.
+   * Adds a {@link com.google.gapid.proto.log.Log.Message} to the buffer, bypassing the Java
+   * {@link LogManager}.
    * This is used to display log messages from other processes such as GAPIS.
    */
   public static void logMessage(Log.Message message) {
