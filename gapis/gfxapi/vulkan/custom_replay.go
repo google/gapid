@@ -436,6 +436,16 @@ func (a *RecreateEndRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdExecuteCommands(
+		a.CommandBuffer,
+		a.CommandBufferCount,
+		memory.Pointer(a.PCommandBuffers),
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdDrawIndexed(
 		a.CommandBuffer,
@@ -454,6 +464,15 @@ func (a *RecreateCmdDispatch) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 		a.X,
 		a.Y,
 		a.Z)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdDispatchIndirect(
+		a.CommandBuffer,
+		a.Buffer,
+		a.Offset)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
