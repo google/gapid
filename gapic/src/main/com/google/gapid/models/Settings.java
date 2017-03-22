@@ -43,6 +43,7 @@ import java.util.logging.Logger;
 public class Settings {
   private static final Logger LOG = Logger.getLogger(Settings.class.getName());
   private static final String SETTINGS_FILE = ".gapic";
+  private static final int MAX_RECENT_FILES = 16;
 
   public Point windowLocation;
   public Point windowSize;
@@ -64,6 +65,7 @@ public class Settings {
   public boolean traceClearCache;
   public boolean traceDisablePcs;
   public boolean skipWelcomeScreen;
+  public String[] recentFiles = new String[0];
 
   public static Settings load() {
     Settings result = new Settings();
@@ -93,6 +95,40 @@ public class Settings {
     }
   }
 
+  public void addToRecent(String file) {
+    for (int i = 0; i < recentFiles.length; i++) {
+      if (file.equals(recentFiles[i])) {
+        if (i != 0) {
+          // Move to front.
+          System.arraycopy(recentFiles, 0, recentFiles, 1, i);
+          recentFiles[0] = file;
+        }
+        return;
+      }
+    }
+
+    // Not found.
+    if (recentFiles.length >= MAX_RECENT_FILES) {
+      String[] tmp = new String[MAX_RECENT_FILES];
+      System.arraycopy(recentFiles, 0, tmp, 1, MAX_RECENT_FILES - 1);
+      recentFiles = tmp;
+    } else {
+      String[] tmp = new String[recentFiles.length + 1];
+      System.arraycopy(recentFiles, 0, tmp, 1, recentFiles.length);
+      recentFiles = tmp;
+    }
+    recentFiles[0] = file;
+  }
+
+  public String[] getRecent() {
+    return stream(recentFiles)
+        .map(file -> new File(file))
+        .filter(File::exists)
+        .filter(File::canRead)
+        .map(File::getAbsolutePath)
+        .toArray(l -> new String[l]);
+  }
+
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
@@ -119,6 +155,7 @@ public class Settings {
     traceClearCache = getBoolean(properties, "trace.clearCache");
     traceDisablePcs = getBoolean(properties, "trace.disablePCS");
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
+    recentFiles = getStringList(properties, "open.recent", recentFiles);
   }
 
   private void updateTo(Properties properties) {
@@ -144,6 +181,7 @@ public class Settings {
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
+    setStringList(properties, "open.recent", recentFiles);
   }
 
   private static Point getPoint(Properties properties, String name) {

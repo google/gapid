@@ -69,6 +69,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -238,10 +239,27 @@ public class MainWindow extends ApplicationWindow {
   private MenuManager createFileMenu() {
     MenuManager manager = new MenuManager("&File");
     manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models())));
+    manager.add(createOpenRecentMenu());
     manager.add(MenuItems.FileTrace.create(
         () -> showTracingDialog(getShell(), models(), widgets())));
     manager.add(MenuItems.FileExit.create(() -> close()));
 
+    return manager;
+  }
+
+  private MenuManager createOpenRecentMenu() {
+    MenuManager manager = new MenuManager("Open &Recent");
+    manager.setRemoveAllWhenShown(true);
+    manager.addMenuListener(m -> {
+      for (String file : models().settings.getRecent()) {
+        m.add(new Action(file) {
+          @Override
+          public void run() {
+            models().capture.loadCapture(new File(file));
+          }
+        });
+      }
+    });
     return manager;
   }
 

@@ -21,6 +21,9 @@ import static com.google.gapid.widgets.AboutDialog.showHelp;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.createMenuItem;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.gapid.models.Models;
 import com.google.gapid.util.Messages;
@@ -29,13 +32,19 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
+
+import java.io.File;
 
 /**
  * Welcome dialog shown when the application is run without a capture as an argument.
@@ -73,15 +82,32 @@ public class WelcomeDialog {
         Label title = createBoldLabel(container, Messages.WINDOW_TITLE);
         title.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-        Widgets.createLink(container, "<a>Open Trace...</a>", e -> {
+        createLink(container, "<a>Open Trace...</a>", e -> {
           close(true);
           showOpenTraceDialog(shell, models);
         });
-        Widgets.createLink(container, "<a>Capture Trace...</a>", e -> {
+        String[] files = models.settings.getRecent();
+        if (files.length > 0) {
+          createLink(container, "<a>Open Recent...</a>", e -> {
+            Menu popup = new Menu(container);
+            for (String file : models.settings.recentFiles) {
+              createMenuItem(popup, file, 0, ev -> {
+                close(true);
+                models.capture.loadCapture(new File(file));
+              });
+            }
+            popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
+
+            Rectangle rect = ((Link)e.widget).getBounds();
+            popup.setLocation(container.toDisplay(new Point(rect.x, rect.y + rect.height)));
+            popup.setVisible(true);
+          });
+        }
+        createLink(container, "<a>Capture Trace...</a>", e -> {
           close(true);
           showTracingDialog(shell, models, widgets);
         });
-        Widgets.createLink(container, "<a>Help...</a>", e -> showHelp());
+        createLink(container, "<a>Help...</a>", e -> showHelp());
 
         showWelcome = Widgets.createCheckbox(
             container, "Show on startup", !models.settings.skipWelcomeScreen);
