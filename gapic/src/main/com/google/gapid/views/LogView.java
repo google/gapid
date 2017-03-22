@@ -96,7 +96,7 @@ public class LogView extends Composite implements Tab {
       }
       Log.Severity severity = message.getSeverity();
       TreeItem item = newItem(tree, severity);
-      String[] lines = message.getText().split("(\n)|(\r\n)");
+      String[] lines = message.getText().split("(\r?\n)");
       item.setText(Column.SEVERITY.index, message.getSeverity().name().substring(0, 1));
       item.setText(Column.TIME.index, formatTime(message.getTime()));
       item.setText(Column.PROCESS.index, message.getProcess());

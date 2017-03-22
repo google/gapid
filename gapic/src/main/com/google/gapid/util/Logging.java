@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
@@ -99,11 +100,6 @@ public class Logging {
 
   private static final RingBuffer buffer = new RingBuffer(BUFFER_SIZE);
 
-  private static final Handler handler = new Handler() {{
-    setFormatter(new LogFormatter());
-    setLevel(Level.ALL);
-  }};
-
   private static final Listener NULL_LISTENER = (m) -> { /* do nothing */ };
 
   private static Listener listener = NULL_LISTENER;
@@ -115,7 +111,10 @@ public class Logging {
     LogManager.getLogManager().reset();
     Logger rootLogger = Logger.getLogger("");
 
-    rootLogger.addHandler(handler);
+    rootLogger.addHandler(new LogToMessageHandler() {{
+      setFormatter(new LogFormatter());
+      setLevel(Level.ALL);
+    }});
 
     ConsoleHandler handler = new ConsoleHandler();
     handler.setFormatter(new LogFormatter());
@@ -309,7 +308,7 @@ public class Logging {
    * {@link Handler} that handles {@link LogRecord}s converting them to
    * {@link com.google.gapid.proto.log.Log.Message}s and then broadcasting them to listeners.
    */
-  protected static class Handler extends java.util.logging.Handler {
+  protected static class LogToMessageHandler extends Handler {
     private final SimpleFormatter simpleFormatter = new SimpleFormatter();
 
     @Override

@@ -39,7 +39,7 @@ import io.grpc.okhttp.OkHttpChannelProvider;
  * A connection to a running Graphics API Server (GAPIS).
  */
 public abstract class GapisConnection implements Closeable {
-  private static final Logger LOG = Logger.getLogger(Client.class.getName());
+  private static final Logger LOG = Logger.getLogger(GapisConnection.class.getName());
 
   /**
    * The interface passed to {@link #setLogMonitor} used to listen for GAPIS log messages.

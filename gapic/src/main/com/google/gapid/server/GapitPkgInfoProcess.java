@@ -23,7 +23,10 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.proto.pkginfo.PkgInfo.PackageList;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
