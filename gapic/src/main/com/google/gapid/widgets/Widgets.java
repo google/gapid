@@ -455,4 +455,10 @@ public class Widgets {
       }
     });
   }
+
+  public static void disposeAllChildren(Composite parent) {
+    for (Control child : parent.getChildren()) {
+      child.dispose();
+    }
+  }
 }
