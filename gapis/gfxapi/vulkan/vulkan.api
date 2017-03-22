@@ -7063,12 +7063,32 @@ cmd void vkCmdEndRenderPass(
   addCmd(commandBuffer, new!RecreateEndRenderPassData(), as!u32(0), doCmdEndRenderPass)
 }
 
+@internal
+class RecreateCmdExecuteCommandsData {
+  map!(u32, VkCommandBuffer) CommandBuffers
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdExecuteCommands(
+    VkCommandBuffer        commandBuffer,
+    u32                    commandBufferCount,
+    const VkCommandBuffer* pCommandBuffers) {
+  read(pCommandBuffers[0:commandBufferCount])
+}
+
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
-  read(pCommandBuffers[0:commandBufferCount])
+  cmd_buffers := pCommandBuffers[0:commandBufferCount]
+  recreate_data := new!RecreateCmdExecuteCommandsData()
+  for i in (0 .. commandBufferCount) {
+    recreate_data.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+  }
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 // ----------------------------------------------------------------------------

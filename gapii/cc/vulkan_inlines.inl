@@ -490,6 +490,18 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
       observer, commandBuf, t->mImage, t->mImageLayout, &depthStencil,
       clear_ranges.size(), clear_ranges.data());
 }
+
+template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdExecuteCommandsData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdExecuteCommandsData>& t) {
+    std::vector<VkCommandBuffer> command_buffers;
+    for (size_t i = 0; i < t->mCommandBuffers.size(); ++i) {
+        command_buffers.push_back(t->mCommandBuffers[i]);
+    }
+    spy->RecreateCmdExecuteCommands(
+        observer, commandBuf, command_buffers.size(), command_buffers.data());
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
