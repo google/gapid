@@ -24,7 +24,6 @@ package main
 // Having these here helps out tools that can't cope with missing dependancies
 import (
 	_ "github.com/google/gapid/core/app"
-	_ "github.com/google/gapid/core/fault/cause"
 	_ "github.com/google/gapid/core/log"
 	_ "github.com/google/gapid/core/text/lingo"
 )

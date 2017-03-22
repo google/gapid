@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/analysis"
 )
 
 func TestReferenceGlobalAnalysis(t *testing.T) {
@@ -70,7 +70,7 @@ func TestReferenceGlobalAnalysis(t *testing.T) {
 			`<nil>`,
 		},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)

@@ -15,11 +15,13 @@
 package replay
 
 import (
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/test/robot/job/worker"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"golang.org/x/net/context"
+	"github.com/google/gapid/test/robot/job/worker"
 	"google.golang.org/grpc"
+
+	xctx "golang.org/x/net/context"
 )
 
 type server struct {
@@ -27,7 +29,7 @@ type server struct {
 }
 
 // Serve wraps a manager in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, manager Manager) error {
+func Serve(ctx context.Context, grpcServer *grpc.Server, manager Manager) error {
 	RegisterServiceServer(grpcServer, &server{manager: manager})
 	return nil
 }
@@ -35,29 +37,27 @@ func Serve(ctx log.Context, grpcServer *grpc.Server, manager Manager) error {
 // Search implements ServiceServer.Search
 // It delegates the call to the provided Manager implementation.
 func (s *server) Search(query *search.Query, stream Service_SearchServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.manager.Search(ctx, query, func(ctx log.Context, e *Action) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.manager.Search(ctx, query, func(ctx context.Context, e *Action) error { return stream.Send(e) })
 }
 
 // Register implements ServiceServer.Register
 // It delegates the call to the ovided Manager implementation.
 func (s *server) Register(request *worker.RegisterRequest, stream Service_RegisterServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.manager.Register(ctx, request.Host, request.Target, func(ctx log.Context, t *Task) error { return stream.Send(t) })
+	ctx := stream.Context()
+	return s.manager.Register(ctx, request.Host, request.Target, func(ctx context.Context, t *Task) error { return stream.Send(t) })
 }
 
 // Do implements ServiceServer.Do
 // It delegates the call to the provided Manager implementation.
-func (s *server) Do(outer context.Context, request *DoRequest) (*worker.DoResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) Do(ctx xctx.Context, request *DoRequest) (*worker.DoResponse, error) {
 	id, err := s.manager.Do(ctx, request.Device, request.Input)
 	return &worker.DoResponse{Id: id}, err
 }
 
 // Update implements ServiceServer.Update
 // It delegates the call to t provided Manager implementation.
-func (s *server) Update(outer context.Context, request *UpdateRequest) (*worker.UpdateResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) Update(ctx xctx.Context, request *UpdateRequest) (*worker.UpdateResponse, error) {
 	if err := s.manager.Update(ctx, request.Action, request.Status, request.Output); err != nil {
 		return nil, err
 	}

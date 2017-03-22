@@ -15,10 +15,10 @@
 package atom
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -41,10 +41,10 @@ func (a *Resource) String() string {
 func (a *Resource) API() gfxapi.API  { return nil }
 func (a *Resource) AtomFlags() Flags { return 0 }
 func (a *Resource) Extras() *Extras  { return nil }
-func (a *Resource) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *Resource) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	return nil
 }
-func (a *Resource) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (a *Resource) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, &atom_pb.Resource{
 		Id:   a.ID.String(),
 		Data: a.Data,

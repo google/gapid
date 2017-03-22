@@ -15,9 +15,8 @@
 package jdwp
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/google/gapid/core/log"
 )
 
 // GetClassBySignature returns the single loaded class matching the requested
@@ -63,7 +62,7 @@ func (c *Connection) GetClassMethod(class ClassID, name, signature string) (Meth
 
 // WaitForClassPrepare blocks until a class with a name that matches the pattern
 // is prepared, and then returns the thread that prepared the class.
-func (c *Connection) WaitForClassPrepare(ctx log.Context, pattern string) (ThreadID, error) {
+func (c *Connection) WaitForClassPrepare(ctx context.Context, pattern string) (ThreadID, error) {
 	id, err := c.SetEvent(ClassPrepare, SuspendEventThread, ClassMatchEventModifier(pattern))
 	if err != nil {
 		return 0, err
@@ -87,7 +86,7 @@ func (c *Connection) WaitForClassPrepare(ctx log.Context, pattern string) (Threa
 // returns the method entry event. The thread is suspended when the method
 // returns. If wakeup is not 0, then the given thread is resumed before
 // we wait for the method.
-func (c *Connection) WaitForMethodEntry(ctx log.Context, class ClassID, method MethodID, wakeup ThreadID) (*EventMethodEntry, error) {
+func (c *Connection) WaitForMethodEntry(ctx context.Context, class ClassID, method MethodID, wakeup ThreadID) (*EventMethodEntry, error) {
 	id, err := c.SetEvent(MethodEntry, SuspendEventThread, ClassOnlyEventModifier(class))
 	if err != nil {
 		return nil, err

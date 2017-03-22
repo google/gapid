@@ -20,6 +20,7 @@
 set(files
     as.go
     contexts.go
+    doc.go
     follow.go
     framebuffer_attachment.go
     framebuffer_attachment_data.go

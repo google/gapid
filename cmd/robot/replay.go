@@ -15,13 +15,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/data/search/script"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/test/robot/replay"
@@ -38,16 +39,16 @@ func init() {
 	searchVerb.Add(replaySearch)
 }
 
-func doReplaySearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doReplaySearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		replays := replay.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return replays.Search(ctx, expr.Query(), func(ctx log.Context, entry *replay.Action) error {
+		return replays.Search(ctx, expr.Query(), func(ctx context.Context, entry *replay.Action) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})

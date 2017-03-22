@@ -15,22 +15,22 @@
 package app
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"strings"
 
 	"github.com/google/gapid/core/app/flags"
-	"github.com/google/gapid/core/log"
 )
 
 // Verb holds information about a runnable api command.
 type Verb struct {
-	Name       string                                          // The name of the command
-	Run        func(ctx log.Context, flags flag.FlagSet) error // the action for the command
-	Auto       AutoVerb                                        // If set, the Run and Flags will be automatically filled from this.
-	ShortHelp  string                                          // Help for the purpose of the command
-	ShortUsage string                                          // Help for how to use the command
-	Flags      flags.Set                                       // The command line flags it accepts
+	Name       string                                              // The name of the command
+	Run        func(ctx context.Context, flags flag.FlagSet) error // the action for the command
+	Auto       AutoVerb                                            // If set, the Run and Flags will be automatically filled from this.
+	ShortHelp  string                                              // Help for the purpose of the command
+	ShortUsage string                                              // Help for how to use the command
+	Flags      flags.Set                                           // The command line flags it accepts
 	verbs      []*Verb
 	selected   *Verb
 }
@@ -40,7 +40,7 @@ type Verb struct {
 type AutoVerb interface {
 	// Run is the method to perform the action associated with a verb.
 	// See Verb.Run for more details.
-	Run(ctx log.Context, flags flag.FlagSet) error
+	Run(ctx context.Context, flags flag.FlagSet) error
 }
 
 var (
@@ -76,7 +76,7 @@ func (v *Verb) Filter(prefix string) (result []*Verb) {
 }
 
 // Invoke runs a verb, handing it the command line arguments it should process.
-func (v *Verb) Invoke(ctx log.Context, args []string) error {
+func (v *Verb) Invoke(ctx context.Context, args []string) error {
 	if len(args) < 1 {
 		Usage(ctx, "Must supply a verb to %s", v.Name)
 		return nil
@@ -100,7 +100,7 @@ func (v *Verb) Invoke(ctx log.Context, args []string) error {
 	return nil
 }
 
-func (v *Verb) run(ctx log.Context, flags flag.FlagSet) error {
+func (v *Verb) run(ctx context.Context, flags flag.FlagSet) error {
 	return v.Invoke(ctx, flags.Args())
 }
 
@@ -117,7 +117,7 @@ func FilterVerbs(prefix string) (result []*Verb) {
 }
 
 // VerbMain is a task that can be handed to Run to invoke the verb handling system.
-func VerbMain(ctx log.Context) error {
+func VerbMain(ctx context.Context) error {
 	return globalVerbs.Invoke(ctx, globalVerbs.Flags.Args())
 }
 

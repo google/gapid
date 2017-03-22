@@ -15,7 +15,8 @@
 package samples
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles"
@@ -28,7 +29,7 @@ type builder struct {
 	lastID uint
 }
 
-func newBuilder(ctx log.Context) *builder {
+func newBuilder(ctx context.Context) *builder {
 	return &builder{
 		state: gfxapi.NewStateWithEmptyAllocator(),
 	}
@@ -53,7 +54,7 @@ func (b *builder) p() memory.Pointer {
 	return memory.Pointer{Address: base, Pool: memory.ApplicationPool}
 }
 
-func (b *builder) data(ctx log.Context, v ...interface{}) atom.AllocResult {
+func (b *builder) data(ctx context.Context, v ...interface{}) atom.AllocResult {
 	return atom.Must(atom.AllocData(ctx, b.state, v...))
 }
 
@@ -83,7 +84,7 @@ func (b *builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer,
 	))
 }
 
-func (b *builder) program(ctx log.Context,
+func (b *builder) program(ctx context.Context,
 	vertexShaderID, fragmentShaderID gles.ShaderId,
 	programID gles.ProgramId,
 	vertexShaderSource, fragmentShaderSource string) {

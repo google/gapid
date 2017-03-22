@@ -16,6 +16,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"sort"
 
 	"github.com/google/gapid/core/log"
@@ -73,11 +74,11 @@ func NewReportBuilder() *ReportBuilder {
 }
 
 // Add processes tags, adds references to item and adds item to report.
-func (b *ReportBuilder) Add(ctx log.Context, element *ReportItemRaw) {
+func (b *ReportBuilder) Add(ctx context.Context, element *ReportItemRaw) {
 	if err := b.processMessages(element.Item, element.Message, element.Tags); err == nil {
 		b.report.Items = append(b.report.Items, element.Item)
 	} else {
-		ctx.Error().Logf("Error %v during adding an item to a report", err)
+		log.E(ctx, "Error %v during adding an item to a report", err)
 	}
 }
 

@@ -22,6 +22,7 @@ set(files
     capture.pb.go
     capture.proto
     context.go
+    doc.go
     id.go
 )
 set(dirs

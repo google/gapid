@@ -14,10 +14,10 @@
 
 package git
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Get returns a versioned file using `git show` at the specified CL.
-func (g Git) Get(ctx log.Context, path string, at SHA) ([]byte, error) {
+func (g Git) Get(ctx context.Context, path string, at SHA) ([]byte, error) {
 	str, _, err := g.run(ctx, "show", at.String()+":"+path)
 	if err != nil {
 		return nil, err

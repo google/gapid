@@ -15,16 +15,16 @@
 package grpc_test
 
 import (
-	"net"
-	"testing"
-	"time"
-
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
+	"testing"
+	"time"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/stash"
@@ -36,7 +36,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func checkReadFromStash(ctx log.Context, assert assert.Manager, rnd *rand.Rand, s *stash.Client, exp map[string][]byte) {
+func checkReadFromStash(ctx context.Context, assert assert.Manager, rnd *rand.Rand, s *stash.Client, exp map[string][]byte) {
 	for id, expected := range exp {
 		e, err := s.Lookup(ctx, id)
 		assert.For("lookup").ThatError(err).Succeeded()
@@ -60,7 +60,7 @@ func checkReadFromStash(ctx log.Context, assert assert.Manager, rnd *rand.Rand, 
 	}
 }
 
-func uploadRandomDataToStash(ctx log.Context, assert assert.Manager, r *rand.Rand, s *stash.Client, lens []int) map[string][]byte {
+func uploadRandomDataToStash(ctx context.Context, assert assert.Manager, r *rand.Rand, s *stash.Client, lens []int) map[string][]byte {
 	m := map[string][]byte{}
 	for i, ln := range lens {
 		data := randomBytes(r, ln)
@@ -86,14 +86,14 @@ func TestMemoryAndGrpcStash(t *testing.T) {
 	go grpcutil.ServeWithListener(
 		ctx,
 		grpcutil.NewPipeListener("pipe:stashgrpc"),
-		func(ctx log.Context, listener net.Listener, server *grpc.Server) error {
+		func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 			srv = server
 			return stashgrpc.Serve(ctx, server, memStash)
 		},
 	)
 
 	ok := fault.Const("ok")
-	err := grpcutil.Client(ctx, "pipe:stashgrpc", func(ctx log.Context, cc *grpc.ClientConn) error {
+	err := grpcutil.Client(ctx, "pipe:stashgrpc", func(ctx context.Context, cc *grpc.ClientConn) error {
 		sc := stashgrpc.MustConnect(ctx, cc)
 		// Make sure the in-memory stash is correctly exposed.
 		checkReadFromStash(ctx, assert, r, sc, testData)

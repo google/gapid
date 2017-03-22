@@ -100,14 +100,15 @@ func (c Choices) Less(i, j int) bool {
 	return strings.Compare(c[i].String(), c[j].String()) < 0
 }
 
-// ForEnum automatically builds a Chooser for a 0 based sequential enumerated integer type.
+// ForEnum automatically builds a Chooser for a 0 based sequential enumerated
+// integer type up to 1000.
 // It expects that the values will all have names from the first to the last, starting at 0,
 // and that after the end of the valid range the string method for the type will either return the
 // empty string or strconv.Itoa of the base value.
 func ForEnum(v Enum) Chooser {
 	t := reflect.ValueOf(v).Elem().Type()
 	c := Chooser{Value: v}
-	for i := 0; true; i++ {
+	for i := 0; i < 1000; i++ {
 		ptr := reflect.New(t).Elem()
 		switch ptr.Kind() {
 		default:

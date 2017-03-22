@@ -15,10 +15,10 @@
 package shell
 
 import (
+	"context"
 	"os/exec"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -44,7 +44,7 @@ func (localTarget) Start(cmd Cmd) (Process, error) {
 	return p, p.exec.Start()
 }
 
-func (p *localProcess) Wait(ctx log.Context) error {
+func (p *localProcess) Wait(ctx context.Context) error {
 	res := make(chan error, 1)
 	go func() { res <- p.exec.Wait() }()
 	select {

@@ -15,13 +15,13 @@
 package scan
 
 import (
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/fault/cause"
+	"context"
+
 	"github.com/google/gapid/core/log"
 )
 
 // Process resolves all type informtaion for the loaded sources.
-func (s *Scanner) Process(ctx log.Context) error {
+func (s *Scanner) Process(ctx context.Context) error {
 	dirs := make([]*Directory, 0, len(s.Directories))
 	for _, dir := range s.Directories {
 		if dir.Scan {
@@ -36,7 +36,7 @@ func (s *Scanner) Process(ctx log.Context) error {
 	return nil
 }
 
-func (s *Scanner) process(ctx log.Context, dir *Directory) error {
+func (s *Scanner) process(ctx context.Context, dir *Directory) error {
 	if !dir.loaded {
 		s.load(dir)
 	}
@@ -46,7 +46,7 @@ func (s *Scanner) process(ctx log.Context, dir *Directory) error {
 			return err
 		}
 		if err := s.typeCheck(ctx, dir, &dir.Module); err != nil {
-			jot.Info(ctx).With("Module", dir.Name).Cause(err).Print("Process failed")
+			log.I(ctx, "Process failed for module %v: %v", dir.Name, err)
 		}
 		s.config.Packages[dir.ImportPath] = dir.Module.Types
 	}
@@ -57,17 +57,17 @@ func (s *Scanner) process(ctx log.Context, dir *Directory) error {
 			return err
 		}
 		if err := s.typeCheck(ctx, dir, &dir.Test); err != nil {
-			jot.Info(ctx).With("Module", dir.Name).Cause(err).Print("Process failed")
+			log.I(ctx, "Process failed for module %v: %v", dir.Name, err)
 		}
 	}
 	return nil
 }
 
-func (s *Scanner) typeCheck(ctx log.Context, dir *Directory, module *Module) error {
+func (s *Scanner) typeCheck(ctx context.Context, dir *Directory, module *Module) error {
 	t, err := s.config.Check(dir.ImportPath, s.FileSet, module.Files, nil)
 	module.Types = t
 	if err != nil {
-		return cause.Explain(ctx, err, "type check")
+		return log.Err(ctx, err, "type check")
 	}
 	return err
 }

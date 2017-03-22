@@ -15,6 +15,8 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
@@ -36,7 +38,7 @@ type schedule struct {
 // Blocking will prevent updates of the data store, so the function will try to schedule
 // tasks to idle workers only returning quickly on the assumption it will be ticked again
 // as soon as the data changes.
-func Tick(ctx log.Context, managers *monitor.Managers, data *monitor.Data) error {
+func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) error {
 	s := schedule{
 		managers: managers,
 		data:     data,
@@ -70,8 +72,8 @@ func Tick(ctx log.Context, managers *monitor.Managers, data *monitor.Data) error
 	return nil
 }
 
-func (s schedule) getHostTools(ctx log.Context) *build.ToolSet {
-	ctx = ctx.V("Host", s.worker.Host)
+func (s schedule) getHostTools(ctx context.Context) *build.ToolSet {
+	ctx = log.V{"Host": s.worker.Host}.Bind(ctx)
 	tools := s.pkg.FindTools(ctx, s.data.FindDevice(s.worker.Host))
 	if tools == nil {
 		return nil

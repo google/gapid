@@ -32,8 +32,6 @@ namespace gapir {
 std::unique_ptr<ReplayRequest> ReplayRequest::create(const ServerConnection& server,
                                                      ResourceProvider* resourceProvider,
                                                      MemoryManager* memoryManager) {
-    GAPID_INFO("Load replay request...");
-
     memoryManager->setReplayDataSize(server.replayLength());
 
     // Request the replay data from the server
@@ -89,14 +87,14 @@ bool ReplayRequest::load(void* data, uint32_t size) {
 const uint8_t* ReplayRequest::loadVolatileMemorySize(const uint8_t* ptr) {
     mVolatileMemorySize = *reinterpret_cast<const uint32_t*>(ptr);
     ptr += sizeof(uint32_t);
-    GAPID_INFO("Volatile memory size: %d", mVolatileMemorySize);
+    GAPID_DEBUG("Volatile memory size: %d", mVolatileMemorySize);
     return ptr;
 }
 
 const uint8_t* ReplayRequest::loadStackSize(const uint8_t* ptr) {
     mStackSize = *reinterpret_cast<const uint32_t*>(ptr);
     ptr += sizeof(uint32_t);
-    GAPID_INFO("Stack size: %d", mStackSize);
+    GAPID_DEBUG("Stack size: %d", mStackSize);
     return ptr;
 }
 
@@ -105,7 +103,7 @@ const uint8_t* ReplayRequest::loadConstantMemory(const uint8_t* ptr) {
     ptr += sizeof(uint32_t);
 
     mConstantMemory = {ptr, constantMemorySize};
-    GAPID_INFO("Constant memory size: %d", constantMemorySize);
+    GAPID_DEBUG("Constant memory size: %d", constantMemorySize);
     ptr += constantMemorySize;
 
     return ptr;
@@ -125,7 +123,7 @@ const uint8_t* ReplayRequest::loadResourceIds(const uint8_t* ptr) {
 
         mResources.emplace_back(std::move(resourceName), resourceSize);
     }
-    GAPID_INFO("Resources: %d", resourceCount);
+    GAPID_DEBUG("Resources: %d", resourceCount);
 
     return ptr;
 }
@@ -136,7 +134,7 @@ const uint8_t* ReplayRequest::loadInstructionList(const uint8_t* ptr) {
 
     const uint32_t instructionCount = instructionListSize / sizeof(uint32_t);
     mInstructionList = {reinterpret_cast<const uint32_t*>(ptr), instructionCount};
-    GAPID_INFO("Instruction count: %d", instructionCount);
+    GAPID_DEBUG("Instruction count: %d", instructionCount);
     ptr += instructionListSize;
 
     return ptr;

@@ -24,11 +24,11 @@ set(files
     core_binary.go
     core_binary_metatadata.go
     custom_mutate.go
+    doc.go
     enum.go
     mutate.go
     snippets_embed.go
 )
 set(dirs
-    core
     core_pb
 )

@@ -14,18 +14,23 @@
 
 package assert_test
 
-import "github.com/google/gapid/core/assert"
+import (
+	"fmt"
+	"os"
+
+	"github.com/google/gapid/core/assert"
+)
 
 // An example that shows the simplest of value equality tests with a message
 func ExampleAssertMessage() {
 	ctx := assert.Context(nil)
 	assert.For(ctx, "A message").That(false).Equals(true)
-	ctx.Print("Test complete")
+	fmt.Fprintf(os.Stdout, "Test complete")
 	// Output:
 	// Error:A message
 	//     Got       false
 	//     Expect == true
-	// Info:Test complete
+	// Test complete
 }
 
 // An example that shows a critical error
@@ -33,7 +38,7 @@ func ExampleAssertCritical() {
 	defer func() { recover() }() // Consume the critical level panic
 	ctx := assert.Context(nil)
 	assert.For(ctx, "A message").Critical().That(false).Equals(true)
-	ctx.Print("Test complete")
+	fmt.Fprintf(os.Stdout, "Test complete")
 	// Output:
 	// Critical:A message
 	//     Got       false

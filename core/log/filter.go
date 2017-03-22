@@ -14,49 +14,36 @@
 
 package log
 
-import "github.com/google/gapid/core/fault/severity"
+import (
+	"context"
 
-// Filter is used by the log system to drop log records that don't match the filter.
-// It is invoked for each property attached to the log context.
-// It should return true if the context passes the filter.
-type Filter string
+	"github.com/google/gapid/core/context/keys"
+)
 
-// PreFilter is an optimised version of Filter that is invoked only for the initial setting of the Severity property.
-// This is an optimization for the most common binning case.
-// It should return true if the severity is active.
-type PreFilter severity.Level
-
-// GetFilter gets the active Filter for this context.
-func GetFilter(ctx Context) Filter {
-	return ""
+// Filter is the filter of log messages.
+type Filter interface {
+	// ShowSeverity returns true if the message of severity s should be shown.
+	ShowSeverity(s Severity) bool
 }
 
-// GetPreFilter gets the active PreFilter for this context.
-func GetPreFilter(ctx Context) PreFilter {
-	return PreFilter(severity.GetFilter(ctx.Unwrap()))
+type filterKeyTy string
+
+const filterKey filterKeyTy = "log.filterKey"
+
+// PutFilter returns a new context with the Filter assigned to w.
+func PutFilter(ctx context.Context, w Filter) context.Context {
+	return keys.WithValue(ctx, filterKey, w)
 }
 
-// Filter returns a context with the given Filter set on it.
-func (ctx logContext) Filter(f Filter) Context {
-	return ctx
+// GetFilter returns the Filter assigned to ctx.
+func GetFilter(ctx context.Context) Filter {
+	out, _ := ctx.Value(filterKey).(Filter)
+	return out
 }
 
-// PreFilter returns a context with the given PreFilter set on it.
-func (ctx logContext) PreFilter(f PreFilter) Context {
-	return Wrap(severity.Filter(ctx.Unwrap(), severity.Level(f)))
-}
+// SeverityFilter implements the Filter interface which filters out any messages
+// below the severity value.
+type SeverityFilter Severity
 
-// Pass is an implementation of Filter that does no filtering.
-const Pass = Filter("Pass")
-
-// Null is an implementation of PreFilter that drops all log messages.
-const Null = Filter("Null")
-
-// Limit returns an implementation of PreFilter that allows only log messages of equal or higher priority to the
-// specified limit.
-func Limit(limit severity.Level) PreFilter {
-	return PreFilter(limit)
-}
-
-// NoLimit is an implementation of PreFilter that allows all messages through.
-const NoLimit = PreFilter(severity.Debug + 10)
+// ShowSeverity returns true if the message of severity s should be shown.
+func (f SeverityFilter) ShowSeverity(s Severity) bool { return Severity(f) <= s }

@@ -27,7 +27,7 @@ func TestSamePhysicalDevice(t *testing.T) {
 	a := device.Host(ctx)
 	var b *device.Instance
 	c := a
-	ctx.Notice().Logf("%#+v %#+v", a, b)
+	log.I(ctx, "%#+v %#+v", a, b)
 	assert.For(ctx, "Device must be itself").That(a.SameAs(a)).Equals(true)
 	assert.For(ctx, "Device must match a copy").That(a.SameAs(c)).Equals(true)
 	assert.For(ctx, "Nil matches itself").That(b.SameAs(b)).Equals(true)

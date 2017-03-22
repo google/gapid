@@ -27,7 +27,6 @@ set(files
 set(dirs
     copyright
     lingo
-    note
     parse
     reflow
 )

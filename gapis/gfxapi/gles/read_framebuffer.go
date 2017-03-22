@@ -15,12 +15,12 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -32,16 +32,16 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(ctx log.Context, out transform.Writer)
+	injections map[atom.ID][]func(ctx context.Context, out transform.Writer)
 }
 
-func newReadFramebuffer(ctx log.Context) *readFramebuffer {
+func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(ctx log.Context, out transform.Writer)),
+		injections: make(map[atom.ID][]func(ctx context.Context, out transform.Writer)),
 	}
 }
 
-func (t *readFramebuffer) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, a)
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
@@ -51,10 +51,10 @@ func (t *readFramebuffer) Transform(ctx log.Context, id atom.ID, a atom.Atom, ou
 	}
 }
 
-func (t *readFramebuffer) Flush(ctx log.Context, out transform.Writer) {}
+func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
-	t.injections[id] = append(t.injections[id], func(ctx log.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(gfxapi.FramebufferAttachment_Depth)
 		if err != nil {
@@ -67,7 +67,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res chan<- imgRes) {
-	t.injections[id] = append(t.injections[id], func(ctx log.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s)
 
@@ -93,7 +93,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
 		if c.BoundDrawFramebuffer == 0 {
-			out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
@@ -127,7 +127,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 	})
 }
 
-func postColorData(ctx log.Context,
+func postColorData(ctx context.Context,
 	s *gfxapi.State,
 	width, height int32,
 	glfmt imgfmt,
@@ -141,7 +141,7 @@ func postColorData(ctx log.Context,
 
 	imageSize := imgFmt.Size(int(width), int(height))
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		// TODO: We use Call() directly here because we are calling glReadPixels
 		// with depth formats which are not legal for GLES. Once we're replaying
 		// on-device again, we need to take a look at methods for reading the
@@ -178,7 +178,7 @@ func postColorData(ctx log.Context,
 	t.revert()
 }
 
-func mutateAndWriteEach(ctx log.Context, out transform.Writer, atoms ...atom.Atom) {
+func mutateAndWriteEach(ctx context.Context, out transform.Writer, atoms ...atom.Atom) {
 	for _, a := range atoms {
 		out.MutateAndWrite(ctx, atom.NoID, a)
 	}
@@ -188,13 +188,13 @@ type nextUnusedIDKeyTy string
 
 const nextUnusedIDKey = nextUnusedIDKeyTy("nextUnusedID")
 
-func PutUnusedIDMap(ctx log.Context) log.Context {
-	return log.Wrap(keys.WithValue(ctx.Unwrap(), nextUnusedIDKey, map[rune]uint32{}))
+func PutUnusedIDMap(ctx context.Context) context.Context {
+	return keys.WithValue(ctx, nextUnusedIDKey, map[rune]uint32{})
 }
 
 // newUnusedID returns temporary object ID.
 // The tag makes the IDs for given object type more deterministic.
-func newUnusedID(ctx log.Context, tag rune, existenceTest func(uint32) bool) uint32 {
+func newUnusedID(ctx context.Context, tag rune, existenceTest func(uint32) bool) uint32 {
 	val := ctx.Value(nextUnusedIDKey)
 	if val == nil {
 		panic(nextUnusedIDKey + " missing from context")

@@ -16,13 +16,12 @@ package record
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"os"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -47,15 +46,15 @@ const (
 
 func (pbtxtFileType) Ext() string { return ".pbtxt" }
 
-func (pbtxtFileType) Open(ctx log.Context, f *os.File, null interface{}) (LedgerInstance, error) {
+func (pbtxtFileType) Open(ctx context.Context, f *os.File, null interface{}) (LedgerInstance, error) {
 	m, ok := null.(proto.Message)
 	if !ok {
-		return nil, cause.Explain(ctx, nil, "Cannot create proto text ledger with non proto type")
+		return nil, log.Err(ctx, nil, "Cannot create proto text ledger with non proto type")
 	}
 	return &pbtxtHandler{f: f, null: m}, nil
 }
 
-func (h *pbtxtHandler) Write(ctx log.Context, record interface{}) error {
+func (h *pbtxtHandler) Write(ctx context.Context, record interface{}) error {
 	if _, err := io.WriteString(h.f, proto.MarshalTextString(record.(proto.Message))); err != nil {
 		return err
 	}
@@ -63,26 +62,26 @@ func (h *pbtxtHandler) Write(ctx log.Context, record interface{}) error {
 	return err
 }
 
-func (h *pbtxtHandler) Reader(ctx log.Context) event.Source {
+func (h *pbtxtHandler) Reader(ctx context.Context) event.Source {
 	return &pbtxtReader{s: bufio.NewScanner(&readAt{f: h.f}), null: h.null}
 }
 
-func (h *pbtxtHandler) Close(ctx log.Context) {
+func (h *pbtxtHandler) Close(ctx context.Context) {
 	h.f.Close()
 }
 
-func (h *pbtxtHandler) New(ctx log.Context) interface{} {
+func (h *pbtxtHandler) New(ctx context.Context) interface{} {
 	return proto.Clone(h.null)
 }
 
-func (r *pbtxtReader) Next(ctx log.Context) interface{} {
+func (r *pbtxtReader) Next(ctx context.Context) interface{} {
 	for r.s.Scan() {
 		line := r.s.Text()
 		if line == pbtxtSeparator {
 			message := proto.Clone(r.null)
 			err := proto.UnmarshalText(r.pending, message)
 			if err != nil {
-				jot.Fail(ctx, err, "Invalid text proto in ledger")
+				log.E(ctx, "Invalid text proto in ledger. Error: %v", err)
 				return nil
 			}
 			r.pending = ""
@@ -94,4 +93,4 @@ func (r *pbtxtReader) Next(ctx log.Context) interface{} {
 	return nil
 }
 
-func (h *pbtxtReader) Close(ctx log.Context) {}
+func (h *pbtxtReader) Close(ctx context.Context) {}

@@ -15,6 +15,7 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/app/benchmark"
@@ -45,7 +46,7 @@ type DeadCodeElimination struct {
 	lastRequest     atom.ID
 }
 
-func newDeadCodeElimination(ctx log.Context, dependencyGraph *DependencyGraph) *DeadCodeElimination {
+func newDeadCodeElimination(ctx context.Context, dependencyGraph *DependencyGraph) *DeadCodeElimination {
 	return &DeadCodeElimination{
 		dependencyGraph: dependencyGraph,
 		requests:        make(atom.IDSet),
@@ -60,11 +61,11 @@ func (t *DeadCodeElimination) Request(id atom.ID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	panic(fmt.Errorf("This transform does not accept input atoms"))
 }
 
-func (t *DeadCodeElimination) Flush(ctx log.Context, out transform.Writer) {
+func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
@@ -76,7 +77,7 @@ func (t *DeadCodeElimination) Flush(ctx log.Context, out transform.Writer) {
 }
 
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
-func (t *DeadCodeElimination) propagateLiveness(ctx log.Context) []bool {
+func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 	isLive := make([]bool, t.lastRequest+1)
 	state := newLivenessTree(t.dependencyGraph.addressMap.parent)
 	for i := int(t.lastRequest); i >= 0; i-- {
@@ -121,7 +122,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx log.Context) []bool {
 		}
 		// Debug output
 		if config.DebugDeadCodeElimination && t.requests.Contains(atom.ID(i)) {
-			ctx.Info().Logf("DCE: Requested atom %v: %v", i, t.dependencyGraph.atoms[i])
+			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.atoms[i])
 			t.dependencyGraph.Print(ctx, &b)
 		}
 	}
@@ -158,7 +159,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx log.Context) []bool {
 		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
 		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
 		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
-		ctx.Debug().Logf("DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
+		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
 			100*numDead/num, numDead, deadMem/1024/1024, numDeadDraws,
 			100*numLive/num, numLive, liveMem/1024/1024, numLiveDraws)
 	}

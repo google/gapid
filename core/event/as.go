@@ -15,6 +15,7 @@
 package event
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/google/gapid/core/log"
@@ -22,12 +23,12 @@ import (
 
 // AsHandler wraps a destination into an event handler.
 // The destination can be one of
-//     func(log.Context, T, error) error
+//     func(context.Context, T, error) error
 //     chan T
 //     chan<- T
 // If it is not, this function will panic, as this is assumed to be a programming error.
 // If the handler is invoked with an event that is not of type T the handler will return an error.
-func AsHandler(ctx log.Context, f interface{}) Handler {
+func AsHandler(ctx context.Context, f interface{}) Handler {
 	switch dst := f.(type) {
 	case Handler:
 		return dst
@@ -45,20 +46,20 @@ func AsHandler(ctx log.Context, f interface{}) Handler {
 	case reflect.Chan:
 		return chanToHandler(ctx, v)
 	}
-	ctx.V("type", v.Type()).Fatal("Expected an event handler")
+	log.F(ctx, "Expected an event handler. Type: %v", v.Type())
 	return nil
 }
 
 // AsProducer wraps an event generator into an event producer.
 // The generator can be one of
-//     func(log.Context) T
+//     func(context.Context) T
 //     Source
 //     chan T
 //     <-chan T
 //     []T
 //     [n]T
 // If it is not, this function will panic, as this is assumed to be a programming error.
-func AsProducer(ctx log.Context, f interface{}) Producer {
+func AsProducer(ctx context.Context, f interface{}) Producer {
 	switch src := f.(type) {
 	case Source:
 		return src.Next
@@ -74,7 +75,7 @@ func AsProducer(ctx log.Context, f interface{}) Producer {
 	case reflect.Slice, reflect.Array:
 		length := v.Len()
 		i := 0
-		return func(ctx log.Context) interface{} {
+		return func(ctx context.Context) interface{} {
 			if i >= length {
 				return nil
 			}
@@ -87,16 +88,16 @@ func AsProducer(ctx log.Context, f interface{}) Producer {
 	case reflect.Chan:
 		return chanToProducer(ctx, v)
 	}
-	ctx.V("type", v.Type()).Fatal("Expected an event source")
+	log.F(ctx, "Expected an event source. Type: %v", v.Type())
 	return nil
 }
 
 // AsPredicate wraps a function into an event predicate.
 // The function must be a function of the form
-//     func(log.Context, T) bool
+//     func(context.Context, T) bool
 // If it is not, this function will panic, as this is assumed to be a programming error.
 // If the handler is invoked with an event that is not of type T the handler will return an error.
-func AsPredicate(ctx log.Context, f interface{}) Predicate {
+func AsPredicate(ctx context.Context, f interface{}) Predicate {
 	switch pred := f.(type) {
 	case Predicate:
 		return pred
@@ -106,6 +107,6 @@ func AsPredicate(ctx log.Context, f interface{}) Predicate {
 	case reflect.Func:
 		return funcToPredicate(ctx, v)
 	}
-	ctx.V("type", v.Type()).Fatal("Expected an event source")
+	log.F(ctx, "Expected an event source. Type: %v", v.Type())
 	return nil
 }

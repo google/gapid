@@ -15,10 +15,10 @@
 package memory
 
 import (
+	"context"
 	"io"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 )
 
 // Slice is the interface for a data source that can be resolved to a byte slice
@@ -26,15 +26,15 @@ import (
 type Slice interface {
 	// Get writes the bytes representing the slice to out, starting at offset
 	// bytes. This is equivalent to: copy(out, data[offset:]).
-	Get(ctx log.Context, offset uint64, out []byte) error
+	Get(ctx context.Context, offset uint64, out []byte) error
 
 	// NewReader returns an io.Reader to efficiently read from the slice.
 	// There shouldn't be a need to wrap this in additional buffers.
-	NewReader(ctx log.Context) io.Reader
+	NewReader(ctx context.Context) io.Reader
 
 	// ResourceID returns the identifier of the resource representing the slice,
 	// creating a new resource if it isn't already backed by one.
-	ResourceID(ctx log.Context) (id.ID, error)
+	ResourceID(ctx context.Context) (id.ID, error)
 
 	// Size returns the number of bytes that would be returned by calling Get.
 	Size() uint64

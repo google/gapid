@@ -16,10 +16,10 @@ package atom
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/database"
@@ -70,7 +70,7 @@ func (o *Observations) ApplyWrites(p *memory.Pool) {
 }
 
 // DataString returns a string describing all reads/writes and their raw data.
-func (o *Observations) DataString(ctx log.Context) string {
+func (o *Observations) DataString(ctx context.Context) string {
 	var buf bytes.Buffer
 	db := database.Get(ctx)
 	for _, read := range o.Reads {
@@ -92,7 +92,7 @@ func (o *Observations) DataString(ctx log.Context) string {
 	return buf.String()
 }
 
-func (o *Observations) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (o *Observations) Convert(ctx context.Context, out atom_pb.Handler) error {
 	for _, entry := range o.Reads {
 		if err := entry.Convert(ctx, out); err != nil {
 			return err
@@ -122,7 +122,7 @@ func (o Observation) String() string {
 	return fmt.Sprintf("{Range: %v, ID: %v}", o.Range, o.ID)
 }
 
-func (o *Observation) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (o *Observation) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, &memory_pb.Observation{
 		Base: o.Range.Base,
 		Size: o.Range.Size,

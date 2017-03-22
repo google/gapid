@@ -15,6 +15,7 @@
 package transform
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -58,7 +59,7 @@ func TestInjector(t *testing.T) {
 }
 
 // CheckTransform checks that transfomer emits the expected atoms given inputs.
-func CheckTransform(ctx log.Context, t *testing.T, transformer Transformer, inputs, expected test.AtomAtomIDList) {
+func CheckTransform(ctx context.Context, t *testing.T, transformer Transformer, inputs, expected test.AtomAtomIDList) {
 	mw := &test.MockAtomWriter{}
 	for _, in := range inputs {
 		transformer.Transform(ctx, in.Id, in.Atom, mw)

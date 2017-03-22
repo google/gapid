@@ -15,7 +15,8 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -23,7 +24,7 @@ import (
 )
 
 // ResourceMeta returns the metadata for the specified resource.
-func ResourceMeta(ctx log.Context, id *path.ID, after *path.Command) (*gfxapi.ResourceMeta, error) {
+func ResourceMeta(ctx context.Context, id *path.ID, after *path.Command) (*gfxapi.ResourceMeta, error) {
 	obj, err := database.Build(ctx, &ResourceMetaResolvable{id, after})
 	if err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func ResourceMeta(ctx log.Context, id *path.ID, after *path.Command) (*gfxapi.Re
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *ResourceMetaResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.After.Commands.Capture)
 	state := capture.NewState(ctx)
 	result := &gfxapi.ResourceMeta{

@@ -15,8 +15,10 @@
  */
 package com.google.gapid.util;
 
+import com.google.gapid.proto.log.Log;
 import com.google.gapid.util.Flags.Flag;
 import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.Timestamp;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +26,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.logging.ErrorManager;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
@@ -32,6 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
 /**
@@ -41,20 +43,52 @@ public class Logging {
   /**
    * Possible log level flag values.
    */
-  public static enum LogLevel {
-    OFF(Level.OFF, "Emergency", "F"), ERROR(Level.SEVERE, "Error", "E"),
-    WARNING(Level.WARNING, "Warning", "W"), INFO(Level.INFO, "Info", "I"),
-    DEBUG(Level.FINE, "Debug", "D"), ALL(Level.ALL, "Debug", "V");
+  public enum LogLevel {
+    OFF(Level.OFF, Log.Severity.Fatal, "Fatal", "F"),
+    ERROR(Level.SEVERE, Log.Severity.Error, "Error", "E"),
+    WARNING(Level.WARNING, Log.Severity.Warning, "Warning", "W"),
+    INFO(Level.INFO, Log.Severity.Info, "Info", "I"),
+    DEBUG(Level.FINE, Log.Severity.Debug, "Debug", "D"),
+    ALL(Level.ALL, Log.Severity.Debug, "Debug", "V");
 
     public final Level level;
+    public final Log.Severity severity;
     public final String gapisLevel;
     public final String gapirLevel;
 
-    private LogLevel(Level level, String gapisLevel, String gapirLevel) {
+    LogLevel(Level level, Log.Severity severity, String gapisLevel, String gapirLevel) {
       this.level = level;
+      this.severity = severity;
       this.gapisLevel = gapisLevel;
       this.gapirLevel = gapirLevel;
     }
+
+    static LogLevel fromLevel(Level level) {
+      int intLevel = level.intValue();
+      switch (intLevel) {
+        case 1000: return ERROR;
+        case  900: return WARNING;
+        case  800: case  700: return INFO;
+        case  500: case  400: case  300: return DEBUG;
+        default:
+          if (intLevel > 1000) {
+            return ERROR;
+          } else if (intLevel > 900) {
+            return WARNING;
+          } else if (intLevel > 700) {
+            return INFO;
+          } else {
+            return DEBUG;
+          }
+      }
+    }
+  }
+
+  /**
+   * Listener is the interface implemented by types that want to listen to log messages.
+   */
+  public interface Listener {
+    void onNewMessage(Log.Message message);
   }
 
   public static final Flag<LogLevel> logLevel = Flags.value(
@@ -62,10 +96,13 @@ public class Logging {
   public static final Flag<String> logDir = Flags.value(
       "logDir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
 
-  private static final MemoryHandler memoryHandler = new MemoryHandler() {{
-    setFormatter(new LogFormatter());
-    setLevel(Level.ALL);
-  }};
+  private static final int BUFFER_SIZE = 1000;
+
+  private static final RingBuffer buffer = new RingBuffer(BUFFER_SIZE);
+
+  private static final Listener NULL_LISTENER = (m) -> { /* do nothing */ };
+
+  private static Listener listener = NULL_LISTENER;
 
   /**
    * Initializes the Java logging system.
@@ -74,7 +111,10 @@ public class Logging {
     LogManager.getLogManager().reset();
     Logger rootLogger = Logger.getLogger("");
 
-    rootLogger.addHandler(memoryHandler);
+    rootLogger.addHandler(new LogToMessageHandler() {{
+      setFormatter(new LogFormatter());
+      setLevel(Level.ALL);
+    }});
 
     ConsoleHandler handler = new ConsoleHandler();
     handler.setFormatter(new LogFormatter());
@@ -99,12 +139,22 @@ public class Logging {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
   }
 
-  public static String getLogMessages() {
-    return memoryHandler.getMessages();
+  public static MessageIterator getMessageIterator() {
+    return buffer.iterator();
   }
 
-  public static void setListener(Runnable listener) {
-    memoryHandler.listener = (listener == null) ? () -> { /* empty */ } : listener;
+  public static void setListener(Listener newListener) {
+    listener = (newListener == null) ? NULL_LISTENER : newListener;
+  }
+
+  /**
+   * Adds a {@link com.google.gapid.proto.log.Log.Message} to the buffer, bypassing the Java
+   * {@link LogManager}.
+   * This is used to display log messages from other processes such as GAPIS.
+   */
+  public static void logMessage(Log.Message message) {
+    buffer.add(message);
+    listener.onNewMessage(message);
   }
 
   /**
@@ -120,10 +170,10 @@ public class Logging {
     @Override
     public String format(LogRecord rec) {
       final StringBuilder buf = new StringBuilder()
-          .append(getLogLevel(rec.getLevel().intValue()))
+          .append(LogLevel.fromLevel(rec.getLevel()).gapirLevel)
           .append(format.format(new Date(rec.getMillis())))
-          .append("[").append(getClassName(Thread.currentThread().getName()))
-          .append("][").append(getClassName(rec.getSourceClassName()))
+          .append("[").append(shorten(Thread.currentThread().getName()))
+          .append("][").append(shorten(rec.getSourceClassName()))
           .append('.').append(rec.getSourceMethodName()).append("] ");
       final String prefix = buf.toString();
       protosToString(rec);
@@ -165,40 +215,21 @@ public class Logging {
       }
       rec.setParameters(params);
     }
+  }
 
-    private static final String JAVA_PREFIX = "java.";
-    private static final String GAPID_PREFIX = "com.google.gapid.";
-    private static final String GOOG_PREFIX = "com.google.";
+  private static final String JAVA_PREFIX = "java.";
+  private static final String GAPID_PREFIX = "com.google.gapid.";
+  private static final String GOOG_PREFIX = "com.google.";
 
-    private static String getClassName(String className) {
-      if (className.startsWith(JAVA_PREFIX)) {
-        return "j." + className.substring(JAVA_PREFIX.length());
-      } else if (className.startsWith(GAPID_PREFIX)) {
-        return className.substring(GAPID_PREFIX.length());
-      } else if (className.startsWith(GOOG_PREFIX)) {
-        return "cg." + className.substring(GOOG_PREFIX.length());
-      }
-      return className;
+  protected static String shorten(String className) {
+    if (className.startsWith(JAVA_PREFIX)) {
+      return "j." + className.substring(JAVA_PREFIX.length());
+    } else if (className.startsWith(GAPID_PREFIX)) {
+      return className.substring(GAPID_PREFIX.length());
+    } else if (className.startsWith(GOOG_PREFIX)) {
+      return "cg." + className.substring(GOOG_PREFIX.length());
     }
-
-    private static char getLogLevel(int level) {
-      switch (level) {
-        case 1000: return 'E';
-        case  900: return 'W';
-        case  800: case  700: return 'I';
-        case  500: case  400: case  300: return 'D';
-        default:
-          if (level > 1000) {
-            return 'E';
-          } else if (level > 900) {
-            return 'W';
-          } else if (level > 700) {
-            return 'I';
-          } else {
-            return 'D';
-          }
-      }
-    }
+    return className;
   }
 
   /**
@@ -223,21 +254,62 @@ public class Logging {
   }
 
   /**
-   * {@link Handler} that keeps a number of messages in memory for later retrieval.
+   * MessageIterator is an iterator for the {@link RingBuffer}.
+   * As the {@link RingBuffer} is a fixed size ring buffer, messages can be discarded if the buffer
+   * fills more quickly than it is consumed. This iterator has been implemented to read the next
+   * most recently available messages. Some messages may be skipped if the iterator lags behind
+   * new messages.
    */
-  private static class MemoryHandler extends Handler {
-    private static final int MAX_SIZE = 10 * 1024 * 1024;
+  public static class MessageIterator {
+    private final RingBuffer target;
+    private int generation;
 
-    public Runnable listener;
-    private final StringBuilder buffer = new StringBuilder();
-
-    public MemoryHandler() {
-      listener = () -> { /* empty */ };
+    MessageIterator(RingBuffer target) {
+      this.target = target;
     }
 
-    public synchronized String getMessages() {
-      return buffer.toString();
+    public Log.Message next() {
+      synchronized (target) {
+        int remaining = Math.min(target.generation - generation, target.ring.length);
+        if (remaining == 0) {
+          return null;
+        }
+        // Progress the generation so that it is at least the oldest message.
+        generation = target.generation - remaining;
+        Log.Message message = target.ring[generation % target.ring.length];
+        generation++;
+        return message;
+      }
     }
+  }
+
+  /**
+   * A ring buffer of {@link LogRecord}s.
+   */
+  protected static class RingBuffer {
+    protected final Log.Message[] ring;
+    protected int generation;
+
+    public RingBuffer(int maxSize) {
+      this.ring = new Log.Message[maxSize];
+    }
+
+    public synchronized void add(Log.Message message) {
+      ring[generation % ring.length] = message;
+      generation++;
+    }
+
+    public MessageIterator iterator() {
+      return new MessageIterator(this);
+    }
+  }
+
+  /**
+   * {@link Handler} that handles {@link LogRecord}s converting them to
+   * {@link com.google.gapid.proto.log.Log.Message}s and then broadcasting them to listeners.
+   */
+  protected static class LogToMessageHandler extends Handler {
+    private final SimpleFormatter simpleFormatter = new SimpleFormatter();
 
     @Override
     public void publish(LogRecord record) {
@@ -245,30 +317,35 @@ public class Logging {
         return;
       }
 
-      String msg;
-      try {
-        msg = getFormatter().format(record);
-      } catch (Exception e) {
-        reportError(null, e, ErrorManager.FORMAT_FAILURE);
-        return;
-      }
+      String thread = shorten(Thread.currentThread().getName());
+      String klass = shorten(record.getSourceClassName());
+      String method = record.getSourceMethodName();
 
-      synchronized (this) {
-        buffer.append(msg);
-        int p = 0;
-        while (buffer.length() - p > MAX_SIZE) {
-          int n = buffer.indexOf("\n", p);
-          if (n < 0) {
-            break;
-          }
-          p = n + 1;
-        }
-        if (p != 0) {
-          buffer.delete(0, p);
+      long seconds = record.getMillis() / 1000;
+      int millis = (int) (record.getMillis() - seconds * 1000);
+
+      Log.Message.Builder builder = Log.Message.newBuilder()
+          .setText(simpleFormatter.formatMessage(record))
+          .setProcess("gapic")
+          .setSeverity(LogLevel.fromLevel(record.getLevel()).severity)
+          .setTag(shorten(record.getLoggerName()))
+          .setTime(Timestamp.newBuilder().setSeconds(seconds).setNanos(millis * 1000000));
+
+      builder.addValues(Log.Value.newBuilder().setName("thread").setValue(Pods.pod(thread)));
+      builder.addValues(Log.Value.newBuilder().setName("class").setValue(Pods.pod(klass)));
+      builder.addValues(Log.Value.newBuilder().setName("method").setValue(Pods.pod(method)));
+
+      Throwable thrown = record.getThrown();
+      if (thrown != null) {
+        for (StackTraceElement el : thrown.getStackTrace()) {
+          String file = el.getFileName();
+          builder.addCallstack(Log.SourceLocation.newBuilder()
+              .setFile(file == null ? "" : file)
+              .setLine(el.getLineNumber())
+              .build());
         }
       }
-
-      listener.run();
+      Logging.logMessage(builder.build());
     }
 
     @Override

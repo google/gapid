@@ -15,10 +15,10 @@
 package grpcutil
 
 import (
+	"context"
 	"io"
 	"reflect"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/log"
 	"github.com/pkg/errors"
@@ -30,13 +30,13 @@ func ToProducer(stream interface{}) event.Producer {
 	s := stream.(grpc.Stream)
 	meth, _ := reflect.TypeOf(stream).MethodByName("Recv")
 	t := meth.Type.Out(0).Elem()
-	return func(ctx log.Context) interface{} {
+	return func(ctx context.Context) interface{} {
 		m := reflect.New(t)
 		if err := s.RecvMsg(m.Interface()); err != nil {
 			if errors.Cause(err) == io.EOF {
 				return nil
 			}
-			jot.Fail(ctx, err, "")
+			log.F(ctx, "%v", err)
 			return nil
 		}
 		return m.Interface()

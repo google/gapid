@@ -15,7 +15,8 @@
 package layout
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
 )
@@ -77,16 +78,16 @@ func layout() (out FileLayout) {
 }
 
 // File returns the path to the specified file for the given ABI.
-func File(ctx log.Context, abi *device.ABI, name string) (file.Path, error) {
+func File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
 	return layout().File(ctx, abi, name)
 }
 
 // Strings returns the path to the binary string table.
-func Strings(ctx log.Context) (file.Path, error) {
+func Strings(ctx context.Context) (file.Path, error) {
 	return layout().Strings(ctx)
 }
 
 // GapidApk returns the path to the gapid.apk corresponding to the given abi.
-func GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error) {
+func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return layout().GapidApk(ctx, abi)
 }

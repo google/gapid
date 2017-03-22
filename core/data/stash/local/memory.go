@@ -16,13 +16,13 @@ package local
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -36,13 +36,13 @@ func init() {
 }
 
 // DialMemoryService returns a file backed implementation of stash.Service from a url.
-func DialMemoryService(ctx log.Context, location *url.URL) (*stash.Client, error) {
+func DialMemoryService(ctx context.Context, location *url.URL) (*stash.Client, error) {
 	if location.Host != "" {
-		return nil, cause.Explain(ctx, nil, "Host not supported for memory servers")
+		return nil, log.Err(ctx, nil, "Host not supported for memory servers")
 	}
 	if location.Path != "" {
 		//TODO: keep a persistent map of memory services by name?
-		return nil, cause.Explain(ctx, nil, "Path not supported for memory servers")
+		return nil, log.Err(ctx, nil, "Path not supported for memory servers")
 	}
 	return NewMemoryService(), nil
 }
@@ -56,7 +56,7 @@ func NewMemoryService() *stash.Client {
 
 func (s *memoryStore) Close() {}
 
-func (s *memoryStore) Open(ctx log.Context, id string) (io.ReadSeeker, error) {
+func (s *memoryStore) Open(ctx context.Context, id string) (io.ReadSeeker, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if data, found := s.data[id]; found {
@@ -65,7 +65,7 @@ func (s *memoryStore) Open(ctx log.Context, id string) (io.ReadSeeker, error) {
 	return nil, stash.ErrEntityNotFound
 }
 
-func (s *memoryStore) Read(ctx log.Context, id string) ([]byte, error) {
+func (s *memoryStore) Read(ctx context.Context, id string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	data, found := s.data[id]
@@ -75,11 +75,11 @@ func (s *memoryStore) Read(ctx log.Context, id string) ([]byte, error) {
 	return data, nil
 }
 
-func (s *memoryStore) Create(ctx log.Context, info *stash.Upload) (io.WriteCloser, error) {
+func (s *memoryStore) Create(ctx context.Context, info *stash.Upload) (io.WriteCloser, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, found := s.byID[info.Id]; found {
-		return nil, cause.Explain(ctx, nil, "Stash entity already exists")
+		return nil, log.Err(ctx, nil, "Stash entity already exists")
 	}
 	now, _ := ptypes.TimestampProto(time.Now())
 	w := &memoryStoreWriter{

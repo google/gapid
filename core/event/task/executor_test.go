@@ -81,7 +81,8 @@ func TestBatch(t *testing.T) {
 	}{}
 	verifySignalStates := func(expect ...bool) {
 		for i, b := range batches {
-			assert.For(ctx.I("Batch", i), "Signal").That(b.signal.TryWait(ctx, time.Millisecond)).Equals(expect[i])
+			ctx := log.V{"Batch": i}.Bind(ctx)
+			assert.For(ctx, "Signal").That(b.signal.TryWait(ctx, time.Millisecond)).Equals(expect[i])
 		}
 	}
 	for i := range batches {

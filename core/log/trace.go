@@ -14,9 +14,45 @@
 
 package log
 
-import "github.com/google/gapid/core/context/memo"
+import (
+	"context"
 
-// Enter returns a context with an entry added to the trace chain.
-func (ctx logContext) Enter(name string) Context {
-	return Wrap(memo.Enter(ctx.Unwrap(), name))
+	"github.com/google/gapid/core/context/keys"
+)
+
+// trace is a single entry in a stack of Enter()s.
+type trace struct {
+	name   string
+	parent *trace
+}
+
+type traceKeyTy string
+
+const traceKey traceKeyTy = "log.traceKey"
+
+// Enter returns a new context with the trace-stack pushed by name.
+func Enter(ctx context.Context, name string) context.Context {
+	return keys.WithValue(ctx, traceKey, &trace{
+		name:   name,
+		parent: getTrace(ctx),
+	})
+}
+
+func getTrace(ctx context.Context) *trace {
+	out, _ := ctx.Value(traceKey).(*trace)
+	return out
+}
+
+// GetTrace returns the trace-stack.
+func GetTrace(ctx context.Context) []string {
+	t := getTrace(ctx)
+	if t == nil {
+		return nil
+	}
+	out := []string{}
+	for t != nil {
+		out = append(out, t.name)
+		t = t.parent
+	}
+	return out
 }

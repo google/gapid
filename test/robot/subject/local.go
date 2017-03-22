@@ -15,6 +15,7 @@
 package subject
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/apk"
 )
 
@@ -37,7 +37,7 @@ type local struct {
 }
 
 // NewLocal returns a new persistent store of Subjects.
-func NewLocal(ctx log.Context, library record.Library, store *stash.Client) (Subjects, error) {
+func NewLocal(ctx context.Context, library record.Library, store *stash.Client) (Subjects, error) {
 	ledger, err := library.Open(ctx, "subjects", &Subject{})
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func NewLocal(ctx log.Context, library record.Library, store *stash.Client) (Sub
 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
-func (s *local) apply(ctx log.Context, subject *Subject) error {
+func (s *local) apply(ctx context.Context, subject *Subject) error {
 	s.subjects = append(s.subjects, subject)
 	s.byID[subject.Id] = subject
 	s.onAdd.Send(ctx, subject)
@@ -67,7 +67,7 @@ func (s *local) apply(ctx log.Context, subject *Subject) error {
 
 // Search implements Subjects.Search
 // It searches the set of persisted subjects, and supports monitoring of subjects as they arrive.
-func (s *local) Search(ctx log.Context, query *search.Query, handler Handler) error {
+func (s *local) Search(ctx context.Context, query *search.Query, handler Handler) error {
 	filter := eval.Filter(ctx, query, reflect.TypeOf(&Subject{}), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, s.subjects)
 	if query.Monitor {
@@ -77,7 +77,7 @@ func (s *local) Search(ctx log.Context, query *search.Query, handler Handler) er
 }
 
 // Add implements Subjects.Add
-func (s *local) Add(ctx log.Context, id string, hints *Hints) (*Subject, bool, error) {
+func (s *local) Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if subject, ok := s.byID[id]; ok {

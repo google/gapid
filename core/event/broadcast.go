@@ -15,9 +15,8 @@
 package event
 
 import (
+	"context"
 	"io"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Broadcast implements a list of handlers that itself is a handler.
@@ -26,13 +25,13 @@ type Broadcast []Handler
 
 // Listen adds a new handler to the set.
 // It conforms to the Listener signature.
-func (b *Broadcast) Listen(ctx log.Context, h Handler) {
+func (b *Broadcast) Listen(ctx context.Context, h Handler) {
 	*b = append(*b, h)
 }
 
 // Send implements Handler to send (sequentially) to all current handlers.
 // Handlers that return an error will be dropped from the broadcast list.
-func (b *Broadcast) Send(ctx log.Context, event interface{}) error {
+func (b *Broadcast) Send(ctx context.Context, event interface{}) error {
 	if len(*b) == 0 {
 		return nil
 	}

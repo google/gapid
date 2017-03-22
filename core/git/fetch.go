@@ -15,14 +15,13 @@
 package git
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Fetch performs a `git fetch` call.
 // The number of new CLs locally and remotely for the current branch is returned.
-func (g Git) Fetch(ctx log.Context) (localNew, remoteNew int, err error) {
+func (g Git) Fetch(ctx context.Context) (localNew, remoteNew int, err error) {
 	if _, _, err := g.run(ctx, "fetch"); err != nil {
 		return -1, -1, err
 	}

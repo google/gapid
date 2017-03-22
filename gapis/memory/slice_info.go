@@ -15,7 +15,8 @@
 package memory
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/memory/memory_pb"
@@ -45,7 +46,7 @@ func (s SliceInfo) ToProto() *memory_pb.Slice {
 	}
 }
 
-func (s *SliceInfo) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (s *SliceInfo) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, s.ToProto())
 }
 

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/log"
 )
 
 type scanError struct {
@@ -109,8 +110,8 @@ func (err scanError) Error() string {
 	return result
 }
 
-// Write a message to the context at info level
+// Trace writes a message to the context at info level
 func (s *Scanner) Trace(msg string) {
 	line, col := positionOf(s.data, s.offset)
-	s.ctx.Printf("%s:%d:%d:%s", s.name, line, col, msg)
+	log.I(s.ctx, "%s:%d:%d:%s", s.name, line, col, msg)
 }

@@ -15,9 +15,10 @@
 package subject
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"google.golang.org/grpc"
 )
@@ -27,7 +28,7 @@ type remote struct {
 }
 
 // NewRemote returns a Subjects that talks to a remote grpc Subject service.
-func NewRemote(ctx log.Context, conn *grpc.ClientConn) Subjects {
+func NewRemote(ctx context.Context, conn *grpc.ClientConn) Subjects {
 	return &remote{
 		client: NewServiceClient(conn),
 	}
@@ -35,8 +36,8 @@ func NewRemote(ctx log.Context, conn *grpc.ClientConn) Subjects {
 
 // Search implements Subjects.Search
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Search(ctx log.Context, query *search.Query, handler Handler) error {
-	stream, err := m.client.Search(ctx.Unwrap(), query)
+func (m *remote) Search(ctx context.Context, query *search.Query, handler Handler) error {
+	stream, err := m.client.Search(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -45,9 +46,9 @@ func (m *remote) Search(ctx log.Context, query *search.Query, handler Handler) e
 
 // Add implements Subjects.Add
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Add(ctx log.Context, id string, hints *Hints) (*Subject, bool, error) {
+func (m *remote) Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error) {
 	request := &AddRequest{Id: id, Hints: hints}
-	response, err := m.client.Add(ctx.Unwrap(), request)
+	response, err := m.client.Add(ctx, request)
 	if err != nil {
 		return nil, false, err
 	}

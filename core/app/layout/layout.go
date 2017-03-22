@@ -15,8 +15,9 @@
 package layout
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
@@ -30,17 +31,17 @@ const (
 // FileLayout provides a unified way of accessing various Gapid binaries.
 type FileLayout interface {
 	// File returns the path to the specified file for the given ABI.
-	File(ctx log.Context, abi *device.ABI, name string) (file.Path, error)
+	File(ctx context.Context, abi *device.ABI, name string) (file.Path, error)
 	// Strings returns the path to the binary string table.
-	Strings(ctx log.Context) (file.Path, error)
+	Strings(ctx context.Context) (file.Path, error)
 	// Gapit returns the path to the gapit binary in this layout.
-	Gapit(ctx log.Context) (file.Path, error)
+	Gapit(ctx context.Context) (file.Path, error)
 	// Gapis returns the path to the gapis binary in this layout.
-	Gapis(ctx log.Context) (file.Path, error)
+	Gapis(ctx context.Context) (file.Path, error)
 	// Gapir returns the path to the gapir binary in this layout.
-	Gapir(ctx log.Context) (file.Path, error)
+	Gapir(ctx context.Context) (file.Path, error)
 	// GapidApk returns the path to gapid.apk in this layout.
-	GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error)
+	GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error)
 }
 
 var packageOSToDir = map[device.OSKind]string{
@@ -64,27 +65,27 @@ type pkgLayout struct {
 	root file.Path
 }
 
-func (l pkgLayout) File(ctx log.Context, abi *device.ABI, name string) (file.Path, error) {
+func (l pkgLayout) File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
 	return l.root.Join(packageOSToDir[abi.OS], pkgABIToDir[abi.Architecture], name), nil
 }
 
-func (l pkgLayout) Strings(ctx log.Context) (file.Path, error) {
+func (l pkgLayout) Strings(ctx context.Context) (file.Path, error) {
 	return l.root.Join("strings", "en-us.stb"), nil
 }
 
-func (l pkgLayout) Gapit(ctx log.Context) (file.Path, error) {
+func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
 	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapit")
 }
 
-func (l pkgLayout) Gapir(ctx log.Context) (file.Path, error) {
+func (l pkgLayout) Gapir(ctx context.Context) (file.Path, error) {
 	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapir")
 }
 
-func (l pkgLayout) Gapis(ctx log.Context) (file.Path, error) {
+func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
 	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapis")
 }
 
-func (l pkgLayout) GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error) {
+func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return l.File(ctx, abi, "gapid.apk")
 }
 
@@ -101,15 +102,15 @@ type binLayout struct {
 	root file.Path
 }
 
-func abiDirectory(ctx log.Context, abi *device.ABI) (string, error) {
+func abiDirectory(ctx context.Context, abi *device.ABI) (string, error) {
 	dir, ok := binABIToDir[abi.Name]
 	if !ok {
-		return "", cause.Wrap(ctx, ErrUnknownABI).With("ABI", abi)
+		return "", log.Errf(ctx, ErrUnknownABI, "ABI: %v", abi)
 	}
 	return dir, nil
 }
 
-func (l binLayout) File(ctx log.Context, abi *device.ABI, name string) (file.Path, error) {
+func (l binLayout) File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
 	if abi.OS == device.Host(ctx).Configuration.OS.Kind {
 		return l.root.Join(name), nil
 	}
@@ -120,23 +121,23 @@ func (l binLayout) File(ctx log.Context, abi *device.ABI, name string) (file.Pat
 	return l.root.Join(dir, name), nil
 }
 
-func (l binLayout) Strings(ctx log.Context) (file.Path, error) {
+func (l binLayout) Strings(ctx context.Context) (file.Path, error) {
 	return l.root.Join("strings", "en-us.stb"), nil
 }
 
-func (l binLayout) Gapit(ctx log.Context) (file.Path, error) {
+func (l binLayout) Gapit(ctx context.Context) (file.Path, error) {
 	return l.root.Join("gapit"), nil
 }
 
-func (l binLayout) Gapir(ctx log.Context) (file.Path, error) {
+func (l binLayout) Gapir(ctx context.Context) (file.Path, error) {
 	return l.root.Join("gapir"), nil
 }
 
-func (l binLayout) Gapis(ctx log.Context) (file.Path, error) {
+func (l binLayout) Gapis(ctx context.Context) (file.Path, error) {
 	return l.root.Join("gapis"), nil
 }
 
-func (l binLayout) GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error) {
+func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return l.File(ctx, abi, "gapid.apk")
 }
 
@@ -144,27 +145,27 @@ func (l binLayout) GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error)
 // All methods will return an error.
 type unknownLayout struct{}
 
-func (l unknownLayout) File(ctx log.Context, abi *device.ABI, name string) (file.Path, error) {
+func (l unknownLayout) File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (l unknownLayout) Strings(ctx log.Context) (file.Path, error) {
+func (l unknownLayout) Strings(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapit(ctx log.Context) (file.Path, error) {
+func (a unknownLayout) Gapit(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapis(ctx log.Context) (file.Path, error) {
+func (a unknownLayout) Gapis(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapir(ctx log.Context) (file.Path, error) {
+func (a unknownLayout) Gapir(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) GapidApk(ctx log.Context, abi *device.ABI) (file.Path, error) {
+func (a unknownLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 

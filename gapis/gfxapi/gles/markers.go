@@ -15,14 +15,14 @@
 package gles
 
 import (
+	"context"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // Label returns the user maker name.
-func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx log.Context, ϟs *gfxapi.State) string {
+func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
 		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
@@ -31,7 +31,7 @@ func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx log.Context, ϟs *gfxapi.State) str
 }
 
 // Label returns the user maker name.
-func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx log.Context, ϟs *gfxapi.State) string {
+func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
 		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
@@ -40,7 +40,7 @@ func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx log.Context, ϟs *gfxapi.State) s
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroup) Label(ϟctx log.Context, ϟs *gfxapi.State) string {
+func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
 		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
@@ -49,7 +49,7 @@ func (ϟa *GlPushDebugGroup) Label(ϟctx log.Context, ϟs *gfxapi.State) string 
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroupKHR) Label(ϟctx log.Context, ϟs *gfxapi.State) string {
+func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
 		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))

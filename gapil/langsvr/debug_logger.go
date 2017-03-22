@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/core/text/note"
 )
 
 const maxLogHistory = 5
@@ -35,7 +35,7 @@ type debugLogger struct {
 	stdinLog   io.ReadWriteCloser
 	stdoutLog  io.ReadWriteCloser
 	msgLog     io.ReadWriteCloser
-	logHandler note.Handler
+	logHandler log.Handler
 	stop       func()
 }
 
@@ -54,13 +54,22 @@ func (d *debugLogger) Write(p []byte) (n int, err error) {
 	return d.stdout.Write(p)
 }
 
-func (d *debugLogger) bind(ctx log.Context) log.Context {
-	return ctx.Handler(func(page note.Page) error {
-		if d.logHandler != nil {
-			return d.logHandler(page)
-		}
-		return nil
-	})
+func (d *debugLogger) bind(ctx context.Context) context.Context {
+	return log.PutHandler(ctx, debugLogHandler{d})
+}
+
+type debugLogHandler struct{ d *debugLogger }
+
+func (h debugLogHandler) Handle(m *log.Message) {
+	if h.d.logHandler != nil {
+		h.d.logHandler.Handle(m)
+	}
+}
+
+func (h debugLogHandler) Close() {
+	if h.d.logHandler != nil {
+		h.d.logHandler.Close()
+	}
 }
 
 func (d *debugLogger) setEnabled(enabled bool) error {
@@ -83,10 +92,13 @@ func (d *debugLogger) setEnabled(enabled bool) error {
 			}
 			*io = f
 		}
-		logHandler, close := log.Channel(log.Writer(log.Normal, d.msgLog))
+		logHandler := log.Channel(log.Normal.Handler(func(s string, _ log.Severity) {
+			d.msgLog.Write([]byte(s))
+			d.msgLog.Write([]byte("\n"))
+		}), 0)
 		d.logHandler = logHandler
 		d.stop = func() {
-			close()
+			logHandler.Close()
 			d.stdinLog.Close()
 			d.stdoutLog.Close()
 			d.msgLog.Close()

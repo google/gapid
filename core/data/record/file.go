@@ -15,6 +15,7 @@
 package record
 
 import (
+	"context"
 	"os"
 
 	"github.com/google/gapid/core/log"
@@ -38,7 +39,7 @@ type FileShelf struct {
 // fileType implements file handling for a specific file Kind.
 type fileType interface {
 	Ext() string
-	Open(ctx log.Context, f *os.File, null interface{}) (LedgerInstance, error)
+	Open(ctx context.Context, f *os.File, null interface{}) (LedgerInstance, error)
 }
 
 type readAt struct {
@@ -57,7 +58,7 @@ var (
 
 // NewFileShelf build a new FileShelf backed implementation of a Shelf where the files will be stored
 // in the specified path.
-func NewFileShelf(ctx log.Context, path file.Path) (Shelf, error) {
+func NewFileShelf(ctx context.Context, path file.Path) (Shelf, error) {
 	os.MkdirAll(path.System(), 0755)
 	return &FileShelf{
 		path: path,
@@ -70,7 +71,7 @@ func NewFileShelf(ctx log.Context, path file.Path) (Shelf, error) {
 // if the ledger exists but is invalid.
 // It will try all known ledger types in priority order, if you have more than
 // one type for the ledger, only the first file will be found.
-func (s *FileShelf) Open(ctx log.Context, name string, null interface{}) (Ledger, error) {
+func (s *FileShelf) Open(ctx context.Context, name string, null interface{}) (Ledger, error) {
 	// see if we can find a file that matches the name
 	for _, kind := range fileSearchOrder {
 		ft := fileTypes[kind]
@@ -88,7 +89,7 @@ func (s *FileShelf) Open(ctx log.Context, name string, null interface{}) (Ledger
 // Create implements Shelf.Create for a file backed shelf, creating a new ledger file of the
 // current default kind.
 // It will return an error if for any reason the ledger cannot be created.
-func (s *FileShelf) Create(ctx log.Context, name string, null interface{}) (Ledger, error) {
+func (s *FileShelf) Create(ctx context.Context, name string, null interface{}) (Ledger, error) {
 	// Create the default file type
 	ft := fileTypes[s.Kind]
 	filename := s.path.Join(name).ChangeExt(ft.Ext())
@@ -96,7 +97,7 @@ func (s *FileShelf) Create(ctx log.Context, name string, null interface{}) (Ledg
 	if err != nil {
 		return nil, err
 	}
-	ctx.Info().V("file", filename).Log("Created file record ledger")
+	log.I(ctx, "Created file record ledger: %v", filename)
 	h, err := ft.Open(ctx, f, null)
 	if err != nil {
 		return nil, err
@@ -106,13 +107,13 @@ func (s *FileShelf) Create(ctx log.Context, name string, null interface{}) (Ledg
 
 // tryOpen is used to attempt to open and read a ledger file.
 // It returns an error only if the ledger file exists, but is not valid.
-func (s *FileShelf) tryOpen(ctx log.Context, name string, null interface{}, ft fileType) (Ledger, error) {
+func (s *FileShelf) tryOpen(ctx context.Context, name string, null interface{}, ft fileType) (Ledger, error) {
 	filename := s.path.Join(name).ChangeExt(ft.Ext())
 	f, err := os.OpenFile(filename.System(), os.O_RDWR|os.O_APPEND, 0660)
 	if err != nil {
 		return nil, nil
 	}
-	ctx.Info().V("file", filename).Log("Open file record ledger")
+	log.I(ctx, "Open file record ledger: %v", filename)
 	h, err := ft.Open(ctx, f, null)
 	if err != nil {
 		return nil, err

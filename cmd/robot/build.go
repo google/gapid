@@ -15,15 +15,15 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
 	"os/user"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/search/script"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/git"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
@@ -94,29 +94,29 @@ type buildUploader struct {
 	info  *build.Information
 }
 
-func (u *buildUploader) prepare(ctx log.Context, conn *grpc.ClientConn) error {
+func (u *buildUploader) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	// see if we can find a git cl in the cwd
 	typ := build.BuildBot
 	if g, err := git.New("."); err != nil {
-		jot.Notice(ctx).Cause(err).Print("Git failed")
+		log.E(ctx, "Git failed. Error: %v", err)
 	} else {
 		typ = build.User
 		if cl, err := g.HeadCL(ctx); err != nil {
-			jot.Notice(ctx).Cause(err).Print("CL failed")
+			log.E(ctx, "CL failed. Error: %v", err)
 		} else {
 			if buildFlags.cl == "" {
 				// guess cl from git
 				buildFlags.cl = cl.SHA.String()
-				ctx.Raw("").Logf("Detected CL %s", buildFlags.cl)
+				log.I(ctx, "Detected CL %s", buildFlags.cl)
 			}
 			if buildFlags.description == "" {
 				// guess description from git
 				buildFlags.description = cl.Subject
-				ctx.Raw("").Logf("Detected description %s", buildFlags.description)
+				log.I(ctx, "Detected description %s", buildFlags.description)
 			}
 		}
 		if status, err := g.Status(ctx); err != nil {
-			jot.Notice(ctx).Cause(err).Print("Status failed")
+			log.E(ctx, "Status failed. Error: %v", err)
 		} else {
 			if !status.Clean() {
 				typ = build.Local
@@ -125,10 +125,10 @@ func (u *buildUploader) prepare(ctx log.Context, conn *grpc.ClientConn) error {
 		if buildFlags.branch == "" {
 			// guess branch from git
 			if branch, err := g.CurrentBranch(ctx); err != nil {
-				jot.Notice(ctx).Cause(err).Print("Branch failed")
+				log.E(ctx, "Branch failed. Error: %v", err)
 			} else {
 				buildFlags.branch = branch
-				ctx.Raw("").Logf("Dectected branch %s", buildFlags.branch)
+				log.I(ctx, "Dectected branch %s", buildFlags.branch)
 			}
 		}
 	}
@@ -136,10 +136,10 @@ func (u *buildUploader) prepare(ctx log.Context, conn *grpc.ClientConn) error {
 		// guess uploader from environment
 		if user, err := user.Current(); err == nil {
 			buildFlags.uploader = user.Username
-			ctx.Raw("").Logf("Dectected uploader %s", buildFlags.uploader)
+			log.I(ctx, "Dectected uploader %s", buildFlags.uploader)
 		}
 	}
-	ctx.Raw("").Logf("Dectected build type %s", typ)
+	log.I(ctx, "Dectected build type %s", typ)
 	u.store = build.NewRemote(ctx, conn)
 	host := device.Host(ctx)
 	u.info = &build.Information{
@@ -154,61 +154,61 @@ func (u *buildUploader) prepare(ctx log.Context, conn *grpc.ClientConn) error {
 	return nil
 }
 
-func (u *buildUploader) process(ctx log.Context, id string) error {
+func (u *buildUploader) process(ctx context.Context, id string) error {
 	id, merged, err := u.store.Add(ctx, id, u.info)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed processing build")
+		return log.Err(ctx, err, "Failed processing build")
 	}
 	if merged {
-		ctx.Raw("").Logf("Merged with build set %s", id)
+		log.I(ctx, "Merged with build set %s", id)
 	} else {
-		ctx.Raw("").Logf("New build set %s", id)
+		log.I(ctx, "New build set %s", id)
 	}
 	return nil
 }
 
-func doArtifactSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doArtifactSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return b.SearchArtifacts(ctx, expr.Query(), func(ctx log.Context, entry *build.Artifact) error {
+		return b.SearchArtifacts(ctx, expr.Query(), func(ctx context.Context, entry *build.Artifact) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
 	}, grpc.WithInsecure())
 }
 
-func doPackageSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doPackageSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return b.SearchPackages(ctx, expr.Query(), func(ctx log.Context, entry *build.Package) error {
+		return b.SearchPackages(ctx, expr.Query(), func(ctx context.Context, entry *build.Package) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
 	}, grpc.WithInsecure())
 }
 
-func doTrackSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doTrackSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return b.SearchTracks(ctx, expr.Query(), func(ctx log.Context, entry *build.Track) error {
+		return b.SearchTracks(ctx, expr.Query(), func(ctx context.Context, entry *build.Track) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
@@ -219,8 +219,8 @@ var (
 	idOrName = script.MustParse("Id == $ or Name == $").Using("$")
 )
 
-func doTrackUpdate(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doTrackUpdate(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		args := flags.Args()
 		track := &build.Track{
@@ -230,9 +230,9 @@ func doTrackUpdate(ctx log.Context, flags flag.FlagSet) error {
 		}
 		if len(args) != 0 {
 			// Updating an existing track, find it first
-			err := b.SearchTracks(ctx, idOrName(args[0]).Query(), func(ctx log.Context, entry *build.Track) error {
+			err := b.SearchTracks(ctx, idOrName(args[0]).Query(), func(ctx context.Context, entry *build.Track) error {
 				if track.Id != "" {
-					return cause.Explain(ctx, nil, "Multiple tracks matched")
+					return log.Err(ctx, nil, "Multiple tracks matched")
 				}
 				track.Id = entry.Id
 				return nil
@@ -241,14 +241,14 @@ func doTrackUpdate(ctx log.Context, flags flag.FlagSet) error {
 				return err
 			}
 			if track.Id == "" {
-				return cause.Explain(ctx, nil, "No tracks matched")
+				return log.Err(ctx, nil, "No tracks matched")
 			}
 		}
 		track, err := b.UpdateTrack(ctx, track)
 		if err != nil {
 			return err
 		}
-		ctx.Raw("").Log(track.String())
+		log.I(ctx, track.String())
 		return nil
 	}, grpc.WithInsecure())
 }

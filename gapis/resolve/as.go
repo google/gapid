@@ -15,8 +15,9 @@
 package resolve
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
@@ -24,7 +25,7 @@ import (
 )
 
 // As resolves and returns the object at p transformed to the requested type.
-func As(ctx log.Context, p *path.As) (interface{}, error) {
+func As(ctx context.Context, p *path.As) (interface{}, error) {
 	o, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err

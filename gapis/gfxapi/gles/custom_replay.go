@@ -15,7 +15,8 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -170,7 +171,7 @@ func (i GLeglImageOES) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) v
 	return value.AbsolutePointer(i.Address)
 }
 
-func OnSwitchThread(ctx log.Context, gs *gfxapi.State, b *builder.Builder) error {
+func OnSwitchThread(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
 	s := GetState(gs)
 	context := s.Contexts[s.CurrentThread]
 	if context == nil {
@@ -180,7 +181,7 @@ func OnSwitchThread(ctx log.Context, gs *gfxapi.State, b *builder.Builder) error
 	return NewReplayBindRenderer(ctxID).Mutate(ctx, gs, b)
 }
 
-func (ω *EglCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *EglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -189,7 +190,7 @@ func (ω *EglCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *EglMakeCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	_, wasCreated := GetState(s).EGLContexts[ω.Context]
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
@@ -224,7 +225,7 @@ func (ω *EglMakeCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Bu
 	return nil
 }
 
-func (ω *WglCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *WglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -233,7 +234,7 @@ func (ω *WglCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *WglCreateContextAttribsARB) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -242,7 +243,7 @@ func (ω *WglCreateContextAttribsARB) Mutate(ctx log.Context, s *gfxapi.State, b
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *WglMakeCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -254,7 +255,7 @@ func (ω *WglMakeCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Bu
 	return NewReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *CGLCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *CGLCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -263,7 +264,7 @@ func (ω *CGLCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *CGLSetCurrentContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -275,7 +276,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx log.Context, s *gfxapi.State, b *buil
 	return NewReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *GlXCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *GlXCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -284,7 +285,7 @@ func (ω *GlXCreateContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *GlXCreateNewContext) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *GlXCreateNewContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -293,7 +294,7 @@ func (ω *GlXCreateNewContext) Mutate(ctx log.Context, s *gfxapi.State, b *build
 	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
-func (ω *GlXMakeContextCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -306,7 +307,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx log.Context, s *gfxapi.State, b *bui
 }
 
 // Force all attributes to use the capture-observed locations during replay.
-func bindAttribLocations(ctx log.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
+func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(a.Extras())
 	if pi != nil && b != nil {
 		for _, attr := range pi.ActiveAttributes {
@@ -319,21 +320,21 @@ func bindAttribLocations(ctx log.Context, a atom.Atom, s *gfxapi.State, b *build
 	return nil
 }
 
-func (a *GlProgramBinaryOES) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *GlProgramBinaryOES) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}
 	return a.mutate(ctx, s, b)
 }
 
-func (a *GlLinkProgram) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *GlLinkProgram) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}
 	return a.mutate(ctx, s, b)
 }
 
-func (a *GlProgramBinary) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *GlProgramBinary) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}

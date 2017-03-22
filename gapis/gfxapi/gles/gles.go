@@ -15,10 +15,10 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -50,7 +50,7 @@ func (api) Context(s *gfxapi.State) gfxapi.Context {
 }
 
 // Mesh implements the gfxapi.MeshProvider interface.
-func (api) Mesh(ctx log.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, error) {
+func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, error) {
 	if dc, ok := o.(drawCall); ok {
 		return drawCallMesh(ctx, dc, p)
 	}

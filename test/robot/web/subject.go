@@ -15,18 +15,18 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/subject"
 )
 
 func (s *Server) handleSubjects(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*subject.Subject(nil)
-	s.Subject.Search(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *subject.Subject) error {
+	s.Subject.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *subject.Subject) error {
 		result = append(result, entry)
 		return nil
 	})

@@ -15,7 +15,8 @@
 package transform
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 )
 
@@ -34,7 +35,7 @@ func (t *Injector) Inject(after atom.ID, a atom.Atom) {
 	t.injections[after] = append(t.injections[after], a)
 }
 
-func (t *Injector) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Writer) {
+func (t *Injector) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
 	out.MutateAndWrite(ctx, id, a)
 
 	if r, ok := t.injections[id]; ok {
@@ -45,4 +46,4 @@ func (t *Injector) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Write
 	}
 }
 
-func (t *Injector) Flush(ctx log.Context, out Writer) {}
+func (t *Injector) Flush(ctx context.Context, out Writer) {}

@@ -16,6 +16,7 @@ package generator
 
 import (
 	"bytes"
+	"context"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -24,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -43,7 +43,7 @@ const (
 
 // RewriteFiles is called to generate parsing functionality.
 // It takes a list of input lingo files, and generates go files of the same basename in the output path.
-func RewriteFiles(ctx log.Context, base string, inputs ...string) error {
+func RewriteFiles(ctx context.Context, base string, inputs ...string) error {
 	info := &introspection{
 		fset:   token.NewFileSet(),
 		byName: map[string]*entry{},
@@ -60,7 +60,7 @@ func RewriteFiles(ctx log.Context, base string, inputs ...string) error {
 			path = basePath
 		}
 		if !strings.HasSuffix(name, inputSuffix) {
-			return cause.Wrap(ctx, ErrInvalidFilename)
+			return log.Err(ctx, ErrInvalidFilename, "")
 		}
 		f.Output = path.Join(basename[:len(basename)-len(inputSuffix)] + outputSuffix)
 		parsed, err := parser.ParseFile(info.fset, f.Input.System(), nil, parser.ParseComments)
@@ -80,15 +80,15 @@ func RewriteFiles(ctx log.Context, base string, inputs ...string) error {
 	info.prepare(ctx)
 	info.rewrite(ctx)
 	for _, f := range files {
-		ctx := ctx.V("File", f.Output.Basename())
+		ctx := log.V{"file": f.Output.Basename()}.Bind(ctx)
 		buf := &bytes.Buffer{}
 		formatErr := format.Node(buf, info.fset, f.Parsed)
 		writeErr := ioutil.WriteFile(f.Output.System(), buf.Bytes(), 0666)
 		if formatErr != nil {
-			return cause.Explain(ctx, formatErr, "Formatting")
+			return log.Err(ctx, formatErr, "Formatting")
 		}
 		if writeErr != nil {
-			return cause.Explain(ctx, writeErr, "Writing")
+			return log.Err(ctx, writeErr, "Writing")
 		}
 	}
 	return nil

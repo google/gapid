@@ -15,53 +15,47 @@
 package log
 
 import (
-	"io"
+	"context"
 
-	"github.com/google/gapid/core/app/output"
-	"github.com/google/gapid/core/text/note"
+	"github.com/google/gapid/core/context/keys"
 )
 
-// GetHandler gets the active Handler for this context.
-func GetHandler(ctx Context) note.Handler {
-	return output.FromContext(ctx.Unwrap())
+// Handler is the handler of log messages.
+type Handler interface {
+	Handle(*Message)
+	Close()
 }
 
-// Handler returns a new Builder with the given Handler set on it.
-func (ctx logContext) Handler(h note.Handler) Context {
-	return Wrap(output.NewContext(ctx.Unwrap(), note.Sorter(h)))
+// handler is a simple implementation of the Handler interface
+type handler struct {
+	handle func(*Message)
+	close  func()
 }
 
-// Stdout returns a Handler that writes to os.Stdout.
-// This is conceptually the same as Writer(style, os.Stdout) except the writer is not bound, so if os.Stdout changes
-// the new value will be picked up.
-func Stdout(style note.Style) note.Handler {
-	return output.Stdout(style)
+func (h handler) Handle(m *Message) { h.handle(m) }
+func (h handler) Close() {
+	if h.close != nil {
+		h.close()
+	}
 }
 
-// Stderr returns a Handler that writes to os.Stderr.
-// This is conceptually the same as Writer(style, os.Stderr) except the writer is not bound, so if os.Stderr changes
-// the new value will be picked up.
-func Stderr(style note.Style) note.Handler {
-	return output.Stderr(style)
+// NewHandler returns a Handler that calls handle for each message and close
+// when the handler is closed. close can be nil.
+func NewHandler(handle func(*Message), close func()) Handler {
+	return handler{handle, close}
 }
 
-// Std returns a Handler that splits writes between to Stderr and Stdout.
-func Std(style note.Style) note.Handler {
-	return output.Std(style)
+type handlerKeyTy string
+
+const handlerKey handlerKeyTy = "log.handlerKey"
+
+// PutHandler returns a new context with the Handler assigned to w.
+func PutHandler(ctx context.Context, w Handler) context.Context {
+	return keys.WithValue(ctx, handlerKey, w)
 }
 
-// Writer is a Handler that uses the active Style to write records to an underlying io.Writer
-func Writer(style note.Style, to io.Writer) note.Handler {
-	return style.Scribe(to)
-}
-
-// Channel is a Handler that passes log records to another Handler through a blocking chan.
-// This makes this Handler safe to use from multiple threads
-func Channel(to note.Handler) (note.Handler, func()) {
-	return note.Channel(to, 0)
-}
-
-// Fork forwards all messages to all supplied handlers.
-func Fork(handlers ...note.Handler) note.Handler {
-	return note.Broadcast(handlers...)
+// GetHandler returns the Handler assigned to ctx.
+func GetHandler(ctx context.Context) Handler {
+	out, _ := ctx.Value(handlerKey).(Handler)
+	return out
 }

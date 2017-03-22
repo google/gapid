@@ -15,13 +15,12 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 
-	"fmt"
-
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/apk"
 )
 
@@ -30,7 +29,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	path := flag.Arg(0)
 	apkData, err := ioutil.ReadFile(path)
 	if err != nil {

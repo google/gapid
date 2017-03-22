@@ -342,12 +342,12 @@ func TestVertexConvert(t *testing.T) {
 				},
 			},
 		}
-		ctx := ctx.V("fmt", test.fmt)
+		ctx := log.V{"fmt": test.fmt}.Bind(ctx)
 		conv, err := buffer.ConvertTo(ctx, format)
 		if assert.With(ctx).ThatError(err).Succeeded() {
 			data := conv.Streams[0].Data
 			for i, e := range test.expected {
-				ctx := ctx.V("i", i)
+				ctx := log.V{"i": i}.Bind(ctx)
 				word := uint64(data[0]) |
 					(uint64(data[1]) << 8) |
 					(uint64(data[2]) << 16) |

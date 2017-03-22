@@ -15,9 +15,8 @@
 package master
 
 import (
+	"context"
 	"sync"
-
-	"github.com/google/gapid/core/log"
 )
 
 type satellite struct {
@@ -33,7 +32,7 @@ type issue struct {
 	result  chan error
 }
 
-func newSatellite(ctx log.Context, name string, services ServiceList) *satellite {
+func newSatellite(ctx context.Context, name string, services ServiceList) *satellite {
 	return &satellite{
 		info: &Satellite{
 			Name:     name,
@@ -45,7 +44,7 @@ func newSatellite(ctx log.Context, name string, services ServiceList) *satellite
 
 // processCommands reads the issues from the channel and hands them to the command handler, sending
 // the result back through the issue channel.
-func (sat *satellite) processCommands(ctx log.Context, handler CommandHandler) {
+func (sat *satellite) processCommands(ctx context.Context, handler CommandHandler) {
 	for i := range sat.issues {
 		i.result <- handler(ctx, i.command)
 		close(i.result)
@@ -53,7 +52,7 @@ func (sat *satellite) processCommands(ctx log.Context, handler CommandHandler) {
 }
 
 // sendCommand posts an issue for the command into the channel, then blocks until it gets a result.
-func (sat *satellite) sendCommand(ctx log.Context, command *Command) {
+func (sat *satellite) sendCommand(ctx context.Context, command *Command) {
 	result := make(chan error)
 	sat.lock.Lock()
 	if sat.issues != nil {

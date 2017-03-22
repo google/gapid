@@ -23,11 +23,11 @@
   {{template "Go.GeneratedHeader" (Global "OutputDir")}}
 
   import (
+    "context"
     "fmt"
 
     "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/data/pod"
-    "github.com/google/gapid/core/log"
     "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/framework/binary"
     "github.com/google/gapid/framework/binary/schema"
@@ -38,7 +38,7 @@
     "github.com/google/gapid/gapis/memory"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
-    "github.com/google/gapid/gapis/replay/value"  
+    "github.com/google/gapid/gapis/replay/value"
     "github.com/google/gapid/gapis/resolve"
     "github.com/google/gapid/gapis/service"
     "github.com/google/gapid/gapis/service/path"
@@ -219,19 +219,19 @@
 
   {{if not $el_is_void}}
     // Read reads and returns the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Read(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$el_ty}} {
+    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$el_ty}} {
       return p.Slice(0, 1, ϟs).Read(ϟctx, ϟa, ϟs, ϟb)[0]
     }
 
     // Write writes value to the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Write(ϟctx log.Context, value {{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {
+    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {
       p.Slice(0, 1, ϟs).Write(ϟctx, []{{$el_ty}}{value}, ϟa, ϟs, ϟb)
     }
   {{end}}
 
   {{if $el_is_char}}
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
-    func (p {{$ptr_ty}}) StringSlice(ϟctx log.Context, ϟs *gfxapi.State) Charˢ {
+    func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *gfxapi.State) Charˢ {
       i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.Pool].At(p.Address))
       for {
         i++
@@ -258,7 +258,7 @@
   // is a path to the atom and resulting path is a path to an object
   // identified by p. Once resolved the path will return a representation
   // of the value of the instance after the atom has executed.
-  func (p {{$ptr_ty}}) Link(ϟctx log.Context, ϟp path.Node) (path.Node, error) {
+  func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
       return cmd.MemoryAfter(uint32(p.Pool), p.Address, 0), nil
     }
@@ -406,7 +406,7 @@
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
-  func (s {{$slice_ty}}) Clone(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
     pool := &memory.Pool{}
     pool.Write(0, ϟs.Memory[s.Pool].Slice(s.Range(ϟs)))
@@ -442,7 +442,7 @@
 
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
-  func (s {{$slice_ty}}) ResourceID(ϟctx log.Context, ϟs *gfxapi.State) id.ID {
+  func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟs *gfxapi.State) id.ID {
     id, err := ϟs.Memory[s.Pool].Slice(s.Range(ϟs)).ResourceID(ϟctx)
     if err != nil {
       panic(err)
@@ -451,7 +451,7 @@
   }
 
   // Decoder returns a memory decoder for the slice.
-  func (s {{$slice_ty}}) Decoder(ϟctx log.Context, ϟs *gfxapi.State) pod.Reader {
+  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) pod.Reader {
     return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.Pool].Slice(s.Range(ϟs)))
   }
 
@@ -471,7 +471,7 @@
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
-    func (s {{$slice_ty}}) Read(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) []{{$el_ty}} {
+    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) []{{$el_ty}} {
       d, res := s.Decoder(ϟctx, ϟs), make([]{{$el_ty}}, s.Count)
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       for i := range res {
@@ -500,7 +500,7 @@
 
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.Count and len(src).
-    func (s {{$slice_ty}}) Write(ϟctx log.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
+    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
       count := min(s.Count, uint64(len(src)))
       s = s.Slice(0, count, ϟs)
       e := s.Encoder(ϟs)
@@ -530,7 +530,7 @@
     // Copy copies elements from src to this slice.
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
-    func (dst {{$slice_ty}}) Copy(ϟctx log.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
+    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
       count := min(dst.Count, src.Count)
       dst, src = dst.Slice(0, count, ϟs), src.Slice(0, count, ϟs)
     {{if $el_is_ptr}}
@@ -546,7 +546,7 @@
     }
 
     // Contains returns true if the slice contains the specified value.
-    func (s {{$slice_ty}}) Contains(ϟctx log.Context, val {{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) bool {
+    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) bool {
       for _, e := range s.Read(ϟctx, ϟa, ϟs, ϟb) {
         if e == val {
           return true
@@ -558,7 +558,7 @@
   {{end}}
 
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnRead(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     if f := ϟs.Memory[s.Pool].OnRead; f != nil {
       f(s.Range(ϟs))
     }
@@ -605,7 +605,7 @@
   }
 
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnWrite(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     if f := ϟs.Memory[s.Pool].OnWrite; f != nil {
       f(s.Range(ϟs))
     }
@@ -634,7 +634,7 @@
     return s
   }
 
-  func (s {{$slice_ty}}) ReserveMemory(ϟctx log.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     if ϟb != nil && s.Pool == memory.ApplicationPool {
       rng := s.Range(ϟs)
       ϟb.ReserveMemory(memory.Range{Base: s.Root, Size: uint64(rng.End() - s.Root)})
@@ -672,7 +672,7 @@
   // Link returns a path which can be used to view memory which is referenced
   // by the slice s.
   // If nil, nil is returned then the path cannot be followed.
-  func (s {{$slice_ty}}) Link(ϟctx log.Context, ϟp path.Node) (path.Node, error) {
+  func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
       c, err := capture.ResolveFromPath(ϟctx, cmd.Commands.Capture)
       if err != nil {

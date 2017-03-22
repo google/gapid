@@ -46,14 +46,14 @@ ServerListener::ServerListener(std::unique_ptr<core::Connection> conn, uint64_t 
 
 std::unique_ptr<ServerConnection> ServerListener::acceptConnection(int idleTimeoutMs, const char* authToken) {
     while (true) {
-        GAPID_INFO("Waiting for new connection...");
+        GAPID_DEBUG("Waiting for new connection...");
         std::unique_ptr<core::Connection> client = mConn->accept(idleTimeoutMs);
         if (client == nullptr) {
             return nullptr;
         }
 
         if (authToken != nullptr) {
-            GAPID_INFO("Checking auth-token...");
+            GAPID_DEBUG("Checking auth-token...");
             char header[sizeof(kAuthTokenHeader)];
             if (client->recv(&header, sizeof(header)) != sizeof(header)) {
                 GAPID_WARNING("Failed to read auth-token header");
@@ -78,7 +78,7 @@ std::unique_ptr<ServerConnection> ServerListener::acceptConnection(int idleTimeo
 
         switch (connectionType) {
             case REPLAY_REQUEST: {
-                GAPID_INFO("Replay requested");
+                GAPID_DEBUG("Replay requested");
                 std::unique_ptr<ServerConnection> conn = ServerConnection::create(std::move(client));
                 if (conn != nullptr) {
                     return conn;

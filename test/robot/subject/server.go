@@ -15,10 +15,12 @@
 package subject
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/log"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	xctx "golang.org/x/net/context"
 )
 
 type server struct {
@@ -26,15 +28,14 @@ type server struct {
 }
 
 // Serve wraps a subject service in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, subjects Subjects) error {
+func Serve(ctx context.Context, grpcServer *grpc.Server, subjects Subjects) error {
 	RegisterServiceServer(grpcServer, &server{subjects: subjects})
 	return nil
 }
 
 // Add implements ServiceServer.Add
 // It delegates the call to the provided Subjects implementation.
-func (s *server) Add(outer context.Context, request *AddRequest) (*AddResponse, error) {
-	ctx := log.Wrap(outer)
+func (s *server) Add(ctx xctx.Context, request *AddRequest) (*AddResponse, error) {
 	subj, created, err := s.subjects.Add(ctx, request.Id, request.Hints)
 	if err != nil {
 		return nil, err
@@ -45,6 +46,6 @@ func (s *server) Add(outer context.Context, request *AddRequest) (*AddResponse, 
 // Search implements ServiceServer.Search
 // It delegates the call to the provided Subjects implementation.
 func (s *server) Search(query *search.Query, stream Service_SearchServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.subjects.Search(ctx, query, func(ctx log.Context, e *Subject) error { return stream.Send(e) })
+	ctx := stream.Context()
+	return s.subjects.Search(ctx, query, func(ctx context.Context, e *Subject) error { return stream.Send(e) })
 }

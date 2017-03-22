@@ -15,14 +15,13 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Log returns the top count ChangeList at HEAD.
-func (g Git) Log(ctx log.Context, count int) ([]ChangeList, error) {
+func (g Git) Log(ctx context.Context, count int) ([]ChangeList, error) {
 	str, _, err := g.run(ctx, "log", "--pretty=format:ǁ%Hǀ%an <%ae>ǀ%sǀ%b", fmt.Sprintf("-%d", count), g.wd)
 	if err != nil {
 		return nil, err
@@ -31,7 +30,7 @@ func (g Git) Log(ctx log.Context, count int) ([]ChangeList, error) {
 }
 
 // Parent returns the parent ChangeList for cl.
-func (g Git) Parent(ctx log.Context, cl ChangeList) (ChangeList, error) {
+func (g Git) Parent(ctx context.Context, cl ChangeList) (ChangeList, error) {
 	str, _, err := g.run(ctx, "log", "--pretty=format:ǁ%Hǀ%an <%ae>ǀ%sǀ%b", fmt.Sprintf("%v^", cl.SHA))
 	if err != nil {
 		return ChangeList{}, err
@@ -47,7 +46,7 @@ func (g Git) Parent(ctx log.Context, cl ChangeList) (ChangeList, error) {
 }
 
 // HeadCL returns the ChangeList at HEAD.
-func (g Git) HeadCL(ctx log.Context) (ChangeList, error) {
+func (g Git) HeadCL(ctx context.Context) (ChangeList, error) {
 	cls, err := g.Log(ctx, 1)
 	if err != nil {
 		return ChangeList{}, err

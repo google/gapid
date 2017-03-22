@@ -15,8 +15,9 @@
 package record
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 )
 
 // nullShelf is an implementation of Shelf that creates null ledgers.
@@ -25,11 +26,13 @@ type nullShelf struct{}
 // nullLedger is an implementation of Ledger that just ignores all record append requests.
 type nullLedger struct{}
 
-func NewNullShelf(ctx log.Context) (Shelf, error)                         { return &nullShelf{}, nil }
-func (nullShelf) Open(log.Context, string, interface{}) (Ledger, error)   { return nullLedger{}, nil }
-func (nullShelf) Create(log.Context, string, interface{}) (Ledger, error) { return nullLedger{}, nil }
-func (nullLedger) Read(ctx log.Context, h event.Handler) error            { return nil }
-func (nullLedger) Watch(ctx log.Context, w event.Handler)                 {}
-func (nullLedger) Add(ctx log.Context, record interface{}) error          { return nil }
-func (nullLedger) Close(log.Context)                                      {}
-func (nullLedger) New(log.Context) interface{}                            { return nil }
+func NewNullShelf(ctx context.Context) (Shelf, error)                       { return &nullShelf{}, nil }
+func (nullShelf) Open(context.Context, string, interface{}) (Ledger, error) { return nullLedger{}, nil }
+func (nullShelf) Create(context.Context, string, interface{}) (Ledger, error) {
+	return nullLedger{}, nil
+}
+func (nullLedger) Read(ctx context.Context, h event.Handler) error   { return nil }
+func (nullLedger) Watch(ctx context.Context, w event.Handler)        {}
+func (nullLedger) Add(ctx context.Context, record interface{}) error { return nil }
+func (nullLedger) Close(context.Context)                             {}
+func (nullLedger) New(context.Context) interface{}                   { return nil }

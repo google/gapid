@@ -15,30 +15,29 @@
 package grpcutil
 
 import (
+	"context"
 	"net"
 
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"google.golang.org/grpc"
 )
 
 // PrepareTask is called to add the services to a grpc server before it starts running.
-type PrepareTask func(log.Context, net.Listener, *grpc.Server) error
+type PrepareTask func(context.Context, net.Listener, *grpc.Server) error
 
 // Serve prepares and runs a grpc server on the specified address.
 // It also installs the standard options we normally use.
-func Serve(ctx log.Context, address string, prepare PrepareTask, options ...grpc.ServerOption) error {
+func Serve(ctx context.Context, address string, prepare PrepareTask, options ...grpc.ServerOption) error {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		jot.Fatalf(ctx, err, "Could not start grpc server")
+		log.F(ctx, "Could not start grpc server. Error: %v", err)
 	}
 	return ServeWithListener(ctx, listener, prepare, options...)
 }
 
 // ServeWithListener prepares and runs a grpc server using the specified net.Listener.
 // It also installs the standard options we normally use.
-func ServeWithListener(ctx log.Context, listener net.Listener, prepare PrepareTask, options ...grpc.ServerOption) error {
+func ServeWithListener(ctx context.Context, listener net.Listener, prepare PrepareTask, options ...grpc.ServerOption) error {
 	options = append([]grpc.ServerOption{
 		grpc.RPCCompressor(grpc.NewGZIPCompressor()),
 		grpc.RPCDecompressor(grpc.NewGZIPDecompressor()),
@@ -48,10 +47,10 @@ func ServeWithListener(ctx log.Context, listener net.Listener, prepare PrepareTa
 	if err := prepare(ctx, listener, grpcServer); err != nil {
 		return err
 	}
-	ctx.Notice().Log("Starting grpc server")
+	log.I(ctx, "Starting grpc server")
 	if err := grpcServer.Serve(listener); err != nil {
-		return cause.Explain(ctx, err, "Abort running grpc server").With("server", listener.Addr())
+		return log.Errf(ctx, err, "Abort running grpc server: %v", listener.Addr())
 	}
-	ctx.Notice().Log("Shutting down grpc server")
+	log.I(ctx, "Shutting down grpc server")
 	return nil
 }

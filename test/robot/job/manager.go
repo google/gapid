@@ -15,23 +15,24 @@
 package job
 
 import (
-	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/core/os/device"
 )
 
 // DeviceHandler is a function used to consume a stream of Devices.
-type DeviceHandler func(log.Context, *Device) error
+type DeviceHandler func(context.Context, *Device) error
 
 // WorkerHandler is a function used to consume a stream of Workers.
-type WorkerHandler func(log.Context, *Worker) error
+type WorkerHandler func(context.Context, *Worker) error
 
 // Manager is the abstract interface to the job manager.
 type Manager interface {
 	// SearchDevices delivers matching workers to the supplied handler.
-	SearchDevices(ctx log.Context, query *search.Query, handler DeviceHandler) error
+	SearchDevices(ctx context.Context, query *search.Query, handler DeviceHandler) error
 	// SearchWorkers delivers matching workers to the supplied handler.
-	SearchWorkers(ctx log.Context, query *search.Query, handler WorkerHandler) error
+	SearchWorkers(ctx context.Context, query *search.Query, handler WorkerHandler) error
 	// GetWorker finds or adds a worker.
-	GetWorker(ctx log.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error)
+	GetWorker(ctx context.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error)
 }

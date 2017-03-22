@@ -15,10 +15,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"runtime"
-
-	"github.com/google/gapid/core/log"
 )
 
 func getPlatform() string {
@@ -29,7 +28,7 @@ func getPlatform() string {
 	}[runtime.GOOS]
 }
 
-func doUpload(ctx log.Context, cfg Config, options UploadOptions, args ...string) {
+func doUpload(ctx context.Context, cfg Config, options UploadOptions, args ...string) {
 	pkg := cfg.out().Join(fmt.Sprintf("%s-%s.zip", "gapid", getPlatform()))
 	if !pkg.Exists() {
 		panic(fmt.Errorf("Package %s does not exist", pkg.String()))

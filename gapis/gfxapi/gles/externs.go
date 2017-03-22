@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
@@ -30,7 +29,7 @@ import (
 )
 
 type externs struct {
-	ctx log.Context // Allowed because the externs struct is only a parameter proxy for a single call
+	ctx context.Context // Allowed because the externs struct is only a parameter proxy for a single call
 	a   atom.Atom
 	s   *gfxapi.State
 	b   *rb.Builder
@@ -45,7 +44,7 @@ func (e externs) mapMemory(slice slice) {
 			b.MapMemory(slice.Range(e.s))
 
 		default:
-			ctx.Error().V("atom", e.a).Log("mapBuffer extern called for unsupported atom")
+			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
 		}
 	}
 }
@@ -117,24 +116,18 @@ func (e externs) newMsg(severity Severity, message *stringtable.Msg) uint32 {
 }
 
 // Maps generated Severity to one of the const values defined in log.
-func severityFromEnum(enumValue Severity) severity.Level {
+func severityFromEnum(enumValue Severity) log.Severity {
 	switch enumValue {
-	case Severity_SEVERITY_EMERGENCY:
-		return severity.Emergency
-	case Severity_SEVERITY_ALERT:
-		return severity.Alert
-	case Severity_SEVERITY_CRITICAL:
-		return severity.Critical
-	case Severity_SEVERITY_ERROR:
-		return severity.Error
-	case Severity_SEVERITY_WARNING:
-		return severity.Warning
-	case Severity_SEVERITY_NOTICE:
-		return severity.Notice
-	case Severity_SEVERITY_INFO:
-		return severity.Info
 	case Severity_SEVERITY_DEBUG:
-		return severity.Debug
+		return log.Debug
+	case Severity_SEVERITY_INFO:
+		return log.Info
+	case Severity_SEVERITY_WARNING:
+		return log.Warning
+	case Severity_SEVERITY_ERROR:
+		return log.Error
+	case Severity_SEVERITY_FATAL:
+		return log.Fatal
 	default:
 		panic(fmt.Errorf("Bad Severity value %v", enumValue))
 	}

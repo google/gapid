@@ -15,14 +15,13 @@
 package record
 
 import (
+	"context"
 	"encoding/binary"
 	"io"
 	"os"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -42,15 +41,15 @@ type pbbReader struct {
 
 func (pbbFileType) Ext() string { return ".pb" }
 
-func (pbbFileType) Open(ctx log.Context, f *os.File, null interface{}) (LedgerInstance, error) {
+func (pbbFileType) Open(ctx context.Context, f *os.File, null interface{}) (LedgerInstance, error) {
 	m, ok := null.(proto.Message)
 	if !ok {
-		return nil, cause.Explain(ctx, nil, "Cannot create proto ledger with non proto type")
+		return nil, log.Err(ctx, nil, "Cannot create proto ledger with non proto type")
 	}
 	return &pbbHandler{f: f, null: m}, nil
 }
 
-func (h *pbbHandler) Write(ctx log.Context, record interface{}) error {
+func (h *pbbHandler) Write(ctx context.Context, record interface{}) error {
 	buf, err := proto.Marshal(record.(proto.Message))
 	if err != nil {
 		return err
@@ -63,23 +62,23 @@ func (h *pbbHandler) Write(ctx log.Context, record interface{}) error {
 	return err
 }
 
-func (h *pbbHandler) Reader(ctx log.Context) event.Source {
+func (h *pbbHandler) Reader(ctx context.Context) event.Source {
 	return &pbbReader{f: &readAt{f: h.f}, null: h.null}
 }
 
-func (h *pbbHandler) Close(ctx log.Context) {
+func (h *pbbHandler) Close(ctx context.Context) {
 	h.f.Close()
 }
 
-func (h *pbbHandler) New(ctx log.Context) interface{} {
+func (h *pbbHandler) New(ctx context.Context) interface{} {
 	return proto.Clone(h.null)
 }
 
-func (r *pbbReader) Next(ctx log.Context) interface{} {
+func (r *pbbReader) Next(ctx context.Context) interface{} {
 	size := int32(0)
 	if err := binary.Read(r.f, binary.LittleEndian, &size); err != nil {
 		if err != io.EOF {
-			jot.Fail(ctx, err, "Invalid proto record header in ledger")
+			log.E(ctx, "Invalid proto record header in ledger. Error: %v", err)
 		}
 		return nil
 	}
@@ -91,10 +90,10 @@ func (r *pbbReader) Next(ctx log.Context) interface{} {
 	message := proto.Clone(r.null)
 	err := proto.Unmarshal(r.buf, message)
 	if err != nil {
-		jot.Fail(ctx, err, "Invalid proto in ledger")
+		log.E(ctx, "Invalid proto in ledger. Error: %v", err)
 		return nil
 	}
 	return message
 }
 
-func (h *pbbReader) Close(ctx log.Context) {}
+func (h *pbbReader) Close(ctx context.Context) {}

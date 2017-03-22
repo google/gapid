@@ -15,12 +15,13 @@
 package atom
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // Labeled is the interface implemented by atoms that have a specific label.
 type Labeled interface {
 	// Label returns the atom's label.
-	Label(ctx log.Context, s *gfxapi.State) string
+	Label(ctx context.Context, s *gfxapi.State) string
 }

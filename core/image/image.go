@@ -16,17 +16,17 @@ package image
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/database"
 )
 
 // ConvertTo returns this image Info converted to the format f.
-func (i *Info2D) ConvertTo(ctx log.Context, f *Format) (*Info2D, error) {
+func (i *Info2D) ConvertTo(ctx context.Context, f *Format) (*Info2D, error) {
 	id, err := database.Store(ctx, &ConvertResolvable{
 		Data:       i.Data,
 		Width:      i.Width,
@@ -46,7 +46,7 @@ func (i *Info2D) ConvertTo(ctx log.Context, f *Format) (*Info2D, error) {
 }
 
 // Resize returns this image Info resized to the specified dimensions.
-func (i *Info2D) Resize(ctx log.Context, w, h uint32) (*Info2D, error) {
+func (i *Info2D) Resize(ctx context.Context, w, h uint32) (*Info2D, error) {
 	id, err := database.Store(ctx, &ResizeResolvable{
 		Data:      i.Data,
 		Format:    i.Format,

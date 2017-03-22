@@ -21,14 +21,13 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 )
 
 func TestContextCancel(t *testing.T) {
 	assert := assert.To(t)
-	before := log.Background()
+	before := context.Background()
 	after, cancel := task.WithCancel(before)
-	assert.For("Cancel builds new context").That(before.Unwrap()).NotEquals(after.Unwrap())
+	assert.For("Cancel builds new context").That(before).NotEquals(after)
 	assert.For("Stopped before cancel").That(task.Stopped(after)).Equals(false)
 	assert.For("StopReason before cancel").That(task.StopReason(after)).IsNil()
 	cancel()
@@ -38,7 +37,7 @@ func TestContextCancel(t *testing.T) {
 
 func TestContextTimeout(t *testing.T) {
 	assert := assert.To(t)
-	before := log.Background()
+	before := context.Background()
 	duration := ExpectBlocking
 	after, _ := task.WithTimeout(before, duration)
 	select {

@@ -15,8 +15,9 @@
 package gapidapk
 
 import (
+	"context"
+
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -33,7 +34,7 @@ const (
 )
 
 // PackageList returns the list of packages installed on the device.
-func PackageList(ctx log.Context, d adb.Device, includeIcons bool, iconDensityScale float32) (*pkginfo.PackageList, error) {
+func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensityScale float32) (*pkginfo.PackageList, error) {
 	apk, err := EnsureInstalled(ctx, d, nil)
 	if err != nil {
 		return nil, err
@@ -41,7 +42,7 @@ func PackageList(ctx log.Context, d adb.Device, includeIcons bool, iconDensitySc
 
 	action := apk.ServiceActions.FindByName(sendPkgInfoAction, sendPkgInfoService)
 	if action == nil {
-		return nil, cause.Explain(ctx, nil, "Service intent was not found")
+		return nil, log.Err(ctx, nil, "Service intent was not found")
 	}
 
 	onlyDebug := d.Root(ctx) == adb.ErrDeviceNotRooted
@@ -51,19 +52,19 @@ func PackageList(ctx log.Context, d adb.Device, includeIcons bool, iconDensitySc
 		android.BoolExtra{Key: sendPkgInfoIncludeIconsExtra, Value: includeIcons},
 		android.FloatExtra{Key: sendPkgInfoIconDensityScaleExtra, Value: iconDensityScale},
 	); err != nil {
-		return nil, cause.Explain(ctx, err, "Starting service")
+		return nil, log.Err(ctx, err, "Starting service")
 	}
 
 	sock, err := adb.ForwardAndConnect(ctx, d, sendPkgInfoPort)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Connecting to service port")
+		return nil, log.Err(ctx, err, "Connecting to service port")
 	}
 
 	defer sock.Close()
 
 	out := &pkginfo.PackageList{}
 	if err := jsonpb.Unmarshal(sock, out); err != nil {
-		return nil, cause.Explain(ctx, err, "unmarshal json data")
+		return nil, log.Err(ctx, err, "unmarshal json data")
 	}
 
 	out.Sort()

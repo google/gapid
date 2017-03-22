@@ -14,42 +14,30 @@
 
 package log
 
-import (
-	"github.com/google/gapid/core/fault/severity"
-	"github.com/google/gapid/core/text/note"
-)
+import "context"
 
 // Testing returns a default context with a TestHandler installed.
-func Testing(t delegate) Context {
-	ctx := Background().
-		PreFilter(NoLimit).
-		Filter(Pass)
-	if t == nil {
-		stdout := Stdout(Normal)
-		return ctx.Handler(func(page note.Page) error {
-			err := stdout(page)
-			if level := severity.FindLevel(page); level <= severity.Critical {
-				panic(level)
-			}
-			return err
-		})
-	}
-	return ctx.Handler(TestHandler(Normal, t))
+func Testing(t delegate) context.Context {
+	ctx := context.Background()
+	PutHandler(ctx, TestHandler(t, Normal))
+	return ctx
 }
 
-// TestHandler is a Handler that uses the style to write records to t's log methods
-func TestHandler(style note.Style, t delegate) note.Handler {
-	return func(page note.Page) error {
-		level := severity.FindLevel(page)
-		switch {
-		case level <= severity.Critical:
-			t.Fatal(style.Print(page))
-		case level <= severity.Error:
-			t.Error(style.Print(page))
-		default:
-			t.Log(style.Print(page))
-		}
-		return nil
+// TestHandler is a Writer that uses the style to write records to t's using the
+// style s.
+func TestHandler(t delegate, s Style) Handler {
+	return handler{
+		handle: func(m *Message) {
+			switch {
+			case m.Severity >= Fatal:
+				t.Fatal(s.Print(m))
+			case m.Severity >= Error:
+				t.Error(s.Print(m))
+			default:
+				t.Log(s.Print(m))
+			}
+		},
+		close: func() {},
 	}
 }
 

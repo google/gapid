@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -26,7 +27,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/google/gapid/gapis/stringtable/parser"
@@ -57,7 +57,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	tables := map[stringtable.Info]*tableAndTypeMap{}
 
 	for _, path := range flag.Args() {
@@ -75,7 +75,7 @@ func run(ctx log.Context) error {
 				if _, dup := existing.paramTypeMap[k]; !dup {
 					existing.paramTypeMap[k] = v
 				} else {
-					return cause.Wrap(ctx, ErrDuplicateParameter).With("Key", k.EntryKey).With("Parameter", k.ParameterKey)
+					return log.Errf(ctx, ErrDuplicateParameter, "key: %v, parameter: %v", k.EntryKey, k.ParameterKey)
 				}
 			}
 			// Merge tables, check for duplicates.
@@ -83,7 +83,7 @@ func run(ctx log.Context) error {
 				if _, dup := existing.stringTable.Entries[k]; !dup {
 					existing.stringTable.Entries[k] = v
 				} else {
-					return cause.Wrap(ctx, ErrDuplicateStringKey).With("Key", k)
+					return log.Errf(ctx, ErrDuplicateStringKey, "key: %v", k)
 				}
 			}
 		} else {
@@ -92,10 +92,10 @@ func run(ctx log.Context) error {
 	}
 
 	if len(tables) == 0 {
-		return cause.Wrap(ctx, ErrNoStringtables)
+		return log.Err(ctx, ErrNoStringtables, "")
 	}
 
-	ctx.Printf("Found %d string table file(s)", len(tables))
+	log.I(ctx, "Found %d string table file(s)", len(tables))
 
 	if err := validate(ctx, tables); err != nil {
 		return err
@@ -182,7 +182,7 @@ func writeDefinitionsAbstract(table *tableAndTypeMap, path, templateRoutine, tem
 }
 
 // checks for consistency between the various localizations of strings.
-func validate(ctx log.Context, tables map[stringtable.Info]*tableAndTypeMap) error {
+func validate(ctx context.Context, tables map[stringtable.Info]*tableAndTypeMap) error {
 	all := map[string]entry{}
 
 	for info, table := range tables {
@@ -201,11 +201,11 @@ func validate(ctx log.Context, tables map[stringtable.Info]*tableAndTypeMap) err
 	}
 
 	for key, entry := range all {
-		ctx := ctx.S("Key", key)
+		ctx := log.V{"Key": key}.Bind(ctx)
 		if len(entry) != len(tables) {
 			for info := range tables {
 				if _, found := entry[info]; !found {
-					return cause.Wrap(ctx, ErrNoEntry).With("Table", info)
+					return log.Errf(ctx, ErrNoEntry, "Table: %v", info)
 				}
 			}
 		}
@@ -218,12 +218,12 @@ func validate(ctx log.Context, tables map[stringtable.Info]*tableAndTypeMap) err
 			}
 		}
 		if validInfo == nil || validParams == nil {
-			return cause.Wrap(ctx, ErrNoEntry).With("Code", defaultCultureCode)
+			return log.Errf(ctx, ErrNoEntry, "code: %v", defaultCultureCode)
 		}
 		for info, params := range entry {
 			if info.CultureCode != defaultCultureCode &&
 				!reflect.DeepEqual(validParams, params) {
-				return cause.Wrap(ctx, ErrParameterList).With("First", *validInfo).With("Second", info)
+				return log.Errf(ctx, ErrParameterList, "first: %v, second: %v", *validInfo, info)
 			}
 		}
 	}

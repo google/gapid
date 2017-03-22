@@ -15,12 +15,13 @@
 package replay
 
 import (
-	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/record"
+	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/job/worker"
-	"github.com/google/gapid/core/data/search"
 )
 
 type local struct {
@@ -43,31 +44,31 @@ func (t *Task) Init(id string, input worker.Input, w *job.Worker) {
 }
 
 // NewLocal builds a new local manager.
-func NewLocal(ctx log.Context, library record.Library, jobManager job.Manager) (Manager, error) {
+func NewLocal(ctx context.Context, library record.Library, jobManager job.Manager) (Manager, error) {
 	l := &local{}
 	return l, l.w.Init(ctx, library, jobManager, job.Replay, &Action{}, &Task{})
 }
 
 // Search implements Manager.Search
 // It searches the set of persisted actions, and supports monitoring of actions as they arrive.
-func (l *local) Search(ctx log.Context, query *search.Query, handler ActionHandler) error {
+func (l *local) Search(ctx context.Context, query *search.Query, handler ActionHandler) error {
 	return l.w.Actions.Search(ctx, query, handler)
 }
 
 // Register implements Manager.Register
 // See Workers.Register for more details on the implementation.
-func (l *local) Register(ctx log.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error {
+func (l *local) Register(ctx context.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error {
 	return l.w.Workers.Register(ctx, host, target, handler)
 }
 
 // Do implements Manager.Do
 // See Workers.Do for more details on the implementation.
-func (l *local) Do(ctx log.Context, device string, input *Input) (string, error) {
+func (l *local) Do(ctx context.Context, device string, input *Input) (string, error) {
 	return l.w.Do(ctx, device, input)
 }
 
 // Update implements Manager.Update
 // See Workers.Update for more details on the implementation.
-func (l *local) Update(ctx log.Context, action string, status job.Status, output *Output) error {
+func (l *local) Update(ctx context.Context, action string, status job.Status, output *Output) error {
 	return l.w.Update(ctx, &Action{Id: action, Status: status, Output: output})
 }

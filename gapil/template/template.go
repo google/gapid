@@ -16,6 +16,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -46,7 +47,7 @@ func outputDep(name string) {
 	outputs = append(outputs, path)
 }
 
-func WriteDeps(ctx log.Context, w io.Writer) {
+func WriteDeps(ctx context.Context, w io.Writer) {
 	fmt.Fprintln(w, "==Inputs==")
 	for _, entry := range inputs {
 		fmt.Fprintln(w, entry)
@@ -57,7 +58,7 @@ func WriteDeps(ctx log.Context, w io.Writer) {
 	}
 }
 
-func WriteCMake(ctx log.Context, w io.Writer) {
+func WriteCMake(ctx context.Context, w io.Writer) {
 	fmt.Fprintln(w, "set(api_inputs")
 	for _, entry := range inputs {
 		fmt.Fprintln(w, strings.Replace(entry, "\\", "/", -1))
@@ -189,7 +190,7 @@ func (f *Functions) Include(templates ...string) error {
 			t = filepath.Join(dir, t)
 		}
 		if f.templates.Lookup(t) == nil {
-			f.ctx.Info().S("template", t).Log("Reading")
+			log.I(f.ctx, "Reading %v", t)
 			InputDep(t)
 			tmplData, err := f.loader(t)
 			if err != nil {
@@ -199,7 +200,7 @@ func (f *Functions) Include(templates ...string) error {
 			if err != nil {
 				return fmt.Errorf("%s: %s\n", t, err)
 			}
-			f.ctx.Info().S("template", tmpl.Name()).Log("Executing")
+			log.I(f.ctx, "Executing %v", tmpl.Name())
 			var buf bytes.Buffer
 			if err = f.execute(tmpl, &buf, f.api); err != nil {
 				return fmt.Errorf("%s: %s\n", tmpl.Name(), err)
@@ -213,7 +214,7 @@ func (f *Functions) Include(templates ...string) error {
 // The filename is relative to the output directory.
 func (f *Functions) Write(fileName string, value string) (string, error) {
 	outputPath := filepath.Join(f.basePath, fileName)
-	f.ctx.Info().S("path", outputPath).Log("Writing output")
+	log.I(f.ctx, "Writing output to %v", outputPath)
 	outputDep(outputPath)
 
 	return "", ioutil.WriteFile(outputPath, []byte(value), 0666)

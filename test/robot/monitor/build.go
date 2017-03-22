@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/test/robot/build"
 )
@@ -53,7 +54,7 @@ func (t *Tracks) All() []*Track {
 }
 
 // FindTools returns the tool set that matches the supplied device, if the package has one.
-func (p *Package) FindTools(ctx log.Context, d *Device) *build.ToolSet {
+func (p *Package) FindTools(ctx context.Context, d *Device) *build.ToolSet {
 	if p == nil || d == nil {
 		return nil
 	}
@@ -67,7 +68,7 @@ func (p *Package) FindTools(ctx log.Context, d *Device) *build.ToolSet {
 
 // FindToolsForAPK returns the best matching tool set for a certain apk on a device,
 // if present in the package.
-func (p *Package) FindToolsForAPK(ctx log.Context, d *Device, apkInfo *apk.Information) *build.ToolSet {
+func (p *Package) FindToolsForAPK(ctx context.Context, d *Device, apkInfo *apk.Information) *build.ToolSet {
 	toolsABI := d.GetInformation().GetConfiguration().PreferredABI(apkInfo.ABI)
 	if toolsABI == nil {
 		return nil
@@ -75,7 +76,7 @@ func (p *Package) FindToolsForAPK(ctx log.Context, d *Device, apkInfo *apk.Infor
 	return p.Package.GetTools(toolsABI)
 }
 
-func (o *DataOwner) updateTrack(ctx log.Context, track *build.Track) error {
+func (o *DataOwner) updateTrack(ctx context.Context, track *build.Track) error {
 	o.Write(func(data *Data) {
 		for i, e := range data.Tracks.entries {
 			if track.Id == e.Id {
@@ -88,7 +89,7 @@ func (o *DataOwner) updateTrack(ctx log.Context, track *build.Track) error {
 	return nil
 }
 
-func (o *DataOwner) updatePackage(ctx log.Context, pkg *build.Package) error {
+func (o *DataOwner) updatePackage(ctx context.Context, pkg *build.Package) error {
 	o.Write(func(data *Data) {
 		for i, e := range data.Packages.entries {
 			if pkg.Id == e.Id {

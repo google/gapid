@@ -15,9 +15,9 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
@@ -26,7 +26,7 @@ import (
 )
 
 // Memory resolves and returns the memory from the path p.
-func Memory(ctx log.Context, p *path.Memory) (*service.MemoryInfo, error) {
+func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
 	ctx = capture.Put(ctx, p.After.Commands.Capture)
 	list, err := NCommands(ctx, p.After.Commands, p.After.Index+1)
 	if err != nil {

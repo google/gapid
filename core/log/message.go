@@ -15,46 +15,54 @@
 package log
 
 import (
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/fault/severity"
+	"strings"
+	"time"
 )
 
-// Log emits a log record with the current context and supplied message to the active log handler.
-func (l Logger) Log(msg string) {
-	l.J.Print(msg)
+type Message struct {
+	// The message text.
+	Text string
+
+	// The time the message was logged.
+	Time time.Time
+
+	// The severity of the message.
+	Severity Severity
+
+	// The tag associated with the log record.
+	Tag string
+
+	// The name of the process that created the record.
+	Process string
+
+	// The callstack at the time the message was logged.
+	Callstack []*SourceLocation
+
+	// The stack of enter() calls at the time the message was logged.
+	Trace Trace
+
+	// The key-value pairs of extra data.
+	Values Values
 }
 
-// Logf emits a log record with the current context and supplied message to the active log handler.
-func (l Logger) Logf(format string, args ...interface{}) {
-	l.J.Printf(format, args...)
+type SourceLocation struct {
+	// The file name
+	File string
+	// 1-based line number
+	Line int32
 }
 
-// Print is shorthand for ctx.At(InfoLevel).Log(msg)
-// Useful for hidden by default simple progress messages
-func (ctx logContext) Print(msg string) {
-	jot.Info(ctx.Unwrap()).Print(msg)
-}
+type Trace []string
 
-// Print is shorthand for ctx.At(InfoLevel).Logf(format, args...)
-// This is useful for Printf debugging, should generally not be left in the code.
-func (ctx logContext) Printf(format string, args ...interface{}) {
-	jot.Info(ctx.Unwrap()).Printf(format, args...)
-}
+func (t Trace) String() string { return strings.Join(t, "⇒") }
 
-// Fatal is shorthand for ctx.At(EmergencyLevel).Log(msg)
-// Useful in applications where emergency level logging also causes a panic.
-func (ctx logContext) Fatal(msg string) {
-	jot.At(ctx.Unwrap(), severity.Critical).Print(msg)
-}
+type Values []*Value
 
-// Fatalf is shorthand for ctx.At(EmergencyLevel).Logf(format, args...)
-// Useful in applications where emergency level logging also causes a panic.
-func (ctx logContext) Fatalf(format string, args ...interface{}) {
-	jot.At(ctx.Unwrap(), severity.Critical).Printf(format, args...)
-}
+func (v Values) Len() int           { return len(v) }
+func (v Values) Less(i, j int) bool { return v[i].Name < v[j].Name }
+func (v Values) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 
-// Fatal is shorthand for ctx.At(EmergencyLevel).Cause(err).Log(msg)
-// Useful in applications where emergency level logging also causes a panic.
-func (ctx logContext) FatalError(err error, msg string) {
-	jot.Fatal(ctx.Unwrap(), err, msg)
+type Value struct {
+	Name  string
+	Value interface{}
 }

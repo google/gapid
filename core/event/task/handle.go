@@ -14,7 +14,7 @@
 
 package task
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Handle is a reference to a running task submitted to an executor.
 // It can be used to check if the task has completed and get it's error result if it has one.
@@ -25,7 +25,7 @@ type Handle struct {
 
 // Result returns the error result of the task.
 // It will block until the task has completed or the context is cancelled.
-func (h Handle) Result(ctx log.Context) error {
+func (h Handle) Result(ctx context.Context) error {
 	if !h.Signal.Wait(ctx) {
 		return StopReason(ctx)
 	}

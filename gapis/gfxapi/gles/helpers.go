@@ -15,14 +15,15 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // BuildProgram returns the atoms to create a shader program with compiled vertex
 // and fragment shaders. The returned program is not linked.
-func BuildProgram(ctx log.Context, s *gfxapi.State,
+func BuildProgram(ctx context.Context, s *gfxapi.State,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
 	return append([]atom.Atom{NewGlCreateProgram(programID)},
@@ -33,7 +34,7 @@ func BuildProgram(ctx log.Context, s *gfxapi.State,
 // CompileProgram returns the atoms to compile and then attach vertex and
 // fragment shaders to an existing shader program.
 // The returned program is not linked.
-func CompileProgram(ctx log.Context, s *gfxapi.State,
+func CompileProgram(ctx context.Context, s *gfxapi.State,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
 

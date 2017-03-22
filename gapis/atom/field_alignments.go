@@ -15,7 +15,8 @@
 package atom
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
@@ -34,7 +35,7 @@ type FieldAlignments struct {
 	// for consistency sake.
 }
 
-func (f *FieldAlignments) Convert(ctx log.Context, out atom_pb.Handler) error {
+func (f *FieldAlignments) Convert(ctx context.Context, out atom_pb.Handler) error {
 	return out(ctx, &atom_pb.FieldAlignments{
 		CharAlignment:    f.CharAlignment,
 		IntAlignment:     f.IntAlignment,

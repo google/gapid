@@ -16,6 +16,7 @@ package adb
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -37,14 +37,14 @@ const (
 // ForwardAndConnect forwards the local-abstract-socket las and connects to it.
 // When the returned ReadCloser is closed the forwarded port is removed.
 // The function takes care of the quirky behavior of ADB forwarded sockets.
-func ForwardAndConnect(ctx log.Context, d Device, las string) (io.ReadCloser, error) {
+func ForwardAndConnect(ctx context.Context, d Device, las string) (io.ReadCloser, error) {
 	port, err := LocalFreeTCPPort()
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Finding free port")
+		return nil, log.Err(ctx, err, "Finding free port")
 	}
 
 	if err := d.Forward(ctx, TCPPort(port), NamedAbstractSocket(las)); err != nil {
-		return nil, cause.Explain(ctx, err, "Setting up port forwarding")
+		return nil, log.Err(ctx, err, "Setting up port forwarding")
 	}
 
 	once := sync.Once{}
@@ -71,7 +71,7 @@ func ForwardAndConnect(ctx log.Context, d Device, las string) (io.ReadCloser, er
 		time.Sleep(reconnectDelay)
 	}
 
-	return nil, cause.Wrap(ctx, ErrServiceTimeout)
+	return nil, log.Errf(ctx, ErrServiceTimeout, "")
 }
 
 type readerCustomCloser struct {

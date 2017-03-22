@@ -33,7 +33,7 @@ func TestCPUByName(t *testing.T) {
 		{"Denver", device.ARMv8a},
 		{"invalid", device.UnknownArchitecture},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		cpu := device.CPUByName(test.name)
 		assert.For(ctx, "Name").That(cpu.Name).Equals(test.name)
 		assert.For(ctx, "Architecture").That(cpu.Architecture).Equals(test.architecture)

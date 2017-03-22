@@ -43,16 +43,16 @@ void* getGlesProcAddress(const char* name, bool bypassLocal) {
     static DlLoader opengl(bypassLocal ? systemOpengl32Path().c_str() : "opengl32.dll");
     if (GPAPROC gpa = reinterpret_cast<GPAPROC>(opengl.lookup("wglGetProcAddress"))) {
         if (void* proc = gpa(name)) {
-            GAPID_INFO("GetGlesProcAddress(%s, %d) -> 0x%x (via opengl32 wglGetProcAddress)", name, bypassLocal, proc);
+            GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> 0x%x (via opengl32 wglGetProcAddress)", name, bypassLocal, proc);
             return proc;
         }
     }
     if (void* proc = opengl.lookup(name)) {
-        GAPID_INFO("GetGlesProcAddress(%s, %d) -> 0x%x (from opengl32 symbol)", name, bypassLocal, proc);
+        GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> 0x%x (from opengl32 symbol)", name, bypassLocal, proc);
         return proc;
     }
 
-    GAPID_INFO("GetGlesProcAddress(%s, %d) -> not found", name, bypassLocal);
+    GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> not found", name, bypassLocal);
     return nullptr;
 }
 

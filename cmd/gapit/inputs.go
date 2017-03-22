@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -116,7 +117,7 @@ func atoi(s string) int {
 type frameInfo struct{ frame, drawsPerFrame int }
 
 // Monitor logcat and parse frame statistics.
-func monitorFrameStatistics(ctx log.Context, d adb.Device, out chan frameInfo) {
+func monitorFrameStatistics(ctx context.Context, d adb.Device, out chan frameInfo) {
 	re := regexp.MustCompile("NumFrames:([0-9]+).*NumDrawsPerFrame:([0-9]+)")
 	stdout := &lambdaWriter{f: func(s string) {
 		for _, match := range re.FindAllStringSubmatch(s, -1) {
@@ -177,7 +178,7 @@ func recordFrameStatistics(out io.Writer, in <-chan frameInfo) {
 type touchInfo struct{ x, y, pressed int }
 
 // Monitor and parse touch screen events.
-func monitorTouchScreen(ctx log.Context, d adb.Device, out chan touchInfo) {
+func monitorTouchScreen(ctx context.Context, d adb.Device, out chan touchInfo) {
 	x, y, pressed := 0, 0, 0
 	stdout := &lambdaWriter{f: func(s string) {
 		for _, line := range strings.Split(s, "\n") {
@@ -220,7 +221,7 @@ func recordTouchInfo(out io.Writer, currentInfo *currentFrameInfo, in <-chan tou
 	}
 }
 
-func startRecordingInputs(ctx log.Context, d adb.Device, filename string) (cleanup func(), err error) {
+func startRecordingInputs(ctx context.Context, d adb.Device, filename string) (cleanup func(), err error) {
 	out, err := os.Create(filename)
 	if err != nil {
 		return nil, err
@@ -274,7 +275,7 @@ func loadReplayInputs(filename string) (inputs inputEvents, err error) {
 
 // Load given file and start replaying the user inputs.
 // 'eof' will be signalled when the end of file is reached.
-func startReplayingInputs(ctx log.Context, d adb.Device, replayInputsIn string, stop task.CancelFunc) error {
+func startReplayingInputs(ctx context.Context, d adb.Device, replayInputsIn string, stop task.CancelFunc) error {
 	inputs, err := loadReplayInputs(replayInputsIn)
 	if err != nil {
 		return err
@@ -288,8 +289,7 @@ func startReplayingInputs(ctx log.Context, d adb.Device, replayInputsIn string, 
 	go monitorFrameStatistics(ctx, d, frameInfos)
 	go stats.update(frameInfos, nil)
 	go func() {
-		ctx := ctx.Enter("Inputs")
-		info := ctx.Info().Logf
+		ctx := log.Enter(ctx, "Inputs")
 		startTime := time.Now()
 		time_drift := time.Duration(0)
 		value_of := inputEvent{} // Keep track of most recent state.
@@ -302,18 +302,18 @@ func startReplayingInputs(ctx log.Context, d adb.Device, replayInputsIn string, 
 				current := time.Now().Sub(startTime)
 				target := time.Duration(target)*time.Millisecond + time_drift
 				if current < target {
-					info("Wait until %.1fs", target.Seconds())
+					log.I(ctx, "Wait until %.1fs", target.Seconds())
 					time.Sleep(target - current)
 				} else {
 					time_drift = time_drift + current - target
-					info("Time drift: %.1fs", time_drift.Seconds())
+					log.I(ctx, "Time drift: %.1fs", time_drift.Seconds())
 				}
 			}
 			if target, ok := input[kFrame]; ok {
 				// Wait for the minimum frame
 				for stats.get().frame < target {
 					time_drift = time_drift + time.Second
-					info("Wait for more frames (%v seen, %v needed, %.1fs drift)",
+					log.I(ctx, "Wait for more frames (%v seen, %v needed, %.1fs drift)",
 						stats.get().frame, target, time_drift.Seconds())
 					time.Sleep(time.Second)
 				}
@@ -323,7 +323,7 @@ func startReplayingInputs(ctx log.Context, d adb.Device, replayInputsIn string, 
 				target = target - target/10 - 1
 				for stats.get().drawsPerFrame < target {
 					time_drift = time_drift + time.Second
-					info("Wait for more draws (%v seen, %v needed, %.1fs drift)",
+					log.I(ctx, "Wait for more draws (%v seen, %v needed, %.1fs drift)",
 						stats.get().drawsPerFrame, target, time_drift.Seconds())
 					time.Sleep(time.Second)
 					target = target - target/10 - 1 // relax over time to ensure progress
@@ -332,7 +332,7 @@ func startReplayingInputs(ctx log.Context, d adb.Device, replayInputsIn string, 
 			if pressed, ok := input[kPressed]; ok {
 				// Press/release screen
 				x, y := input[kX]*maxX/value_of[kMaxX], input[kY]*maxY/value_of[kMaxY]
-				info("Touch: x:%v y:%v pressed:%v", x, y, pressed)
+				log.I(ctx, "Touch: x:%v y:%v pressed:%v", x, y, pressed)
 				d.SendTouch(ctx, deviceId, x, y, pressed != 0)
 			}
 			if end, ok := input[kEnd]; ok && end == 1 {

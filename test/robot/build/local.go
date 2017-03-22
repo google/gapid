@@ -15,10 +15,11 @@
 package build
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/record"
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/log"
 )
 
 type local struct {
@@ -31,7 +32,7 @@ type local struct {
 
 // NewLocal builds a new build artifact manager that persists its data in the
 // supplied library, and the artifacts in the supplied stash.
-func NewLocal(ctx log.Context, store *stash.Client, library record.Library) (Store, error) {
+func NewLocal(ctx context.Context, store *stash.Client, library record.Library) (Store, error) {
 	s := &local{store: store}
 	if err := s.artifacts.init(ctx, store, library); err != nil {
 		return nil, err
@@ -47,25 +48,25 @@ func NewLocal(ctx log.Context, store *stash.Client, library record.Library) (Sto
 
 // SearchArtifacts implements Store.SearchArtifacts
 // It searches the set of persisted artifacts, and supports monitoring of artifacts as they arrive.
-func (s *local) SearchArtifacts(ctx log.Context, query *search.Query, handler ArtifactHandler) error {
+func (s *local) SearchArtifacts(ctx context.Context, query *search.Query, handler ArtifactHandler) error {
 	return s.artifacts.search(ctx, query, handler)
 }
 
 // SearchPackages implements Store.SearchPackages
 // It searches the set of persisted packages, and supports monitoring of packages as they arrive.
-func (s *local) SearchPackages(ctx log.Context, query *search.Query, handler PackageHandler) error {
+func (s *local) SearchPackages(ctx context.Context, query *search.Query, handler PackageHandler) error {
 	return s.packages.search(ctx, query, handler)
 }
 
 // SearchTracks implements Store.SearchTracks
 // It searches the set of persisted tracks, and supports monitoring of tracks as they arrive.
-func (s *local) SearchTracks(ctx log.Context, query *search.Query, handler TrackHandler) error {
+func (s *local) SearchTracks(ctx context.Context, query *search.Query, handler TrackHandler) error {
 	return s.tracks.search(ctx, query, handler)
 }
 
 // Add implements Store.Add
 // It adds the package to the persisten store, and attempts to add it into the track it should be part of.
-func (s *local) Add(ctx log.Context, id string, info *Information) (string, bool, error) {
+func (s *local) Add(ctx context.Context, id string, info *Information) (string, bool, error) {
 	a, err := s.artifacts.get(ctx, id)
 	if err != nil {
 		return "", false, err
@@ -92,7 +93,7 @@ func (s *local) Add(ctx log.Context, id string, info *Information) (string, bool
 // UpdateTrack implements store.UpdateTrack
 // if the track identified by the track id exists, it modifies the track head pointer, name
 // and description, otherwise it creates a new track.
-func (s *local) UpdateTrack(ctx log.Context, entry *Track) (*Track, error) {
+func (s *local) UpdateTrack(ctx context.Context, entry *Track) (*Track, error) {
 	track, _, err := s.tracks.createOrUpdate(ctx, entry)
 	return track, err
 }

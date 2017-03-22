@@ -16,12 +16,12 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapil"
@@ -54,7 +54,7 @@ func main() {
 	app.Run(Run)
 }
 
-func Run(ctx log.Context) error {
+func Run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
@@ -66,65 +66,65 @@ func Run(ctx log.Context) error {
 		return nil
 	}
 	apiName := args[0]
-	ctx = ctx.S("api", apiName)
-	ctx.Print("Parse and resolve")
+	l := log.Bind(ctx, log.V{"api": apiName})
+	l.I("Parse and resolve")
 	processor := gapil.NewProcessor()
 	if len(searchPath) > 0 {
 		processor.Loader = gapil.NewSearchLoader(searchPath)
 	}
 	compiled, errs := processor.Resolve(apiName)
-	ctx.Print("Check for errors")
+	l.I("Check for errors")
 	if err := gapil.CheckErrors(apiName, errs, maxErrors); err != nil {
 		return err
 	}
-	ctx.Print("Annotating")
+	l.I("Annotating")
 	a := annotate.Annotate(compiled)
 	if len(textFilename) != 0 {
-		ctx := ctx.S("textFile", textFilename)
-		if textFile, err := os.Create(textFilename); err != nil {
-			return cause.Explain(ctx, err, "Failed to open {{textFile}} for text output")
-		} else {
-			buf := bufio.NewWriter(textFile)
-			defer buf.Flush()
-			a.Print(buf)
+		ctx := log.V{"textFile": textFilename}.Bind(ctx)
+		textFile, err := os.Create(textFilename)
+		if err != nil {
+			return log.Err(ctx, err, "Failed to open {{textFile}} for text output")
 		}
+		buf := bufio.NewWriter(textFile)
+		defer buf.Flush()
+		a.Print(buf)
 	}
 	if len(base64Filename) != 0 {
-		ctx := ctx.S("base64File", base64Filename)
-		if base64File, err := os.Create(base64Filename); err != nil {
-			return cause.Explain(ctx, err, "Failed to open {{base64File}} for base64 output")
-		} else {
-			if err := a.Base64(base64File); err != nil {
-				os.Remove(base64Filename)
-				return cause.Explain(ctx, err, "Failed to encode {{base64File}}")
-			}
+		ctx := log.V{"base64File": base64Filename}.Bind(ctx)
+		base64File, err := os.Create(base64Filename)
+		if err != nil {
+			return log.Err(ctx, err, "Failed to open {{base64File}} for base64 output")
+		}
+		if err := a.Base64(base64File); err != nil {
+			os.Remove(base64Filename)
+			return log.Err(ctx, err, "Failed to encode {{base64File}}")
 		}
 	}
 	if len(globalsTextFilename) == 0 && len(globalsBase64Filename) == 0 {
 		return nil
 	}
-	ctx.Print("Globals Analysis")
+	l.I("Globals Analysis")
 	g := a.Globals()
 	if len(globalsTextFilename) != 0 {
-		ctx := ctx.S("globalsTextFile", globalsTextFilename)
-		if globalsTextFile, err := os.Create(globalsTextFilename); err != nil {
-			return cause.Explain(ctx, err, "Failed to open {{globalsTextFile}} for text output")
-		} else {
-			buf := bufio.NewWriter(globalsTextFile)
-			defer buf.Flush()
-			fmt.Fprint(buf, &g)
+		ctx := log.V{"globalsTextFile": globalsTextFilename}.Bind(ctx)
+		globalsTextFile, err := os.Create(globalsTextFilename)
+		if err != nil {
+			return log.Err(ctx, err, "Failed to open {{globalsTextFile}} for text output")
 		}
+		buf := bufio.NewWriter(globalsTextFile)
+		defer buf.Flush()
+		fmt.Fprint(buf, &g)
 	}
 	gg := a.GlobalsGrouped()
 	if len(globalsBase64Filename) != 0 {
-		ctx := ctx.S("globalsBase64File", globalsBase64Filename)
-		if globalsBase64File, err := os.Create(globalsBase64Filename); err != nil {
-			return cause.Explain(ctx, err, "Failed to open {{globalsBase64File}} for base64 output")
-		} else {
-			if err := gg.Base64(globalsBase64File); err != nil {
-				os.Remove(globalsBase64Filename)
-				return cause.Explain(ctx, err, "Failed to encode {{globalsBase64File}}")
-			}
+		ctx := log.V{"globalsBase64File": globalsBase64Filename}.Bind(ctx)
+		globalsBase64File, err := os.Create(globalsBase64Filename)
+		if err != nil {
+			return log.Err(ctx, err, "Failed to open {{globalsBase64File}} for base64 output")
+		}
+		if err := gg.Base64(globalsBase64File); err != nil {
+			os.Remove(globalsBase64Filename)
+			return log.Err(ctx, err, "Failed to encode {{globalsBase64File}}")
 		}
 	}
 	return nil

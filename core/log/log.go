@@ -12,24 +12,156 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package log provides a logging system that works well with context
-// It tries to make sure that disabled logging statements are cheap enough that they can be left in the code, and
-// enabled at run time.
-// It does this by reducing the need for memory allocations (to nothing for the common level filter) and by using a
-// messaging formatting system that delays all costs until the message is actually being logged.
-// It stores all parameters to the logging line into the context, and the message system allows extraction of any
-// context value into the message.
-//
-// Basic usage is
-// ctx.Info().WithValue("myName", "George").Log("does lots of logging");
-// |------------| this gets a Logger, and filters based on the severity
-//              |-----------------------------| this can be repeated, it adds a new value to the context
-//                                            |-----------------------| sends a record to the handler
-// To control the filtering, use log.SetFilter, to control the destination log.SetHandler, and to control the format
-// log.SetStyle.
 package log
 
-// binary: java.source = service
-// binary: java.package = com.google.gapid.service.log
-// binary: java.indent = "  "
-// binary: java.member_prefix = my
+import (
+	"context"
+	"fmt"
+	"io"
+	"sort"
+	"time"
+
+	"github.com/google/gapid/core/text"
+)
+
+// Logger provides a logging interface.
+type Logger struct {
+	handler     Handler
+	filter      Filter
+	stacktracer Stacktracer
+	clock       Clock
+	tag         string
+	process     string
+	trace       []string
+	values      *values
+}
+
+// From returns a new Logger from the context ctx.
+func From(ctx context.Context) *Logger {
+	return &Logger{
+		GetHandler(ctx),
+		GetFilter(ctx),
+		GetStacktracer(ctx),
+		GetClock(ctx),
+		GetTag(ctx),
+		GetProcess(ctx),
+		GetTrace(ctx),
+		getValues(ctx),
+	}
+}
+
+// Bind returns a new Logger from the context ctx with the additional values in
+// v.
+func Bind(ctx context.Context, v V) *Logger {
+	return From(v.Bind(ctx))
+}
+
+// D logs a debug message to the logging target.
+func D(ctx context.Context, fmt string, args ...interface{}) { From(ctx).D(fmt, args...) }
+
+// I logs a info message to the logging target.
+func I(ctx context.Context, fmt string, args ...interface{}) { From(ctx).I(fmt, args...) }
+
+// W logs a warning message to the logging target.
+func W(ctx context.Context, fmt string, args ...interface{}) { From(ctx).W(fmt, args...) }
+
+// E logs a error message to the logging target.
+func E(ctx context.Context, fmt string, args ...interface{}) { From(ctx).E(fmt, args...) }
+
+// F logs a fatal message to the logging target.
+func F(ctx context.Context, fmt string, args ...interface{}) { From(ctx).F(fmt, args...) }
+
+// D logs a debug message to the logging target.
+func (l *Logger) D(fmt string, args ...interface{}) { l.Logf(Debug, fmt, args...) }
+
+// I logs a info message to the logging target.
+func (l *Logger) I(fmt string, args ...interface{}) { l.Logf(Info, fmt, args...) }
+
+// W logs a warning message to the logging target.
+func (l *Logger) W(fmt string, args ...interface{}) { l.Logf(Warning, fmt, args...) }
+
+// E logs a error message to the logging target.
+func (l *Logger) E(fmt string, args ...interface{}) { l.Logf(Error, fmt, args...) }
+
+// F logs a fatal message to the logging target.
+func (l *Logger) F(fmt string, args ...interface{}) { l.Logf(Fatal, fmt, args...) }
+
+// Logf logs a printf-style message at severity s to the logging target.
+func (l *Logger) Logf(s Severity, f string, args ...interface{}) {
+	h := l.handler
+	if h == nil {
+		return
+	}
+
+	if l.filter != nil {
+		if !l.filter.ShowSeverity(s) {
+			return
+		}
+	}
+
+	h.Handle(l.Messagef(s, f, args...))
+}
+
+// Log logs a message at severity s to the logging target.
+func (l *Logger) Log(s Severity, f string) {
+	h := l.handler
+	if h == nil {
+		return
+	}
+
+	if l.filter != nil {
+		if !l.filter.ShowSeverity(s) {
+			return
+		}
+	}
+
+	h.Handle(l.Message(s, f))
+}
+
+// Messagef returns a new Message with the given severity and text.
+func (l *Logger) Messagef(s Severity, text string, args ...interface{}) *Message {
+	return l.Message(s, fmt.Sprintf(text, args...))
+}
+
+// Message returns a new Message with the given severity and text.
+func (l *Logger) Message(s Severity, text string) *Message {
+	var t time.Time
+	if c := l.clock; c != nil {
+		t = c.Time()
+	} else {
+		t = time.Now()
+	}
+
+	if s := l.stacktracer; s != nil {
+		// TODO
+	}
+
+	m := &Message{
+		Text:     text,
+		Time:     t.In(time.UTC),
+		Severity: s,
+		Tag:      l.tag,
+		Process:  l.process,
+		// Callstack: callstack(), // TODO: Callstack
+		Trace: l.trace,
+	}
+
+	for n := l.values; n != nil; n = n.parent {
+		for name, value := range n.v {
+			m.Values = append(m.Values, &Value{Name: name, Value: value})
+		}
+	}
+
+	sort.Sort(m.Values)
+
+	return m
+}
+
+// Writer returns an io.WriteCloser that writes lines to to the logger at the
+// specified severity.
+func (l *Logger) Writer(s Severity) io.WriteCloser {
+	return text.Writer(func(line string) error {
+		l.Log(s, line)
+		return nil
+	})
+}

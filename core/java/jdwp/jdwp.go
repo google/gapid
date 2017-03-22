@@ -18,6 +18,7 @@ package jdwp
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -59,7 +59,7 @@ type Connection struct {
 }
 
 // Open creates a Connection using conn for I/O.
-func Open(ctx log.Context, conn io.ReadWriteCloser) (*Connection, error) {
+func Open(ctx context.Context, conn io.ReadWriteCloser) (*Connection, error) {
 	if err := exchangeHandshakes(conn); err != nil {
 		return nil, err
 	}

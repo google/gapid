@@ -15,6 +15,7 @@
 package grpcutil
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/log"
 )
 
 const (
@@ -88,7 +88,7 @@ func DialPipe(addr string) (net.Conn, error) {
 
 // DialPipeCtx connects to listeners obtained with NewPipeListener, and
 // errors if the context is canceled.
-func DialPipeCtx(ctx log.Context, addr string) (net.Conn, error) {
+func DialPipeCtx(ctx context.Context, addr string) (net.Conn, error) {
 	select {
 	case <-task.ShouldStop(ctx):
 		return nil, errors.New("context cancelled")
@@ -100,7 +100,7 @@ func DialPipeCtx(ctx log.Context, addr string) (net.Conn, error) {
 // GetDialer takes a context and returns a grpc-compatible dialer function
 // that will fail if the context is stopped or if the specified timeout
 // passes.
-func GetDialer(ctx log.Context) func(string, time.Duration) (net.Conn, error) {
+func GetDialer(ctx context.Context) func(string, time.Duration) (net.Conn, error) {
 	return func(addr string, timeout time.Duration) (net.Conn, error) {
 		dialerCtx := ctx
 		if timeout != 0 {

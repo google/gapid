@@ -28,6 +28,7 @@ set(files
     dead_code_elimination.go
     dead_code_elimination_test.go
     dependency_graph.go
+    doc.go
     draw_call.go
     draw_call_mesh.go
     enum.go

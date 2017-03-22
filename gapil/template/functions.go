@@ -16,6 +16,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -29,7 +30,6 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/log"
 )
 
 const (
@@ -40,7 +40,7 @@ const (
 )
 
 type Functions struct {
-	ctx       log.Context // Held because functions are invoked through templates
+	ctx       context.Context // Held because functions are invoked through templates
 	templates *template.Template
 	funcs     template.FuncMap
 	globals   globalMap
@@ -68,7 +68,7 @@ type Options struct {
 // including other templates.
 // The functions in funcs are made available to the templates, and can override the functions from this
 // package if needed.
-func NewFunctions(ctx log.Context, api *semantic.API, mappings *resolver.Mappings, options Options) (*Functions, error) {
+func NewFunctions(ctx context.Context, api *semantic.API, mappings *resolver.Mappings, options Options) (*Functions, error) {
 	basePath, err := filepath.Abs(options.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get absolute path to directory: '%s'. %v", options.Dir, err)

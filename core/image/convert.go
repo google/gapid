@@ -15,10 +15,10 @@
 package image
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/protoutil"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/database"
 )
 
@@ -94,7 +94,7 @@ func Convert(data []byte, width, height int, srcFmt, dstFmt *Format) ([]byte, er
 // Resolve returns the byte array holding the converted image for the resolve
 // request.
 // TODO: Can this be moved to the resolve package?
-func (r *ConvertResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ConvertResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	data, err := database.Resolve(ctx, r.Data.ID())
 	if err != nil {
 		return nil, err

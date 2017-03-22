@@ -14,11 +14,11 @@
 
 package path
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Linker is the interface implemented by types that can point to other objects.
 type Linker interface {
 	// Link returns the link to the pointee of this object at p.
 	// If nil, nil is returned then the path cannot be followed.
-	Link(ctx log.Context, p Node) (Node, error)
+	Link(ctx context.Context, p Node) (Node, error)
 }

@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io"
 	"strings"
 	"time"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/client"
 )
@@ -121,7 +121,7 @@ func initializeBenchmarkInputFromFlags(flags flag.FlagSet, traceFile string, ben
 	return err
 }
 
-func runVerb(ctx log.Context, flags flag.FlagSet) error {
+func runVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 2 {
 		app.Usage(ctx, "Two arguments expected, got %d", flags.NArg())
 		return nil
@@ -130,7 +130,7 @@ func runVerb(ctx log.Context, flags flag.FlagSet) error {
 	perfzFile := flags.Arg(0)
 	perfz, err := LoadPerfz(ctx, perfzFile, flagVerifyHashes)
 	if err != nil {
-		ctx.Info().Logf("Could not load .perfz file, starting new one.")
+		log.I(ctx, "Could not load .perfz file, starting new one.")
 		perfz = NewPerfz()
 	}
 
@@ -141,14 +141,14 @@ func runVerb(ctx log.Context, flags flag.FlagSet) error {
 	}
 
 	if err := fullRun(ctx, bench); err != nil {
-		return cause.Explain(ctx, err, "fullRun")
+		return log.Err(ctx, err, "fullRun")
 	}
 
 	if err := writeAllFn(flagTextualOutput, func(w io.Writer) error {
 		_, err := w.Write([]byte(perfz.String()))
 		return err
 	}); err != nil {
-		return cause.Explain(ctx, err, "writeAll")
+		return log.Err(ctx, err, "writeAll")
 	}
 
 	if flagPerfzOutput == "" {
@@ -157,7 +157,7 @@ func runVerb(ctx log.Context, flags flag.FlagSet) error {
 
 	err = perfz.WriteTo(ctx, flagPerfzOutput)
 	if err != nil {
-		return cause.Explain(ctx, err, "perfz.WriteTo")
+		return log.Err(ctx, err, "perfz.WriteTo")
 	}
 
 	return nil

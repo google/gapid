@@ -15,11 +15,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -34,7 +34,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func rmVerb(ctx log.Context, flags flag.FlagSet) error {
+func rmVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 2 {
 		app.Usage(ctx, "Two arguments expected, got %d", flags.NArg())
 		return nil
@@ -60,7 +60,7 @@ func rmVerb(ctx log.Context, flags flag.FlagSet) error {
 
 	err = perfz.WriteTo(ctx, flagPerfzOutput)
 	if err != nil {
-		return cause.Explain(ctx, err, "perfz.WriteTo")
+		return log.Err(ctx, err, "perfz.WriteTo")
 	}
 
 	return nil

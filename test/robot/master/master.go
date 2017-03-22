@@ -15,21 +15,22 @@
 package master
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/data/search"
 )
 
-type SatelliteHandler func(log.Context, *Satellite) error
-type CommandHandler func(log.Context, *Command) error
+type SatelliteHandler func(context.Context, *Satellite) error
+type CommandHandler func(context.Context, *Command) error
 
 // Master is the interface to a master implementation.
 // It abstracts away whether the master is remote or local.
 type Master interface {
 	// Search returns a iterator of matching satellites from the store.
-	Search(log.Context, *search.Query, SatelliteHandler) error
+	Search(context.Context, *search.Query, SatelliteHandler) error
 	// Orbit adds a satellite to the set being managed by the master.
 	// The master will use the returned command stream to control the satellite.
-	Orbit(log.Context, ServiceList, CommandHandler) error
+	Orbit(context.Context, ServiceList, CommandHandler) error
 	// Shutdown is called to ask the master to send shutdown requests to satellites.
-	Shutdown(log.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 }

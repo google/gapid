@@ -15,8 +15,9 @@
 package gfxapi
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 )
 
 func (l *CubemapLevel) faces() [6]*image.Info2D {
@@ -58,7 +59,7 @@ func (m *imageMatcher) consider(i *image.Info2D) {
 }
 
 // Thumbnail returns the image that most closely matches the desired size.
-func (t *Texture2D) Thumbnail(ctx log.Context, w, h uint32) (*image.Info2D, error) {
+func (t *Texture2D) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
 	m := imageMatcher{width: w, height: h}
 	for _, l := range t.Levels {
 		m.consider(l)
@@ -68,7 +69,7 @@ func (t *Texture2D) Thumbnail(ctx log.Context, w, h uint32) (*image.Info2D, erro
 }
 
 // ConvertTo returns this Texture2D with each mip-level converted to the requested format.
-func (t *Texture2D) ConvertTo(ctx log.Context, f *image.Format) (interface{}, error) {
+func (t *Texture2D) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
 	out := &Texture2D{
 		Levels: make([]*image.Info2D, len(t.Levels)),
 	}
@@ -83,7 +84,7 @@ func (t *Texture2D) ConvertTo(ctx log.Context, f *image.Format) (interface{}, er
 }
 
 // Thumbnail returns the image that most closely matches the desired size.
-func (t *Cubemap) Thumbnail(ctx log.Context, w, h uint32) (*image.Info2D, error) {
+func (t *Cubemap) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
 	m := imageMatcher{width: w, height: h}
 
 	for _, l := range t.Levels {
@@ -99,7 +100,7 @@ func (t *Cubemap) Thumbnail(ctx log.Context, w, h uint32) (*image.Info2D, error)
 }
 
 // ConvertTo returns this Cubemap with each mip-level face converted to the requested format.
-func (t *Cubemap) ConvertTo(ctx log.Context, f *image.Format) (interface{}, error) {
+func (t *Cubemap) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
 	out := &Cubemap{
 		Levels: make([]*CubemapLevel, len(t.Levels)),
 	}

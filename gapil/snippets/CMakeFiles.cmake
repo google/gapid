@@ -19,6 +19,7 @@
 
 set(files
     can_follow.go
+    doc.go
     label.go
     observation.go
     path.go

@@ -18,21 +18,31 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    context.go
-    detail.go
+    broadcast.go
+    broadcast_test.go
+    channel.go
+    channel_test.go
+    clock.go
+    err.go
     filter.go
     handler.go
     log.go
-    logger.go
+    log.proto
+    log_test.go
     message.go
-    raw.go
+    process.go
     severity.go
+    stacktracer.go
     style.go
+    styles.go
+    styles_test.go
     tag.go
     testing.go
     trace.go
     values.go
+    writer.go
 )
 set(dirs
-
+    log_pb
+    logpb
 )

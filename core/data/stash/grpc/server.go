@@ -15,12 +15,12 @@
 package grpc
 
 import (
+	"context"
 	"io"
 
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -31,7 +31,7 @@ type storeServer struct {
 }
 
 // Serve wraps a store in a grpc server.
-func Serve(ctx log.Context, grpcServer *grpc.Server, service stash.Service) error {
+func Serve(ctx context.Context, grpcServer *grpc.Server, service stash.Service) error {
 	RegisterServiceServer(grpcServer, &storeServer{service: service})
 	return nil
 }
@@ -39,8 +39,8 @@ func Serve(ctx log.Context, grpcServer *grpc.Server, service stash.Service) erro
 // Search scans the underlying store for matching entities.
 // See ServiceServer for more information.
 func (s *storeServer) Search(query *search.Query, stream Service_SearchServer) error {
-	ctx := log.Wrap(stream.Context())
-	return s.service.Search(ctx, query, func(ctx log.Context, e *stash.Entity) error {
+	ctx := stream.Context()
+	return s.service.Search(ctx, query, func(ctx context.Context, e *stash.Entity) error {
 		return stream.Send(e)
 	})
 }
@@ -49,24 +49,24 @@ type uploader struct {
 	w io.WriteCloser
 }
 
-func (u *uploader) Open(ctx log.Context, service stash.Service, upload *stash.Upload) error {
+func (u *uploader) Open(ctx context.Context, service stash.Service, upload *stash.Upload) error {
 	u.Close(ctx)
 	w, err := service.Create(ctx, upload)
 	if err != nil {
-		return cause.Explain(ctx, err, "Opening upload")
+		return log.Err(ctx, err, "Opening upload")
 	}
 	u.w = w
 	return nil
 }
 
-func (u *uploader) Write(ctx log.Context, data []byte) error {
+func (u *uploader) Write(ctx context.Context, data []byte) error {
 	if _, err := u.w.Write(data); err != nil {
-		return cause.Explain(ctx, err, "Appending upload")
+		return log.Err(ctx, err, "Appending upload")
 	}
 	return nil
 }
 
-func (u *uploader) Close(ctx log.Context) {
+func (u *uploader) Close(ctx context.Context) {
 	if u.w == nil {
 		return
 	}
@@ -76,7 +76,7 @@ func (u *uploader) Close(ctx log.Context) {
 // Upload adds entities to the underlying store.
 // See ServiceServer for more information.
 func (s *storeServer) Upload(stream Service_UploadServer) error {
-	ctx := log.Wrap(stream.Context())
+	ctx := stream.Context()
 	u := &uploader{}
 	defer u.Close(ctx)
 	for {
@@ -93,7 +93,7 @@ func (s *storeServer) Upload(stream Service_UploadServer) error {
 			case *UploadChunk_Data:
 				u.Write(ctx, c.Data)
 			default:
-				return cause.Explain(ctx, nil, "Unknown upload chunk type")
+				return log.Err(ctx, nil, "Unknown upload chunk type")
 			}
 		}
 	}
@@ -102,15 +102,15 @@ func (s *storeServer) Upload(stream Service_UploadServer) error {
 // Download fetches entities from the underlying store.
 // See ServiceServer for more information.
 func (s *storeServer) Download(request *DownloadRequest, stream Service_DownloadServer) error {
-	ctx := log.Wrap(stream.Context())
+	ctx := stream.Context()
 	readSeeker, err := s.service.Open(ctx, request.Id)
 	if err != nil {
-		return cause.Explain(ctx, err, "Entity open")
+		return log.Err(ctx, err, "Entity open")
 	}
 
 	if request.Offset > 0 {
 		if _, err := readSeeker.Seek(int64(request.Offset), io.SeekStart); err != nil {
-			return cause.Explain(ctx, err, "Seek")
+			return log.Err(ctx, err, "Seek")
 		}
 	}
 
@@ -135,12 +135,12 @@ func (s *storeServer) Download(request *DownloadRequest, stream Service_Download
 			return nil
 		}
 		if err != nil {
-			return cause.Explain(ctx, err, "Data read")
+			return log.Err(ctx, err, "Data read")
 		}
 		chunk.Data = buf[:n]
 		err = stream.Send(chunk)
 		if err != nil {
-			return cause.Explain(ctx, err, "Stash download chunk")
+			return log.Err(ctx, err, "Stash download chunk")
 		}
 	}
 }

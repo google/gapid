@@ -43,10 +43,10 @@ var architectureTestData = []struct {
 func TestArchitecture(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range architectureTestData {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		a := test.architecture
 		m := a.MemoryLayout()
-		ctx = ctx.V("Architecture", a)
+		ctx = log.V{"Architecture": a}.Bind(ctx)
 		assert.For(ctx, "Architecture.Bitness()").That(a.Bitness()).Equals(test.bitness)
 		assert.For(ctx, "Architecture.MemoryLayout().PointerAlignment").That(m.GetPointerAlignment()).Equals(test.align)
 		assert.For(ctx, "Architecture.MemoryLayout().PointerSize").That(m.GetPointerSize()).Equals(test.pointerSize)
@@ -58,7 +58,7 @@ func TestArchitecture(t *testing.T) {
 func TestArchitectureByName(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range architectureTestData {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		architecture := device.ArchitectureByName(test.name)
 		assert.With(ctx).That(architecture).Equals(test.architecture)
 	}
@@ -75,7 +75,7 @@ func TestArchitectureGOARCH(t *testing.T) {
 		{"amd64", device.X86_64},
 		{"arm", device.ARMv7a},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		architecture := device.ArchitectureByName(test.name)
 		assert.With(ctx).That(architecture).Equals(test.architecture)
 	}

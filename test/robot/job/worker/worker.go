@@ -15,11 +15,11 @@
 package worker
 
 import (
+	"context"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/test/robot/job"
@@ -62,7 +62,7 @@ type taskEntry struct {
 	result chan error
 }
 
-func (w *Workers) init(ctx log.Context, jobs job.Manager, op job.Operation) {
+func (w *Workers) init(ctx context.Context, jobs job.Manager, op job.Operation) {
 	w.jobs = jobs
 	w.op = op
 }
@@ -70,7 +70,7 @@ func (w *Workers) init(ctx log.Context, jobs job.Manager, op job.Operation) {
 // Register is called to add a new worker to the active set.
 // It takes the host and target device for the worker, which may be the same, and a handler that will
 // be passed all the task objects that are sent to the worker.
-func (w *Workers) Register(ctx log.Context, host *device.Instance, target *device.Instance, handler interface{}) error {
+func (w *Workers) Register(ctx context.Context, host *device.Instance, target *device.Instance, handler interface{}) error {
 	info, err := w.jobs.GetWorker(ctx, host, target, w.op)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (w *Workers) Register(ctx log.Context, host *device.Instance, target *devic
 }
 
 // Find searches the live worker set to find the one that is managing a given target device.
-func (w *Workers) Find(ctx log.Context, device string) *Worker {
+func (w *Workers) Find(ctx context.Context, device string) *Worker {
 	for _, entry := range w.entries {
 		if entry.Info.Target == device {
 			return entry
@@ -95,16 +95,16 @@ func (w *Workers) Find(ctx log.Context, device string) *Worker {
 	return nil
 }
 
-func (w *Worker) run(ctx log.Context) {
+func (w *Worker) run(ctx context.Context) {
 	for e := range w.tasks {
 		e.result <- w.handler(ctx, e.task)
 		close(e.result)
 	}
 }
 
-func (w *Worker) send(ctx log.Context, task Task) error {
+func (w *Worker) send(ctx context.Context, task Task) error {
 	if w == nil {
-		return cause.Explain(ctx, nil, "No worker for device")
+		return log.Err(ctx, nil, "No worker for device")
 	}
 	result := make(chan error)
 	w.lock.Lock()

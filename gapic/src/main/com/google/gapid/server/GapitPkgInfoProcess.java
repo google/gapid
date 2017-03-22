@@ -23,7 +23,11 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.proto.pkginfo.PkgInfo.PackageList;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -33,6 +37,7 @@ import java.util.logging.Logger;
  */
 public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   private static final Logger LOG = Logger.getLogger(GapitPkgInfoProcess.class.getName());
+  private static final String PACKAGE_DATA_MARKER = "~-~-~-~-";
 
   private final String deviceSerial;
   private final float iconDensityScale;
@@ -63,6 +68,9 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
     args.add("--icondensity");
     args.add(String.valueOf(iconDensityScale));
 
+    args.add("--dataheader");
+    args.add(PACKAGE_DATA_MARKER);
+
     if (deviceSerial != null) {
       args.add("--device");
       args.add(deviceSerial);
@@ -72,11 +80,37 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
     return null;
   }
 
+  private class SearchingInputStream extends BufferedInputStream {
+    public SearchingInputStream(InputStream in) {
+      super(in);
+    }
+
+    public boolean search(byte[] pattern) throws IOException {
+      byte[] test = new byte[pattern.length];
+      while (true) {
+        mark(pattern.length);
+        if (read(test, 0, pattern.length) < 0) {
+          return false;
+        }
+        if (Arrays.equals(test, pattern)) {
+          return true;
+        }
+        reset();
+        skip(1);
+      }
+    }
+  }
+
   @Override
   protected OutputHandler<PkgInfo.PackageList> createStdoutHandler() {
     return new BinaryHandler<PkgInfo.PackageList>(in -> {
-      byte[] data = ByteStreams.toByteArray(in);
-      return (data.length == 0) ? null : PkgInfo.PackageList.parseFrom(data);
+      try (SearchingInputStream is = new SearchingInputStream(in)) {
+        if (!is.search(PACKAGE_DATA_MARKER.getBytes())) {
+          throw new RuntimeException("The gapit command didn't produce the data marker.");
+        }
+        byte[] data = ByteStreams.toByteArray(is);
+        return (data.length == 0) ? null : PkgInfo.PackageList.parseFrom(data);
+      }
     }) {
       @Override
       public void finish(SettableFuture<PackageList> result) throws InterruptedException {

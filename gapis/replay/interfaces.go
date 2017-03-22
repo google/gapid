@@ -15,8 +15,9 @@
 package replay
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -28,11 +29,11 @@ import (
 type Support interface {
 	// CanReplayOnLocalAndroidDevice returns true if the API can be replayed on
 	// a locally connected Android device.
-	CanReplayOnLocalAndroidDevice(log.Context) bool
+	CanReplayOnLocalAndroidDevice(context.Context) bool
 
 	// CanReplayOn returns true if the API can be replayed on the specified
 	// device.
-	CanReplayOn(log.Context, *device.Instance) bool
+	CanReplayOn(context.Context, *device.Instance) bool
 }
 
 // QueryIssues is the interface implemented by types that can verify the replay
@@ -44,7 +45,7 @@ type Support interface {
 // framebuffer observed at capture time.
 type QueryIssues interface {
 	QueryIssues(
-		ctx log.Context,
+		ctx context.Context,
 		intent Intent,
 		mgr *Manager,
 		out chan<- Issue)
@@ -55,7 +56,7 @@ type QueryIssues interface {
 // capture.
 type QueryFramebufferAttachment interface {
 	QueryFramebufferAttachment(
-		ctx log.Context,
+		ctx context.Context,
 		intent Intent,
 		mgr *Manager,
 		after atom.ID,

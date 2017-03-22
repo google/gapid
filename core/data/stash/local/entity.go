@@ -15,10 +15,10 @@
 package local
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/data/stash"
@@ -40,15 +40,15 @@ func (i *entityIndex) init() {
 	i.byID = map[string]*stash.Entity{}
 }
 
-func (i *entityIndex) lockedAddEntry(ctx log.Context, entity *stash.Entity) {
+func (i *entityIndex) lockedAddEntry(ctx context.Context, entity *stash.Entity) {
 	i.entities = append(i.entities, entity)
 	i.byID[entity.Upload.Id] = entity
 	if err := i.onAdd.Send(ctx, entity); err != nil {
-		jot.Fail(ctx, err, "Stash notification failed")
+		log.E(ctx, "Stash notification failed. Error: %v", err)
 	}
 }
 
-func (e *entityIndex) Lookup(ctx log.Context, id string) (*stash.Entity, error) {
+func (e *entityIndex) Lookup(ctx context.Context, id string) (*stash.Entity, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -59,7 +59,7 @@ func (e *entityIndex) Lookup(ctx log.Context, id string) (*stash.Entity, error) 
 	return entity, nil
 }
 
-func (e *entityIndex) Search(ctx log.Context, query *search.Query, handler stash.EntityHandler) error {
+func (e *entityIndex) Search(ctx context.Context, query *search.Query, handler stash.EntityHandler) error {
 	filter := eval.Filter(ctx, query, entityClass, event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, e.entities)
 	if query.Monitor {

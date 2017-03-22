@@ -16,6 +16,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 
 	_ "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pod"
@@ -105,9 +106,9 @@ type Entry struct {
 	Data   []byte
 }
 
-func VerifyData(ctx log.Context, entry Entry, got *bytes.Buffer) {
+func VerifyData(ctx context.Context, entry Entry, got *bytes.Buffer) {
 	if !bytes.Equal(entry.Data, got.Bytes()) {
-		ctx.Error().Logf(`%v gave unexpected bytes.
+		log.E(ctx, `%v gave unexpected bytes.
 Expected: %# x
 Got:      %# x`, entry.Name, entry.Data, got.Bytes())
 	}

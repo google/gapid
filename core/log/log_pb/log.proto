@@ -1,0 +1,82 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "gapis/service/pod/pod.proto";
+
+package log_pb;
+
+option java_package = "com.google.gapid.proto.log";
+option java_outer_classname = "Log";
+
+message Message {
+    // The message text.
+    string text = 1;
+
+    // The time the message was logged.
+    google.protobuf.Timestamp time = 2;
+
+    // The severity of the message.
+    Severity severity = 3;
+
+    // The tag associated with the log record.
+    string tag = 4;
+
+    // The name of the process that created the record.
+    string process = 5;
+
+    // The callstack at the time the message was logged.
+    repeated SourceLocation callstack = 6;
+
+    // The stack of enter() calls at the time the message was logged.
+    repeated string trace = 7;
+
+    // The key-value pairs of extra data.
+    repeated Value values = 8;
+}
+
+message SourceLocation {
+    string file = 1;
+
+    // 1-based line number
+    int32 line = 2;
+}
+
+message Value {
+    string name = 1;
+    pod.Value value = 2;
+}
+
+// Severity defines the severity of a logging message.
+enum Severity {
+    // Verbose indicates extremely verbose level messages.
+    Verbose = 0;
+
+    // Debug indicates debug-level messages.
+    Debug = 1;
+
+    // Info indicates minor informational messages that should generally be ignored.
+    Info = 2;
+
+    // Warning indicates issues that might affect performance or compatibility, but could be ignored.
+    Warning = 3;
+
+    // Error indicates non terminal failure conditions that may have an effect on results.
+    Error = 4;
+
+    // Fatal indicates a fatal error and the process should be terminated.
+    Fatal = 5;
+}

@@ -15,12 +15,11 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -31,7 +30,7 @@ import (
 )
 
 // Hierarchies resolves the list of hierarchies.
-func Hierarchies(ctx log.Context, h *path.Hierarchies) ([]*service.Hierarchy, error) {
+func Hierarchies(ctx context.Context, h *path.Hierarchies) ([]*service.Hierarchy, error) {
 	obj, err := database.Build(ctx, &HierarchiesResolvable{h.Capture})
 	if err != nil {
 		return nil, err
@@ -40,7 +39,7 @@ func Hierarchies(ctx log.Context, h *path.Hierarchies) ([]*service.Hierarchy, er
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *HierarchiesResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *HierarchiesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
 	c, err := capture.Resolve(ctx)
@@ -66,7 +65,7 @@ func (r *HierarchiesResolvable) Resolve(ctx log.Context) (interface{}, error) {
 			if !ok {
 				err = fault.Const(fmt.Sprint(r))
 			}
-			panic(cause.Wrap(ctx, err).With("atomID", currentAtomIndex).With("atom", reflect.TypeOf(currentAtom)))
+			panic(log.Errf(ctx, err, "panic at atomID: %v, type: %T", currentAtomIndex, currentAtom))
 		}
 	}()
 
@@ -194,7 +193,7 @@ func newContextHierarchyBuilder(context gfxapi.Context, atoms []atom.Atom, conte
 	return r
 }
 
-func (h *contextHierarchyBuilder) addUserMarkers(ctx log.Context, a atom.Atom, i uint64, s *gfxapi.State) {
+func (h *contextHierarchyBuilder) addUserMarkers(ctx context.Context, a atom.Atom, i uint64, s *gfxapi.State) {
 	if a.AtomFlags().IsPushUserMarker() {
 		marker := userMarker{start: i}
 		if labeled, ok := a.(atom.Labeled); ok {
@@ -214,7 +213,7 @@ func (h *contextHierarchyBuilder) addUserMarkers(ctx log.Context, a atom.Atom, i
 	}
 }
 
-func (h *contextHierarchyBuilder) addFrameAndDraws(ctx log.Context, a atom.Atom, i uint64, s *gfxapi.State) {
+func (h *contextHierarchyBuilder) addFrameAndDraws(ctx context.Context, a atom.Atom, i uint64, s *gfxapi.State) {
 	if h.frameStart == notStarted {
 		h.frameStart = i
 	}

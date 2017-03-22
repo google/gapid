@@ -15,12 +15,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 )
@@ -36,7 +36,7 @@ func init() {
 	})
 }
 
-func (verb *infoVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	if flags.NArg() != 1 {

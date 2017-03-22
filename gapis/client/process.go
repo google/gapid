@@ -15,10 +15,10 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device"
@@ -46,7 +46,7 @@ func init() {
 	}
 	// Search standard package structure
 	packagePath := file.Abs(".")
-	switch device.Host(log.Background()).Configuration.OS.Kind {
+	switch device.Host(context.Background()).Configuration.OS.Kind {
 	case device.Windows:
 		packagePath = packagePath.Join("windows")
 	case device.OSX:
@@ -76,20 +76,20 @@ type Config struct {
 // Connect attempts to connect to a GAPIS process.
 // If port is zero, a new GAPIS server will be started, otherwise a connection
 // will be made to the specified port.
-func Connect(ctx log.Context, cfg Config) (Client, *schema.Message, error) {
+func Connect(ctx context.Context, cfg Config) (Client, *schema.Message, error) {
 	if cfg.Path == nil {
 		cfg.Path = &GapisPath
 	}
 
 	var err error
 	if cfg.Port == 0 || len(cfg.Args) > 0 {
-		if ll := logLevel(ctx); ll != "" {
-			cfg.Args = append(cfg.Args, "--log-level", ll)
-		}
+		cfg.Args = append(cfg.Args, "--log-level", logLevel(ctx).String())
 		if cfg.Token != auth.NoAuth {
 			cfg.Args = append(cfg.Args, "--gapis-auth-token", string(cfg.Token))
 		}
-		cfg.Port, err = process.Start(ctx, cfg.Path.System(), nil, cfg.Args...)
+		cfg.Port, err = process.Start(ctx, cfg.Path.System(), process.StartOptions{
+			Args: cfg.Args,
+		})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -101,7 +101,7 @@ func Connect(ctx log.Context, cfg Config) (Client, *schema.Message, error) {
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(auth.ClientInterceptor(cfg.Token)))
 	if err != nil {
-		return nil, nil, cause.Explain(ctx, err, "Dialing GAPIS")
+		return nil, nil, log.Err(ctx, err, "Dialing GAPIS")
 	}
 	client := Bind(conn)
 
@@ -117,25 +117,12 @@ func Connect(ctx log.Context, cfg Config) (Client, *schema.Message, error) {
 	return client, message, nil
 }
 
-func logLevel(ctx log.Context) string {
-	switch {
-	case ctx.Debug().Active():
-		return "Debug"
-	case ctx.Info().Active():
-		return "Info"
-	case ctx.Notice().Active():
-		return "Notice"
-	case ctx.Warning().Active():
-		return "Warning"
-	case ctx.Error().Active():
-		return "Error"
-	case ctx.Critical().Active():
-		return "Critical"
-	case ctx.Alert().Active():
-		return "Alert"
-	case ctx.Emergency().Active():
-		return "Emergency"
-	default:
-		return ""
+func logLevel(ctx context.Context) log.Severity {
+	f := log.GetFilter(ctx)
+	for l := log.Debug; l <= log.Fatal; l++ {
+		if f.ShowSeverity(l) {
+			return l
+		}
 	}
+	return log.Warning
 }

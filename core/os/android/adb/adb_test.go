@@ -15,25 +15,25 @@
 package adb_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 )
 
-func mustConnect(ctx log.Context, serial string) adb.Device {
+func mustConnect(ctx context.Context, serial string) adb.Device {
 	devices, err := adb.Devices(ctx)
 	if err != nil {
-		jot.Fail(ctx, err, "Couldn't get devices")
+		log.F(ctx, "Couldn't get devices. Error: %v", err)
 	}
 	for _, d := range devices {
 		if d.Instance().Serial == serial {
 			return d
 		}
 	}
-	jot.Fatalf(ctx, nil, "Couldn't find device '%v'", serial)
+	log.F(ctx, "Couldn't find device '%v'", serial)
 	return nil
 }
 

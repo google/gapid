@@ -18,24 +18,20 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/note"
 )
 
 type contextMgrKeyTy string
 
 const contextMgrKey = contextMgrKeyTy("replayMgrID")
 
-func (contextMgrKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
-
 // PutManager attaches a manager to a Context.
-func PutManager(ctx log.Context, m *Manager) log.Context {
-	return log.Wrap(keys.WithValue(ctx.Unwrap(), contextMgrKey, m))
+func PutManager(ctx context.Context, m *Manager) context.Context {
+	return keys.WithValue(ctx, contextMgrKey, m)
 }
 
 // GetManager retrieves the manager from a context previously annotated by
 // PutManager.
-func GetManager(ctx log.Context) *Manager {
+func GetManager(ctx context.Context) *Manager {
 	val := ctx.Value(contextMgrKey)
 	if val == nil {
 		panic(string(contextMgrKey + " not present"))

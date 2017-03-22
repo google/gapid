@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/report"
 )
@@ -35,7 +36,7 @@ func (r *Reports) All() []*Report {
 	return r.entries
 }
 
-func (o *DataOwner) updateReport(ctx log.Context, action *report.Action) error {
+func (o *DataOwner) updateReport(ctx context.Context, action *report.Action) error {
 	o.Write(func(data *Data) {
 		data.Reports.entries = append(data.Reports.entries, &Report{Action: *action})
 	})
@@ -44,7 +45,7 @@ func (o *DataOwner) updateReport(ctx log.Context, action *report.Action) error {
 
 // Find searches the reports for the one that matches the supplied action.
 // See worker.EquivalentAction for more information about how actions are compared.
-func (r *Reports) Find(ctx log.Context, action *report.Action) *Report {
+func (r *Reports) Find(ctx context.Context, action *report.Action) *Report {
 	for _, entry := range r.entries {
 		if worker.EquivalentAction(&entry.Action, action) {
 			return entry
@@ -57,7 +58,7 @@ func (r *Reports) Find(ctx log.Context, action *report.Action) *Report {
 // it creates a new report object, and returns it.
 // It does not register the newly created report object for you, that will happen only if
 // a call is made to trigger the action on the report service.
-func (r *Reports) FindOrCreate(ctx log.Context, action *report.Action) (*Report, bool) {
+func (r *Reports) FindOrCreate(ctx context.Context, action *report.Action) (*Report, bool) {
 	entry := r.Find(ctx, action)
 	if entry != nil {
 		return entry, true

@@ -16,12 +16,11 @@ package cyclic_test
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"testing"
 
-	"io"
-
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/cyclic"
@@ -113,41 +112,41 @@ var testFull = test.Entry{
 	).Data,
 }
 
-func EncodeObject(ctx log.Context, entry test.Entry, e binary.Encoder, buf *bytes.Buffer) {
-	ctx = ctx.Enter(entry.Name)
+func EncodeObject(ctx context.Context, entry test.Entry, e binary.Encoder, buf *bytes.Buffer) {
+	ctx = log.Enter(ctx, entry.Name)
 	e.SetMode(binary.Compact)
 	for _, o := range entry.Values {
 		e.Object(o)
 		if e.Error() != nil {
-			jot.Fail(ctx, e.Error(), "Object gave unexpected error")
+			log.F(ctx, "Object gave unexpected error: %v", e.Error())
 		}
 	}
 	test.VerifyData(ctx, entry, buf)
 }
 
-func DecodeObject(ctx log.Context, entry test.Entry, d binary.Decoder, reader *bytes.Reader) {
-	ctx = ctx.Enter(entry.Name)
+func DecodeObject(ctx context.Context, entry test.Entry, d binary.Decoder, reader *bytes.Reader) {
+	ctx = log.Enter(ctx, entry.Name)
 	for i, o := range entry.Values {
-		ctx := ctx.I("index", i)
+		ctx := log.V{"index": i}.Bind(ctx)
 		got := d.Object()
 		if d.Error() != nil {
-			jot.Fail(ctx, d.Error(), "Object gave unexpected error")
+			log.F(ctx, "Object gave unexpected error: %v", d.Error())
 		}
 		assert.With(ctx).That(got).DeepEquals(o)
 	}
 }
 
-func EncodeAndDecode(ctx log.Context, obj binary.Object) {
+func EncodeAndDecode(ctx context.Context, obj binary.Object) {
 	b := &bytes.Buffer{}
 	e := cyclic.Encoder(vle.Writer(b))
 	e.Object(obj)
 	if e.Error() != nil {
-		jot.Fatal(ctx, e.Error(), "")
+		log.F(ctx, "%v", e.Error())
 	}
 	d := cyclic.Decoder(vle.Reader(b))
 	got := d.Object()
 	if d.Error() != nil {
-		jot.Fatal(ctx, d.Error(), "")
+		log.F(ctx, "%v", d.Error())
 	}
 	assert.With(ctx).That(got).DeepEquals(obj)
 }
@@ -168,14 +167,14 @@ func TestFull(t *testing.T) {
 	e := cyclic.Encoder(vle.Writer(b))
 	e.SetMode(binary.Full)
 	for i, o := range testFull.Values {
-		ctx := ctx.I("index", i)
+		ctx := log.V{"index": i}.Bind(ctx)
 		e.Object(o)
 		assert.For(ctx, "encode").ThatError(e.Error()).Succeeded()
 	}
 	test.VerifyData(ctx, testFull, b)
 	d := cyclic.Decoder(vle.Reader(b))
 	for i, o := range testFull.Values {
-		ctx := ctx.I("index", i)
+		ctx := log.V{"index": i}.Bind(ctx)
 		got := d.Object()
 		assert.For(ctx, "decode").ThatError(d.Error()).Succeeded()
 		assert.For(ctx, "decode").That(got).DeepEquals(o)
@@ -188,7 +187,7 @@ func TestError(t *testing.T) {
 		if len(entry.Data) <= 2 {
 			continue
 		}
-		ctx := ctx.Enter(entry.Name)
+		ctx := log.Enter(ctx, entry.Name)
 		e := cyclic.Encoder(vle.Writer(&test.LimitedWriter{Limit: 1}))
 		e.SetMode(binary.Compact)
 		for _, o := range entry.Values {
@@ -214,7 +213,7 @@ func TestInvalidControl(t *testing.T) {
 	b := &test.Bytes{Data: []byte{0x01, 0x7f, 0x00}}
 	d := cyclic.Decoder(vle.Reader(b))
 	d.Object()
-	assert.With(ctx).ThatError(d.Error()).HasMessage("Error:Invalid control block version")
+	assert.With(ctx).ThatError(d.Error()).HasMessage("⦕Invalid control block version⦖")
 }
 
 func TestNested(t *testing.T) {

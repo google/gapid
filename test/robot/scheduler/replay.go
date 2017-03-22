@@ -15,6 +15,8 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
@@ -22,8 +24,8 @@ import (
 	"github.com/google/gapid/test/robot/replay"
 )
 
-func (s schedule) getReplayTargetTools(ctx log.Context) *build.ToolSet {
-	ctx = ctx.V("Target", s.worker.Target)
+func (s schedule) getReplayTargetTools(ctx context.Context) *build.ToolSet {
+	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
 	tools := s.pkg.FindTools(ctx, s.data.FindDevice(s.worker.Target))
 	if tools == nil {
 		return nil
@@ -34,12 +36,12 @@ func (s schedule) getReplayTargetTools(ctx log.Context) *build.ToolSet {
 	return tools
 }
 
-func (s schedule) doReplay(ctx log.Context, t *monitor.Trace) error {
+func (s schedule) doReplay(ctx context.Context, t *monitor.Trace) error {
 	if !s.worker.Supports(job.Replay) {
 		return nil
 	}
-	ctx = ctx.Enter("Replay")
-	ctx = ctx.V("Package", s.pkg.Id)
+	ctx = log.Enter(ctx, "Replay")
+	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
 	hostTools := s.getHostTools(ctx)
 	targetTools := s.getReplayTargetTools(ctx)
 	if hostTools == nil || targetTools == nil {

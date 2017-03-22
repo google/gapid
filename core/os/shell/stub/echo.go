@@ -15,12 +15,11 @@
 package stub
 
 import (
+	"context"
+	"io"
 	"strings"
 	"sync"
 
-	"io"
-
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -37,7 +36,7 @@ type echo struct {
 	cmd  shell.Cmd
 }
 
-func (p *echo) Wait(ctx log.Context) error {
+func (p *echo) Wait(ctx context.Context) error {
 	p.once.Do(func() {
 		if p.cmd.Stdout != nil {
 			io.WriteString(p.cmd.Stdout, strings.Join(p.cmd.Args, " "))

@@ -15,11 +15,11 @@
 package gles_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	_ "github.com/google/gapid/framework/binary/any"
@@ -67,7 +67,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 
 	transform, err := compat(ctx, dev)
 	if err != nil {
-		jot.Fail(ctx, err, "Creating compatability transform")
+		log.E(ctx, "Error creating compatability transform: %v", err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	transform, err := compat(ctx, dev)
 	if err != nil {
-		jot.Fail(ctx, err, "Creating compatability transform")
+		log.E(ctx, "Error creating compatability transform: %v", err)
 		return
 	}
 
@@ -181,7 +181,8 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	s := capture.NewState(ctx)
 	for _, a := range mw.Atoms {
 		err := a.Mutate(ctx, s, nil)
-		if !assert.For(ctx.T("atom", a), "err").ThatError(err).Succeeded() {
+		ctx := log.V{"atom": fmt.Sprintf("%T", a)}.Bind(ctx)
+		if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 			break
 		}
 		if _, ok := a.(*gles.GlDrawElements); ok {

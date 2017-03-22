@@ -15,7 +15,8 @@
 package replay
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -29,7 +30,7 @@ type Generator interface {
 	// the specified requests and config, before outputting the final atom stream
 	// to out.
 	Replay(
-		ctx log.Context,
+		ctx context.Context,
 		intent Intent,
 		cfg Config,
 		requests []Request,

@@ -18,6 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    doc.go
     pod.go
     pod.pb.go
     pod.proto

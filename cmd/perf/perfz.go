@@ -17,6 +17,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -139,8 +140,8 @@ func (p *Perfz) NewBenchmarkWithName(name string) *Benchmark {
 }
 
 // LoadPerfz deserializes and prepares a Perfz from a .perfz file.
-func LoadPerfz(ctx log.Context, zipfile string, verify bool) (*Perfz, error) {
-	ctx.Info().Logf("Loading .perfz from %s", zipfile)
+func LoadPerfz(ctx context.Context, zipfile string, verify bool) (*Perfz, error) {
+	log.I(ctx, "Loading .perfz from %s", zipfile)
 
 	p := &Perfz{}
 
@@ -149,7 +150,7 @@ func LoadPerfz(ctx log.Context, zipfile string, verify bool) (*Perfz, error) {
 		if err != nil {
 			return err
 		}
-		ctx.Debug().Logf("Reading perfz root")
+		log.D(ctx, "Reading perfz root")
 		return json.Unmarshal(data, p)
 	}); err != nil {
 		return nil, err
@@ -174,14 +175,14 @@ func LoadPerfz(ctx log.Context, zipfile string, verify bool) (*Perfz, error) {
 		}
 
 		if verify {
-			ctx.Debug().Logf("Verifying entry %s", ref.Name)
+			log.D(ctx, "Verifying entry %s", ref.Name)
 			gotID, err := ref.ToID()
 			if err != nil {
 				return nil, err
 			}
 
 			if key != gotID.String() {
-				ctx.Warning().Logf(
+				log.W(ctx,
 					"Hash mismatch for entry '%s', (source '%s', expected %s, got %v)",
 					ref.Name, ref.Source, key, gotID)
 			}
@@ -228,10 +229,10 @@ func (p *Perfz) RemoveUnreferencedFiles() {
 }
 
 // WriteTo archives the Perfz and bundled data entries to a .perfz (zip) file.
-func (p *Perfz) WriteTo(ctx log.Context, zipfile string) error {
+func (p *Perfz) WriteTo(ctx context.Context, zipfile string) error {
 	p.RemoveUnreferencedFiles()
 	p.PerfzVersion = PerfzVersion
-	ctx.Info().Logf("Creating .perfz archive: %s", zipfile)
+	log.I(ctx, "Creating .perfz archive: %s", zipfile)
 
 	// Use a temporary file because we might need to copy
 	// data entries from the archive we're about to overwrite.
@@ -243,7 +244,7 @@ func (p *Perfz) WriteTo(ctx log.Context, zipfile string) error {
 	defer tmpFile.Close()
 	zipWriter := zip.NewWriter(tmpFile)
 
-	ctx.Debug().Logf("Writing %s", perfzRoot)
+	log.D(ctx, "Writing %s", perfzRoot)
 	w, err := zipWriter.Create(perfzRoot)
 	if err != nil {
 		return err
@@ -259,7 +260,7 @@ func (p *Perfz) WriteTo(ctx log.Context, zipfile string) error {
 
 	for _, entry := range p.Files {
 		if entry.Bundle {
-			ctx.Debug().Logf("Writing %s", entry.Name)
+			log.D(ctx, "Writing %s", entry.Name)
 			w, err := zipWriter.Create(entry.Name)
 			if err != nil {
 				return err
@@ -272,7 +273,7 @@ func (p *Perfz) WriteTo(ctx log.Context, zipfile string) error {
 
 	err = zipWriter.Close()
 	if err != nil {
-		ctx.Error().Logf("%s", err.Error())
+		log.E(ctx, "%s", err.Error())
 	}
 	_, err = tmpFile.Seek(0, 0)
 	if err != nil {
@@ -289,7 +290,7 @@ func (p *Perfz) WriteTo(ctx log.Context, zipfile string) error {
 		return err
 	}
 
-	ctx.Info().Logf("Archive created.")
+	log.I(ctx, "Archive created.")
 	return nil
 }
 

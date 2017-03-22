@@ -17,11 +17,12 @@
 package main
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/file"
 )
 
-func doClean(ctx log.Context, options CleanOptions, cfg Config) {
+func doClean(ctx context.Context, options CleanOptions, cfg Config) {
 	cleanOutput := true
 	if options.Generated {
 		cleanOutput = false
@@ -32,13 +33,13 @@ func doClean(ctx log.Context, options CleanOptions, cfg Config) {
 	}
 }
 
-func doCleanOutput(ctx log.Context, cfg Config) {
+func doCleanOutput(ctx context.Context, cfg Config) {
 	if cfg.cacheFile().Exists() {
 		file.RemoveAll(cfg.out())
 	}
 }
 
-func doCleanGenerated(ctx log.Context, cfg Config) {
+func doCleanGenerated(ctx context.Context, cfg Config) {
 	doBuild(ctx, cfg, BuildOptions{}, "clean_generated")
 	binary := cfg.bin().Join("clean_generated")
 	run(ctx, srcRoot, binary, nil, "-log-level", "Info")

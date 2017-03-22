@@ -16,13 +16,12 @@ package generator
 
 import (
 	"bytes"
+	"context"
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 const (
@@ -47,7 +46,7 @@ const (
 	`
 )
 
-func generateFor(ctx log.Context, fset *token.FileSet, wrap *entry) {
+func generateFor(ctx context.Context, fset *token.FileSet, wrap *entry) {
 	if !wrap.Called {
 		return
 	}

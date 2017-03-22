@@ -25,6 +25,7 @@ set(files
     command_counter.go
     convert.go
     data.go
+    doc.go
     extras.go
     field_alignments.go
     flags.go

@@ -15,15 +15,14 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math"
 	"net"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/pkg/errors"
@@ -79,7 +78,7 @@ func (s siSize) String() string {
 	return fmt.Sprintf(f, v)
 }
 
-func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
+func capture(ctx context.Context, port int, w io.Writer, o Options) (int64, error) {
 	if task.Stopped(ctx) {
 		return 0, nil
 	}
@@ -89,7 +88,7 @@ func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
 	}
 	defer conn.Close()
 	if err := sendHeader(conn, o); err != nil {
-		return 0, cause.Explain(ctx, err, "Header send failed")
+		return 0, log.Err(ctx, err, "Header send failed")
 	}
 
 	var count, nextSize siSize
@@ -97,7 +96,7 @@ func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
 	nextTime := startTime
 	for {
 		if task.Stopped(ctx) {
-			ctx.Printf("Stop: %v", count)
+			log.I(ctx, "Stop: %v", count)
 			break
 		}
 		now := time.Now()
@@ -107,12 +106,12 @@ func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
 		switch {
 		case errors.Cause(err) == io.EOF:
 			// End of stream. End.
-			ctx.Printf("EOF: %v", count)
+			log.I(ctx, "EOF: %v", count)
 			return int64(count), nil
 		case err != nil && count > 0:
 			err, isnet := err.(net.Error)
 			if !isnet || (!err.Temporary() && !err.Timeout()) {
-				jot.Info(ctx).Cause(err).Print("Connection error")
+				log.I(ctx, "Connection error: %v", err)
 				// Got an error mid-stream terminate.
 				return int64(count), err
 			}
@@ -125,7 +124,7 @@ func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
 			nextSize = count + sizeGap
 			nextTime = now.Add(timeGap)
 			delta := time.Duration(int64(now.Sub(startTime)/time.Millisecond)) * time.Millisecond
-			ctx.Printf("Capturing: %v in %v", count, delta)
+			log.I(ctx, "Capturing: %v in %v", count, delta)
 		}
 	}
 	return int64(count), nil
@@ -134,8 +133,8 @@ func capture(ctx log.Context, port int, w io.Writer, o Options) (int64, error) {
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options.
 // It copies the capture into the supplied writer.
-func Capture(ctx log.Context, port int, w io.Writer, options Options) (int64, error) {
-	ctx.Printf("Waiting for connection to localhost:%d...", port)
+func Capture(ctx context.Context, port int, w io.Writer, options Options) (int64, error) {
+	log.I(ctx, "Waiting for connection to localhost:%d...", port)
 	for {
 		count, err := capture(ctx, port, w, options)
 		if err != nil {
@@ -149,10 +148,10 @@ func Capture(ctx log.Context, port int, w io.Writer, options Options) (int64, er
 		// another waiting-for-connection case.
 		select {
 		case <-task.ShouldStop(ctx):
-			ctx.Print("Aborted.")
+			log.I(ctx, "Aborted.")
 			return 0, nil
 		case <-time.After(500 * time.Millisecond):
-			ctx.Print("Retry...")
+			log.I(ctx, "Retry...")
 		}
 	}
 }

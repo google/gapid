@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net"
 
@@ -35,7 +36,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doServer(ctx log.Context, flags flag.FlagSet) error {
+func doServer(ctx context.Context, flags flag.FlagSet) error {
 	serveAt := ""
 	switch flags.NArg() {
 	case 0:
@@ -46,15 +47,15 @@ func doServer(ctx log.Context, flags flag.FlagSet) error {
 		app.Usage(ctx, "Expected at most 1 arg (the address to server on)")
 		return nil
 	}
-	ctx.Notice().Logf("Starting server on %s", serveAt)
-	return withStore(ctx, true, func(ctx log.Context, client *stash.Client) error {
+	log.I(ctx, "Starting server on %s", serveAt)
+	return withStore(ctx, true, func(ctx context.Context, client *stash.Client) error {
 		return serveStore(ctx, client, serveAt)
 	})
 }
 
-func serveStore(ctx log.Context, client *stash.Client, address string) error {
-	ctx.Notice().Logf("Serving on %s", address)
-	return grpcutil.Serve(ctx, address, func(ctx log.Context, listener net.Listener, server *grpc.Server) error {
+func serveStore(ctx context.Context, client *stash.Client, address string) error {
+	log.I(ctx, "Serving on %s", address)
+	return grpcutil.Serve(ctx, address, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		if err := stashgrpc.Serve(ctx, server, client); err != nil {
 			return err
 		}

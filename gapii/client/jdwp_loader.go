@@ -15,6 +15,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -22,7 +23,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/java/jdbg"
 	"github.com/google/gapid/core/java/jdwp"
 	"github.com/google/gapid/core/log"
@@ -44,7 +44,7 @@ func expect(r io.Reader, expected []byte) error {
 
 // waitForOnCreate waits for android.app.Application.onCreate to be called, and
 // then suspends the thread.
-func waitForOnCreate(ctx log.Context, conn *jdwp.Connection, wakeup jdwp.ThreadID) (*jdwp.EventMethodEntry, error) {
+func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.ThreadID) (*jdwp.EventMethodEntry, error) {
 	app, err := conn.GetClassBySignature("Landroid/app/Application;")
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func waitForOnCreate(ctx log.Context, conn *jdwp.Connection, wakeup jdwp.ThreadI
 // and then suspends the thread.
 // This function is what is used to tell the vulkan loader where to search for
 // layers.
-func waitForVulkanLoad(ctx log.Context, conn *jdwp.Connection) (*jdwp.EventMethodEntry, error) {
+func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventMethodEntry, error) {
 	loaders, err := conn.GetClassBySignature("Landroid/app/ApplicationLoaders;")
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func waitForVulkanLoad(ctx log.Context, conn *jdwp.Connection) (*jdwp.EventMetho
 // loadLibrariesViaJDWP connects to the application waiting for a JDWP
 // connection with the specified process id, sends a number of JDWP commands to
 // load the list of libraries.
-func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d adb.Device) error {
+func loadLibrariesViaJDWP(ctx context.Context, gapidAPK *gapidapk.APK, pid int, d adb.Device) error {
 	const (
 		reconnectAttempts = 10
 		reconnectDelay    = time.Second
@@ -91,17 +91,17 @@ func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d ad
 
 	jdwpPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return cause.Explain(ctx, err, "Finding free port")
+		return log.Err(ctx, err, "Finding free port")
 	}
-	ctx = ctx.I("jdwpPort", int(jdwpPort))
+	ctx = log.V{"jdwpPort": jdwpPort}.Bind(ctx)
 
-	ctx.Print("Forwarding JDWP port")
+	log.I(ctx, "Forwarding JDWP port")
 	if err := d.Forward(ctx, adb.TCPPort(jdwpPort), adb.Jdwp(pid)); err != nil {
-		return cause.Explain(ctx, err, "Setting up JDWP port forwarding")
+		return log.Err(ctx, err, "Setting up JDWP port forwarding")
 	}
 	defer d.RemoveForward(ctx, adb.TCPPort(jdwpPort))
 
-	ctx.Print("Connecting to JDWP")
+	log.I(ctx, "Connecting to JDWP")
 
 	// Create a JDWP connection with the application.
 	var sock net.Conn
@@ -113,11 +113,11 @@ func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d ad
 			}
 			sock.Close()
 		}
-		ctx.Printf("Failed to connect: %v", err)
+		log.I(ctx, "Failed to connect: %v", err)
 		time.Sleep(reconnectDelay)
 	}
 	if err != nil {
-		return cause.Explain(ctx, err, "Connecting to JDWP")
+		return log.Err(ctx, err, "Connecting to JDWP")
 	}
 	defer func() {
 		stop()
@@ -142,18 +142,18 @@ func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d ad
 		}
 		interceptorPath := gapidAPK.LibInterceptorPath(abi)
 		gapiiPath := gapidAPK.LibGAPIIPath(abi)
-		ctx := ctx.S("gapii.so", gapiiPath).V("process abi", abi.Name)
+		ctx = log.V{"gapii.so": gapiiPath, "process abi": abi.Name}.Bind(ctx)
 
 		// Load the library.
-		ctx.Debug().Log("Loading GAPII library...")
+		log.D(ctx, "Loading GAPII library...")
 		// Work around for loading libraries in the N previews. See b/29441142.
 		j.Class("java.lang.Runtime").Call("getRuntime").Call("doLoad", interceptorPath, nil)
 		j.Class("java.lang.Runtime").Call("getRuntime").Call("doLoad", gapiiPath, nil)
-		ctx.Debug().Log("Library loaded")
+		log.D(ctx, "Library loaded")
 		return nil
 	}
 
-	ctx.Print("Waiting for ApplicationLoaders.getClassLoader()")
+	log.I(ctx, "Waiting for ApplicationLoaders.getClassLoader()")
 	if getClassLoader, err := waitForVulkanLoad(ctx, conn); err == nil {
 		// If err != nil that means we could not find or break in getClassLoader
 		// so we have no vulkan support.
@@ -172,7 +172,7 @@ func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d ad
 			return loadGAPII(j)
 		})
 		if err != nil {
-			return cause.Explain(ctx, err, "JDWP failure")
+			return log.Err(ctx, err, "JDWP failure")
 		}
 	}
 
@@ -180,16 +180,16 @@ func loadLibrariesViaJDWP(ctx log.Context, gapidAPK *gapidapk.APK, pid int, d ad
 	// Application.onCreate().
 	if classLoaderThread == jdwp.ThreadID(0) {
 		// Wait for Application.onCreate to be called.
-		ctx.Print("Waiting for Application.onCreate()")
+		log.I(ctx, "Waiting for Application.onCreate()")
 		onCreate, err := waitForOnCreate(ctx, conn, classLoaderThread)
 		if err != nil {
-			return cause.Explain(ctx, err, "Waiting for Application.OnCreate")
+			return log.Err(ctx, err, "Waiting for Application.OnCreate")
 		}
 
 		// Create a JDbg session to install and load the libraries.
-		ctx.Print("Installing interceptor libraries")
+		log.I(ctx, "Installing interceptor libraries")
 		if err := jdbg.Do(conn, onCreate.Thread, loadGAPII); err != nil {
-			return cause.Explain(ctx, err, "JDWP failure")
+			return log.Err(ctx, err, "JDWP failure")
 		}
 	}
 

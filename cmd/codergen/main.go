@@ -17,12 +17,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
-	"sync"
-
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -71,14 +71,14 @@ func (l *errors) Error() string {
 	}
 }
 
-func worker(ctx log.Context, wg *sync.WaitGroup, errs *errors, tasks chan generate.Generate) {
+func worker(ctx context.Context, wg *sync.WaitGroup, errs *errors, tasks chan generate.Generate) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		t := template.New()
 		for task := range tasks {
 			out := task.Output
-			ctx := ctx.V("Out", out)
+			ctx := log.V{"out": out}.Bind(ctx)
 			if *nowrite {
 				task.Output = ""
 			}
@@ -87,18 +87,18 @@ func worker(ctx log.Context, wg *sync.WaitGroup, errs *errors, tasks chan genera
 				errs.Add(err)
 			} else if changed {
 				if *nowrite {
-					ctx.Print("Not writing")
+					log.I(ctx, "Not writing")
 				} else {
-					ctx.Print("Generated")
+					log.I(ctx, "Generated")
 				}
 			} else {
-				ctx.Print("No change")
+				log.I(ctx, "No change")
 			}
 		}
 	}()
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	wd := *base
 	if wd == "" {
 		cwd, err := os.Getwd()
@@ -108,7 +108,7 @@ func run(ctx log.Context) error {
 		wd = cwd
 	}
 	scanner := scan.New(ctx, wd, filepath.FromSlash(*gopath))
-	ctx.Print("Scanning")
+	log.I(ctx, "Scanning")
 	args := flag.Args()
 	if len(args) == 0 {
 		args = append(args, "./...")
@@ -118,7 +118,7 @@ func run(ctx log.Context) error {
 			return err
 		}
 	}
-	ctx.Print("Processing")
+	log.I(ctx, "Processing")
 	if err := scanner.Process(ctx); err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func run(ctx log.Context) error {
 	if err != nil {
 		return err
 	}
-	ctx.Print("Generating")
+	log.I(ctx, "Generating")
 	wg := sync.WaitGroup{}
 	errs := errors{}
 	gen := make(chan generate.Generate)

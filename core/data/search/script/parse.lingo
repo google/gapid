@@ -15,15 +15,16 @@
 package script
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/lingo"
 )
 
 // Parse takes a string containing a search expression and returns the Query object representation of it.
 // If the string is not syntactically valid, you will get an incomplete query object and an error.
-func Parse(ctx log.Context, input string) (value query.Builder, err error) {
+func Parse(ctx context.Context, input string) (value query.Builder, err error) {
 	if input == "" {
 		return query.Bool(true), nil
 	}
@@ -42,7 +43,7 @@ func Parse(ctx log.Context, input string) (value query.Builder, err error) {
 	s.SetSkip(skip)
 	value = expression(s)
 	if !s.EOF() {
-		return query.Bool(false), cause.Explain(ctx, nil, "Input not consumed")
+		return query.Bool(false), log.Err(ctx, nil, "Input not consumed")
 	}
 	return value, nil
 }
@@ -50,7 +51,7 @@ func Parse(ctx log.Context, input string) (value query.Builder, err error) {
 // MustParse wraps Parse and panics on failure.
 // It is intended for static initializers, which is why it also does not take a context.
 func MustParse(input string) query.Builder {
-	b, err := Parse(log.Background(), input)
+	b, err := Parse(context.Background(), input)
 	if err != nil {
 		panic(err)
 	}

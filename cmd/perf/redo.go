@@ -15,12 +15,11 @@
 package main
 
 import (
+	"context"
 	"flag"
-
 	"io"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -58,7 +57,7 @@ func clonePerfzInputs(p *Perfz) (*Perfz, error) {
 	return result, nil
 }
 
-func redoVerb(ctx log.Context, flags flag.FlagSet) error {
+func redoVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 2 {
 		app.Usage(ctx, "Two arguments expected, got %d", flags.NArg())
 		return nil
@@ -77,13 +76,13 @@ func redoVerb(ctx log.Context, flags flag.FlagSet) error {
 
 	for _, bench := range outputPerfz.Benchmarks {
 		if err := fullRun(ctx, bench); err != nil {
-			return cause.Explain(ctx, err, "fullRun")
+			return log.Err(ctx, err, "fullRun")
 		}
 	}
 
 	err = outputPerfz.WriteTo(ctx, flags.Arg(1))
 	if err != nil {
-		return cause.Explain(ctx, err, "outputPerfz.WriteTo")
+		return log.Err(ctx, err, "outputPerfz.WriteTo")
 	}
 
 	return writeAllFn(flagTextualOutput, func(w io.Writer) error {

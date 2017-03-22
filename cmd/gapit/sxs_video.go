@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -49,7 +50,7 @@ type videoFrame struct {
 	squareError   float64
 }
 
-func (verb *videoVerb) sxsVideoSource(ctx log.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
+func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
 	// Find maximum frame width / height of all frames, and get all observation
 	// atom indices.
 	videoFrames := []*videoFrame{}
@@ -106,7 +107,7 @@ func (verb *videoVerb) sxsVideoSource(ctx log.Context, atoms []atom.Atom, captur
 		}(v)
 	}
 	wg.Wait()
-	ctx.Info().Logf("Frames rendered in %v", time.Since(start))
+	log.I(ctx, "Frames rendered in %v", time.Since(start))
 	for _, v := range videoFrames {
 		if v.renderError != nil {
 			return nil, v.renderError

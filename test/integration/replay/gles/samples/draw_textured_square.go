@@ -15,14 +15,15 @@
 package samples
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi/gles"
 )
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx log.Context) (atoms *atom.List, draw atom.ID, swap atom.ID) {
+func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, swap atom.ID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,

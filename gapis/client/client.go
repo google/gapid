@@ -15,7 +15,12 @@
 package client
 
 import (
+	"context"
+
+	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/log/log_pb"
+	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
@@ -49,8 +54,8 @@ type client struct {
 
 func (c *client) Close() error { return c.close() }
 
-func (c *client) GetServerInfo(ctx log.Context) (*service.ServerInfo, error) {
-	res, err := c.client.GetServerInfo(ctx.Unwrap(), &service.GetServerInfoRequest{})
+func (c *client) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
+	res, err := c.client.GetServerInfo(ctx, &service.GetServerInfoRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +65,8 @@ func (c *client) GetServerInfo(ctx log.Context) (*service.ServerInfo, error) {
 	return res.GetInfo(), nil
 }
 
-func (c *client) Get(ctx log.Context, p *path.Any) (interface{}, error) {
-	res, err := c.client.Get(ctx.Unwrap(), &service.GetRequest{Path: p})
+func (c *client) Get(ctx context.Context, p *path.Any) (interface{}, error) {
+	res, err := c.client.Get(ctx, &service.GetRequest{Path: p})
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +76,8 @@ func (c *client) Get(ctx log.Context, p *path.Any) (interface{}, error) {
 	return res.GetValue().Get(), nil
 }
 
-func (c *client) Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, error) {
-	res, err := c.client.Set(ctx.Unwrap(), &service.SetRequest{
+func (c *client) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
+	res, err := c.client.Set(ctx, &service.SetRequest{
 		Path:  p,
 		Value: service.NewValue(v),
 	})
@@ -82,8 +87,8 @@ func (c *client) Set(ctx log.Context, p *path.Any, v interface{}) (*path.Any, er
 	return res.GetPath(), nil
 }
 
-func (c *client) Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
-	res, err := c.client.Follow(ctx.Unwrap(), &service.FollowRequest{Path: p})
+func (c *client) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
+	res, err := c.client.Follow(ctx, &service.FollowRequest{Path: p})
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +98,8 @@ func (c *client) Follow(ctx log.Context, p *path.Any) (*path.Any, error) {
 	return res.GetPath(), nil
 }
 
-func (c *client) BeginCPUProfile(ctx log.Context) error {
-	res, err := c.client.BeginCPUProfile(ctx.Unwrap(), &service.BeginCPUProfileRequest{})
+func (c *client) BeginCPUProfile(ctx context.Context) error {
+	res, err := c.client.BeginCPUProfile(ctx, &service.BeginCPUProfileRequest{})
 	if err != nil {
 		return err
 	}
@@ -104,8 +109,8 @@ func (c *client) BeginCPUProfile(ctx log.Context) error {
 	return nil
 }
 
-func (c *client) EndCPUProfile(ctx log.Context) ([]byte, error) {
-	res, err := c.client.EndCPUProfile(ctx.Unwrap(), &service.EndCPUProfileRequest{})
+func (c *client) EndCPUProfile(ctx context.Context) ([]byte, error) {
+	res, err := c.client.EndCPUProfile(ctx, &service.EndCPUProfileRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +120,8 @@ func (c *client) EndCPUProfile(ctx log.Context) ([]byte, error) {
 	return res.GetData(), nil
 }
 
-func (c *client) GetPerformanceCounters(ctx log.Context) ([]byte, error) {
-	res, err := c.client.GetPerformanceCounters(ctx.Unwrap(), &service.GetPerformanceCountersRequest{})
+func (c *client) GetPerformanceCounters(ctx context.Context) ([]byte, error) {
+	res, err := c.client.GetPerformanceCounters(ctx, &service.GetPerformanceCountersRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +131,8 @@ func (c *client) GetPerformanceCounters(ctx log.Context) ([]byte, error) {
 	return res.GetData(), nil
 }
 
-func (c *client) GetProfile(ctx log.Context, name string, debug int32) ([]byte, error) {
-	res, err := c.client.GetProfile(ctx.Unwrap(), &service.GetProfileRequest{
+func (c *client) GetProfile(ctx context.Context, name string, debug int32) ([]byte, error) {
+	res, err := c.client.GetProfile(ctx, &service.GetProfileRequest{
 		Name:  name,
 		Debug: debug,
 	})
@@ -140,8 +145,8 @@ func (c *client) GetProfile(ctx log.Context, name string, debug int32) ([]byte, 
 	return res.GetData(), nil
 }
 
-func (c *client) GetSchema(ctx log.Context) (*schema.Message, error) {
-	res, err := c.client.GetSchema(ctx.Unwrap(), &service.GetSchemaRequest{})
+func (c *client) GetSchema(ctx context.Context) (*schema.Message, error) {
+	res, err := c.client.GetSchema(ctx, &service.GetSchemaRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +157,8 @@ func (c *client) GetSchema(ctx log.Context) (*schema.Message, error) {
 	return obj.(*schema.Message), nil
 }
 
-func (c *client) GetAvailableStringTables(ctx log.Context) ([]*stringtable.Info, error) {
-	res, err := c.client.GetAvailableStringTables(ctx.Unwrap(), &service.GetAvailableStringTablesRequest{})
+func (c *client) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
+	res, err := c.client.GetAvailableStringTables(ctx, &service.GetAvailableStringTablesRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +168,8 @@ func (c *client) GetAvailableStringTables(ctx log.Context) ([]*stringtable.Info,
 	return res.GetTables().List, nil
 }
 
-func (c *client) GetStringTable(ctx log.Context, i *stringtable.Info) (*stringtable.StringTable, error) {
-	res, err := c.client.GetStringTable(ctx.Unwrap(), &service.GetStringTableRequest{
+func (c *client) GetStringTable(ctx context.Context, i *stringtable.Info) (*stringtable.StringTable, error) {
+	res, err := c.client.GetStringTable(ctx, &service.GetStringTableRequest{
 		Table: i,
 	})
 	if err != nil {
@@ -176,8 +181,8 @@ func (c *client) GetStringTable(ctx log.Context, i *stringtable.Info) (*stringta
 	return res.GetTable(), nil
 }
 
-func (c *client) ImportCapture(ctx log.Context, name string, data []byte) (*path.Capture, error) {
-	res, err := c.client.ImportCapture(ctx.Unwrap(), &service.ImportCaptureRequest{
+func (c *client) ImportCapture(ctx context.Context, name string, data []byte) (*path.Capture, error) {
+	res, err := c.client.ImportCapture(ctx, &service.ImportCaptureRequest{
 		Name: name,
 		Data: data,
 	})
@@ -190,8 +195,8 @@ func (c *client) ImportCapture(ctx log.Context, name string, data []byte) (*path
 	return res.GetCapture(), nil
 }
 
-func (c *client) LoadCapture(ctx log.Context, path string) (*path.Capture, error) {
-	res, err := c.client.LoadCapture(ctx.Unwrap(), &service.LoadCaptureRequest{
+func (c *client) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
+	res, err := c.client.LoadCapture(ctx, &service.LoadCaptureRequest{
 		Path: path,
 	})
 	if err != nil {
@@ -203,8 +208,8 @@ func (c *client) LoadCapture(ctx log.Context, path string) (*path.Capture, error
 	return res.GetCapture(), nil
 }
 
-func (c *client) GetDevices(ctx log.Context) ([]*path.Device, error) {
-	res, err := c.client.GetDevices(ctx.Unwrap(), &service.GetDevicesRequest{})
+func (c *client) GetDevices(ctx context.Context) ([]*path.Device, error) {
+	res, err := c.client.GetDevices(ctx, &service.GetDevicesRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +219,8 @@ func (c *client) GetDevices(ctx log.Context) ([]*path.Device, error) {
 	return res.GetDevices().List, nil
 }
 
-func (c *client) GetDevicesForReplay(ctx log.Context, p *path.Capture) ([]*path.Device, error) {
-	res, err := c.client.GetDevicesForReplay(ctx.Unwrap(), &service.GetDevicesForReplayRequest{
+func (c *client) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
+	res, err := c.client.GetDevicesForReplay(ctx, &service.GetDevicesForReplayRequest{
 		Capture: p,
 	})
 	if err != nil {
@@ -228,13 +233,13 @@ func (c *client) GetDevicesForReplay(ctx log.Context, p *path.Capture) ([]*path.
 }
 
 func (c *client) GetFramebufferAttachment(
-	ctx log.Context,
+	ctx context.Context,
 	dev *path.Device,
 	cmd *path.Command,
 	att gfxapi.FramebufferAttachment,
 	rs *service.RenderSettings) (*path.ImageInfo, error) {
 
-	res, err := c.client.GetFramebufferAttachment(ctx.Unwrap(), &service.GetFramebufferAttachmentRequest{
+	res, err := c.client.GetFramebufferAttachment(ctx, &service.GetFramebufferAttachmentRequest{
 		Device:     dev,
 		After:      cmd,
 		Attachment: att,
@@ -247,4 +252,16 @@ func (c *client) GetFramebufferAttachment(
 		return nil, err.Get()
 	}
 	return res.GetImage(), nil
+}
+
+func (c *client) GetLogStream(ctx context.Context, handler log.Handler) error {
+	stream, err := c.client.GetLogStream(ctx, &service.GetLogStreamRequest{})
+	if err != nil {
+		return err
+	}
+	h := func(ctx context.Context, m *log_pb.Message) error {
+		handler.Handle(m.Message())
+		return nil
+	}
+	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }

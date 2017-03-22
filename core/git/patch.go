@@ -16,14 +16,13 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 // GetPatch returns the changes between the two SHAs as a patch string.
-func (g Git) GetPatch(ctx log.Context, from, to SHA) (string, error) {
+func (g Git) GetPatch(ctx context.Context, from, to SHA) (string, error) {
 	str, _, err := g.run(ctx, "format-patch", "--stdout", fmt.Sprintf("%v..%v", from, to))
 	if err != nil {
 		return "", err
@@ -33,7 +32,7 @@ func (g Git) GetPatch(ctx log.Context, from, to SHA) (string, error) {
 
 // CanApplyPatch returns true if the specified patch can be applied to HEAD
 // without conficts.
-func (g Git) CanApplyPatch(ctx log.Context, patch string) (bool, error) {
+func (g Git) CanApplyPatch(ctx context.Context, patch string) (bool, error) {
 	stdin := bytes.NewBuffer([]byte(patch))
 	_, stderr, err := g.runWithStdin(ctx, stdin, "apply", "--check")
 	if err != nil {

@@ -15,7 +15,8 @@
 package core
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -25,7 +26,7 @@ import (
 
 var _ atom.Atom = &Architecture{}
 
-func (a *Architecture) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *Architecture) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	bo := device.BigEndian
 	if a.LittleEndian {
 		bo = device.LittleEndian
@@ -49,7 +50,7 @@ func (a *Architecture) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Build
 	return nil
 }
 
-func (a *SwitchThread) Mutate(ctx log.Context, gs *gfxapi.State, b *builder.Builder) error {
+func (a *SwitchThread) Mutate(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
 	err := a.mutate(ctx, gs, nil)
 	if b == nil || err != nil {
 		return err

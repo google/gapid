@@ -16,10 +16,10 @@ package gles
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
@@ -102,7 +102,7 @@ type features struct {
 	framebufferSrgb           support // support for GL_FRAMEBUFFER_SRGB
 }
 
-func getFeatures(ctx log.Context, version string, ext extensions) (features, *Version, error) {
+func getFeatures(ctx context.Context, version string, ext extensions) (features, *Version, error) {
 	v, err := ParseVersion(version)
 	if err != nil {
 		return features{}, v, err
@@ -145,8 +145,8 @@ func cloneAtom(a atom.Atom) atom.Atom {
 	return (cyclic.Decoder(vle.Reader(&b)).Variant()).(atom.Atom)
 }
 
-func compat(ctx log.Context, device *device.Instance) (transform.Transformer, error) {
-	ctx = ctx.Enter("compat")
+func compat(ctx context.Context, device *device.Instance) (transform.Transformer, error) {
+	ctx = log.Enter(ctx, "compat")
 
 	glDev := device.Configuration.Drivers.OpenGL
 	target, version, err := getFeatures(ctx, glDev.Version, listToExtensions(glDev.Extensions))
@@ -191,18 +191,17 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 
 	// Upload last know EGL image content of bound texture (possibly from different context)
 	// TODO: Share the data properly between contexts in replay.
-	loadEglImageData := func(ctx log.Context, i atom.ID, a atom.Atom, target GLenum, c *Context, out transform.Writer) {
+	loadEglImageData := func(ctx context.Context, i atom.ID, a atom.Atom, target GLenum, c *Context, out transform.Writer) {
 		s := out.State()
 		if boundTexture, err := subGetBoundTextureOrErrorInvalidEnum(ctx, a, nil, s, GetState(s), nil, target); err != nil {
-			ctx.Warning().T("atom", a).Log("Can not get bound texture")
-
+			log.W(ctx, "Can not get bound texture for: %v", a)
 		} else {
 			if boundTexture.EGLImage != GLeglImageOES(memory.Nullptr) {
 				origUnpackAlignment := c.PixelStorage.UnpackAlignment
 				img := boundTexture.Texture2D[0]
 				data := eglImageData[boundTexture.EGLImage]
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
-				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(img.TexelFormat), img.Width, img.Height, 0, img.TexelFormat, img.TexelType, data).Call(ctx, s, b)
 					return nil
 				}))
@@ -217,7 +216,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 
 	// If EGLImage is bound to current framebuffer, make a copy of its data.
 	// TODO: Share the data properly between contexts in replay.
-	resolveEglImageData := func(ctx log.Context, i atom.ID, a atom.Atom, c *Context, out transform.Writer) {
+	resolveEglImageData := func(ctx context.Context, i atom.ID, a atom.Atom, c *Context, out transform.Writer) {
 		fb := c.Instances.Framebuffers[c.BoundDrawFramebuffer]
 		if !isEglImageDirty[fb] {
 			return
@@ -249,7 +248,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 	}
 
 	var t transform.Transformer
-	t = transform.Transform("compat", func(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+	t = transform.Transform("compat", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		s := out.State()
 		switch a := a.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
@@ -279,8 +278,10 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 
 			source, _, err := getFeatures(ctx, c.Constants.Version, translateExtensions(c.Constants.Extensions))
 			if err != nil {
-				jot.Error(ctx).With("version", c.Constants.Version).With("extensions", c.Constants.Extensions).
-					Cause(err).Print("Getting feature list.")
+				log.E(log.V{
+					"version":    c.Constants.Version,
+					"extensions": c.Constants.Extensions,
+				}.Bind(ctx), "Error getting feature list: %v", err)
 				return
 			}
 
@@ -463,7 +464,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 
 				res := shadertools.ConvertGlsl(shader.Source, &opts)
 				if !res.Ok {
-					ctx.Error().V("id", i).Logf("Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, shader.Source)
+					log.E(ctx, "Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, shader.Source)
 					return
 				}
 				src = res.SourceCode
@@ -474,12 +475,12 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 				case GLenum_GL_FRAGMENT_SHADER:
 					lang = ast.LangFragmentShader
 				default:
-					ctx.Warning().V("type", shader.Type).Log("Unknown shader type")
+					log.W(ctx, "Unknown shader type: %v", shader.Type)
 				}
 
 				src, err = glslCompat(ctx, shader.Source, lang, device)
 				if err != nil {
-					jot.Error(ctx).With("id", i).Cause(err).Print("Reformatting GLSL source for atom")
+					log.E(ctx, "Error reformatting GLSL source for atom %d: %v", i, err)
 				}
 			}
 
@@ -577,7 +578,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 				if err := decompressTexImage2D(ctx, i, a, s, out); err == nil {
 					return
 				}
-				jot.Fail(ctx, err, "Decompressing texture")
+				log.E(ctx, "Error decompressing texture: %v", err)
 			}
 
 		case *GlCompressedTexSubImage2D:
@@ -585,7 +586,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 				if err := decompressTexSubImage2D(ctx, i, a, s, out); err == nil {
 					return
 				}
-				jot.Fail(ctx, err, "Decompressing texture")
+				log.E(ctx, "Error decompressing texture: %v", err)
 			}
 
 		// TODO: glTexStorage functions are not guaranteed to be supported. Consider replacing with glTexImage calls.
@@ -966,7 +967,7 @@ func compat(ctx log.Context, device *device.Instance) (transform.Transformer, er
 
 		default:
 			if a.AtomFlags().IsDrawCall() && clientVAsBound(c, clientVAs) {
-				ctx.Warning().T("atom", a).Log("Draw call with client-pointers not handled by the compatability layer")
+				log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Atom: %v", a)
 			}
 		}
 
@@ -1000,7 +1001,7 @@ func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAtt
 // vertex array data (which is not supported by glVertexAttribPointer in later
 // versions of GL), into array-buffers.
 func moveClientVBsToVAs(
-	ctx log.Context,
+	ctx context.Context,
 	t *tweaker,
 	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
 	first, last int, // vertex indices
@@ -1044,7 +1045,7 @@ func moveClientVBsToVAs(
 
 	// Apply the memory observations that were made by the draw call now.
 	// We need to do this as the glBufferData calls below will require the data.
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 		return nil
 	}))

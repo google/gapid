@@ -15,12 +15,12 @@
 package app
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 )
 
 // ExitCode is the type for named return values from the application main entry point.
@@ -47,7 +47,7 @@ var (
 // AddCleanup calls f when the context is cancelled.
 // Application will wait (for a maximum of CleanupTimeout) for f to complete
 // before terminiating the application.
-func AddCleanup(ctx log.Context, f func()) {
+func AddCleanup(ctx context.Context, f func()) {
 	signal, done := task.NewSignal()
 	go func() {
 		defer done(ctx)
@@ -65,7 +65,7 @@ func AddCleanupSignal(s ...task.Event) {
 
 // WaitForCleanup waits for all the cleanup signals to fire, or the cleanup timeout to expire,
 // whichever comes first.
-func WaitForCleanup(ctx log.Context) bool {
+func WaitForCleanup(ctx context.Context) bool {
 	return events.TryWait(ctx, CleanupTimeout)
 }
 

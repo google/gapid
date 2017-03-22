@@ -15,6 +15,7 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/app/benchmark"
@@ -73,21 +74,21 @@ type addressMapping struct {
 	parent  map[StateAddress]StateAddress
 }
 
-func (g *DependencyGraph) Print(ctx log.Context, b *AtomBehaviour) {
+func (g *DependencyGraph) Print(ctx context.Context, b *AtomBehaviour) {
 	for _, read := range b.Read {
 		key := g.addressMap.key[read]
-		ctx.Info().Logf(" - read [%v]%T%+v", read, key, key)
+		log.I(ctx, " - read [%v]%T%+v", read, key, key)
 	}
 	for _, modify := range b.Modify {
 		key := g.addressMap.key[modify]
-		ctx.Info().Logf(" - modify [%v]%T%+v", modify, key, key)
+		log.I(ctx, " - modify [%v]%T%+v", modify, key, key)
 	}
 	for _, write := range b.Write {
 		key := g.addressMap.key[write]
-		ctx.Info().Logf(" - write [%v]%T%+v", write, key, key)
+		log.I(ctx, " - write [%v]%T%+v", write, key, key)
 	}
 	if b.Aborted {
-		ctx.Info().Logf(" - aborted")
+		log.I(ctx, " - aborted")
 	}
 }
 
@@ -103,7 +104,7 @@ type StateAddress uint32
 
 const nullStateAddress = StateAddress(0)
 
-func GetDependencyGraph(ctx log.Context) (*DependencyGraph, error) {
+func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
 	r, err := database.Build(ctx, &DependencyGraphResolvable{Capture: capture.Get(ctx)})
 	if err != nil {
 		return nil, fmt.Errorf("Could not calculate dependency graph: %v", err)
@@ -111,7 +112,7 @@ func GetDependencyGraph(ctx log.Context) (*DependencyGraph, error) {
 	return r.(*DependencyGraph), nil
 }
 
-func (r *DependencyGraphResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	c, err := capture.ResolveFromPath(ctx, r.Capture)
 	if err != nil {
 		return nil, err
@@ -252,7 +253,7 @@ func (k eglImageSizeKey) Parent() stateKey { return nil }
 // implemented. This makes it more difficult to do only partial implementations.
 // It is fine to overestimate reads, or to read parent state (i.e. superset).
 //
-func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
+func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
 	b := AtomBehaviour{}
 	c := GetContext(s)
 	if c != nil && c.Info.Initialized {
@@ -341,13 +342,13 @@ func (g *DependencyGraph) getBehaviour(ctx log.Context, s *gfxapi.State, id atom
 		b.KeepAlive = true
 	}
 	if err := a.Mutate(ctx, s, nil /* builder */); err != nil {
-		ctx.Warning().Logf("Atom %v %v: %v", id, a, err)
+		log.W(ctx, "Atom %v %v: %v", id, a, err)
 		return AtomBehaviour{Aborted: true}
 	}
 	return b
 }
 
-func getAllUsedTextureData(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
+func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
 	// Look for samplers used by the current program.
 	if prog, ok := c.Instances.Programs[c.BoundProgram]; ok {
 		for _, activeUniform := range prog.ActiveUniforms {
@@ -375,10 +376,10 @@ func getAllUsedTextureData(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Con
 	return
 }
 
-func getTextureDataAndSize(ctx log.Context, a atom.Atom, s *gfxapi.State, c *Context, unit, target GLenum) (stateKey, stateKey) {
+func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context, unit, target GLenum) (stateKey, stateKey) {
 	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
 	if tex == nil || err != nil {
-		ctx.Error().Logf("Can not find texture %v in unit %v", target, unit)
+		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
 	if tex.EGLImage != GLeglImageOES(memory.Nullptr) {

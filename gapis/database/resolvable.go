@@ -15,8 +15,9 @@
 package database
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 )
 
 var resolvablePrefix = []byte("resolvable:")
@@ -30,7 +31,7 @@ var resolvablePrefix = []byte("resolvable:")
 // information stored in the Resolvable.
 type Resolvable interface {
 	// Resolve constructs and returns the lazily-built object.
-	Resolve(ctx log.Context) (interface{}, error)
+	Resolve(ctx context.Context) (interface{}, error)
 }
 
 // resolvedID returns the identifier of a resolved object given the identifier

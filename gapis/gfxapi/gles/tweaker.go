@@ -15,7 +15,8 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -24,14 +25,14 @@ import (
 
 // tweaker provides a set of methods for temporarily changing the GLES state.
 type tweaker struct {
-	ctx  log.Context // Needed so functions match gl signature
+	ctx  context.Context // Needed so functions match gl signature
 	out  transform.Writer
 	s    *gfxapi.State
 	c    *Context
 	undo []func()
 }
 
-func newTweaker(ctx log.Context, out transform.Writer) *tweaker {
+func newTweaker(ctx context.Context, out transform.Writer) *tweaker {
 	s := out.State()
 	c := GetContext(s)
 	return &tweaker{ctx: ctx, out: out, s: s, c: c}

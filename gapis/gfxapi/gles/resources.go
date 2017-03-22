@@ -15,6 +15,7 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/image"
@@ -62,8 +63,8 @@ func (t *Texture) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *Texture) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
-	ctx = ctx.Enter("Texture.Resource()")
+func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+	ctx = log.Enter(ctx, "Texture.Resource()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_2D:
 		levels := make([]*image.Info2D, len(t.Texture2D))
@@ -111,7 +112,7 @@ func (t *Texture) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxap
 	}
 }
 
-func (t *Texture) SetResourceData(ctx log.Context, at *path.Command,
+func (t *Texture) SetResourceData(ctx context.Context, at *path.Command,
 	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Texture")
 }
@@ -142,8 +143,8 @@ func (s *Shader) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *Shader) ResourceData(ctx log.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
-	ctx = ctx.Enter("Shader.Resource()")
+func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+	ctx = log.Enter(ctx, "Shader.Resource()")
 	var ty gfxapi.ShaderType
 	switch s.ShaderType {
 	case GLenum_GL_VERTEX_SHADER:
@@ -162,7 +163,7 @@ func (s *Shader) ResourceData(ctx log.Context, t *gfxapi.State, resources gfxapi
 	return &gfxapi.Shader{Type: ty, Source: s.Source}, nil
 }
 
-func (shader *Shader) SetResourceData(ctx log.Context, at *path.Command,
+func (shader *Shader) SetResourceData(ctx context.Context, at *path.Command,
 	data interface{}, resourceIDs gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	// Dirty. TODO: Make separate type for getting info for a single resource.
 	capturePath := at.Commands.Capture
@@ -201,7 +202,7 @@ func (shader *Shader) SetResourceData(ctx log.Context, at *path.Command,
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *GlShaderSource) Replace(ctx log.Context, data interface{}) gfxapi.ResourceAtom {
+func (a *GlShaderSource) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
 	state := capture.NewState(ctx)
 	shader := data.(*gfxapi.Shader)
 	source := shader.Source
@@ -240,8 +241,8 @@ func (p *Program) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (p *Program) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
-	ctx = ctx.Enter("Program.Resource()")
+func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+	ctx = log.Enter(ctx, "Program.Resource()")
 	state := GetState(s)
 	context := state.Contexts.Get(state.CurrentThread)
 
@@ -417,7 +418,7 @@ func (p *Program) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxap
 	return &gfxapi.Program{Shaders: shaders, Uniforms: uniforms}, nil
 }
 
-func uniformValue(ctx log.Context, s *gfxapi.State, kind gfxapi.UniformType, data U8ˢ) interface{} {
+func uniformValue(ctx context.Context, s *gfxapi.State, kind gfxapi.UniformType, data U8ˢ) interface{} {
 	r := data.Decoder(ctx, s)
 
 	switch kind {
@@ -456,7 +457,7 @@ func uniformValue(ctx log.Context, s *gfxapi.State, kind gfxapi.UniformType, dat
 	}
 }
 
-func (program *Program) SetResourceData(ctx log.Context, at *path.Command,
+func (program *Program) SetResourceData(ctx context.Context, at *path.Command,
 	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Program")
 }

@@ -15,11 +15,11 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -31,10 +31,10 @@ var (
 	VisibleForTestingStubShaderSource = stubShaderSource
 )
 
-func buildStubProgram(ctx log.Context, e *atom.Extras, s *gfxapi.State, programID ProgramId) []atom.Atom {
+func buildStubProgram(ctx context.Context, e *atom.Extras, s *gfxapi.State, programID ProgramId) []atom.Atom {
 	vss, fss, err := stubShaderSource(FindProgramInfo(e))
 	if err != nil {
-		jot.Fail(ctx, err, "Unable to build stub shader")
+		log.E(ctx, "Unable to build stub shader: %v", err)
 	}
 	c := GetContext(s)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {

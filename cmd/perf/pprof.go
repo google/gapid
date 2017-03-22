@@ -15,12 +15,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"regexp"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -34,7 +34,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func pprofVerb(ctx log.Context, flags flag.FlagSet) error {
+func pprofVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected, got %d", flags.NArg())
 		return nil

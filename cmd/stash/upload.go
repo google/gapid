@@ -15,11 +15,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -33,24 +33,23 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doUpload(ctx log.Context, flags flag.FlagSet) error {
+func doUpload(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() == 0 {
 		app.Usage(ctx, "No files to upload given")
 		return nil
 	}
-	return withStore(ctx, false, func(ctx log.Context, client *stash.Client) error {
+	return withStore(ctx, false, func(ctx context.Context, client *stash.Client) error {
 		return sendFiles(ctx, client, flags.Args())
 	})
 }
 
-func sendFiles(ctx log.Context, client *stash.Client, filenames []string) error {
-	out := ctx.Raw("")
+func sendFiles(ctx context.Context, client *stash.Client, filenames []string) error {
 	for _, partial := range filenames {
 		id, err := client.UploadFile(ctx, file.Abs(partial))
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed calling Upload")
+			return log.Err(ctx, err, "Failed calling Upload")
 		}
-		out.Logf("Uploaded %s as %s", partial, id)
+		log.I(ctx, "Uploaded %s as %s", partial, id)
 	}
 	return nil
 }

@@ -15,6 +15,7 @@
 package transform
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -28,16 +29,16 @@ type FileLog struct {
 	file *os.File
 }
 
-func NewFileLog(ctx log.Context, name string) *FileLog {
-	if f, err := os.Create(name); err != nil {
-		ctx.Error().Logf("Failed to create replay log file %v: %v", name, err)
+func NewFileLog(ctx context.Context, name string) *FileLog {
+	f, err := os.Create(name)
+	if err != nil {
+		log.E(ctx, "Failed to create replay log file %v: %v", name, err)
 		return nil
-	} else {
-		return &FileLog{file: f}
 	}
+	return &FileLog{file: f}
 }
 
-func (t *FileLog) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Writer) {
+func (t *FileLog) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
 	if a.API() != nil {
 		if id != atom.NoID {
 			t.file.WriteString(fmt.Sprintf("%v: %v\n", id, a))
@@ -65,6 +66,6 @@ func (t *FileLog) Transform(ctx log.Context, id atom.ID, a atom.Atom, out Writer
 	out.MutateAndWrite(ctx, id, a)
 }
 
-func (t *FileLog) Flush(ctx log.Context, out Writer) {
+func (t *FileLog) Flush(ctx context.Context, out Writer) {
 	t.file.Close()
 }

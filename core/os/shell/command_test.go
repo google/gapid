@@ -34,33 +34,33 @@ func TestCommand(t *testing.T) {
 }
 
 func TestCommandFailed(t *testing.T) {
-	const expect = `Error:Failed:Wait<exit status 1>`
 	ctx := log.Testing(t)
 	err := shell.Command("false").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(expect)
+	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+   Cause: exit status 1`)
 }
 
 func TestCommandBadProgram(t *testing.T) {
-	const expect = `Error:Failed:Start<exec: "not#a#program": executable file not found in $PATH>`
 	ctx := log.Testing(t)
 	err := shell.Command("not#a#program", "test").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(expect)
+	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+   Cause: exec: "not#a#program": executable file not found in $PATH`)
 }
 
 func TestCommandBadDir(t *testing.T) {
-	const expect = `Error:Failed:Start<chdir not#a#dir: no such file or directory>`
 	ctx := log.Testing(t)
 	err := shell.Command("echo", "test").In("not#a#dir").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(expect)
+	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+   Cause: chdir not#a#dir: no such file or directory`)
 }
 
 func TestCommandCancel(t *testing.T) {
-	const expect = `Error:Failed:Wait<context canceled>`
 	ctx := log.Testing(t)
 	child, cancel := task.WithCancel(ctx)
 	cancel()
 	err := shell.Command("sleep", "1").Run(child)
-	assert.With(ctx).ThatError(err).HasMessage(expect)
+	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+   Cause: context canceled`)
 }
 
 func TestCommandCaptureStdout(t *testing.T) {
@@ -116,8 +116,8 @@ func (t errorTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 }
 
 func TestCommandOn(t *testing.T) {
-	const expect = "echo to stdout"
 	ctx := log.Testing(t)
 	_, err := shell.Command("echo", "echo to stdout").On(errorTarget{}).Call(ctx)
-	assert.With(ctx).ThatError(err).HasMessage("Error:Failed:Start<AlwaysFail>")
+	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+   Cause: AlwaysFail`)
 }

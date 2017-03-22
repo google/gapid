@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 )
 
@@ -38,7 +38,7 @@ type tracks struct {
 	onChange event.Broadcast
 }
 
-func (t *tracks) init(ctx log.Context, library record.Library) error {
+func (t *tracks) init(ctx context.Context, library record.Library) error {
 	ledger, err := library.Open(ctx, "tracks", &Track{})
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (t *tracks) init(ctx log.Context, library record.Library) error {
 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
-func (t *tracks) apply(ctx log.Context, track *Track) error {
+func (t *tracks) apply(ctx context.Context, track *Track) error {
 	old := t.byID[track.Id]
 	if old == nil {
 		t.entries = append(t.entries, track)
@@ -78,7 +78,7 @@ func (t *tracks) apply(ctx log.Context, track *Track) error {
 	return nil
 }
 
-func (t *tracks) search(ctx log.Context, query *search.Query, handler TrackHandler) error {
+func (t *tracks) search(ctx context.Context, query *search.Query, handler TrackHandler) error {
 	filter := eval.Filter(ctx, query, trackClass, event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, t.entries)
 	if query.Monitor {
@@ -87,7 +87,7 @@ func (t *tracks) search(ctx log.Context, query *search.Query, handler TrackHandl
 	return event.Feed(ctx, filter, initial)
 }
 
-func (t *tracks) createOrUpdate(ctx log.Context, track *Track) (*Track, string, error) {
+func (t *tracks) createOrUpdate(ctx context.Context, track *Track) (*Track, string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	parent := ""
@@ -95,7 +95,7 @@ func (t *tracks) createOrUpdate(ctx log.Context, track *Track) (*Track, string, 
 		// We must be updating an exiting track, and the id must be valid
 		old, found := t.byID[track.Id]
 		if !found {
-			return nil, "", cause.Explain(ctx, nil, "Track not found")
+			return nil, "", log.Err(ctx, nil, "Track not found")
 		}
 		parent = old.Head
 	} else if track.Name != "" {
@@ -115,7 +115,7 @@ func (t *tracks) createOrUpdate(ctx log.Context, track *Track) (*Track, string, 
 	return t.byID[track.Id], parent, nil
 }
 
-func guessTrackName(ctx log.Context, info *Information) string {
+func guessTrackName(ctx context.Context, info *Information) string {
 	branch := info.Branch
 	if info.Branch == "" {
 		// Branch is the primary information for track name, so we always pick one
@@ -132,7 +132,7 @@ func guessTrackName(ctx log.Context, info *Information) string {
 	return user + "-" + branch
 }
 
-func (t *tracks) addPackage(ctx log.Context, pkg *Package) (string, error) {
+func (t *tracks) addPackage(ctx context.Context, pkg *Package) (string, error) {
 	parent := ""
 	track := &Track{Name: guessTrackName(ctx, pkg.Information), Head: pkg.Id}
 	_, parent, err := t.createOrUpdate(ctx, track)

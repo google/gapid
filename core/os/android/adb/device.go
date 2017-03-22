@@ -15,6 +15,7 @@
 package adb
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -55,7 +55,7 @@ var (
 
 // DeviceInfoProvider is a function that adds additional information to a
 // Device.
-type DeviceInfoProvider func(ctx log.Context, d Device) error
+type DeviceInfoProvider func(ctx context.Context, d Device) error
 
 // RegisterDeviceInfoProvider registers f to be called to add additional
 // information to a newly discovered Android device.
@@ -67,7 +67,7 @@ func RegisterDeviceInfoProvider(f DeviceInfoProvider) {
 
 // Monitor updates the registry with devices that are added and removed at the
 // specified interval. Monitor returns once the context is cancelled.
-func Monitor(ctx log.Context, r *bind.Registry, interval time.Duration) error {
+func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration) error {
 	unlisten := registry.Listen(bind.NewDeviceListener(r.AddDevice, r.RemoveDevice))
 	defer unlisten()
 
@@ -77,7 +77,7 @@ func Monitor(ctx log.Context, r *bind.Registry, interval time.Duration) error {
 
 	for {
 		if err := scanDevices(ctx); err != nil {
-			return cause.Explain(ctx, err, "Couldn't scan devices")
+			return log.Err(ctx, err, "Couldn't scan devices")
 		}
 		select {
 		case <-task.ShouldStop(ctx):
@@ -88,7 +88,7 @@ func Monitor(ctx log.Context, r *bind.Registry, interval time.Duration) error {
 }
 
 // Devices returns the list of attached Android devices.
-func Devices(ctx log.Context) (DeviceList, error) {
+func Devices(ctx context.Context) (DeviceList, error) {
 	if err := scanDevices(ctx); err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func Devices(ctx log.Context) (DeviceList, error) {
 	return out, nil
 }
 
-func newDevice(ctx log.Context, serial string, status bind.Status) (*binding, error) {
+func newDevice(ctx context.Context, serial string, status bind.Status) (*binding, error) {
 	d := &binding{
 		Simple: bind.Simple{
 			To: &device.Instance{
@@ -161,10 +161,10 @@ func newDevice(ctx log.Context, serial string, status bind.Status) (*binding, er
 }
 
 // scanDevices returns the list of attached Android devices.
-func scanDevices(ctx log.Context) error {
+func scanDevices(ctx context.Context) error {
 	exe, err := adb()
 	if err != nil {
-		return cause.Explain(ctx, err, "")
+		return log.Err(ctx, err, "")
 	}
 	stdout, err := shell.Command(exe.System(), "devices").Call(ctx)
 	if err != nil {
@@ -201,7 +201,7 @@ func scanDevices(ctx log.Context) error {
 	return nil
 }
 
-func parseDevices(ctx log.Context, out string) (map[string]bind.Status, error) {
+func parseDevices(ctx context.Context, out string) (map[string]bind.Status, error) {
 	a := strings.SplitAfter(out, "List of devices attached")
 	if len(a) != 2 {
 		return nil, ErrNoDeviceList
@@ -231,7 +231,7 @@ func parseDevices(ctx log.Context, out string) (map[string]bind.Status, error) {
 			case "unauthorized":
 				devices[serial] = bind.Status_Unauthorized
 			default:
-				return nil, cause.Explain(ctx, ErrInvalidStatus, "").With("Value", status)
+				return nil, log.Errf(ctx, ErrInvalidStatus, "value: %v", status)
 			}
 		default:
 			return nil, ErrInvalidDeviceList

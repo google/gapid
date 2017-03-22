@@ -15,12 +15,12 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -33,18 +33,18 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(ctx log.Context, out transform.Writer)
+	injections map[atom.ID][]func(ctx context.Context, out transform.Writer)
 }
 
-func newReadFramebuffer(ctx log.Context) *readFramebuffer {
+func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(ctx log.Context, out transform.Writer)),
+		injections: make(map[atom.ID][]func(ctx context.Context, out transform.Writer)),
 	}
 }
 
 // If we are acutally swapping, we really do want toshow the image before
 // the framebuffer read.
-func (t *readFramebuffer) Transform(ctx log.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	isEof := a.AtomFlags().IsEndOfFrame()
 	doMutate := func() {
 		out.MutateAndWrite(ctx, id, a)
@@ -66,10 +66,10 @@ func (t *readFramebuffer) Transform(ctx log.Context, id atom.ID, a atom.Atom, ou
 	}
 }
 
-func (t *readFramebuffer) Flush(ctx log.Context, out transform.Writer) {}
+func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
-	t.injections[id] = append(t.injections[id], func(ctx log.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Depth
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
@@ -84,7 +84,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res chan<- imgRes) {
-	t.injections[id] = append(t.injections[id], func(ctx log.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
@@ -100,7 +100,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 	})
 }
 
-func writeEach(ctx log.Context, out transform.Writer, atoms ...atom.Atom) {
+func writeEach(ctx context.Context, out transform.Writer, atoms ...atom.Atom) {
 	for _, a := range atoms {
 		out.MutateAndWrite(ctx, atom.NoID, a)
 	}
@@ -118,7 +118,7 @@ func newUnusedID(isDispatchable bool, existenceTest func(uint64) bool) uint64 {
 	}
 }
 
-func postImageData(ctx log.Context,
+func postImageData(ctx context.Context,
 	s *gfxapi.State,
 	imageObject *ImageObject,
 	vkFormat VkFormat,
@@ -177,7 +177,7 @@ func postImageData(ctx log.Context,
 		}
 	}()
 	MustAllocData := func(
-		ctx log.Context, s *gfxapi.State, v ...interface{}) atom.AllocResult {
+		ctx context.Context, s *gfxapi.State, v ...interface{}) atom.AllocResult {
 		allocate_result := atom.Must(atom.AllocData(ctx, s, v...))
 		allocated = append(allocated, &allocate_result)
 		return allocate_result
@@ -938,7 +938,7 @@ func postImageData(ctx log.Context,
 
 	// Add post atom
 	writeEach(ctx, out,
-		replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+		replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r pod.Reader, err error) error {
 				var data []byte
 				if err == nil {

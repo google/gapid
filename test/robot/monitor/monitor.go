@@ -15,11 +15,11 @@
 package monitor
 
 import (
+	"context"
 	"sync"
 
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/master"
@@ -95,7 +95,7 @@ func (data *Data) Wait() {
 // with all the results it receives.
 // Each time it receives a batch of updates it will invoke the update function passing in the manager set being
 // monitored and the updated set of data.
-func Run(ctx log.Context, managers Managers, owner DataOwner, update func(ctx log.Context, managers *Managers, data *Data) error) error {
+func Run(ctx context.Context, managers Managers, owner DataOwner, update func(ctx context.Context, managers *Managers, data *Data) error) error {
 	// start all the data monitors we have managers for
 	if err := monitor(ctx, &managers, owner); err != nil {
 		return err
@@ -116,7 +116,7 @@ func Run(ctx log.Context, managers Managers, owner DataOwner, update func(ctx lo
 	return nil
 }
 
-func monitor(ctx log.Context, managers *Managers, owner DataOwner) error {
+func monitor(ctx context.Context, managers *Managers, owner DataOwner) error {
 	// TODO: care about monitors erroring
 	all := &search.Query{Monitor: true}
 	if managers.Job != nil {

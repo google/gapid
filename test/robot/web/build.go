@@ -15,18 +15,18 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"github.com/google/gapid/core/data/search/query"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 )
 
 func (s *Server) handleArtifacts(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*build.Artifact(nil)
-	s.Build.SearchArtifacts(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *build.Artifact) error {
+	s.Build.SearchArtifacts(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Artifact) error {
 		result = append(result, entry)
 		return nil
 	})
@@ -34,9 +34,9 @@ func (s *Server) handleArtifacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePackages(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*build.Package(nil)
-	s.Build.SearchPackages(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *build.Package) error {
+	s.Build.SearchPackages(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Package) error {
 		result = append(result, entry)
 		return nil
 	})
@@ -44,9 +44,9 @@ func (s *Server) handlePackages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTracks(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 	result := []*build.Track(nil)
-	s.Build.SearchTracks(ctx, query.Bool(true).Query(), func(ctx log.Context, entry *build.Track) error {
+	s.Build.SearchTracks(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Track) error {
 		result = append(result, entry)
 		return nil
 	})

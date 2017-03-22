@@ -15,20 +15,19 @@
 package git
 
 import (
+	"context"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
 // CurrentBranch returns the current active git branch.
 // If git is in a detached head state, it may return HEAD
-func (g Git) CurrentBranch(ctx log.Context) (string, error) {
+func (g Git) CurrentBranch(ctx context.Context) (string, error) {
 	str, _, err := g.run(ctx, "rev-parse", "--abbrev-ref", "HEAD")
 	return strings.TrimSpace(str), err
 }
 
 // Rebase performs a `git rebase` on to the target branch.
-func (g Git) Rebase(ctx log.Context, targetBranch string) error {
+func (g Git) Rebase(ctx context.Context, targetBranch string) error {
 	_, _, err := g.run(ctx, "rebase", targetBranch)
 	return err
 }

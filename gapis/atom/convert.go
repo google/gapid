@@ -15,8 +15,9 @@
 package atom
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/memory"
@@ -32,7 +33,7 @@ type (
 	// a proto.Atom stream.
 	Convertible interface {
 		// Convert emits the stream of serialized atoms for this object.
-		Convert(log.Context, atom_pb.Handler) error
+		Convert(context.Context, atom_pb.Handler) error
 	}
 
 	invokeMarker struct{}
@@ -55,7 +56,7 @@ func RegisterConverter(c Converter) {
 }
 
 // ConvertAllTo converts from the set of live atoms to a stream of storage atoms.
-func ConvertAllTo(ctx log.Context, atoms *List, handler func(log.Context, atom_pb.Atom) error) error {
+func ConvertAllTo(ctx context.Context, atoms *List, handler func(context.Context, atom_pb.Atom) error) error {
 	for _, a := range atoms.Atoms {
 		c, ok := a.(Convertible)
 		if !ok {
@@ -82,7 +83,7 @@ func ConvertFrom(from atom_pb.Atom) interface{} {
 
 // ConvertAllFrom goes through the list of storage atoms converting them all, to
 // the live form and handing the converted to the handler.
-func ConvertAllFrom(ctx log.Context, atoms []atom_pb.Atom, handler func(a Atom)) error {
+func ConvertAllFrom(ctx context.Context, atoms []atom_pb.Atom, handler func(a Atom)) error {
 	converter := FromConverter(handler)
 	for _, a := range atoms {
 		if err := converter(ctx, a); err != nil {
@@ -95,14 +96,14 @@ func ConvertAllFrom(ctx log.Context, atoms []atom_pb.Atom, handler func(a Atom))
 // FromConverter returns a function that converts all the storage atoms it is handed,
 // passing the generated live atoms to the handler.
 // You must call this with a nil to flush the final atom.
-func FromConverter(handler func(a Atom)) func(log.Context, atom_pb.Atom) error {
+func FromConverter(handler func(a Atom)) func(context.Context, atom_pb.Atom) error {
 	var (
 		last         Atom
 		observations *Observations
 		invoked      bool
 		count        int
 	)
-	return func(ctx log.Context, in atom_pb.Atom) error {
+	return func(ctx context.Context, in atom_pb.Atom) error {
 		count++
 		if in == nil {
 			if last != nil {
@@ -125,7 +126,7 @@ func FromConverter(handler func(a Atom)) func(log.Context, atom_pb.Atom) error {
 				observations = &Observations{}
 				e := last.Extras()
 				if e == nil {
-					return cause.Explainf(ctx, nil, "Not allowed extras %T:%v", last, last)
+					return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
 				}
 				*e = append(*e, observations)
 			}
@@ -137,13 +138,13 @@ func FromConverter(handler func(a Atom)) func(log.Context, atom_pb.Atom) error {
 		case Extra:
 			e := last.Extras()
 			if e == nil {
-				return cause.Explainf(ctx, nil, "Not allowed extras %T:%v", last, last)
+				return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
 			}
 			*e = append(*e, out)
 		case invokeMarker:
 			invoked = true
 		default:
-			return cause.Explainf(ctx, nil, "Unhandled type during conversion %T:%v", out, out)
+			return log.Errf(ctx, nil, "Unhandled type during conversion %T:%v", out, out)
 		}
 		return nil
 	}

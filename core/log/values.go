@@ -15,80 +15,34 @@
 package log
 
 import (
-	"reflect"
+	"context"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/context/memo"
 )
 
-// Value returns the value stored against key in this context.
-// See context.Context.Value for more details.
-func (ctx logContext) Value(key interface{}) interface{} {
-	return ctx.internal.Value(key)
+// values is a linked-list of key-value pairs.
+type values struct {
+	v      V
+	parent *values
 }
 
-// WithValue returns a new context with the additional key value pair specified.
-// If the logger already has the specified value, it will be overwritten.
-func (ctx logContext) WithValue(key string, value interface{}) Context {
-	return Wrap(keys.WithValue(ctx.Unwrap(), memo.DetailPair(key), value))
+type valuesKeyTy string
+
+const valuesKey valuesKeyTy = "log.valuesKey"
+
+func getValues(ctx context.Context) *values {
+	out, _ := ctx.Value(valuesKey).(*values)
+	return out
 }
 
-// WithValue returns a new logger with the additional key value pair specified.
-// If the logger already has the specified value, it will be overwritten.
-// If the logger is not active, the function is very cheap to call.
-func (l Logger) WithValue(key string, value interface{}) Logger {
-	return Logger{l.J.With(memo.DetailPair(key), value)}
-}
+// V is a map of key-value pairs.
+// It can be associated with a context with Bind().
+type V map[string]interface{}
 
-// V is shorthand for ctx.WithValue(key, value)
-func (ctx logContext) V(key string, value interface{}) Context {
-	return ctx.WithValue(key, value)
-}
-
-// V is shorthand for l.WithValue(key, value)
-func (l Logger) V(key string, value interface{}) Logger {
-	return l.WithValue(key, value)
-}
-
-// S is shorthand for ctx.WithValue(key, value), but is only for string.
-func (ctx logContext) S(key string, value string) Context {
-	return ctx.WithValue(key, value)
-}
-
-// S does the same as WithValue(key, value), but is only for strings and does not cause a boxing allocation if the
-// logger is not active.
-func (l Logger) S(key string, value string) Logger {
-	return l.WithValue(key, value)
-}
-
-// I is shorthand for ctx.WithValue(key, value) but is only for int.
-func (ctx logContext) I(key string, value int) Context {
-	return ctx.WithValue(key, value)
-}
-
-// I does the same as WithValue(key, value) but is only for int and does not cause a boxing allocation if the
-// logger is not active.
-func (l Logger) I(key string, value int) Logger {
-	return l.WithValue(key, value)
-}
-
-// F is shorthand for ctx.WithValue(key, value) but is only for float64.
-func (ctx logContext) F(key string, value float64) Context {
-	return ctx.WithValue(key, value)
-}
-
-// F does the same as WithValue(key, value) but is only for float64 and does not cause a boxing allocation if the
-// logger is not active.
-func (l Logger) F(key string, value float64) Logger {
-	return l.WithValue(key, value)
-}
-
-// T is shorthand for ctx.WithValue(key, reflect.TypeOf(value)).
-func (ctx logContext) T(key string, value interface{}) Context {
-	return ctx.WithValue(key, reflect.TypeOf(value))
-}
-
-// T is shorthand for l.WithValue(key, reflect.TypeOf(value))
-func (l Logger) T(key string, value interface{}) Logger {
-	return l.WithValue(key, reflect.TypeOf(value))
+// Bind returns a new context with V attached.
+func (v V) Bind(ctx context.Context) context.Context {
+	return keys.WithValue(ctx, valuesKey, &values{
+		v:      v,
+		parent: getValues(ctx),
+	})
 }

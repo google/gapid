@@ -14,7 +14,7 @@
 
 package task
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Runner is the type for a task that has been prepared to run by an executor.
 // Invoking the runner will execute the underlying task, and trigger the signal when it completes.
@@ -25,7 +25,7 @@ type Runner func()
 // The same task can be passed to Run multiple times, and will build a new Signal, Runner pair each time, but the
 // returned runner should be executed exactly once, which will run the Task.
 // In general this method is only used by Executor implementations when scheduling new tasks.
-func Prepare(ctx log.Context, task Task) (Handle, Runner) {
+func Prepare(ctx context.Context, task Task) (Handle, Runner) {
 	var result error
 	signal, fire := NewSignal()
 	runner := func() {

@@ -14,10 +14,7 @@
 
 package app
 
-import (
-	"github.com/google/gapid/core/fault/severity"
-	"github.com/google/gapid/core/text/note"
-)
+import "github.com/google/gapid/core/log"
 
 type (
 	AppFlags struct {
@@ -26,10 +23,10 @@ type (
 		Profile ProfileFlags
 	}
 	LogFlags struct {
-		Level  severity.Level `help:"_The severity to enable logs at"`
-		Style  note.Style     `help:"_The style to use when printing the log"`
-		Stacks bool           `help:"_If true, stack traces are logged for all errors"`
-		File   string         `help:"_The file to store the logs in"`
+		Level  log.Severity `help:"_The severity to enable logs at"`
+		Style  log.Style    `help:"_The style to use when printing the log"`
+		Stacks bool         `help:"_If true, stack traces are logged for all errors"`
+		File   string       `help:"_The file to store the logs in"`
 	}
 	ProfileFlags struct {
 		CPU string `help:"_write cpu profile to file"`

@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/gapid/core/context/jot"
-	"github.com/google/gapid/core/context/memo"
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
 )
@@ -31,47 +28,47 @@ type Device interface {
 	bind.Device
 	// InstallAPK installs the specified APK to the device. If reinstall is true
 	// and the package is already installed on the device then it will be replaced.
-	InstallAPK(ctx log.Context, path string, reinstall bool, grantPermissions bool) error
+	InstallAPK(ctx context.Context, path string, reinstall bool, grantPermissions bool) error
 	// SELinuxEnforcing returns true if the device is currently in a
 	// SELinux enforcing mode, or false if the device is currently in a SELinux
 	// permissive mode.
-	SELinuxEnforcing(ctx log.Context) (bool, error)
+	SELinuxEnforcing(ctx context.Context) (bool, error)
 	// SetSELinuxEnforcing changes the SELinux-enforcing mode.
-	SetSELinuxEnforcing(ctx log.Context, enforce bool) error
+	SetSELinuxEnforcing(ctx context.Context, enforce bool) error
 	// StartActivity launches the specified action.
-	StartActivity(ctx log.Context, a ActivityAction, extras ...ActionExtra) error
+	StartActivity(ctx context.Context, a ActivityAction, extras ...ActionExtra) error
 	// StartActivityForDebug launches an activity in debug mode.
-	StartActivityForDebug(ctx log.Context, a ActivityAction, extras ...ActionExtra) error
+	StartActivityForDebug(ctx context.Context, a ActivityAction, extras ...ActionExtra) error
 	// StartService launches the specified service.
-	StartService(ctx log.Context, a ServiceAction, extras ...ActionExtra) error
+	StartService(ctx context.Context, a ServiceAction, extras ...ActionExtra) error
 	// Pushes the local file to the remote one.
-	Push(ctx log.Context, local, remote string) error
+	Push(ctx context.Context, local, remote string) error
 	// Pulls the remote file to the local one.
-	Pull(ctx log.Context, remote, local string) error
+	Pull(ctx context.Context, remote, local string) error
 	// KeyEvent simulates a key-event on the device.
-	KeyEvent(ctx log.Context, key KeyCode) error
+	KeyEvent(ctx context.Context, key KeyCode) error
 	// SendEvent simulates low-level user-input to the device.
-	SendEvent(ctx log.Context, deviceID, eventType, eventCode, value int) error
+	SendEvent(ctx context.Context, deviceID, eventType, eventCode, value int) error
 	// SendTouch simulates touch-screen press or release.
-	SendTouch(ctx log.Context, deviceID, x, y int, pressed bool)
+	SendTouch(ctx context.Context, deviceID, x, y int, pressed bool)
 	// GetTouchDimensions returns the resolution of the touch sensor.
 	// This may be different to the dimensions of the LCD screen.
-	GetTouchDimensions(ctx log.Context) (deviceID, minX, maxX, minY, maxY int, ok bool)
+	GetTouchDimensions(ctx context.Context) (deviceID, minX, maxX, minY, maxY int, ok bool)
 	// GetScreenDimensions returns the resolution of the display.
-	GetScreenDimensions(ctx log.Context) (orientation, width, height int, ok bool)
+	GetScreenDimensions(ctx context.Context) (orientation, width, height int, ok bool)
 	// InstalledPackages returns the sorted list of installed packages on the device.
-	InstalledPackages(ctx log.Context) (InstalledPackages, error)
+	InstalledPackages(ctx context.Context) (InstalledPackages, error)
 	// IsScreenOn returns true if the device's screen is currently on.
-	IsScreenOn(ctx log.Context) (bool, error)
+	IsScreenOn(ctx context.Context) (bool, error)
 	// TurnScreenOn turns the device's screen on.
-	TurnScreenOn(ctx log.Context) error
+	TurnScreenOn(ctx context.Context) error
 	// TurnScreenOff turns the device's screen off.
-	TurnScreenOff(ctx log.Context) error
+	TurnScreenOff(ctx context.Context) error
 	// IsShowingLockscreen returns true if the device's lockscreen is currently showing.
-	IsShowingLockscreen(ctx log.Context) (bool, error)
+	IsShowingLockscreen(ctx context.Context) (bool, error)
 	// Logcat writes all logcat messages reported by the device to the chan msgs,
 	// blocking until the context is stopped.
-	Logcat(ctx log.Context, msgs chan<- LogcatMessage) error
+	Logcat(ctx context.Context, msgs chan<- LogcatMessage) error
 }
 
 // LogcatMessage represents a single logcat message.
@@ -87,12 +84,13 @@ type LogcatMessage struct {
 // Log writes the LogcatMessage to ctx with the corresponding message severity.
 func (m LogcatMessage) Log(ctx context.Context) {
 	// Override the timestamping function to replicate the logcat timestamp
-	ctx = memo.Timestamp(ctx, func() time.Time { return m.Timestamp })
-	jot.At(ctx, m.Priority.Severity()).
-		With("tag", m.Tag).
-		With("pid", m.ProcessID).
-		With("tid", m.ThreadID).
-		Print(m.Message)
+	ctx = log.PutClock(ctx, log.FixedClock(m.Timestamp))
+	ctx = log.PutTag(ctx, m.Tag)
+	ctx = log.V{
+		"pid": m.ProcessID,
+		"tid": m.ThreadID,
+	}.Bind(ctx)
+	log.From(ctx).Log(m.Priority.Severity(), m.Message)
 }
 
 // LogcatPriority represents the priority of a logcat message.
@@ -114,20 +112,20 @@ const (
 )
 
 // Severity returns a Severity that closely corresponds to the priority.
-func (p LogcatPriority) Severity() severity.Level {
+func (p LogcatPriority) Severity() log.Severity {
 	switch p {
 	case Verbose:
-		return severity.Debug
+		return log.Verbose
 	case Debug:
-		return severity.Info
+		return log.Debug
 	case Info:
-		return severity.Notice
+		return log.Info
 	case Warning:
-		return severity.Warning
+		return log.Warning
 	case Error:
-		return severity.Error
+		return log.Error
 	case Fatal:
-		return severity.Critical
+		return log.Fatal
 	default:
 		panic(fmt.Errorf("Unknown LogcatPriority %v", p))
 	}

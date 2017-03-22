@@ -20,6 +20,7 @@
 set(files
     client.go
     doc.go
+    host_log_parser.go
     session.go
 )
 set(dirs

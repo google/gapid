@@ -15,15 +15,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/data/search/script"
 	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -59,45 +60,45 @@ func init() {
 	startVerb.Add(workerStart)
 }
 
-func doDeviceSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doDeviceSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return w.SearchDevices(ctx, expr.Query(), func(ctx log.Context, entry *job.Device) error {
+		return w.SearchDevices(ctx, expr.Query(), func(ctx context.Context, entry *job.Device) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
 	}, grpc.WithInsecure())
 }
 
-func doWorkerSearch(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doWorkerSearch(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
-		out := ctx.Raw("").Writer()
+		out := os.Stdout
 		expr, err := script.Parse(ctx, expression)
 		if err != nil {
-			return cause.Explain(ctx, err, "Malformed search query")
+			return log.Err(ctx, err, "Malformed search query")
 		}
-		return w.SearchWorkers(ctx, expr.Query(), func(ctx log.Context, entry *job.Worker) error {
+		return w.SearchWorkers(ctx, expr.Query(), func(ctx context.Context, entry *job.Worker) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
 	}, grpc.WithInsecure())
 }
 
-func doWorkerStart(ctx log.Context, flags flag.FlagSet) error {
+func doWorkerStart(ctx context.Context, flags flag.FlagSet) error {
 	tempName, err := ioutil.TempDir("", "robot")
 	if err != nil {
 		return err
 	}
 	tempDir := file.Abs(tempName)
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		m := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		managers := monitor.Managers{
 			Stash:  stashgrpc.MustConnect(ctx, conn),
@@ -119,7 +120,7 @@ func doWorkerStart(ctx log.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func startAllWorkers(ctx log.Context, managers monitor.Managers, tempDir file.Path) error {
+func startAllWorkers(ctx context.Context, managers monitor.Managers, tempDir file.Path) error {
 	// TODO: not just ignore all the errors...
 	go trace.Run(ctx, managers.Stash, managers.Trace, tempDir)
 	go report.Run(ctx, managers.Stash, managers.Report, tempDir)

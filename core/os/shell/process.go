@@ -14,7 +14,7 @@
 
 package shell
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Process is the interface to a running process, as started by a Target.
 type Process interface {
@@ -23,5 +23,5 @@ type Process interface {
 	Kill() error
 	// Wait blocks until the process has completed or the context is cancelled,
 	// returning an error if the process failed for some reason.
-	Wait(ctx log.Context) error
+	Wait(ctx context.Context) error
 }

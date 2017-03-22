@@ -15,8 +15,9 @@
 package cyclic
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/framework/binary"
 )
@@ -42,7 +43,7 @@ func (c *Control) read(d *decoder) {
 	case 0:
 		c.Mode = binary.Mode(d.Uint32())
 	default:
-		ctx := log.TODO()
-		d.SetError(cause.Wrap(ctx, ErrInvalidControlVersion).With("version", version))
+		ctx := context.TODO()
+		d.SetError(log.Errf(ctx, ErrInvalidControlVersion, "version: %v", version))
 	}
 }

@@ -16,13 +16,13 @@ package service_test
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device/bind"
@@ -40,7 +40,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func startServerAndGetGrpcClient(ctx log.Context, config server.Config) (service.Service, error, func()) {
+func startServerAndGetGrpcClient(ctx context.Context, config server.Config) (service.Service, error, func()) {
 	l := grpcutil.NewPipeListener("pipe:servicetest")
 
 	schan := make(chan *grpc.Server, 1)
@@ -53,7 +53,7 @@ func startServerAndGetGrpcClient(ctx log.Context, config server.Config) (service
 		grpc.WithDialer(grpcutil.GetDialer(ctx)),
 	)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Dialing GAPIS"), nil
+		return nil, log.Err(ctx, err, "Dialing GAPIS"), nil
 	}
 	client := gapis.Bind(conn)
 
@@ -63,7 +63,7 @@ func startServerAndGetGrpcClient(ctx log.Context, config server.Config) (service
 	}
 }
 
-func setup(t *testing.T) (log.Context, server.Server, func()) {
+func setup(t *testing.T) (context.Context, server.Server, func()) {
 	ctx := log.Testing(t)
 	m, r := replay.New(ctx), bind.NewRegistry()
 	ctx = replay.PutManager(ctx, m)
@@ -116,7 +116,7 @@ func init() {
 			panic(err)
 		}
 	}
-	ctx := log.Background()
+	ctx := context.Background()
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
 	onDeviceScanDone(ctx)
@@ -230,7 +230,7 @@ func TestGet(t *testing.T) {
 		{capture.Report(nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
 	} {
-		ctx := ctx.S("path", test.path.Text())
+		ctx = log.V{"path": test.path.Text()}.Bind(ctx)
 		got, err := server.Get(ctx, test.path.Path())
 		assert.With(ctx).ThatError(err).Succeeded()
 		if test.ty.Kind() == reflect.Interface {

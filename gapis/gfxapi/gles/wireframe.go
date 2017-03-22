@@ -16,9 +16,9 @@ package gles
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -30,9 +30,9 @@ import (
 
 // wireframe returns an atom transform that replaces all draw calls of triangle
 // primitives with draw calls of a wireframe equivalent.
-func wireframe(ctx log.Context) transform.Transformer {
-	ctx = ctx.Enter("Wireframe")
-	return transform.Transform("Wireframe", func(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+func wireframe(ctx context.Context) transform.Transformer {
+	ctx = log.Enter(ctx, "Wireframe")
+	return transform.Transform("Wireframe", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		if dc, ok := a.(drawCall); ok {
 			s := out.State()
 			t := newTweaker(ctx, out)
@@ -41,7 +41,7 @@ func wireframe(ctx log.Context) transform.Transformer {
 			t.glBlendFunc(GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
 
 			if err := drawWireframe(ctx, i, dc, s, out); err != nil {
-				jot.Fail(ctx, err, "")
+				log.E(ctx, "%v", err)
 			}
 
 			t.revert()
@@ -53,9 +53,9 @@ func wireframe(ctx log.Context) transform.Transformer {
 
 // wireframeOverlay returns an atom transform that renders the wireframe of the
 // mesh over of the specified draw call.
-func wireframeOverlay(ctx log.Context, id atom.ID) transform.Transformer {
-	ctx = ctx.Enter("WireframeMode_Overlay")
-	return transform.Transform("WireframeMode_Overlay", func(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
+	ctx = log.Enter(ctx, "WireframeMode_Overlay")
+	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		if i == id {
 			if dc, ok := a.(drawCall); ok {
 				s := out.State()
@@ -71,7 +71,7 @@ func wireframeOverlay(ctx log.Context, id atom.ID) transform.Transformer {
 				t.glLineWidth(1.5)
 
 				if err := drawWireframe(ctx, i, dc, s, out); err != nil {
-					jot.Fail(ctx, err, "")
+					log.E(ctx, "%v", err)
 				}
 
 				t.revert()
@@ -83,7 +83,7 @@ func wireframeOverlay(ctx log.Context, id atom.ID) transform.Transformer {
 	})
 }
 
-func drawWireframe(ctx log.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
+func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
 	c := GetContext(s)
 
 	indices, drawMode, err := dc.getIndices(ctx, c, s)

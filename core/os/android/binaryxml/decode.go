@@ -16,12 +16,12 @@ package binaryxml
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/pkg/errors"
@@ -62,10 +62,10 @@ type contextChange interface {
 }
 
 // Decode decodes a binary Android XML file to a string.
-func Decode(ctx log.Context, data []byte) (string, error) {
+func Decode(ctx context.Context, data []byte) (string, error) {
 	xmlTree, err := decodeXmlTree(bytes.NewReader(data))
 	if err != nil {
-		return "", cause.Explain(ctx, err, "Decoding binary XML")
+		return "", log.Err(ctx, err, "Decoding binary XML")
 	}
 	return xmlTree.toXmlString(), nil
 }

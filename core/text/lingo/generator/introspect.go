@@ -15,6 +15,7 @@
 package generator
 
 import (
+	"context"
 	"go/ast"
 	"go/token"
 	"unicode"
@@ -60,7 +61,7 @@ type entry struct {
 	Method string
 }
 
-func (info *introspection) collectEntryPoints(ctx log.Context, f *ast.File) {
+func (info *introspection) collectEntryPoints(ctx context.Context, f *ast.File) {
 	// Find all the functions and constants.
 	for _, decl := range f.Decls {
 		switch decl := decl.(type) {
@@ -128,7 +129,7 @@ func buildConstEntry(t ast.Expr, v ast.Expr) *entry {
 	return e
 }
 
-func (info *introspection) prepare(ctx log.Context) {
+func (info *introspection) prepare(ctx context.Context) {
 	params := []*ast.Field{}
 	// Detect the rewritable functions
 	for _, e := range info.entries {
@@ -160,7 +161,7 @@ func (info *introspection) prepare(ctx log.Context) {
 	}
 }
 
-func collectReturnType(ctx log.Context, e *entry) bool {
+func collectReturnType(ctx context.Context, e *entry) bool {
 	if e.Func.Type.Results == nil {
 		return false
 	}
@@ -174,7 +175,7 @@ func collectReturnType(ctx log.Context, e *entry) bool {
 	return true
 }
 
-func collectTypeName(ctx log.Context, e *entry, expr ast.Expr, top bool) bool {
+func collectTypeName(ctx context.Context, e *entry, expr ast.Expr, top bool) bool {
 	switch t := expr.(type) {
 	case *ast.Ident:
 		e.ParsedType = t.Name
@@ -187,7 +188,7 @@ func collectTypeName(ctx log.Context, e *entry, expr ast.Expr, top bool) bool {
 		return true
 	case *ast.StarExpr:
 		if !top {
-			ctx.Fatalf("Can't cope with non simple pointers (%v)", expr)
+			log.F(ctx, "Can't cope with non simple pointers (%v)", expr)
 			return false
 		}
 		if !collectTypeName(ctx, e, t.X, false) {
@@ -196,7 +197,7 @@ func collectTypeName(ctx log.Context, e *entry, expr ast.Expr, top bool) bool {
 		e.ParsedType = "*" + e.ParsedType
 		return true
 	default:
-		ctx.Fatalf("Unknown type %T", t)
+		log.F(ctx, "Unknown type %T", t)
 		return false
 	}
 }

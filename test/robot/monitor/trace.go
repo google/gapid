@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/trace"
 )
@@ -35,7 +36,7 @@ func (t *Traces) All() []*Trace {
 	return t.entries
 }
 
-func (o *DataOwner) updateTrace(ctx log.Context, action *trace.Action) error {
+func (o *DataOwner) updateTrace(ctx context.Context, action *trace.Action) error {
 	o.Write(func(data *Data) {
 		entry, _ := data.Traces.FindOrCreate(ctx, action)
 		entry.Action = *action
@@ -45,7 +46,7 @@ func (o *DataOwner) updateTrace(ctx log.Context, action *trace.Action) error {
 
 // Find searches the traces for the one that matches the supplied action.
 // See worker.EquivalentAction for more information about how actions are compared.
-func (t *Traces) Find(ctx log.Context, action *trace.Action) *Trace {
+func (t *Traces) Find(ctx context.Context, action *trace.Action) *Trace {
 	for _, entry := range t.entries {
 		if worker.EquivalentAction(&entry.Action, action) {
 			return entry
@@ -58,7 +59,7 @@ func (t *Traces) Find(ctx log.Context, action *trace.Action) *Trace {
 // it creates a new trace object, and returns it.
 // It does not register the newly created trace object for you, that will happen only if
 // a call is made to trigger the action on the trace service.
-func (t *Traces) FindOrCreate(ctx log.Context, action *trace.Action) (*Trace, bool) {
+func (t *Traces) FindOrCreate(ctx context.Context, action *trace.Action) (*Trace, bool) {
 	entry := t.Find(ctx, action)
 	if entry != nil {
 		return entry, true

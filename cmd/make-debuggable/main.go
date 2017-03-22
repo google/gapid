@@ -17,8 +17,8 @@
 package main
 
 import (
+	"context"
 	"flag"
-
 	"fmt"
 
 	"github.com/google/gapid/core/app"
@@ -43,7 +43,7 @@ func main() {
 	app.Run(run)
 }
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
 	if len(flag.Args()) != 2 {
 		app.Usage(ctx, "")
 	}
@@ -57,10 +57,10 @@ func run(ctx log.Context) error {
 
 	isDebuggable, err := apk.IsApkDebuggable(ctx, src)
 	if err != nil {
-		ctx.Warning().Logf("%s", err.Error())
+		log.W(ctx, "%s", err.Error())
 	}
 	if isDebuggable {
-		ctx.Warning().Logf("Source %s is already debuggable, performing regular file copy.", src)
+		log.W(ctx, "Source %s is already debuggable, performing regular file copy.", src)
 		return file.Copy(ctx, file.Abs(dst), file.Abs(src))
 	}
 

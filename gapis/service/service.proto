@@ -14,8 +14,8 @@
 
 syntax = "proto3";
 
-
 import "core/image/image.proto";
+import "core/log/log_pb/log.proto";
 import "core/os/device/device.proto";
 import "gapis/gfxapi/gfxapi.proto";
 import "gapis/service/path/path.proto";
@@ -254,6 +254,8 @@ message GetFramebufferAttachmentResponse {
   }
 }
 
+message GetLogStreamRequest {}
+
 service Gapid {
   rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
 
@@ -274,6 +276,8 @@ service Gapid {
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
   rpc GetDevicesForReplay(GetDevicesForReplayRequest) returns (GetDevicesForReplayResponse) {}
   rpc GetFramebufferAttachment(GetFramebufferAttachmentRequest) returns (GetFramebufferAttachmentResponse) {}
+
+  rpc GetLogStream(GetLogStreamRequest) returns (stream log_pb.Message) {}
 }
 
 message Error {

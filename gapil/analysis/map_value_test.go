@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/analysis"
 )
 
 func TestU32ToU32MapGlobalAnalysis(t *testing.T) {
@@ -52,7 +52,7 @@ func TestU32ToU32MapGlobalAnalysis(t *testing.T) {
 			`{ <[0x0]: [0x0]>, <[0x1]: [0x1]>, <[0x2]: [0x2]>, <[0x3]: [0x3]> }`,
 		},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
@@ -90,7 +90,7 @@ func TestPointerToRefStructMapGlobalAnalysis(t *testing.T) {
 			`{ <<untracked>: ref!C{ a: [0x1] [0x4] b: [0x2] [0x5] c: [0x3] [0x6] }> }`,
 		},
 	} {
-		ctx := ctx.S("source", test.source)
+		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
 		assert.With(ctx).ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)

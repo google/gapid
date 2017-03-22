@@ -17,18 +17,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
-
-	"github.com/google/gapid/core/log"
 )
 
-func doGlob(ctx log.Context, cfg Config) {
+func doGlob(ctx context.Context, cfg Config) {
 	outPath := cfg.out()
 	run(ctx, outPath, cfg.CMakePath, nil, "-DFORCE_GLOB=true", outPath.System())
 }
 
-func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+func doBuild(ctx context.Context, cfg Config, options BuildOptions, targets ...string) {
 	doGapic := len(targets) == 0 // Building everything implies gapic.
 	for i, t := range targets {
 		if t == "gapic" {
@@ -55,7 +54,7 @@ func doBuild(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	}
 }
 
-func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...string) {
 	env := env(cfg)
 	args := []string{
 		"-GNinja",
@@ -91,7 +90,7 @@ func doCMake(ctx log.Context, cfg Config, options BuildOptions, targets ...strin
 	run(ctx, cfg.out(), cfg.CMakePath, env, args...)
 }
 
-func doNinja(ctx log.Context, cfg Config, options BuildOptions, targets ...string) {
+func doNinja(ctx context.Context, cfg Config, options BuildOptions, targets ...string) {
 	env := env(cfg)
 	args := targets
 	if options.DryRun {

@@ -15,11 +15,11 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
@@ -32,7 +32,7 @@ import (
 )
 
 // Capture resolves and returns the capture from the path p.
-func Capture(ctx log.Context, p *path.Capture) (*service.Capture, error) {
+func Capture(ctx context.Context, p *path.Capture) (*service.Capture, error) {
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func Capture(ctx log.Context, p *path.Capture) (*service.Capture, error) {
 }
 
 // Commands resolves and returns the atom list from the path p.
-func Commands(ctx log.Context, p *path.Commands) (*atom.List, error) {
+func Commands(ctx context.Context, p *path.Commands) (*atom.List, error) {
 	c, err := capture.ResolveFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func Commands(ctx log.Context, p *path.Commands) (*atom.List, error) {
 
 // NCommands resolves and returns the atom list from the path p, ensuring
 // that the number of commands is at least N.
-func NCommands(ctx log.Context, p *path.Commands, n uint64) (*atom.List, error) {
+func NCommands(ctx context.Context, p *path.Commands, n uint64) (*atom.List, error) {
 	list, err := Commands(ctx, p)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func NCommands(ctx log.Context, p *path.Commands, n uint64) (*atom.List, error) 
 }
 
 // Command resolves and returns the atom from the path p.
-func Command(ctx log.Context, p *path.Command) (atom.Atom, error) {
+func Command(ctx context.Context, p *path.Command) (atom.Atom, error) {
 	list, err := NCommands(ctx, p.Commands, p.Index+1)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func Command(ctx log.Context, p *path.Command) (atom.Atom, error) {
 }
 
 // Device resolves and returns the device from the path p.
-func Device(ctx log.Context, p *path.Device) (*device.Instance, error) {
+func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
 	device := bind.GetRegistry(ctx).Device(p.Id.ID())
 	if device == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrUnknownDevice()}
@@ -84,7 +84,7 @@ func Device(ctx log.Context, p *path.Device) (*device.Instance, error) {
 }
 
 // ImageInfo resolves and returns the ImageInfo from the path p.
-func ImageInfo(ctx log.Context, p *path.ImageInfo) (*image.Info2D, error) {
+func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info2D, error) {
 	obj, err := database.Resolve(ctx, p.Id.ID())
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func ImageInfo(ctx log.Context, p *path.ImageInfo) (*image.Info2D, error) {
 }
 
 // Blob resolves and returns the byte slice from the path p.
-func Blob(ctx log.Context, p *path.Blob) ([]byte, error) {
+func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
 	obj, err := database.Resolve(ctx, p.Id.ID())
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func Blob(ctx log.Context, p *path.Blob) ([]byte, error) {
 }
 
 // Mesh resolves and returns the Mesh from the path p.
-func Mesh(ctx log.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
+func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func Mesh(ctx log.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
 }
 
 // Parameter resolves and returns the parameter from the path p.
-func Parameter(ctx log.Context, p *path.Parameter) (interface{}, error) {
+func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 	cmd, err := Resolve(ctx, p.Command)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func Parameter(ctx log.Context, p *path.Parameter) (interface{}, error) {
 }
 
 // Field resolves and returns the field from the path p.
-func Field(ctx log.Context, p *path.Field) (interface{}, error) {
+func Field(ctx context.Context, p *path.Field) (interface{}, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func Field(ctx log.Context, p *path.Field) (interface{}, error) {
 	return v.Interface(), nil
 }
 
-func field(ctx log.Context, s reflect.Value, name string, p path.Node) (reflect.Value, error) {
+func field(ctx context.Context, s reflect.Value, name string, p path.Node) (reflect.Value, error) {
 	for {
 		switch s.Kind() {
 		case reflect.Struct:
@@ -181,7 +181,7 @@ func field(ctx log.Context, s reflect.Value, name string, p path.Node) (reflect.
 }
 
 // ArrayIndex resolves and returns the array or slice element from the path p.
-func ArrayIndex(ctx log.Context, p *path.ArrayIndex) (interface{}, error) {
+func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func ArrayIndex(ctx log.Context, p *path.ArrayIndex) (interface{}, error) {
 }
 
 // Slice resolves and returns the subslice from the path p.
-func Slice(ctx log.Context, p *path.Slice) (interface{}, error) {
+func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -231,7 +231,7 @@ func Slice(ctx log.Context, p *path.Slice) (interface{}, error) {
 }
 
 // MapIndex resolves and returns the map value from the path p.
-func MapIndex(ctx log.Context, p *path.MapIndex) (interface{}, error) {
+func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
 	obj, err := Resolve(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func MapIndex(ctx log.Context, p *path.MapIndex) (interface{}, error) {
 }
 
 // Resolve resolves and returns the object, value or memory at the path p.
-func Resolve(ctx log.Context, p path.Node) (interface{}, error) {
+func Resolve(ctx context.Context, p path.Node) (interface{}, error) {
 	switch p := p.(type) {
 	case *path.ArrayIndex:
 		return ArrayIndex(ctx, p)

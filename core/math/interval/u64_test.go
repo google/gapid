@@ -168,7 +168,7 @@ func TestMerge(t *testing.T) {
 			always,
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		if test.when == always || test.when == whenJoinAdjFalse {
 			Merge(&test.list, test.with, false)
 			assert.For(ctx, "true").ThatSlice(test.list).Equals(test.expected)
@@ -219,7 +219,7 @@ func TestReplace(t *testing.T) {
 			U64SpanList{U64Span{5, 10}, U64Span{15, 20}, U64Span{25, 30}},
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		Replace(&test.list, test.with)
 		assert.With(ctx).ThatSlice(test.list).Equals(test.expected)
 	}
@@ -274,7 +274,7 @@ func TestRemove(t *testing.T) {
 			U64SpanList{},
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		Remove(&test.list, test.with)
 		assert.With(ctx).ThatSlice(test.list).Equals(test.expected)
 	}
@@ -330,7 +330,7 @@ func TestIntersect(t *testing.T) {
 			1, 2,
 		},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		o, c := Intersect(&test.list, test.with)
 		assert.For(ctx, "Offset").That(o).Equals(test.offset)
 		assert.For(ctx, "Count").That(c).Equals(test.count)
@@ -339,7 +339,8 @@ func TestIntersect(t *testing.T) {
 
 func TestU64SpanListIndexOf(t *testing.T) {
 	l := U64SpanList{U64Span{10, 20}, U64Span{30, 40}, U64Span{50, 60}}
-	ctx := log.Testing(t).V("List", l)
+	ctx := log.Testing(t)
+	ctx = log.V{"List": l}.Bind(ctx)
 	for _, test := range []struct {
 		value uint64
 		index int
@@ -353,7 +354,7 @@ func TestU64SpanListIndexOf(t *testing.T) {
 		{32, 1},
 		{59, 2},
 	} {
-		ctx := ctx.V("Value", test.value)
+		ctx := log.V{"Value": test.value}.Bind(ctx)
 		got := IndexOf(&l, test.value)
 		assert.With(ctx).That(got).Equals(test.index)
 	}

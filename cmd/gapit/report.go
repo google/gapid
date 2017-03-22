@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -22,7 +23,6 @@ import (
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-func (verb *reportVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
 		return nil
@@ -48,18 +48,18 @@ func (verb *reportVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 
 	capture, err := filepath.Abs(flags.Arg(0))
 	if err != nil {
-		cause.Explain(ctx, err, "Could not find capture file").With("path", flags.Arg(0))
+		log.Errf(ctx, err, "Could not find capture file: %v", flags.Arg(0))
 	}
 
 	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to connect to the GAPIS server")
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	defer client.Close()
 
 	stringTables, err := client.GetAvailableStringTables(ctx)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed get list of string tables")
+		return log.Err(ctx, err, "Failed get list of string tables")
 	}
 
 	var stringTable *stringtable.StringTable
@@ -67,13 +67,13 @@ func (verb *reportVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 		// TODO: Let the user pick the string table.
 		stringTable, err = client.GetStringTable(ctx, stringTables[0])
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed get string table")
+			return log.Err(ctx, err, "Failed get string table")
 		}
 	}
 
 	capturePath, err := client.LoadCapture(ctx, capture)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to load the capture file")
+		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
 	device, err := getDevice(ctx, client, capturePath, verb.Gapir)
@@ -83,20 +83,20 @@ func (verb *reportVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 
 	atomsObj, err := client.Get(ctx, capturePath.Commands().Path())
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to acquire the capture's atoms")
+		return log.Err(ctx, err, "Failed to acquire the capture's atoms")
 	}
 	atoms := atomsObj.(*atom.List).Atoms
 
 	boxedReport, err := client.Get(ctx, capturePath.Report(device).Path())
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to acquire the capture's report")
+		return log.Err(ctx, err, "Failed to acquire the capture's report")
 	}
 
-	var reportWriter io.Writer = ctx.Raw("").Writer()
+	var reportWriter io.Writer = os.Stdout
 	if verb.Out != "" {
 		f, err := os.OpenFile(verb.Out, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
-			return cause.Explain(ctx, err, "Failed to open report output file")
+			return log.Err(ctx, err, "Failed to open report output file")
 		}
 		defer f.Close()
 		reportWriter = f

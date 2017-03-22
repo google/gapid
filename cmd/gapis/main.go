@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"path/filepath"
 	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -57,7 +57,11 @@ func main() {
 // called.
 var features = []string{}
 
-func run(ctx log.Context) error {
+func run(ctx context.Context) error {
+	// Insert a log.Broadcaster between the context and it's current handler.
+	logBroadcaster := log.Broadcast(log.GetHandler(ctx))
+	ctx = log.PutHandler(ctx, logBroadcaster)
+
 	m, r := replay.New(ctx), bind.NewRegistry()
 	ctx = replay.PutManager(ctx, m)
 	ctx = bind.PutRegistry(ctx, r)
@@ -84,10 +88,11 @@ func run(ctx log.Context) error {
 		StringTables:   loadStrings(ctx),
 		AuthToken:      auth.Token(*gapisAuthToken),
 		DeviceScanDone: deviceScanDone,
+		LogBroadcaster: logBroadcaster,
 	})
 }
 
-func monitorAndroidDevices(ctx log.Context, r *bind.Registry, onDeviceScanDone task.Task) {
+func monitorAndroidDevices(ctx context.Context, r *bind.Registry, onDeviceScanDone task.Task) {
 	// Populate the registry with all the existing devices.
 	func() {
 		defer onDeviceScanDone(ctx) // Signal that we have a primed registry.
@@ -100,24 +105,24 @@ func monitorAndroidDevices(ctx log.Context, r *bind.Registry, onDeviceScanDone t
 	}()
 
 	if err := adb.Monitor(ctx, r, time.Second*3); err != nil {
-		jot.Warning(ctx).Cause(err).Print("Could not scan for local Android devices")
+		log.W(ctx, "Could not scan for local Android devices. Error: %v", err)
 	}
 }
 
-func loadStrings(ctx log.Context) []*stringtable.StringTable {
+func loadStrings(ctx context.Context) []*stringtable.StringTable {
 	files, err := filepath.Glob(filepath.Join(*stringsPath, "*.stb"))
 	if err != nil {
-		jot.Fail(ctx, err, "Couldn't scan for stringtables")
+		log.E(ctx, "Couldn't scan for stringtables. Error: %v", err)
 		return nil
 	}
 
 	out := make([]*stringtable.StringTable, 0, len(files))
 
 	for _, path := range files {
-		ctx := ctx.S("path", path)
+		ctx := log.V{"path": path}.Bind(ctx)
 		st, err := stringtable.Load(path)
 		if err != nil {
-			jot.Fail(ctx, err, "Couldn't load stringtable file")
+			log.E(ctx, "Couldn't load stringtable file. Error: %v", err)
 			continue
 		}
 		out = append(out, st)

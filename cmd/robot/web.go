@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 
 	"github.com/google/gapid/core/app"
@@ -50,8 +51,8 @@ func init() {
 	startVerb.Add(webStart)
 }
 
-func doWebStart(ctx log.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx log.Context, conn *grpc.ClientConn) error {
+func doWebStart(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		config := web.Config{
 			Port:       port,
 			StaticRoot: root,
@@ -77,7 +78,7 @@ func doWebStart(ctx log.Context, flags flag.FlagSet) error {
 			restart = shutdown.Restart
 			w.Close()
 		}()
-		ctx.Notice().Log("Starting web server")
+		log.I(ctx, "Starting web server")
 		err = w.Serve(ctx)
 		if restart {
 			return app.Restart

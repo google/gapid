@@ -89,6 +89,10 @@ public class Pods {
     return result.build();
   }
 
+  public static Pod.Value pod(String s) {
+    return Pod.Value.newBuilder().setString(s).build();
+  }
+
   public static Object unpod(Pod.Value o) {
     switch (o.getValCase()) {
       case FLOAT: return o.getFloat();

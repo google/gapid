@@ -14,26 +14,26 @@
 
 package event
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Handler is the type for functions to which events can be delivered.
-type Handler func(ctx log.Context, event interface{}) error
+type Handler func(ctx context.Context, event interface{}) error
 
 // Producer is the type for a function that generates events.
-type Producer func(ctx log.Context) interface{}
+type Producer func(ctx context.Context) interface{}
 
 // Predicate is the signature for a function that tests an event for a boolean property.
-type Predicate func(ctx log.Context, event interface{}) bool
+type Predicate func(ctx context.Context, event interface{}) bool
 
 // Listener is the signature for a function that accepts handlers to send events to.
-type Listener func(ctx log.Context, handler Handler)
+type Listener func(ctx context.Context, handler Handler)
 
 // Source is the type for a closable event producer.
 // This allows a consumer to indicate that they no longer need the source.
 type Source interface {
 	// Next is a method that matches the Producer signature.
 	// It will respond with the events in stream order.
-	Next(ctx log.Context) interface{}
+	Next(ctx context.Context) interface{}
 	// Close can be used to notify the stream that no more events are desired.
-	Close(ctx log.Context)
+	Close(ctx context.Context)
 }

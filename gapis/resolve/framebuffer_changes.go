@@ -15,9 +15,9 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -27,7 +27,7 @@ import (
 
 // FramebufferChanges returns the list of attachment changes over the span of
 // the entire capture.
-func FramebufferChanges(ctx log.Context, c *path.Capture) (*AttachmentFramebufferChanges, error) {
+func FramebufferChanges(ctx context.Context, c *path.Capture) (*AttachmentFramebufferChanges, error) {
 	obj, err := database.Build(ctx, &FramebufferChangesResolvable{c})
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ type AttachmentFramebufferChanges struct {
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *FramebufferChangesResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
 	var id atom.ID

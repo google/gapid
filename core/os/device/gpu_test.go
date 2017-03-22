@@ -36,7 +36,7 @@ func TestGPUByName(t *testing.T) {
 		{"Adreno 530"},
 		{"Kepler"},
 	} {
-		ctx := ctx.Enter(test.name)
+		ctx := log.Enter(ctx, test.name)
 		gpu := device.GPUByName(test.name)
 		assert.For(ctx, "Name").That(gpu.Name).Equals(test.name)
 	}

@@ -15,10 +15,10 @@
 package device
 
 import (
+	"context"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 )
 
 // Host returns the device information for the host computer running the code.
-func Host(ctx log.Context) *Instance {
+func Host(ctx context.Context) *Instance {
 	hostOnce.Do(func() {
 		buf := get_device()
 		if err := proto.NewBuffer(buf).Unmarshal(&host); err != nil {

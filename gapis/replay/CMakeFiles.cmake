@@ -21,6 +21,7 @@ set(files
     batcher.go
     context.go
     custom.go
+    doc.go
     events.go
     interfaces.go
     manager.go

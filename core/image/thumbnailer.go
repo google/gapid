@@ -14,12 +14,12 @@
 
 package image
 
-import "github.com/google/gapid/core/log"
+import "context"
 
 // Thumbnailer is the interface implemented by types that can be visualized as
 // a thumbnail image.
 type Thumbnailer interface {
 	// Thumbnail returns a thumbnail image info that most closely matches the
 	// desired image width w and height h.
-	Thumbnail(ctx log.Context, w, h uint32) (*Info2D, error)
+	Thumbnail(ctx context.Context, w, h uint32) (*Info2D, error)
 }

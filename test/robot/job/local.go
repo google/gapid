@@ -15,6 +15,7 @@
 package job
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -35,7 +35,7 @@ type local struct {
 
 // NewLocal builds a new job manager that persists it's data in the
 // supplied library.
-func NewLocal(ctx log.Context, library record.Library) (Manager, error) {
+func NewLocal(ctx context.Context, library record.Library) (Manager, error) {
 	m := &local{}
 	if err := m.devices.init(ctx, library); err != nil {
 		return nil, err
@@ -45,13 +45,13 @@ func NewLocal(ctx log.Context, library record.Library) (Manager, error) {
 
 // SearchDevices implements Manager.SearchDevicess
 // It searches the set of persisted devices, and supports monitoring of new devices as they are added.
-func (m *local) SearchDevices(ctx log.Context, query *search.Query, handler DeviceHandler) error {
+func (m *local) SearchDevices(ctx context.Context, query *search.Query, handler DeviceHandler) error {
 	return m.devices.search(ctx, query, handler)
 }
 
 // SearchWorkers implements Manager.SearchWorkers
 // It searches the set of persisted workers, and supports monitoring of workers as they are registered.
-func (m *local) SearchWorkers(ctx log.Context, query *search.Query, handler WorkerHandler) error {
+func (m *local) SearchWorkers(ctx context.Context, query *search.Query, handler WorkerHandler) error {
 	filter := eval.Filter(ctx, query, reflect.TypeOf(&Worker{}), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, m.entries)
 	if query.Monitor {
@@ -64,7 +64,7 @@ func (m *local) SearchWorkers(ctx log.Context, query *search.Query, handler Work
 // This attempts to find a worker on a device that matches the supplied host
 // controlling a device that matches the supplied target to perform the given operation.
 // If none is found, a new worker will be created.
-func (m *local) GetWorker(ctx log.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error) {
+func (m *local) GetWorker(ctx context.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	h, err := m.devices.get(ctx, host)

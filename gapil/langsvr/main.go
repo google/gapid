@@ -19,6 +19,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,7 +28,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/google/gapid/core/context/jot"
 	ls "github.com/google/gapid/core/langsvr"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
@@ -48,13 +48,13 @@ func main() {
 	dl := &debugLogger{stdin: os.Stdin, stdout: os.Stdout, stop: func() {}}
 	defer dl.stop()
 
-	ctx := dl.bind(log.Background().PreFilter(log.NoLimit).Filter(log.Pass))
+	ctx := dl.bind(context.Background())
 	defer handlePanic(ctx)
 
 	run(ctx, dl)
 }
 
-func run(ctx log.Context, dl *debugLogger) {
+func run(ctx context.Context, dl *debugLogger) {
 	server := &server{
 		docs:        map[string]*ls.Document{},
 		analyzer:    newAnalyzer(),
@@ -62,7 +62,7 @@ func run(ctx log.Context, dl *debugLogger) {
 	}
 
 	if err := ls.Connect(ctx, dl, server); err != nil {
-		jot.Fail(ctx, err, "Error")
+		log.E(ctx, "%v", err)
 	}
 }
 
@@ -154,7 +154,7 @@ func (s *server) definition(sem semantic.Node) ast.Node {
 }
 
 // Initialize is called when the server is first initialized by the client.
-func (s *server) Initialize(ctx log.Context, rootPath string) (ls.InitConfig, error) {
+func (s *server) Initialize(ctx context.Context, rootPath string) (ls.InitConfig, error) {
 	s.workspaceRoot = rootPath
 	return ls.InitConfig{
 		LanguageID:                  lang,
@@ -165,12 +165,12 @@ func (s *server) Initialize(ctx log.Context, rootPath string) (ls.InitConfig, er
 }
 
 // Shutdown is called to shutdown the server.
-func (s *server) Shutdown(log.Context) error {
+func (s *server) Shutdown(context.Context) error {
 	return nil
 }
 
 // OnConfigChange is called when the configuration settings change.
-func (s *server) OnConfigChange(ctx log.Context, cfgMap map[string]interface{}) error {
+func (s *server) OnConfigChange(ctx context.Context, cfgMap map[string]interface{}) error {
 	data, err := json.Marshal(cfgMap)
 	if err != nil {
 		return err
@@ -190,7 +190,7 @@ func (s *server) OnConfigChange(ctx log.Context, cfgMap map[string]interface{}) 
 }
 
 // OnDocumentsAdded is called when new documents of interest are discovered.
-func (s *server) OnDocumentsAdded(ctx log.Context, docs []*ls.Document) error {
+func (s *server) OnDocumentsAdded(ctx context.Context, docs []*ls.Document) error {
 	for _, doc := range docs {
 		s.docs[doc.Path()] = doc
 	}
@@ -199,7 +199,7 @@ func (s *server) OnDocumentsAdded(ctx log.Context, docs []*ls.Document) error {
 }
 
 // OnDocumentsChanged is called when documents are changed.
-func (s *server) OnDocumentsChanged(ctx log.Context, docs []*ls.Document) error {
+func (s *server) OnDocumentsChanged(ctx context.Context, docs []*ls.Document) error {
 	for _, doc := range docs {
 		s.docs[doc.Path()] = doc
 	}
@@ -208,7 +208,7 @@ func (s *server) OnDocumentsChanged(ctx log.Context, docs []*ls.Document) error 
 }
 
 // OnDocumentsRemoved is called when documents are no longer monitored.
-func (s *server) OnDocumentsRemoved(ctx log.Context, docs []*ls.Document) error {
+func (s *server) OnDocumentsRemoved(ctx context.Context, docs []*ls.Document) error {
 	for _, doc := range docs {
 		delete(s.docs, doc.Path())
 	}
@@ -217,19 +217,19 @@ func (s *server) OnDocumentsRemoved(ctx log.Context, docs []*ls.Document) error 
 }
 
 // OnDocumentSaved is called when an open document is saved.
-func (s *server) OnDocumentSaved(ctx log.Context, doc *ls.Document) error {
+func (s *server) OnDocumentSaved(ctx context.Context, doc *ls.Document) error {
 	s.analyzer.begin(ctx, s)
 	return nil
 }
 
 // CodeLenses returns a list of CodeLens for the specified document.
-func (s *server) CodeLenses(ctx log.Context, doc *ls.Document) ([]ls.CodeLens, error) {
+func (s *server) CodeLenses(ctx context.Context, doc *ls.Document) ([]ls.CodeLens, error) {
 	return nil, nil
 }
 
 // Completions returns completion items at a given cursor position.
 // Completion items are presented in the IntelliSense user interface.
-func (s *server) Completions(ctx log.Context, doc *ls.Document, pos ls.Position) (ls.CompletionList, error) {
+func (s *server) Completions(ctx context.Context, doc *ls.Document, pos ls.Position) (ls.CompletionList, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return ls.CompletionList{}, err
@@ -289,7 +289,7 @@ func (s *server) Completions(ctx log.Context, doc *ls.Document, pos ls.Position)
 // at the given cursor position. The activeSig and activeParam are indices
 // of the signature and parameter to highlight for the given cursor
 // position.
-func (s *server) Signatures(ctx log.Context, doc *ls.Document, pos ls.Position) (sigs ls.SignatureList, activeSig, activeParam int, err error) {
+func (s *server) Signatures(ctx context.Context, doc *ls.Document, pos ls.Position) (sigs ls.SignatureList, activeSig, activeParam int, err error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return nil, 0, 0, err
@@ -322,7 +322,7 @@ func (s *server) Signatures(ctx log.Context, doc *ls.Document, pos ls.Position) 
 
 // Definitions returns the list of definition locations for the given symbol in
 // the specified document at position.
-func (s *server) Definitions(ctx log.Context, doc *ls.Document, pos ls.Position) ([]ls.Location, error) {
+func (s *server) Definitions(ctx context.Context, doc *ls.Document, pos ls.Position) ([]ls.Location, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return nil, err
@@ -340,7 +340,7 @@ func (s *server) Definitions(ctx log.Context, doc *ls.Document, pos ls.Position)
 
 // References returns a list of references for the given symbol in the
 // specified document at position.
-func (s *server) References(ctx log.Context, doc *ls.Document, pos ls.Position) ([]ls.Location, error) {
+func (s *server) References(ctx context.Context, doc *ls.Document, pos ls.Position) ([]ls.Location, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (s *server) References(ctx log.Context, doc *ls.Document, pos ls.Position) 
 
 // Highlights returns a list of highlights for the given symbol in the
 // specified document at position.
-func (s *server) Highlights(ctx log.Context, doc *ls.Document, pos ls.Position) (ls.HighlightList, error) {
+func (s *server) Highlights(ctx context.Context, doc *ls.Document, pos ls.Position) (ls.HighlightList, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return nil, err
@@ -383,7 +383,7 @@ func (s *server) Highlights(ctx log.Context, doc *ls.Document, pos ls.Position) 
 }
 
 // Format returns a list of edits required to format the the entire document.
-func (s *server) Format(ctx log.Context, doc *ls.Document, opts ls.FormattingOptions) (ls.TextEditList, error) {
+func (s *server) Format(ctx context.Context, doc *ls.Document, opts ls.FormattingOptions) (ls.TextEditList, error) {
 	m := parse.NewCSTMap()
 	ast, err := parser.Parse("", doc.Body().Text(), m)
 	if err != nil {
@@ -398,7 +398,7 @@ func (s *server) Format(ctx log.Context, doc *ls.Document, opts ls.FormattingOpt
 	return edits, nil
 }
 
-func (s *server) FormatRange(ctx log.Context, doc *ls.Document, rng ls.Range, opts ls.FormattingOptions) (ls.TextEditList, error) {
+func (s *server) FormatRange(ctx context.Context, doc *ls.Document, rng ls.Range, opts ls.FormattingOptions) (ls.TextEditList, error) {
 	if rng == doc.Body().FullRange() {
 		return s.Format(ctx, doc, opts)
 	}
@@ -406,7 +406,7 @@ func (s *server) FormatRange(ctx log.Context, doc *ls.Document, rng ls.Range, op
 }
 
 // Rename is called to rename the symbol at pos with newName.
-func (s *server) Rename(ctx log.Context, doc *ls.Document, pos ls.Position, newName string) (ls.WorkspaceEdit, error) {
+func (s *server) Rename(ctx context.Context, doc *ls.Document, pos ls.Position, newName string) (ls.WorkspaceEdit, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		return ls.WorkspaceEdit{}, err
@@ -428,11 +428,11 @@ func (s *server) Rename(ctx log.Context, doc *ls.Document, pos ls.Position, newN
 
 // Hover returns a list of source code snippets and range for the given
 // symbol at the specified position.
-func (s *server) Hover(ctx log.Context, doc *ls.Document, pos ls.Position) (ls.SourceCodeList, ls.Range, error) {
+func (s *server) Hover(ctx context.Context, doc *ls.Document, pos ls.Position) (ls.SourceCodeList, ls.Range, error) {
 	da, err := s.docAnalysis(ctx, doc)
 	if da == nil || err != nil {
 		if s.config.Debug {
-			ctx.Warning().V("err", err).Log("No analysis results")
+			log.W(ctx, "No analysis results: %v", err)
 		}
 		return nil, ls.Range{}, nil
 	}
@@ -497,14 +497,14 @@ func (s *server) Hover(ctx log.Context, doc *ls.Document, pos ls.Position) (ls.S
 }
 
 // Symbols returns symbolic information about the specified document.
-func (s *server) Symbols(ctx log.Context, doc *ls.Document) (ls.SymbolList, error) {
+func (s *server) Symbols(ctx context.Context, doc *ls.Document) (ls.SymbolList, error) {
 	syms, err := s.WorkspaceSymbols(ctx)
 	syms = syms.Filter(func(s ls.Symbol) bool { return s.Location.URI == doc.URI() })
 	return syms, err
 }
 
 // WorkspaceSymbols returns project-wide symbols.
-func (s *server) WorkspaceSymbols(ctx log.Context) (ls.SymbolList, error) {
+func (s *server) WorkspaceSymbols(ctx context.Context) (ls.SymbolList, error) {
 	a := s.analyzer.results(ctx, s)
 
 	syms := ls.SymbolList{}
@@ -558,7 +558,7 @@ func (s *server) WorkspaceSymbols(ctx log.Context) (ls.SymbolList, error) {
 // CodeActions compute commands for a given document and range.
 // The request is triggered when the user moves the cursor into an problem
 // marker in the editor or presses the lightbulb associated with a marker.
-func (s *server) CodeActions(log.Context, *ls.Document, ls.Range, []ls.Diagnostic) ([]ls.Command, error) {
+func (s *server) CodeActions(context.Context, *ls.Document, ls.Range, []ls.Diagnostic) ([]ls.Command, error) {
 	return []ls.Command{}, nil
 }
 
@@ -700,11 +700,11 @@ func (fa *fullAnalysis) documentation(n ast.Node) string {
 	return strings.Join(lines, " ")
 }
 
-func handlePanic(ctx log.Context) {
+func handlePanic(ctx context.Context) {
 	if r := recover(); r != nil {
-		ctx.Error().Log("\n\n\n------------------------ PANIC ------------------------\n\n")
+		log.E(ctx, "\n\n\n------------------------ PANIC ------------------------\n\n")
 		buf := make([]byte, 64<<10)
 		buf = buf[:runtime.Stack(buf, true)]
-		ctx.Error().Logf("%v\n%s", r, string(buf))
+		log.E(ctx, "%v\n%s", r, string(buf))
 	}
 }

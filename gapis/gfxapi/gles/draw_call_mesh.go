@@ -15,9 +15,9 @@
 package gles
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/core/stream/fmts"
@@ -30,10 +30,10 @@ import (
 )
 
 // drawCallMesh builds a mesh for dc at p.
-func drawCallMesh(ctx log.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh, error) {
+func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh, error) {
 	cmdPath := path.FindCommand(p)
 	if cmdPath == nil {
-		ctx.Warning().V("path", p).Log("Couldn't find command at path")
+		log.W(ctx, "Couldn't find command at path '%v'", p)
 		return nil, nil
 	}
 
@@ -54,7 +54,7 @@ func drawCallMesh(ctx log.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh, err
 		// There are extensions like GL_QUADS_OES that do not translate directly
 		// to a gfxapi.DrawPrimitive. For now, log the error, and return
 		// (nil, nil) (no mesh available). See b/29416809.
-		jot.Fail(ctx, err, "Couldn't translate GL primitive to gfxapi.DrawPrimitive")
+		log.E(ctx, "Couldn't translate GL primitive to gfxapi.DrawPrimitive: %v", err)
 		return nil, nil
 	}
 
@@ -131,7 +131,7 @@ func drawCallMesh(ctx log.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh, err
 }
 
 func vertexStreamData(
-	ctx log.Context,
+	ctx context.Context,
 	vaa *VertexAttributeArray,
 	vbb *VertexBufferBinding,
 	vectorCount int,

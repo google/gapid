@@ -15,10 +15,9 @@
 package adb
 
 import (
+	"context"
 	"fmt"
 	"net"
-
-	"github.com/google/gapid/core/log"
 )
 
 // Port is the interface for sockets ports that can be forwarded from an Android
@@ -72,11 +71,11 @@ func (p Jdwp) adbForwardString() string {
 }
 
 // Forward will forward the specified device Port to the specified local Port.
-func (b *binding) Forward(ctx log.Context, local, device Port) error {
+func (b *binding) Forward(ctx context.Context, local, device Port) error {
 	return b.Command("forward", local.adbForwardString(), device.adbForwardString()).Run(ctx)
 }
 
 // RemoveForward removes a port forward made by Forward.
-func (b *binding) RemoveForward(ctx log.Context, local Port) error {
+func (b *binding) RemoveForward(ctx context.Context, local Port) error {
 	return b.Command("forward", "--remove", local.adbForwardString()).Run(ctx)
 }

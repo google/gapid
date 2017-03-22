@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/data/stash"
-	"github.com/google/gapid/core/log"
 )
 
 var entitiesPathPattern = regexp.MustCompile("^/entities/([a-fA-F0-9]+)/?$")
@@ -47,7 +46,7 @@ func entityId(path string) (string, error) {
 }
 
 func (s *Server) handleEntities(w http.ResponseWriter, r *http.Request) {
-	ctx := log.Wrap(r.Context())
+	ctx := r.Context()
 
 	var (
 		err     error

@@ -15,11 +15,11 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/google/gapid/core/fault/severity"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -33,7 +33,7 @@ import (
 )
 
 // Report resolves the report for the given capture and optional device.
-func Report(ctx log.Context, c *path.Capture, d *path.Device) (*service.Report, error) {
+func Report(ctx context.Context, c *path.Capture, d *path.Device) (*service.Report, error) {
 	obj, err := database.Build(ctx, &ReportResolvable{c, d})
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func Report(ctx log.Context, c *path.Capture, d *path.Device) (*service.Report, 
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *ReportResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
 	c, err := capture.Resolve(ctx)
@@ -66,7 +66,7 @@ func (r *ReportResolvable) Resolve(ctx log.Context) (interface{}, error) {
 	state.OnError = func(err interface{}) {
 		lastError = err
 	}
-	state.NewMessage = func(s severity.Level, m *stringtable.Msg) uint32 {
+	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
 		items = append(items, service.WrapReportItem(
 			&service.ReportItem{
 				Severity: service.Severity(s),

@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/endian"
@@ -169,8 +170,8 @@ func setCubemapFace(img *image.Info2D, cubeMap *gfxapi.CubemapLevel, layerIndex 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
-	ctx = ctx.Enter("ImageObject.Resource()")
+func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+	ctx = log.Enter(ctx, "ImageObject.Resource()")
 
 	vkFmt := t.Info.Format
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
@@ -218,7 +219,7 @@ func (t *ImageObject) ResourceData(ctx log.Context, s *gfxapi.State, resources g
 	}
 }
 
-func (t *ImageObject) SetResourceData(ctx log.Context, at *path.Command,
+func (t *ImageObject) SetResourceData(ctx context.Context, at *path.Command,
 	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
 }
@@ -249,16 +250,16 @@ func (s *ShaderModuleObject) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *ShaderModuleObject) ResourceData(ctx log.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
-	ctx = ctx.Enter("Shader.ResourceData()")
+func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	words := s.Words.Read(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)
 	return &gfxapi.Shader{Type: gfxapi.ShaderType_Spirv, Source: source}, nil
 }
 
-func (shader *ShaderModuleObject) SetResourceData(ctx log.Context, at *path.Command,
+func (shader *ShaderModuleObject) SetResourceData(ctx context.Context, at *path.Command,
 	data interface{}, resourceIDs gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
-	ctx = ctx.Enter("ShaderModuleObject.SetResourceData()")
+	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
 	// Dirty. TODO: Make separate type for getting info for a single resource.
 	capturePath := at.Commands.Capture
 	resources, err := resolve.Resources(ctx, capturePath)
@@ -296,8 +297,8 @@ func (shader *ShaderModuleObject) SetResourceData(ctx log.Context, at *path.Comm
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *VkCreateShaderModule) Replace(ctx log.Context, data interface{}) gfxapi.ResourceAtom {
-	ctx = ctx.Enter("VkCreateShaderModule.Replace()")
+func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
+	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	state := capture.NewState(ctx)
 	a.Mutate(ctx, state, nil)
 

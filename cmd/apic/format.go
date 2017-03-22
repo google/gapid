@@ -19,12 +19,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/format"
@@ -40,7 +40,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func doFormat(ctx log.Context, flags flag.FlagSet) error {
+func doFormat(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
@@ -55,18 +55,19 @@ func doFormat(ctx log.Context, flags flag.FlagSet) error {
 		paths = append(paths, files...)
 	}
 	for _, path := range paths {
-		ctx := ctx.S("file", path)
+		ctx := log.V{"file": path}.Bind(ctx)
 		f, err := ioutil.ReadFile(path)
 		if err != nil {
-			jot.Fail(ctx, err, "Failed to read api file")
+			log.F(ctx, "Failed to read api file. Error: %v", err)
 			continue
 		}
 		m := parse.NewCSTMap()
 		api, errs := parser.Parse(path, string(f), m)
 		if len(errs) > 0 {
-			ctx.Error().Log("Errors while parsing api file:")
+			l := log.From(ctx)
+			l.E("Errors while parsing api file:")
 			for i, e := range errs {
-				ctx.Error().Logf("%d: %v", i, e)
+				l.E("%d: %v", i, e)
 			}
 			continue
 		}
@@ -74,7 +75,7 @@ func doFormat(ctx log.Context, flags flag.FlagSet) error {
 		buf := &bytes.Buffer{}
 		format.Format(api, m, buf)
 		if err = ioutil.WriteFile(path, buf.Bytes(), 0777); err != nil {
-			jot.Fail(ctx, err, "Failed to write formatted api file")
+			log.E(ctx, "Failed to write formatted api file. Error: %v", err)
 		}
 	}
 	return nil

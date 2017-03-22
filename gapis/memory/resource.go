@@ -16,11 +16,11 @@ package memory
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/database"
 )
 
@@ -36,7 +36,7 @@ type resource struct {
 	size  uint64
 }
 
-func (r resource) Get(ctx log.Context, offset uint64, out []byte) error {
+func (r resource) Get(ctx context.Context, offset uint64, out []byte) error {
 	data, err := r.getData(ctx)
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func (r resource) Get(ctx log.Context, offset uint64, out []byte) error {
 	return nil
 }
 
-func (r resource) getData(ctx log.Context) ([]byte, error) {
+func (r resource) getData(ctx context.Context) ([]byte, error) {
 	res, err := database.Resolve(ctx, r.resID)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (r resource) getData(ctx log.Context) ([]byte, error) {
 	return data, nil
 }
 
-func (r resource) ResourceID(ctx log.Context) (id.ID, error) {
+func (r resource) ResourceID(ctx context.Context) (id.ID, error) {
 	return r.resID, nil
 }
 
@@ -78,7 +78,7 @@ func (r resource) String() string {
 	return fmt.Sprintf("Resource[%v]", r.resID)
 }
 
-func (r resource) NewReader(ctx log.Context) io.Reader {
+func (r resource) NewReader(ctx context.Context) io.Reader {
 	data, err := r.getData(ctx)
 	if err != nil {
 		return failedReader{err}
@@ -98,12 +98,12 @@ type resourceSlice struct {
 	rng Range
 }
 
-func (s resourceSlice) Get(ctx log.Context, offset uint64, out []byte) error {
+func (s resourceSlice) Get(ctx context.Context, offset uint64, out []byte) error {
 	trim := min(s.rng.Size-offset, uint64(len(out)))
 	return s.src.Get(ctx, s.rng.First()+offset, out[:trim])
 }
 
-func (r resourceSlice) NewReader(ctx log.Context) io.Reader {
+func (r resourceSlice) NewReader(ctx context.Context) io.Reader {
 	data, err := r.src.getData(ctx)
 	if err != nil {
 		return failedReader{err}
@@ -111,7 +111,7 @@ func (r resourceSlice) NewReader(ctx log.Context) io.Reader {
 	return bytes.NewReader(data[r.rng.First() : r.rng.Last()+1])
 }
 
-func (s resourceSlice) ResourceID(ctx log.Context) (id.ID, error) {
+func (s resourceSlice) ResourceID(ctx context.Context) (id.ID, error) {
 	return database.Store(ctx, &SubsliceResolvable{
 		Slice: NewID(s.src.resID),
 		First: s.rng.Base,

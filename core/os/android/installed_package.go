@@ -15,12 +15,12 @@
 package android
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -102,14 +102,14 @@ func (l InstalledPackages) FindSingleByPartialName(s string) (*InstalledPackage,
 
 // WrapProperties returns the list of wrap-properties for the given installed
 // package.
-func (p *InstalledPackage) WrapProperties(ctx log.Context) ([]string, error) {
+func (p *InstalledPackage) WrapProperties(ctx context.Context) ([]string, error) {
 	list, err := p.Device.Shell("getprop", p.wrapPropName()).Call(ctx)
 	return strings.Fields(list), err
 }
 
 // SetWrapProperties sets the list of wrap-properties for the given installed
 // package.
-func (p *InstalledPackage) SetWrapProperties(ctx log.Context, props ...string) error {
+func (p *InstalledPackage) SetWrapProperties(ctx context.Context, props ...string) error {
 	arg := strings.Join(props, " ")
 	res, err := p.Device.Shell("setprop", p.wrapPropName(), arg).Call(ctx)
 	if res != "" {
@@ -119,17 +119,17 @@ func (p *InstalledPackage) SetWrapProperties(ctx log.Context, props ...string) e
 }
 
 // ClearCache deletes all data associated with a package.
-func (p *InstalledPackage) ClearCache(ctx log.Context) error {
+func (p *InstalledPackage) ClearCache(ctx context.Context) error {
 	return p.Device.Shell("pm", "clear", p.Name).Run(ctx)
 }
 
 // Stop stops any activities belonging to the package from running on the device.
-func (p *InstalledPackage) Stop(ctx log.Context) error {
+func (p *InstalledPackage) Stop(ctx context.Context) error {
 	return p.Device.Shell("am", "force-stop", p.Name).Run(ctx)
 }
 
 // Path returns the absolute path of the installed package on the device.
-func (p *InstalledPackage) Path(ctx log.Context) (string, error) {
+func (p *InstalledPackage) Path(ctx context.Context) (string, error) {
 	out, err := p.Device.Shell("pm", "path", p.Name).Call(ctx)
 	if err != nil {
 		return "", err
@@ -143,7 +143,7 @@ func (p *InstalledPackage) Path(ctx log.Context) (string, error) {
 }
 
 // FileDir returns the absolute path of the installed packages files directory.
-func (p *InstalledPackage) FileDir(ctx log.Context) (string, error) {
+func (p *InstalledPackage) FileDir(ctx context.Context) (string, error) {
 	out, err := p.Device.Shell("run-as", p.Name, "pwd").Call(ctx)
 	if err != nil {
 		return "", err
@@ -153,7 +153,7 @@ func (p *InstalledPackage) FileDir(ctx log.Context) (string, error) {
 }
 
 // Pid returns the PID of the oldest (if pgrep exists) running process belonging to the given package.
-func (p *InstalledPackage) Pid(ctx log.Context) (int, error) {
+func (p *InstalledPackage) Pid(ctx context.Context) (int, error) {
 	// First, try pgrep.
 	out, err := p.Device.Shell("pgrep", "-o", "-f", p.Name).Call(ctx)
 	if err == nil {
@@ -191,7 +191,7 @@ func (p *InstalledPackage) Pid(ctx log.Context) (int, error) {
 }
 
 // Pull pulls the installed package from the device to the specified local directory.
-func (p *InstalledPackage) Pull(ctx log.Context, target string) error {
+func (p *InstalledPackage) Pull(ctx context.Context, target string) error {
 	path, err := p.Path(ctx)
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func (p *InstalledPackage) Pull(ctx log.Context, target string) error {
 }
 
 // Uninstall uninstalls the package from the device.
-func (p *InstalledPackage) Uninstall(ctx log.Context) error {
+func (p *InstalledPackage) Uninstall(ctx context.Context) error {
 	return p.Device.Shell("pm", "uninstall", p.Name).Run(ctx)
 }
 

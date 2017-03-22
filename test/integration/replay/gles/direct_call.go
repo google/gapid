@@ -15,7 +15,8 @@
 package gles
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -33,14 +34,14 @@ type directCall struct {
 
 type caller interface {
 	atom.Atom
-	Call(ctx log.Context, s *gfxapi.State, b *builder.Builder)
+	Call(ctx context.Context, s *gfxapi.State, b *builder.Builder)
 }
 
 func callerCast(obj binary.Object) caller {
 	return obj.(caller)
 }
 
-func (c directCall) Mutate(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (c directCall) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if b != nil {
 		c.atom.Call(ctx, s, b)
 		return nil

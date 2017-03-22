@@ -15,8 +15,9 @@
 package gfxapi
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -39,10 +40,10 @@ type Resource interface {
 	ResourceType() ResourceType
 
 	// ResourceData returns the resource data given the current state.
-	ResourceData(ctx log.Context, s *State, resources ResourceMap) (interface{}, error)
+	ResourceData(ctx context.Context, s *State, resources ResourceMap) (interface{}, error)
 
 	// SetResourceData sets resource data in a new capture.
-	SetResourceData(ctx log.Context, at *path.Command, data interface{}, resources ResourceMap, edits ReplaceCallback) error
+	SetResourceData(ctx context.Context, at *path.Command, data interface{}, resources ResourceMap, edits ReplaceCallback) error
 }
 
 // ResourceMeta represents resource with a state information obtained during building.
@@ -55,7 +56,7 @@ type ResourceMeta struct {
 // TODO: Remove it and use atom.Atom itself (which is impossible for now because of a dependency cycle).
 type ResourceAtom interface {
 	// Replace clones an atom and sets new data.
-	Replace(ctx log.Context, data interface{}) ResourceAtom
+	Replace(ctx context.Context, data interface{}) ResourceAtom
 }
 
 // ReplaceCallback is called from SetResourceData to propagate changes to current atom stream.

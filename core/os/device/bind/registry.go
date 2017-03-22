@@ -21,23 +21,20 @@ import (
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/note"
 )
 
 type registryKeyTy string
 
 const registryKey = registryKeyTy("registryKeyID")
 
-func (registryKeyTy) Transcribe(context.Context, *note.Page, interface{}) {}
-
 // PutRegistry attaches a registry to a Context.
-func PutRegistry(ctx log.Context, m *Registry) log.Context {
-	return log.Wrap(keys.WithValue(ctx.Unwrap(), registryKey, m))
+func PutRegistry(ctx context.Context, m *Registry) context.Context {
+	return keys.WithValue(ctx, registryKey, m)
 }
 
 // GetRegistry retrieves the registry from a context previously annotated by
 // PutRegistry.
-func GetRegistry(ctx log.Context) *Registry {
+func GetRegistry(ctx context.Context) *Registry {
 	val := ctx.Value(registryKey)
 	if val == nil {
 		panic(string(registryKey + " not present"))
@@ -63,30 +60,30 @@ func NewRegistry() *Registry {
 // DeviceListener is the interface implemented by types that respond to devices
 // being added to and removed from the registry.
 type DeviceListener interface {
-	OnDeviceAdded(log.Context, Device)
-	OnDeviceRemoved(log.Context, Device)
+	OnDeviceAdded(context.Context, Device)
+	OnDeviceRemoved(context.Context, Device)
 }
 
 // NewDeviceListener returns a DeviceListener that delegates calls on to
 // onDeviceAdded and onDeviceRemoved.
-func NewDeviceListener(onDeviceAdded, onDeviceRemoved func(log.Context, Device)) DeviceListener {
+func NewDeviceListener(onDeviceAdded, onDeviceRemoved func(context.Context, Device)) DeviceListener {
 	return &funcDeviceListener{onDeviceAdded, onDeviceRemoved}
 }
 
 // funcDeviceListener is an implementatation of DeviceListener that delegates
 // calls on to the field functions.
 type funcDeviceListener struct {
-	onAdded   func(log.Context, Device)
-	onRemoved func(log.Context, Device)
+	onAdded   func(context.Context, Device)
+	onRemoved func(context.Context, Device)
 }
 
-func (l funcDeviceListener) OnDeviceAdded(ctx log.Context, d Device) {
+func (l funcDeviceListener) OnDeviceAdded(ctx context.Context, d Device) {
 	if f := l.onAdded; f != nil {
 		f(ctx, d)
 	}
 }
 
-func (l funcDeviceListener) OnDeviceRemoved(ctx log.Context, d Device) {
+func (l funcDeviceListener) OnDeviceRemoved(ctx context.Context, d Device) {
 	if f := l.onRemoved; f != nil {
 		f(ctx, d)
 	}
@@ -140,7 +137,7 @@ func (r *Registry) DefaultDevice() Device {
 }
 
 // AddDevice registers the device dev with the Registry.
-func (r *Registry) AddDevice(ctx log.Context, d Device) {
+func (r *Registry) AddDevice(ctx context.Context, d Device) {
 	if d != nil {
 		r.Lock()
 		defer r.Unlock()
@@ -149,7 +146,8 @@ func (r *Registry) AddDevice(ctx log.Context, d Device) {
 				return // already added
 			}
 		}
-		ctx.Info().V("device", d).Log("Adding new device")
+		ctx := log.V{"device": d}.Bind(ctx)
+		log.I(ctx, "Adding new device")
 		r.devices = append(r.devices, d)
 		for l := range r.listeners {
 			l.OnDeviceAdded(ctx, d)
@@ -158,13 +156,14 @@ func (r *Registry) AddDevice(ctx log.Context, d Device) {
 }
 
 // RemoveDevice unregisters the device d with the Registry.
-func (r *Registry) RemoveDevice(ctx log.Context, d Device) {
+func (r *Registry) RemoveDevice(ctx context.Context, d Device) {
 	if d != nil {
 		r.Lock()
 		defer r.Unlock()
 		for i, t := range r.devices {
 			if t == d {
-				ctx.Info().V("device", d).Log("Removing existing device")
+				ctx := log.V{"device": d}.Bind(ctx)
+				log.I(ctx, "Removing existing device")
 				copy(r.devices[i:], r.devices[i+1:])
 				r.devices = r.devices[:len(r.devices)-1]
 				for l := range r.listeners {

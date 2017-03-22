@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -23,7 +24,6 @@ import (
 	"text/template"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 )
 
 const plotTemplate = `#!/usr/bin/env gnuplot
@@ -76,7 +76,7 @@ func init() {
 	app.AddVerb(verb)
 }
 
-func getPlotData(ctx log.Context, perfzFile string, benchmarkName string) (IndexedMultisamples, string, error) {
+func getPlotData(ctx context.Context, perfzFile string, benchmarkName string) (IndexedMultisamples, string, error) {
 	perfz, err := LoadPerfz(ctx, perfzFile, flagVerifyHashes)
 	if err != nil {
 		return IndexedMultisamples{}, "", err
@@ -88,7 +88,7 @@ func getPlotData(ctx log.Context, perfzFile string, benchmarkName string) (Index
 	return bench.Samples.IndexedMultisamples(), bench.Input.Name, nil
 }
 
-func plotVerb(ctx log.Context, flags flag.FlagSet) error {
+func plotVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected.")
 		return nil

@@ -15,18 +15,19 @@
 package worker
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"sync"
 
-	"github.com/google/gapid/core/event"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/data/record"
-	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/data/search/eval"
-	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/event"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/job"
 )
 
 // Actions is a struct to manage a persistent set of actions.
@@ -57,8 +58,8 @@ type Action interface {
 	JobInput() Input
 }
 
-func (a *Actions) init(ctx log.Context, library record.Library, op job.Operation, nullAction Action, nullTask Task) error {
-	ctx = ctx.V("Operation", op)
+func (a *Actions) init(ctx context.Context, library record.Library, op job.Operation, nullAction Action, nullTask Task) error {
+	ctx = log.V{"operation": op}.Bind(ctx)
 	a.nullAction = nullAction
 	a.nullTask = nullTask
 	a.byID = map[string]Action{}
@@ -78,7 +79,7 @@ func (a *Actions) init(ctx log.Context, library record.Library, op job.Operation
 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
-func (a *Actions) apply(ctx log.Context, item Action) error {
+func (a *Actions) apply(ctx context.Context, item Action) error {
 	id := item.JobID()
 	entry := a.byID[id]
 	if entry == nil {
@@ -92,7 +93,7 @@ func (a *Actions) apply(ctx log.Context, item Action) error {
 	return nil
 }
 
-func (a *Actions) do(ctx log.Context, w *Worker, input Input) (string, error) {
+func (a *Actions) do(ctx context.Context, w *Worker, input Input) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	action := proto.Clone(a.nullAction).(Action)
@@ -109,17 +110,17 @@ func (a *Actions) do(ctx log.Context, w *Worker, input Input) (string, error) {
 }
 
 // update an action, and return the merged action.
-func (a *Actions) update(ctx log.Context, action Action) error {
+func (a *Actions) update(ctx context.Context, action Action) error {
 	return a.ledger.Add(ctx, action)
 }
 
 // ByID returns the action with the specified id
-func (a *Actions) ByID(ctx log.Context, id string) Action {
+func (a *Actions) ByID(ctx context.Context, id string) Action {
 	return a.byID[id]
 }
 
 // ByInput finds the action that matches the given input
-func (a *Actions) ByInput(ctx log.Context, input proto.Message) Action {
+func (a *Actions) ByInput(ctx context.Context, input proto.Message) Action {
 	for _, action := range a.entries {
 		if proto.Equal(action.JobInput(), input) {
 			return action
@@ -129,7 +130,7 @@ func (a *Actions) ByInput(ctx log.Context, input proto.Message) Action {
 }
 
 // Search runs the query for each entry in the action list, and hands the matches to the action handler.
-func (a *Actions) Search(ctx log.Context, query *search.Query, handler interface{}) error {
+func (a *Actions) Search(ctx context.Context, query *search.Query, handler interface{}) error {
 	filter := eval.Filter(ctx, query, reflect.TypeOf(a.nullAction), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, a.entries)
 	if query.Monitor {

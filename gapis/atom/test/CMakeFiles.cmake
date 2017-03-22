@@ -20,6 +20,7 @@
 set(files
     atoms.go
     common.go
+    doc.go
     test_binary.go
 )
 set(dirs

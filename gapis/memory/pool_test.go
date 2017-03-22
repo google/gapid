@@ -16,6 +16,7 @@ package memory
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"testing"
 
@@ -42,7 +43,7 @@ func readFully(r io.Reader, maxRead int) ([]byte, error) {
 	}
 }
 
-func checkSlice(ctx log.Context, s Slice, expected []byte) {
+func checkSlice(ctx context.Context, s Slice, expected []byte) {
 	assert.With(ctx).That(s.Size()).Equals(uint64(len(expected)))
 
 	for _, offset := range []uint64{0, 1, s.Size() - 1, s.Size()} {

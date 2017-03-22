@@ -15,11 +15,12 @@
 package job
 
 import (
-	"github.com/google/gapid/core/os/device"
+	"context"
+
+	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/core/os/device"
 	"google.golang.org/grpc"
 )
 
@@ -28,14 +29,14 @@ type remote struct {
 }
 
 // NewRemote returns a job manager that talks to a remote grpc job manager.
-func NewRemote(ctx log.Context, conn *grpc.ClientConn) Manager {
+func NewRemote(ctx context.Context, conn *grpc.ClientConn) Manager {
 	return &remote{client: NewServiceClient(conn)}
 }
 
 // SearchDevices implements Manager.SearchDevicess
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) SearchDevices(ctx log.Context, query *search.Query, handler DeviceHandler) error {
-	stream, err := m.client.SearchDevices(ctx.Unwrap(), query)
+func (m *remote) SearchDevices(ctx context.Context, query *search.Query, handler DeviceHandler) error {
+	stream, err := m.client.SearchDevices(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -44,8 +45,8 @@ func (m *remote) SearchDevices(ctx log.Context, query *search.Query, handler Dev
 
 // SearchWorkers implements Manager.SearchWorkers
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) SearchWorkers(ctx log.Context, query *search.Query, handler WorkerHandler) error {
-	stream, err := m.client.SearchWorkers(ctx.Unwrap(), query)
+func (m *remote) SearchWorkers(ctx context.Context, query *search.Query, handler WorkerHandler) error {
+	stream, err := m.client.SearchWorkers(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -54,9 +55,9 @@ func (m *remote) SearchWorkers(ctx log.Context, query *search.Query, handler Wor
 
 // GetWorker implements Manager.GetWorker
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) GetWorker(ctx log.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error) {
+func (m *remote) GetWorker(ctx context.Context, host *device.Instance, target *device.Instance, op Operation) (*Worker, error) {
 	request := &GetWorkerRequest{Host: host, Target: target, Operation: op}
-	response, err := m.client.GetWorker(ctx.Unwrap(), request)
+	response, err := m.client.GetWorker(ctx, request)
 	if err != nil {
 		return nil, err
 	}

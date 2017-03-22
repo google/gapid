@@ -40,6 +40,7 @@ import com.google.gapid.server.Version;
 import com.google.gapid.service.atom.AtomMetadata;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
+import com.google.gapid.util.Logging;
 
 import java.io.IOException;
 import java.util.List;
@@ -79,6 +80,8 @@ public class Server {
       fetchSchema();
       status = "fetch string table";
       fetchStringTable();
+      status = "monitoring logs";
+      monitorLogs();
     } catch (ExecutionException | RpcException | TimeoutException e) {
       throw new GapisInitException(GapisInitException.MESSAGE_FAILED_INIT, "Failed to " + status, e);
     }
@@ -174,6 +177,10 @@ public class Server {
     for (ConstantSet set : schema.constants) {
       ConstantSet.register(set);
     }
+  }
+
+  private void monitorLogs() {
+    gapisConnection.setLogMonitor(Logging::logMessage);
   }
 
   /**

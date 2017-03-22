@@ -16,11 +16,11 @@ package resolve
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service/path"
@@ -35,7 +35,7 @@ type MinMax struct {
 // IndexLimits returns the lowest and highest index contained in the index
 // buffer with identifier id. The buffer holds count elements, each of size
 // bytes.
-func IndexLimits(ctx log.Context, data id.ID, count int, size int, littleEndian bool) (*MinMax, error) {
+func IndexLimits(ctx context.Context, data id.ID, count int, size int, littleEndian bool) (*MinMax, error) {
 	obj, err := database.Build(ctx, &IndexLimitsResolvable{
 		IndexSize:    uint64(size),
 		Count:        uint64(count),
@@ -49,7 +49,7 @@ func IndexLimits(ctx log.Context, data id.ID, count int, size int, littleEndian 
 }
 
 // Resolve implements the database.Resolver interface.
-func (c *IndexLimitsResolvable) Resolve(ctx log.Context) (interface{}, error) {
+func (c *IndexLimitsResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	min, max := ^uint32(0), uint32(0)
 	data, err := database.Resolve(ctx, c.Data.Id.ID())
 	if err != nil {

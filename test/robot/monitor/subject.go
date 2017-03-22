@@ -15,7 +15,8 @@
 package monitor
 
 import (
-	"github.com/google/gapid/core/log"
+	"context"
+
 	"github.com/google/gapid/test/robot/subject"
 )
 
@@ -34,7 +35,7 @@ func (s *Subjects) All() []*Subject {
 	return s.entries
 }
 
-func (o *DataOwner) updateSubject(ctx log.Context, subj *subject.Subject) error {
+func (o *DataOwner) updateSubject(ctx context.Context, subj *subject.Subject) error {
 	o.Write(func(data *Data) {
 		data.Subjects.entries = append(data.Subjects.entries, &Subject{Subject: *subj})
 	})

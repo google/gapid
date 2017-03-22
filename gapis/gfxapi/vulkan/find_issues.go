@@ -15,10 +15,10 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -39,12 +39,12 @@ type findIssues struct {
 // reportTo adds the chan c to the list of issue listeners.
 func (t *findIssues) reportTo(c chan<- replay.Issue) { t.out = append(t.out, c) }
 
-func (t *findIssues) Transform(ctx log.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	out.MutateAndWrite(ctx, i, a)
 }
 
-func (t *findIssues) Flush(ctx log.Context, out transform.Writer) {
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx log.Context, s *gfxapi.State, b *builder.Builder) error {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last

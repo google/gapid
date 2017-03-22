@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"image"
@@ -28,9 +29,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/context/jot"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/fault/cause"
 	"github.com/google/gapid/core/image/font"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/sint"
@@ -66,10 +65,10 @@ func init() {
 }
 
 type videoFrameWriter func(chan<- image.Image) error
-type videoSource func(ctx log.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error)
-type videoSink func(ctx log.Context, filepath string, vidFun videoFrameWriter) error
+type videoSource func(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error)
+type videoSink func(ctx context.Context, filepath string, vidFun videoFrameWriter) error
 
-func (verb *videoVerb) regularVideoSource(ctx log.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
+func (verb *videoVerb) regularVideoSource(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
 	// Count the number of frames
 	frameCount := 0
 	for _, a := range atoms {
@@ -78,7 +77,7 @@ func (verb *videoVerb) regularVideoSource(ctx log.Context, atoms []atom.Atom, ca
 		}
 	}
 
-	ctx.Printf("Frames: %d", frameCount)
+	log.I(ctx, "Frames: %d", frameCount)
 
 	// Get all the rendered frames
 	const workers = 32
@@ -106,7 +105,7 @@ func (verb *videoVerb) regularVideoSource(ctx log.Context, atoms []atom.Atom, ca
 			if index > lastFrame {
 				break
 			}
-			executor(ctx, func(ctx log.Context) error {
+			executor(ctx, func(ctx context.Context) error {
 				if frame, err := getFrame(ctx, verb.VideoFlags, atom, device, client); err == nil {
 					rendered[index] = flipImg(frame)
 				} else {
@@ -137,13 +136,13 @@ func (verb *videoVerb) regularVideoSource(ctx log.Context, atoms []atom.Atom, ca
 			height++
 		}
 
-		ctx.Printf("Max dimensions: (%d, %d)", width, height)
+		log.I(ctx, "Max dimensions: (%d, %d)", width, height)
 	}
 
 	return func(frames chan<- image.Image) error {
 		for i := startFrame; i <= lastFrame; i++ {
 			if err := errors[i]; err != nil {
-				jot.Failf(ctx, err, "atom %d", i)
+				log.E(ctx, "Error at atom %d: %v", i, err)
 				continue
 			}
 			frame := rendered[i]
@@ -212,7 +211,7 @@ func hasFramebufferObservations(atoms []atom.Atom) bool {
 	return false
 }
 
-func (verb *videoVerb) Run(ctx log.Context, flags flag.FlagSet) error {
+func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
 		return nil
@@ -220,18 +219,18 @@ func (verb *videoVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 
 	filepath, err := filepath.Abs(flags.Arg(0))
 	if err != nil {
-		return cause.Explain(ctx, err, "Finding file").With("File", flags.Arg(0))
+		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
 	}
 
 	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
 	if err != nil {
-		return cause.Explain(ctx, err, "Failed to connect to the GAPIS server")
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	defer client.Close()
 
 	capture, err := client.LoadCapture(ctx, filepath)
 	if err != nil {
-		return cause.Explain(ctx, err, "LoadCapture").With("capture", filepath)
+		return log.Errf(ctx, err, "LoadCapture(%v)", filepath)
 	}
 
 	device, err := getDevice(ctx, client, capture, verb.Gapir)
@@ -241,7 +240,7 @@ func (verb *videoVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 
 	boxedAtoms, err := client.Get(ctx, capture.Commands().Path())
 	if err != nil {
-		return cause.Explain(ctx, err, "Acquiring the capture's atoms")
+		return log.Err(ctx, err, "Acquiring the capture's atoms")
 	}
 	atoms := boxedAtoms.(*atom.List).Atoms
 
@@ -278,7 +277,7 @@ func (verb *videoVerb) Run(ctx log.Context, flags flag.FlagSet) error {
 	return vidOut(ctx, filepath, vidFun)
 }
 
-func (verb *videoVerb) writeFrames(ctx log.Context, filepath string, vidFun videoFrameWriter) error {
+func (verb *videoVerb) writeFrames(ctx context.Context, filepath string, vidFun videoFrameWriter) error {
 	outFile := verb.Out
 	if outFile == "" {
 		outFile = file.Abs(filepath).ChangeExt("").System()
@@ -299,7 +298,7 @@ func (verb *videoVerb) writeFrames(ctx log.Context, filepath string, vidFun vide
 	for frame := range ch {
 		fn := fmt.Sprintf("%s-%03d.png", outFile, index)
 		if err = verb.writeSingleFrame(frame, fn); err != nil {
-			ctx.Error().Logf("Error writing %s: %s", fn, err.Error())
+			log.E(ctx, "Error writing %s: %s", fn, err.Error())
 		}
 		index++
 	}
@@ -315,7 +314,7 @@ func (verb *videoVerb) writeSingleFrame(frame image.Image, fn string) error {
 	return png.Encode(out, frame)
 }
 
-func (verb *videoVerb) encodeVideo(ctx log.Context, filepath string, vidFun videoFrameWriter) error {
+func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun videoFrameWriter) error {
 	// Start an encoder
 	frames, video, err := video.Encode(ctx, video.Settings{FPS: verb.FPS})
 	if err != nil {
@@ -347,8 +346,8 @@ func (verb *videoVerb) encodeVideo(ctx log.Context, filepath string, vidFun vide
 	return nil
 }
 
-func getFrame(ctx log.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
-	ctx = ctx.I("cmd", int(cmd.Index))
+func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
+	ctx = log.V{"cmd": int(cmd.Index)}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(flags.Max.Width), MaxHeight: uint32(flags.Max.Height)}
 	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings)
 	if err != nil {
@@ -364,13 +363,18 @@ func getFrame(ctx log.Context, flags VideoFlags, cmd *path.Command, device *path
 		return nil, err
 	}
 	w, h, data := int(ii.Width), int(ii.Height), dataO.([]byte)
-	ctx = ctx.I("width", w).I("height", h).V("format", ii.Format)
+
+	ctx = log.V{
+		"width":  w,
+		"height": h,
+		"format": ii.Format,
+	}.Bind(ctx)
 	if ii.Width == 0 || ii.Height == 0 {
-		return nil, cause.Explain(ctx, nil, "Framebuffer has zero dimensions")
+		return nil, log.Err(ctx, nil, "Framebuffer has zero dimensions")
 	}
 	data, err = img.Convert(data, w, h, ii.Format, img.RGBA_U8_NORM)
 	if err != nil {
-		return nil, cause.Explain(ctx, err, "Failed to convert frame to RGBA")
+		return nil, log.Err(ctx, err, "Failed to convert frame to RGBA")
 	}
 	stride := w * 4
 	return &image.NRGBA{
