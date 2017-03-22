@@ -21,7 +21,8 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Ranges.count;
 import static com.google.gapid.util.Ranges.first;
 import static com.google.gapid.util.Ranges.last;
-import static com.google.gapid.widgets.Widgets.createTree;
+import static com.google.gapid.widgets.Widgets.createTreeForViewer;
+import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
@@ -114,10 +115,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     SearchBox search = new SearchBox(this);
     loading = new LoadablePanel<Tree>(this, widgets,
-        loadingParent -> createTree(loadingParent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
+        p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
     Tree tree = loading.getContents();
     tree.setLinesVisible(true);
-    viewer = new TreeViewer(tree);
+    viewer = createTreeViewer(tree);
     imageProvider = new ImageProvider(models.thumbs, viewer, widgets.loading);
     viewer.setUseHashlookup(true);
     viewer.setContentProvider(new AtomContentProvider(viewer));
