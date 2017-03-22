@@ -42,10 +42,16 @@ import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.Service.MemoryInfo;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.IntRange;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.LongPoint;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Paths;
+import com.google.gapid.widgets.CopyPaste;
+import com.google.gapid.widgets.CopyPaste.CopyData;
+import com.google.gapid.widgets.CopyPaste.CopySource;
 import com.google.gapid.widgets.InfiniteScrolledComposite;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
@@ -57,6 +63,8 @@ import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
@@ -71,6 +79,7 @@ import org.eclipse.swt.widgets.Label;
 import java.lang.ref.SoftReference;
 import java.math.BigInteger;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
@@ -114,7 +123,7 @@ public class MemoryView extends Composite
           }
         });
       }
-    }, widgets.theme);
+    }, widgets);
     setLayout(new GridLayout(1, true));
 
     selections = new Selections(this, this::setDataType, this::setObservation);
@@ -133,6 +142,7 @@ public class MemoryView extends Composite
       models.atoms.removeListener(this);
       models.follower.removeListener(this);
     });
+    memoryPanel.registerMouseEvents(memoryScroll);
   }
 
   @Override
@@ -430,20 +440,25 @@ public class MemoryView extends Composite
    */
   private static class MemoryPanel implements InfiniteScrolledComposite.Scrollable {
     public final int lineHeight;
+    public final BigInteger lineHeightBig;
     private final int[] charOffset = new int[256];
 
     private final Loadable loadable;
     private final Theme theme;
+    protected final CopyPaste copyPaste;
     private final Font font;
-    private MemoryModel model;
+    protected MemoryModel model;
+    protected Selection selection;
 
-    public MemoryPanel(Composite parent, Loadable loadable, Theme theme) {
+    public MemoryPanel(Composite parent, Loadable loadable, Widgets widgets) {
       this.loadable = loadable;
-      this.theme = theme;
+      this.theme = widgets.theme;
+      this.copyPaste = widgets.copypaste;
       font = JFaceResources.getFont(JFaceResources.TEXT_FONT);
       GC gc = new GC(parent);
       gc.setFont(font);
       lineHeight = gc.getFontMetrics().getHeight();
+      lineHeightBig = BigInteger.valueOf(lineHeight);
       StringBuilder sb = new StringBuilder();
       for (int i = 1; i < charOffset.length; i++) {
         charOffset[i] = gc.stringExtent(sb.append('0').toString()).x;
@@ -451,8 +466,117 @@ public class MemoryView extends Composite
       gc.dispose();
     }
 
+    public void registerMouseEvents(InfiniteScrolledComposite parent) {
+      parent.addContentListener(new MouseAdapter() {
+        private final LongPoint selectionPoint = new LongPoint(0, 0);
+        private boolean selecting;
+
+        @Override
+        public void mouseDown(MouseEvent e) {
+          parent.setFocus();
+          if (isSelectionButton(e)) {
+            if ((e.stateMask & SWT.SHIFT) != 0 && selection != null) {
+              selecting = true;
+              updateSelection(parent.getLocation(e));
+            } else {
+              startSelecting(parent.getLocation(e));
+            }
+            parent.redraw();
+          }
+        }
+
+        @Override
+        public void mouseUp(MouseEvent e) {
+          if (isSelectionButton(e)) {
+            selecting = false;
+            if (selection != null && selection.isEmpty()) {
+              selection = null;
+              parent.redraw();
+            }
+          }
+        }
+
+        @Override
+        public void mouseMove(MouseEvent e) {
+          if (isSelectionButtonDown(e)) {
+            if (selection == null) {
+              startSelecting(parent.getLocation(e));
+            } else {
+              updateSelection(parent.getLocation(e));
+            }
+          }
+        }
+
+        @Override
+        public void widgetSelected(SelectionEvent e) {
+          // Scrollbar was moved / mouse wheel caused scrolling.
+          if (selecting) {
+            if (selection == null) {
+              startSelecting(parent.getMouseLocation());
+            } else {
+              updateSelection(parent.getMouseLocation());
+            }
+          }
+        }
+
+        private void startSelecting(BigPoint location) {
+          selecting = true;
+          long y = location.y.divide(lineHeightBig).longValueExact();
+          if (y < 0 || y >= model.getLineCount()) {
+            selection = null;
+            copyPaste.updateCopyState();
+            return;
+          }
+          selectionPoint.set(getCharColumn(location.x.intValue()), y);
+          IntRange range = model.getSelectableRegion((int)selectionPoint.x);
+          if (range != null) {
+            selection = new Selection(range, selectionPoint, selectionPoint);
+            copyPaste.updateCopyState();
+          }
+        }
+
+        private void updateSelection(BigPoint location) {
+          int x = Math.max(selection.range.from,
+              Math.min(selection.range.to, getCharColumn(location.x.intValueExact())));
+          long y = location.y.divide(lineHeightBig).max(BigInteger.ZERO).longValueExact();
+          if (y >= model.getLineCount()) {
+            y = model.getLineCount() - 1;
+            x = selection.range.to;
+          }
+
+          if (y < selectionPoint.y || (y == selectionPoint.y && x < selectionPoint.x)) {
+            selection = new Selection(selection.range, x, y, selectionPoint);
+          } else {
+            selection = new Selection(selection.range, selectionPoint, x, y);
+          }
+          copyPaste.updateCopyState();
+          parent.redraw();
+        }
+
+        private boolean isSelectionButton(MouseEvent e) {
+          return e.button == 1;
+        }
+
+        private boolean isSelectionButtonDown(MouseEvent e) {
+          return (e.stateMask & SWT.BUTTON1) != 0;
+        }
+      });
+      parent.registerContentAsCopySource(copyPaste, new CopySource() {
+        @Override
+        public boolean hasCopyData() {
+          return selection != null && !selection.isEmpty();
+        }
+
+        @Override
+        public CopyData[] getCopyData() {
+          return model.getCopyData(selection);
+        }
+      });
+    }
+
     public void setModel(MemoryModel model) {
       this.model = model;
+      selection = null;
     }
 
     @Override
@@ -464,7 +588,7 @@ public class MemoryView extends Composite
     @Override
     public BigInteger getHeight() {
       return (model == null) ? BigInteger.ZERO :
-        BigInteger.valueOf(model.getLineCount()).multiply(BigInteger.valueOf(lineHeight));
+        BigInteger.valueOf(model.getLineCount()).multiply(lineHeightBig);
     }
 
     @Override
@@ -476,10 +600,10 @@ public class MemoryView extends Composite
       gc.setFont(font);
       Rectangle clip = gc.getClipping();
       BigInteger startY = yOffset.add(BigInteger.valueOf(clip.y));
-      long startRow = startY.divide(BigInteger.valueOf(lineHeight))
+      long startRow = startY.divide(lineHeightBig)
           .max(BigInteger.ZERO).min(BigInteger.valueOf(model.getLineCount() - 1)).longValueExact();
       long endRow = startY.add(BigInteger.valueOf(clip.height + lineHeight - 1))
-          .divide(BigInteger.valueOf(lineHeight))
+          .divide(lineHeightBig)
           .max(BigInteger.ZERO).min(BigInteger.valueOf(model.getLineCount())).longValueExact();
 
       Color background = gc.getBackground();
@@ -491,6 +615,11 @@ public class MemoryView extends Composite
       gc.setBackground(theme.memoryWriteHighlight());
       for (Selection write : model.getWrites(startRow, endRow, loadable)) {
         highlight(gc, yOffset, write);
+      }
+
+      if (selection != null && selection.isSelectionVisible(startRow, endRow)) {
+        gc.setBackground(theme.memorySelectionHighlight());
+        highlight(gc, yOffset, selection);
       }
       gc.setBackground(background);
 
@@ -504,21 +633,26 @@ public class MemoryView extends Composite
 
     private int getY(long line, BigInteger yOffset) {
       return BigInteger.valueOf(line)
-          .multiply(BigInteger.valueOf(lineHeight)).subtract(yOffset).intValueExact();
+          .multiply(lineHeightBig).subtract(yOffset).intValueExact();
     }
 
-    private void highlight(GC gc, BigInteger yOffset, Selection selection) {
-      if (selection.startRow == selection.endRow) {
-        int so = charOffset[selection.startCol], eo = charOffset[selection.endCol];
-        gc.fillRectangle(so, getY(selection.startRow, yOffset), eo - so, lineHeight);
+    private void highlight(GC gc, BigInteger yOffset, Selection range) {
+      if (range.startRow == range.endRow) {
+        int so = charOffset[range.startCol], eo = charOffset[range.endCol];
+        gc.fillRectangle(so, getY(range.startRow, yOffset), eo - so, lineHeight);
       } else {
-        int so = charOffset[selection.startCol], eo = charOffset[selection.endCol];
-        int fo = charOffset[selection.range.from], to = charOffset[selection.range.to];
-        gc.fillRectangle(so, getY(selection.startRow, yOffset), to - so, lineHeight);
-        gc.fillRectangle(fo, getY(selection.endRow, yOffset), eo - fo, lineHeight);
-        gc.fillRectangle(fo, getY(selection.startRow + 1, yOffset), to - fo,
-            (int)(selection.endRow - selection.startRow - 1) * lineHeight);
+        int so = charOffset[range.startCol], eo = charOffset[range.endCol];
+        int fo = charOffset[range.range.from], to = charOffset[range.range.to];
+        gc.fillRectangle(so, getY(range.startRow, yOffset), to - so, lineHeight);
+        gc.fillRectangle(fo, getY(range.endRow, yOffset), eo - fo, lineHeight);
+        gc.fillRectangle(fo, getY(range.startRow + 1, yOffset), to - fo,
+            (int)(range.endRow - range.startRow - 1) * lineHeight);
       }
+    }
+
+    protected int getCharColumn(int offset) {
+      int idx = Arrays.binarySearch(charOffset, offset);
+      return (idx < 0) ? (-idx - 1) - 1 : idx;
     }
   }
 
@@ -683,6 +817,11 @@ public class MemoryView extends Composite
      * @return the write selections within the given range of rows.
      */
     public Selection[] getWrites(long startRow, long endRow, Loadable loadable);
+
+    /**
+     * @return the given selected memory area as copy-paste content.
+     */
+    public CopyData[] getCopyData(Selection selection);
   }
 
   /**
@@ -873,6 +1012,40 @@ public class MemoryView extends Composite
     public IntRange[] getDataRanges() {
       return new IntRange[] { memoryRange };
     }
+
+    @Override
+    public CopyData[] getCopyData(Selection selection) {
+      return Futures.getUnchecked(Futures.transform(data.get(selection.startRow * BYTES_PER_ROW,
+          (int)(selection.endRow - selection.startRow + 1) * BYTES_PER_ROW), memory -> {
+            StringBuilder buffer = new StringBuilder();
+            Iterator<Segment> lines = getLines(selection.startRow, selection.endRow + 1, memory);
+            if (lines.hasNext()) {
+              Segment segment = lines.next();
+              if (selection.startRow == selection.endRow) {
+                buffer.append(segment.array,
+                    segment.offset + selection.startCol, selection.endCol - selection.startCol);
+              } else {
+                buffer.append(segment.array,
+                    segment.offset + selection.startCol, selection.range.to - selection.startCol)
+                    .append('\n');
+              }
+            }
+            int rangeWidth = selection.range.to - selection.range.from;
+            for (long line = selection.startRow + 1;
+                lines.hasNext() && line < selection.endRow; line++) {
+              Segment segment = lines.next();
+              buffer.append(segment.array, segment.offset + selection.range.from, rangeWidth)
+                  .append('\n');
+            }
+            if (lines.hasNext()) {
+              Segment segment = lines.next();
+              buffer.append(segment.array,
+                  segment.offset + selection.range.from, selection.endCol - selection.range.from)
+                  .append('\n');
+            }
+            return new CopyData[] { CopyData.text(buffer.toString()) };
+          }));
+    }
   }
 
   /**
@@ -903,6 +1076,23 @@ public class MemoryView extends Composite
         return ASCII_RANGE;
       } else {
         return super.getSelectableRegion(column);
+      }
+    }
+
+    @Override
+    public CopyData[] getCopyData(Selection selection) {
+      if (selection.range == ASCII_RANGE) {
+        // Copy the actual myData, rather than the display.
+        return Futures.getUnchecked(Futures.transform(
+            data.get(selection.startRow * BYTES_PER_ROW,
+                (int)(selection.endRow - selection.startRow + 1) * BYTES_PER_ROW),
+                s -> new CopyData[] {
+                  CopyData.text(s.asString(selection.startCol - ASCII_RANGE.from,
+                      s.length - selection.startCol + ASCII_RANGE.from -
+                      ASCII_RANGE.to + selection.endCol))
+                  }));
+      } else {
+        return super.getCopyData(selection);
       }
     }
 
@@ -1110,23 +1300,33 @@ public class MemoryView extends Composite
     public final int endCol;
     public final long endRow;
 
-    public Selection(IntRange range, int startCol, long startRow, int endCol, long endRow) {
+    public Selection(IntRange range, LongPoint start, LongPoint end) {
+      this(range, start.x, start.y, end.x, end.y);
+    }
+
+    public Selection(IntRange range, long startCol, long startRow, LongPoint end) {
+      this(range, startCol, startRow, end.x, end.y);
+    }
+
+    public Selection(IntRange range, LongPoint start, long endCol, long endRow) {
+      this(range, start.x, start.y, endCol, endRow);
+    }
+
+    public Selection(IntRange range, long startCol, long startRow, long endCol, long endRow) {
       this.range = range;
-      this.startCol = startCol;
+      this.startCol = (int)startCol;
       this.startRow = startRow;
-      this.endCol = endCol;
+      this.endCol = (int)endCol;
       this.endRow = endRow;
     }
 
-    /*TODO
     public boolean isEmpty() {
       return startCol == endCol && startRow == endRow;
     }
 
-    public boolean isSelectionVisible(long startRow, long endRow) {
-      return startRow <= endRow && startRow <= endRow;
+    public boolean isSelectionVisible(long fromRow, long toRow) {
+      return fromRow <= toRow && fromRow <= toRow;
     }
-    */
 
     @Override
     public String toString() {
@@ -1200,12 +1400,10 @@ public class MemoryView extends Composite
           data, known, offset + start, Math.min(count, length - start), reads, writes);
     }
 
-    /*TODO
     public String asString(int start, int count) {
       return new String(
           data, offset + start, Math.min(count, length - start), Charset.forName("US-ASCII"));
     }
-    */
 
     public boolean getByteKnown(int off, int size) {
       if (off < 0 || size < 0 || offset + off + size > data.length) {
