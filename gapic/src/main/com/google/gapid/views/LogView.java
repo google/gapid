@@ -15,18 +15,24 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.widgets.Widgets.createTree;
+
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Pods;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-
 import com.google.protobuf.Timestamp;
+
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.widgets.*;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeColumn;
+import org.eclipse.swt.widgets.TreeItem;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -69,7 +75,7 @@ public class LogView extends Composite implements Tab {
 
     messageIterator = Logging.getMessageIterator();
 
-    tree = new Tree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+    tree = createTree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
     tree.setHeaderVisible(true);
     tree.setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
     for (Column column : Column.values()) {

@@ -23,6 +23,7 @@ import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.ITreeSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -384,6 +385,10 @@ public class Widgets {
     return group;
   }
 
+  /**
+   * Do not use this if you intend to wrap the {@link Tree} in a {@link TreeViewer}. Instead use
+   * {@link #createTreeForViewer(Composite, int)} and then {@link #createTreeViewer(Tree)}.
+   */
   public static Tree createTree(Composite parent, int style) {
     Tree tree = new Tree(parent, style);
     tree.addListener(SWT.KeyDown, e -> {
@@ -397,6 +402,35 @@ public class Widgets {
       }
     });
     return tree;
+  }
+
+  /**
+   * Use this to create a {@link Tree} that you will later wrap in a {@link TreeViewer} using
+   * {@link #createTreeViewer(Tree)}, otherwise use {@link #createTree(Composite, int)}.
+   */
+  public static Tree createTreeForViewer(Composite parent, int style) {
+    Tree tree = new Tree(parent, style);
+    return tree;
+  }
+
+  public static TreeViewer createTreeViewer(Composite parent, int style) {
+    return createTreeViewer(createTreeForViewer(parent, style));
+  }
+
+  public static TreeViewer createTreeViewer(Tree tree) {
+    TreeViewer viewer = new TreeViewer(tree);
+    tree.addListener(SWT.KeyDown, e -> {
+      switch (e.keyCode) {
+        case SWT.ARROW_LEFT:
+        case SWT.ARROW_RIGHT:
+          ITreeSelection selection = viewer.getStructuredSelection();
+          if (selection.size() == 1) {
+            viewer.setExpandedState(selection.getFirstElement(), e.keyCode == SWT.ARROW_RIGHT);
+          }
+          break;
+      }
+    });
+    return viewer;
   }
 
   public static Composite createComposite(Composite parent, Layout layout) {

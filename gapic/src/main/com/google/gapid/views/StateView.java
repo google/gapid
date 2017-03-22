@@ -19,7 +19,8 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Pods.pod;
 import static com.google.gapid.util.Pods.unpod;
-import static com.google.gapid.widgets.Widgets.createTree;
+import static com.google.gapid.widgets.Widgets.createTreeForViewer;
+import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 import static java.util.logging.Level.WARNING;
 
@@ -95,10 +96,10 @@ public class StateView extends Composite
     setLayout(new FillLayout(SWT.VERTICAL));
 
     loading = LoadablePanel.create(this, widgets,
-        panel -> createTree(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL | SWT.MULTI));
+        panel -> createTreeForViewer(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL | SWT.MULTI));
     Tree tree = loading.getContents();
     tree.setLinesVisible(true);
-    viewer = new TreeViewer(tree);
+    viewer = createTreeViewer(tree);
     viewer.setUseHashlookup(true);
     viewer.setContentProvider(new StateContentProvider(viewer));
     ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme);
