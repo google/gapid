@@ -36,6 +36,8 @@ const (
 
 func (s Severity) String() string {
 	switch s {
+	case Verbose:
+		return "Verbose"
 	case Debug:
 		return "Debug"
 	case Info:
@@ -53,6 +55,8 @@ func (s Severity) String() string {
 // Short returns the severity string with a single character.
 func (s Severity) Short() string {
 	switch s {
+	case Verbose:
+		return "V"
 	case Debug:
 		return "D"
 	case Info:
