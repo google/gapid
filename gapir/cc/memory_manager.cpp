@@ -67,14 +67,14 @@ MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList) : mConstantM
             mMemory.reset(new(std::nothrow) uint8_t[mSize]);
             break;
         }
-        GAPID_INFO("Failed to allocate %u bytes of volatile memory, continuing...", size);
+        GAPID_DEBUG("Failed to allocate %u bytes of volatile memory, continuing...", size);
     }
 
     if (!mMemory) {
         GAPID_FATAL("Couldn't allocate any volatile memory size.");
     }
 
-    GAPID_INFO("Base address: %p", mMemory.get());
+    GAPID_DEBUG("Base address: %p", mMemory.get());
     setReplayDataSize(0);
     setVolatileMemory(mSize);
 }
@@ -85,7 +85,7 @@ bool MemoryManager::setReplayDataSize(uint32_t size) {
     }
 
     mReplayData = {align(mMemory.get() + mSize - size), size};
-    GAPID_INFO("Replay range: [%p,%p]",
+    GAPID_DEBUG("Replay range: [%p,%p]",
         mReplayData.base, mReplayData.base + mReplayData.size - 1);
     return true;
 }
@@ -96,7 +96,7 @@ bool MemoryManager::setVolatileMemory(uint32_t size) {
     }
 
     mVolatileMemory = {align(mReplayData.base - size), size};
-    GAPID_INFO("Volatile range: [%p,%p]",
+    GAPID_DEBUG("Volatile range: [%p,%p]",
         mVolatileMemory.base, mVolatileMemory.base + mVolatileMemory.size - 1);
     return true;
 }
@@ -104,7 +104,7 @@ bool MemoryManager::setVolatileMemory(uint32_t size) {
 void MemoryManager::setConstantMemory(const std::pair<const void*, uint32_t>& constantMemory) {
     mConstantMemory.base = const_cast<uint8_t*>(static_cast<const uint8_t*>(constantMemory.first));
     mConstantMemory.size = constantMemory.second;
-    GAPID_INFO("Constant range: [%p,%p]",
+    GAPID_DEBUG("Constant range: [%p,%p]",
         mConstantMemory.base, mConstantMemory.base + mConstantMemory.size - 1);
 }
 

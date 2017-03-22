@@ -94,9 +94,9 @@ void listenConnections(std::unique_ptr<Connection> conn,
 
         context->prefetch(resourceProvider.get());
 
-        if (!context->interpret()) {
-          GAPID_DEBUG("Interpret returned false");
-        }
+        GAPID_INFO("Replay started");
+        bool ok = context->interpret();
+        GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
     }
 }
 

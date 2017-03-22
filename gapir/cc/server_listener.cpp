@@ -78,7 +78,7 @@ std::unique_ptr<ServerConnection> ServerListener::acceptConnection(int idleTimeo
 
         switch (connectionType) {
             case REPLAY_REQUEST: {
-                GAPID_INFO("Replay requested");
+                GAPID_DEBUG("Replay requested");
                 std::unique_ptr<ServerConnection> conn = ServerConnection::create(std::move(client));
                 if (conn != nullptr) {
                     return conn;

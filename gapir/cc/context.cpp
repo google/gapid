@@ -96,7 +96,6 @@ void Context::prefetch(ResourceInMemoryCache* cache) const {
         mResourceProvider->prefetch(resources.data(), resources.size(), mServer,
                                     mMemoryManager->getVolatileAddress(),
                                     mReplayRequest->getVolatileMemorySize());
-        GAPID_INFO("Prefetching ready");
     }
 }
 
@@ -166,7 +165,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             mBoundGlesRenderer->bind();
             Api* api = mBoundGlesRenderer->api();
             interpreter->setRendererFunctions(api->index(), &api->mFunctions);
-            GAPID_INFO("Bound renderer %u: %s - %s", id, mBoundGlesRenderer->name(), mBoundGlesRenderer->version());
+            GAPID_DEBUG("Bound renderer %u: %s - %s", id, mBoundGlesRenderer->name(), mBoundGlesRenderer->version());
             return true;
         } else {
             GAPID_WARNING("Error during calling function replayBindRenderer");
