@@ -5964,13 +5964,31 @@ sub void doCmdDispatchIndirect(CmdDispatchIndirect dispatch) {
   readCoherentMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
 }
 
+@internal
+class RecreateCmdDispatchIndirectData {
+  VkBuffer Buffer,
+  VkDeviceSize Offset
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDispatchIndirect(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
-  addCmd(commandBuffer, Unimplemented(), CmdDispatchIndirect(buffer, offset), doCmdDispatchIndirect)
+  addCmd(commandBuffer,
+      new!RecreateCmdDispatchIndirectData(buffer, offset),
+      CmdDispatchIndirect(buffer, offset),
+      doCmdDispatchIndirect)
 }
 
 

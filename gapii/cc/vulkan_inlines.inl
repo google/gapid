@@ -428,6 +428,15 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdDispatchData>>::oper
         t->mX, t->mY, t->mZ);
 }
 
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdDispatchIndirectData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdDispatchIndirectData>& t) {
+  spy->RecreateCmdDispatchIndirect(observer, commandBuf, t->mBuffer,
+                                   t->mOffset);
+}
+
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdDrawIndexedData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
