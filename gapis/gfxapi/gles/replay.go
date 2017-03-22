@@ -120,6 +120,7 @@ func (a api) Replay(
 	readFramebuffer := newReadFramebuffer(ctx)
 
 	optimize := true
+	wire := false
 
 	for _, req := range requests {
 		switch req := req.(type) {
@@ -149,8 +150,7 @@ func (a api) Replay(
 			cfg := cfg.(drawConfig)
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
-				// TODO: Add only once
-				transforms.Add(wireframe(ctx))
+				wire = true
 			case replay.WireframeMode_Overlay:
 				transforms.Add(wireframeOverlay(ctx, req.after))
 			}
@@ -159,7 +159,11 @@ func (a api) Replay(
 
 	if optimize && !config.DisableDeadCodeElimination {
 		atoms = atom.NewList() // DeadAtomRemoval generates atoms.
-		transforms.Add(deadCodeElimination)
+		transforms.Prepend(deadCodeElimination)
+	}
+
+	if wire {
+		transforms.Add(wireframe(ctx))
 	}
 
 	if issues != nil {

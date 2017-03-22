@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
+import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
@@ -56,11 +57,9 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.layout.FillLayout;
@@ -72,13 +71,11 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TableColumn;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -460,11 +457,14 @@ public class ShaderView extends Composite
       table.getTable().setLinesVisible(true);
       table.setContentProvider(new ArrayContentProvider());
 
-      createColumn(table, "Location", uniform -> String.valueOf(uniform.getUniformLocation()));
-      createColumn(table, "Name", Uniform::getName);
-      createColumn(table, "Type", uniform -> String.valueOf(uniform.getType()));
-      createColumn(table, "Format", uniform -> String.valueOf(uniform.getFormat()));
-      createColumn(table, "Value", uniform -> {
+      Widgets.<Uniform>createTableColumn(table, "Location",
+          uniform -> String.valueOf(uniform.getUniformLocation()));
+      Widgets.<Uniform>createTableColumn(table, "Name", Uniform::getName);
+      Widgets.<Uniform>createTableColumn(table, "Type",
+          uniform -> String.valueOf(uniform.getType()));
+      Widgets.<Uniform>createTableColumn(table, "Format",
+          uniform -> String.valueOf(uniform.getFormat()));
+      Widgets.<Uniform>createTableColumn(table, "Value", uniform -> {
         Pod.Value value = uniform.getValue();
         switch (uniform.getType()) {
           case Int32: return String.valueOf(value.getSint32Array().getValList());
@@ -475,7 +475,7 @@ public class ShaderView extends Composite
           default: return ProtoDebugTextFormat.shortDebugString(value);
         }
       });
-      updateColumnSizes();
+      packColumns(table.getTable());
     }
 
     public void setUniforms(Program program) {
@@ -483,26 +483,8 @@ public class ShaderView extends Composite
       Collections.sort(uniforms, (a, b) -> a.getUniformLocation() - b.getUniformLocation());
       table.setInput(uniforms);
       table.refresh();
-      updateColumnSizes();
+      packColumns(table.getTable());
       table.getTable().requestLayout();
-    }
-
-    private void updateColumnSizes() {
-      for (TableColumn column : table.getTable().getColumns()) {
-        column.pack();
-      }
-    }
-
-    private static TableViewerColumn createColumn(
-        TableViewer table, String title, Function<Uniform, String> labelProvider) {
-      TableViewerColumn column = Widgets.createTableColum(table, title);
-      column.setLabelProvider(new ColumnLabelProvider() {
-        @Override
-        public String getText(Object element) {
-          return labelProvider.apply((Uniform)element);
-        }
-      });
-      return column;
     }
   }
 
@@ -553,7 +535,9 @@ public class ShaderView extends Composite
 
     @Override
     public String toString() {
-      return info.getName();
+      String handle = info.getHandle();
+      String label = info.getLabel();
+      return (label.isEmpty()) ? handle : handle + " [" + label + "]";
     }
   }
 }

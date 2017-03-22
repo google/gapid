@@ -19,12 +19,15 @@ import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -50,6 +53,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
@@ -57,7 +61,9 @@ import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.Comparator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Widget utilities.
@@ -287,12 +293,87 @@ public class Widgets {
     return link;
   }
 
-  public static TableViewerColumn createTableColum(TableViewer viewer, String title) {
+  public static TableViewerColumn createTableColumn(TableViewer viewer, String title) {
     TableViewerColumn result = new TableViewerColumn(viewer, SWT.NONE);
     TableColumn column = result.getColumn();
     column.setText(title);
     column.setResizable(true);
     return result;
+  }
+
+  public static <T> TableViewerColumn createTableColumn(
+      TableViewer viewer, String title, Function<T, String> labelProvider) {
+    TableViewerColumn column = createTableColumn(viewer, title);
+    column.setLabelProvider(new ColumnLabelProvider() {
+      @Override
+      @SuppressWarnings("unchecked")
+      public String getText(Object element) {
+        return labelProvider.apply((T)element);
+      }
+    });
+    return column;
+  }
+
+  public static <T> ColumnAndComparator<T> createTableColumn(
+      TableViewer viewer, String title, Function<T, String> labelProvider, Comparator<T> comp) {
+    return new ColumnAndComparator<>(createTableColumn(viewer, title, labelProvider), comp);
+  }
+
+  @SafeVarargs
+  public static <T> void sorting(
+      TableViewer table, ColumnAndComparator<T>... columns) {
+    int[] sortState = { 0, SWT.UP };
+    for (int i = 0; i < columns.length; i++) {
+      final int idx = i;
+      columns[idx].getColumn().addListener(SWT.Selection, e -> {
+        table.getTable().setSortColumn(columns[idx].getColumn());
+        if (idx == sortState[0]) {
+          sortState[1] = (sortState[1] == SWT.UP) ? SWT.DOWN : SWT.UP;
+          table.getTable().setSortDirection(sortState[1]);
+        } else {
+          table.getTable().setSortDirection(SWT.UP);
+          sortState[0] = idx;
+          sortState[1] = SWT.UP;
+        }
+
+        table.setComparator(columns[idx].getComparator(sortState[1] == SWT.DOWN));
+      });
+    }
+
+    table.getTable().setSortColumn(columns[0].getColumn());
+    table.getTable().setSortDirection(SWT.UP);
+    table.setComparator(columns[0].getComparator(false));
+  }
+
+  public static void packColumns(Table table) {
+    for (TableColumn column : table.getColumns()) {
+      column.pack();
+    }
+  }
+
+  public static class ColumnAndComparator<T> {
+    public final TableViewerColumn column;
+    public final Comparator<T> comparator;
+
+    public ColumnAndComparator(TableViewerColumn column, Comparator<T> comparator) {
+      this.column = column;
+      this.comparator = comparator;
+    }
+
+    public TableColumn getColumn() {
+      return column.getColumn();
+    }
+
+    public ViewerComparator getComparator(boolean reverse) {
+      return new ViewerComparator() {
+        @Override
+        @SuppressWarnings("unchecked")
+        public int compare(Viewer viewer, Object e1, Object e2) {
+          return reverse ? comparator.compare((T)e2, (T)e1) :
+            comparator.compare((T)e1, (T)e2);
+        }
+      };
+    }
   }
 
   public static Group createGroup(Composite parent, String text) {

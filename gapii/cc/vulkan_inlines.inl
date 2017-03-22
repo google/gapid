@@ -237,6 +237,16 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetLineWidthData>>::
 }
 
 template<>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdFillBufferData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdFillBufferData>& t) {
+    if (!spy->Buffers.count(t->mBuffer)) {
+        return;
+    }
+    spy->RecreateCmdFillBuffer(observer, commandBuf, t->mBuffer, t->mDstBuffer, t->mSize, t->mData);
+}
+
+template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetBlendConstantsData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdSetBlendConstantsData>& t) {

@@ -56,6 +56,7 @@ public class Settings {
   public String lastOpenDir;
   public int[] reportSplitterWeights = new int[] { 75, 25 };
   public int[] shaderSplitterWeights = new int[] { 70, 30 };
+  public int[] texturesSplitterWeights = new int[] { 20, 80 };
   public String traceDevice;
   public String tracePackage;
   public String traceOutDir;
@@ -105,8 +106,12 @@ public class Settings {
     hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
     tabWeights = getIntList(properties, "tabs.weights", tabWeights);
     lastOpenDir = properties.getProperty("lastOpenDir", "");
-    reportSplitterWeights = getIntList(properties, "report.splitter.weights", reportSplitterWeights);
-    shaderSplitterWeights = getIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
+    reportSplitterWeights =
+        getIntList(properties, "report.splitter.weights", reportSplitterWeights);
+    shaderSplitterWeights =
+        getIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
+    texturesSplitterWeights =
+        getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     traceDevice = properties.getProperty("trace.device", "");
     tracePackage = properties.getProperty("trace.package", "");
     traceOutDir = properties.getProperty("trace.dir", "");
@@ -131,6 +136,7 @@ public class Settings {
     properties.setProperty("lastOpenDir", lastOpenDir);
     setIntList(properties, "report.splitter.weights", reportSplitterWeights);
     setIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
+    setIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     properties.setProperty("trace.device", traceDevice);
     properties.setProperty("trace.package", tracePackage);
     properties.setProperty("trace.dir", traceOutDir);
