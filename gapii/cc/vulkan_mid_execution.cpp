@@ -1453,6 +1453,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             &pool.mVulkanHandle);
     }
 
+    // Recreate and begin command buffers
     for (auto& commandBuffer: CommandBuffers) {
         auto& cmdBuff = *commandBuffer.second;
         VkCommandBufferAllocateInfo allocate_info {
@@ -1487,6 +1488,11 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
         RecreateVkCommandBuffer(observer, cmdBuff.mDevice,
                 &allocate_info, cmdBuff.mBeginInfo? &begin_info: nullptr, &cmdBuff.mVulkanHandle);
+    }
+
+    // Re-record commands and end for the command buffers
+    for (auto& commandBuffer: CommandBuffers) {
+        auto& cmdBuff = *commandBuffer.second;
 
         for (auto& recreate: cmdBuff.recreateCommands) {
             recreate(observer);
