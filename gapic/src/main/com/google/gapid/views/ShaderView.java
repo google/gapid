@@ -20,9 +20,11 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -333,11 +335,9 @@ public class ShaderView extends Composite
     }
 
     private ComboViewer createShaderSelector() {
-      ComboViewer combo = new ComboViewer(this, SWT.READ_ONLY);
+      ComboViewer combo = createDropDownViewer(this);
       combo.setContentProvider(ArrayContentProvider.getInstance());
       combo.setLabelProvider(new LabelProvider());
-      combo.setUseHashlookup(true);
-      combo.getCombo().setVisibleItemCount(10);
       return combo;
     }
 
@@ -485,9 +485,7 @@ public class ShaderView extends Composite
       super(parent, SWT.NONE);
       setLayout(new FillLayout(SWT.VERTICAL));
 
-      table = new TableViewer(this, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
-      table.getTable().setHeaderVisible(true);
-      table.getTable().setLinesVisible(true);
+      table = createTableViewer(this, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
       table.setContentProvider(new ArrayContentProvider());
 
       Widgets.<Uniform>createTableColumn(table, "Location",

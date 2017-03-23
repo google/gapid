@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
+
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Models;
@@ -39,10 +41,9 @@ public class ContextSelector extends Composite implements ApiContext.Listener {
     this.models = models;
 
     setLayout(new FillLayout(SWT.VERTICAL));
-    contextCombo = new ComboViewer(this, SWT.READ_ONLY);
+    contextCombo = createDropDownViewer(this);
     contextCombo.setContentProvider(ArrayContentProvider.getInstance());
     contextCombo.setLabelProvider(new LabelProvider());
-    contextCombo.setUseHashlookup(true);
 
     models.contexts.addListener(this);
     addListener(SWT.Dispose, e -> {

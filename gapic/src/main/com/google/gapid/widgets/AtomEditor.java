@@ -18,6 +18,8 @@ package com.google.gapid.widgets;
 import static com.google.gapid.util.Paths.command;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createDropDown;
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTextbox;
@@ -300,8 +302,8 @@ public class AtomEditor {
 
       public EnumEditor(
           Composite parent, List<Constant> constants, Constant value, int fieldIndex) {
-        super(fieldIndex, new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY));
-        viewer = new ComboViewer(control);
+        super(fieldIndex, createDropDown(parent));
+        viewer = createDropDownViewer(control);
         viewer.setContentProvider(ArrayContentProvider.getInstance());
         viewer.setLabelProvider(new LabelProvider());
         viewer.setUseHashlookup(true);

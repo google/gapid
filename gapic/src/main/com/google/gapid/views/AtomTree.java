@@ -23,7 +23,6 @@ import static com.google.gapid.util.Ranges.first;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Maps;
@@ -117,14 +116,11 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     loading = new LoadablePanel<Tree>(this, widgets,
         p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
     Tree tree = loading.getContents();
-    tree.setLinesVisible(true);
     viewer = createTreeViewer(tree);
     imageProvider = new ImageProvider(models.thumbs, viewer, widgets.loading);
-    viewer.setUseHashlookup(true);
     viewer.setContentProvider(new AtomContentProvider(viewer));
     ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme, imageProvider);
     viewer.setLabelProvider(labelProvider);
-    expandOnDoubleClick(viewer);
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));

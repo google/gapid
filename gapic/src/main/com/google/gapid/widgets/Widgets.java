@@ -21,6 +21,7 @@ import com.google.gapid.server.Client;
 
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
+import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -41,6 +42,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -61,6 +63,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.Comparator;
@@ -328,6 +331,14 @@ public class Widgets {
     return link;
   }
 
+  public static TableViewer createTableViewer(Composite parent, int style) {
+    TableViewer table = new TableViewer(parent, style);
+    table.getTable().setHeaderVisible(true);
+    table.getTable().setLinesVisible(true);
+    table.setUseHashlookup(true);
+    return table;
+  }
+
   public static TableViewerColumn createTableColumn(TableViewer viewer, String title) {
     TableViewerColumn result = new TableViewerColumn(viewer, SWT.NONE);
     TableColumn column = result.getColumn();
@@ -425,6 +436,7 @@ public class Widgets {
    */
   public static Tree createTree(Composite parent, int style) {
     Tree tree = new Tree(parent, style);
+    tree.setLinesVisible(true);
     tree.addListener(SWT.KeyDown, e -> {
       switch (e.keyCode) {
         case SWT.ARROW_LEFT:
@@ -433,6 +445,12 @@ public class Widgets {
             tree.getSelection()[0].setExpanded(e.keyCode == SWT.ARROW_RIGHT);
           }
           break;
+      }
+    });
+    tree.addListener(SWT.MouseDoubleClick, e -> {
+      if (tree.getSelectionCount() == 1) {
+        TreeItem selection = tree.getSelection()[0];
+        selection.setExpanded(!selection.getExpanded());
       }
     });
     return tree;
@@ -444,6 +462,7 @@ public class Widgets {
    */
   public static Tree createTreeForViewer(Composite parent, int style) {
     Tree tree = new Tree(parent, style);
+    tree.setLinesVisible(true);
     return tree;
   }
 
@@ -453,6 +472,7 @@ public class Widgets {
 
   public static TreeViewer createTreeViewer(Tree tree) {
     TreeViewer viewer = new TreeViewer(tree);
+    viewer.setUseHashlookup(true);
     tree.addListener(SWT.KeyDown, e -> {
       switch (e.keyCode) {
         case SWT.ARROW_LEFT:
@@ -464,6 +484,33 @@ public class Widgets {
           break;
       }
     });
+    viewer.addDoubleClickListener(new IDoubleClickListener() {
+      @Override
+      public void doubleClick(DoubleClickEvent event) {
+        IStructuredSelection selection = (IStructuredSelection)event.getSelection();
+        if (selection.size() == 1) {
+          Object element = selection.getFirstElement();
+          viewer.setExpandedState(element, !viewer.getExpandedState(element));
+        }
+      }
+    });
+    return viewer;
+  }
+
+  public static Combo createDropDown(Composite parent) {
+    Combo combo = new Combo(parent, SWT.READ_ONLY | SWT.DROP_DOWN);
+    combo.setVisibleItemCount(10);
+    return combo;
+  }
+
+  public static ComboViewer createDropDownViewer(Composite parent) {
+    return createDropDownViewer(createDropDown(parent));
+  }
+
+  public static ComboViewer createDropDownViewer(Combo combo) {
+    ComboViewer viewer = new ComboViewer(combo);
+    viewer.setUseHashlookup(true);
+
     return viewer;
   }
 
@@ -511,17 +558,6 @@ public class Widgets {
     layout.fill = fill;
     layout.justify = justify;
     return layout;
-  }
-
-  public static void expandOnDoubleClick(TreeViewer viewer) {
-    viewer.addDoubleClickListener(new IDoubleClickListener() {
-      @Override
-      public void doubleClick(DoubleClickEvent event) {
-        IStructuredSelection selection = (IStructuredSelection)event.getSelection();
-        Object element = selection.getFirstElement();
-        viewer.setExpandedState(element, !viewer.getExpandedState(element));
-      }
-    });
   }
 
   public static void disposeAllChildren(Composite parent) {

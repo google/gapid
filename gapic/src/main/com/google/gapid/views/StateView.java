@@ -21,7 +21,6 @@ import static com.google.gapid.util.Pods.pod;
 import static com.google.gapid.util.Pods.unpod;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Iterables;
@@ -98,13 +97,10 @@ public class StateView extends Composite
     loading = LoadablePanel.create(this, widgets,
         panel -> createTreeForViewer(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL | SWT.MULTI));
     Tree tree = loading.getContents();
-    tree.setLinesVisible(true);
     viewer = createTreeViewer(tree);
-    viewer.setUseHashlookup(true);
     viewer.setContentProvider(new StateContentProvider(viewer));
     ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme);
     viewer.setLabelProvider(labelProvider);
-    expandOnDoubleClick(viewer);
 
     models.capture.addListener(this);
     models.atoms.addListener(this);

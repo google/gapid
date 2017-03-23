@@ -20,6 +20,8 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.command;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.util.Ranges.memory;
+import static com.google.gapid.widgets.Widgets.createDropDown;
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -285,11 +287,9 @@ public class MemoryView extends Composite
     }
 
     private ComboViewer createObservationSelector() {
-      ComboViewer combo = new ComboViewer(this, SWT.READ_ONLY);
+      ComboViewer combo = createDropDownViewer(this);
       combo.setContentProvider(ArrayContentProvider.getInstance());
       combo.setLabelProvider(new LabelProvider());
-      combo.setUseHashlookup(true);
-      combo.getCombo().setVisibleItemCount(10);
       combo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
       return combo;
     }
@@ -424,7 +424,7 @@ public class MemoryView extends Composite
     public abstract MemoryModel getMemoryModel(MemoryDataModel memory);
 
     public static Combo createCombo(Composite parent) {
-      Combo combo = new Combo(parent, SWT.READ_ONLY);
+      Combo combo = createDropDown(parent);
       String[] names = new String[values().length];
       for (int i = 0; i < names.length; i++) {
         names[i] = values()[i].name();
