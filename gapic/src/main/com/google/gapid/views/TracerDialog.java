@@ -17,6 +17,7 @@ package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
@@ -249,7 +250,7 @@ public class TracerDialog {
     }
 
     private static ComboViewer createDeviceDropDown(Composite parent) {
-      ComboViewer combo = new ComboViewer(parent, SWT.READ_ONLY);
+      ComboViewer combo = createDropDownViewer(parent);
       combo.setContentProvider(ArrayContentProvider.getInstance());
       combo.setLabelProvider(new LabelProvider() {
         @Override
@@ -265,7 +266,6 @@ public class TracerDialog {
           return sb.append(info.getSerial()).toString();
         }
       });
-      combo.setUseHashlookup(true);
       return combo;
     }
 

@@ -18,7 +18,6 @@ package com.google.gapid.views;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.expandOnDoubleClick;
 
 import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
@@ -81,12 +80,9 @@ public class ReportView extends Composite
     SashForm splitter = loading.getContents();
 
     viewer = createTreeViewer(splitter, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL);
-    viewer.getTree().setLinesVisible(true);
-    viewer.setUseHashlookup(true);
     viewer.setContentProvider(new ReportContentProvider(viewer, messages));
     ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme, messages);
     viewer.setLabelProvider(labelProvider);
-    expandOnDoubleClick(viewer);
 
     Composite detailsGroup = Widgets.createGroup(splitter, "Details");
     reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.H_SCROLL | SWT.V_SCROLL);

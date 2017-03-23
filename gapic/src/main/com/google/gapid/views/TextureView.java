@@ -21,6 +21,7 @@ import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 
@@ -134,11 +135,8 @@ public class TextureView extends Composite
   }
 
   private static TableViewer createTextureSelector(Composite parent) {
-    TableViewer viewer = new TableViewer(parent, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+    TableViewer viewer = createTableViewer(parent, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
     viewer.setContentProvider(ArrayContentProvider.getInstance());
-    viewer.setUseHashlookup(true);
-    viewer.getTable().setHeaderVisible(true);
-    viewer.getTable().setLinesVisible(true);
 
     sorting(viewer,
         createTableColumn(viewer, "Type", Data::getType,
