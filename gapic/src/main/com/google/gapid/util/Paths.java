@@ -18,6 +18,7 @@ package com.google.gapid.util;
 import static com.google.gapid.proto.service.path.Path.Any.PathCase.COMMANDS;
 import static com.google.gapid.util.Ranges.last;
 
+import com.google.gapid.image.Images;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.path.Path;
@@ -182,6 +183,21 @@ public class Paths {
         .setAs(Path.As.newBuilder()
             .setResourceData(resource)
             .setImageFormat(format))
+        .build();
+  }
+
+  public static Path.Thumbnail thumbnail(Path.ResourceData resource, int size) {
+    return Path.Thumbnail.newBuilder()
+        .setResource(resource)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .build();
+  }
+
+  public static Path.Any thumbnail(Path.Thumbnail thumb) {
+    return Path.Any.newBuilder()
+        .setThumbnail(thumb)
         .build();
   }
 

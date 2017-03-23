@@ -21,6 +21,7 @@ import static com.google.gapid.util.Paths.blob;
 import static com.google.gapid.util.Paths.imageData;
 import static com.google.gapid.util.Paths.imageInfo;
 import static com.google.gapid.util.Paths.resourceInfo;
+import static com.google.gapid.util.Paths.thumbnail;
 
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
@@ -79,6 +80,18 @@ public class FetchedImage implements MultiLevelImage {
     });
   }
 
+  public static ListenableFuture<ImageData> loadLevel(
+      ListenableFuture<FetchedImage> futureImage, final int level) {
+    return Futures.transformAsync(futureImage, image -> Futures.transform(
+        image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getData().getImageData()));
+  }
+
+  public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
+    return loadLevel(Futures.transform(client.get(thumbnail(path)), value -> {
+      return new FetchedImage(client, Images.Format.Color8, value.getImageInfo2D());
+    }), 0);
+  }
+
   private static Images.Format getFormat(Info2D imageInfo) {
     return Images.Format.from(imageInfo.getFormat());
   }
@@ -122,12 +135,6 @@ public class FetchedImage implements MultiLevelImage {
     return (index < 0 || index >= levels.length) ?
         immediateFailedFuture(new IllegalArgumentException("Invalid image level " + index)) :
         levels[index].get();
-  }
-
-  public static ListenableFuture<ImageData> loadLevel(
-      ListenableFuture<FetchedImage> futureImage, final int level) {
-    return Futures.transformAsync(futureImage, image -> Futures.transform(
-        image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getData().getImageData()));
   }
 
   /**
