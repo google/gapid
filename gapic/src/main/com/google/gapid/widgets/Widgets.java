@@ -315,12 +315,23 @@ public class Widgets {
 
   public static <T> TableViewerColumn createTableColumn(
       TableViewer viewer, String title, Function<T, String> labelProvider) {
+    return createTableColumn(viewer, title, labelProvider, d -> null);
+  }
+
+  public static <T> TableViewerColumn createTableColumn(TableViewer viewer, String title,
+      Function<T, String> labelProvider, Function<T, Image> imageProvider) {
     TableViewerColumn column = createTableColumn(viewer, title);
     column.setLabelProvider(new ColumnLabelProvider() {
       @Override
       @SuppressWarnings("unchecked")
       public String getText(Object element) {
         return labelProvider.apply((T)element);
+      }
+
+      @Override
+      @SuppressWarnings("unchecked")
+      public Image getImage(Object element) {
+        return imageProvider.apply((T)element);
       }
     });
     return column;
@@ -329,6 +340,12 @@ public class Widgets {
   public static <T> ColumnAndComparator<T> createTableColumn(
       TableViewer viewer, String title, Function<T, String> labelProvider, Comparator<T> comp) {
     return new ColumnAndComparator<>(createTableColumn(viewer, title, labelProvider), comp);
+  }
+
+  public static <T> ColumnAndComparator<T> createTableColumn(TableViewer viewer, String title,
+      Function<T, String> labelProvider, Function<T, Image> imageProvider, Comparator<T> comp) {
+    return new ColumnAndComparator<>(
+        createTableColumn(viewer, title, labelProvider, imageProvider), comp);
   }
 
   @SafeVarargs

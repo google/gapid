@@ -18,15 +18,19 @@ package com.google.gapid.views;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
+import static com.google.gapid.util.Paths.thumbnail;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.sorting;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.primitives.UnsignedLongs;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.AtomStream;
@@ -51,6 +55,8 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.UiErrorCallback;
 import com.google.gapid.widgets.ImagePanel;
+import com.google.gapid.widgets.LoadableImage;
+import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
@@ -59,8 +65,10 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -73,6 +81,7 @@ import org.eclipse.swt.widgets.ToolItem;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.LongConsumer;
 import java.util.logging.Logger;
@@ -89,6 +98,7 @@ public class TextureView extends Composite
   private final FutureController rpcController = new SingleInFlight();
   private final GotoAction gotoAction;
   private final TableViewer textureTable;
+  private final ImageProvider imageProvider;
   protected final Loadable loading;
   private final ImagePanel imagePanel;
 
@@ -101,7 +111,9 @@ public class TextureView extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
-    textureTable = createTextureSelector(splitter);
+    textureTable = createTableViewer(splitter, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+    imageProvider = new ImageProvider(client, textureTable, widgets.loading);
+    initTextureSelector(textureTable, imageProvider);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
@@ -125,6 +137,7 @@ public class TextureView extends Composite
       models.atoms.removeListener(this);
       models.resources.removeListener(this);
       gotoAction.dispose();
+      imageProvider.reset();
     });
 
     textureTable.getTable().addListener(SWT.Selection, e -> updateSelection());
@@ -134,14 +147,13 @@ public class TextureView extends Composite
     imagePanel.setImage(result);
   }
 
-  private static TableViewer createTextureSelector(Composite parent) {
-    TableViewer viewer = createTableViewer(parent, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+  private static void initTextureSelector(TableViewer viewer, ImageProvider imageProvider) {
     viewer.setContentProvider(ArrayContentProvider.getInstance());
 
     sorting(viewer,
         createTableColumn(viewer, "Type", Data::getType,
             (d1, d2) -> d1.getType().compareTo(d2.getType())),
-        createTableColumn(viewer, "ID", Data::getId,
+        createTableColumn(viewer, "ID", Data::getId, d -> imageProvider.getImage(d),
             (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
         createTableColumn(viewer, "Name", Data::getLabel,
             (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())),
@@ -153,8 +165,6 @@ public class TextureView extends Composite
             (d1, d2) -> Integer.compare(d1.getSortLevels(), d2.getSortLevels())),
         createTableColumn(viewer, "Format", Data::getFormat,
             (d1, d2) -> d1.getFormat().compareTo(d2.getFormat())));
-
-    return viewer;
   }
 
   private static ImagePanel createImagePanel(Composite parent, Widgets widgets) {
@@ -199,6 +209,7 @@ public class TextureView extends Composite
 
   private void updateTextures(boolean resourcesChanged) {
     if (models.resources.isLoaded() && models.atoms.getSelectedAtoms() != null) {
+      imageProvider.reset();
       List<Data> textures = Lists.newArrayList();
       for (Service.ResourcesByType resources : models.resources.getResources()) {
         addTextures(textures, resources);
@@ -231,6 +242,7 @@ public class TextureView extends Composite
     gotoAction.clear();
     textureTable.setInput(Collections.emptyList());
     textureTable.getTable().requestLayout();
+    imageProvider.reset();
   }
 
   private void updateSelection() {
@@ -485,6 +497,49 @@ public class TextureView extends Composite
         }
       }
       item.setEnabled(!atomIds.isEmpty());
+    }
+  }
+
+  /**
+   * Image provider for the texture selector.
+   */
+  private static class ImageProvider implements LoadingIndicator.Repaintable {
+    private static final int SIZE = DPIUtil.autoScaleUp(18);
+
+    private final Client client;
+    private final TableViewer viewer;
+    private final LoadingIndicator loading;
+    private final Map<Data, LoadableImage> images = Maps.newIdentityHashMap();
+
+    public ImageProvider(Client client, TableViewer viewer, LoadingIndicator loading) {
+      this.client = client;
+      this.viewer = viewer;
+      this.loading = loading;
+    }
+
+    public org.eclipse.swt.graphics.Image getImage(Data data) {
+      LoadableImage image = images.get(data);
+      if (image == null) {
+        image = LoadableImage.forSmallImageData(viewer.getTable(), loadImage(data), loading, this);
+        images.put(data, image);
+      }
+      return image.getImage();
+    }
+
+    @Override
+    public void repaint() {
+      scheduleIfNotDisposed(viewer.getTable(), viewer::refresh);
+    }
+
+    private ListenableFuture<ImageData> loadImage(Data data) {
+      return FetchedImage.loadThumbnail(client, thumbnail(data.path.getResourceData(), SIZE));
+    }
+
+    public void reset() {
+      for (LoadableImage image : images.values()) {
+        image.dispose();
+      }
+      images.clear();
     }
   }
 }
