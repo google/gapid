@@ -114,5 +114,6 @@ void SpyOverride_RecreateCmdExecuteCommands(VkCommandBuffer, uint32_t, const VkC
 
 void SpyOverride_RecreateXCBSurfaceKHR(VkDevice, const VkXcbSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 void SpyOverride_RecreateAndroidSurfaceKHR(VkDevice, const VkAndroidSurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
+void SpyOverride_RecreateWin32SurfaceKHR(VkDevice, const VkWin32SurfaceCreateInfoKHR*, VkSurfaceKHR*) {}
 
 void EnumerateVulkanResources(CallObserver* observer);

@@ -3,7 +3,7 @@
   "layer": {
     "name": "VirtualSwapchain",
     "type": "GLOBAL",
-    "library_path": "./libVkLayer_VirtualSwapchain.so",
+    "library_path": "./${VirtualSwapchainName}",
     "api_version" : "1.0.5",
     "implementation_version" : "1",
     "description" : "Virtual Swapchain Layer",

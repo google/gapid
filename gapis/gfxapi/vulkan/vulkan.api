@@ -8398,6 +8398,7 @@ enum SurfaceType {
   SURFACE_TYPE_UNKNOWN = 0
   SURFACE_TYPE_XCB = 1
   SURFACE_TYPE_ANDROID = 2
+  SURFACE_TYPE_WIN32 = 3
 }
 
 @internal class SurfaceObject {
