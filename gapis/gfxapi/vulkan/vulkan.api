@@ -6936,7 +6936,7 @@ cmd void vkCmdCopyQueryPoolResults(
     VkQueryResultFlags flags) {
   recreate_data := new!RecreateCmdCopyQueryPoolResultsData(
     QueryPool: queryPool,
-    QueryCount: firstQuery,
+    FirstQuery: firstQuery,
     QueryCount: queryCount,
     DstBuffer: dstBuffer,
     DstOffset: dstOffset,
