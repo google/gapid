@@ -77,7 +77,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
 			res <- imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Depth attachment")}}
 			return
 		}
-		imageViewDepth := GetState(s).LastUsedFramebuffer.ImageAttachments[attachmentIndex]
+		imageViewDepth := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		depthImageObject := imageViewDepth.Image
 		postImageData(ctx, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, func(i imgRes) { res <- i })
 	})
@@ -94,7 +94,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		// TODO: Figure out a better way to select the framebuffer here.
-		imageView := GetState(s).LastUsedFramebuffer.ImageAttachments[attachmentIndex]
+		imageView := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		imageObject := imageView.Image
 		postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, func(i imgRes) { res <- i })
 	})
