@@ -46,6 +46,12 @@
 #define GAPID_STR(S) GAPID_STR2(S)
 #define GAPID_STR2(S) #S
 
+#if TARGET_OS == GAPID_OS_WINDOWS
+  #define PRIsize "Iu"
+#else
+  #define PRIsize "zu"
+#endif
+
 // Template meta-programming (tmp) used to strip absolute path from __FILE__.
 // The main difficulty is that we need to make copy of the string since
 // any live reference to __FILE__ will keep the whole path in the binary.
