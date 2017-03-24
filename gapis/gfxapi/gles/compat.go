@@ -514,11 +514,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlDrawArrays:
 			if target.vertexArrayObjects == required {
 				if clientVAsBound(c, clientVAs) {
-					first := int(a.FirstIndex)
-					last := first + int(a.IndicesCount) - 1
+					first := uint32(a.FirstIndex)
+					count := uint32(a.IndicesCount)
 					t := newTweaker(ctx, out)
 					defer t.revert()
-					moveClientVBsToVAs(ctx, t, clientVAs, first, last, i, a, s, c, out)
+					moveClientVBsToVAs(ctx, t, clientVAs, first, count, i, a, s, c, out)
 				}
 			}
 
@@ -553,7 +553,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						// application pool.
 						a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 						limits := e.calcIndexLimits(U8ᵖ(a.Indices), a.IndicesType, 0, uint32(a.IndicesCount))
-						moveClientVBsToVAs(ctx, t, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)
+						moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 					}
 
 					glDrawElements := *a
@@ -569,7 +569,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					data := c.Instances.Buffers[ib].Data.Index(0, s)
 					base := uint32(a.Indices.Address)
 					limits := e.calcIndexLimits(data, a.IndicesType, base, uint32(a.IndicesCount))
-					moveClientVBsToVAs(ctx, t, clientVAs, int(limits.Min), int(limits.Max), i, a, s, c, out)
+					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}
 			}
 
@@ -1004,12 +1004,16 @@ func moveClientVBsToVAs(
 	ctx context.Context,
 	t *tweaker,
 	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
-	first, last int, // vertex indices
+	first, count uint32, // vertex indices
 	i atom.ID,
 	a atom.Atom,
 	s *gfxapi.State,
 	c *Context,
 	out transform.Writer) {
+
+	if count == 0 {
+		return
+	}
 
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
@@ -1030,7 +1034,7 @@ func moveClientVBsToVAs(
 					stride = size
 				}
 				base := memory.Pointer(a.Data) // Always start from the 0'th vertex to simplify logic.
-				rng := base.Range(uint64(last*stride + size))
+				rng := base.Range(uint64(int(first+count-1)*stride + size))
 				interval.Merge(&rngs, rng.Span(), true)
 			}
 		}

@@ -71,7 +71,7 @@ func (e externs) elSize(ty GLenum) uint64 {
 	return uint64(DataTypeSize(ty))
 }
 
-func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) resolve.MinMax {
+func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) resolve.IndexRange {
 	elSize := e.elSize(ty)
 	id := data.Slice(uint64(offset), uint64(offset)+uint64(count)*elSize, e.s).ResourceID(e.ctx, e.s)
 	littleEndian := e.s.MemoryLayout.GetEndian() == device.LittleEndian
@@ -79,7 +79,7 @@ func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) re
 	if err != nil {
 		if errors.Cause(err) == context.Canceled {
 			// TODO: Propagate error
-			return resolve.MinMax{}
+			return resolve.IndexRange{}
 		} else {
 			panic(fmt.Errorf("Could not calculate index limits: %v", err))
 		}
@@ -89,7 +89,7 @@ func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) re
 
 func (e externs) IndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) u32Limits {
 	limits := e.calcIndexLimits(data, ty, offset, count)
-	return u32Limits{First: limits.Min, Last: limits.Max}
+	return u32Limits{First: limits.First, Count: limits.Count}
 }
 
 func (e externs) substr(str string, start, end int32) string {

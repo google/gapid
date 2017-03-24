@@ -29,6 +29,9 @@ MsgID GlesSpy::newMsg(CallObserver*, uint32_t, const char*) { return 0; }
 void GlesSpy::addTag(CallObserver*, uint32_t, const char*) {}
 
 u32Limits GlesSpy::IndexLimits(CallObserver*, uint8_t* indices, uint32_t indices_type, uint32_t offset, uint32_t count) {
+    if (count == 0) {
+        return u32Limits(0, 0);
+    }
     uint32_t low = ~(uint32_t)0;
     uint32_t high = 0;
     switch (indices_type) {
@@ -57,7 +60,7 @@ u32Limits GlesSpy::IndexLimits(CallObserver*, uint8_t* indices, uint32_t indices
             break;
         }
     }
-    return u32Limits(low, high);
+    return u32Limits(low, high+1-low);
 }
 
 void GlesSpy::onGlError(CallObserver* observer, GLenum_Error err) {
