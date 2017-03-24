@@ -129,18 +129,24 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	}
 }
 
+// Returns the corresponding depth format for the given Vulkan format. If the given Vulkan
+// format contains a stencil field, returns a format which matches only with the tightly
+// packed depth field of the given Vulkan format.
 func getDepthImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	switch vkfmt {
 	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.DS_F32U8), nil
+		// Only the depth field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.D_F32), nil
 	case VkFormat_VK_FORMAT_D32_SFLOAT:
 		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT", fmts.D_F32), nil
 	case VkFormat_VK_FORMAT_D16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_D16_UNORM", fmts.D_U16_NORM), nil
 	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
-		return image.NewUncompressed("VK_FORMAT_D16_UNORM_S8_UINT", fmts.DS_NU16U8), nil
+		// Only the depth field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D16_UNORM_S8_UINT", fmts.D_U16_NORM), nil
 	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
-		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.DS_NU24U8), nil
+		// Only the depth field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.D_U24_NORM), nil
 	default:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	}

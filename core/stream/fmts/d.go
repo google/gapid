@@ -25,6 +25,14 @@ var (
 		}},
 	}
 
+	D_U24_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U24,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Depth,
+		}},
+	}
+
 	D_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,
