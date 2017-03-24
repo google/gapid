@@ -145,7 +145,7 @@ BaseType Stack::getTopType() {
 
     if (mTop == 0 || mTop > mStack.size()) {
         mValid = false;
-        GAPID_WARNING("GetTopType with invalid stack head: %u (size: %zu)", mTop, mStack.size());
+        GAPID_WARNING("GetTopType with invalid stack head: %u (size: %" PRIsize ")", mTop, mStack.size());
         return BaseType::Bool;
     }
 

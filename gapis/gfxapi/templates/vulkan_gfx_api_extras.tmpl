@@ -315,7 +315,7 @@ uint32_t getMemoryTypeIndex(
     auto pPhysicalDeviceMemoryProperties = stack->pop<VkPhysicalDeviceMemoryProperties*>();
     auto device = stack->pop<VkDevice>();
     if (stack->isValid()) {
-      GAPID_INFO("replayAllocateImageMemory(%zu, %zu, %p", device, image, pMemory);
+      GAPID_INFO("replayAllocateImageMemory(%" PRIsize ", %" PRIsize ", %p", device, image, pMemory);
 
       VkMemoryRequirements image_mem_reqs;
       auto GetImageMemReqFuncPtr = mVkDeviceFunctionStubs[device].vkGetImageMemoryRequirements;
@@ -348,7 +348,7 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
     auto fence = stack->pop<uint64_t>();
     auto device = static_cast<size_val>(stack->pop<size_val>());
     if (stack->isValid()) {
-        GAPID_INFO("vkGetFenceStatus(%zu, %" PRIu64 ")", device, fence);
+        GAPID_INFO("vkGetFenceStatus(%" PRIsize ", %" PRIu64 ")", device, fence);
         if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
         mVkDeviceFunctionStubs[device].vkGetFenceStatus) {
             VkResult return_value;
