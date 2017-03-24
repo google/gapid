@@ -981,7 +981,7 @@
   {{else if IsS64           $}}%" PRId64 "
   {{else if IsInt           $}}%d
   {{else if IsUint          $}}%u
-  {{else if IsSize          $}}%zu
+  {{else if IsSize          $}}%" PRIsize "
   {{else if IsEnum          $}}0x%X
   {{else}}{{Error "C++.PrintfFormatCode passed unsupported type: %s" $.Name}}
   {{end}}
