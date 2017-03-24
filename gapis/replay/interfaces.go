@@ -32,8 +32,9 @@ type Support interface {
 	CanReplayOnLocalAndroidDevice(context.Context) bool
 
 	// CanReplayOn returns true if the API can be replayed on the specified
-	// device.
-	CanReplayOn(context.Context, *device.Instance) bool
+	// device. The MemoryLayout is the memory layout that was in the capture
+	// file.
+	CanReplayOn(context.Context, *device.Instance, *device.MemoryLayout) bool
 }
 
 // QueryIssues is the interface implemented by types that can verify the replay
