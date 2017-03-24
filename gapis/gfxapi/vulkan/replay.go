@@ -44,9 +44,15 @@ var (
 func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return true }
 
 // CanReplayOn returns true if the API can be replayed on the specified device.
+// The given layout is the memory_layout that was recorded in the capture
 // Vulkan can currently only replay on Android devices.
-func (a api) CanReplayOn(ctx context.Context, i *device.Instance) bool {
-	return i.GetConfiguration().GetOS().GetKind() == device.Android
+func (a api) CanReplayOn(ctx context.Context, i *device.Instance, l *device.MemoryLayout) bool {
+	for _, abi := range i.GetConfiguration().GetABIs() {
+		if *abi.GetMemoryLayout() == *l {
+			return true
+		}
+	}
+	return false
 }
 
 // makeAttachementReadable is a transformation marking all color/depth/stencil attachment

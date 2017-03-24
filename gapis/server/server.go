@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/registry"
@@ -125,9 +126,25 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	return capture.Import(ctx, name, in)
 }
 
+// Returns all devices, sorted by Android first, and then Host
+func getSortedDevices(ctx context.Context) []bind.Device {
+	all := bind.GetRegistry(ctx).Devices()
+	androidDevices := make([]bind.Device, 0, len(all))
+	nonAndroidDevices := make([]bind.Device, 0, len(all))
+	for _, dev := range all {
+		instance := dev.Instance()
+		if instance.GetConfiguration().GetOS().GetKind() == device.Android {
+			androidDevices = append(androidDevices, dev)
+		} else {
+			nonAndroidDevices = append(nonAndroidDevices, dev)
+		}
+	}
+	return append(androidDevices, nonAndroidDevices...)
+}
+
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
-	devices := bind.GetRegistry(ctx).Devices()
+	devices := getSortedDevices(ctx)
 	paths := make([]*path.Device, len(devices))
 	for i, d := range devices {
 		paths[i] = path.NewDevice(d.Instance().Id.ID())
@@ -141,6 +158,22 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 	if err != nil {
 		return nil, err
 	}
+	list, err := c.Atoms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	state := c.NewState()
+
+	// We expect the architecture atom to always be within the first 10
+	// TODO(awoloszyn): Remove this once we have a proper file-header
+	for i, a := range list.Atoms {
+		if i > 10 {
+			break
+		}
+		a.Mutate(ctx, state, nil /* no builder, just mutate */)
+	}
+	layout := state.MemoryLayout
 
 	apis := make([]replay.Support, 0, len(c.Apis))
 	for _, i := range c.Apis {
@@ -150,18 +183,18 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 		}
 	}
 
-	all := bind.GetRegistry(ctx).Devices()
+	all := getSortedDevices(ctx)
 	filtered := make([]bind.Device, 0, len(all))
 nextDevice:
 	for _, device := range all {
+		instance := device.Instance()
 		for _, api := range apis {
-			instance := device.Instance()
 			// TODO: Check if device is a LAD, and if so filter by supportsLAD.
 			ctx := log.V{
 				"api":    fmt.Sprintf("%T", api),
 				"device": instance,
 			}.Bind(ctx)
-			if api.CanReplayOn(ctx, instance) {
+			if api.CanReplayOn(ctx, instance, layout) {
 				log.I(ctx, "Compatible")
 			} else {
 				log.I(ctx, "Incompatible")

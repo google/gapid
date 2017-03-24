@@ -80,8 +80,9 @@ type imgRes struct {
 func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return false }
 
 // CanReplayOn returns true if the API can be replayed on the specified device.
+// The given layout is the memory_layout that was recorded in the capture
 // GLES can currently cannot replay on Android devices.
-func (a api) CanReplayOn(ctx context.Context, i *device.Instance) bool {
+func (a api) CanReplayOn(ctx context.Context, i *device.Instance, l *device.MemoryLayout) bool {
 	return i.GetConfiguration().GetOS().GetKind() != device.Android
 }
 

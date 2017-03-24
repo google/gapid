@@ -61,12 +61,16 @@ type Service interface {
 	// GetDevices returns the full list of replay devices avaliable to the server.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
+	// If both connected Android and Local replay devices are found,
+	// the local Android devices will be returned first.
 	GetDevices(ctx context.Context) ([]*path.Device, error)
 
 	// GetDevicesForReplay returns the list of replay devices avaliable to the
 	// server that are capable of replaying the given capture.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
+	// If both connected Android and Local replay devices are found,
+	// the local Android devices will be returned first.
 	GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error)
 
 	// GetFramebufferAttachment returns the ImageInfo identifier describing the
