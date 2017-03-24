@@ -14,30 +14,84 @@
  * limitations under the License.
  */
 
-#include <dlfcn.h>
-
 #include "vulkan/vulkan.h"
 
-#if defined(__GNUC__)
+#if defined (_WIN32)
+#define VK_LAYER_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__)
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
 #else
-#define VK_LAYER_EXPORT
+#define VK_LAYER_EXPORT 
 #endif
+
+extern "C" {
+
+typedef void* (*eglGetProcAddress)(char const * procname);
+
+#ifdef _WIN32
+#include <windows.h>
+// On windows we do not have linker namespaces, we also don't have a 
+// convenient way to have already loaded libgapii.dll. In this case
+// we can just LoadModule(libgapii.dll) and get the pointers from there.
+#define PROC(name) \
+  static PFN_##name fn = (PFN_##name)getProcAddress(#name); \
+  if (fn != nullptr) \
+    return fn
+
+HMODULE LoadGAPIIDLL() {
+  char path[MAX_PATH] = { '\0' };
+  HMODULE this_module = GetModuleHandle("libVkLayer_GraphicsSpy.dll");
+  const char libgapii[] = "libgapii.dll";
+  if(this_module == NULL) {
+    return 0;
+  }
+  SetLastError(0);
+  DWORD num_characters = GetModuleFileName(this_module, path, MAX_PATH);
+  if(GetLastError() != 0) {
+    return 0;
+  }
+  for (DWORD i = num_characters - 1; i >= 0; --i) {
+    // Wipe out the file-name but keep the directory name if we can.
+    if (path[i] == '\\') {
+      path[i] = '\0';
+    }
+    num_characters = i + 1;
+  }
+
+  if (num_characters + strlen(libgapii) + 1 > MAX_PATH) {
+    return 0;
+  }
+  // Append "libgapii.dll" to the full path of libVKLayer_GraphicsSpy
+  memcpy(path + num_characters, libgapii, strlen(libgapii) + 1);
+  return LoadLibrary(path);
+}
+
+FARPROC getProcAddress(const char* name) {
+  static HMODULE libgapii = LoadGAPIIDLL();
+  if (libgapii != NULL) {
+    return GetProcAddress(libgapii, name); 
+  }
+  return NULL;
+}
+
+#else
+
+#include <dlfcn.h>
 
 #define PROC(name) \
   static PFN_##name fn = (PFN_##name)(getProcAddress()("gapid_" #name)); \
   if (fn != nullptr) \
     return fn
 
-extern "C" {
-
-typedef void* (*eglGetProcAddress)(char const * procname);
-
+// On android due to linker namespaces we cannot open libgapii.so,
+// but since we already have it loaded, and libEGL.so hooked,
+// we can use eglGetProcAddress to find the functions.
 eglGetProcAddress getProcAddress() {
   static void* libegl = dlopen("libEGL.so", RTLD_NOW);
   static eglGetProcAddress pa = (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
   return pa;
 }
+#endif
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 VkGraphicsSpyGetDeviceProcAddr(VkDevice dev, const char *funcName) {

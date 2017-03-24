@@ -65,7 +65,9 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if !verb.Local.App.IsEmpty() {
-		if err := verb.startLocalApp(ctx); err != nil {
+		cleanup, err := verb.startLocalApp(ctx)
+		defer func() { cleanup() }()
+		if err != nil {
 			return err
 		}
 	}
@@ -77,42 +79,69 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return verb.captureADB(ctx, flags, options)
 }
 
-func (verb *traceVerb) startLocalApp(ctx context.Context) error {
+func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	// Run the local application with VK_LAYER_PATH, VK_INSTANCE_LAYERS,
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
+	cleanup := func() {}
+	suffix := ".so"
 	localABI := device.UnknownABI
 	switch runtime.GOOS {
 	case "linux":
 		localABI = device.LinuxX86_64
+	case "windows":
+		localABI = device.WindowsX86_64
+		suffix = ".dll"
 	default:
-		return fmt.Errorf("Unsupported OS for local tracing")
+		return cleanup, fmt.Errorf("Unsupported OS for local tracing")
 	}
 
-	libVkLayerGraphicsSpy, err := layout.File(ctx, localABI, "LibVkLayerGraphicsSpy.so")
+	libVkLayerGraphicsSpy, err := layout.File(ctx, localABI, "libVkLayerGraphicsSpy"+suffix)
 	if err != nil {
-		return err
+		return cleanup, err
 	}
 
 	// TODO (qining): library name may change for different OS/ABI
-	libgapii, err := layout.File(ctx, localABI, "libgapii.so")
+	libgapii, err := layout.File(ctx, localABI, "libgapii"+suffix)
 	if err != nil {
-		return err
+		return cleanup, err
 	}
+
+	env := shell.CloneEnv().
+		AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
+		AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
+	if runtime.GOOS == "windows" {
+		sourceFile := libVkLayerGraphicsSpy.Parent().System() + "\\GraphicsSpyLayer.json"
+		sourceContent, err := ioutil.ReadFile(sourceFile)
+		if err != nil {
+			return cleanup, err
+		}
+		tempdir, err := ioutil.TempDir("", "gapit_dir")
+		if err != nil {
+			return cleanup, err
+		}
+		cleanup = func() {
+			os.RemoveAll(tempdir)
+		}
+		fixedContent := strings.Replace(string(sourceContent[:len(sourceContent)]), "./libgapii.so", libgapii.System(), 1)
+		fixedContent = strings.Replace(fixedContent, "\\", "\\\\", -1)
+		ioutil.WriteFile(tempdir+"\\GraphicsSpyLayer.json", []byte(fixedContent), 0644)
+		env.AddPathStart("VK_LAYER_PATH", tempdir)
+	} else {
+		env.Set("LD_PRELOAD", libgapii.System()).
+			AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System())
+	}
+
 	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
-		Env: shell.CloneEnv().
-			AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
-			AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
-			AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System()).
-			Set("LD_PRELOAD", libgapii.System()),
+		Env: env,
 	})
 	if err != nil {
-		return err
+		return cleanup, err
 	}
 	if verb.Local.Port == 0 {
 		verb.Local.Port = boundPort
 	}
-	return nil
+	return cleanup, nil
 }
 
 func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, options client.Options) error {

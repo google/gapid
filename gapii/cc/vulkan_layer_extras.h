@@ -117,7 +117,9 @@ typedef struct {
 #define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
 #define VK_VERSION_PATCH(version) ((uint32_t)(version) & 0xfff)
 
-#if defined(__GNUC__) && __GNUC__ >= 4
+#if defined (_WIN32)
+#define VK_LAYER_EXPORT  __declspec(dllexport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x590)
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))

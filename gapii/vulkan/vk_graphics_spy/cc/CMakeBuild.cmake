@@ -31,7 +31,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
 endforeach()
 
-if(NOT DISABLED_CXX AND NOT WIN32) # TODO: Windows build not currently supported
+if(NOT DISABLED_CXX) # TODO: Windows build not currently supported
     # This should only be needed on Android
     add_library(VkLayerGraphicsSpy SHARED ${sources})
     target_compile_options(VkLayerGraphicsSpy PRIVATE -fno-exceptions -fno-rtti)
