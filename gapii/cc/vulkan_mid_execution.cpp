@@ -75,6 +75,18 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     RecreateAndroidSurfaceKHR(observer, surface.second->mInstance, &create_info,
                         &surface.second->mVulkanHandle);
                 } break;
+                case SurfaceType::SURFACE_TYPE_WIN32: {
+                    VkWin32SurfaceCreateInfoKHR create_info = {
+                        VkStructureType::VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+                        nullptr,
+                        0,
+                        0,
+                        0
+                    }; // We don't actually have to plug this in, our replay
+                       // handles this without any arguments just fine.
+                    RecreateWin32SurfaceKHR(observer, surface.second->mInstance, &create_info,
+                        &surface.second->mVulkanHandle);
+                } break;
                 default:
                     GAPID_FATAL("Unhandled surface type");
             }

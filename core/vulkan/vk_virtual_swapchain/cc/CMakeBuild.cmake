@@ -48,9 +48,12 @@ if(NOT DISABLED_CXX)
     endif()
 
     if(NOT ANDROID)
+        set(VirtualSwapchainName "libVkLayer_VirtualSwapchain${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/VirtualSwapchainLayer.json
+            VirtualSwapchainLayer.json)
         add_custom_command(TARGET VkLayer_VirtualSwapchain POST_BUILD
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                ${CMAKE_CURRENT_SOURCE_DIR}/VirtualSwapchainLayer.json
+                ${CMAKE_CURRENT_BINARY_DIR}/VirtualSwapchainLayer.json
                 $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>)
         install(FILES $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>/VirtualSwapchainLayer.json
             DESTINATION ${TARGET_INSTALL_PATH})
@@ -59,5 +62,7 @@ if(NOT DISABLED_CXX)
 
     if(UNIX)
         target_compile_definitions(VkLayer_VirtualSwapchain PRIVATE "-DVK_USE_PLATFORM_XCB_KHR")
+    elseif(WINDOWS)
+        target_compile_definitions(VkLayer_VirtualSwapchain PRIVATE "-DVK_USE_PLATFORM_WIN32_KHR")
     endif()
 endif()
