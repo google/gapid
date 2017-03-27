@@ -36,6 +36,10 @@ type err struct {
 	msg   *Message
 }
 
+func (e err) Cause() error {
+	return e.cause
+}
+
 func (e err) Error() string {
 	if e.cause == nil {
 		return e.msg.Text

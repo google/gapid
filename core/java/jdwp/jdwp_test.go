@@ -51,7 +51,9 @@ public class Calculator {
 }
 
 func TestMain(m *testing.M) {
-	os.Exit(test.BuildRunAndConnect(source, func(ctx context.Context, c *jdwp.Connection) int {
+	ctx := context.Background()
+	ctx = log.PutHandler(ctx, log.Normal.Handler(log.Std()))
+	os.Exit(test.BuildRunAndConnect(ctx, source, func(ctx context.Context, c *jdwp.Connection) int {
 		if err := c.ResumeAll(); err != nil {
 			log.F(ctx, "Failed resume VM. Error: %v", err)
 			return -1

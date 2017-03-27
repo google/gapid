@@ -15,6 +15,7 @@
 package replay
 
 import (
+	"context"
 	"flag"
 	"os"
 	"reflect"
@@ -24,19 +25,19 @@ import (
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/bind"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/value"
 
-	"github.com/google/gapid/core/os/device/bind"
 	_ "github.com/google/gapid/framework/binary/any"
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	ctx, cancel := task.WithCancel(log.Testing(nil))
+	ctx, cancel := task.WithCancel(context.Background())
 	code := m.Run()
 	cancel()
 	app.WaitForCleanup(ctx)

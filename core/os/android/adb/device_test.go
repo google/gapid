@@ -69,5 +69,6 @@ func TestParseDevices(t_ *testing.T) {
 
 	devices.Handlers[0] = &stub.Response{WaitErr: fmt.Errorf("Not connected")}
 	_, err = adb.Devices(ctx)
-	assert.For(ctx, "not connected").ThatError(err).HasMessage("Error:Failed:Wait<Not connected>")
+	assert.For(ctx, "not connected").ThatError(err).HasMessage(`Process returned error
+   Cause: Not connected`)
 }

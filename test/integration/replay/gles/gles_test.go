@@ -193,7 +193,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 func TestMain(m *testing.M) {
 	flag.Parse()
 	var cancel task.CancelFunc
-	rootCtx, cancel = task.WithCancel(log.Testing(nil))
+	rootCtx, cancel = task.WithCancel(context.Background())
 	code := m.Run()
 	cancel()
 	app.WaitForCleanup(rootCtx)

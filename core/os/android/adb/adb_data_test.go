@@ -199,5 +199,6 @@ untagSocket(48) failed with errno -22
 // was as expected.
 func expectedCommand(ctx context.Context, expect string, err error) {
 	assert.For(ctx, "Expected an unmatched command").
-		ThatError(err).HasMessage(fmt.Sprintf("Error:Failed:Start<unmatched:%s>", expect))
+		ThatError(err).HasMessage(fmt.Sprintf(`Failed to start process
+   Cause: unmatched:%s`, expect))
 }

@@ -25,6 +25,9 @@ func Testing(t delegate) context.Context {
 // TestHandler is a Writer that uses the style to write records to t's using the
 // style s.
 func TestHandler(t delegate, s Style) Handler {
+	if t == nil {
+		panic("delegate cannot be nil")
+	}
 	return handler{
 		handle: func(m *Message) {
 			switch {
