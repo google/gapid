@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/core/os/shell"
 )
 
 func doGapit(ctx context.Context, cfg Config, options GapitOptions, args ...string) {
@@ -56,7 +55,7 @@ func doRun(ctx context.Context, cfg Config, options RunOptions, name string, arg
 	if options.WD.IsEmpty() {
 		options.WD = file.Abs("")
 	}
-	env := shell.CloneEnv()
+	env := env(cfg)
 	if !cfg.AndroidNDKRoot.IsEmpty() {
 		env.Set("ANDROID_NDK_ROOT", cfg.AndroidNDKRoot.System())
 	}
