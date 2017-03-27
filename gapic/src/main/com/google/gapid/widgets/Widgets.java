@@ -15,6 +15,7 @@
  */
 package com.google.gapid.widgets;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 
@@ -63,13 +64,18 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Widget utilities.
  */
 public class Widgets {
+  private static final Logger LOG = Logger.getLogger(Widgets.class.getName());
+
   public final Theme theme;
   public final CopyPaste copypaste;
   public final LoadingIndicator loading;
@@ -109,7 +115,35 @@ public class Widgets {
 
   public static void scheduleIfNotDisposed(Widget widget, Runnable run) {
     if (!widget.isDisposed()) {
-      widget.getDisplay().asyncExec(() -> ifNotDisposed(widget, run));
+      if (enqueue(() -> ifNotDisposed(widget, run))) {
+        long start = System.currentTimeMillis();
+        widget.getDisplay().asyncExec(() -> {
+          Runnable[] work = drainQueue();
+          if (work.length > 1 && LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "Processing a batch of {0} runnables after a delay of {1}ms",
+                new Object[] { work.length, System.currentTimeMillis() - start });
+          }
+          for (Runnable r : work) {
+            r.run();
+          }
+        });
+      }
+    }
+  }
+
+  private static final List<Runnable> queue = Lists.newArrayList();
+  private static boolean enqueue(Runnable run) {
+    synchronized (queue) {
+      queue.add(run);
+      return queue.size() == 1;
+    }
+  }
+
+  private static Runnable[] drainQueue() {
+    synchronized (queue) {
+      Runnable[] work = queue.toArray(new Runnable[queue.size()]);
+      queue.clear();
+      return work;
     }
   }
 

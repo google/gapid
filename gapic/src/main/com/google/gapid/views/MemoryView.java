@@ -222,7 +222,7 @@ public class MemoryView extends Composite
     selections.setDataType(uiState.dataType);
     memoryPanel.setModel(uiState.getMemoryModel(memoryData));
     memoryScroll.updateMinSize();
-    getDisplay().asyncExec(() -> goToAddress(address));
+    scheduleIfNotDisposed(memoryScroll, () -> goToAddress(address));
     selections.updateSelectedObservation(address);
   }
 
