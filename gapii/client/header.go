@@ -23,7 +23,7 @@ import (
 
 var magic = [4]byte{'s', 'p', 'y', '0'}
 
-const version = 3
+const version = 4
 
 // The GAPII header is defined as:
 //
@@ -32,6 +32,8 @@ const version = 3
 //   uint32_t mVersion;                      // 2 or 3
 //   uint32_t mObserveFrameFrequency;        // non-zero == enabled. Version: 2+
 //   uint32_t mObserveDrawFrequency;         // non-zero == enabled. Version: 2+
+//   uint32_t mStartFrame;                   // non-zero == Frame to start at. version 4+
+//   uint32_t mNumFrames;                    // non-zero == Number of frames to capture. version 4+
 //   uint32_t mFlags;                        // Combination of FLAG_XX bits. Version: 3+
 // };
 //
@@ -47,6 +49,8 @@ func sendHeader(out io.Writer, options Options) error {
 	w.Uint32(version)
 	w.Uint32(options.ObserveFrameFrequency)
 	w.Uint32(options.ObserveDrawFrequency)
+	w.Uint32(options.StartFrame)
+	w.Uint32(options.FramesToCapture)
 	w.Uint32(uint32(options.Flags))
 	return w.Error()
 }

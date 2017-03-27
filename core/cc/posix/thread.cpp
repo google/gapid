@@ -16,27 +16,22 @@
 
 #include "core/cc/thread.h"
 
-#include <windows.h>
+#include <cstdint>
+#include <pthread.h>
 
 namespace core {
 
-Thread Thread::current() {
-    auto thread = GetCurrentThreadId();
-    return Thread(static_cast<uint64_t>(thread));
-}
-
 AsyncJob::AsyncJob(const std::function<void()>& function) : mFunction(function) {
-    LPTHREAD_START_ROUTINE start = [](void* _this) -> long unsigned int {
-        AsyncJob::RunJob(_this);
-        return 0;
-    };
-    _ = reinterpret_cast<void*>(CreateThread(nullptr,
-        0, start, this, 0, nullptr));
+    _ = malloc(sizeof(pthread_t));
+    pthread_t* thread = reinterpret_cast<pthread_t*>(_);
+
+    pthread_create(thread, nullptr, &AsyncJob::RunJob, this);
 }
 
 AsyncJob::~AsyncJob() {
-    WaitForSingleObject(reinterpret_cast<HANDLE>(_), INFINITE);
+    pthread_t* thread = reinterpret_cast<pthread_t*>(_);
+    pthread_join(*thread, nullptr);
 }
 
-
 }  // namespace core
+

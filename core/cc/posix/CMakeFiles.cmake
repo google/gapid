@@ -20,7 +20,8 @@
 set(files
     mutex.cpp
     thread_local.cpp
+    thread.cpp
 )
 set(dirs
-    
+
 )

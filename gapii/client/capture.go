@@ -22,8 +22,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
 	"github.com/pkg/errors"
 )
@@ -38,6 +40,9 @@ const (
 	// RecordErrorState queries the driver error state after each all and stores
 	// errors as extras.
 	RecordErrorState Flags = 0x10000000
+	// DeferStart does not start tracing right away but waits for a signal
+	// from gapit
+	DeferStart Flags = 0x00000010
 )
 
 // Options to use when creating a capture.
@@ -46,6 +51,10 @@ type Options struct {
 	ObserveFrameFrequency uint32
 	// If non-zero, then a framebuffer-observation will be made after every n draw calls.
 	ObserveDrawFrequency uint32
+	// If non-zero, then the capture will only start at frame n.
+	StartFrame uint32
+	// If non-zero, then only n frames will be captured.
+	FramesToCapture uint32
 	// Combination of FlagXX bits.
 	Flags Flags
 	// APK is an apk to install before tracing
@@ -54,6 +63,7 @@ type Options struct {
 
 const sizeGap = 1024 * 1024 * 5
 const timeGap = time.Second
+const startMidExecutionCapture = 0xdeadbeef
 
 type siSize int64
 
@@ -78,7 +88,7 @@ func (s siSize) String() string {
 	return fmt.Sprintf(f, v)
 }
 
-func capture(ctx context.Context, port int, w io.Writer, o Options) (int64, error) {
+func capture(ctx context.Context, port int, s task.Signal, w io.Writer, o Options) (int64, error) {
 	if task.Stopped(ctx) {
 		return 0, nil
 	}
@@ -94,10 +104,18 @@ func capture(ctx context.Context, port int, w io.Writer, o Options) (int64, erro
 	var count, nextSize siSize
 	startTime := time.Now()
 	nextTime := startTime
+	started := false
 	for {
 		if task.Stopped(ctx) {
 			log.I(ctx, "Stop: %v", count)
 			break
+		}
+		if (o.Flags & DeferStart) != 0 {
+			if !started && s.Fired() {
+				started = true
+				w := endian.Writer(conn, device.LittleEndian)
+				w.Uint32(startMidExecutionCapture)
+			}
 		}
 		now := time.Now()
 		conn.SetReadDeadline(now.Add(time.Millisecond * 100)) // Allow for stop event and UI refreshes.
@@ -133,10 +151,10 @@ func capture(ctx context.Context, port int, w io.Writer, o Options) (int64, erro
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options.
 // It copies the capture into the supplied writer.
-func Capture(ctx context.Context, port int, w io.Writer, options Options) (int64, error) {
+func Capture(ctx context.Context, port int, s task.Signal, w io.Writer, options Options) (int64, error) {
 	log.I(ctx, "Waiting for connection to localhost:%d...", port)
 	for {
-		count, err := capture(ctx, port, w, options)
+		count, err := capture(ctx, port, s, w, options)
 		if err != nil {
 			return count, err
 		}

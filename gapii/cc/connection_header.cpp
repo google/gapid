@@ -25,6 +25,8 @@ ConnectionHeader::ConnectionHeader()
     : mVersion(0)
     , mObserveFrameFrequency(0)
     , mObserveDrawFrequency(0)
+    , mStartFrame(0)
+    , mNumFrames(0)
     , mFlags(0) {}
 
 bool ConnectionHeader::read(core::StreamReader* reader) {
@@ -47,7 +49,7 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
     }
 
     const int kMinSupportedVersion = 2;
-    const int kMaxSupportedVersion = 3;
+    const int kMaxSupportedVersion = 4;
 
     if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
         GAPID_WARNING("Unsupported ConnectionHeader version %d. Only understand [%d to %d].",
@@ -57,6 +59,12 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
     if (mVersion >= 2) {
         if (!reader->read(mObserveFrameFrequency) ||
             !reader->read(mObserveDrawFrequency)) {
+            return false;
+        }
+    }
+    if (mVersion >= 4) {
+        if (!reader->read(mStartFrame) ||
+            !reader->read(mNumFrames)) {
             return false;
         }
     }

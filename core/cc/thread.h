@@ -18,6 +18,7 @@
 #define CORE_THREAD_H
 
 #include <stdint.h>
+#include <functional>
 
 namespace core {
 
@@ -41,6 +42,20 @@ inline Thread::Thread(uint64_t id) : mId(id) {}
 inline uint64_t Thread::id() const {
     return mId;
 }
+
+class AsyncJob {
+    public:
+        AsyncJob(const std::function<void()>& function);
+        ~AsyncJob(); // Waits on the thread to finish.
+    private:
+    static void* RunJob(void* _data) {
+        AsyncJob* job = reinterpret_cast<AsyncJob*>(_data);
+        job->mFunction();
+        return nullptr;
+    }
+    std::function<void()> mFunction;
+    void* _; // A pointer to the OS thread object.
+};
 
 }  // namespace core
 

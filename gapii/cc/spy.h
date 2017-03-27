@@ -19,6 +19,7 @@
 #include "gapii/cc/core_spy.h"
 #include "gapii/cc/vulkan_spy.h"
 #include "gapii/cc/gles_spy.h"
+#include "core/cc/thread.h"
 
 #include <memory>
 #include <unordered_map>
@@ -90,7 +91,7 @@ private:
     int mNumFrames;
     // The number of frames that we want to suspend capture for before
     // we start.
-    int mSuspendCaptureFrames;
+    std::atomic<int> mSuspendCaptureFrames;
     // The number of frames that we want to capture
     int mCaptureFrames;
     int mNumDraws;
@@ -101,6 +102,7 @@ private:
     bool mRecordGLErrorState;
 
     std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
+    std::unique_ptr<core::AsyncJob> mDeferStartJob;
 };
 
 }  // namespace gapii
