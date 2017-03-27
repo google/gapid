@@ -118,12 +118,12 @@ public class Widgets {
       if (enqueue(() -> ifNotDisposed(widget, run))) {
         long start = System.currentTimeMillis();
         widget.getDisplay().asyncExec(() -> {
-          Runnable[] todo = drainQueue();
-          if (todo.length > 1 && LOG.isLoggable(Level.FINE)) {
+          Runnable[] work = drainQueue();
+          if (work.length > 1 && LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "Processing a batch of {0} runnables after a delay of {1}ms",
-                new Object[] { todo.length, System.currentTimeMillis() - start });
+                new Object[] { work.length, System.currentTimeMillis() - start });
           }
-          for (Runnable r : todo) {
+          for (Runnable r : work) {
             r.run();
           }
         });
@@ -141,9 +141,9 @@ public class Widgets {
 
   private static Runnable[] drainQueue() {
     synchronized (queue) {
-      Runnable[] todo = queue.toArray(new Runnable[queue.size()]);
+      Runnable[] work = queue.toArray(new Runnable[queue.size()]);
       queue.clear();
-      return todo;
+      return work;
     }
   }
 
