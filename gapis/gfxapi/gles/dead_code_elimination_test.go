@@ -107,6 +107,18 @@ func TestDeadAtomRemoval(t *testing.T) {
 	isDead := map[atom.Atom]bool{}
 	dead := func(a atom.Atom) atom.Atom { isDead[a] = true; return a }
 
+	programInfo := &ProgramInfo{
+		LinkStatus: GLboolean_GL_TRUE,
+		ActiveUniforms: UniformIndexːActiveUniformᵐ{
+			0: {
+				Name:      "uniforms",
+				Type:      GLenum_GL_FLOAT_VEC4,
+				Location:  0,
+				ArraySize: 10,
+			},
+		},
+	}
+
 	ctxHandle1 := memory.Pointer{Pool: memory.ApplicationPool, Address: 1}
 	ctxHandle2 := memory.Pointer{Pool: memory.ApplicationPool, Address: 2}
 	prologue := []atom.Atom{
@@ -116,6 +128,9 @@ func TestDeadAtomRemoval(t *testing.T) {
 			NewStaticContextState(), NewDynamicContextState(64, 64, false)),
 		NewGlCreateProgram(1),
 		NewGlCreateProgram(2),
+		atom.WithExtras(NewGlLinkProgram(1), programInfo),
+		atom.WithExtras(NewGlLinkProgram(2), programInfo),
+		NewGlUseProgram(1),
 	}
 	allBuffers := GLbitfield_GL_COLOR_BUFFER_BIT | GLbitfield_GL_DEPTH_BUFFER_BIT | GLbitfield_GL_STENCIL_BUFFER_BIT
 	tests := map[string][]atom.Atom{
@@ -194,6 +209,9 @@ func TestDeadAtomRemoval(t *testing.T) {
 			atom.WithExtras(
 				NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2, 0),
 				NewStaticContextState(), NewDynamicContextState(64, 64, false)),
+			NewGlCreateProgram(1),
+			atom.WithExtras(NewGlLinkProgram(1), programInfo),
+			NewGlUseProgram(1),
 			dead(NewGlUniform4fv(0, 1, memory.Nullptr)),
 			dead(NewGlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
 			NewGlClear(allBuffers),
