@@ -16,8 +16,11 @@ package assert
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
+
+	"github.com/google/gapid/core/log"
 )
 
 type (
@@ -36,6 +39,7 @@ type (
 		out Output
 	}
 
+	logOutput struct{ ctx context.Context }
 	stdOutput struct{}
 )
 
@@ -57,6 +61,18 @@ func (ctx Manager) For(msg string, args ...interface{}) *Assertion {
 	a.Printf(msg, args...)
 	a.Println()
 	return a
+}
+
+func (o logOutput) Fatal(args ...interface{}) {
+	log.F(o.ctx, fmt.Sprint(args...))
+}
+
+func (o logOutput) Error(args ...interface{}) {
+	log.E(o.ctx, fmt.Sprint(args...))
+}
+
+func (o logOutput) Log(args ...interface{}) {
+	log.I(o.ctx, fmt.Sprint(args...))
 }
 
 func (stdOutput) Fatal(args ...interface{}) {

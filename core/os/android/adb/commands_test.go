@@ -48,14 +48,15 @@ func TestRootInvalid(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "invalid_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).HasMessage("Error:not a normal response")
+	assert.With(ctx).ThatError(err).HasCause(adb.ErrRootFailed)
 }
 
 func TestRootFailed(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "error_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).HasMessage("Error:Failed:Wait<not a normal response>")
+	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+   Cause: not a normal response`)
 }
 
 func TestInstallAPK(t_ *testing.T) {
@@ -99,7 +100,8 @@ func TestSELinuxFailedEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "error_device")
 	_, err := d.SELinuxEnforcing(ctx)
-	assert.With(ctx).ThatError(err).HasMessage("Error:Failed:Wait<not a normal response>")
+	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+   Cause: not a normal response`)
 }
 
 func TestSetSELinuxEnforcing(t_ *testing.T) {

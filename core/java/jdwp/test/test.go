@@ -94,8 +94,7 @@ func runJavaServer(ctx context.Context, sources JavaSource, port int) task.Signa
 
 // BuildRunAndConnect builds all the source files with javac, executes them with
 // java, attaches to it via JDWP, then calls onConnect with the connection.
-func BuildRunAndConnect(source JavaSource, onConnect func(ctx context.Context, conn *jdwp.Connection) int) int {
-	ctx := log.Testing(nil)
+func BuildRunAndConnect(ctx context.Context, source JavaSource, onConnect func(ctx context.Context, conn *jdwp.Connection) int) int {
 	ctx, stop := task.WithTimeout(ctx, time.Second*30)
 
 	port, err := findFreePort()

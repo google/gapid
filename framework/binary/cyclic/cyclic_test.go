@@ -213,7 +213,8 @@ func TestInvalidControl(t *testing.T) {
 	b := &test.Bytes{Data: []byte{0x01, 0x7f, 0x00}}
 	d := cyclic.Decoder(vle.Reader(b))
 	d.Object()
-	assert.With(ctx).ThatError(d.Error()).HasMessage("⦕Invalid control block version⦖")
+	assert.With(ctx).ThatError(d.Error()).HasMessage(`version: 127
+   Cause: Invalid control block version`)
 }
 
 func TestNested(t *testing.T) {
