@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <vector>
+#include <memory>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
@@ -60,6 +61,10 @@ const uint32_t kMaxFramebufferObservationWidth = 1920 / 2;
 const uint32_t kMaxFramebufferObservationHeight = 1280 / 2;
 
 const uint32_t kCGLCPSurfaceBackingSize = 304;
+
+const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
+
+const int32_t  kSuspendIndefinitely = -1;
 
 inline bool isLittleEndian() {
     union {
@@ -186,6 +191,11 @@ Spy::Spy()
                 (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
         mRecordGLErrorState =
                 (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
+        // This will be over-written if we also set the header flags
+        mSuspendCaptureFrames = header.mStartFrame;
+        mCaptureFrames = header.mNumFrames;
+        mSuspendCaptureFrames.store((header.mFlags & ConnectionHeader::FLAG_DEFER_START)?
+            kSuspendIndefinitely: mSuspendCaptureFrames.load());
     } else {
         GAPID_WARNING("Failed to read connection header");
     }
@@ -229,7 +239,18 @@ Spy::Spy()
     observer.addExtra(scratch->make<DeviceInfo::CoderType>(deviceInfo.encodeable(*scratch)));
 #endif
     CoreSpy::architecture(&observer, alignof(void*), sizeof(void*), sizeof(int), isLittleEndian());
-    set_suspended(mSuspendCaptureFrames != 0);
+    if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
+        mDeferStartJob = std::unique_ptr<core::AsyncJob>(
+        new core::AsyncJob([this, conn]() {
+            uint32_t buffer;
+            if (4 == conn->read(&buffer, 4)) {
+                if (buffer == kStartMidExecutionCapture) {
+                    mSuspendCaptureFrames.store(1);
+                }
+            }
+        }));
+    }
+    set_suspended(mSuspendCaptureFrames.load() != 0);
 }
 
 std::unordered_map<std::string, std::string> Spy::getDeviceProperties() {
@@ -393,8 +414,8 @@ void Spy::onPostEndOfFrame(CallObserver* observer) {
             set_suspended(true);
         }
     }
-    if (mSuspendCaptureFrames > 0) {
-        if (is_suspended() && --mSuspendCaptureFrames == 0) {
+    if (mSuspendCaptureFrames.load() > 0) {
+        if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             set_suspended(false);
             EnumerateVulkanResources(observer);
         }

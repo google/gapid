@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -54,6 +55,8 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	options := client.Options{
 		ObserveFrameFrequency: uint32(verb.Observe.Frames),
 		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
+		StartFrame:            uint32(verb.Start.At.Frame),
+		FramesToCapture:       uint32(verb.Capture.Frames),
 		APK:                   verb.APK,
 	}
 
@@ -62,6 +65,9 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	if verb.Record.Errors {
 		options.Flags |= client.RecordErrorState
+	}
+	if verb.Start.Defer {
+		options.Flags |= client.DeferStart
 	}
 
 	if !verb.Local.App.IsEmpty() {
@@ -294,18 +300,25 @@ func doCapture(ctx context.Context, options client.Options, port int, out string
 	}
 	defer file.Close()
 
+	signal, fireSignal := task.NewSignal()
 	if duration == 0 {
 		var cancel task.CancelFunc
 		ctx, cancel = task.WithCancel(ctx)
 		go func() {
+			reader := bufio.NewReader(os.Stdin)
+			if (options.Flags & client.DeferStart) != 0 {
+				println("Press enter to start capturing...")
+				_, _ = reader.ReadString('\n')
+				fireSignal(ctx)
+			}
 			println("Press enter to stop capturing...")
-			os.Stdin.Read([]byte{0})
+			_, _ = reader.ReadString('\n')
 			cancel()
 		}()
 	} else {
 		ctx, _ = task.WithTimeout(ctx, duration)
 	}
-	_, err = client.Capture(ctx, port, file, options)
+	_, err = client.Capture(ctx, port, signal, file, options)
 	if err != nil {
 		return err
 	}

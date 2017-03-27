@@ -152,6 +152,15 @@ type (
 		Replay struct {
 			Inputs bool `help:"replay the inputs from file"`
 		}
+		Start struct {
+			Defer bool `help:"defers the start of the trace until <enter> is pressed. Only valid for Vulkan."`
+			At    struct {
+				Frame int `help:"defers the start of the trace until given frame. Only valid for Vulkan. Not compatible with start-defer."`
+			}
+		}
+		Capture struct {
+			Frames int `help:"only capture the given number of frames. 0 for all"`
+		}
 	}
 	PackagesFlags struct {
 		DeviceFlags
