@@ -26,16 +26,16 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// MinMax holds a minimum and maximum value.
-type MinMax struct {
-	Min uint32 // Smallest index found in the index buffer.
-	Max uint32 // Largest index found in the index buffer.
+// IndexRange represents the range of indices which were referenced by index buffer.
+type IndexRange struct {
+	First uint32
+	Count uint32
 }
 
-// IndexLimits returns the lowest and highest index contained in the index
+// IndexLimits returns the range of indices which were referenced by index
 // buffer with identifier id. The buffer holds count elements, each of size
 // bytes.
-func IndexLimits(ctx context.Context, data id.ID, count int, size int, littleEndian bool) (*MinMax, error) {
+func IndexLimits(ctx context.Context, data id.ID, count int, size int, littleEndian bool) (*IndexRange, error) {
 	obj, err := database.Build(ctx, &IndexLimitsResolvable{
 		IndexSize:    uint64(size),
 		Count:        uint64(count),
@@ -45,11 +45,14 @@ func IndexLimits(ctx context.Context, data id.ID, count int, size int, littleEnd
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*MinMax), nil
+	return obj.(*IndexRange), nil
 }
 
 // Resolve implements the database.Resolver interface.
 func (c *IndexLimitsResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	if c.Count == 0 {
+		return &IndexRange{First: 0, Count: 0}, nil
+	}
 	min, max := ^uint32(0), uint32(0)
 	data, err := database.Resolve(ctx, c.Data.Id.ID())
 	if err != nil {
@@ -86,5 +89,5 @@ func (c *IndexLimitsResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
-	return &MinMax{Min: min, Max: max}, nil
+	return &IndexRange{First: min, Count: max + 1 - min}, nil
 }

@@ -110,7 +110,7 @@ sub void DrawElements(ref!Context    ctx,
 
       // Read the vertices
       limits := IndexLimits(as!u8*(index_data), indices_type, offset, count)
-      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), (limits.last - limits.first) + 1, as!u32(instance_count))
+      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), limits.count, as!u32(instance_count))
 
       // No need to read the indices - they're already in a GPU-side buffer.
     } else {
@@ -119,7 +119,7 @@ sub void DrawElements(ref!Context    ctx,
 
       // Read the vertices
       limits := IndexLimits(index_data, indices_type, 0, count)
-      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), (limits.last - limits.first) + 1, as!u32(instance_count))
+      ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), limits.count, as!u32(instance_count))
 
       // Read the indices
       read(index_data[0:count * IndexSize(indices_type)])
