@@ -14,7 +14,10 @@
 
 package assert
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // *************************************************************
 // ** This file contains legacy shims only, it should be removed
@@ -33,15 +36,11 @@ func Context(out Output) Manager {
 
 // Deprecated: For(m) is deprecated, use m.For() instead.
 func For(t interface{}, msg string, args ...interface{}) *Assertion {
-	type valueSource interface {
-		Value(interface{}) interface{}
-	}
 	switch t := t.(type) {
 	case Manager:
 		return t.For(msg, args...)
-	case valueSource:
-		out, _ := t.Value("TestingOutput").(Output)
-		return To(out).For(msg, args...)
+	case context.Context:
+		return To(logOutput{t}).For(msg, args...)
 	default:
 		panic("Not a valid assertion manager source")
 	}
