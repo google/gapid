@@ -15,7 +15,9 @@
 package adb
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -28,37 +30,54 @@ const (
 	// ErrDeviceNotRooted is returned by Device.Root when the device is running a
 	// production build as is not 'rooted'.
 	ErrDeviceNotRooted = fault.Const("Device is not rooted")
-	ErrRootTimeout     = fault.Const("Timeout waiting for adbd root")
 	ErrRootFailed      = fault.Const("Device failed to switch to root")
 
-	timeoutWaitingForRoot = time.Second * 5
+	maxRootAttempts = 5
 )
+
+func isRootSuccessful(line string) bool {
+	for _, expected := range []string{
+		"adbd is already running as root",
+		"* daemon started successfully *",
+	} {
+		if line == expected {
+			return true
+		}
+	}
+	return false
+}
 
 // Root restarts adb as root. If the device is running a production build then
 // Root will return ErrDeviceNotRooted.
 func (b *binding) Root(ctx context.Context) error {
-	const expected = "adbd is already running as root"
-	output, err := b.Command("root").Call(ctx)
-	if err != nil {
-		return err
-	}
-	switch output {
-	case "adbd cannot run as root in production builds":
-		return ErrDeviceNotRooted
-	case "restarting adbd as root":
-		start := time.Now()
-		for time.Since(start) < timeoutWaitingForRoot {
-			time.Sleep(time.Millisecond * 100)
-			if output, _ := b.Command("root").Call(ctx); output == expected {
-				return nil
+	buf := bytes.Buffer{}
+	buf.WriteString("adb root gave output:")
+retry:
+	for attempt := 0; attempt < maxRootAttempts; attempt++ {
+		output, err := b.Command("root").Call(ctx)
+		if err != nil {
+			return err
+		}
+		output = strings.Replace(output, "\r\n", "\n", -1) // Not expected, but let's be safe.
+		buf.WriteString(fmt.Sprintf("\n#%d: %v", attempt, output))
+		lines := strings.Split(output, "\n")
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := lines[i]
+			if isRootSuccessful(line) {
+				return nil // Success
+			}
+			switch line {
+			case "adbd cannot run as root in production builds":
+				return ErrDeviceNotRooted
+			case "restarting adbd as root":
+				time.Sleep(time.Millisecond * 100)
+				continue retry
+			default:
+				// Some output we weren't expecting.
 			}
 		}
-		return log.Err(ctx, ErrRootTimeout, "")
-	case expected:
-		return nil
-	default:
-		return log.Err(ctx, ErrRootFailed, output)
 	}
+	return log.Err(ctx, ErrRootFailed, buf.String())
 }
 
 // InstallAPK installs the specified APK to the device. If reinstall is true
