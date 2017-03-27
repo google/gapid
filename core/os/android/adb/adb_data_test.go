@@ -34,6 +34,7 @@ adb server version (36) doesn't match this client (35); killing...
 * daemon not running. starting it now on port 5037 *
 * daemon started successfully *
 debug_device             unknown
+debug_device2            unknown
 dumpsys_device           offline
 error_device             device
 install_device           unauthorized
@@ -154,6 +155,8 @@ u0_a69    22841 5062  1255788 88672 SyS_epoll_ 0000000000 S com.example.meh`),
 			stub.RespondTo(adbPath.System()+` -s debug_device root`, `some random output`),
 			stub.RespondTo(adbPath.System()+` -s debug_device root`, `adbd is already running as root`),
 		},
+		stub.RespondTo(adbPath.System()+` -s debug_device2 root`, `* daemon not running. starting it now at tcp:5036 *
+* daemon started successfully *`),
 		stub.RespondTo(adbPath.System()+` -s rooted_device root`, `adbd is already running as root`),
 		stub.RespondTo(adbPath.System()+` -s invalid_device root`, `not a normal response`),
 		stub.Match(adbPath.System()+` -s error_device root`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),

@@ -37,6 +37,13 @@ func TestRootDebug(t_ *testing.T) {
 	assert.With(ctx).ThatError(err).Succeeded()
 }
 
+func TestRootDebug2(t_ *testing.T) {
+	ctx := log.Testing(t_)
+	d := mustConnect(ctx, "debug_device2")
+	err := d.Root(ctx)
+	assert.With(ctx).ThatError(err).Succeeded()
+}
+
 func TestRootRooted(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "rooted_device")
@@ -48,7 +55,13 @@ func TestRootInvalid(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "invalid_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).HasCause(adb.ErrRootFailed)
+	assert.With(ctx).ThatError(err).HasMessage(`adb root gave output:
+#0: not a normal response
+#1: not a normal response
+#2: not a normal response
+#3: not a normal response
+#4: not a normal response
+   Cause: ` + adb.ErrRootFailed.Error())
 }
 
 func TestRootFailed(t_ *testing.T) {
