@@ -248,12 +248,6 @@ std::unique_ptr<Connection> SocketConnection::createSocket(
         return nullptr;
     }
 
-    // NOTE This approach does not work on android, because you need to
-    // forward stdout through adb, which is not done automatically for APK
-    // applications. We think the right approach on Android is to use a
-    // named port and side-step the whole port picking problem.
-    // See b/23519541
-
     // The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
     printf("Bound on port '%d'\n", ntohs(sin.sin_port));
     fflush(stdout); // Force the message for piped readers
