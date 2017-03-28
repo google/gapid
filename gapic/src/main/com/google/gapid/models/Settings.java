@@ -45,26 +45,26 @@ public class Settings {
   private static final String SETTINGS_FILE = ".gapic";
   private static final int MAX_RECENT_FILES = 16;
 
-  public Point windowLocation;
-  public Point windowSize;
-  public boolean hideScrubber;
-  public boolean hideLeft;
-  public boolean hideRight;
+  public Point windowLocation = null;
+  public Point windowSize = null;
+  public boolean hideScrubber = false;
+  public boolean hideLeft = false;
+  public boolean hideRight = false;
   public int[] splitterWeights = new int[]{ 15, 85 };
   public String[] leftTabs = new String[0], centerTabs = new String[0], rightTabs = new String[0];
   public String[] hiddenTabs = new String[] { "Log" };
   public int[] tabWeights = new int[] { 20, 60, 20 };
-  public String lastOpenDir;
+  public String lastOpenDir = "";
   public int[] reportSplitterWeights = new int[] { 75, 25 };
   public int[] shaderSplitterWeights = new int[] { 70, 30 };
   public int[] texturesSplitterWeights = new int[] { 20, 80 };
-  public String traceDevice;
-  public String tracePackage;
-  public String traceOutDir;
-  public String traceOutFile;
-  public boolean traceClearCache;
-  public boolean traceDisablePcs;
-  public boolean skipWelcomeScreen;
+  public String traceDevice = "";
+  public String tracePackage = "";
+  public String traceOutDir = "";
+  public String traceOutFile = "";
+  public boolean traceClearCache = false;
+  public boolean traceDisablePcs = false;
+  public boolean skipWelcomeScreen = false;
   public String[] recentFiles = new String[0];
 
   public static Settings load() {
@@ -141,17 +141,17 @@ public class Settings {
     rightTabs = getStringList(properties, "tabs.right", rightTabs);
     hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
     tabWeights = getIntList(properties, "tabs.weights", tabWeights);
-    lastOpenDir = properties.getProperty("lastOpenDir", "");
+    lastOpenDir = properties.getProperty("lastOpenDir", lastOpenDir);
     reportSplitterWeights =
         getIntList(properties, "report.splitter.weights", reportSplitterWeights);
     shaderSplitterWeights =
         getIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
     texturesSplitterWeights =
         getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
-    traceDevice = properties.getProperty("trace.device", "");
-    tracePackage = properties.getProperty("trace.package", "");
-    traceOutDir = properties.getProperty("trace.dir", "");
-    traceOutFile = properties.getProperty("trace.file", "");
+    traceDevice = properties.getProperty("trace.device", traceDevice);
+    tracePackage = properties.getProperty("trace.package", tracePackage);
+    traceOutDir = properties.getProperty("trace.dir", traceOutDir);
+    traceOutFile = properties.getProperty("trace.file", traceOutFile);
     traceClearCache = getBoolean(properties, "trace.clearCache");
     traceDisablePcs = getBoolean(properties, "trace.disablePCS");
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
