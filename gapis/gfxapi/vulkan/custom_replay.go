@@ -446,6 +446,15 @@ func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, s *gfxapi.State
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdNextSubpass(
+		a.CommandBuffer,
+		a.Contents,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdDrawIndexed(
 		a.CommandBuffer,

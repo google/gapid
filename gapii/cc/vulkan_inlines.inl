@@ -523,6 +523,13 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdExecuteCommandsData>
     spy->RecreateCmdExecuteCommands(
         observer, commandBuf, command_buffers.size(), command_buffers.data());
 }
+
+template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdNextSubpassData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdNextSubpassData>& t) {
+  spy->RecreateCmdNextSubpass(observer, commandBuf, t->mContents);
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>

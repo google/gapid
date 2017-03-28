@@ -5496,10 +5496,13 @@ cmd void vkCmdBindDescriptorSets(
   bind_buffer := CmdBindBuffer()
   dynamic_offset_index := MutableU32(0)
 
+  clearLastDrawInfoDescriptorSets()
+
   for i in (0 .. descriptorSetCount) {
     recreate_info.DescriptorSets[i] = sets[i]
     if sets[i] in DescriptorSets {
       set := DescriptorSets[sets[i]]
+      LastDrawInfo.DescriptorSets[firstSet + i] = set
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the BoundBuffers in order of the binding number.
@@ -7031,16 +7034,34 @@ class CmdBeginRenderPass {
 }
 
 sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
-  LastUsedFramebuffer = Framebuffers[args.Framebuffer]
-  for _ , _ , v in LastUsedFramebuffer.ImageAttachments {
+  LastDrawInfo.Framebuffer = Framebuffers[args.Framebuffer]
+  LastDrawInfo.LastSubpass = 0
+  for _ , _ , v in LastDrawInfo.Framebuffer.ImageAttachments {
     v.Image.LastBoundQueue = LastBoundQueue
   }
 }
+
+sub void doCmdNextSubpass(u32 Unused) {
+  LastDrawInfo.LastSubpass += 1
+}
+
+@internal class
+RecreateCmdNextSubpassData {
+  VkSubpassContents Contents
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdNextSubpass(
+    VkCommandBuffer   commandBuffer,
+    VkSubpassContents contents) {}
 
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
+  addCmd(commandBuffer, new!RecreateCmdNextSubpassData(contents), as!u32(0), doCmdNextSubpass)
 }
 
 @override
@@ -7964,13 +7985,30 @@ map!(VkSurfaceKHR, ref!SurfaceObject)                      Surfaces
 map!(VkSwapchainKHR, ref!SwapchainObject)                  Swapchains
 map!(VkDisplayModeKHR, ref!DisplayModeObject)              DisplayModes
 // Other state Tracking
-ref!FramebufferObject LastUsedFramebuffer
 ref!QueueObject       LastBoundQueue
 BoundIndexBuffer      CurrentIndexBuffer
 // This is a map of binding number to buffer bound do that binding.
 map!(u32, BoundBuffer)     CurrentBoundVertexBuffers
 ref!GraphicsPipelineObject CurrentGraphicsPipeline
 ref!ComputePipelineObject  CurrentComputePipeline
+
+// This contains the information about a draw 
+@internal class DrawInfo {
+  ref!FramebufferObject               Framebuffer
+  // A mapping from the descriptor set bound numbers to descriptor set objects
+  map!(u32, ref!DescriptorSetObject)  DescriptorSets
+  // The Last subpass number used in the draw
+  u32                                 LastSubpass
+}
+// Records the draw information of the last draw.
+DrawInfo LastDrawInfo
+
+// Clear the recorded descriptor sets in the last draw
+sub void clearLastDrawInfoDescriptorSets() {
+  for i in (0 .. len(LastDrawInfo.DescriptorSets)) {
+    LastDrawInfo.DescriptorSets[as!u32(i)] = null
+  }
+}
 
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.
 @internal class InstanceObject {
