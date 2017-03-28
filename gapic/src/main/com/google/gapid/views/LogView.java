@@ -24,7 +24,6 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import com.google.protobuf.Timestamp;
 
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.FillLayout;
@@ -77,7 +76,8 @@ public class LogView extends Composite implements Tab {
 
     tree = createTree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
     tree.setHeaderVisible(true);
-    tree.setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
+    tree.setFont(theme.getMonoSpaceFont());
+
     for (Column column : Column.values()) {
       TreeColumn treeColumn = new TreeColumn(tree, SWT.LEFT);
       treeColumn.setText(column.name);

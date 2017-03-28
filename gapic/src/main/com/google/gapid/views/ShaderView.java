@@ -58,7 +58,6 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -350,7 +349,7 @@ public class ShaderView extends Composite
       SourceViewer viewer =
           new SourceViewer(group, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
       viewer.setEditable(type.isEditable());
-      viewer.getTextWidget().setFont(JFaceResources.getFont(JFaceResources.TEXT_FONT));
+      viewer.getTextWidget().setFont(theme.getMonoSpaceFont());
       viewer.configure(new GlslSourceConfiguration(theme));
       viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));
       return viewer;
