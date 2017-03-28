@@ -60,7 +60,6 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -455,7 +454,7 @@ public class MemoryView extends Composite
       this.loadable = loadable;
       this.theme = widgets.theme;
       this.copyPaste = widgets.copypaste;
-      font = JFaceResources.getFont(JFaceResources.TEXT_FONT);
+      font = theme.getMonoSpaceFont();
       GC gc = new GC(parent);
       gc.setFont(font);
       lineHeight = gc.getFontMetrics().getHeight();

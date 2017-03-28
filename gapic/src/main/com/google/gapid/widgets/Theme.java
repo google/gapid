@@ -21,10 +21,12 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
 import com.google.gapid.util.Colors;
 
+import org.eclipse.jface.resource.FontDescriptor;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.widgets.Display;
@@ -131,28 +133,12 @@ public interface Theme {
   @TextStyle(foreground = 0xee0000) public Styler errorStyler();
   @TextStyle(foreground = 0xffc800) public Styler warningStyler();
 
+  @Text(Text.Mono) public Font getMonoSpaceFont();
+
   public void dispose();
 
   public static Theme load(Display display) {
-    Map<String, Object> resources = Maps.newHashMap();
-    for (Method method : Theme.class.getDeclaredMethods()) {
-      Icon icon = method.getDeclaredAnnotation(Icon.class);
-      if (icon != null) {
-        resources.put(method.getName(), ImageDescriptor.createFromURL(
-            Resources.getResource("icons/" + icon.value())).createImage(display));
-      } else {
-        RGB rgb = method.getDeclaredAnnotation(RGB.class);
-        if (rgb != null) {
-          resources.put(method.getName(), new Color(display, fromARGB(rgb.argb())));
-        } else {
-          TextStyle style = method.getDeclaredAnnotation(TextStyle.class);
-          if (style != null) {
-            resources.put(method.getName(), new DisposableStyler(display, style));
-          }
-        }
-      }
-    }
-
+    Map<String, Object> resources = new Loader(display).load();
     return (Theme)Proxy.newProxyInstance(
         Theme.class.getClassLoader(), new Class<?>[] { Theme.class }, new InvocationHandler() {
       @Override
@@ -209,6 +195,17 @@ public interface Theme {
   }
 
   /**
+   * Annotation for a font resource.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  public static @interface Text {
+    public static final int Mono = 1;
+
+    public int value();
+  }
+
+  /**
    * A {@link Styler} that will dispose its resources.
    */
   public static class DisposableStyler extends Styler {
@@ -245,6 +242,72 @@ public interface Theme {
       if (bold) {
         textStyle.font = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT);
       }
+    }
+  }
+
+  /**
+   * Resource loader for the theme.
+   */
+  public static class Loader {
+    private final Display display;
+    private final Map<String, Object> resources = Maps.newHashMap();
+
+    public Loader(Display display) {
+      this.display = display;
+    }
+
+    public Map<String, Object> load() {
+      for (Method method : Theme.class.getDeclaredMethods()) {
+        loadResource(method);
+      }
+      return resources;
+    }
+
+    private boolean loadResource(Method method) {
+      return loadIcon(method) || loadColor(method) || loadTextStyle(method) || loadFont(method);
+    }
+
+    private boolean loadIcon(Method method) {
+      Icon icon = method.getDeclaredAnnotation(Icon.class);
+      if (icon != null) {
+        resources.put(method.getName(), ImageDescriptor.createFromURL(
+            Resources.getResource("icons/" + icon.value())).createImage(display));
+        return true;
+      }
+      return false;
+    }
+
+    private boolean loadColor(Method method) {
+      RGB rgb = method.getDeclaredAnnotation(RGB.class);
+      if (rgb != null) {
+        resources.put(method.getName(), new Color(display, fromARGB(rgb.argb())));
+        return true;
+      }
+      return false;
+    }
+
+    private boolean loadTextStyle(Method method) {
+      TextStyle style = method.getDeclaredAnnotation(TextStyle.class);
+      if (style != null) {
+        resources.put(method.getName(), new DisposableStyler(display, style));
+        return true;
+      }
+      return false;
+    }
+
+    public boolean loadFont(Method method) {
+      Text text = method.getDeclaredAnnotation(Text.class);
+      if (text != null) {
+        switch (text.value()) {
+          case Text.Mono:
+            Font font = FontDescriptor.createFrom(JFaceResources.getFont(JFaceResources.TEXT_FONT))
+                .setHeight(JFaceResources.getDefaultFont().getFontData()[0].getHeight())
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+        }
+      }
+      return false;
     }
   }
 }
