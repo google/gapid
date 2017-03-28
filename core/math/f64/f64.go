@@ -51,3 +51,44 @@ func Round(v float64) int {
 	}
 	return int(math.Floor(v + 0.5))
 }
+
+// FromBits takes binary representation of floating-point value
+// with user-defined bit sizes and expands it to full float64.
+func FromBits(val uint64, expBits, manBits uint32) float64 {
+	manMask := (uint64(1) << manBits) - 1
+	expMask := (uint64(1) << expBits) - 1
+	expBias := expMask / 2
+	const expMaskFloat64 = (1 << 11) - 1
+	const expBiasFloat64 = expMaskFloat64 / 2 // 1023
+
+	// Extract mantissa, exponent and sign from the packed value
+	man, val := val&manMask, val>>manBits
+	exp, sig := val&expMask, val>>expBits
+
+	// Special cases in increasing numerical order of the value
+	if exp == 0 {
+		if man == 0 {
+			// Zero - return zero with the same sign
+			return math.Float64frombits(sig << 63)
+		} else if expMask != expMaskFloat64 {
+			// Denormalized number - promote it to normalized
+			exp++
+			for man&(1<<manBits) == 0 {
+				man *= 2
+				exp--
+			}
+			man &= manMask
+			exp += expBiasFloat64 - expBias
+		}
+	} else if exp < expMask {
+		// Normalized number - just adjust the exponent's bias
+		exp += expBiasFloat64 - expBias
+	} else /* exp == expMask */ {
+		// NaN or Inf - set all bits in exponent; keep mantissa
+		exp = expMaskFloat64
+	}
+
+	// Compact mantissa, exponent and sign to 64-bit float value
+	val = (sig << 63) | (exp << 52) | (man << (52 - manBits))
+	return math.Float64frombits(val)
+}
