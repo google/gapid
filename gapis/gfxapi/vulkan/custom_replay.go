@@ -320,7 +320,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *gfxapi.State, b *b
 	return err
 }
 
-func (a *RecreateVkCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	pAllocateInfo := memory.Pointer(a.PAllocateInfo)
 	pCommandBuffer := memory.Pointer(a.PCommandBuffer)
 	pBeginInfo := memory.Pointer(a.PBeginInfo)
@@ -341,7 +341,7 @@ func (a *RecreateVkCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b
 	return err
 }
 
-func (a *RecreateVkEndCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkEndCommandBuffer(a.CommandBuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
@@ -408,7 +408,7 @@ func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, s *gfxapi.St
 	return hijack.Mutate(ctx, s, b)
 }
 
-func (a *RecreateBindVertexBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdBindVertexBuffers(
 		a.CommandBuffer,
 		a.FirstBinding,
@@ -429,7 +429,7 @@ func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, s *gfxapi.State
 	return hijack.Mutate(ctx, s, b)
 }
 
-func (a *RecreateEndRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdEndRenderPass(
 		a.CommandBuffer)
 	hijack.Extras().Add(a.Extras().All()...)

@@ -5065,7 +5065,7 @@ cmd VkResult vkResetCommandPool(
 @override
 @custom
 @no_replay
-cmd void RecreateVkCommandBuffer(
+cmd void RecreateAndBeginCommandBuffer(
     VkDevice            device,
     const VkCommandBufferAllocateInfo* pAllocateInfo,
     const VkCommandBufferBeginInfo*    pBeginInfo,
@@ -5163,7 +5163,7 @@ cmd VkResult vkBeginCommandBuffer(
 @override
 @custom
 @no_replay
-cmd void RecreateVkEndCommandBuffer(VkCommandBuffer commandBuffer) {}
+cmd void RecreateEndCommandBuffer(VkCommandBuffer commandBuffer) {}
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -5592,7 +5592,7 @@ sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
 @override
 @custom
 @no_replay
-cmd void RecreateBindVertexBuffers(
+cmd void RecreateCmdBindVertexBuffers(
     VkCommandBuffer     commandBuffer,
     u32                 firstBinding,
     u32                 bindingCount,
@@ -5603,7 +5603,7 @@ cmd void RecreateBindVertexBuffers(
 }
 
 @internal class
-RecreateBindVertexBuffersData {
+RecreateCmdBindVertexBuffersData {
   u32                                FirstBinding,
   u32                                BindingCount,
   map!(u32, VkBuffer)                Buffers
@@ -5618,7 +5618,7 @@ cmd void vkCmdBindVertexBuffers(
     u32                 bindingCount,
     const VkBuffer*     pBuffers,
     const VkDeviceSize* pOffsets) {
-  recreate_data := new!RecreateBindVertexBuffersData(
+  recreate_data := new!RecreateCmdBindVertexBuffersData(
     FirstBinding: firstBinding,
     BindingCount: bindingCount
   )
@@ -7067,12 +7067,12 @@ cmd void vkCmdNextSubpass(
 @override
 @custom
 @no_replay
-cmd void RecreateEndRenderPass(
+cmd void RecreateCmdEndRenderPass(
     VkCommandBuffer     commandBuffer) {
 }
 
 @internal class
-RecreateEndRenderPassData {
+RecreateCmdEndRenderPassData {
 }
 
 sub void doCmdEndRenderPass(u32 unused) {
@@ -7082,7 +7082,7 @@ sub void doCmdEndRenderPass(u32 unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-  addCmd(commandBuffer, new!RecreateEndRenderPassData(), as!u32(0), doCmdEndRenderPass)
+  addCmd(commandBuffer, new!RecreateCmdEndRenderPassData(), as!u32(0), doCmdEndRenderPass)
 }
 
 @internal

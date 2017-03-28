@@ -89,7 +89,7 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 	}
 }
 
-func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data interface{}) *RecreateVkCommandBuffer {
+func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data interface{}) *RecreateAndBeginCommandBuffer {
 	return nil
 }
 
