@@ -53,20 +53,20 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
-func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
+func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(gfxapi.FramebufferAttachment_Depth)
 		if err != nil {
-			res <- imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}}
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 
-		postColorData(ctx, s, int32(width), int32(height), format, out, func(i imgRes) { res <- i })
+		postColorData(ctx, s, int32(width), int32(height), format, out, res)
 	})
 }
 
-func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res chan<- imgRes) {
+func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s)
@@ -74,7 +74,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
 		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(attachment)
 		if err != nil {
-			res <- imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}}
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 
@@ -105,7 +105,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, func(i imgRes) { res <- i })
+			postColorData(ctx, s, outW, outH, fmt, out, res)
 		} else {
 			t.glScissor(0, 0, GLsizei(inW), GLsizei(inH))
 			framebufferID := t.glGenFramebuffer()
@@ -120,7 +120,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			)
 			t.glBindFramebuffer_Read(framebufferID)
 
-			postColorData(ctx, s, outW, outH, fmt, out, func(i imgRes) { res <- i })
+			postColorData(ctx, s, outW, outH, fmt, out, res)
 		}
 
 		t.revert()
@@ -132,7 +132,7 @@ func postColorData(ctx context.Context,
 	width, height int32,
 	glfmt imgfmt,
 	out transform.Writer,
-	callback func(imgRes)) {
+	res replay.Result) {
 
 	imgFmt := glfmt.asImageOrPanic()
 
@@ -168,7 +168,7 @@ func postColorData(ctx context.Context,
 				Height: uint32(height),
 				Format: imgFmt,
 			}
-			callback(imgRes{img: img, err: err})
+			res(img, err)
 			return err
 		})
 		return nil

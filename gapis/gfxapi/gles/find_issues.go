@@ -42,7 +42,8 @@ import (
 type findIssues struct {
 	state       *gfxapi.State
 	device      *device.Instance
-	out         []chan<- replay.Issue
+	issues      []replay.Issue
+	res         []replay.Result
 	lastGlError GLenum
 }
 
@@ -58,16 +59,13 @@ func newFindIssues(ctx context.Context, device *device.Instance) *findIssues {
 }
 
 // reportTo adds the chan c to the list of issue listeners.
-func (t *findIssues) reportTo(c chan<- replay.Issue) { t.out = append(t.out, c) }
+func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) onIssue(a atom.Atom, i atom.ID, s service.Severity, e error) {
 	if s == service.Severity_CriticalLevel && isIssueWhitelisted(a, e) {
 		s = service.Severity_ErrorLevel
 	}
-	issue := replay.Issue{Atom: i, Severity: s, Error: e}
-	for _, o := range t.out {
-		o <- issue
-	}
+	t.issues = append(t.issues, replay.Issue{Atom: i, Severity: s, Error: e})
 }
 
 // The value 0 is used for many enums - prefer GL_NO_ERROR in this case.
@@ -298,16 +296,15 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		b.Push(value.U32(code))
 		b.Post(b.Buffer(1), 4, func(r pod.Reader, err error) error {
 			if err != nil {
-				t.out = nil
+				t.res = nil
 				return err
 			}
 			if r.Uint32() != code {
 				return fmt.Errorf("Flush did not get expected EOS code")
 			}
-			for _, c := range t.out {
-				close(c)
+			for _, res := range t.res {
+				res(t.issues, nil)
 			}
-			t.out = nil
 			return err
 		})
 		return nil

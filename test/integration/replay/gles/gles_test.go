@@ -220,23 +220,10 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	if done != nil {
 		defer done.Done()
 	}
-	issues := make(chan replay.Issue, 256)
-	go gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr, issues)
-	timeout := time.After(replayTimeout)
-	got := []replay.Issue{}
-	for {
-		select {
-		case issue, more := <-issues:
-			if more {
-				got = append(got, issue)
-			} else {
-				assert.With(ctx).ThatSlice(got).DeepEquals(expected)
-				return
-			}
-		case <-timeout:
-			// Panic instead of erroring so we see the status of the go-routine we're waiting for.
-			panic(fmt.Errorf("Timeout querying for issue"))
-		}
+	ctx, _ = task.WithTimeout(ctx, replayTimeout)
+	issues, err := gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr)
+	if assert.With(ctx).ThatError(err).Succeeded() {
+		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
 	}
 }
 
@@ -267,7 +254,7 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Color0, replay.WireframeMode_None)
+		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Color0, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}
@@ -282,7 +269,7 @@ func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Depth, replay.WireframeMode_None)
+		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Depth, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}
@@ -301,7 +288,7 @@ func (c intentCfg) String() string {
 func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatchCount int) func() {
 	batchCount := 0
 	uniqueIntentConfigs := map[intentCfg]struct{}{}
-	replay.Events.OnReplay = func(device bind.Device, intent replay.Intent, config replay.Config, requests []replay.Request) {
+	replay.Events.OnReplay = func(device bind.Device, intent replay.Intent, config replay.Config) {
 		assert.For(ctx, "Replay intent").That(intent).DeepEquals(expectedIntent)
 		batchCount++
 		uniqueIntentConfigs[intentCfg{intent, config}] = struct{}{}

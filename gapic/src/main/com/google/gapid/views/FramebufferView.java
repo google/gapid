@@ -33,6 +33,7 @@ import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.Service.RenderSettings;
 import com.google.gapid.proto.service.Service.WireframeMode;
@@ -83,6 +84,9 @@ public class FramebufferView extends Composite
   private static final RenderSettings RENDER_WIREFRAME = RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
       .setWireframeMode(WireframeMode.All)
+      .build();
+  private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
+      .setPrimary(true)
       .build();
 
   private final Client client;
@@ -245,6 +249,6 @@ public class FramebufferView extends Composite
 
   private ListenableFuture<ImageInfo> getImageInfoPath(Path.Command atomPath) {
     return client.getFramebufferAttachment(
-        models.devices.getReplayDevice(), atomPath, target, renderSettings);
+        models.devices.getReplayDevice(), atomPath, target, renderSettings, HINTS);
   }
 }

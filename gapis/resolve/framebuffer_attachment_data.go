@@ -60,7 +60,17 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 
 	mgr := replay.GetManager(ctx)
 
-	res, err := query.QueryFramebufferAttachment(ctx, intent, mgr, atom.ID(r.After.Index), r.Width, r.Height, r.Attachment, wireframeMode)
+	res, err := query.QueryFramebufferAttachment(
+		ctx,
+		intent,
+		mgr,
+		atom.ID(r.After.Index),
+		r.Width,
+		r.Height,
+		r.Attachment,
+		wireframeMode,
+		r.Hints,
+	)
 	if err != nil {
 		if _, ok := err.(*service.ErrDataUnavailable); ok {
 			return nil, err

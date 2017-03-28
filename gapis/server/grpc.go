@@ -208,7 +208,14 @@ func (s *grpcServer) GetDevicesForReplay(ctx xctx.Context, req *service.GetDevic
 }
 
 func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.GetFramebufferAttachmentRequest) (*service.GetFramebufferAttachmentResponse, error) {
-	image, err := s.handler.GetFramebufferAttachment(s.bindCtx(ctx), req.Device, req.After, req.Attachment, req.Settings)
+	image, err := s.handler.GetFramebufferAttachment(
+		s.bindCtx(ctx),
+		req.Device,
+		req.After,
+		req.Attachment,
+		req.Settings,
+		req.Hints,
+	)
 	if err := service.NewError(err); err != nil {
 		return &service.GetFramebufferAttachmentResponse{Res: &service.GetFramebufferAttachmentResponse_Error{Error: err}}, nil
 	}

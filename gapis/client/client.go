@@ -237,13 +237,15 @@ func (c *client) GetFramebufferAttachment(
 	dev *path.Device,
 	cmd *path.Command,
 	att gfxapi.FramebufferAttachment,
-	rs *service.RenderSettings) (*path.ImageInfo, error) {
+	rs *service.RenderSettings,
+	hints *service.UsageHints) (*path.ImageInfo, error) {
 
 	res, err := c.client.GetFramebufferAttachment(ctx, &service.GetFramebufferAttachmentRequest{
 		Device:     dev,
 		After:      cmd,
 		Attachment: att,
 		Settings:   rs,
+		Hints:      hints,
 	})
 	if err != nil {
 		return nil, err

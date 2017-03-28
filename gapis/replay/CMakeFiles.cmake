@@ -18,7 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    batcher.go
+    batch.go
     context.go
     custom.go
     doc.go
