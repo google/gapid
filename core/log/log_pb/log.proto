@@ -46,6 +46,14 @@ message Message {
 
     // The key-value pairs of extra data.
     repeated Value values = 8;
+
+    // The error cause passed along with the log message (e.g. a Java exception).
+    repeated Cause cause = 9;
+}
+
+message Cause {
+    string message = 1;
+    repeated SourceLocation callstack = 2;
 }
 
 message SourceLocation {
@@ -53,6 +61,9 @@ message SourceLocation {
 
     // 1-based line number
     int32 line = 2;
+
+    // The continaing type and function name (class.method, or struct.function name).
+    string method = 3;
 }
 
 message Value {
