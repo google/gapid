@@ -68,35 +68,35 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
-func (t *readFramebuffer) Depth(id atom.ID, res chan<- imgRes) {
+func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Depth
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
 		if err != nil {
-			res <- imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Depth attachment")}}
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Depth attachment")})
 			return
 		}
 		imageViewDepth := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		depthImageObject := imageViewDepth.Image
-		postImageData(ctx, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, func(i imgRes) { res <- i })
+		postImageData(ctx, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
 
-func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res chan<- imgRes) {
+func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
 		if err != nil {
-			res <- imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Color attachment")}}
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Color attachment")})
 			return
 		}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		imageView := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		imageObject := imageView.Image
-		postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, func(i imgRes) { res <- i })
+		postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 	})
 }
 
@@ -128,10 +128,10 @@ func postImageData(ctx context.Context,
 	reqWidth,
 	reqHeight uint32,
 	out transform.Writer,
-	callback func(imgRes)) {
+	res replay.Result) {
 	attachmentImageFormat, err := getImageFormatFromVulkanFormat(vkFormat)
 	if err != nil {
-		callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}})
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 		return
 	}
 	// When depth image is requested, the format, which is used for resolving/bliting/copying attachment image data
@@ -141,7 +141,7 @@ func postImageData(ctx context.Context,
 	if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		formatOfImgRes, err = getDepthImageFormatFromVulkanFormat(vkFormat)
 		if err != nil {
-			callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}})
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 	}
@@ -156,16 +156,16 @@ func postImageData(ctx context.Context,
 	// of such a queue found for this image or the bound queue does not have
 	// graphics capability, throw error messages and return.
 	if queue == nil {
-		callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")}})
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
 		return
 	}
 	if properties, ok := physicalDevice.QueueFamilyProperties[queue.Family]; ok {
 		if properties.QueueFlags&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) == 0 {
-			callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("The bound vkQueue does not have VK_QUEUE_GRAPHICS_BIT capability")}})
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The bound vkQueue does not have VK_QUEUE_GRAPHICS_BIT capability")})
 			return
 		}
 	} else {
-		callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("Not found the properties information of the bound vkQueue")}})
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Not found the properties information of the bound vkQueue")})
 		return
 	}
 
@@ -367,7 +367,7 @@ func postImageData(ctx context.Context,
 	mappedMemoryRangeData := MustAllocData(ctx, s, mappedMemoryRange)
 	at, err := s.Allocator.Alloc(bufferSize, 8)
 	if err != nil {
-		callback(imgRes{err: &service.ErrDataUnavailable{Reason: messages.ErrMessage("Device Memory -> Host mapping failed")}})
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Device Memory -> Host mapping failed")})
 	}
 	mappedPointer := MustAllocData(ctx, s, NewVoidᶜᵖ(at))
 
@@ -971,7 +971,7 @@ func postImageData(ctx context.Context,
 					Format: formatOfImgRes,
 				}
 
-				callback(imgRes{img: img, err: err})
+				res(img, err)
 				return err
 			})
 			return nil

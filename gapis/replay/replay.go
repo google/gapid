@@ -33,7 +33,7 @@ type Generator interface {
 		ctx context.Context,
 		intent Intent,
 		cfg Config,
-		requests []Request,
+		requests []RequestAndResult,
 		device *device.Instance,
 		capture *capture.Capture,
 		out transform.Writer) error
@@ -59,3 +59,13 @@ type Config interface{}
 // to insert a postback of the currently bound render-target content at a
 // specific atom.
 type Request interface{}
+
+// Result is the function called for the result of a request.
+// One of val and err must be nil.
+type Result func(val interface{}, err error)
+
+// RequestAndResult is a pair of Request and Result.
+type RequestAndResult struct {
+	Request Request
+	Result  Result
+}

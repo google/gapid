@@ -29,35 +29,35 @@ option java_outer_classname = "Service";
 // WireframeMode is an enumerator of wireframe modes that can be used by
 // RenderSettings.
 enum WireframeMode {
-    // None indicates that nothing should be drawn in wireframe.
-    None = 0;
-    // Overlay indicates that the single draw call should be overlayed
-    // with the wireframe of the mesh.
-    Overlay = 1;
-    // All indicates that all draw calls should be displayed in wireframe.
-    All = 2;
+  // None indicates that nothing should be drawn in wireframe.
+  None = 0;
+  // Overlay indicates that the single draw call should be overlayed
+  // with the wireframe of the mesh.
+  Overlay = 1;
+  // All indicates that all draw calls should be displayed in wireframe.
+  All = 2;
 }
 
 // Severity defines the severity of a logging message.
 // The levels match the ones defined in rfc5424 for syslog.
 // They must be identical to the values in the logging package.
 enum Severity {
-    // EmergencyLevel indicates the system is unusable, no further data should be trusted.
-    EmergencyLevel = 0;
-    // AlertLevel indicates action must be taken immediately.
-    AlertLevel = 1;
-    // CriticalLevel indicates errors severe enough to terminate processing.
-    CriticalLevel = 2;
-    // ErrorLevel indicates non terminal failure conditions that may have an effect on results.
-    ErrorLevel = 3;
-    // WarningLevel indicates issues that might affect performance or compatibility, but could be ignored.
-    WarningLevel = 4;
-    // NoticeLevel indicates normal but significant conditions.
-    NoticeLevel = 5;
-    // InfoLevel indicates minor informational messages that should generally be ignored.
-    InfoLevel = 6;
-    // DebugLevel indicates verbose debug-level messages.
-    DebugLevel = 7;
+  // EmergencyLevel indicates the system is unusable, no further data should be trusted.
+  EmergencyLevel = 0;
+  // AlertLevel indicates action must be taken immediately.
+  AlertLevel = 1;
+  // CriticalLevel indicates errors severe enough to terminate processing.
+  CriticalLevel = 2;
+  // ErrorLevel indicates non terminal failure conditions that may have an effect on results.
+  ErrorLevel = 3;
+  // WarningLevel indicates issues that might affect performance or compatibility, but could be ignored.
+  WarningLevel = 4;
+  // NoticeLevel indicates normal but significant conditions.
+  NoticeLevel = 5;
+  // InfoLevel indicates minor informational messages that should generally be ignored.
+  InfoLevel = 6;
+  // DebugLevel indicates verbose debug-level messages.
+  DebugLevel = 7;
 }
 
 message ServerInfo {
@@ -241,10 +241,11 @@ message GetDevicesForReplayResponse {
 }
 
 message GetFramebufferAttachmentRequest {
-		path.Device device = 1;
-		path.Command after = 2;
-		gfxapi.FramebufferAttachment attachment = 3;
-		RenderSettings settings = 4;
+  path.Device device = 1;
+  path.Command after = 2;
+  gfxapi.FramebufferAttachment attachment = 3;
+  RenderSettings settings = 4;
+  UsageHints hints = 5;
 }
 
 message GetFramebufferAttachmentResponse {
@@ -418,6 +419,21 @@ message MemoryRange {
   uint64 base = 1;
   // The number of bytes that are in the memory range.
   uint64 size = 2;
+}
+
+// UsageHints hints to the server the intended usage of the result of a request.
+// This can be used to improve performance and responsiveness of the RPCs.
+message UsageHints {
+  // Preview indicates that the request has been made for a thumbnail or
+  // low-quality representation of the underlying data. Previews are considered
+  // non-critical and non-urgent; the server may consider scheduling other work
+  // ahead of previews, and possibly delay the processing of the request to
+  // batch together requests.
+  bool preview = 1;
+
+  // Primary indicates that the request has been made for the primary view.
+  // Primary requests are prioritized and are low-latency.
+  bool primary = 2;
 }
 
 // RenderSettings contains settings and flags to be used in replaying and

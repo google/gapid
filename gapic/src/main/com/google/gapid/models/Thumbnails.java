@@ -58,6 +58,9 @@ public class Thumbnails {
       .setMaxHeight(DPIUtil.autoScaleUp(THUMB_SIZE))
       .setWireframeMode(Service.WireframeMode.None)
       .build();
+  private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
+      .setPreview(true)
+      .build();
 
   private final Client client;
   private final Devices devices;
@@ -139,7 +142,7 @@ public class Thumbnails {
 
   private ListenableFuture<Path.ImageInfo> getPath(long atomId) {
     return client.getFramebufferAttachment(devices.getReplayDevice(),
-        command(atoms.getPath(), atomId), GfxAPI.FramebufferAttachment.Color0, RENDER_SETTINGS);
+        command(atoms.getPath(), atomId), GfxAPI.FramebufferAttachment.Color0, RENDER_SETTINGS, HINTS);
   }
 
   public void addListener(Listener listener) {

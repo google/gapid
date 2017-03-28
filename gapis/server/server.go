@@ -216,7 +216,8 @@ func (s *server) GetFramebufferAttachment(
 	device *path.Device,
 	after *path.Command,
 	attachment gfxapi.FramebufferAttachment,
-	settings *service.RenderSettings) (*path.ImageInfo, error) {
+	settings *service.RenderSettings,
+	hints *service.UsageHints) (*path.ImageInfo, error) {
 
 	// TODO: Path validation
 	// if err := device.Validate(); err != nil {
@@ -225,7 +226,7 @@ func (s *server) GetFramebufferAttachment(
 	// if err := after.Validate(); err != nil {
 	// 	return nil, err
 	// }
-	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings)
+	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings, hints)
 }
 
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {

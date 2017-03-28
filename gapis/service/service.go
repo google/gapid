@@ -83,7 +83,8 @@ type Service interface {
 		device *path.Device,
 		after *path.Command,
 		attachment gfxapi.FramebufferAttachment,
-		settings *RenderSettings) (*path.ImageInfo, error)
+		settings *RenderSettings,
+		hints *UsageHints) (*path.ImageInfo, error)
 
 	// Get resolves and returns the object, value or memory at the path p.
 	Get(ctx context.Context, p *path.Any) (interface{}, error)

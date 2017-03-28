@@ -20,5 +20,5 @@ import "github.com/google/gapid/core/os/device/bind"
 // replay activity.
 var Events struct {
 	// OnReplay is called when a replay batch is sent to a device.
-	OnReplay func(bind.Device, Intent, Config, []Request)
+	OnReplay func(bind.Device, Intent, Config)
 }

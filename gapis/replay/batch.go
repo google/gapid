@@ -16,88 +16,28 @@ package replay
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
+	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-const maxBatchDelay = 250 * time.Millisecond
-
-// batcherContext is used as a key for the batch that's being formed.
-type batcherContext struct {
-	// Do not be tempted to turn these IDs into path nodes - go equality will
-	// break and no batches will be formed.
-	Device    id.ID
-	Capture   id.ID
-	Generator Generator
-	Config    Config
-}
-
-type job struct {
-	request Request
-	result  chan<- error
-}
-
-type batcher struct {
-	feed    chan job
-	context batcherContext
-	device  bind.Device
-	gapir   *gapir.Client
-}
-
 var (
-	generatorReplayCounter       = benchmark.GlobalCounters.Duration("batcher.send.generatorReplayTotalDuration")
-	builderBuildCounter          = benchmark.GlobalCounters.Duration("batcher.send.builderBuildTotalDuration")
-	executorExecuteCounter       = benchmark.GlobalCounters.Duration("batcher.send.executorExecuteTotalDuration")
-	batcherSendInvocationCounter = benchmark.GlobalCounters.Integer("batcher.send.invocations")
+	generatorReplayTimer = benchmark.GlobalCounters.Duration("replay.executor.generatorReplayTotalDuration")
+	builderBuildTimer    = benchmark.GlobalCounters.Duration("replay.executor.builderBuildTotalDuration")
+	executeTimer         = benchmark.GlobalCounters.Duration("replay.executor.executeTotalDuration")
+	executeCounter       = benchmark.GlobalCounters.Integer("replay.executor.invocations")
 )
-
-func (b *batcher) run(ctx context.Context) {
-	ctx = log.V{"capture": b.context.Capture}.Bind(ctx)
-
-	// Gather all the batchEntries that are added to feed within maxBatchDelay.
-	for j := range b.feed {
-		jobs := []job{j}
-		timeout := time.After(maxBatchDelay)
-	inner:
-		for {
-			select {
-			case j, ok := <-b.feed:
-				if !ok {
-					break inner
-				}
-				jobs = append(jobs, j)
-			case <-timeout:
-				break inner
-			}
-		}
-
-		// Batch formed. Trigger the replay.
-		requests := make([]Request, len(jobs))
-		for i, job := range jobs {
-			requests[i] = job.request
-		}
-
-		log.I(ctx, "Replay batch")
-		err := b.send(ctx, requests)
-		for _, job := range jobs {
-			job.result <- err
-		}
-	}
-}
 
 // captureMemoryLayout returns the device memory layout of the capture from the
 // atoms. This function assumes there's an architecture atom at the beginning of
@@ -122,41 +62,75 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 	return nil
 }
 
-func (b *batcher) send(ctx context.Context, requests []Request) (err error) {
-	batcherSendInvocationCounter.Increment()
+func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
+	ctx = log.V{
+		"priority": b.Priority,
+		"delay":    b.Precondition,
+	}.Bind(ctx)
+	log.I(ctx, "Replay for %d requests", len(e))
 
-	devPath := path.NewDevice(b.context.Device)
-	capPath := path.NewCapture(b.context.Capture)
-	intent := Intent{devPath, capPath}
+	requests := make([]RequestAndResult, len(e))
+	for i, e := range e {
+		requests[i] = RequestAndResult{
+			Request: e.Task,
+			Result:  Result(e.Result),
+		}
+	}
+	batch := b.Key.(batchKey)
+	err := m.execute(ctx, batch.device, batch.capture, batch.config, batch.generator, requests)
+	if err != nil {
+		for _, e := range requests {
+			e.Result(nil, err)
+		}
+	}
+}
 
-	ctx = capture.Put(ctx, capPath)
+func (m *Manager) execute(
+	ctx context.Context,
+	deviceID, captureID id.ID,
+	cfg Config,
+	generator Generator,
+	requests []RequestAndResult) error {
 
-	device := b.device.Instance()
-	ctx = log.V{"device": device.Name}.Bind(ctx)
+	executeCounter.Increment()
 
-	log.I(ctx, "Replaying...")
+	devicePath := path.NewDevice(deviceID)
+	d := bind.GetRegistry(ctx).Device(deviceID)
+	if d == nil {
+		return log.Errf(ctx, nil, "Unknown device %v", deviceID)
+	}
 
-	c, err := capture.ResolveFromPath(ctx, capPath)
+	capturePath := path.NewCapture(captureID)
+	c, err := capture.ResolveFromPath(ctx, capturePath)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load capture")
 	}
 
-	list, err := c.Atoms(ctx)
+	ctx = capture.Put(ctx, capturePath)
+	ctx = log.V{
+		"capture": captureID,
+		"device":  d.Instance().GetName(),
+	}.Bind(ctx)
+
+	intent := Intent{devicePath, capturePath}
+
+	atoms, err := c.Atoms(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load atom stream")
 	}
 
-	cml := captureMemoryLayout(ctx, list)
+	cml := captureMemoryLayout(ctx, atoms)
 	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
 
-	if len(device.Configuration.ABIs) == 0 {
+	deviceABIs := d.Instance().GetConfiguration().GetABIs()
+	if len(deviceABIs) == 0 {
 		return log.Err(ctx, nil, "Replay device doesn't list any ABIs")
 	}
 
-	replayABI := findABI(cml, device.Configuration.ABIs)
+	replayABI := findABI(cml, deviceABIs)
 	if replayABI == nil {
 		log.I(ctx, "Replay device does not have a memory layout matching device used to trace")
-		replayABI = device.Configuration.ABIs[0]
+		replayABI = deviceABIs[0]
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
@@ -167,51 +141,31 @@ func (b *batcher) send(ctx context.Context, requests []Request) (err error) {
 		builder: builder,
 	}
 
-	t0 := generatorReplayCounter.Start()
-	if err := b.context.Generator.Replay(
+	t0 := generatorReplayTimer.Start()
+	if err := generator.Replay(
 		ctx,
 		intent,
-		b.context.Config,
+		cfg,
 		requests,
-		device,
+		d.Instance(),
 		c,
 		out); err != nil {
 		return log.Err(ctx, err, "Replay returned error")
 	}
-	generatorReplayCounter.Stop(t0)
+	generatorReplayTimer.Stop(t0)
 
 	if config.DebugReplay {
 		log.I(ctx, "Building payload...")
 	}
 
-	t0 = builderBuildCounter.Start()
+	t0 = builderBuildTimer.Start()
 	payload, decoder, err := builder.Build(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
-	builderBuildCounter.Stop(t0)
+	builderBuildTimer.Stop(t0)
 
-	defer func() {
-		caught := recover()
-		if err == nil && caught != nil {
-			err, _ = caught.(error)
-			if err == nil {
-				// If we are panicing, we always want an error to send.
-				err = fmt.Errorf("%s", caught)
-			}
-		}
-		if err != nil {
-			// An error was returned or thrown after the replay postbacks were requested.
-			// Inform each postback handler that they're not going to get data,
-			// to avoid chans blocking forever.
-			decoder(nil, err)
-		}
-		if caught != nil {
-			panic(caught)
-		}
-	}()
-
-	connection, err := b.gapir.Connect(ctx, b.device, replayABI)
+	connection, err := m.gapir.Connect(ctx, d, replayABI)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to device")
 	}
@@ -222,10 +176,10 @@ func (b *batcher) send(ctx context.Context, requests []Request) (err error) {
 	}
 
 	if Events.OnReplay != nil {
-		Events.OnReplay(b.device, intent, b.context.Config, requests)
+		Events.OnReplay(d, intent, cfg)
 	}
 
-	t0 = executorExecuteCounter.Start()
+	t0 = executeTimer.Start()
 	err = executor.Execute(
 		ctx,
 		payload,
@@ -233,7 +187,7 @@ func (b *batcher) send(ctx context.Context, requests []Request) (err error) {
 		connection,
 		replayABI.MemoryLayout,
 	)
-	executorExecuteCounter.Stop(t0)
+	executeTimer.Stop(t0)
 	return err
 }
 

@@ -33,6 +33,7 @@ message FramebufferAttachmentResolvable {
 	path.Command after = 2;
 	gfxapi.FramebufferAttachment attachment = 3;
 	service.RenderSettings settings = 4;
+	service.UsageHints hints = 5;
 }
 
 message FramebufferChangesResolvable {
@@ -46,6 +47,7 @@ message FramebufferAttachmentDataResolvable {
 	uint32 height = 4;
 	gfxapi.FramebufferAttachment attachment = 5;
 	service.WireframeMode wireframe_mode = 6;
+	service.UsageHints hints = 7;
 }
 
 // Get resolves the object, value or memory at Path.

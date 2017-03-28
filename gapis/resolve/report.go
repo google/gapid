@@ -17,7 +17,6 @@ package resolve
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/google/gapid/core/log"
@@ -137,42 +136,27 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 		mgr := replay.GetManager(ctx)
 
-		// Capture can use multiple APIs. Iterate the APIs in use looking for
-		// those that support the QueryIssues interface. Call QueryIssues for each
-		// of these APIs, and use reflect.Select to gather all the issues.
-		issues := []reflect.SelectCase{}
-		pending := make([]gfxapi.API, 0, len(apis))
+		// Capture can use multiple APIs.
+		// Iterate the APIs in use looking for those that support the
+		// QueryIssues interface. Call QueryIssues for each of these APIs.
 		for api := range apis {
 			if qi, ok := api.(replay.QueryIssues); ok {
-				c := make(chan replay.Issue, 256)
-				go qi.QueryIssues(ctx, intent, mgr, c)
-				issues = append(issues, reflect.SelectCase{
-					Dir:  reflect.SelectRecv,
-					Chan: reflect.ValueOf(c),
-				})
-				pending = append(pending, api)
+				issues, err := qi.QueryIssues(ctx, intent, mgr)
+				if err != nil {
+					return nil, err
+				}
+				for _, issue := range issues {
+					item := service.WrapReportItem(
+						&service.ReportItem{
+							Severity: issue.Severity,
+							Command:  uint64(issue.Atom),
+						}, messages.ErrReplayDriver(issue.Error.Error()))
+					if int(issue.Atom) < len(atoms) {
+						item.Tags = append(item.Tags, getAtomNameTag(atoms[issue.Atom]))
+					}
+					builder.Add(ctx, item)
+				}
 			}
-		}
-
-		for len(pending) > 0 {
-			i, v, ok := reflect.Select(issues)
-			if !ok {
-				pending[i] = pending[len(pending)-1]
-				pending = pending[0 : len(pending)-1]
-				issues[i] = issues[len(issues)-1]
-				issues = issues[0 : len(issues)-1]
-				continue
-			}
-			issue := v.Interface().(replay.Issue)
-			item := service.WrapReportItem(
-				&service.ReportItem{
-					Severity: issue.Severity,
-					Command:  uint64(issue.Atom),
-				}, messages.ErrReplayDriver(issue.Error.Error()))
-			if int(issue.Atom) < len(atoms) {
-				item.Tags = append(item.Tags, getAtomNameTag(atoms[issue.Atom]))
-			}
-			builder.Add(ctx, item)
 		}
 
 		// Items are now all out of order. Sort them.
