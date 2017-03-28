@@ -124,6 +124,7 @@ type (
 		Local struct {
 			Port int       `help:"capture a local program instead of using ADB"`
 			App  file.Path `help:"a local program to trace"`
+			Args string    `help:"arguments to pass to the traced program"`
 		}
 		Android struct {
 			Package  string `help:"the full package name"`

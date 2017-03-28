@@ -132,9 +132,14 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 			AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System())
 	}
 
+	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
+	args := r.FindAllString(verb.Local.Args, -1)
+
 	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
-		Env: env,
+		Env:  env,
+		Args: args,
 	})
+
 	if err != nil {
 		return cleanup, err
 	}
