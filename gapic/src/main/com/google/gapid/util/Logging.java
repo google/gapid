@@ -175,9 +175,7 @@ public class Logging {
       final StringBuilder buf = new StringBuilder()
           .append(LogLevel.fromLevel(rec.getLevel()).gapirLevel)
           .append(format.format(new Date(rec.getMillis())))
-          .append("[").append(shorten(Thread.currentThread().getName()))
-          .append("][").append(shorten(rec.getSourceClassName()))
-          .append('.').append(rec.getSourceMethodName()).append("] ");
+          .append(getTag(rec)).append(' ');
       final String prefix = buf.toString();
       protosToString(rec);
       buf.append(formatMessage(rec)).append('\n');
@@ -203,28 +201,19 @@ public class Logging {
       }
       return buf.toString();
     }
+  }
 
-    private static void protosToString(LogRecord rec) {
-      Object[] params = rec.getParameters();
-      if (params == null) {
-        return;
-      }
-
-      params = params.clone();
-      for (int i = 0; params != null && i < params.length; i++) {
-        if (params[i] instanceof MessageOrBuilder) {
-          params[i] = ProtoDebugTextFormat.shortDebugString((MessageOrBuilder)params[i]);
-        }
-      }
-      rec.setParameters(params);
-    }
+  protected static String getTag(LogRecord record) {
+    return "[" + shorten(Thread.currentThread().getName()) + "][" +
+      shorten(record.getSourceClassName()) + "." +
+      record.getSourceMethodName() + "]";
   }
 
   private static final String JAVA_PREFIX = "java.";
   private static final String GAPID_PREFIX = "com.google.gapid.";
   private static final String GOOG_PREFIX = "com.google.";
 
-  protected static String shorten(String className) {
+  private static String shorten(String className) {
     if (className.startsWith(JAVA_PREFIX)) {
       return "j." + className.substring(JAVA_PREFIX.length());
     } else if (className.startsWith(GAPID_PREFIX)) {
@@ -233,6 +222,21 @@ public class Logging {
       return "cg." + className.substring(GOOG_PREFIX.length());
     }
     return className;
+  }
+
+  protected static void protosToString(LogRecord rec) {
+    Object[] params = rec.getParameters();
+    if (params == null) {
+      return;
+    }
+
+    params = params.clone();
+    for (int i = 0; params != null && i < params.length; i++) {
+      if (params[i] instanceof MessageOrBuilder) {
+        params[i] = ProtoDebugTextFormat.shortDebugString((MessageOrBuilder)params[i]);
+      }
+    }
+    rec.setParameters(params);
   }
 
   /**
@@ -320,9 +324,7 @@ public class Logging {
         return;
       }
 
-      String thread = shorten(Thread.currentThread().getName());
-      String klass = shorten(record.getSourceClassName());
-      String method = record.getSourceMethodName();
+      protosToString(record);
 
       long seconds = record.getMillis() / 1000;
       int millis = (int) (record.getMillis() - seconds * 1000);
@@ -331,12 +333,8 @@ public class Logging {
           .setText(simpleFormatter.formatMessage(record))
           .setProcess("gapic")
           .setSeverity(LogLevel.fromLevel(record.getLevel()).severity)
-          .setTag(shorten(record.getLoggerName()))
+          .setTag(getTag(record))
           .setTime(Timestamp.newBuilder().setSeconds(seconds).setNanos(millis * 1000000));
-
-      builder.addValues(Log.Value.newBuilder().setName("thread").setValue(Pods.pod(thread)));
-      builder.addValues(Log.Value.newBuilder().setName("class").setValue(Pods.pod(klass)));
-      builder.addValues(Log.Value.newBuilder().setName("method").setValue(Pods.pod(method)));
 
       Throwable thrown = record.getThrown();
       if (thrown != null) {

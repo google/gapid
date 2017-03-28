@@ -113,28 +113,39 @@ public class LogView extends Composite implements Tab {
         TreeItem line = newItem(item, severity);
         line.setText(Column.TEXT.index, lines[l]);
       }
+
+      boolean groupLabelsRequired = ((lines.length - 1) +
+          (message.getCauseCount() > 0 ? 1 : 0) +
+          (message.getValuesCount() > 0 ? 1 : 0) +
+          (message.getCallstackCount() > 0 ? 1 : 0)) > 1;
+
       // Exceptions
       for (Log.Cause cause : message.getCauseList()) {
         causeToTreeItem(item, severity, cause);
       }
       // Values
       if (message.getValuesCount() > 0) {
-        TreeItem values = newItem(item, severity);
-        values.setText(2, "Values");
+        TreeItem root = item;
+        if (groupLabelsRequired) {
+          root = newItem(item, severity);
+          root.setText(Column.TEXT.index, "Values");
+        }
         for (Log.Value value : message.getValuesList()) {
-          TreeItem entry = newItem(values, severity);
+          TreeItem entry = newItem(root, severity);
           String name = value.getName();
           String val = Pods.unpod(value.getValue()).toString();
-          entry.setText(2, name);
-          entry.setText(Column.TEXT.index, val);
+          entry.setText(Column.TEXT.index, "  " + name + " = " + val);
         }
       }
       // Callstack
       if (message.getCallstackCount() > 0) {
-        TreeItem callstack = newItem(item, severity);
-        callstack.setText(Column.TEXT.index, "Call Stack");
+        TreeItem root = item;
+        if (groupLabelsRequired) {
+          root = newItem(item, severity);
+          root.setText(Column.TEXT.index, "Call Stack");
+        }
         for (Log.SourceLocation location : message.getCallstackList()) {
-          locationToTreeItem(callstack, severity, location);
+          locationToTreeItem(root, severity, location);
         }
       }
       while (tree.getItemCount() > MAX_ITEMS) {
