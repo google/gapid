@@ -33,11 +33,11 @@ import (
 // closed.
 // NOTE: right now this transform is just used to close chans passed in requests.
 type findIssues struct {
-	out []chan<- replay.Issue
+	res []replay.Result
 }
 
-// reportTo adds the chan c to the list of issue listeners.
-func (t *findIssues) reportTo(c chan<- replay.Issue) { t.out = append(t.out, c) }
+// reportTo adds r to the list of issue listeners.
+func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	out.MutateAndWrite(ctx, i, a)
@@ -53,16 +53,16 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		b.Push(value.U32(code))
 		b.Post(b.Buffer(1), 4, func(r pod.Reader, err error) error {
 			if err != nil {
-				t.out = nil
+				t.res = nil
 				return err
 			}
 			if r.Uint32() != code {
 				return fmt.Errorf("Flush did not get expected EOS code")
 			}
-			for _, c := range t.out {
-				close(c)
+			for _, res := range t.res {
+				res([]replay.Issue{}, nil)
 			}
-			t.out = nil
+			t.res = nil
 			return err
 		})
 		return nil

@@ -38,9 +38,7 @@ type Support interface {
 }
 
 // QueryIssues is the interface implemented by types that can verify the replay
-// performs as expected and without errors. The returned chan will receive a
-// stream of issues detected while replaying the capture and the chan will close
-// after the last issue is sent (if any).
+// performs as expected and without errors.
 // If the capture includes FramebufferObservation atoms, this also includes
 // checking the replayed framebuffer matches (within reasonable error) the
 // framebuffer observed at capture time.
@@ -48,8 +46,7 @@ type QueryIssues interface {
 	QueryIssues(
 		ctx context.Context,
 		intent Intent,
-		mgr *Manager,
-		out chan<- Issue)
+		mgr *Manager) ([]Issue, error)
 }
 
 // QueryFramebufferAttachment is the interface implemented by types that can
@@ -63,7 +60,8 @@ type QueryFramebufferAttachment interface {
 		after atom.ID,
 		width, height uint32,
 		attachment gfxapi.FramebufferAttachment,
-		wireframeMode WireframeMode) (*image.Image2D, error)
+		wireframeMode WireframeMode,
+		hints *service.UsageHints) (*image.Image2D, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.

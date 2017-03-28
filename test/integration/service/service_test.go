@@ -202,7 +202,7 @@ func TestGetFramebufferAttachment(t *testing.T) {
 	after := capture.Commands().Index(swapAtomIndex)
 	attachment := gfxapi.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
-	got, err := server.GetFramebufferAttachment(ctx, devices[0], after, attachment, settings)
+	got, err := server.GetFramebufferAttachment(ctx, devices[0], after, attachment, settings, nil)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).IsNotNil()
 }
