@@ -15,6 +15,7 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.collect.Sets;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.util.Flags.Flag;
 import com.google.protobuf.MessageOrBuilder;
@@ -26,6 +27,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
@@ -337,15 +340,70 @@ public class Logging {
 
       Throwable thrown = record.getThrown();
       if (thrown != null) {
-        for (StackTraceElement el : thrown.getStackTrace()) {
-          String file = el.getFileName();
-          builder.addCallstack(Log.SourceLocation.newBuilder()
-              .setFile(file == null ? "" : file)
-              .setLine(el.getLineNumber())
-              .build());
-        }
+        exceptionToCause(thrown, cause -> builder.addCause(cause));
       }
       Logging.logMessage(builder.build());
+    }
+
+    private static void exceptionToCause(Throwable thrown, Consumer<Log.Cause.Builder> addCause) {
+      Log.Cause.Builder result = Log.Cause.newBuilder()
+          .setMessage(thrown.toString());
+      StackTraceElement[] trace = thrown.getStackTrace();
+      for (StackTraceElement el : trace) {
+        result.addCallstack(toSourceLocation(el));
+      }
+      addCause.accept(result);
+
+      Set<Throwable> seen = Sets.newHashSet(thrown);
+      for (Throwable suppressed : thrown.getSuppressed()) {
+        enclosedExceptionToCause(suppressed, trace, "Suppressed: ", seen, addCause);
+      }
+      Throwable cause = thrown.getCause();
+      if (cause != null) {
+        enclosedExceptionToCause(cause, trace, "Caused by: ", seen, addCause);
+      }
+    }
+
+    private static void enclosedExceptionToCause(Throwable thrown,
+        StackTraceElement[] enclosingTrace, String title, Set<Throwable>seen,
+        Consumer<Log.Cause.Builder> addCause) {
+      if (!seen.add(thrown)) {
+        addCause.accept(Log.Cause.newBuilder().setMessage(title + "Circular reference: " + thrown));
+        return;
+      }
+
+      Log.Cause.Builder result = Log.Cause.newBuilder()
+          .setMessage(title + thrown.toString());
+
+      StackTraceElement[] trace = thrown.getStackTrace();
+      int ours = trace.length - 1;
+      int outer = enclosingTrace.length - 1;
+      while (ours >= 0 && outer >=0 && trace[ours].equals(enclosingTrace[outer])) {
+          ours--;
+          outer--;
+      }
+      for (int i = 0; i <= ours; i++) {
+        result.addCallstack(toSourceLocation(trace[i]));
+      }
+      addCause.accept(result);
+
+      for (Throwable suppressed : thrown.getSuppressed()) {
+        enclosedExceptionToCause(suppressed, trace, "Suppressed: ", seen, addCause);
+      }
+      Throwable cause = thrown.getCause();
+      if (cause != null) {
+        enclosedExceptionToCause(cause, trace, "Caused by: ", seen, addCause);
+      }
+    }
+
+    private static Log.SourceLocation.Builder toSourceLocation(StackTraceElement el) {
+      String file = el.getFileName();
+      String method = el.getClassName() + "." + el.getMethodName() +
+          (el.isNativeMethod() ? "(Native method)" : "");
+      return Log.SourceLocation.newBuilder()
+          .setFile(file == null ? "" : file)
+          .setLine(Math.max(0, el.getLineNumber()))
+          .setMethod(method);
     }
 
     @Override

@@ -113,6 +113,10 @@ public class LogView extends Composite implements Tab {
         TreeItem line = newItem(item, severity);
         line.setText(Column.TEXT.index, lines[l]);
       }
+      // Exceptions
+      for (Log.Cause cause : message.getCauseList()) {
+        causeToTreeItem(item, severity, cause);
+      }
       // Values
       if (message.getValuesCount() > 0) {
         TreeItem values = newItem(item, severity);
@@ -128,10 +132,9 @@ public class LogView extends Composite implements Tab {
       // Callstack
       if (message.getCallstackCount() > 0) {
         TreeItem callstack = newItem(item, severity);
-        callstack.setText(2, "Call Stack");
+        callstack.setText(Column.TEXT.index, "Call Stack");
         for (Log.SourceLocation location : message.getCallstackList()) {
-          TreeItem line = newItem(callstack, severity);
-          line.setText(Column.TEXT.index, String.format("%s:%d", location.getFile(), location.getLine()));
+          locationToTreeItem(callstack, severity, location);
         }
       }
       while (tree.getItemCount() > MAX_ITEMS) {
@@ -141,6 +144,28 @@ public class LogView extends Composite implements Tab {
     // Too many new messages to display!
     // Try again next update.
     Widgets.scheduleIfNotDisposed(this, this::updateTree);
+  }
+
+  private void causeToTreeItem(TreeItem parent, Log.Severity severity, Log.Cause trace) {
+    TreeItem root = newItem(parent, severity);
+    root.setText(3, trace.getMessage());
+    for (Log.SourceLocation location : trace.getCallstackList()) {
+      locationToTreeItem(root, severity, location);
+    }
+  }
+
+  private void locationToTreeItem(TreeItem parent, Log.Severity severity, Log.SourceLocation loc) {
+    TreeItem line = newItem(parent, severity);
+    String text;
+    if (loc.getFile().isEmpty()) {
+      text = "Unknon Source";
+    } else {
+      text = loc.getFile() + (loc.getLine() != 0 ? ":" + loc.getLine() : "");
+    }
+    if (!loc.getMethod().isEmpty()) {
+      text = loc.getMethod() + "(" + text + ")";
+    }
+    line.setText(Column.TEXT.index, "  " + text);
   }
 
   private static String formatTime(Timestamp time) {
