@@ -222,7 +222,7 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	}
 	issues := make(chan replay.Issue, 256)
 	go gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr, issues)
-	timeout := time.Tick(replayTimeout)
+	timeout := time.After(replayTimeout)
 	got := []replay.Issue{}
 	for {
 		select {

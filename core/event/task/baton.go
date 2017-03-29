@@ -36,7 +36,7 @@ func (b Baton) TryAcquire(timeout time.Duration) (interface{}, bool) {
 	select {
 	case value := <-b:
 		return value, true
-	case <-time.Tick(timeout):
+	case <-time.After(timeout):
 		return nil, false
 	}
 }
@@ -53,7 +53,7 @@ func (b Baton) TryRelease(value interface{}, timeout time.Duration) bool {
 	select {
 	case b <- value:
 		return true
-	case <-time.Tick(timeout):
+	case <-time.After(timeout):
 		return false
 	}
 }

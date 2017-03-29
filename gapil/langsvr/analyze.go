@@ -402,7 +402,7 @@ func stackdumpTimebomb(ctx context.Context, timeout time.Duration) (defuse func(
 	stop := make(chan struct{})
 	go func() {
 		select {
-		case <-time.Tick(timeout):
+		case <-time.After(timeout):
 			buf := make([]byte, 64<<10)
 			buf = buf[:runtime.Stack(buf[:], true)]
 			log.E(ctx, "Stack dump:\n%v", string(buf[:]))

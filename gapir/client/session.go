@@ -231,7 +231,7 @@ func (s *session) heartbeat(ctx context.Context, pingInterval time.Duration) {
 		select {
 		case <-task.ShouldStop(ctx):
 			return
-		case <-time.Tick(pingInterval):
+		case <-time.After(pingInterval):
 			_, err := s.ping(ctx)
 			if err != nil {
 				log.E(ctx, "Error sending keep-alive ping. Error: %v", err)

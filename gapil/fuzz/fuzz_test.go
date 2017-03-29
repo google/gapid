@@ -57,7 +57,7 @@ func timebomb(fuse time.Duration) (defuse func()) {
 	stop := make(chan struct{})
 	go func() {
 		select {
-		case <-time.Tick(fuse):
+		case <-time.After(fuse):
 			fmt.Println("timeout")
 			stack := make([]byte, 1<<16)
 			stack = stack[:runtime.Stack(stack, true)]
