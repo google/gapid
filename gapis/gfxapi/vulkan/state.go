@@ -54,12 +54,14 @@ func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttac
 			}
 		}
 	case gfxapi.FramebufferAttachment_Depth:
-		if subpass_desc.DepthStencilAttachment != nil {
+		if subpass_desc.DepthStencilAttachment != nil && st.LastDrawInfo.Framebuffer != nil {
 			att_ref := subpass_desc.DepthStencilAttachment
-			depth_img := st.LastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment].Image
-			if (uint32(depth_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) &&
-				(depth_img.Info.Samples == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT) {
-				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
+			if attachment, ok := st.LastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
+				depth_img := attachment.Image
+				if (uint32(depth_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) &&
+					(depth_img.Info.Samples == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT) {
+					return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
+				}
 			}
 		}
 	case gfxapi.FramebufferAttachment_Stencil:

@@ -623,7 +623,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             VkInstance& instance = PhysicalDevices[physical_device]->mInstance;
 
             VkBuffer copy_buffer;
-            VkDeviceMemory copy_memory;
+            VkDeviceMemory copy_memory = 0;
 
             uint32_t imageLayout = info.mLayout;
 
@@ -642,9 +642,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 auto block_info = subGetElementAndTexelBlockSize(nullptr, nullptr, info.mFormat);
 
                 for (size_t i = 0; i < info.mMipLevels; ++i) {
-                    const size_t width = subRoundUpTo(nullptr, nullptr, info.mExtent.mWidth, 1 << i);
-                    const size_t height = subRoundUpTo(nullptr, nullptr, info.mExtent.mHeight, 1 << i);
-                    const size_t depth = subRoundUpTo(nullptr, nullptr, info.mExtent.mDepth, 1 << i);
+                    const size_t width = subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, i);
+                    const size_t height = subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, i);
+                    const size_t depth = subGetMipSize(nullptr, nullptr, info.mExtent.mDepth, i);
                     const size_t width_in_blocks = subRoundUpTo(nullptr, nullptr, width, block_info.mTexelBlockSize.mWidth);
                     const size_t height_in_blocks = subRoundUpTo(nullptr, nullptr, height, block_info.mTexelBlockSize.mHeight);
                     data_size += width_in_blocks * height_in_blocks * depth * block_info.mElementSize * info.mArrayLayers;
@@ -683,7 +683,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     index
                 };
 
-                device_functions.vkAllocateMemory(
+                uint32_t res = device_functions.vkAllocateMemory(
                     device,
                     &create_copy_memory,
                     nullptr,
@@ -700,7 +700,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
                     lastQueueFamily
                 };
-                device_functions.vkCreateCommandPool(device, &command_pool_create, nullptr, &pool);
+                res = device_functions.vkCreateCommandPool(device, &command_pool_create, nullptr, &pool);
 
                 VkCommandBuffer copy_commands;
                 VkCommandBufferAllocateInfo copy_command_create_info {
@@ -709,8 +709,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     pool, VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                     1
                 };
-                device_functions.vkAllocateCommandBuffers(device, &copy_command_create_info, &copy_commands);
 
+                res = device_functions.vkAllocateCommandBuffers(device, &copy_command_create_info, &copy_commands);
                 VkCommandBufferBeginInfo begin_info = {
                     VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                     nullptr,
@@ -723,12 +723,11 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 std::vector<VkBufferImageCopy> image_copies(info.mMipLevels);
                 size_t buffer_offset = 0;
                 for (size_t i = 0; i < info.mMipLevels; ++i) {
-                    const size_t width = subRoundUpTo(nullptr, nullptr, info.mExtent.mWidth, 1 << i);
-                    const size_t height = subRoundUpTo(nullptr, nullptr, info.mExtent.mHeight, 1 << i);
-                    const size_t depth = subRoundUpTo(nullptr, nullptr, info.mExtent.mDepth, 1 << i);
+                    const size_t width = subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, i);
+                    const size_t height = subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, i);
+                    const size_t depth = subGetMipSize(nullptr, nullptr, info.mExtent.mDepth, i);
                     const size_t width_in_blocks = subRoundUpTo(nullptr, nullptr, width, block_info.mTexelBlockSize.mWidth);
                     const size_t height_in_blocks = subRoundUpTo(nullptr, nullptr, height, block_info.mTexelBlockSize.mHeight);
-
                     image_copies[i] = {
                         static_cast<uint64_t>(buffer_offset),
                         0, // bufferRowLength << tightly packed
@@ -832,10 +831,10 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     0,
                     nullptr
                 };
-                device_functions.vkQueueSubmit(lastQueue,
-                    1, &submit_info, 0);
 
-                device_functions.vkQueueWaitIdle(lastQueue);
+                res = device_functions.vkQueueSubmit(lastQueue,
+                    1, &submit_info, 0);
+                res = device_functions.vkQueueWaitIdle(lastQueue);
                 device_functions.vkMapMemory(
                     device, copy_memory, 0, data_size, 0, &data
                 );
@@ -868,8 +867,17 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 image.second->mBoundMemoryOffset,
                 data_size,
                 data);
+           if (need_to_clean_up_temps) {
+                device_functions.vkDestroyBuffer(
+                    device, copy_buffer, nullptr
+                );
+                device_functions.vkFreeMemory(
+                    device, copy_memory, nullptr
+                );
+            }
         }
     }
+
     {
         VkFenceCreateInfo create_info {
             VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -879,6 +887,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         for (auto& fence_object: Fences) {
             VkDevice device = fence_object.second->mDevice;
             VkFence fence = fence_object.second->mVulkanHandle;
+
             uint32_t status =
                 mImports.mVkDeviceFunctions[device].vkGetFenceStatus(device, fence);
             if (status == VkResult::VK_SUCCESS) {
