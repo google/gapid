@@ -78,6 +78,8 @@ spirv_binary_t* assembleToBinary(const char*);
 
 void deleteBinary(spirv_binary_t*);
 
+const char* opcodeToString(uint32_t);
+
 #ifdef __cplusplus
 }
 #endif

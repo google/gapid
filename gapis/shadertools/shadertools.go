@@ -22,7 +22,11 @@ package shadertools
 //#cgo windows LDFLAGS: -Wl,--allow-multiple-definition
 import "C"
 
-import "unsafe"
+import (
+	"bytes"
+	"fmt"
+	"unsafe"
+)
 
 // Instruction represents a SPIR-V instruction.
 type Instruction struct {
@@ -39,6 +43,28 @@ type CodeWithDebugInfo struct {
 	SourceCode        string        // Modified GLSL.
 	DisassemblyString string        // Diassembly of modified GLSL.
 	Info              []Instruction // A set of SPIR-V debug instructions.
+}
+
+func FormatDebugInfo(insts []Instruction, linePrefix string) string {
+	var buffer bytes.Buffer
+	for _, inst := range insts {
+		buffer.WriteString(linePrefix)
+		if inst.Id != 0 {
+			buffer.WriteString(fmt.Sprintf("%%%-5v = ", inst.Id))
+		} else {
+			buffer.WriteString(fmt.Sprintf("       = "))
+		}
+		buffer.WriteString("Op")
+		buffer.WriteString(OpcodeToString(inst.Opcode))
+		for _, word := range inst.Words {
+			buffer.WriteString(fmt.Sprintf(" %v", word))
+		}
+		if inst.Name != "" {
+			buffer.WriteString(fmt.Sprintf(" \"%v\"", inst.Name))
+		}
+		buffer.WriteString("\n")
+	}
+	return buffer.String()
 }
 
 // Options controls how ConvertGlsl converts its passed-in GLSL source code.
@@ -92,7 +118,23 @@ func ConvertGlsl(source string, option *Option) CodeWithDebugInfo {
 		Message:           C.GoString(result.message),
 		SourceCode:        C.GoString(result.source_code),
 		DisassemblyString: C.GoString(result.disassembly_string),
-		// TODO: copy all instructions
+	}
+	if result.info != nil {
+		c_insts := (*[1 << 30]C.struct_instruction_t)(unsafe.Pointer(result.info.insts))
+		for i := 0; i < int(result.info.insts_num); i++ {
+			c_inst := c_insts[i]
+			inst := Instruction{
+				Id:     uint32(c_inst.id),
+				Opcode: uint32(c_inst.opcode),
+				Words:  make([]uint32, 0, c_inst.words_num),
+				Name:   C.GoString(c_inst.name),
+			}
+			c_words := (*[1 << 30]C.uint32_t)(unsafe.Pointer(c_inst.words))
+			for j := 0; j < int(c_inst.words_num); j++ {
+				inst.Words = append(inst.Words, uint32(c_words[j]))
+			}
+			ret.Info = append(ret.Info, inst)
+		}
 	}
 	C.deleteGlslCodeWithDebug(result)
 	return ret
@@ -132,4 +174,9 @@ func AssembleSpirvText(chars string) []uint32 {
 	C.deleteBinary(spirv)
 
 	return words
+}
+
+// OpcodeToString converts opcode number to human readable string.
+func OpcodeToString(opcode uint32) string {
+	return C.GoString(C.opcodeToString(C.uint32_t(opcode)))
 }

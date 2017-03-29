@@ -106,15 +106,33 @@ std::vector<unsigned int> SpvManager::getSpvBinary() {
  **/
 debug_instructions_t* SpvManager::getDebugInstructions() {
   debug_instructions_t* result = new debug_instructions_t{};
-  std::vector<instruction_t> insts_v;
+  std::vector<instruction_t> insts;
   module->ForEachInst(
-      std::bind(&SpvManager::appendDebugInstruction, this, &insts_v, std::placeholders::_1), true);
+      std::bind(&SpvManager::appendDebugInstruction, this, &insts, std::placeholders::_1), true);
 
-  result->insts_num = insts_v.size();
-  result->insts = new instruction_t[result->insts_num];
+  // Little bit of reordering to improve debug readability of the disassembly.
+  std::multimap<uint32_t, instruction_t*> names;
 
-  for (int i = 0; i < result->insts_num; i++) {
-    result->insts[i] = insts_v[i];
+  result->insts = new instruction_t[insts.size()];
+  for (auto& inst : insts) {
+    // Push names for later...
+    if (inst.opcode == SpvOpName || inst.opcode == SpvOpMemberName) {
+      names.emplace(inst.words[0], &inst);
+      continue;
+    }
+
+    result->insts[result->insts_num++] = inst;
+
+    // Pop any names related to this instruction...
+    auto range = names.equal_range(inst.id);
+    for (auto it = range.first; it != range.second; it++ ) {
+      result->insts[result->insts_num++] = *it->second;
+    }
+    names.erase(range.first, range.second);
+  }
+  // Pop any left over names, just in case...
+  for (auto& it : names) {
+      result->insts[result->insts_num++] = *it.second;
   }
 
   return result;
@@ -809,7 +827,6 @@ void SpvManager::appendDebugInstruction(std::vector<instruction_t>* debugs, Inst
     i.opcode = opcode;
 
     if (opcode == SpvOpName || opcode == SpvOpMemberName) {
-      i.words_num = inst->NumOperands() - 1;
       std::string str_name;
       if (opcode == SpvOpName)
         str_name = name_mgr->getStrName(inst->GetSingleWordOperand(0));
@@ -819,14 +836,19 @@ void SpvManager::appendDebugInstruction(std::vector<instruction_t>* debugs, Inst
 
       i.name = new char[str_name.length() + 1];
       std::strcpy(i.name, str_name.c_str());
-
-    } else {
-      i.words_num = inst->NumOperands();
     }
 
     // copy operands words
-    i.words = new uint32_t[i.words_num];
-    for (int op = 0; op < i.words_num; op++) i.words[op] = inst->GetSingleWordOperand(op);
+    i.words = new uint32_t[inst->NumOperands()];
+    for (int op = 0; op < inst->NumOperands(); op++) {
+      switch (inst->GetOperand(op).type) {
+        case SPV_OPERAND_TYPE_RESULT_ID:
+        case SPV_OPERAND_TYPE_LITERAL_STRING:
+          break; // Skip
+        default:
+          i.words[i.words_num++] = inst->GetSingleWordOperand(op);
+      }
+    }
 
     debugs->emplace_back(std::move(i));
   }
