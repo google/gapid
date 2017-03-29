@@ -86,5 +86,6 @@ func convert(source, shaderType string) (result string, err error) {
 	if !res.Ok {
 		return "", fmt.Errorf("Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, source)
 	}
-	return res.SourceCode, nil
+	debugInfo := shadertools.FormatDebugInfo(res.Info, "// ")
+	return debugInfo + res.SourceCode, nil
 }

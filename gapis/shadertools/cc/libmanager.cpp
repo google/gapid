@@ -332,3 +332,7 @@ void deleteBinary(spirv_binary_t* binary) {
   }
   delete binary;
 }
+
+const char* opcodeToString(uint32_t opcode) {
+  return spvOpcodeString(static_cast<SpvOp>(opcode));
+}
