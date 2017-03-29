@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/stream/fmts"
+	"github.com/google/gapid/core/stream"
 )
 
 type imgfmt struct {
@@ -119,73 +119,152 @@ func (f imgfmt) asImageOrPanic() *image.Format {
 	return i
 }
 
+// getStreamChannels converts GL channel enum to stream.Channel array.
+func getStreamChannels(glChannels GLenum) (channels []stream.Channel, err error) {
+	switch glChannels {
+	case GLenum_GL_RED, GLenum_GL_RED_INTEGER:
+		return []stream.Channel{stream.Channel_Red}, nil
+	case GLenum_GL_RG, GLenum_GL_RG_INTEGER:
+		return []stream.Channel{stream.Channel_Red, stream.Channel_Green}, nil
+	case GLenum_GL_RGB, GLenum_GL_RGB_INTEGER:
+		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}, nil
+	case GLenum_GL_RGBA, GLenum_GL_RGBA_INTEGER:
+		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}, nil
+	case GLenum_GL_DEPTH_STENCIL:
+		return []stream.Channel{stream.Channel_Depth, stream.Channel_Stencil}, nil
+	case GLenum_GL_DEPTH, GLenum_GL_DEPTH_COMPONENT:
+		return []stream.Channel{stream.Channel_Depth}, nil
+	case GLenum_GL_STENCIL, GLenum_GL_STENCIL_INDEX:
+		return []stream.Channel{stream.Channel_Stencil}, nil
+	case GLenum_GL_ALPHA, GLenum_GL_ALPHA_INTEGER_EXT:
+		return []stream.Channel{stream.Channel_Alpha}, nil
+	case GLenum_GL_LUMINANCE, GLenum_GL_LUMINANCE_INTEGER_EXT:
+		return []stream.Channel{stream.Channel_Luminance}, nil
+	case GLenum_GL_LUMINANCE_ALPHA, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT:
+		return []stream.Channel{stream.Channel_Luminance, stream.Channel_Alpha}, nil
+	default:
+		return nil, fmt.Errorf("Unsupported channel type: ", glChannels)
+	}
+}
+
+// sampleAsFloat returns true if the channel's value is returned as float in shader.
+func sampleAsFloat(glChannels GLenum, channelIndex int) bool {
+	switch glChannels {
+	case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER,
+		GLenum_GL_ALPHA_INTEGER_EXT, GLenum_GL_LUMINANCE_INTEGER_EXT, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT,
+		GLenum_GL_STENCIL, GLenum_GL_STENCIL_INDEX:
+		return false // Integer type.
+	case GLenum_GL_DEPTH_STENCIL:
+		return channelIndex == 0 // Only depth channel (index 0) is represented by float.
+	}
+	return true // Float type.
+}
+
+// getUncompressedStreamFormat returns the decoding format which can be used to read single pixel.
+func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.Format, err error) {
+	channels, err := getStreamChannels(glChannels)
+	if err != nil {
+		return nil, err
+	}
+
+	// Helper method to build the format.
+	format = &stream.Format{}
+	addComponent := func(channelIndex int, datatype *stream.DataType) {
+		channel := stream.Channel_Undefined // Padding field
+		if 0 <= channelIndex && channelIndex < len(channels) {
+			channel = channels[channelIndex]
+		}
+		sampling := stream.Linear
+		if datatype.IsInteger() && sampleAsFloat(glChannels, channelIndex) {
+			sampling = stream.LinearNormalized // Convert int to float
+		}
+		format.Components = append(format.Components, &stream.Component{datatype, sampling, channel})
+	}
+
+	// Read the components in increasing memory order (assuming little-endian architecture).
+	// Note that the GL names are based on big-endian, so the order is generally backwards.
+	switch glDataType {
+	case GLenum_GL_UNSIGNED_BYTE:
+		for i := range channels {
+			addComponent(i, &stream.U8)
+		}
+	case GLenum_GL_BYTE:
+		for i := range channels {
+			addComponent(i, &stream.S8)
+		}
+	case GLenum_GL_UNSIGNED_SHORT:
+		for i := range channels {
+			addComponent(i, &stream.U16)
+		}
+	case GLenum_GL_SHORT:
+		for i := range channels {
+			addComponent(i, &stream.S16)
+		}
+	case GLenum_GL_UNSIGNED_INT:
+		for i := range channels {
+			addComponent(i, &stream.U32)
+		}
+	case GLenum_GL_INT:
+		for i := range channels {
+			addComponent(i, &stream.S32)
+		}
+	case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
+		for i := range channels {
+			addComponent(i, &stream.F16)
+		}
+	case GLenum_GL_FLOAT:
+		for i := range channels {
+			addComponent(i, &stream.F32)
+		}
+	case GLenum_GL_UNSIGNED_SHORT_5_6_5:
+		addComponent(2, &stream.U5)
+		addComponent(1, &stream.U6)
+		addComponent(0, &stream.U5)
+	case GLenum_GL_UNSIGNED_SHORT_4_4_4_4:
+		addComponent(3, &stream.U4)
+		addComponent(2, &stream.U4)
+		addComponent(1, &stream.U4)
+		addComponent(0, &stream.U4)
+	case GLenum_GL_UNSIGNED_SHORT_5_5_5_1:
+		addComponent(3, &stream.U1)
+		addComponent(2, &stream.U5)
+		addComponent(1, &stream.U5)
+		addComponent(0, &stream.U5)
+	case GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
+		addComponent(0, &stream.U10)
+		addComponent(1, &stream.U10)
+		addComponent(2, &stream.U10)
+		addComponent(3, &stream.U2)
+	case GLenum_GL_UNSIGNED_INT_24_8:
+		addComponent(1, &stream.U8)
+		addComponent(0, &stream.U24)
+	// TODO: Requires 11-bit (0+5+6) and 10-bit (0+5+5) floats.
+	// case GLenum_GL_UNSIGNED_INT_10F_11F_11F_REV:
+	// 	addComponent(0, &stream.F11)
+	// 	addComponent(1, &stream.F11)
+	// 	addComponent(2, &stream.F10)
+	// TODO: This requires some extra work for the shared exponent.
+	// case GLenum_GL_UNSIGNED_INT_5_9_9_9_REV:
+	// 	addComponent(0, &stream.U9)
+	// 	addComponent(1, &stream.U9)
+	// 	addComponent(2, &stream.U9)
+	// 	addComponent(3, &stream.U5)
+	case GLenum_GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
+		addComponent(0, &stream.F32)
+		addComponent(1, &stream.U8)
+		addComponent(-1, &stream.U24)
+	default:
+		return nil, fmt.Errorf("Unsupported data type: ", glDataType)
+	}
+	return format, nil
+}
+
 // asImage returns the *image.Format for the given imgfmt.
 func (f imgfmt) asImage() (*image.Format, error) {
 	ty := f.ty
 	switch f.base {
-	case GLenum_GL_DEPTH_STENCIL:
-		switch ty {
-		case GLenum_GL_UNSIGNED_INT_24_8:
-			return image.NewUncompressed("GL_DEPTH_STENCIL", fmts.SD_U8NU24), nil
-		}
-	case GLenum_GL_DEPTH, GLenum_GL_DEPTH_COMPONENT: // TODO: GL_DEPTH - should this be here?
-		switch ty {
-		case GLenum_GL_UNSIGNED_SHORT:
-			return image.NewUncompressed("GL_DEPTH_COMPONENT", fmts.D_U16_NORM), nil
-		}
-	case GLenum_GL_RED:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RED", fmts.R_U8_NORM), nil
-		case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return image.NewUncompressed("GL_RED", fmts.R_F16), nil
-		case GLenum_GL_FLOAT:
-			return image.NewUncompressed("GL_RED", fmts.R_F32), nil
-		}
-	case GLenum_GL_RED_INTEGER:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RED_INTEGER", fmts.R_U8), nil
-		}
-	case GLenum_GL_ALPHA:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_ALPHA", fmts.A_U8_NORM), nil
-		}
-	case GLenum_GL_LUMINANCE:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_LUMINANCE", fmts.L_U8_NORM), nil
-		}
-	case GLenum_GL_LUMINANCE_ALPHA:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_LUMINANCE_ALPHA", fmts.LA_U8_NORM), nil
-		}
-	case GLenum_GL_RG:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RG", fmts.RG_U8_NORM), nil
-		case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return image.NewUncompressed("GL_RG", fmts.RG_F16), nil
-		case GLenum_GL_FLOAT:
-			return image.NewUncompressed("GL_RG", fmts.RG_F32), nil
-		}
-	case GLenum_GL_RG_INTEGER:
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RG_INTEGER", fmts.RG_U8), nil
-		}
 	case GLenum_GL_RGB:
 		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RGB", fmts.RGB_U8_NORM), nil
-		case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return image.NewUncompressed("GL_RGB", fmts.RGB_F16), nil
-		case GLenum_GL_FLOAT:
-			return image.NewUncompressed("GL_RGB", fmts.RGB_F32), nil
-		case GLenum_GL_UNSIGNED_SHORT_5_6_5:
-			return image.NewUncompressed("GL_RGB", fmts.BGR_U5U6U5_NORM), nil
 		case GLenum_GL_ATC_RGB_AMD:
 			return image.NewATC_RGB_AMD("GL_ATC_RGB_AMD"), nil
 		case GLenum_GL_ETC1_RGB8_OES:
@@ -197,18 +276,6 @@ func (f imgfmt) asImage() (*image.Format, error) {
 		}
 	case GLenum_GL_RGBA:
 		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_U8_NORM), nil
-		case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_F16), nil
-		case GLenum_GL_FLOAT:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_F32), nil
-		case GLenum_GL_UNSIGNED_SHORT_5_5_5_1:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_U5U5U5U1_NORM), nil
-		case GLenum_GL_UNSIGNED_SHORT_4_4_4_4:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_U4_NORM), nil
-		case GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
-			return image.NewUncompressed("GL_RGBA", fmts.RGBA_U10U10U10U2_NORM), nil
 		case GLenum_GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:
 			return image.NewATC_RGBA_EXPLICIT_ALPHA_AMD("GL_ATC_RGBA_EXPLICIT_ALPHA_AMD"), nil
 		case GLenum_GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:
@@ -298,6 +365,10 @@ func (f imgfmt) asImage() (*image.Format, error) {
 		return image.NewS3_DXT3_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT3_EXT"), nil
 	case GLenum_GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
 		return image.NewS3_DXT5_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT5_EXT"), nil
+	}
+
+	if format, err := getUncompressedStreamFormat(f.base, f.ty); err == nil {
+		return image.NewUncompressed(fmt.Sprint(format), format), nil
 	}
 
 	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", f.base, ty)
