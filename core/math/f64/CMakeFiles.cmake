@@ -20,6 +20,7 @@
 set(files
     doc.go
     f64.go
+    f64_test.go
     vec3.go
     vec3_test.go
     vec4.go
