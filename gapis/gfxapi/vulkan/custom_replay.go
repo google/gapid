@@ -1416,9 +1416,9 @@ func (a *RecreateBindAndFillImageMemory) Mutate(ctx context.Context, s *gfxapi.S
 			offset := VkDeviceSize(0)
 
 			for i := uint32(0); i < imageInfo.MipLevels; i++ {
-				width, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Width, 1<<i)
-				height, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Height, 1<<i)
-				depth, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Depth, 1<<i)
+				width, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Width, i)
+				height, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Height, i)
+				depth, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Depth, i)
 				width_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, width, block_info.TexelBlockSize.Width)
 				height_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, height, block_info.TexelBlockSize.Height)
 				copies = append(copies, VkBufferImageCopy{

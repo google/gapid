@@ -3508,6 +3508,14 @@ cmd void vkDestroyBufferView(
   delete(BufferViews, bufferView)
 }
 
+sub u32 getMipSize(u32 original, u32 level) {
+  value := original / (1 << level)
+  return switch (value) {
+    case 0: 1
+    default: value
+  }
+}
+
 sub u32 roundUpTo(u32 dividend, u32 divisor) {
   return (dividend + divisor - 1) / divisor
 }
@@ -3638,9 +3646,9 @@ cmd VkResult vkCreateImage(
     layer := new!ImageLayer()
     object.Layers[j] = layer
     for i in (0 .. info.mipLevels) {
-      width := roundUpTo(info.extent.Width, 1 << i)
-      height := roundUpTo(info.extent.Height, 1 << i)
-      depth := roundUpTo(info.extent.Depth, 1 << i)
+      width := getMipSize(info.extent.Width, i)
+      height := getMipSize(info.extent.Height, i)
+      depth := getMipSize(info.extent.Depth, i)
       level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
       elementAndTexelBlockSize := getElementAndTexelBlockSize(object.Info.Format)
       // Roundup the width and height in the number of blocks.
@@ -7992,7 +8000,7 @@ map!(u32, BoundBuffer)     CurrentBoundVertexBuffers
 ref!GraphicsPipelineObject CurrentGraphicsPipeline
 ref!ComputePipelineObject  CurrentComputePipeline
 
-// This contains the information about a draw 
+// This contains the information about a draw
 @internal class DrawInfo {
   ref!FramebufferObject               Framebuffer
   // A mapping from the descriptor set bound numbers to descriptor set objects
