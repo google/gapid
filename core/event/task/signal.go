@@ -71,7 +71,7 @@ func (s Signal) TryWait(ctx context.Context, timeout time.Duration) bool {
 		return true
 	case <-ShouldStop(ctx):
 		return false
-	case <-time.Tick(timeout):
+	case <-time.After(timeout):
 		return false
 	}
 }

@@ -82,7 +82,7 @@ func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration) erro
 		select {
 		case <-task.ShouldStop(ctx):
 			return nil
-		case <-time.Tick(interval):
+		case <-time.After(interval):
 		}
 	}
 }

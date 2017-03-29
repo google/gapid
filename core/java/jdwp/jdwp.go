@@ -159,7 +159,7 @@ func (c *Connection) get(cmdSet cmdSet, cmd cmdID, req interface{}, out interfac
 			panic(fmt.Errorf("Only %d/%d bytes read from reply packet", offset, len(reply.data)))
 		}
 		return nil
-	case <-time.Tick(time.Second * 30):
+	case <-time.After(time.Second * 30):
 		return fmt.Errorf("timeout")
 	}
 }
