@@ -17,6 +17,7 @@
 #include "core/cc/thread.h"
 
 #include <cstdint>
+#include <cstdlib>
 #include <pthread.h>
 
 namespace core {
