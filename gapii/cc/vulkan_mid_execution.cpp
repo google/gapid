@@ -1498,7 +1498,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 begin_info.mpInheritanceInfo = &inheritance_info;
             }
         }
-        RecreateVkCommandBuffer(observer, cmdBuff.mDevice,
+        RecreateAndBeginCommandBuffer(observer, cmdBuff.mDevice,
                 &allocate_info, cmdBuff.mBeginInfo? &begin_info: nullptr, &cmdBuff.mVulkanHandle);
     }
 
@@ -1511,7 +1511,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
 
         if (cmdBuff.mRecording == RecordingState::COMPLETED) {
-            RecreateVkEndCommandBuffer(observer, cmdBuff.mVulkanHandle);
+            RecreateEndCommandBuffer(observer, cmdBuff.mVulkanHandle);
         }
     }
 }

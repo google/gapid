@@ -40,10 +40,10 @@ void inline CommandListRecreator<std::shared_ptr<RecreateUpdateBufferData>>::ope
 }
 
 template<>
-void inline CommandListRecreator<std::shared_ptr<RecreateEndRenderPassData>>::operator()(
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdEndRenderPassData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
-    const std::shared_ptr<RecreateEndRenderPassData>&) {
-    spy->RecreateEndRenderPass(observer, commandBuf);
+    const std::shared_ptr<RecreateCmdEndRenderPassData>&) {
+    spy->RecreateCmdEndRenderPass(observer, commandBuf);
 }
 
 
@@ -167,9 +167,9 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindDescriptorSetsDa
 
 
 template<>
-void inline CommandListRecreator<std::shared_ptr<RecreateBindVertexBuffersData>>::operator()(
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdBindVertexBuffersData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
-    const std::shared_ptr<RecreateBindVertexBuffersData>& t) {
+    const std::shared_ptr<RecreateCmdBindVertexBuffersData>& t) {
     std::vector<VkBuffer> buffers;
     buffers.reserve(t->mBuffers.size());
     for (size_t i = 0; i < t->mBuffers.size(); ++i) {
@@ -184,7 +184,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateBindVertexBuffersData>>
         offsets.push_back(t->mOffsets[i]);
     }
 
-    spy->RecreateBindVertexBuffers(observer, commandBuf,
+    spy->RecreateCmdBindVertexBuffers(observer, commandBuf,
         t->mFirstBinding, t->mBindingCount, buffers.data(), offsets.data());
 }
 

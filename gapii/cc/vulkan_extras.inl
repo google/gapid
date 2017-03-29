@@ -44,8 +44,8 @@ void SpyOverride_RecreateDeviceMemory(VkDevice,VkMemoryAllocateInfo*,
     VkDeviceSize, VkDeviceSize, void**, VkDeviceMemory*) {}
 void SpyOverride_RecreateQueue(VkDevice, uint32_t, uint32_t, VkQueue*) {}
 void SpyOverride_RecreateVkCmdBindPipeline(VkCommandBuffer, uint32_t, VkPipeline) {}
-void SpyOverride_RecreateVkCommandBuffer(VkDevice, const VkCommandBufferAllocateInfo*, const VkCommandBufferBeginInfo*, VkCommandBuffer*) {}
-void SpyOverride_RecreateVkEndCommandBuffer(VkCommandBuffer) {}
+void SpyOverride_RecreateAndBeginCommandBuffer(VkDevice, const VkCommandBufferAllocateInfo*, const VkCommandBufferBeginInfo*, VkCommandBuffer*) {}
+void SpyOverride_RecreateEndCommandBuffer(VkCommandBuffer) {}
 void SpyOverride_RecreateSemaphore(VkDevice, const VkSemaphoreCreateInfo*, uint32_t, VkSemaphore*) {}
 void SpyOverride_RecreateFence(VkDevice, const VkFenceCreateInfo*, VkFence*) {}
 void SpyOverride_RecreateCommandPool(VkDevice, const VkCommandPoolCreateInfo*, VkCommandPool*) {}
@@ -82,10 +82,10 @@ void SpyOverride_RecreateCmdBindDescriptorSets(VkCommandBuffer, uint32_t,
                                                VkPipelineLayout, uint32_t,
                                                uint32_t, const VkDescriptorSet*,
                                                uint32_t, const uint32_t*) {}
-void SpyOverride_RecreateBindVertexBuffers(VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*) {}
+void SpyOverride_RecreateCmdBindVertexBuffers(VkCommandBuffer, uint32_t, uint32_t, const VkBuffer*, const VkDeviceSize*) {}
 void SpyOverride_RecreateCmdBindIndexBuffer(VkCommandBuffer, VkBuffer, uint64_t, uint32_t) {}
 void SpyOverride_RecreateCmdBlitImage(VkCommandBuffer, VkImage, uint32_t/*srcImageLayout*/, VkImage, uint32_t/*dstImageLayout*/, uint32_t/*regionCount*/, const VkImageBlit*, uint32_t/*filter*/) {}
-void SpyOverride_RecreateEndRenderPass(VkCommandBuffer) {}
+void SpyOverride_RecreateCmdEndRenderPass(VkCommandBuffer) {}
 void SpyOverride_RecreateCmdDrawIndexed(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
 void SpyOverride_RecreateCmdCopyBufferToImage(VkCommandBuffer, VkBuffer, VkImage, uint32_t, uint32_t, const VkBufferImageCopy*) {}
 void SpyOverride_RecreateCmdCopyImageToBuffer(VkCommandBuffer, VkImage, uint32_t/*srcImageLayout*/, VkBuffer, uint32_t, const VkBufferImageCopy*) {}
