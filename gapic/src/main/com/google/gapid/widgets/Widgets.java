@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 
+import com.google.gapid.views.VirtualTreeViewer;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -488,7 +489,7 @@ public class Widgets {
   }
 
   public static TreeViewer createTreeViewer(Tree tree) {
-    TreeViewer viewer = new TreeViewer(tree);
+    TreeViewer viewer = new VirtualTreeViewer(tree);
     viewer.setUseHashlookup(true);
     tree.addListener(SWT.KeyDown, e -> {
       switch (e.keyCode) {

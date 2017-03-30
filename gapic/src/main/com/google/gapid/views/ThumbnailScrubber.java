@@ -258,8 +258,7 @@ public class ThumbnailScrubber extends Composite
   /**
    * Renders the frame thumbnails.
    */
-  private static class Carousel
-      implements InfiniteScrolledComposite.Scrollable, Thumbnails.Listener {
+  private static class Carousel implements InfiniteScrolledComposite.Scrollable {
     private static final int MARGIN = 4;
     private static final int MIN_SIZE = 80;
 
@@ -282,8 +281,6 @@ public class ThumbnailScrubber extends Composite
       this.repainter = repainter;
       this.updateSize = updateSize;
       this.scrollTo = scrollTo;
-
-      thumbs.addListener(this);
     }
 
     public Data selectFrame(BigPoint point) {
@@ -319,17 +316,6 @@ public class ThumbnailScrubber extends Composite
       datas = Collections.emptyList();
       imageSize = null;
       selectedIndex = -1;
-    }
-
-    @Override
-    public void onThumnailsChanged() {
-      for (Data data : datas) {
-        if (data.image != null) {
-          data.image.dispose();
-          data.image = null;
-        }
-      }
-      repainter.repaint();
     }
 
     @Override

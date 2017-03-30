@@ -95,7 +95,7 @@ import java.util.regex.Pattern;
  * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
  */
 public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
-    ApiContext.Listener, AtomHierarchies.Listener, Thumbnails.Listener {
+    ApiContext.Listener, AtomHierarchies.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
   private static final int PREVIEW_HOVER_DELAY_MS = 500;
 
@@ -129,13 +129,11 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     models.atoms.addListener(this);
     models.contexts.addListener(this);
     models.hierarchies.addListener(this);
-    models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.atoms.removeListener(this);
       models.contexts.removeListener(this);
       models.hierarchies.removeListener(this);
-      models.thumbs.removeListener(this);
       imageProvider.reset();
     });
 
@@ -365,12 +363,6 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     updateTree(false);
   }
 
-  @Override
-  public void onThumnailsChanged() {
-    imageProvider.reset();
-    viewer.refresh();
-  }
-
   private void updateTree(boolean assumeLoading) {
     imageProvider.reset();
     root = null;
@@ -442,7 +434,31 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       this.loading = loading;
     }
 
+    public void load(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return;
+      }
+      image.load();
+    }
+
+    public void unload(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return;
+      }
+      image.unload();
+    }
+
     public Image getImage(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return null;
+      }
+      return image.getImage();
+    }
+
+    public LoadableImage getLoadableImage(FilteredGroup group) {
       LoadableImage image = images.get(group);
       if (image == null) {
         if (!shouldShowImage(group) || !thumbs.isReady()) {
@@ -453,14 +469,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             viewer.getTree(), () -> loadImage(group), loading, this);
         images.put(group, image);
       }
-      return image.getImage();
-    }
-
-    public void onPaint(FilteredGroup group) {
-      LoadableImage image = images.get(group);
-      if (image != null) {
-        image.load();
-      }
+      return image;
     }
 
     @Override
@@ -492,7 +501,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   /**
    * Label provider for the command tree.
    */
-  private static class ViewLabelProvider extends MeasuringViewLabelProvider {
+  private static class ViewLabelProvider extends MeasuringViewLabelProvider
+      implements VirtualTreeViewer.VisibilityListener {
     private final ImageProvider imageProvider;
 
     public ViewLabelProvider(TreeViewer viewer, Theme theme, ImageProvider imageProvider) {
@@ -525,18 +535,25 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
       return result;
     }
-
     @Override
     protected boolean isFollowable(Object element) {
       return element instanceof AtomNode;
     }
 
     @Override
-    protected void paint(Event event, Object element) {
+    public void OnShow(TreeItem item) {
+      Object element = item.getData();
       if (element instanceof FilteredGroup) {
-        imageProvider.onPaint((FilteredGroup)element);
+        imageProvider.load((FilteredGroup)element);
       }
-      super.paint(event, element);
+    }
+
+    @Override
+    public void OnHide(TreeItem item) {
+      Object element = item.getData();
+      if (element instanceof FilteredGroup) {
+        imageProvider.unload((FilteredGroup)element);
+      }
     }
   }
 }
