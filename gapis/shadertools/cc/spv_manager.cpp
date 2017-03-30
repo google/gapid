@@ -503,10 +503,14 @@ void SpvManager::declarePrints() {
   globals.label_print_id = addFunction(LABEL_PRINT_NAME, globals.void_id, globals.uint_type_id);
 
   // makes a copy, because iterating through all types insertPrintDeclaration adds new types
-  const TypeManager::TypeToIdMap all_types(type_mgr->type_to_ids());
+  std::set<uint32_t> type_ids;
+  for (auto const& it : type_mgr->type_to_ids()) {
+    type_ids.emplace(it.second);
+  }
 
-  for (TypeManager::TypeToIdMap::const_iterator it = all_types.cbegin(); it != all_types.cend(); it++)
-    insertPrintDeclaration(it->second);
+  for (uint32_t type_id : type_ids) {
+    insertPrintDeclaration(type_id);
+  }
 }
 
 /**
