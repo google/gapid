@@ -62,6 +62,7 @@ import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.MeasuringViewLabelProvider;
 import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
@@ -502,7 +503,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
    * Label provider for the command tree.
    */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider
-      implements VirtualTreeViewer.VisibilityListener {
+      implements VisibilityTrackingTreeViewer.Listener {
     private final ImageProvider imageProvider;
 
     public ViewLabelProvider(TreeViewer viewer, Theme theme, ImageProvider imageProvider) {
@@ -541,7 +542,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    public void OnShow(TreeItem item) {
+    public void onShow(TreeItem item) {
       Object element = item.getData();
       if (element instanceof FilteredGroup) {
         imageProvider.load((FilteredGroup)element);
@@ -549,7 +550,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    public void OnHide(TreeItem item) {
+    public void onHide(TreeItem item) {
       Object element = item.getData();
       if (element instanceof FilteredGroup) {
         imageProvider.unload((FilteredGroup)element);

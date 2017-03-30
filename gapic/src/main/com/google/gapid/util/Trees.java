@@ -13,15 +13,69 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.views;
+package com.google.gapid.util;
 
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A static helper class for dealing with {@link Tree}s and {@link TreeItem}s.
  */
-public class TreeHelper {
+public class Trees {
+  /**
+   * @return the next {@link TreeItem} that's below item.
+   */
+  public static TreeItem nextItem(TreeItem item) {
+    if (item.getExpanded()) {
+      // Descend into children.
+      int children = item.getItemCount();
+      if (children > 0) {
+        return getItem(item, 0);
+      }
+    }
+    // Ascend ancestors looking for siblings.
+    Object parent = getParent(item);
+    while (parent != null) {
+      int index = indexOf(parent, item);
+      int siblings = itemCount(parent);
+      if (index + 1 < siblings) {
+        return getItem(parent, index + 1);
+      }
+      if (!(parent instanceof TreeItem)) {
+        break;
+      }
+      item = (TreeItem)parent;
+      parent = getParent(parent);
+    }
+    return null;
+  }
+
+  /**
+   * @return the set of {@link TreeItem}s that are currently visible in the tree.
+   */
+  public static Set<TreeItem> calcVisibleItems(Tree tree) {
+    Set<TreeItem> visible = new HashSet<>();
+    Rectangle rect = tree.getClientArea();
+    if (tree.getTopItem() == null && tree.getItemCount() != 0) {
+      // Work around bug where getTopItem() returns null when scrolling
+      // up past the top item (elastic scroll).
+      return null;
+    }
+    int treeBottom = rect.y + rect.height;
+    for (TreeItem item = tree.getTopItem(); item != null; item = nextItem(item)) {
+      visible.add(item);
+      Rectangle itemRect = item.getBounds();
+      if (itemRect.y + itemRect.height > treeBottom) {
+        break;
+      }
+    }
+    return visible;
+  }
+
   /**
    * @return the i'th child {@link TreeItem} of the {@link Tree} or {@link TreeItem}.
    */
@@ -65,5 +119,8 @@ public class TreeHelper {
       return parentItem;
     }
     return item.getParent();
+  }
+
+  private Trees() {
   }
 }

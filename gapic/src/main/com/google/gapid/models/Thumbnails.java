@@ -31,11 +31,7 @@ import org.eclipse.swt.internal.DPIUtil;
 import java.util.logging.Logger;
 
 /**
- * Manages the loading of thumbnail previews. In order to keep the UI responsive and give other
- * requests to the server a chance to complete, a single thread is used to request thumbnail
- * previews, which require a replay, from the server. In essence, this prevents request starvation
- * to the server by de-prioritizing requests for thumbnails. Thumbnail requests are batched to take
- * advantage of the batching optimization the server does for replay requests.
+ * Manages the loading of thumbnail previews.
  */
 public class Thumbnails {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());

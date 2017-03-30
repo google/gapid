@@ -32,7 +32,6 @@ import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -44,7 +43,7 @@ public class LoadableImage {
   protected static final Logger LOG = Logger.getLogger(LoadableImage.class.getName());
 
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private final AtomicInteger loadCount = new AtomicInteger(0);
+  private int loadCount = 0;
   protected final Widget widget;
   private final Supplier<ListenableFuture<Object>> futureSupplier;
   private ListenableFuture<Object> future;
@@ -64,7 +63,7 @@ public class LoadableImage {
   }
 
   public LoadableImage load() {
-    if (loadCount.getAndIncrement() != 0) {
+    if (loadCount++ != 0) {
       return this;
     }
     if (state != State.NOT_STARTED) {
@@ -106,7 +105,7 @@ public class LoadableImage {
   }
 
   public LoadableImage unload() {
-    if (loadCount.decrementAndGet() != 0) {
+    if (--loadCount != 0) {
       return this;
     }
     if (state == State.LOADING) {
