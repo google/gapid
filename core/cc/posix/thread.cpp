@@ -32,6 +32,7 @@ AsyncJob::AsyncJob(const std::function<void()>& function) : mFunction(function) 
 AsyncJob::~AsyncJob() {
     pthread_t* thread = reinterpret_cast<pthread_t*>(_);
     pthread_join(*thread, nullptr);
+    free(_);
 }
 
 }  // namespace core
