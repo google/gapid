@@ -69,9 +69,9 @@ func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b schedul
 	}.Bind(ctx)
 	log.I(ctx, "Replay for %d requests", len(e))
 
-	requests := make([]RequestResult, len(e))
+	requests := make([]RequestAndResult, len(e))
 	for i, e := range e {
-		requests[i] = RequestResult{
+		requests[i] = RequestAndResult{
 			Request: e.Task,
 			Result:  Result(e.Result),
 		}
@@ -90,7 +90,7 @@ func (m *Manager) execute(
 	deviceID, captureID id.ID,
 	cfg Config,
 	generator Generator,
-	requests []RequestResult) error {
+	requests []RequestAndResult) error {
 
 	executeCounter.Increment()
 

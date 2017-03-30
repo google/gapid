@@ -347,7 +347,7 @@ func (a api) Replay(
 	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
-	rrs []replay.RequestResult,
+	rrs []replay.RequestAndResult,
 	device *device.Instance,
 	capture *capture.Capture,
 	out transform.Writer) error {
