@@ -21,6 +21,12 @@ import (
 	"github.com/google/gapid/core/fault/stacktrace"
 )
 
+/*
+--- LINE PADDING --
+--- LINE PADDING --
+--- LINE PADDING --
+*/
+
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // be very careful re-ordering the top of this file, the stack trace captures line numbers
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

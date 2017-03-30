@@ -17,10 +17,9 @@ package assert
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/tabwriter"
 	"unicode"
-
-	"strings"
 
 	"github.com/google/gapid/core/data/compare"
 )
