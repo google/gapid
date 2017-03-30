@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/bind"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/service"
@@ -54,10 +55,12 @@ type batchKey struct {
 
 // New returns a new Manager instance using the database db.
 func New(ctx context.Context) *Manager {
-	return &Manager{
+	out := &Manager{
 		gapir:      gapir.New(ctx),
 		schedulers: make(map[id.ID]*scheduler.Scheduler),
 	}
+	bind.GetRegistry(ctx).Listen(bind.NewDeviceListener(out.createScheduler, out.destroyScheduler))
+	return out
 }
 
 // Replay requests that req is to be performed on the device described by intent,
@@ -102,12 +105,25 @@ func (m *Manager) Replay(
 func (m *Manager) scheduler(ctx context.Context, deviceID id.ID) (*scheduler.Scheduler, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-
 	s, found := m.schedulers[deviceID]
 	if !found {
-		log.I(ctx, "New scheduler for device: %v", deviceID)
-		s = scheduler.New(ctx, m.batch)
-		m.schedulers[deviceID] = s
+		return nil, log.Err(ctx, nil, "Device scheduler not found")
 	}
 	return s, nil
+}
+
+func (m *Manager) createScheduler(ctx context.Context, device bind.Device) {
+	deviceID := device.Instance().Id.ID()
+	log.I(ctx, "New scheduler for device: %v", deviceID)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.schedulers[deviceID] = scheduler.New(ctx, m.batch)
+}
+
+func (m *Manager) destroyScheduler(ctx context.Context, device bind.Device) {
+	deviceID := device.Instance().Id.ID()
+	log.I(ctx, "Destroying scheduler for device: %v", deviceID)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	delete(m.schedulers, deviceID)
 }

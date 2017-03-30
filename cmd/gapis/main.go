@@ -62,9 +62,10 @@ func run(ctx context.Context) error {
 	logBroadcaster := log.Broadcast(log.GetHandler(ctx))
 	ctx = log.PutHandler(ctx, logBroadcaster)
 
-	m, r := replay.New(ctx), bind.NewRegistry()
-	ctx = replay.PutManager(ctx, m)
+	r := bind.NewRegistry()
 	ctx = bind.PutRegistry(ctx, r)
+	m := replay.New(ctx)
+	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()

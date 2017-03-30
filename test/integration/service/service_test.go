@@ -65,10 +65,11 @@ func startServerAndGetGrpcClient(ctx context.Context, config server.Config) (ser
 
 func setup(t *testing.T) (context.Context, server.Server, func()) {
 	ctx := log.Testing(t)
-	m, r := replay.New(ctx), bind.NewRegistry()
+	r := bind.NewRegistry()
+	ctx = bind.PutRegistry(ctx, r)
+	m := replay.New(ctx)
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	ctx = bind.PutRegistry(ctx, r)
 
 	r.AddDevice(ctx, bind.Host(ctx))
 
