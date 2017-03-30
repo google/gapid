@@ -62,7 +62,7 @@ public class TreeHelper {
     TreeItem item = (TreeItem)treeOrTreeItem;
     TreeItem parentItem = item.getParentItem();
     if (parentItem != null) {
-      return null;
+      return parentItem;
     }
     return item.getParent();
   }
