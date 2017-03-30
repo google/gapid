@@ -25,6 +25,8 @@ import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 
+import com.google.gapid.util.Events;
+import com.google.gapid.util.Events.ListenerCollection;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.internal.DPIUtil;
 
@@ -50,11 +52,25 @@ public class Thumbnails {
   private final Client client;
   private final Devices devices;
   private final AtomStream atoms;
+  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
   public Thumbnails(Client client, Devices devices, AtomStream atoms) {
     this.client = client;
     this.devices = devices;
     this.atoms = atoms;
+
+    devices.addListener(new Devices.Listener() {
+      @Override
+      public void onReplayDeviceChanged() {
+        update();
+      }
+    });
+  }
+
+  protected void update() {
+    if (isReady()) {
+      listeners.fire().onThumbnailsChanged();
+    }
   }
 
   public boolean isReady() {
@@ -80,6 +96,21 @@ public class Thumbnails {
   private ListenableFuture<Path.ImageInfo> getPath(long atomId) {
     return client.getFramebufferAttachment(devices.getReplayDevice(),
         command(atoms.getPath(), atomId), GfxAPI.FramebufferAttachment.Color0, RENDER_SETTINGS, HINTS);
+  }
+
+  public void addListener(Listener listener) {
+    listeners.addListener(listener);
+  }
+
+  public void removeListener(Listener listener) {
+    listeners.removeListener(listener);
+  }
+
+  public interface Listener extends Events.Listener {
+    /**
+     * Event indicating that render settings have changed an thumbnails need to be updated.
+     */
+    default void onThumbnailsChanged() { /* empty */ }
   }
 
 }

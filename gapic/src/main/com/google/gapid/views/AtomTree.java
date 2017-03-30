@@ -96,7 +96,7 @@ import java.util.regex.Pattern;
  * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
  */
 public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
-    ApiContext.Listener, AtomHierarchies.Listener {
+    ApiContext.Listener, AtomHierarchies.Listener, Thumbnails.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
   private static final int PREVIEW_HOVER_DELAY_MS = 500;
 
@@ -130,11 +130,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     models.atoms.addListener(this);
     models.contexts.addListener(this);
     models.hierarchies.addListener(this);
+    models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.atoms.removeListener(this);
       models.contexts.removeListener(this);
       models.hierarchies.removeListener(this);
+      models.thumbs.removeListener(this);
       imageProvider.reset();
     });
 
@@ -362,6 +364,12 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   @Override
   public void onHierarchiesLoaded() {
     updateTree(false);
+  }
+
+  @Override
+  public void onThumbnailsChanged() {
+    imageProvider.reset();
+    viewer.refresh();
   }
 
   private void updateTree(boolean assumeLoading) {

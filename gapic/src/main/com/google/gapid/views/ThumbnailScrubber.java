@@ -258,7 +258,8 @@ public class ThumbnailScrubber extends Composite
   /**
    * Renders the frame thumbnails.
    */
-  private static class Carousel implements InfiniteScrolledComposite.Scrollable {
+  private static class Carousel
+      implements InfiniteScrolledComposite.Scrollable, Thumbnails.Listener {
     private static final int MARGIN = 4;
     private static final int MIN_SIZE = 80;
 
@@ -316,6 +317,17 @@ public class ThumbnailScrubber extends Composite
       datas = Collections.emptyList();
       imageSize = null;
       selectedIndex = -1;
+    }
+
+    @Override
+    public void onThumbnailsChanged() {
+      for (Data data : datas) {
+        if (data.image != null) {
+          data.image.dispose();
+          data.image = null;
+        }
+      }
+      repainter.repaint();
     }
 
     @Override
