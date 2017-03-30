@@ -83,10 +83,15 @@ func (s *Scheduler) Schedule(ctx context.Context, t Task, b Batch) (val interfac
 		err error
 	}
 
-	out := make(chan res)
+	out := make(chan res, 1)
 	c := task.ShouldStop(ctx)
-	r := func(val interface{}, err error) { out <- res{val, err}; close(out) }
-	s.pending <- &job{executable: Executable{t, c, r}, batch: b}
+	r := func(val interface{}, err error) { out <- res{val, err} }
+
+	select {
+	case s.pending <- &job{executable: Executable{t, c, r}, batch: b}:
+	case <-c: // cancelled
+		return nil, task.StopReason(ctx)
+	}
 
 	select {
 	case r := <-out:
