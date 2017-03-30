@@ -6207,7 +6207,7 @@ cmd void RecreateCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
-  _ = pRegions[0:regionCount]
+  read(pRegions[0:regionCount])
 }
 
 @threadSafety("app")
