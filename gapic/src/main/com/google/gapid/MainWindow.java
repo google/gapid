@@ -16,6 +16,7 @@
 package com.google.gapid;
 
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
+import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.AboutDialog.showAbout;
@@ -239,6 +240,7 @@ public class MainWindow extends ApplicationWindow {
   private MenuManager createFileMenu() {
     MenuManager manager = new MenuManager("&File");
     manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models())));
+    manager.add(MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models())));
     manager.add(createOpenRecentMenu());
     manager.add(MenuItems.FileTrace.create(
         () -> showTracingDialog(getShell(), models(), widgets())));
@@ -520,6 +522,7 @@ public class MainWindow extends ApplicationWindow {
    */
   private static enum MenuItems {
     FileOpen("&Open", 'O'),
+    FileSave("&Save", 'S'),
     FileTrace("Capture &Trace", 'T'),
     FileExit("&Exit", 'Q'),
 

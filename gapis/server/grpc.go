@@ -175,6 +175,14 @@ func (s *grpcServer) ImportCapture(ctx xctx.Context, req *service.ImportCaptureR
 	return &service.ImportCaptureResponse{Res: &service.ImportCaptureResponse_Capture{Capture: capture}}, nil
 }
 
+func (s *grpcServer) ExportCapture(ctx xctx.Context, req *service.ExportCaptureRequest) (*service.ExportCaptureResponse, error) {
+	data, err := s.handler.ExportCapture(s.bindCtx(ctx), req.Capture)
+	if err := service.NewError(err); err != nil {
+		return &service.ExportCaptureResponse{Res: &service.ExportCaptureResponse_Error{Error: err}}, nil
+	}
+	return &service.ExportCaptureResponse{Res: &service.ExportCaptureResponse_Data{Data: data}}, nil
+}
+
 func (s *grpcServer) LoadCapture(ctx xctx.Context, req *service.LoadCaptureRequest) (*service.LoadCaptureResponse, error) {
 	capture, err := s.handler.LoadCapture(s.bindCtx(ctx), req.Path)
 	if err := service.NewError(err); err != nil {
