@@ -322,7 +322,7 @@ public class ThumbnailScrubber extends Composite
     }
 
     @Override
-    public void onThumnailsChanged() {
+    public void onThumbnailsChanged() {
       for (Data data : datas) {
         if (data.image != null) {
           data.image.dispose();

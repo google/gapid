@@ -43,17 +43,19 @@ public class LoadableImage {
   protected static final Logger LOG = Logger.getLogger(LoadableImage.class.getName());
 
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
+  private int loadCount = 0;
   protected final Widget widget;
-  private final Supplier<ListenableFuture<Object>> future;
+  private final Supplier<ListenableFuture<Object>> futureSupplier;
+  private ListenableFuture<Object> future;
   protected final LoadingIndicator loading;
   private final LoadingIndicator.Repaintable repaintable;
   private State state;
   private Image image;
 
-  protected LoadableImage(Widget widget, Supplier<ListenableFuture<Object>> future,
+  protected LoadableImage(Widget widget, Supplier<ListenableFuture<Object>> futureSupplier,
       LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
     this.widget = widget;
-    this.future = future;
+    this.futureSupplier = futureSupplier;
     this.loading = loading;
     this.repaintable = repaintable;
 
@@ -61,13 +63,15 @@ public class LoadableImage {
   }
 
   public LoadableImage load() {
-    if (state != State.NOT_STARTED) {
+    loadCount++;
+    if (loadCount++ != 1 || state != State.NOT_STARTED) {
       return this;
     }
     state = State.LOADING;
     listeners.fire().onLoadingStart();
 
-    Rpc.listen(future.get(), new UiErrorCallback<Object, Object, Void>(widget, LOG) {
+    future = futureSupplier.get();
+    Rpc.listen(future, new UiErrorCallback<Object, Object, Void>(widget, LOG) {
       @Override
       protected ResultOrError<Object, Void> onRpcThread(Result<Object> result)
           throws RpcException, ExecutionException {
@@ -95,6 +99,16 @@ public class LoadableImage {
         updateImage(null);
       }
     });
+    return this;
+  }
+
+  public LoadableImage unload() {
+    loadCount--;
+    if (loadCount != 0 || state != State.LOADING) {
+      return this;
+    }
+    future.cancel(true);
+    state = State.NOT_STARTED;
     return this;
   }
 

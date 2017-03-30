@@ -59,13 +59,12 @@ public class Models {
     Resources resources = new Resources(shell, client, capture);
     ApiState state = new ApiState(shell, client, follower, atoms);
     Reports reports = new Reports(shell, client, devices, capture);
-    Thumbnails thumbs = new Thumbnails(client, devices, capture, atoms);
+    Thumbnails thumbs = new Thumbnails(client, devices, atoms);
     return new Models(settings, follower, capture, devices, atoms, contexts, hierarchies, resources,
         state, reports, thumbs);
   }
 
   public void dispose() {
-    thumbs.dispose();
     settings.save();
   }
 }
