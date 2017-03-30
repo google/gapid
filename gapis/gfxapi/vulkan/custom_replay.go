@@ -754,6 +754,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		semaphore := a.PSemaphore.Read(ctx, a, s, b)
 
 		semaphores := atom.Must(atom.AllocData(ctx, s, semaphore))
+		defer semaphores.Free()
 		submitInfo := VkSubmitInfo{
 			SType:                VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			PNext:                NewVoidᶜᵖ(0),
@@ -766,6 +767,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(semaphores.Address()),
 		}
 		submitInfoData := atom.Must(atom.AllocData(ctx, s, submitInfo))
+		defer submitInfoData.Free()
 
 		err := NewVkQueueSubmit(
 			queue,
@@ -779,8 +781,6 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 			semaphores.Data(),
 		).Mutate(ctx, s, b)
 
-		semaphores.Free()
-		submitInfoData.Free()
 		return err
 	}
 	return nil
@@ -1052,6 +1052,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State,
 
 func createEndCommandBufferAndQueueSubmit(ctx context.Context, s *gfxapi.State, b *builder.Builder, queue VkQueue, commandBuffer VkCommandBuffer) error {
 	commandBuffers := atom.Must(atom.AllocData(ctx, s, commandBuffer))
+	defer commandBuffers.Free()
 	submitInfo := VkSubmitInfo{
 		SType:                VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		PNext:                NewVoidᶜᵖ(0),
@@ -1064,6 +1065,7 @@ func createEndCommandBufferAndQueueSubmit(ctx context.Context, s *gfxapi.State, 
 		PSignalSemaphores:    NewVkSemaphoreᶜᵖ(0),
 	}
 	submitInfoData := atom.Must(atom.AllocData(ctx, s, submitInfo))
+	defer submitInfoData.Free()
 
 	if err := NewVkEndCommandBuffer(
 		commandBuffer,
@@ -1111,6 +1113,7 @@ func createImageTransition(ctx context.Context, s *gfxapi.State, b *builder.Buil
 		},
 	}
 	imageBarrierData := atom.Must(atom.AllocData(ctx, s, imageBarrier))
+	defer imageBarrierData.Free()
 
 	transfer := NewVkCmdPipelineBarrier(
 		commandBuffer,
@@ -1139,8 +1142,10 @@ func createAndBeginCommandBuffer(ctx context.Context, s *gfxapi.State, b *builde
 		CommandBufferCount: 1,
 	}
 	commandBufferAllocateInfoData := atom.Must(atom.AllocData(ctx, s, commandBufferAllocateInfo))
+	defer commandBufferAllocateInfoData.Free()
 	commandBufferId := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]; return ok }))
 	commandBufferData := atom.Must(atom.AllocData(ctx, s, commandBufferId))
+	defer commandBufferData.Free()
 
 	// Data and info for Vulkan commands in command buffers
 	beginCommandBufferInfo := VkCommandBufferBeginInfo{
@@ -1150,6 +1155,7 @@ func createAndBeginCommandBuffer(ctx context.Context, s *gfxapi.State, b *builde
 		PInheritanceInfo: NewVkCommandBufferInheritanceInfoᶜᵖ(0),
 	}
 	beginCommandBufferInfoData := atom.Must(atom.AllocData(ctx, s, beginCommandBufferInfo))
+	defer beginCommandBufferInfoData.Free()
 
 	if err := NewVkAllocateCommandBuffers(
 		device,
@@ -1187,7 +1193,9 @@ func createAndBindSourceBuffer(ctx context.Context, s *gfxapi.State, b *builder.
 
 	bufferId := VkBuffer(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).Buffers[VkBuffer(x)]; return ok }))
 	bufferAllocateInfoData := atom.Must(atom.AllocData(ctx, s, bufferCreateInfo))
+	defer bufferAllocateInfoData.Free()
 	bufferData := atom.Must(atom.AllocData(ctx, s, bufferId))
+	defer bufferData.Free()
 
 	if err := NewVkCreateBuffer(
 		device,
@@ -1211,7 +1219,9 @@ func createAndBindSourceBuffer(ctx context.Context, s *gfxapi.State, b *builder.
 	}
 	memoryId := VkDeviceMemory(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]; return ok }))
 	memoryAllocateInfoData := atom.Must(atom.AllocData(ctx, s, memoryAllocateInfo))
+	defer memoryAllocateInfoData.Free()
 	memoryData := atom.Must(atom.AllocData(ctx, s, memoryId))
+	defer memoryData.Free()
 
 	if err := NewVkAllocateMemory(
 		device,
@@ -1251,6 +1261,7 @@ func mapBufferMemory(ctx context.Context, s *gfxapi.State, b *builder.Builder, a
 		return NewVoidᵖ(0), at, err
 	}
 	mappedPointer := atom.Must(atom.AllocData(ctx, s, NewVoidᶜᵖ(at)))
+	defer mappedPointer.Free()
 
 	if err := NewVkMapMemory(
 		device, memory, VkDeviceSize(0), size, VkMemoryMapFlags(0), mappedPointer.Ptr(), VkResult_VK_SUCCESS,
@@ -1270,6 +1281,7 @@ func flushBufferMemory(ctx context.Context, s *gfxapi.State, b *builder.Builder,
 		Size:   VkDeviceSize(0xFFFFFFFFFFFFFFFF),
 	}
 	flushData := atom.Must(atom.AllocData(ctx, s, flushRange))
+	defer flushData.Free()
 	slice := mapped.Slice(0, uint64(size), s)
 
 	return NewVkFlushMappedMemoryRanges(
@@ -1293,6 +1305,7 @@ func createBufferBarrier(ctx context.Context, s *gfxapi.State, b *builder.Builde
 		Size:                size,
 	}
 	bufferBarrierData := atom.Must(atom.AllocData(ctx, s, bufferBarrier))
+	defer bufferBarrierData.Free()
 
 	transfer := NewVkCmdPipelineBarrier(
 		commandBuffer,
@@ -1324,7 +1337,9 @@ func createCommandPool(ctx context.Context, s *gfxapi.State, b *builder.Builder,
 		QueueFamilyIndex: queueObject.Family,
 	}
 	commandPoolCreateInfoData := atom.Must(atom.AllocData(ctx, s, commandPoolCreateInfo))
+	defer commandPoolCreateInfoData.Free()
 	commandPoolData := atom.Must(atom.AllocData(ctx, s, commandPoolId))
+	defer commandPoolData.Free()
 
 	return commandPoolId, NewVkCreateCommandPool(
 		device,
@@ -1447,6 +1462,7 @@ func (a *RecreateBindAndFillImageMemory) Mutate(ctx context.Context, s *gfxapi.S
 			}
 
 			pointer := atom.Must(atom.AllocData(ctx, s, copies))
+			defer pointer.Free()
 
 			copy := NewVkCmdCopyBufferToImage(commandBuffer, bufferId, a.Image,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, uint32(len(copies)), pointer.Ptr())
@@ -1454,8 +1470,6 @@ func (a *RecreateBindAndFillImageMemory) Mutate(ctx context.Context, s *gfxapi.S
 			if err := copy.Mutate(ctx, s, b); err != nil {
 				return err
 			}
-
-			pointer.Free()
 		}
 
 		if err := createImageTransition(ctx, s, b,
@@ -1566,6 +1580,7 @@ func (a *RecreateBindAndFillBufferMemory) Mutate(ctx context.Context, s *gfxapi.
 			Size:      bufferInfo.Size,
 		}
 		bufferData := atom.Must(atom.AllocData(ctx, s, bufferCopy))
+		defer bufferData.Free()
 		if err := NewVkCmdCopyBuffer(commandBuffer, bufferId, a.Buffer, 1, bufferData.Ptr()).
 			AddRead(bufferData.Data()).Mutate(ctx, s, b); err != nil {
 			return err
@@ -1705,6 +1720,7 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 	swapchain := a.PSwapchain.Read(ctx, a, s, b)
 	createInfoData := a.PCreateInfo.Read(ctx, a, s, b)
 	swapchainCountData := atom.Must(atom.AllocData(ctx, s, createInfoData.MinImageCount))
+	defer swapchainCountData.Free()
 
 	getImages := NewVkGetSwapchainImagesKHR(a.Device, swapchain, swapchainCountData.Ptr(), pSwapchainImages, VkResult(0))
 	getImages.Extras().Add(a.Extras().All()...)
