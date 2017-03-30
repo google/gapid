@@ -232,6 +232,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   cross_options.version = 330;
   cross_options.es = false;
   cross_options.force_temporary = false;
+  cross_options.vertex.fixup_clipspace = false;
   glsl.set_options(cross_options);
   std::string source = glsl.compile().c_str();
 
