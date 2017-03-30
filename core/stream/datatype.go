@@ -57,6 +57,10 @@ var (
 	S32 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{31}}}
 	// S64 represents a 64-bit signed integer.
 	S64 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{63}}}
+	// F10 represents a 10-bit unsigned floating-point number.
+	F10 = DataType{Signed: false, Kind: &DataType_Float{&Float{5, 5}}}
+	// F11 represents a 11-bit unsigned floating-point number.
+	F11 = DataType{Signed: false, Kind: &DataType_Float{&Float{5, 6}}}
 	// F16 represents a 16-bit signed, floating-point number.
 	F16 = DataType{Signed: true, Kind: &DataType_Float{&Float{5, 10}}}
 	// F32 represents a 32-bit signed, floating-point number.
@@ -70,6 +74,10 @@ var (
 // Format prints the DataType to f.
 func (t DataType) Format(f fmt.State, r rune) {
 	switch {
+	case t.Is(F10):
+		fmt.Fprintf(f, "F10")
+	case t.Is(F11):
+		fmt.Fprintf(f, "F11")
 	case t.Is(F16):
 		fmt.Fprintf(f, "F16")
 	case t.Is(F32):

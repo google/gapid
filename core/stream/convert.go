@@ -327,11 +327,9 @@ func stof(count int, dst, src buf) error {
 func ftou(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
-	if !(srcIsF16 || srcIsF32 || srcIsF64) {
-		return fmt.Errorf("Cannot convert from %v", srcTy)
-	}
+	srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
 	norm := dst.component.IsNormalized()
-	dstBits := dstTy.Bits()
+	dstBits, srcBits := dstTy.Bits(), srcTy.Bits()
 	dstMask := (1 << dstBits) - 1
 	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
 	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
@@ -369,6 +367,17 @@ func ftou(count int, dst, src buf) error {
 			ds.WritePos += dst.stride - dstBits
 			ss.ReadPos += src.stride - 64
 		}
+	default:
+		scale := float64(dstMask)
+		for i := 0; i < count; i++ {
+			f := float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
+			if norm {
+				f *= scale
+			}
+			ds.Write(uint64(f), dstBits)
+			ds.WritePos += dst.stride - dstBits
+			ss.ReadPos += src.stride - srcBits
+		}
 	}
 	return nil
 }
@@ -377,10 +386,8 @@ func ftou(count int, dst, src buf) error {
 func ftos(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
-	if !(srcIsF16 || srcIsF32 || srcIsF64) {
-		return fmt.Errorf("Cannot convert from %v", srcTy)
-	}
-	dstBitsIncSign := dstTy.Bits()
+	srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
+	dstBitsIncSign, srcBits := dstTy.Bits(), srcTy.Bits()
 	norm := dst.component.IsNormalized()
 	mul := (1 << dstBitsIncSign) - 1
 	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
@@ -416,6 +423,16 @@ func ftos(count int, dst, src buf) error {
 			ds.WritePos += dst.stride - dstBitsIncSign
 			ss.ReadPos += src.stride - 64
 		}
+	default:
+		for i := 0; i < count; i++ {
+			f := float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
+			if norm {
+				f = (f * float64(mul) / 2) - 0.5
+			}
+			ds.Write(uint64(f64.Round(f)), dstBitsIncSign)
+			ds.WritePos += dst.stride - dstBitsIncSign
+			ss.ReadPos += src.stride - srcBits
+		}
 	}
 	return nil
 }
@@ -425,9 +442,7 @@ func ftof(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	dstBits, srcBits := dstTy.Bits(), srcTy.Bits()
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
-	if !(srcIsF16 || srcIsF32 || srcIsF64) {
-		return fmt.Errorf("Cannot convert from %v", srcTy)
-	}
+	srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
 	dstIsF16, dstIsF32, dstIsF64 := dstTy.Is(F16), dstTy.Is(F32), dstTy.Is(F64)
 	if !(dstIsF16 || dstIsF32 || dstIsF64) {
 		return fmt.Errorf("Cannot convert to %v", dstTy)
@@ -444,6 +459,8 @@ func ftof(count int, dst, src buf) error {
 			f = float64(math.Float32frombits(uint32(ss.Read(32))))
 		case srcIsF64:
 			f = float64(math.Float64frombits(ss.Read(64)))
+		default:
+			f = float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
 		}
 		switch {
 		case dstIsF16:

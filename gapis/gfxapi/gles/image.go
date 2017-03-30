@@ -238,11 +238,10 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 	case GLenum_GL_UNSIGNED_INT_24_8:
 		addComponent(1, &stream.U8)
 		addComponent(0, &stream.U24)
-	// TODO: Requires 11-bit (0+5+6) and 10-bit (0+5+5) floats.
-	// case GLenum_GL_UNSIGNED_INT_10F_11F_11F_REV:
-	// 	addComponent(0, &stream.F11)
-	// 	addComponent(1, &stream.F11)
-	// 	addComponent(2, &stream.F10)
+	case GLenum_GL_UNSIGNED_INT_10F_11F_11F_REV:
+		addComponent(0, &stream.F11)
+		addComponent(1, &stream.F11)
+		addComponent(2, &stream.F10)
 	// TODO: This requires some extra work for the shared exponent.
 	// case GLenum_GL_UNSIGNED_INT_5_9_9_9_REV:
 	// 	addComponent(0, &stream.U9)
