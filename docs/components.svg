@@ -1,0 +1,53 @@
+<svg width="400" height="400"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg">
+
+  <g>
+    <rect y="0"   x="0" style="height:200;width:200;fill:#D0D0FF" />
+    <rect y="200" x="0" style="height:200;width:200;fill:#D0F0D0" />
+    <rect y="0"   x="200" style="height:200;width:200;fill:#FFD0D0" />
+    <rect y="200" x="200" style="height:200;width:200;fill:#F0F0D0" />
+  </g>
+
+  <g style="font-size:15;font-family:sans-serif">
+    <text y="16"  x="5"  >Device A</text>
+    <text y="16"  x="205">Device B</text>
+    <text y="216" x="5"  >Device C</text>
+    <text y="216" x="205">Device D</text>
+  </g>
+
+  <g style="stroke-width:2;stroke:rgba(0,0,0,0.5);fill:#ffd4aa;">
+    <!-- GAPIS -->
+    <rect y="80" x="250" style="height:40;width:90" ry="12" rx="12" />
+    <!-- GAPIC -->
+    <rect y="45" x="55" style="height:40;width:90" ry="12" rx="12" />
+    <!-- GAPIR -->
+    <rect y="280" x="250" style="height:40;width:90" ry="12" rx="12" />
+    <!-- GAPIT -->
+    <rect y="125" x="55" style="height:40;width:90" ry="12" rx="12" />
+    <!-- app -->
+    <rect y="235" x="55" style="height:80;width:90;fill:#7ff4fa" ry="12" rx="12" />
+    <!-- GAPII -->
+    <rect y="290" x="55" style="height:80;width:90;fill:#ffd4fa" ry="12" rx="12" />
+    <!-- driver -->
+    <rect y="280" x="55" style="height:40;width:90;fill:#ffd4aa" ry="12" rx="12" />
+  </g>
+
+  <g style="text-anchor:middle;font-size:24;font-family:sans-serif">
+    <text y="109" x="295">GAPIS</text>
+    <text y="73"  x="100">GAPIC</text>
+    <text y="308" x="295">GAPIR</text>
+    <text y="154" x="100">GAPIT</text>
+    <text y="264" x="100">app</text>
+    <text y="308" x="100">GAPII</text>
+    <text y="354" x="100">driver</text>
+  </g>
+
+  <g style="stroke:black;stroke-width:3" stroke-dasharray="4,3" fill="transparent">
+    <path d="M145 65  C 200 65,  200 100, 250 100"/>
+    <path d="M100 85  C 100 100, 100 100, 100 125"/>
+    <path d="M100 165 C 100 200, 100 200, 100 235"/>
+    <path d="M145 145 C 195 145, 200 300, 250 300"/>
+    <path d="M300 120 C 300 200, 300 200, 300 280"/>
+  </g>
+</svg>
