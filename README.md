@@ -76,3 +76,7 @@ The frontend user interface application. Provides visual inspection of the captu
 
 ### [`gapil`](gapil): Graphics API Language
 A new domain specific language to describe a graphics API in its entirety. Combined with our template system to generate huge parts of the interceptor, server and replay systems.
+
+![components](https://google.github.io/gapid/images/docs/components.svg)
+
+The GAPII, GAPIS, GAPIR and GAPIC components can all run on different (or the same) device, allowing for distrubuted workflows.
