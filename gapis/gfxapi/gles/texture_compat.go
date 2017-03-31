@@ -153,9 +153,9 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 		}
 
 		if componentType != nil {
-			*internalformat = getSizedInternalFormat(*internalformat, *componentType)
+			*internalformat = getSizedFormat(*internalformat, *componentType)
 		} else {
-			*internalformat = getSizedInternalFormat(*internalformat, GLenum_GL_UNSIGNED_BYTE)
+			*internalformat = getSizedFormat(*internalformat, GLenum_GL_UNSIGNED_BYTE)
 		}
 
 		// Compressed formats are replaced by RGBA8
@@ -225,7 +225,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
-		Format: newImgfmt(a.Format, 0).asImageOrPanic(),
+		Format: newImgfmtFromUnsizedFormat(a.Format, 0).asImageOrPanic(),
 	}
 	dst, err := src.ConvertTo(ctx, image.RGBA_U8_NORM)
 	if err != nil {
@@ -271,7 +271,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
-		Format: newImgfmtFromSIF(a.Format).asImageOrPanic(),
+		Format: newImgfmtFromSizedFormat(a.Format).asImageOrPanic(),
 	}
 	dst, err := src.ConvertTo(ctx, image.RGBA_U8_NORM)
 	if err != nil {

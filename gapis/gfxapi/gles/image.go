@@ -22,24 +22,30 @@ import (
 )
 
 type imgfmt struct {
-	sif  GLenum // sized internal format (RGB565,        RGBA8,         R16UI,          ...)
-	base GLenum // base format           (RGB,           RGBA,          RED,            ...)
-	ty   GLenum // pixel type            (UNSIGNED_BYTE, UNSIGNED_BYTE, UNSIGNED_SHORT, ...)
+	// "Internal format" with explicit memory size. Includes compressed formats.
+	// (RGB565, RGBA8, R16UI, DEPTH24_STENCIL8, COMPRESSED_SRGB8_ETC2, ...)
+	sizedFormat GLenum
+	// "Base format" which specifies just the channels. Includes the _INTEGER suffix.
+	// (RGB, RGBA, RED, DEPTH_STENCIL, RGB_INTEGER, ...)
+	unsizedFormat GLenum
+	// Type of either one channel or the whole pixel. NONE for compressed formats.
+	// (UNSIGNED_BYTE, FLOAT, UNSIGNED_SHORT_5_6_5...)
+	ty GLenum
 }
 
-func newImgfmt(base, ty GLenum) imgfmt {
-	return imgfmt{getSizedInternalFormat(base, ty), base, ty}
+func newImgfmtFromUnsizedFormat(unsizedFormat, ty GLenum) imgfmt {
+	return imgfmt{getSizedFormat(unsizedFormat, ty), unsizedFormat, ty}
 }
 
-func newImgfmtFromSIF(sif GLenum) imgfmt {
-	base, ty := extractSizedInternalFormat(sif)
-	return imgfmt{sif, base, ty}
+func newImgfmtFromSizedFormat(sizedFormat GLenum) imgfmt {
+	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
+	return imgfmt{sizedFormat, unsizedFormat, ty}
 }
 
-// getSizedInternalFormat returns the sized internal format
+// getSizedFormat returns the sized internal format
 // (renderbuffer storage format) for the given base format and component type.
-func getSizedInternalFormat(baseFmt, componentType GLenum) GLenum {
-	switch baseFmt {
+func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
+	switch unsizedFormat {
 	// ES and desktop disagree how unsized internal formats are represented (floating point in particular),
 	// so always explicitly use one of the sized internal formats.
 	case GLenum_GL_RED:
@@ -77,15 +83,15 @@ func getSizedInternalFormat(baseFmt, componentType GLenum) GLenum {
 		// TODO: May not be supported on desktop.
 	}
 
-	return baseFmt
+	return unsizedFormat
 }
 
-// extractSizedInternalFormat returns the base format and component type for the
+// getUnsizedFormatAndType returns the base format and component type for the
 // given sized internal format (renderbuffer storage format).
-func extractSizedInternalFormat(sif GLenum) (base, ty GLenum) {
-	base, _ = subImageFormat(nil, nil, nil, nil, nil, nil, sif)
-	ty, _ = subImageType(nil, nil, nil, nil, nil, nil, sif)
-	return base, ty
+func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
+	unsizedFormat, _ = subGetUnsizedFormatFromSizedFormat(nil, nil, nil, nil, nil, nil, sizedFormat)
+	ty, _ = subGetTypeFromSizedFormat(nil, nil, nil, nil, nil, nil, sizedFormat)
+	return unsizedFormat, ty
 }
 
 var sizedInternalFormats8 = [4]GLenum{GLenum_GL_R8, GLenum_GL_RG8, GLenum_GL_RGB8, GLenum_GL_RGBA8}
@@ -268,7 +274,7 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 // asImage returns the *image.Format for the given imgfmt.
 func (f imgfmt) asImage() (*image.Format, error) {
 	ty := f.ty
-	switch f.base {
+	switch f.unsizedFormat {
 	case GLenum_GL_RGB:
 		switch ty {
 		case GLenum_GL_ATC_RGB_AMD:
@@ -373,9 +379,9 @@ func (f imgfmt) asImage() (*image.Format, error) {
 		return image.NewS3_DXT5_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT5_EXT"), nil
 	}
 
-	if format, err := getUncompressedStreamFormat(f.base, f.ty); err == nil {
+	if format, err := getUncompressedStreamFormat(f.unsizedFormat, f.ty); err == nil {
 		return image.NewUncompressed(fmt.Sprint(format), format), nil
 	}
 
-	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", f.base, ty)
+	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", f.unsizedFormat, ty)
 }

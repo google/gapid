@@ -123,8 +123,9 @@ sub u32 componentCount(GLenum format) {
   }
 }
 
-sub GLenum imageFormat(GLenum internalFormat) {
-  return switch (internalFormat) {
+// Strip any size information from a format.
+sub GLenum getUnsizedFormatFromSizedFormat(GLenum sizedFormat) {
+  return switch (sizedFormat) {
     case GL_ALPHA8_EXT:
       GL_ALPHA
 
@@ -195,12 +196,12 @@ sub GLenum imageFormat(GLenum internalFormat) {
       GL_DEPTH_STENCIL
 
     default:
-      internalFormat
+      sizedFormat
   }
 }
 
-sub GLenum imageType(GLenum internalFormat) {
-  return switch (internalFormat) {
+sub GLenum getTypeFromSizedFormat(GLenum sizedFormat) {
+  return switch (sizedFormat) {
     case GL_ALPHA8_EXT:
       GL_UNSIGNED_BYTE
 
@@ -269,7 +270,7 @@ sub GLenum imageType(GLenum internalFormat) {
       GL_FLOAT_32_UNSIGNED_INT_24_8_REV
 
     default:
-      internalFormat
+      sizedFormat
   }
 }
 

@@ -70,7 +70,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 		levels := make([]*image.Info2D, len(t.Texture2D))
 		for i, level := range t.Texture2D {
 			levels[i] = &image.Info2D{
-				Format: newImgfmt(level.TexelFormat, level.TexelType).asImageOrPanic(),
+				Format: newImgfmtFromUnsizedFormat(level.TexelFormat, level.TexelType).asImageOrPanic(),
 				Width:  uint32(level.Width),
 				Height: uint32(level.Height),
 				Data:   image.NewID(level.Data.ResourceID(ctx, s)),
@@ -84,7 +84,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 			levels[i] = &gfxapi.CubemapLevel{}
 			for j, face := range level.Faces {
 				img := &image.Info2D{
-					Format: newImgfmt(face.TexelFormat, face.TexelType).asImageOrPanic(),
+					Format: newImgfmtFromUnsizedFormat(face.TexelFormat, face.TexelType).asImageOrPanic(),
 					Width:  uint32(face.Width),
 					Height: uint32(face.Height),
 					Data:   image.NewID(face.Data.ResourceID(ctx, s)),
