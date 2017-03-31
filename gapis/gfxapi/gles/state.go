@@ -69,11 +69,13 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_2D:
 			l := t.Texture2D[a.TextureLevel]
-			return uint32(l.Width), uint32(l.Height), newImgfmt(t.TexelFormat, t.TexelType), nil
+			fmt := newImgfmtFromUnsizedFormat(t.TexelFormat, t.TexelType)
+			return uint32(l.Width), uint32(l.Height), fmt, nil
 		case GLenum_GL_TEXTURE_CUBE_MAP:
 			l := t.Cubemap[a.TextureLevel]
 			f := l.Faces[a.TextureCubeMapFace]
-			return uint32(f.Width), uint32(f.Height), newImgfmt(f.TexelFormat, f.TexelType), nil
+			fmt := newImgfmtFromUnsizedFormat(t.TexelFormat, t.TexelType)
+			return uint32(f.Width), uint32(f.Height), fmt, nil
 		default:
 			return 0, 0, imgfmt{}, fmt.Errorf("Unknown texture kind %v", t.Kind)
 		}
@@ -83,8 +85,7 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		if !ok {
 			return 0, 0, imgfmt{}, fmt.Errorf("Renderbuffer %v not found", id)
 		}
-		fmt, ty := extractSizedInternalFormat(r.InternalFormat)
-		ifmt := imgfmt{r.InternalFormat, fmt, ty}
+		ifmt := newImgfmtFromSizedFormat(r.InternalFormat)
 		return uint32(r.Width), uint32(r.Height), ifmt, nil
 	default:
 		return 0, 0, imgfmt{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.ObjectType)

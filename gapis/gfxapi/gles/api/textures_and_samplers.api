@@ -2020,8 +2020,8 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
     }
   }
 
-  fm := imageFormat(internalformat)
-  ty := imageType(internalformat)
+  unsizedFormat := getUnsizedFormatFromSizedFormat(internalformat)
+  ty := getTypeFromSizedFormat(internalformat)
 
   switch (target) {
     case GL_TEXTURE_2D: {
@@ -2029,19 +2029,19 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
       for i in (0 .. as!GLint(levels)) {
         w := max!GLsizei(width >> as!u32(i), 1)
         h := max!GLsizei(height >> as!u32(i), 1)
-        s := imageSize(as!u32(w), as!u32(h), fm, ty)
+        s := imageSize(as!u32(w), as!u32(h), unsizedFormat, ty)
         l := Image(
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
         t.Texture2D[i] = l
       }
       // TODO: Warning/Error if format has changed
-      t.TexelFormat = fm
+      t.TexelFormat = unsizedFormat
       t.TexelType = ty
       t.ImmutableFormat = GL_TRUE
     }
@@ -2050,14 +2050,14 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
       for i in (0 .. as!GLint(levels)) {
         w := max!GLsizei(width >> as!u32(i), 1)
         h := max!GLsizei(height >> as!u32(i), 1)
-        s := imageSize(as!u32(w), as!u32(h), fm, ty)
+        s := imageSize(as!u32(w), as!u32(h), unsizedFormat, ty)
         cube := t.Cubemap[i]
 
         cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = Image(
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2065,7 +2065,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2073,7 +2073,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2081,7 +2081,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2089,7 +2089,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2097,7 +2097,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
           Width:        w,
           Height:       h,
           Size:         s,
-          TexelFormat:  fm,
+          TexelFormat:  unsizedFormat,
           TexelType:    ty,
           Data:         make!u8(s)
         )
@@ -2105,7 +2105,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
         t.Cubemap[i] = cube
       }
       // TODO: Warning/Error if format has changed
-      t.TexelFormat = fm
+      t.TexelFormat = unsizedFormat
       t.TexelType = ty
       t.ImmutableFormat = GL_TRUE
     }
