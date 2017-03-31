@@ -80,10 +80,21 @@ public class Events {
    * Factory method to create a {@link ListenerCollection} for listeners of the given type.
    */
   @SuppressWarnings("unchecked")
-  public static <T extends Listener> ListenerCollection<T> listeners(Class<T> listenerInterface) {
-    ListenerCollectionImpl<T> result = new ListenerCollectionImpl<T>();
+  public static <T extends Listener> ListenerCollection<T> listeners(Class<T> listenerClass) {
+    ListenerCollectionImpl<T> result = new ListenerCollectionImpl<T>(true);
     return result.withProxy((T)Proxy.newProxyInstance(
-        Events.class.getClassLoader(), new Class<?>[] { listenerInterface }, result));
+        Events.class.getClassLoader(), new Class<?>[] { listenerClass }, result));
+  }
+
+  /**
+   * Factory method to create a {@link ListenerCollection} for listeners of the given type.
+   * The returned {@link ListenerCollection} will not log.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T extends Listener> ListenerCollection<T> silentListeners(Class<T> listenerClass) {
+    ListenerCollectionImpl<T> result = new ListenerCollectionImpl<T>(false);
+    return result.withProxy((T)Proxy.newProxyInstance(
+        Events.class.getClassLoader(), new Class<?>[] { listenerClass }, result));
   }
 
   /**
@@ -93,9 +104,11 @@ public class Events {
   private static class ListenerCollectionImpl<T extends Listener> extends ArrayList<T>
       implements ListenerCollection<T>, InvocationHandler {
 
+    private final boolean shouldLog;
     private T proxy;
 
-    public ListenerCollectionImpl() {
+    public ListenerCollectionImpl(boolean shouldLog) {
+      this.shouldLog = shouldLog;
     }
 
     public ListenerCollectionImpl<T> withProxy(T newProxy) {
@@ -120,7 +133,7 @@ public class Events {
 
     @Override
     public Object invoke(Object me, Method method, Object[] args) throws Throwable {
-      if (LOG.isLoggable(FINE)) {
+      if (shouldLog && LOG.isLoggable(FINE)) {
         StringBuilder msg = new StringBuilder()
             .append("Firing ").append(method.getName()).append('(');
         if (args != null && args.length > 0) {
@@ -134,8 +147,12 @@ public class Events {
 
       Object[] listeners;
       synchronized (this) {
+        if (isEmpty()) {
+          return null;
+        }
         listeners = toArray();
       }
+
       for (Object listener : listeners) {
         method.invoke(listener, args);
       }

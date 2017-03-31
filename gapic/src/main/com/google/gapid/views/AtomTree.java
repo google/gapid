@@ -23,7 +23,7 @@ import static com.google.gapid.util.Ranges.first;
 import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -478,7 +478,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     public void repaint() {
-      scheduleIfNotDisposed(viewer.getTree(), viewer::refresh);
+      ifNotDisposed(viewer.getControl(), viewer::refresh);
     }
 
     private static boolean shouldShowImage(FilteredGroup group) {

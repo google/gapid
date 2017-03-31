@@ -42,7 +42,7 @@ import java.util.logging.Logger;
 public class LoadableImage {
   protected static final Logger LOG = Logger.getLogger(LoadableImage.class.getName());
 
-  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
+  private final ListenerCollection<Listener> listeners = Events.silentListeners(Listener.class);
   private int loadCount = 0;
   protected final Widget widget;
   private final Supplier<ListenableFuture<Object>> futureSupplier;
@@ -207,8 +207,6 @@ public class LoadableImage {
     if (state == State.LOADING) {
       state = (result == null) ? State.FAILED : State.LOADED;
       image = result;
-      repaintable.repaint();
-      loading.cancelRedraw(repaintable);
       listeners.fire().onLoaded(result != null);
     } else if (result != null) {
       result.dispose();
