@@ -23,8 +23,8 @@ import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.sorting;
 
 import com.google.common.collect.Lists;
@@ -528,7 +528,7 @@ public class TextureView extends Composite
 
     @Override
     public void repaint() {
-      scheduleIfNotDisposed(viewer.getTable(), viewer::refresh);
+      ifNotDisposed(viewer.getControl(), viewer::refresh);
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
