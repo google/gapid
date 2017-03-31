@@ -12,66 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@internal
+class ImageFormat {
+  // "Internal format" with explicit memory size. Includes compressed formats.
+  // (RGB565, RGBA8, R16UI, DEPTH24_STENCIL8, COMPRESSED_SRGB8_ETC2, ...)
+  GLenum SizedFormat
+
+  // "Base format" which specifies just the channels. Includes the _INTEGER suffix.
+  // This must be just the {R,G,B,A,D,S,INTEGER} part of the sized format above.
+  // (RGB, RGBA, RED, DEPTH_STENCIL, RGB_INTEGER, ...)
+  GLenum UnsizedFormat
+
+  // Type of either one channel or the whole pixel. NONE for compressed formats.
+  // This must be just the data type part of the sized format above (exactly).
+  // For example, RGB565 must use UNSIGNED_SHORT_5_6_5, not UNSIGNED_BYTE.
+  // (UNSIGNED_BYTE, FLOAT, UNSIGNED_SHORT_5_6_5...)
+  GLenum DataType
+
+  // True if the data is converted from sRGB to liner space by the sampler.
+  // Note that GL does not care about colour spaces, and colour textures
+  // will generally contain sRGB content even if this flag is off.
+  // Thus, this flag just allows sRGB conscious developer to save a few
+  // fragment shader instructions by doing the conversion in texture unit.
+  bool SRGB
+
+  // Information about the compression algorithm
+  CompressionAlgorithm Compression
+  u32                  BlockWidth
+  u32                  BlockHeight
+  u32                  BlockSize
+}
+
+@internal
+enum CompressionAlgorithm {
+  Uncompressed = 0,
+  ETC1         = 1,
+  ETC2         = 2,
+  S3           = 3,
+  ASTC         = 4,
+  ATC          = 5,
+  EAC          = 6,
+}
+
 sub u32 imageSize(u32 width, u32 height, GLenum format, GLenum ty) {
   ups := uncompressedPixelSize(format, ty)
-
-  return switch (ty) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_SIGNED_R11_EAC,
-        GL_COMPRESSED_RGB8_ETC2, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
-      ((width + 3) / 4) * ((height + 3) / 4) * 8
-    }
-    case GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_RGBA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4: {
-      ((width + 3) / 4) * ((height + 3) / 4) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4: {
-      ((width + 4) / 5) * ((height + 3) / 4) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5: {
-      ((width + 4) / 5) * ((height + 4) / 5) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5: {
-      ((width + 5) / 6) * ((height + 4) / 5) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6: {
-      ((width + 5) / 6) * ((height + 5) / 6) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_8x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5: {
-      ((width + 7) / 8) * ((height + 4) / 5) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6: {
-      ((width + 7) / 8) * ((height + 5) / 6) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_8x8, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
-      ((width + 7) / 8) * ((height + 7) / 8) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5: {
-      ((width + 9) / 10) * ((height + 4) / 5) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6: {
-      ((width + 9) / 10) * ((height + 5) / 6) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8: {
-      ((width + 9) / 10) * ((height + 7) / 8) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10: {
-      ((width + 9) / 10) * ((height + 9) / 10) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10: {
-      ((width + 11) / 12) * ((height + 9) / 10) * 16
-    }
-    case GL_COMPRESSED_RGBA_ASTC_12x12, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12: {
-      ((width + 11) / 12) * ((height + 11) / 12) * 16
-    }
-    case GL_ETC1_RGB8_OES: {
-      // TODO: requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
-      ((width + 3) / 4) * ((height + 3) / 4) * 8
-    }
-    default: {
+  // TODO: Use format to find the info
+  info := getSizedFormatInfo(ty)
+  return switch info.Compression {
+    case Uncompressed:
       width * height * ups
-    }
+    default:
+      ((width + (info.BlockWidth - 1)) / info.BlockWidth) *
+      ((height + (info.BlockHeight - 1)) / info.BlockHeight) *
+      info.BlockSize
   }
 }
 
@@ -123,155 +116,120 @@ sub u32 componentCount(GLenum format) {
   }
 }
 
-// Strip any size information from a format.
-sub GLenum getUnsizedFormatFromSizedFormat(GLenum sizedFormat) {
-  return switch (sizedFormat) {
-    case GL_ALPHA8_EXT:
-      GL_ALPHA
-
-    case GL_R8, GL_R8_SNORM,
-        GL_R16, GL_R16_SNORM,
-        GL_R16F, GL_R32F,
-        GL_COMPRESSED_R11_EAC, GL_COMPRESSED_SIGNED_R11_EAC:
-      GL_RED
-
-    case GL_R8UI, GL_R8I,
-        GL_R16UI, GL_R16I,
-        GL_R32UI, GL_R32I:
-      GL_RED_INTEGER
-
-    case GL_RG8, GL_RG8_SNORM,
-        GL_RG16, GL_RG16_SNORM,
-        GL_RG16F, GL_RG32F,
-        GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC:
-      GL_RG
-
-    case GL_RG8UI, GL_RG8I,
-        GL_RG16UI, GL_RG16I,
-        GL_RG32UI, GL_RG32I:
-      GL_RG_INTEGER
-
-    case GL_RGB8, GL_SRGB8, GL_RGB8_SNORM,
-        GL_RGB16, GL_RGB16_SNORM,
-        GL_RGB565, GL_R11F_G11F_B10F, GL_RGB9_E5,
-        GL_RGB16F, GL_RGB32F,
-        GL_COMPRESSED_RGB8_ETC2, GL_COMPRESSED_SRGB8_ETC2, GL_ETC1_RGB8_OES:
-      GL_RGB
-
-    case GL_RGB8UI, GL_RGB8I,
-        GL_RGB16UI, GL_RGB16I,
-        GL_RGB32UI, GL_RGB32I:
-      GL_RGB_INTEGER
-
-    case GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA8_SNORM,
-        GL_RGBA16, GL_RGBA16_SNORM,
-        GL_RGB5_A1, GL_RGBA4, GL_RGB10_A2,
-        GL_RGBA16F, GL_RGBA32F,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
-        GL_COMPRESSED_RGBA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8, GL_COMPRESSED_RGBA_ASTC_10x5,
-        GL_COMPRESSED_RGBA_ASTC_10x6, GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_10x10,
-        GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12:
-      GL_RGBA
-
-    case GL_RGBA8UI, GL_RGBA8I,
-        GL_RGB10_A2UI,
-        GL_RGBA16UI, GL_RGBA16I,
-        GL_RGBA32I, GL_RGBA32UI:
-      GL_RGBA_INTEGER
-
-    case GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F:
-      GL_DEPTH_COMPONENT
-
-    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8:
-      GL_DEPTH_STENCIL
-
+sub ImageFormat getSizedFormatInfo(GLenum sf) {
+  // Give the constant name for clarity
+  sRGB := true
+  linear := false
+  return switch (sf) {
+    // Uncompressed colour formats
+    case GL_ALPHA8_EXT:     ImageFormat(sf, GL_ALPHA, GL_UNSIGNED_BYTE)
+    case GL_R11F_G11F_B10F: ImageFormat(sf, GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV)
+    case GL_R16:            ImageFormat(sf, GL_RED, GL_UNSIGNED_SHORT)
+    case GL_R16F:           ImageFormat(sf, GL_RED, GL_HALF_FLOAT)
+    case GL_R16I:           ImageFormat(sf, GL_RED_INTEGER, GL_SHORT)
+    case GL_R16UI:          ImageFormat(sf, GL_RED_INTEGER, GL_UNSIGNED_SHORT)
+    case GL_R16_SNORM:      ImageFormat(sf, GL_RED, GL_SHORT)
+    case GL_R32F:           ImageFormat(sf, GL_RED, GL_FLOAT)
+    case GL_R32I:           ImageFormat(sf, GL_RED_INTEGER, GL_INT)
+    case GL_R32UI:          ImageFormat(sf, GL_RED_INTEGER, GL_UNSIGNED_INT)
+    case GL_R8:             ImageFormat(sf, GL_RED, GL_UNSIGNED_BYTE)
+    case GL_R8I:            ImageFormat(sf, GL_RED_INTEGER, GL_BYTE)
+    case GL_R8UI:           ImageFormat(sf, GL_RED_INTEGER, GL_UNSIGNED_BYTE)
+    case GL_R8_SNORM:       ImageFormat(sf, GL_RED, GL_BYTE)
+    case GL_RG16:           ImageFormat(sf, GL_RG, GL_UNSIGNED_SHORT)
+    case GL_RG16F:          ImageFormat(sf, GL_RG, GL_HALF_FLOAT)
+    case GL_RG16I:          ImageFormat(sf, GL_RG_INTEGER, GL_SHORT)
+    case GL_RG16UI:         ImageFormat(sf, GL_RG_INTEGER, GL_UNSIGNED_SHORT)
+    case GL_RG16_SNORM:     ImageFormat(sf, GL_RG, GL_SHORT)
+    case GL_RG32F:          ImageFormat(sf, GL_RG, GL_FLOAT)
+    case GL_RG32I:          ImageFormat(sf, GL_RG_INTEGER, GL_INT)
+    case GL_RG32UI:         ImageFormat(sf, GL_RG_INTEGER, GL_UNSIGNED_INT)
+    case GL_RG8:            ImageFormat(sf, GL_RG, GL_UNSIGNED_BYTE)
+    case GL_RG8I:           ImageFormat(sf, GL_RG_INTEGER, GL_BYTE)
+    case GL_RG8UI:          ImageFormat(sf, GL_RG_INTEGER, GL_UNSIGNED_BYTE)
+    case GL_RG8_SNORM:      ImageFormat(sf, GL_RG, GL_BYTE)
+    case GL_RGB10_A2:       ImageFormat(sf, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV)
+    case GL_RGB10_A2UI:     ImageFormat(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV)
+    case GL_RGB16:          ImageFormat(sf, GL_RGB, GL_UNSIGNED_SHORT)
+    case GL_RGB16F:         ImageFormat(sf, GL_RGB, GL_HALF_FLOAT)
+    case GL_RGB16I:         ImageFormat(sf, GL_RGB_INTEGER, GL_SHORT)
+    case GL_RGB16UI:        ImageFormat(sf, GL_RGB_INTEGER, GL_UNSIGNED_SHORT)
+    case GL_RGB16_SNORM:    ImageFormat(sf, GL_RGB, GL_SHORT)
+    case GL_RGB32F:         ImageFormat(sf, GL_RGB, GL_FLOAT)
+    case GL_RGB32I:         ImageFormat(sf, GL_RGB_INTEGER, GL_INT)
+    case GL_RGB32UI:        ImageFormat(sf, GL_RGB_INTEGER, GL_UNSIGNED_INT)
+    case GL_RGB565:         ImageFormat(sf, GL_RGB, GL_UNSIGNED_SHORT_5_6_5)
+    case GL_RGB5_A1:        ImageFormat(sf, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1)
+    case GL_RGB8:           ImageFormat(sf, GL_RGB, GL_UNSIGNED_BYTE)
+    case GL_RGB8I:          ImageFormat(sf, GL_RGB_INTEGER, GL_BYTE)
+    case GL_RGB8UI:         ImageFormat(sf, GL_RGB_INTEGER, GL_UNSIGNED_BYTE)
+    case GL_RGB8_SNORM:     ImageFormat(sf, GL_RGB, GL_BYTE)
+    case GL_RGB9_E5:        ImageFormat(sf, GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV)
+    case GL_RGBA16:         ImageFormat(sf, GL_RGBA, GL_UNSIGNED_SHORT)
+    case GL_RGBA16F:        ImageFormat(sf, GL_RGBA, GL_HALF_FLOAT)
+    case GL_RGBA16I:        ImageFormat(sf, GL_RGBA_INTEGER, GL_SHORT)
+    case GL_RGBA16UI:       ImageFormat(sf, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT)
+    case GL_RGBA16_SNORM:   ImageFormat(sf, GL_RGBA, GL_SHORT)
+    case GL_RGBA32F:        ImageFormat(sf, GL_RGBA, GL_FLOAT)
+    case GL_RGBA32I:        ImageFormat(sf, GL_RGBA_INTEGER, GL_INT)
+    case GL_RGBA32UI:       ImageFormat(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT)
+    case GL_RGBA4:          ImageFormat(sf, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4)
+    case GL_RGBA8:          ImageFormat(sf, GL_RGBA, GL_UNSIGNED_BYTE)
+    case GL_RGBA8I:         ImageFormat(sf, GL_RGBA_INTEGER, GL_BYTE)
+    case GL_RGBA8UI:        ImageFormat(sf, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE)
+    case GL_RGBA8_SNORM:    ImageFormat(sf, GL_RGBA, GL_BYTE)
+    case GL_SRGB8:          ImageFormat(sf, GL_RGB, GL_UNSIGNED_BYTE, sRGB)
+    case GL_SRGB8_ALPHA8:   ImageFormat(sf, GL_RGBA, GL_UNSIGNED_BYTE, sRGB)
+    // Uncompressed depth/stencil formats
+    case GL_DEPTH24_STENCIL8:   ImageFormat(sf, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8)
+    case GL_DEPTH32F_STENCIL8:  ImageFormat(sf, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV)
+    case GL_DEPTH_COMPONENT16:  ImageFormat(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT)
+    case GL_DEPTH_COMPONENT24:  ImageFormat(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT)
+    case GL_DEPTH_COMPONENT32F: ImageFormat(sf, GL_DEPTH_COMPONENT, GL_FLOAT)
+    case GL_STENCIL_INDEX8:     ImageFormat(sf, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE)
+    // Compressed formats
+    // TODO: Return GL_NONE instead of 'sf' for the data type
+    case GL_COMPRESSED_R11_EAC:                        ImageFormat(sf, GL_RED, sf, linear, EAC, 4, 4, 8)
+    case GL_COMPRESSED_RG11_EAC:                       ImageFormat(sf, GL_RG, sf, linear, EAC, 4, 4, 16)
+    case GL_COMPRESSED_RGB8_ETC2:                      ImageFormat(sf, GL_RGB, sf, linear, ETC2, 4, 4, 8)
+    case GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:  ImageFormat(sf, GL_RGBA, sf, linear, ETC2, 4, 4, 8)
+    case GL_COMPRESSED_RGBA8_ETC2_EAC:                 ImageFormat(sf, GL_RGBA, sf, linear, ETC2, 4, 4, 16)
+    case GL_COMPRESSED_RGBA_ASTC_10x10:                ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 10, 10, 16)
+    case GL_COMPRESSED_RGBA_ASTC_10x5:                 ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 10, 5, 16)
+    case GL_COMPRESSED_RGBA_ASTC_10x6:                 ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 10, 6, 16)
+    case GL_COMPRESSED_RGBA_ASTC_10x8:                 ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 10, 8, 16)
+    case GL_COMPRESSED_RGBA_ASTC_12x10:                ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 12, 10, 16)
+    case GL_COMPRESSED_RGBA_ASTC_12x12:                ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 12, 12, 16)
+    case GL_COMPRESSED_RGBA_ASTC_4x4:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 4, 4, 16)
+    case GL_COMPRESSED_RGBA_ASTC_5x4:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 5, 4, 16)
+    case GL_COMPRESSED_RGBA_ASTC_5x5:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 5, 5, 16)
+    case GL_COMPRESSED_RGBA_ASTC_6x5:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 6, 5, 16)
+    case GL_COMPRESSED_RGBA_ASTC_6x6:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 6, 6, 16)
+    case GL_COMPRESSED_RGBA_ASTC_8x5:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 8, 5, 16)
+    case GL_COMPRESSED_RGBA_ASTC_8x6:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 8, 6, 16)
+    case GL_COMPRESSED_RGBA_ASTC_8x8:                  ImageFormat(sf, GL_RGBA, sf, linear, ASTC, 8, 8, 16)
+    case GL_COMPRESSED_SIGNED_R11_EAC:                 ImageFormat(sf, GL_RED, sf, linear, EAC, 4, 4, 8)
+    case GL_COMPRESSED_SIGNED_RG11_EAC:                ImageFormat(sf, GL_RG, sf, linear, EAC, 4, 4, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10:        ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 10, 10, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5:         ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 10, 5, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6:         ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 10, 6, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8:         ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 10, 8, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10:        ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 12, 10, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12:        ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 12, 12, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 4, 4, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 5, 4, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 5, 5, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 6, 5, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 6, 6, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 8, 5, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 8, 6, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8:          ImageFormat(sf, GL_RGBA, sf, sRGB, ASTC, 8, 8, 16)
+    case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:          ImageFormat(sf, GL_RGBA, sf, sRGB, ETC2, 4, 4, 16)
+    case GL_COMPRESSED_SRGB8_ETC2:                     ImageFormat(sf, GL_RGB, sf, sRGB, ETC2, 4, 4, 8)
+    case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: ImageFormat(sf, GL_RGBA, sf, sRGB, ETC2, 4, 4, 8)
+    case GL_ETC1_RGB8_OES:                             ImageFormat(sf, GL_RGB, sf, linear, ETC1, 4, 4, 8)
     default:
-      sizedFormat
+      // TODO: We should not be passing on 'sf' as unsized format
+      ImageFormat(sf, sf, sf)
   }
 }
-
-sub GLenum getTypeFromSizedFormat(GLenum sizedFormat) {
-  return switch (sizedFormat) {
-    case GL_ALPHA8_EXT:
-      GL_UNSIGNED_BYTE
-
-    case GL_R8, GL_R8UI,
-        GL_RG8, GL_RG8UI,
-        GL_RGB8, GL_SRGB8, GL_RGB8UI,
-        GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA8UI,
-        GL_STENCIL_INDEX8, GL_BGRA_EXT:
-      GL_UNSIGNED_BYTE
-
-    case GL_R8_SNORM, GL_R8I,
-        GL_RG8_SNORM, GL_RG8I, GL_RGB8_SNORM, GL_RGB8I,
-        GL_RGBA8_SNORM, GL_RGBA8I:
-      GL_BYTE
-
-    case GL_R16, GL_R16UI,
-        GL_RG16, GL_RG16UI,
-        GL_RGB16, GL_RGB16UI,
-        GL_RGBA16, GL_RGBA16UI,
-        GL_DEPTH_COMPONENT16:
-      GL_UNSIGNED_SHORT
-
-    case GL_R16_SNORM, GL_R16I,
-        GL_RG16_SNORM, GL_RG16I,
-        GL_RGB16_SNORM, GL_RGB16I,
-        GL_RGBA16_SNORM, GL_RGBA16I:
-      GL_SHORT
-
-    case GL_RGB565:
-      GL_UNSIGNED_SHORT_5_6_5
-
-    case GL_RGB5_A1:
-      GL_UNSIGNED_SHORT_5_5_5_1
-
-    case GL_RGBA4:
-      GL_UNSIGNED_SHORT_4_4_4_4
-
-    case GL_R32UI, GL_RG32UI, GL_RGB32UI, GL_RGBA32UI, GL_DEPTH_COMPONENT24:
-      GL_UNSIGNED_INT
-
-    case GL_R32I, GL_RG32I, GL_RGB32I, GL_RGBA32I:
-      GL_INT
-
-    case GL_R11F_G11F_B10F:
-      GL_UNSIGNED_INT_10F_11F_11F_REV
-
-    case GL_RGB9_E5:
-      GL_UNSIGNED_INT_5_9_9_9_REV
-
-    case GL_RGB10_A2:
-      GL_UNSIGNED_INT_2_10_10_10_REV
-
-    case GL_RGB10_A2UI:
-      GL_UNSIGNED_INT_2_10_10_10_REV
-
-    case GL_DEPTH24_STENCIL8:
-      GL_UNSIGNED_INT_24_8
-
-    case GL_R16F, GL_RG16F, GL_RGB16F, GL_RGBA16F:
-      GL_HALF_FLOAT
-
-    case GL_R32F, GL_RG32F, GL_RGB32F, GL_RGBA32F, GL_DEPTH_COMPONENT32F:
-      GL_FLOAT
-
-    case GL_DEPTH32F_STENCIL8:
-      GL_FLOAT_32_UNSIGNED_INT_24_8_REV
-
-    default:
-      sizedFormat
-  }
-}
-
-

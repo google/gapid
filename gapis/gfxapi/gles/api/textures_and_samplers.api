@@ -2020,8 +2020,9 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
     }
   }
 
-  unsizedFormat := getUnsizedFormatFromSizedFormat(internalformat)
-  ty := getTypeFromSizedFormat(internalformat)
+  info := getSizedFormatInfo(internalformat)
+  unsizedFormat := info.UnsizedFormat
+  ty := info.DataType
 
   switch (target) {
     case GL_TEXTURE_2D: {

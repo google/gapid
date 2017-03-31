@@ -89,9 +89,8 @@ func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
 // getUnsizedFormatAndType returns the base format and component type for the
 // given sized internal format (renderbuffer storage format).
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
-	unsizedFormat, _ = subGetUnsizedFormatFromSizedFormat(nil, nil, nil, nil, nil, nil, sizedFormat)
-	ty, _ = subGetTypeFromSizedFormat(nil, nil, nil, nil, nil, nil, sizedFormat)
-	return unsizedFormat, ty
+	info, _ := subGetSizedFormatInfo(nil, nil, nil, nil, nil, nil, sizedFormat)
+	return info.UnsizedFormat, info.DataType
 }
 
 var sizedInternalFormats8 = [4]GLenum{GLenum_GL_R8, GLenum_GL_RG8, GLenum_GL_RGB8, GLenum_GL_RGBA8}
