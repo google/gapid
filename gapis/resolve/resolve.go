@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -107,22 +106,6 @@ func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
 		return nil, fmt.Errorf("Path %s gave %T, expected []byte", p, obj)
 	}
 	return bytes, nil
-}
-
-// Mesh resolves and returns the Mesh from the path p.
-func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
-	obj, err := Resolve(ctx, p.Parent())
-	if err != nil {
-		return nil, err
-	}
-	if ao, ok := obj.(gfxapi.APIObject); ok {
-		if api := ao.API(); api != nil {
-			if m, ok := api.(gfxapi.MeshProvider); ok {
-				return m.Mesh(ctx, obj, p)
-			}
-		}
-	}
-	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
 }
 
 // Parameter resolves and returns the parameter from the path p.
