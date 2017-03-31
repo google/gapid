@@ -27,9 +27,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/framework/binary/schema"
-	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/tools/codergen/generate"
 )
 
@@ -75,8 +75,8 @@ func New() *Templates {
 		templates: template.New("FunctionHolder"),
 		funcs: template.FuncMap{
 			// fake builtin functions
-			"add": func(a, b int) int { return a + b },
-			"sub": func(a, b int) int { return a - b },
+			"add":    func(a, b int) int { return a + b },
+			"sub":    func(a, b int) int { return a - b },
 			"concat": func(a, b string) string { return a + b },
 		},
 	}
@@ -149,7 +149,6 @@ func appendTypeMatches(try []string, prefix string, node binary.Type) []string {
 
 func (t *Templates) getTemplate(prefix string, node interface{}) (*template.Template, error) {
 	try := []string{}
-
 	switch node := node.(type) {
 	case *schema.Slice:
 		try = appendTypeMatches(try, prefix, node)
@@ -176,9 +175,11 @@ func (t *Templates) getTemplate(prefix string, node interface{}) (*template.Temp
 		try = append(try, prefix+node)
 	case schema.Method:
 		try = append(try, fmt.Sprint(prefix, "#", node.String()))
+	case *generate.Struct:
+		try = append(try, fmt.Sprint(prefix, "#", node.Package, ".", node.Name()))
 	case nil:
 	default:
-		return nil, fmt.Errorf("Invalid call dispatch type %T", node)
+		panic(fmt.Sprintf("Unknown %T", node))
 	}
 	if node != nil {
 		r := reflect.TypeOf(node)

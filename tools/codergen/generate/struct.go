@@ -68,6 +68,9 @@ func (m *Module) fromFieldType(f *binary.Field, invalidStruct *error, s *Struct,
 		}
 	}()
 	f.Type = m.fromType(decl.Type(), s, tags)
+	if strings.Contains(fmt.Sprint(f.Type), "invalid_type") {
+		fmt.Printf("%s.%s -> %v\n\n", s.Name(), f.Name(), f.Type)
+	}
 }
 
 func (m *Module) addStruct(n *types.TypeName) {

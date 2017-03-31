@@ -230,6 +230,8 @@
 {{end}}
 
 {{define "Java.File"}}
+  {{$Extends := File.Extends .}}
+  
   §{{$.Copyright}}§¶
   package {{.JavaPackage}};¶
   ¶
@@ -238,16 +240,14 @@
   {{range .Struct.Fields}}{{Call "Java.Import" .Type}}{{end}}
   ¶
   import java.io.IOException;¶
+  {{Call "Java.Imports" .Struct}}
   ¶
   {{if .Struct.Exported}}public•{{end}}
-  final class {{File.ClassName .Struct}}
-  {{range .Struct.Implements}}
-    {{if and (eq .Package "rpc") (eq .Name "Err")}}•extends RpcException{{end}}
-    {{if and (eq .Package "stringtable") (eq .Name "Node")}}•extends Node{{end}}
-    {{if and (eq .Package "vertex") (eq .Name "Format")}}•extends Format{{end}}
-  {{end}}
-  •implements BinaryObject {»¶
+  final class {{File.ClassName .Struct}}{{if ne $Extends ""}} extends {{$Extends}}{{end}} implements BinaryObject {»¶
+    {{if File.IsBox .}}{{Call "Java.Extra#Box" .Struct}}{{end}}
+    {{Call "Java.Extra" .Struct}}
     //{{Section "Java.ClassBody"}}¶
+    {{Call "Java.EndExtra" .Struct}}
     public enum Klass implements BinaryClass {»¶
       //{{Section "Java.KlassBody"}}¶
     «}¶
@@ -275,3 +275,6 @@
     «}¶
   «}¶
 {{end}}
+
+
+

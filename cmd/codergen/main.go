@@ -133,7 +133,7 @@ func run(ctx context.Context) error {
 	for i := 0; i < *workers; i++ {
 		worker(ctx, &wg, &errs, gen)
 	}
-	info := copyright.Info{Tool: scan.Tool, Year: "2015"}
+	info := copyright.Info{Tool: scan.Tool, Year: "2017"}
 	for _, m := range modules {
 		if *golang {
 			generate.Go(m, info, gen)
