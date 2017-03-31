@@ -18,4 +18,5 @@ embed(
     go_common.tmpl
     java_binary.tmpl
     java_common.tmpl
+    java_extras.tmpl
 )

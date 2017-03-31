@@ -62,6 +62,10 @@ func Java(m *Module, info copyright.Info, gen chan Generate, path string) {
 		if s.Tags.Get("java") == "disable" {
 			continue
 		}
+		if settings.JavaPackage == "com.google.gapid.service.snippets" &&
+			s.Name() == "fieldPath" {
+			s.Exported = true
+		}
 		gen <- Generate{
 			Name:   "Java.File",
 			Arg:    JavaClass{JavaSettings: settings.clone(), Struct: s},
@@ -146,7 +150,7 @@ func (settings JavaSettings) findClass(v interface{}) (string, string) {
 // Import returns the fully qualified name for the type, if not previously encountered.
 func (settings JavaSettings) Import(v interface{}) string {
 	pkg, name := settings.findClass(v)
-	if pkg == "" {
+	if pkg == "" || strings.HasPrefix(pkg, "NotJava") {
 		return "" // Not an import
 	}
 	return settings.JavaImport(pkg + "." + name)
@@ -171,4 +175,38 @@ func (settings JavaSettings) ClassName(v interface{}) string {
 func (settings JavaSettings) InterfaceName(v interface{}) string {
 	_, _, name := settings.moduleAndName(v)
 	return name
+}
+
+// IsBox returns true if a type should be a boxing one.
+func (settings JavaSettings) IsBox(v JavaClass) bool {
+	return v.JavaPackage == "com.google.gapid.rpclib.any" &&
+		v.Struct.Name() != "id_" &&
+		v.Struct.Name() != "idSlice"
+}
+
+// Extends is a hacky way to work out which generated java classes need to extend somthing.
+func (settings JavaSettings) Extends(v JavaClass) string {
+	for _, i := range v.Struct.Implements {
+		switch {
+		case i.Package == "rpc" && i.Name == "Err":
+			return "RpcException"
+		case i.Package == "stringtable" && i.Name == "Node":
+			return "Node"
+		case i.Package == "vertex" && i.Name == "Format":
+			return "Format"
+		}
+	}
+	if v.JavaPackage == "com.google.gapid.service.snippets" {
+		switch v.Struct.Name() {
+		case "CanFollow", "Labels", "Observations":
+			return "KindredSnippets"
+		}
+		if strings.HasSuffix(v.Struct.Name(), "Path") {
+			return "Pathway"
+		}
+	}
+	if settings.IsBox(v) {
+		return "Box"
+	}
+	return ""
 }
