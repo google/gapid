@@ -17,13 +17,13 @@
   </g>
 
   <g style="stroke-width:2;stroke:rgba(0,0,0,0.5);fill:#ffd4aa;">
-    <!-- GAPIS -->
+    <!-- gapis -->
     <rect y="80" x="250" style="height:40;width:90" ry="12" rx="12" />
-    <!-- GAPIC -->
+    <!-- gapic -->
     <rect y="45" x="55" style="height:40;width:90" ry="12" rx="12" />
-    <!-- GAPIR -->
+    <!-- gapir -->
     <rect y="280" x="250" style="height:40;width:90" ry="12" rx="12" />
-    <!-- GAPIT -->
+    <!-- gapit -->
     <rect y="125" x="55" style="height:40;width:90" ry="12" rx="12" />
     <!-- app -->
     <rect y="235" x="55" style="height:80;width:90;fill:#7ff4fa" ry="12" rx="12" />
@@ -34,12 +34,12 @@
   </g>
 
   <g style="text-anchor:middle;font-size:24;font-family:sans-serif">
-    <text y="109" x="295">GAPIS</text>
-    <text y="73"  x="100">GAPIC</text>
-    <text y="308" x="295">GAPIR</text>
-    <text y="154" x="100">GAPIT</text>
+    <text y="107" x="295">gapis</text>
+    <text y="71"  x="100">gapic</text>
+    <text y="307" x="295">gapir</text>
+    <text y="152" x="100">gapit</text>
     <text y="264" x="100">app</text>
-    <text y="308" x="100">GAPII</text>
+    <text y="307" x="100">gapii</text>
     <text y="354" x="100">driver</text>
   </g>
 
