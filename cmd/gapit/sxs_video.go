@@ -107,7 +107,7 @@ func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, ca
 		}(v)
 	}
 	wg.Wait()
-	log.I(ctx, "Frames rendered in %v", time.Since(start))
+	log.D(ctx, "Frames rendered in %v", time.Since(start))
 	for _, v := range videoFrames {
 		if v.renderError != nil {
 			return nil, v.renderError

@@ -78,8 +78,8 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 			return
 		}
 
-		stderr := log.From(ctx).Writer(log.Error)
-		defer stderr.Close()
+		debugWriter := log.From(ctx).Writer(log.Debug)
+		defer debugWriter.Close()
 
 		stdin, pixels := io.Pipe()
 		defer pixels.Close() // Stops the encoder
@@ -96,18 +96,20 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 				"-f", "mp4", // output should be a mp4
 				"-movflags", "frag_keyframe+empty_moov", // fragmented mp4, required for streaming.
 				"pipe:1", // stdout
-			).Read(stdin).Capture(mpg, stderr).Run(ctx)
+			).Read(stdin).Capture(mpg, debugWriter).Run(ctx)
 
-			log.E(ctx, "%v exited. Error: %v", encoder, err)
+			if err != nil {
+				log.E(ctx, "%v returned error: %v", encoder, err)
+			}
 			mpg.CloseWithError(err)
 		}()
 
 		i := 0
-		log.E(ctx, "Encoding frame 0")
+		log.D(ctx, "Encoding frame 0")
 		pixels.Write(data(frame))
 		i++
 		for frame := range in {
-			log.E(ctx, "Encoding frame %d", i)
+			log.D(ctx, "Encoding frame %d", i)
 			pixels.Write(data(frame))
 			i++
 		}
