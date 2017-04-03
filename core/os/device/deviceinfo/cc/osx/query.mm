@@ -31,6 +31,7 @@
 namespace query {
 
 struct Context {
+    char mError[512];
     NSOpenGLPixelFormat* mGlFmt;
     NSOpenGLContext* mGlCtx;
     NSOperatingSystemVersion mOsVersion;
@@ -74,29 +75,39 @@ bool createContext(void*) {
     sysctl(mib, 2, nullptr, &len, nullptr, 0);
     gContext.mHwModel = new char[len];
     if (sysctl(mib, 2, gContext.mHwModel, &len, nullptr, 0) != 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "sysctl {CTL_HW, HW_MODEL} returned error: %d", errno);
         destroyContext();
         return false;
     }
 
     len = sizeof(gContext.mNumCores);
     if (sysctlbyname("hw.logicalcpu_max", &gContext.mNumCores, &len, nullptr, 0) != 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "sysctlbyname 'hw.logicalcpu_max' returned error: %d", errno);
         destroyContext();
         return false;
     }
 
     if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "gethostname returned error: %d", errno);
         destroyContext();
         return false;
     }
 
     gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
     if (gContext.mGlFmt == 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "NSOpenGLPixelFormat alloc failed");
         destroyContext();
         return false;
     }
 
     gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
     if (gContext.mGlCtx == 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "NSOpenGLContext alloc failed");
         destroyContext();
         return false;
     }
@@ -106,6 +117,10 @@ bool createContext(void*) {
     gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 
     return true;
+}
+
+const char* contextError() {
+	return gContext.mError;
 }
 
 int numABIs() { return 1; }

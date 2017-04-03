@@ -30,6 +30,7 @@ typedef struct {
 } device_instance;
 
 device_instance get_device_instance(void* platform_data);
+const char* get_device_instance_error();
 void free_device_instance(device_instance);
 
 #ifdef __cplusplus

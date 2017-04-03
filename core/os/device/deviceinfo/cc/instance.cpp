@@ -112,6 +112,10 @@ device_instance get_device_instance(void* platform_data) {
     return out;
 }
 
+const char* get_device_instance_error() {
+    return query::contextError();
+}
+
 void free_device_instance(device_instance di) {
     delete[] di.data;
 }

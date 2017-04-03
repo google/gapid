@@ -16,6 +16,7 @@ package device
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -29,7 +30,10 @@ var (
 // Host returns the device information for the host computer running the code.
 func Host(ctx context.Context) *Instance {
 	hostOnce.Do(func() {
-		buf := get_device()
+		buf, err := getHostDevice()
+		if err != nil {
+			panic(fmt.Errorf("Failed to get host machine information: %v", err))
+		}
 		if err := proto.NewBuffer(buf).Unmarshal(&host); err != nil {
 			panic(err)
 		}
