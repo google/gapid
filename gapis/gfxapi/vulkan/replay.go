@@ -76,6 +76,11 @@ type framebufferRequest struct {
 	wireframeOverlay bool
 }
 
+type deadCodeEliminationInfo struct {
+	dependencyGraph     *DependencyGraph
+	deadCodeElimination *DeadCodeElimination
+}
+
 // color/depth/stencil attachment bit.
 func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	hasBit := func(flag VkImageUsageFlags, bit VkImageUsageFlagBits) bool {
@@ -467,6 +472,16 @@ func (a api) Replay(
 	// Gathers and reports any issues found.
 	var issues *findIssues
 
+	// Prepare data for dead-code-elimination
+	dceInfo := deadCodeEliminationInfo{}
+	if !config.DisableDeadCodeElimination {
+		dceInfo.dependencyGraph, err = GetDependencyGraph(ctx)
+		if err != nil {
+			return err
+		}
+		dceInfo.deadCodeElimination = newDeadCodeElimination(ctx, dceInfo.dependencyGraph)
+	}
+
 	// Terminate after all atoms of interest.
 	earlyTerminator := &transform.EarlyTerminator{}
 
@@ -480,6 +495,11 @@ func (a api) Replay(
 
 		case framebufferRequest:
 			earlyTerminator.Add(req.after)
+
+			if !config.DisableDeadCodeElimination {
+				dceInfo.deadCodeElimination.Request(req.after)
+			}
+
 			switch req.attachment {
 			case gfxapi.FramebufferAttachment_Depth:
 				readFramebuffer.Depth(req.after, rr.Result)
@@ -490,6 +510,12 @@ func (a api) Replay(
 				readFramebuffer.Color(req.after, req.width, req.height, idx, rr.Result)
 			}
 		}
+	}
+
+	// Use the dead code elimination pass
+	if !config.DisableDeadCodeElimination {
+		atoms = atom.NewList()
+		transforms.Prepend(dceInfo.deadCodeElimination)
 	}
 
 	if issues != nil {
