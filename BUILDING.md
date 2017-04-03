@@ -46,10 +46,12 @@ Please see the following for detailed steps on each platform.
 In a terminal type:
 ```
 go get github.com/google/gapid
-cd %GOPATH%\src\github.com\google\gapid
-git submodule update --init
 ```
-The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
+This may take a while. After it completes you'll get the message:
+```
+package github.com/google/gapid: no buildable Go source files in {path}.
+```
+This is normal.
 
 ### Configure build
 In a terminal type:
@@ -105,10 +107,12 @@ The build output will be in the directory you specified with `do config`.
 In a terminal type:
 ```
 go get github.com/google/gapid
-cd $GOPATH/src/github.com/google/gapid
-git submodule update --init
 ```
-The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
+This may take a while. After it completes you'll get the message:
+```
+package github.com/google/gapid: no buildable Go source files in {path}.
+```
+This is normal.
 
 ### Configure build
 In a terminal type:
@@ -155,10 +159,12 @@ The build output will be in the directory you specified with `do config`.
 In a terminal type:
 ```
 go get github.com/google/gapid
-cd $GOPATH/src/github.com/google/gapid
-git submodule update --init
 ```
-The `go get` and `git submodule` commands will fetch the source of this project and all third party repositories, so it may take a while to complete.
+This may take a while. After it completes you'll get the message:
+```
+package github.com/google/gapid: no buildable Go source files in {path}.
+```
+This is normal.
 
 ### Configure build
 In a terminal type:
