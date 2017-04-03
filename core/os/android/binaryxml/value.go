@@ -34,15 +34,62 @@ type valStringID stringPoolRef
 type valNull uint32
 type valIntBoolean bool
 type valFloat float32
+type valFloatPx float32
+type valFloatDp float32
+type valFloatSp float32
+type valFloatPt float32
+type valFloatIn float32
+type valFloatMm float32
 
-func (v valIntDec) String() string     { return fmt.Sprintf("%d", int32(v)) }
-func (v valIntHex) String() string     { return fmt.Sprintf("0x%x", uint32(v)) }
-func (v valReference) String() string  { return fmt.Sprintf("@0x%x", uint32(v)) }
-func (v valStringID) String() string   { return fmt.Sprintf("@0x%x", stringPoolRef(v).stringPoolIndex()) }
-func (v valFloat) String() string      { return fmt.Sprintf("%f", float32(v)) }
+func (v valIntDec) String() string    { return fmt.Sprintf("%d", int32(v)) }
+func (v valIntHex) String() string    { return fmt.Sprintf("0x%x", uint32(v)) }
+func (v valReference) String() string { return fmt.Sprintf("@0x%x", uint32(v)) }
+func (v valStringID) String() string  { return fmt.Sprintf("@0x%x", stringPoolRef(v).stringPoolIndex()) }
+func (v valFloat) String() string     { return fmt.Sprintf("%f", float32(v)) }
+func (v valFloatPx) String() string   { return fmt.Sprintf("%fpx", float32(v)) }
+func (v valFloatDp) String() string   { return fmt.Sprintf("%fdp", float32(v)) }
+func (v valFloatSp) String() string   { return fmt.Sprintf("%fsp", float32(v)) }
+func (v valFloatPt) String() string   { return fmt.Sprintf("%fpt", float32(v)) }
+func (v valFloatIn) String() string   { return fmt.Sprintf("%fin", float32(v)) }
+func (v valFloatMm) String() string   { return fmt.Sprintf("%fmm", float32(v)) }
+
 func (v valIntBoolean) String() string { return fmt.Sprintf("%t", bool(v)) }
 func (v valNull) String() string {
 	return "null" /* Not actually sure about this: 0 -> undefined, !=0 -> empty */
+}
+
+// https://android.googlesource.com/platform/frameworks/base/+/master/libs/androidfw/ResourceTypes.cpp
+func encodeDimension(w pod.Writer, f float32, unit uint8) {
+	neg := f < 0
+	if neg {
+		f = -f
+	}
+	bits := uint64(f*(1<<23) + .5)
+	radix := uint32(0)
+	shift := uint32(0)
+	if (bits & 0x7fffff) == 0 {
+		radix = 0
+		shift = 23
+	} else if (bits & 0xffffffffff800000) == 0 {
+		radix = 3
+		shift = 0
+	} else if (bits & 0xffffffff80000000) == 0 {
+		radix = 2
+		shift = 8
+	} else if (bits & 0xffffff8000000000) == 0 {
+		radix = 1
+		shift = 16
+	} else {
+		radix = 0
+		shift = 23
+	}
+	mantissa := (int32)(bits>>shift) & 0xFFFFFF
+	if neg {
+		mantissa = (-mantissa) & 0xFFFFFF
+	}
+
+	e := uint32((radix << 4) | uint32(mantissa<<8) | uint32(unit))
+	w.Uint32(e)
 }
 
 func (v valIntDec) encode(w pod.Writer) {
@@ -65,6 +112,30 @@ func (v valFloat) encode(w pod.Writer) {
 	writeTypedValueHeader(w, typeFloat)
 	w.Float32(float32(v))
 }
+func (v valFloatPx) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 0)
+}
+func (v valFloatDp) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 1)
+}
+func (v valFloatSp) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 2)
+}
+func (v valFloatPt) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 3)
+}
+func (v valFloatIn) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 4)
+}
+func (v valFloatMm) encode(w pod.Writer) {
+	writeTypedValueHeader(w, typeDimension)
+	encodeDimension(w, float32(v), 5)
+}
 func (v valIntBoolean) encode(w pod.Writer) {
 	writeTypedValueHeader(w, typeIntBoolean)
 	if bool(v) {
@@ -82,6 +153,31 @@ func writeTypedValueHeader(w pod.Writer, ty valueType) {
 	w.Uint16(8)
 	w.Uint8(0)
 	w.Uint8(uint8(ty))
+}
+
+func decodeDimension(r pod.Reader) (typedValue, error) {
+	radixes := []float32{1.0 / (1 << 8),
+		1.0 / (1 << 15),
+		1.0 / (1 << 23),
+		1.0 / (1 << 31)}
+	v := r.Uint32()
+	fval := float32(int32(v&0xffffff00)) * radixes[(v>>4)&0x3]
+	switch v & 0xf {
+	case 0:
+		return valFloatPx(fval), nil
+	case 1:
+		return valFloatDp(fval), nil
+	case 2:
+		return valFloatSp(fval), nil
+	case 3:
+		return valFloatPt(fval), nil
+	case 4:
+		return valFloatIn(fval), nil
+	case 5:
+		return valFloatMm(fval), nil
+	default:
+		return nil, fmt.Errorf("Unknown dimension format %d", v&0xf)
+	}
 }
 
 func decodeValue(r pod.Reader, xml *xmlTree) (typedValue, error) {
@@ -110,6 +206,8 @@ func decodeValue(r pod.Reader, xml *xmlTree) (typedValue, error) {
 		return valIntBoolean(r.Uint32() != 0), nil
 	case typeNull:
 		return valNull(r.Uint32()), nil
+	case typeDimension:
+		return decodeDimension(r)
 	default:
 		return nil, fmt.Errorf("Value type %v not implemented", ty)
 	}
