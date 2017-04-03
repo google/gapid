@@ -16,8 +16,8 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
@@ -34,16 +34,22 @@ func ResourceMeta(ctx context.Context, id *path.ID, after *path.Command) (*gfxap
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.After.Commands.Capture)
-	state := capture.NewState(ctx)
-	result := &gfxapi.ResourceMeta{
-		IDMap: gfxapi.ResourceMap{},
-	}
-	p := &path.ResourceData{Id: r.Id, After: r.After}
-	resource, err := buildResource(ctx, state, p, result.IDMap)
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{r.After})
 	if err != nil {
 		return nil, err
 	}
-	result.Resource = resource
+	res, ok := resources.(*ResolvedResources)
+	if !ok {
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.After)
+	}
+	id := r.Id.ID()
+	val, ok := res.resources[id]
+	if !ok {
+		return nil, fmt.Errorf("Could not find resource %v", id)
+	}
+	result := &gfxapi.ResourceMeta{
+		IDMap:    res.resourceMap,
+		Resource: val,
+	}
 	return result, nil
 }

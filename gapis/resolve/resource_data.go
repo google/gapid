@@ -18,11 +18,68 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
 )
+
+// ResolvedResources contains all of the resolved resources for a
+// particular point in the trace.
+type ResolvedResources struct {
+	resourceMap  gfxapi.ResourceMap
+	resources    map[id.ID]gfxapi.Resource
+	resourceData map[id.ID]interface{}
+}
+
+// Resolve builds a ResolvedResources object for all of the resources
+// at the path r.After
+func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	ctx = capture.Put(ctx, r.After.Commands.Capture)
+	resources, err := buildResources(ctx, r.After)
+
+	if err != nil {
+		return nil, err
+	}
+	return resources, nil
+}
+
+func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
+	list, err := NCommands(ctx, p.Commands, p.Index+1)
+	if err != nil {
+		return nil, err
+	}
+	state := capture.NewState(ctx)
+	var currentAtomIndex uint64
+	var currentAtomResourceCount int
+	idMap := gfxapi.ResourceMap{}
+
+	resources := make(map[id.ID]gfxapi.Resource)
+
+	state.OnResourceCreated = func(r gfxapi.Resource) {
+		currentAtomResourceCount++
+		i := genResourceID(currentAtomIndex, currentAtomResourceCount)
+		idMap[r] = i
+		resources[i] = r
+	}
+
+	for i, a := range list.Atoms[:p.Index+1] {
+		currentAtomResourceCount = 0
+		currentAtomIndex = uint64(i)
+		a.Mutate(ctx, state, nil /* no builder, just mutate */)
+	}
+
+	resourceData := make(map[id.ID]interface{})
+	for k, v := range resources {
+		res, err := v.ResourceData(ctx, state)
+		if err != nil {
+			return nil, fmt.Errorf("Could not get data for resource %v", k)
+		}
+		resourceData[k] = res
+	}
+	return &ResolvedResources{idMap, resources, resourceData}, nil
+}
 
 // ResourceData resolves the data of the specified resource at the specified
 // point in the capture.
@@ -36,42 +93,18 @@ func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
-
-	state := capture.NewState(ctx)
-	IDMap := gfxapi.ResourceMap{}
-	// TODO: Persist state in getResourceMeta and reuse it here.
-	resource, err := buildResource(ctx, state, r.Path, IDMap)
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{r.Path.After})
 	if err != nil {
 		return nil, err
 	}
-	return resource.ResourceData(ctx, state, IDMap)
-}
+	res, ok := resources.(*ResolvedResources)
+	if !ok {
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
+	}
+	id := r.Path.Id.ID()
+	if val, ok := res.resourceData[id]; ok {
+		return val, nil
+	}
 
-func buildResource(ctx context.Context, state *gfxapi.State, p *path.ResourceData, IDMap gfxapi.ResourceMap) (gfxapi.Resource, error) {
-	list, err := NCommands(ctx, p.After.Commands, p.After.Index+1)
-	if err != nil {
-		return nil, err
-	}
-	var currentAtomIndex uint64
-	var resource gfxapi.Resource
-	var currentAtomResourceCount int
-	id := p.Id.ID()
-	state.OnResourceCreated = func(r gfxapi.Resource) {
-		currentAtomResourceCount++
-		i := genResourceID(currentAtomIndex, currentAtomResourceCount)
-		IDMap[r] = i
-		if i == id {
-			resource = r
-		}
-	}
-	for i, a := range list.Atoms[:p.After.Index+1] {
-		currentAtomResourceCount = 0
-		currentAtomIndex = uint64(i)
-		a.Mutate(ctx, state, nil /* no builder, just mutate */)
-	}
-	if resource != nil {
-		return resource, nil
-	}
-	return nil, fmt.Errorf("Resource with id %v not found", p.Id.ID())
+	return nil, fmt.Errorf("Cannot find resource with id: %v", id)
 }

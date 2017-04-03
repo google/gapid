@@ -63,7 +63,7 @@ func (t *Texture) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
 	ctx = log.Enter(ctx, "Texture.Resource()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_2D:
@@ -143,7 +143,7 @@ func (s *Shader) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}, error) {
 	ctx = log.Enter(ctx, "Shader.Resource()")
 	var ty gfxapi.ShaderType
 	switch s.ShaderType {
@@ -241,7 +241,7 @@ func (p *Program) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
 	ctx = log.Enter(ctx, "Program.Resource()")
 	state := GetState(s)
 	context := state.Contexts.Get(state.CurrentThread)
