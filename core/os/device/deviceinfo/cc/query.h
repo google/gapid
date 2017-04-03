@@ -22,6 +22,7 @@
 namespace query {
 
 bool createContext(void* platform_data);
+const char* contextError();
 void destroyContext();
 
 // The functions below require a context to be created.

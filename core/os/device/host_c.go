@@ -17,11 +17,18 @@ package device
 // #cgo LDFLAGS: -ldeviceinfo -lprotobuf -lprotobuf_lite -lstdc++ -lpthread -lm -lcityhash
 // #include "core/os/device/deviceinfo/cc/instance.h"
 import "C"
-import "unsafe"
 
-func get_device() []byte {
+import (
+	"unsafe"
+
+	"github.com/google/gapid/core/fault"
+)
+
+func getHostDevice() ([]byte, error) {
 	s := C.get_device_instance(nil)
 	defer C.free_device_instance(s)
-	buf := C.GoBytes(unsafe.Pointer(s.data), C.int(s.size))
-	return append([]byte{}, buf...)
+	if s.data == nil {
+		return nil, fault.Const(C.GoString(C.get_device_instance_error()))
+	}
+	return C.GoBytes(unsafe.Pointer(s.data), C.int(s.size)), nil
 }

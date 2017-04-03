@@ -42,6 +42,7 @@ WNDCLASS registerWindowClass() {
 namespace query {
 
 struct Context {
+	char mError[512];
 	HWND mWnd;
 	HDC mHDC;
 	HGLRC mCtx;
@@ -64,10 +65,11 @@ void destroyContext() {
 }
 
 bool createContext(void*) {
-    
 	WNDCLASS wc = registerWindowClass();
     gContext.mWnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
     if (gContext.mWnd == nullptr) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "CreateWindow returned error: %d", GetLastError());
 		return false;
 	}
 	PIXELFORMATDESCRIPTOR pfd;
@@ -88,6 +90,8 @@ bool createContext(void*) {
 	SetPixelFormat(gContext.mHDC, ChoosePixelFormat(gContext.mHDC, &pfd), &pfd);
 	gContext.mCtx = wglCreateContext(gContext.mHDC);
 	if (gContext.mCtx == nullptr) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "wglCreateContext returned error: %d", GetLastError());
 		destroyContext();
 		return false;
 	}
@@ -137,6 +141,10 @@ bool createContext(void*) {
 	GetComputerNameA(gContext.mHostName, &size);
 
 	return true;
+}
+
+const char* contextError() {
+	return gContext.mError;
 }
 
 int numABIs() { return 1; }

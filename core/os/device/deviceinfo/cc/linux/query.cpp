@@ -29,6 +29,7 @@
 namespace query {
 
 struct Context {
+    char mError[512];
     Display* mDisplay;
     GLXFBConfig* mFBConfigs;
     GLXContext mContext;
@@ -63,6 +64,8 @@ bool createContext(void*) {
     memset(&gContext, 0, sizeof(gContext));
 
     if (uname(&gContext.mUbuf) != 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "gethostname returned error: %d", errno);
         destroyContext();
         return false;
     }
@@ -70,12 +73,16 @@ bool createContext(void*) {
     gContext.mNumCores = sysconf(_SC_NPROCESSORS_CONF);
 
     if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "gethostname returned error: %d", errno);
         destroyContext();
         return false;
     }
 
     gContext.mDisplay = XOpenDisplay(0);
     if (!gContext.mDisplay) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "XOpenDisplay returned nullptr");
         destroyContext();
         return false;
     }
@@ -97,6 +104,8 @@ bool createContext(void*) {
                                             visualAttribs,
                                             &fbConfigsCount);
     if (!gContext.mFBConfigs) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "glXChooseFBConfig failed");
         destroyContext();
         return false;
     }
@@ -108,6 +117,8 @@ bool createContext(void*) {
                                             0,
                                             True);
     if (!gContext.mContext) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "glXCreateNewContext failed");
         destroyContext();
         return false;
     }
@@ -117,12 +128,18 @@ bool createContext(void*) {
 
     gContext.mPbuffer = glXCreatePbuffer(gContext.mDisplay, fbConfig, pbufferAttribs);
     if (!gContext.mPbuffer) {
+		snprintf(gContext.mError, sizeof(gContext.mError),
+				 "glXCreatePbuffer failed");
         destroyContext();
         return false;
     }
 
     glXMakeContextCurrent(gContext.mDisplay, gContext.mPbuffer, gContext.mPbuffer, gContext.mContext);
     return true;
+}
+
+const char* contextError() {
+	return gContext.mError;
 }
 
 int numABIs() { return 1; }

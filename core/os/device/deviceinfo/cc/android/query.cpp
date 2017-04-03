@@ -38,6 +38,7 @@ typedef uint8_t GLubyte;
 namespace query {
 
 struct Context {
+    char mError[512];
     EGLDisplay mDisplay;
     EGLSurface mSurface;
     EGLContext mContext;
@@ -82,7 +83,8 @@ bool createContext(void* platform_data) {
     { \
         EGLint error = eglGetError(); \
         if (error != EGL_SUCCESS) { \
-            LOG_ERR("EGL error: 0x%x when executing:\n   " #x, error); \
+		    snprintf(gContext.mError, sizeof(gContext.mError), \
+				     "EGL error: 0x%x when executing:\n   " #x, error); \
             destroyContext(); \
             return false; \
         } \
@@ -138,7 +140,8 @@ bool createContext(void* platform_data) {
 
 #define CHECK(x) \
     if (!x) { \
-        LOG_ERR("JNI error:\n   " #x); \
+        snprintf(gContext.mError, sizeof(gContext.mError), \
+                 "JNI error:\n   " #x); \
         destroyContext(); \
         return false; \
     }
@@ -259,6 +262,10 @@ bool createContext(void* platform_data) {
     }
 
     return true;
+}
+
+const char* contextError() {
+	return gContext.mError;
 }
 
 int numABIs() { return gContext.mSupportedABIs.size(); }
