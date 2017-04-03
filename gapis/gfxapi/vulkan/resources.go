@@ -176,7 +176,7 @@ func setCubemapFace(img *image.Info2D, cubeMap *gfxapi.CubemapLevel, layerIndex 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
 	ctx = log.Enter(ctx, "ImageObject.Resource()")
 
 	vkFmt := t.Info.Format
@@ -256,7 +256,7 @@ func (s *ShaderModuleObject) ResourceType() gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State, resources gfxapi.ResourceMap) (interface{}, error) {
+func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	words := s.Words.Read(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)

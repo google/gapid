@@ -40,7 +40,7 @@ type Resource interface {
 	ResourceType() ResourceType
 
 	// ResourceData returns the resource data given the current state.
-	ResourceData(ctx context.Context, s *State, resources ResourceMap) (interface{}, error)
+	ResourceData(ctx context.Context, s *State) (interface{}, error)
 
 	// SetResourceData sets resource data in a new capture.
 	SetResourceData(ctx context.Context, at *path.Command, data interface{}, resources ResourceMap, edits ReplaceCallback) error

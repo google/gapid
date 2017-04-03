@@ -77,6 +77,10 @@ message ResourceDataResolvable {
 	path.ResourceData path = 1;
 }
 
+message AllResourceDataResolvable {
+	path.Command after = 1;
+}
+
 message ResourceMetaResolvable {
 	path.ID id = 1;
 	path.Command after = 2;
