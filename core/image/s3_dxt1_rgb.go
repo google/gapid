@@ -35,8 +35,8 @@ func (f *FmtS3_DXT1_RGB) key() interface{} {
 func (*FmtS3_DXT1_RGB) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (*FmtS3_DXT1_RGB) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 4)
+func (f *FmtS3_DXT1_RGB) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
 func (*FmtS3_DXT1_RGB) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}

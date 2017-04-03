@@ -115,13 +115,13 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_D16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_D16_UNORM", fmts.D_U16_NORM), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-		return image.NewETC2_RGB8("VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK"), nil
+		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
-		return image.NewETC2_RGB8("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
+		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
-		return image.NewETC2_RGBA8_EAC("VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK"), nil
+		return image.NewETC2_RGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
-		return image.NewETC2_RGBA8_EAC("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+		return image.NewETC2_RGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_R16G16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16G16_UNORM", fmts.RG_U16_NORM), nil
 	default:

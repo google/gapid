@@ -34,7 +34,7 @@ func Context(out Output) Manager {
 	return To(out)
 }
 
-// Deprecated: For(m) is deprecated, use m.For() instead.
+// Deprecated: For(m) is deprecated, use assert.To() instead.
 func For(t interface{}, msg string, args ...interface{}) *Assertion {
 	switch t := t.(type) {
 	case Manager:

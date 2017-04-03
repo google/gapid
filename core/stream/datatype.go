@@ -37,6 +37,8 @@ var (
 	U8 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{8}}}
 	// U10 represents a 10-bit unsigned integer.
 	U10 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{10}}}
+	// U11 represents a 11-bit unsigned integer.
+	U11 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{11}}}
 	// U16 represents a 16-bit unsigned integer.
 	U16 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{16}}}
 	// U24 represents a 24-bit unsigned integer.
@@ -51,6 +53,8 @@ var (
 	S8 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{7}}}
 	// S10 represents a 10-bit signed integer.
 	S10 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{9}}}
+	// S11 represents a 11-bit signed integer.
+	S11 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{10}}}
 	// S16 represents a 16-bit signed integer.
 	S16 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{15}}}
 	// S32 represents a 32-bit signed integer.

@@ -33,7 +33,7 @@ type rgbaF32 struct {
 // dimensions, then uses a bilinear interpolator to calculate the final image
 // at the requested size.
 func resizeRGBA_F32(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
-	if err := checkSize(data, srcW, srcH, 128); err != nil {
+	if err := checkSize(data, RGBA_F32.format(), srcW, srcH); err != nil {
 		return nil, err
 	}
 	if srcW <= 0 || srcH <= 0 {

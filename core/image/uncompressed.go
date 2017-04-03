@@ -24,7 +24,12 @@ import (
 
 var (
 	RGBA_F32     = newUncompressed(fmts.RGBA_F32)
+	RGB_U8_NORM  = newUncompressed(fmts.RGB_U8_NORM)
 	RGBA_U8_NORM = newUncompressed(fmts.RGBA_U8_NORM)
+	R_U16_NORM   = newUncompressed(fmts.R_U16_NORM)
+	RG_U16_NORM  = newUncompressed(fmts.RG_U16_NORM)
+	R_S16_NORM   = newUncompressed(fmts.R_S16_NORM)
+	RG_S16_NORM  = newUncompressed(fmts.RG_S16_NORM)
 	D_U16_NORM   = newUncompressed(fmts.D_U16_NORM)
 )
 
@@ -47,7 +52,7 @@ func (f *FmtUncompressed) size(w, h int) int {
 	return f.Format.Size(w * h)
 }
 func (f *FmtUncompressed) check(d []byte, w, h int) error {
-	return checkSize(d, w, h, f.Format.Size(1)*8)
+	return checkSize(d, f, w, h)
 }
 func (f *FmtUncompressed) channels() []stream.Channel {
 	out := make([]stream.Channel, len(f.Format.Components))
@@ -69,6 +74,7 @@ func (f *FmtUncompressed) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byt
 	}
 	return Convert(data, dstW, dstH, RGBA_F32, RGBA_F32)
 }
+
 func (f *FmtUncompressed) convert(data []byte, width, height int, dstFmt *Format) ([]byte, error) {
 	if err := f.check(data, width, height); err != nil {
 		return nil, err

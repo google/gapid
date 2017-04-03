@@ -50,8 +50,8 @@ func (f *FmtATC_RGB_AMD) key() interface{} {
 func (*FmtATC_RGB_AMD) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (*FmtATC_RGB_AMD) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 4)
+func (f *FmtATC_RGB_AMD) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
 func (*FmtATC_RGB_AMD) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
@@ -63,8 +63,8 @@ func (f *FmtATC_RGBA_EXPLICIT_ALPHA_AMD) key() interface{} {
 func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) size(w, h int) int {
 	return sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)
 }
-func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 8)
+func (f *FmtATC_RGBA_EXPLICIT_ALPHA_AMD) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
 func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
@@ -76,8 +76,8 @@ func (f *FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) key() interface{} {
 func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }
-func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 8)
+func (f *FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
 func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}

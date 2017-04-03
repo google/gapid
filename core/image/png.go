@@ -26,9 +26,21 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
-var (
-	PNG = NewPNG("png")
-)
+var PNG = NewPNG("png")
+
+// PNGFrom returns a new Image2D with the PNG format.
+func PNGFrom(data []byte) (*Image2D, error) {
+	cfg, err := png.DecodeConfig(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	return &Image2D{
+		Width:  uint32(cfg.Width),
+		Height: uint32(cfg.Height),
+		Data:   data,
+		Format: PNG,
+	}, nil
+}
 
 // NewPNG returns a format representing the the texture compression format with the
 // same name.
@@ -112,16 +124,17 @@ func init() {
 				return nil, fmt.Errorf("Unsupported color model 'Alpha16'")
 			case color.GrayModel:
 				return nil, fmt.Errorf("Unsupported color model 'Gray'")
-			case color.Gray16Model:
+			default:
 				f = RGBA_F32
 				for y := 0; y < height; y++ {
 					for x := 0; x < width; x++ {
-						r, _, _, _ := img.At(x, y).RGBA()
+						r, g, b, a := img.At(x, y).RGBA()
 						e.Float32(float32(r) / 0xffff)
+						e.Float32(float32(g) / 0xffff)
+						e.Float32(float32(b) / 0xffff)
+						e.Float32(float32(a) / 0xffff)
 					}
 				}
-			default:
-				return nil, fmt.Errorf("Unrecognised color model")
 			}
 			return Convert(buf.Bytes(), width, height, f, RGBA_U8_NORM)
 		})
