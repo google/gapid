@@ -488,7 +488,7 @@ public class Widgets {
   }
 
   public static TreeViewer createTreeViewer(Tree tree) {
-    TreeViewer viewer = new TreeViewer(tree);
+    TreeViewer viewer = new VisibilityTrackingTreeViewer(tree);
     viewer.setUseHashlookup(true);
     tree.addListener(SWT.KeyDown, e -> {
       switch (e.keyCode) {

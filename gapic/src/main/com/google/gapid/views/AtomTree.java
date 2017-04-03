@@ -62,6 +62,7 @@ import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.MeasuringViewLabelProvider;
 import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
@@ -366,7 +367,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   @Override
-  public void onThumnailsChanged() {
+  public void onThumbnailsChanged() {
     imageProvider.reset();
     viewer.refresh();
   }
@@ -442,7 +443,31 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       this.loading = loading;
     }
 
+    public void load(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return;
+      }
+      image.load();
+    }
+
+    public void unload(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return;
+      }
+      image.unload();
+    }
+
     public Image getImage(FilteredGroup group) {
+      LoadableImage image = getLoadableImage(group);
+      if (image == null) {
+        return null;
+      }
+      return image.getImage();
+    }
+
+    public LoadableImage getLoadableImage(FilteredGroup group) {
       LoadableImage image = images.get(group);
       if (image == null) {
         if (!shouldShowImage(group) || !thumbs.isReady()) {
@@ -453,14 +478,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             viewer.getTree(), () -> loadImage(group), loading, this);
         images.put(group, image);
       }
-      return image.getImage();
-    }
-
-    public void onPaint(FilteredGroup group) {
-      LoadableImage image = images.get(group);
-      if (image != null) {
-        image.load();
-      }
+      return image;
     }
 
     @Override
@@ -492,7 +510,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   /**
    * Label provider for the command tree.
    */
-  private static class ViewLabelProvider extends MeasuringViewLabelProvider {
+  private static class ViewLabelProvider extends MeasuringViewLabelProvider
+      implements VisibilityTrackingTreeViewer.Listener {
     private final ImageProvider imageProvider;
 
     public ViewLabelProvider(TreeViewer viewer, Theme theme, ImageProvider imageProvider) {
@@ -525,18 +544,25 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
       return result;
     }
-
     @Override
     protected boolean isFollowable(Object element) {
       return element instanceof AtomNode;
     }
 
     @Override
-    protected void paint(Event event, Object element) {
+    public void onShow(TreeItem item) {
+      Object element = item.getData();
       if (element instanceof FilteredGroup) {
-        imageProvider.onPaint((FilteredGroup)element);
+        imageProvider.load((FilteredGroup)element);
       }
-      super.paint(event, element);
+    }
+
+    @Override
+    public void onHide(TreeItem item) {
+      Object element = item.getData();
+      if (element instanceof FilteredGroup) {
+        imageProvider.unload((FilteredGroup)element);
+      }
     }
   }
 }

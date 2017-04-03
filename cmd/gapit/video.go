@@ -349,7 +349,7 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": int(cmd.Index)}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(flags.Max.Width), MaxHeight: uint32(flags.Max.Height)}
-	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings)
+	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
 		return nil, err
 	}

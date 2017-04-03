@@ -397,7 +397,14 @@ func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 		MaxWidth:  uint32(session.bench.Input.MaxFrameWidth),
 		MaxHeight: uint32(session.bench.Input.MaxFrameHeight),
 	}
-	imgInfoPath, err := session.client.GetFramebufferAttachment(ctx, session.device, cmd, gfxapi.FramebufferAttachment_Color0, settings)
+	imgInfoPath, err := session.client.GetFramebufferAttachment(
+		ctx,
+		session.device,
+		cmd,
+		gfxapi.FramebufferAttachment_Color0,
+		settings,
+		nil,
+	)
 	if err != nil {
 		return err
 	}

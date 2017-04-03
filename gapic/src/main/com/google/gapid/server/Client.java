@@ -161,15 +161,16 @@ public class Client {
 
   public ListenableFuture<Path.ImageInfo> getFramebufferAttachment(Path.Device device,
       Path.Command after, GfxAPI.FramebufferAttachment attachment,
-      Service.RenderSettings settings) {
-    LOG.log(FINE, "RPC->getFramebufferAttachment({0}, {1}, {2}, {3})",
-        new Object[] { device, after, attachment, settings });
+      Service.RenderSettings settings, Service.UsageHints hints) {
+    LOG.log(FINE, "RPC->getFramebufferAttachment({0}, {1}, {2}, {3}, {4})",
+        new Object[] { device, after, attachment, settings, hints });
     return Futures.transformAsync(
         client.getFramebufferAttachment(GetFramebufferAttachmentRequest.newBuilder()
             .setDevice(device)
             .setAfter(after)
             .setAttachment(attachment)
             .setSettings(settings)
+            .setHints(hints)
             .build()),
         in -> Futures.immediateFuture(throwIfError(in.getImage(), in.getError()))
     );

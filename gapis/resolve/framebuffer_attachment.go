@@ -35,12 +35,14 @@ func FramebufferAttachment(
 	after *path.Command,
 	attachment gfxapi.FramebufferAttachment,
 	settings *service.RenderSettings,
+	hints *service.UsageHints,
 ) (*path.ImageInfo, error) {
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
 		device,
 		after,
 		attachment,
 		settings,
+		hints,
 	})
 	if err != nil {
 		return nil, err
@@ -84,6 +86,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Height:        height,
 		Attachment:    r.Attachment,
 		WireframeMode: r.Settings.WireframeMode,
+		Hints:         r.Hints,
 	})
 	if err != nil {
 		return nil, err

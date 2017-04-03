@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -30,6 +29,7 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/service"
 )
 
 var (
@@ -347,7 +347,7 @@ func (a api) Replay(
 	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
-	requests []replay.Request,
+	rrs []replay.RequestAndResult,
 	device *device.Instance,
 	capture *capture.Capture,
 	out transform.Writer) error {
@@ -368,24 +368,24 @@ func (a api) Replay(
 	// Terminate after all atoms of interest.
 	earlyTerminator := &transform.EarlyTerminator{}
 
-	for _, req := range requests {
-		switch req := req.(type) {
+	for _, rr := range rrs {
+		switch req := rr.Request.(type) {
 		case issuesRequest:
 			if issues == nil {
 				issues = &findIssues{}
 			}
-			issues.reportTo(req.out)
+			issues.reportTo(rr.Result)
 
 		case framebufferRequest:
 			earlyTerminator.Add(req.after)
 			switch req.attachment {
 			case gfxapi.FramebufferAttachment_Depth:
-				readFramebuffer.Depth(req.after, req.out)
+				readFramebuffer.Depth(req.after, rr.Result)
 			case gfxapi.FramebufferAttachment_Stencil:
 				return fmt.Errorf("Stencil attachments are not currently supported")
 			default:
 				idx := uint32(req.attachment - gfxapi.FramebufferAttachment_Color0)
-				readFramebuffer.Color(req.after, req.width, req.height, idx, req.out)
+				readFramebuffer.Color(req.after, req.width, req.height, idx, rr.Result)
 			}
 		}
 	}
@@ -444,32 +444,28 @@ func (a api) QueryFramebufferAttachment(
 	after atom.ID,
 	width, height uint32,
 	attachment gfxapi.FramebufferAttachment,
-	wireframeMode replay.WireframeMode) (*image.Image2D, error) {
+	wireframeMode replay.WireframeMode,
+	hints *service.UsageHints) (*image.Image2D, error) {
 
 	c := drawConfig{}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, attachment: attachment, out: out}
-	if err := mgr.Replay(ctx, intent, c, r, a); err != nil {
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	if err != nil {
 		return nil, err
 	}
-	select {
-	case res := <-out:
-		return res.img, res.err
-	case <-task.ShouldStop(ctx):
-		return nil, task.StopReason(ctx)
-	}
+	return res.(*image.Image2D), nil
 }
 
 func (a api) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
-	mgr *replay.Manager,
-	out chan<- replay.Issue) {
+	mgr *replay.Manager) ([]replay.Issue, error) {
 
-	c := issuesConfig{}
-	r := issuesRequest{out: out}
-	if err := mgr.Replay(ctx, intent, c, r, a); err != nil {
-		out <- replay.Issue{Atom: atom.NoID, Error: err}
-		close(out)
+	c, r := issuesConfig{}, issuesRequest{}
+	res, err := mgr.Replay(ctx, intent, c, r, a, nil)
+	if err != nil {
+		return nil, err
 	}
+	return res.([]replay.Issue), nil
 }

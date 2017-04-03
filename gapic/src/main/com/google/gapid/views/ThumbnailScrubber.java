@@ -282,8 +282,6 @@ public class ThumbnailScrubber extends Composite
       this.repainter = repainter;
       this.updateSize = updateSize;
       this.scrollTo = scrollTo;
-
-      thumbs.addListener(this);
     }
 
     public Data selectFrame(BigPoint point) {
@@ -322,7 +320,7 @@ public class ThumbnailScrubber extends Composite
     }
 
     @Override
-    public void onThumnailsChanged() {
+    public void onThumbnailsChanged() {
       for (Data data : datas) {
         if (data.image != null) {
           data.image.dispose();

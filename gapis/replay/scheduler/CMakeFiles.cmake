@@ -18,23 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    batch.go
-    context.go
-    custom.go
-    doc.go
-    events.go
-    interfaces.go
-    manager.go
-    replay.go
-    replay.pb.go
-    replay.proto
+    scheduler.go
+    scheduler_test.go
 )
 set(dirs
-    asm
-    builder
-    executor
-    opcode
-    protocol
-    scheduler
-    value
+    
 )
