@@ -31,6 +31,7 @@ func TestBinaryXmlDecodingAndEncoding(t *testing.T) {
 		"testdata/manifest4.binxml",
 		"testdata/manifest5.binxml",
 		"testdata/manifest6.binxml",
+		"testdata/manifest7.binxml",
 	} {
 		originalData, err := ioutil.ReadFile(fn)
 		assert.With(ctx).ThatError(err).Succeeded()
@@ -38,5 +39,25 @@ func TestBinaryXmlDecodingAndEncoding(t *testing.T) {
 		tree, err := decodeXmlTree(bytes.NewReader(originalData))
 		assert.With(ctx).ThatError(err).Succeeded()
 		assert.With(ctx).ThatSlice(tree.encode()).Equals(originalData)
+	}
+}
+
+func TestDimension(t *testing.T) {
+	ctx := assert.Context(t)
+	for _, fn := range []string{
+		"testdata/manifest7.binxml",
+	} {
+		originalData, err := ioutil.ReadFile(fn)
+		assert.With(ctx).ThatError(err).Succeeded()
+
+		tree, err := decodeXmlTree(bytes.NewReader(originalData))
+		assert.With(ctx).ThatError(err).Succeeded()
+
+		assert.With(ctx).ThatString(tree.toXmlString()).Contains(`android:minWidth="-1.125000px"`)
+		assert.With(ctx).ThatString(tree.toXmlString()).Contains(`android:maxWidth="32.000000in"`)
+
+		// Make sure we haven't broken the binary representation and that it still parses after the change.
+		_, err = decodeXmlTree(bytes.NewReader(tree.encode()))
+		assert.With(ctx).ThatError(err).Succeeded()
 	}
 }
