@@ -1325,7 +1325,7 @@ public class MemoryView extends Composite
     }
 
     public boolean isSelectionVisible(long fromRow, long toRow) {
-      return fromRow <= toRow && fromRow <= toRow;
+      return fromRow <= endRow && startRow <= toRow;
     }
 
     @Override
