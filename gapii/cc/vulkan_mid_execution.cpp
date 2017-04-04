@@ -416,154 +416,168 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
               device_functions.vkGetBufferMemoryRequirements(
                   device, copy_buffer, &buffer_memory_requirements);
               uint32_t index = 0;
+              uint32_t backup_index = 0xFFFFFFFF;
 
               while (buffer_memory_requirements.mmemoryTypeBits) {
                 if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
                   if (properties.mmemoryTypes[index].mpropertyFlags &
                       VkMemoryPropertyFlagBits::
                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-                    break;
+                    if (backup_index == 0xFFFFFFFF) {
+                        backup_index = index;
+                    }
+                    if (0 == (properties.mmemoryTypes[index].mpropertyFlags &
+                        VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+                        break;
+                    }
                   }
                 }
                 buffer_memory_requirements.mmemoryTypeBits >>= 1;
                 index++;
-                }
-                host_buffer_memory_index = index;
+             }
 
-                VkMemoryAllocateInfo create_copy_memory {
-                    VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                    nullptr,
-                    info.mSize,
-                    index
-                };
+                // If we could not find a non-coherent memory, then use
+                // the only one we found.
+             if (buffer_memory_requirements.mmemoryTypeBits != 0) {
+                  host_buffer_memory_index = index;
+              } else {
+                  host_buffer_memory_index = backup_index;
+              }
 
-                device_functions.vkAllocateMemory(
-                    device,
-                    &create_copy_memory,
-                    nullptr,
-                    &copy_memory);
+              VkMemoryAllocateInfo create_copy_memory {
+                  VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                  nullptr,
+                  info.mSize,
+                  index
+              };
 
-                device_functions.vkBindBufferMemory(
-                    device,
-                    copy_buffer, copy_memory, 0);
+              device_functions.vkAllocateMemory(
+                  device,
+                  &create_copy_memory,
+                  nullptr,
+                  &copy_memory);
 
-                VkCommandPool pool;
-                VkCommandPoolCreateInfo command_pool_create {
-                    VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                    nullptr,
-                    VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                    submit_queue->mFamily
-                };
-                device_functions.vkCreateCommandPool(device, &command_pool_create, nullptr, &pool);
+              device_functions.vkBindBufferMemory(
+                  device,
+                  copy_buffer, copy_memory, 0);
 
-                VkCommandBuffer copy_commands;
-                VkCommandBufferAllocateInfo copy_command_create_info {
-                    VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                    nullptr,
-                    pool, VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                    1
-                };
-                device_functions.vkAllocateCommandBuffers(device, &copy_command_create_info, &copy_commands);
+              VkCommandPool pool;
+              VkCommandPoolCreateInfo command_pool_create {
+                  VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                  nullptr,
+                  VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                  submit_queue->mFamily
+              };
+              device_functions.vkCreateCommandPool(device, &command_pool_create, nullptr, &pool);
 
-                VkCommandBufferBeginInfo begin_info = {
-                    VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                    nullptr,
-                    VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                    nullptr
-                };
+              VkCommandBuffer copy_commands;
+              VkCommandBufferAllocateInfo copy_command_create_info {
+                  VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                  nullptr,
+                  pool, VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                  1
+              };
+              device_functions.vkAllocateCommandBuffers(device, &copy_command_create_info, &copy_commands);
 
-                device_functions.vkBeginCommandBuffer(copy_commands, &begin_info);
+              VkCommandBufferBeginInfo begin_info = {
+                  VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                  nullptr,
+                  VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                  nullptr
+              };
 
-                VkBufferCopy region {
-                    0, 0, info.mSize
-                };
+              device_functions.vkBeginCommandBuffer(copy_commands, &begin_info);
 
-                device_functions.vkCmdCopyBuffer(copy_commands,
-                    buffer.second->mVulkanHandle,
-                    copy_buffer, 1, &region);
+              VkBufferCopy region {
+                  0, 0, info.mSize
+              };
 
-                VkBufferMemoryBarrier buffer_barrier = {
-                    VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                    nullptr,
-                    VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-                    0xFFFFFFFF,
-                    0xFFFFFFFF,
-                    copy_buffer,
-                    0,
-                    info.mSize
-                };
+              device_functions.vkCmdCopyBuffer(copy_commands,
+                  buffer.second->mVulkanHandle,
+                  copy_buffer, 1, &region);
 
-                device_functions.vkCmdPipelineBarrier(
-                    copy_commands,
-                    VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
-                    0,
-                    0,
-                    nullptr,
-                    1,
-                    &buffer_barrier,
-                    0,
-                    nullptr
-                );
+              VkBufferMemoryBarrier buffer_barrier = {
+                  VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                  nullptr,
+                  VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+                  VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+                  0xFFFFFFFF,
+                  0xFFFFFFFF,
+                  copy_buffer,
+                  0,
+                  info.mSize
+              };
 
-                device_functions.vkEndCommandBuffer(copy_commands);
+              device_functions.vkCmdPipelineBarrier(
+                  copy_commands,
+                  VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+                  VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+                  0,
+                  0,
+                  nullptr,
+                  1,
+                  &buffer_barrier,
+                  0,
+                  nullptr
+              );
 
-                VkSubmitInfo submit_info = {
-                    VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                    nullptr,
-                    0,
-                    nullptr,
-                    nullptr,
-                    1,
-                    &copy_commands,
-                    0,
-                    nullptr
-                };
-                device_functions.vkQueueSubmit(submit_queue->mVulkanHandle,
-                    1, &submit_info, 0);
+              device_functions.vkEndCommandBuffer(copy_commands);
 
-                device_functions.vkQueueWaitIdle(submit_queue->mVulkanHandle);
-                device_functions.vkMapMemory(
-                    device, copy_memory, 0, info.mSize, 0, &data
-                );
-                VkMappedMemoryRange range {
-                    VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-                    nullptr,
-                    copy_memory,
-                    0,
-                    info.mSize
-                };
+              VkSubmitInfo submit_info = {
+                  VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                  nullptr,
+                  0,
+                  nullptr,
+                  nullptr,
+                  1,
+                  &copy_commands,
+                  0,
+                  nullptr
+              };
+              device_functions.vkQueueSubmit(submit_queue->mVulkanHandle,
+                  1, &submit_info, 0);
 
-                device_functions.vkInvalidateMappedMemoryRanges(
-                    device, 1, &range
-                );
+              device_functions.vkQueueWaitIdle(submit_queue->mVulkanHandle);
+              device_functions.vkMapMemory(
+                  device, copy_memory, 0, info.mSize, 0, &data
+              );
+              VkMappedMemoryRange range {
+                  VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                  nullptr,
+                  copy_memory,
+                  0,
+                  info.mSize
+              };
 
-                device_functions.vkDestroyCommandPool(
-                    device, pool, nullptr
-                );
-            }
+              device_functions.vkInvalidateMappedMemoryRanges(
+                  device, 1, &range
+              );
 
-            RecreateBindAndFillBufferMemory(
-                observer,
-                buffer.second->mDevice,
-                buffer.second->mVulkanHandle,
-                buffer.second->mMemory?
-                    buffer.second->mMemory->mVulkanHandle: VkDeviceMemory(0),
-                host_buffer_memory_index,
-                submit_queue->mVulkanHandle,
-                buffer.second->mMemoryOffset,
-                data);
+              device_functions.vkDestroyCommandPool(
+                  device, pool, nullptr
+              );
+          }
 
-            if (need_to_clean_up_temps) {
-                device_functions.vkDestroyBuffer(
-                    device, copy_buffer, nullptr
-                );
-                device_functions.vkFreeMemory(
-                    device, copy_memory, nullptr
-                );
-            }
-        }
+          RecreateBindAndFillBufferMemory(
+              observer,
+              buffer.second->mDevice,
+              buffer.second->mVulkanHandle,
+              buffer.second->mMemory?
+                  buffer.second->mMemory->mVulkanHandle: VkDeviceMemory(0),
+              host_buffer_memory_index,
+              submit_queue->mVulkanHandle,
+              buffer.second->mMemoryOffset,
+              data);
+
+          if (need_to_clean_up_temps) {
+              device_functions.vkDestroyBuffer(
+                  device, copy_buffer, nullptr
+              );
+              device_functions.vkFreeMemory(
+                  device, copy_memory, nullptr
+              );
+          }
+      }
     }
     {
         VkSamplerCreateInfo sampler_create_info = {};
@@ -664,17 +678,33 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 device_functions.vkGetBufferMemoryRequirements(device, copy_buffer,
                     &buffer_memory_requirements);
                 uint32_t index = 0;
+                uint32_t backup_index = 0xFFFFFFFF;
 
-                while(buffer_memory_requirements.mmemoryTypeBits) {
-                    if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
-                        if (properties.mmemoryTypes[index].mpropertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-                            break;
-                        }
+                while (buffer_memory_requirements.mmemoryTypeBits) {
+                  if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
+                    if (properties.mmemoryTypes[index].mpropertyFlags &
+                        VkMemoryPropertyFlagBits::
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+                      if (backup_index == 0xFFFFFFFF) {
+                          backup_index = index;
+                      }
+                      if (0 == (properties.mmemoryTypes[index].mpropertyFlags &
+                          VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+                          break;
+                      }
                     }
-                    buffer_memory_requirements.mmemoryTypeBits >>= 1;
-                    index++;
+                  }
+                  buffer_memory_requirements.mmemoryTypeBits >>= 1;
+                  index++;
                 }
-                host_buffer_memory_index = index;
+
+                // If we could not find a non-coherent memory, then use
+                // the only one we found.
+                if (buffer_memory_requirements.mmemoryTypeBits != 0) {
+                  host_buffer_memory_index = index;
+                } else {
+                  host_buffer_memory_index = backup_index;
+                }
 
                 VkMemoryAllocateInfo create_copy_memory {
                     VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
