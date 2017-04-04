@@ -16,31 +16,31 @@
 package com.google.gapid.widgets;
 
 import com.google.common.collect.Lists;
-import com.google.gapid.util.Trees;
+import com.google.gapid.util.Tables;
 
 import org.eclipse.jface.viewers.IBaseLabelProvider;
 import org.eclipse.jface.viewers.IContentProvider;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 /**
- * A {@link TreeViewer} that notifies the bound {@link IContentProvider} and
+ * A {@link TableViewer} that notifies bound {@link IContentProvider} and
  * {@link IBaseLabelProvider} of visibility changes if they also implement
  * the {@link Listener} interface.
  */
-public class VisibilityTrackingTreeViewer extends TreeViewer {
-  private Set<TreeItem> visible = Collections.emptySet();
+public class VisibilityTrackingTableViewer extends TableViewer {
+  private Set<TableItem> visible = Collections.emptySet();
   private Listener[] listeners;
 
-  public VisibilityTrackingTreeViewer(Tree tree) {
-    super(tree);
+  public VisibilityTrackingTableViewer(Table table) {
+    super(table);
     updateListeners();
-    tree.addPaintListener(e -> updateVisibility());
+    table.addPaintListener(e -> updateVisibility());
   }
 
   private void updateVisibility() {
@@ -48,18 +48,19 @@ public class VisibilityTrackingTreeViewer extends TreeViewer {
       return;
     }
 
-    Set<TreeItem> seen = Trees.getVisibleItems(getTree());
+    Set<TableItem> seen = Tables.getVisibleItems(getTable());
     if (seen == null) {
       return; // No reliable data.
     }
-    for (TreeItem item : visible) {
+
+    for (TableItem item : visible) {
       if (!seen.contains(item) && !item.isDisposed()) {
         for (Listener listener : listeners) {
           listener.onHide(item);
         }
       }
     }
-    for (TreeItem item : seen) {
+    for (TableItem item : seen) {
       if (!visible.contains(item)) {
         for (Listener listener : listeners) {
           listener.onShow(item);
@@ -105,18 +106,18 @@ public class VisibilityTrackingTreeViewer extends TreeViewer {
 
   /**
    * The interface the {@link IContentProvider} and {@link IBaseLabelProvider} can
-   * implement to be notified about {@link TreeItem TreeItems} being made visible
+   * implement to be notified about {@link TableItem TableItems} being made visible
    * and hidden usually by scrolling.
    */
   public static interface Listener {
     /**
-     * Called when the {@link TreeItem} is made visible.
+     * Called when the {@link TableItem} is made visible.
      */
-    public void onShow(TreeItem item);
+    public void onShow(TableItem item);
 
     /**
-     * Called when the {@link TreeItem} is made invisible.
+     * Called when the {@link TableItem} is made invisible.
      */
-    public void onHide(TreeItem item);
+    public void onHide(TableItem item);
   }
 }

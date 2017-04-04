@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
@@ -26,6 +27,7 @@ import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
+import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -58,16 +60,16 @@ import com.google.gapid.widgets.ImagePanel;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.VisibilityTrackingTableViewer;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -76,8 +78,10 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.Collections;
 import java.util.List;
@@ -149,6 +153,7 @@ public class TextureView extends Composite
 
   private static void initTextureSelector(TableViewer viewer, ImageProvider imageProvider) {
     viewer.setContentProvider(ArrayContentProvider.getInstance());
+    viewer.setLabelProvider(new ViewLabelProvider(imageProvider));
 
     sorting(viewer,
         createTableColumn(viewer, "Type", Data::getType,
@@ -293,12 +298,13 @@ public class TextureView extends Composite
     }
 
     CommandRange range = models.atoms.getSelectedAtoms();
+    Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (firstAccess(info) <= last(range)) {
         Data data =
             new Data(resourceAfter(models.atoms.getPath(), range, info.getId()), info, typeLabel);
         textures.add(data);
-        data.load(client, textureTable);
+        data.load(client, textureTable.getTable(), refresher);
       }
     }
   }
@@ -381,9 +387,9 @@ public class TextureView extends Composite
       return imageInfo.getFormat();
     }
 
-    public void load(Client client, TableViewer viewer) {
+    public void load(Client client, Widget widget, Widgets.Refresher refresher) {
       Rpc.listen(
-          client.get(path), new UiCallback<Service.Value, AdditionalInfo>(viewer.getTable(), LOG) {
+          client.get(path), new UiCallback<Service.Value, AdditionalInfo>(widget, LOG) {
         @Override
         protected AdditionalInfo onRpcThread(Result<Service.Value> result)
             throws RpcException, ExecutionException {
@@ -393,7 +399,7 @@ public class TextureView extends Composite
         @Override
         protected void onUiThread(AdditionalInfo result) {
           imageInfo = result;
-          viewer.refresh();
+          refresher.refresh();
         }
       });
     }
@@ -461,8 +467,7 @@ public class TextureView extends Composite
 
     public ToolItem createToolItem(ToolBar bar) {
       item = Widgets.createToolItem(bar, theme.jump(), e -> {
-        Rectangle rect = ((ToolItem)e.widget).getBounds();
-        popupMenu.setLocation(bar.toDisplay(new Point(rect.x, rect.y + rect.height)));
+        popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
         popupMenu.setVisible(true);
       }, "Jump to texture reference");
       item.setEnabled(!atomIds.isEmpty());
@@ -517,18 +522,37 @@ public class TextureView extends Composite
       this.loading = loading;
     }
 
-    public org.eclipse.swt.graphics.Image getImage(Data data) {
-      LoadableImage image = images.get(data);
-      if (image == null) {
-        image = LoadableImage.forSmallImageData(viewer.getTable(), loadImage(data), loading, this);
-        images.put(data, image);
+    public void load(Data data) {
+      LoadableImage image = getLoadableImage(data);
+      if (image != null) {
+        image.load();
       }
-      return image.getImage();
+    }
+
+    public void unload(Data data) {
+      LoadableImage image = getLoadableImage(data);
+      if (image != null) {
+        image.unload();
+      }
+    }
+
+    public org.eclipse.swt.graphics.Image getImage(Data data) {
+      return getLoadableImage(data).getImage();
     }
 
     @Override
     public void repaint() {
-      ifNotDisposed(viewer.getControl(), viewer::refresh);
+      ifNotDisposed(viewer.getControl(), () -> viewer.refresh());
+    }
+
+    private LoadableImage getLoadableImage(Data data) {
+      LoadableImage image = images.get(data);
+      if (image == null) {
+        image = LoadableImage.forSmallImageData(
+            viewer.getTable(), () -> loadImage(data), loading, this);
+        images.put(data, image);
+      }
+      return image;
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
@@ -540,6 +564,31 @@ public class TextureView extends Composite
         image.dispose();
       }
       images.clear();
+    }
+  }
+
+  private static class ViewLabelProvider extends LabelProvider
+      implements VisibilityTrackingTableViewer.Listener {
+    private final ImageProvider imageProvider;
+
+    public ViewLabelProvider(ImageProvider imageProvider) {
+      this.imageProvider = imageProvider;
+    }
+
+    @Override
+    public void onShow(TableItem item) {
+      Object element = item.getData();
+      if (element instanceof Data) {
+        imageProvider.load((Data)element);
+      }
+    }
+
+    @Override
+    public void onHide(TableItem item) {
+      Object element = item.getData();
+      if (element instanceof Data) {
+        imageProvider.unload((Data)element);
+      }
     }
   }
 }

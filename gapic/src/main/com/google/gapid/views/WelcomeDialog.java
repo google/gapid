@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.widgets.AboutDialog.showHelp;
@@ -32,8 +33,6 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -98,8 +97,7 @@ public class WelcomeDialog {
             }
             popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
 
-            Rectangle rect = ((Link)e.widget).getBounds();
-            popup.setLocation(container.toDisplay(new Point(rect.x, rect.y + rect.height)));
+            popup.setLocation(container.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
             popup.setVisible(true);
           });
         }

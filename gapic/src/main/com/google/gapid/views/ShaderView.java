@@ -127,7 +127,8 @@ public class ShaderView extends Composite
             .setShader(shader.toBuilder()
                 .setSource(src))
             .build();
-        Rpc.listen(client.set(data.path, value), new UiCallback<Path.Any, Path.Capture>(this, LOG) {
+        Rpc.listen(client.set(data.getPath(models.atoms), value),
+            new UiCallback<Path.Any, Path.Capture>(this, LOG) {
           @Override
           protected Path.Capture onRpcThread(Rpc.Result<Path.Any> result)
               throws RpcException, ExecutionException {
@@ -164,7 +165,7 @@ public class ShaderView extends Composite
   }
 
   private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
-    Rpc.listen(client.get(data.path), shaderRpcController,
+    Rpc.listen(client.get(data.getPath(models.atoms)), shaderRpcController,
         new UiCallback<Service.Value, ShaderPanel.Source>(this, LOG) {
       @Override
       protected ShaderPanel.Source onRpcThread(Result<Service.Value> result)
@@ -183,7 +184,7 @@ public class ShaderView extends Composite
 
   private void getProgramSource(
       Data data, Consumer<Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
-    Rpc.listen(client.get(data.path), programRpcController,
+    Rpc.listen(client.get(data.getPath(models.atoms)), programRpcController,
         new UiCallback<Service.Value, ShaderPanel.Source[]>(this, LOG) {
       @Override
       protected ShaderPanel.Source[] onRpcThread(Result<Service.Value> result)
@@ -299,6 +300,8 @@ public class ShaderView extends Composite
     private final Composite sourceComposite;
     private final Button pushButton;
     private SourceViewer shaderSourceViewer;
+    private boolean lastUpdateContainedAllShaders = false;
+    private List<Data> shaders = Collections.emptyList();
 
     public ShaderPanel(Composite parent, Models models, Theme theme, Type type) {
       super(parent, SWT.NONE);
@@ -385,39 +388,52 @@ public class ShaderView extends Composite
 
     private void updateShaders() {
       if (models.resources.isLoaded() && models.atoms.getSelectedAtoms() != null) {
-        List<Data> shaders = Lists.newArrayList();
+        List<Data> newShaders = Lists.newArrayList();
         CommandRange range = models.atoms.getSelectedAtoms();
+        boolean skippedAnyShaders = false;
         for (Service.ResourcesByType bundle : models.resources.getResources()) {
           if (bundle.getType() == type.type) {
             for (Service.Resource info : bundle.getResourcesList()) {
               if (firstAccess(info) <= last(range)) {
-                if (shaders.isEmpty()) {
-                  shaders.add(new Data(null, null) {
+                if (newShaders.isEmpty()) {
+                  newShaders.add(new Data(null) {
                     @Override
                     public String toString() {
                       return type.selectMessage;
                     }
                   });
                 }
-                shaders.add(
-                    new Data(resourceAfter(models.atoms.getPath(), range, info.getId()), info));
+                newShaders.add(new Data(info));
+              } else {
+                skippedAnyShaders = true;
               }
             }
           }
         }
 
-        int selection = shaderCombo.getCombo().getSelectionIndex();
-        shaderCombo.setInput(shaders);
-        shaderCombo.refresh();
+        if (!lastUpdateContainedAllShaders || skippedAnyShaders) {
+          shaders = newShaders;
+          lastUpdateContainedAllShaders = !skippedAnyShaders;
 
-        if (selection >= 0 && selection < shaders.size()) {
-          shaderCombo.getCombo().select(selection);
-        } else if (!shaders.isEmpty()) {
-          shaderCombo.getCombo().select(0);
+          int selection = shaderCombo.getCombo().getSelectionIndex();
+          shaderCombo.setInput(shaders);
+          shaderCombo.refresh();
+
+          if (selection >= 0 && selection < shaders.size()) {
+            shaderCombo.getCombo().select(selection);
+          } else if (!shaders.isEmpty()) {
+            shaderCombo.getCombo().select(0);
+          }
+        } else {
+          for (Data data : shaders) {
+            data.resource = null;
+          }
         }
       } else {
         shaderCombo.setInput(Collections.emptyList());
         shaderCombo.refresh();
+        lastUpdateContainedAllShaders = false;
+        shaders = Collections.emptyList();
       }
       updateSelection();
     }
@@ -556,13 +572,15 @@ public class ShaderView extends Composite
    * Shader or program data.
    */
   private static class Data {
-    public final Path.Any path;
     public final Service.Resource info;
     public Object resource;
 
-    public Data(Path.Any path, Service.Resource info) {
-      this.path = path;
+    public Data(Service.Resource info) {
       this.info = info;
+    }
+
+    public Path.Any getPath(AtomStream atoms) {
+      return resourceAfter(atoms.getPath(), atoms.getSelectedAtoms(), info.getId());
     }
 
     @Override

@@ -17,6 +17,8 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.util.GeoUtils.left;
+import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Ranges.commands;
@@ -354,9 +356,9 @@ public class ThumbnailScrubber extends Composite
 
       Rectangle clip = gc.getClipping();
       Point size = (imageSize == null) ? new Point(THUMB_SIZE, THUMB_SIZE) : imageSize;
-      int first = (int)((xOffset.longValueExact() + clip.x) / (size.x + 2 * MARGIN));
+      int first = (int)((xOffset.longValueExact() + left(clip)) / (size.x + 2 * MARGIN));
       int last = Math.min(datas.size(),
-          (int)((xOffset.longValueExact() + clip.x + clip.width + size.x - 1) / size.x));
+          (int)((xOffset.longValueExact() + right(clip) + size.x - 1) / size.x));
       int x = (int)(first * ((long)size.x + 2 * MARGIN) - xOffset.longValueExact());
 
       prepareImages(first, last);

@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.GeoUtils.top;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.command;
@@ -599,7 +600,7 @@ public class MemoryView extends Composite
 
       gc.setFont(font);
       Rectangle clip = gc.getClipping();
-      BigInteger startY = yOffset.add(BigInteger.valueOf(clip.y));
+      BigInteger startY = yOffset.add(BigInteger.valueOf(top(clip)));
       long startRow = startY.divide(lineHeightBig)
           .max(BigInteger.ZERO).min(BigInteger.valueOf(model.getLineCount() - 1)).longValueExact();
       long endRow = startY.add(BigInteger.valueOf(clip.height + lineHeight - 1))

@@ -69,6 +69,7 @@ public class LoadableImage {
     }
     state = State.LOADING;
     listeners.fire().onLoadingStart();
+    loading.scheduleForRedraw(repaintable);
 
     future = futureSupplier.get();
     Rpc.listen(future, new UiErrorCallback<Object, Object, Void>(widget, LOG) {
@@ -178,7 +179,7 @@ public class LoadableImage {
 
   public Image getImage() {
     switch (state) {
-      case NOT_STARTED:
+      case NOT_STARTED: return getLoadingImage();
       case LOADING: loading.scheduleForRedraw(repaintable); return getLoadingImage();
       case LOADED: return image;
       case FAILED: return loading.getErrorImage();
