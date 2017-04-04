@@ -74,9 +74,10 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	for k, v := range resources {
 		res, err := v.ResourceData(ctx, state)
 		if err != nil {
-			return nil, fmt.Errorf("Could not get data for resource %v", k)
+			resourceData[k] = err;
+		} else {
+			resourceData[k] = res
 		}
-		resourceData[k] = res
 	}
 	return &ResolvedResources{idMap, resources, resourceData}, nil
 }
@@ -103,6 +104,9 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 	}
 	id := r.Path.Id.ID()
 	if val, ok := res.resourceData[id]; ok {
+		if err, isErr := val.(error); isErr {
+			return nil, err
+		}
 		return val, nil
 	}
 
