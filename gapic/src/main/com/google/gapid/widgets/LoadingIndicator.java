@@ -82,7 +82,10 @@ public class LoadingIndicator {
   public void scheduleForRedraw(Repaintable c) {
     synchronized (componentsToRedraw) {
       if (componentsToRedraw.add(c) && componentsToRedraw.size() == 1) {
-        display.timerExec(MS_PER_FRAME, this::redrawAll);
+        display.timerExec(MS_PER_FRAME, () -> {
+          // Don't starve async runnables just for the animation.
+          display.asyncExec(this::redrawAll);
+        });
       }
     }
   }

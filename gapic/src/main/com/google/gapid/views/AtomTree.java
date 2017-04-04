@@ -17,6 +17,8 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.util.GeoUtils.right;
+import static com.google.gapid.util.GeoUtils.vertCenter;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Ranges.count;
 import static com.google.gapid.util.Ranges.first;
@@ -264,7 +266,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
                   }
                 }
               });
-        }, new Point(bounds.x + bounds.width + 2, bounds.y + bounds.height / 2 - THUMB_SIZE / 2));
+        }, new Point(right(bounds) + 2, vertCenter(bounds) - THUMB_SIZE / 2));
       }
 
       private ListenableFuture<ImageData> loadImage(FilteredGroup group) {

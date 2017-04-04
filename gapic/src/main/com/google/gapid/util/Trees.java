@@ -15,11 +15,11 @@
  */
 package com.google.gapid.util;
 
+import static com.google.gapid.util.GeoUtils.bottom;
 import static java.util.Collections.emptySet;
 
 import com.google.common.collect.Sets;
 
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 
@@ -43,8 +43,7 @@ public class Trees {
       return (tree.getItemCount() != 0) ? null : emptySet();
     }
 
-    Rectangle bounds = tree.getClientArea();
-    int treeBottom = bounds.y + bounds.height;
+    int treeBottom = bottom(tree.getClientArea());
     Set<TreeItem> visible = Sets.newIdentityHashSet();
     if (!getVisibleItems(top, treeBottom, visible)) {
       do {
@@ -60,8 +59,7 @@ public class Trees {
    */
   private static boolean getVisibleItems(TreeItem item, int treeBottom, Set<TreeItem> visible) {
     visible.add(item);
-    Rectangle bounds = item.getBounds();
-    if (bounds.y + bounds.height > treeBottom) {
+    if (bottom(item.getBounds()) > treeBottom) {
       return true;
     }
 

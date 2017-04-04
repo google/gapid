@@ -15,6 +15,9 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.util.GeoUtils.right;
+import static com.google.gapid.util.GeoUtils.top;
+
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
@@ -68,6 +71,7 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -208,7 +212,7 @@ public class Widgets {
       ToolBar bar, Image image, Consumer<Shell> createContents, String tip) {
     return createToolItem(bar, SWT.PUSH, image, e -> {
       Rectangle b = ((ToolItem)e.widget).getBounds();
-      Balloon.createAndShow(bar, createContents, new Point(b.x + b.width + 2, b.y));
+      Balloon.createAndShow(bar, createContents, new Point(right(b) + 2, top(b)));
     }, tip);
   }
 
@@ -332,7 +336,7 @@ public class Widgets {
   }
 
   public static TableViewer createTableViewer(Composite parent, int style) {
-    TableViewer table = new TableViewer(parent, style);
+    TableViewer table = new VisibilityTrackingTableViewer(new Table(parent, style));
     table.getTable().setHeaderVisible(true);
     table.getTable().setLinesVisible(true);
     table.setUseHashlookup(true);
@@ -527,8 +531,23 @@ public class Widgets {
   public static ComboViewer createDropDownViewer(Combo combo) {
     ComboViewer viewer = new ComboViewer(combo);
     viewer.setUseHashlookup(true);
-
     return viewer;
+  }
+
+  public static Refresher withAsyncRefresh(Viewer viewer) {
+    AtomicBoolean scheduled = new AtomicBoolean();
+    return () -> ifNotDisposed(viewer.getControl(), () -> {
+      if (!scheduled.getAndSet(true)) {
+        viewer.getControl().getDisplay().timerExec(25, () -> {
+          scheduled.set(false);
+          viewer.refresh();
+        });
+      }
+    });
+  }
+
+  public static interface Refresher {
+    public void refresh();
   }
 
   public static Composite createComposite(Composite parent, Layout layout) {
