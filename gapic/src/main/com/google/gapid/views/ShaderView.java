@@ -158,7 +158,8 @@ public class ShaderView extends Composite
     panel.addListener(SWT.Selection, e -> getProgramSource((Data)e.data,
         program -> scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)),
         panel::setSource));
-    addListener(SWT.Dispose, e -> models.settings.shaderSplitterWeights = splitter.getWeights());
+    splitter.addListener(
+        SWT.Dispose, e -> models.settings.shaderSplitterWeights = splitter.getWeights());
     return splitter;
   }
 
