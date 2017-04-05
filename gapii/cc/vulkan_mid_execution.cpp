@@ -558,15 +558,20 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
               );
           }
 
-          RecreateBindAndFillBufferMemory(
+          RecreateBindBufferMemory(
               observer,
               buffer.second->mDevice,
               buffer.second->mVulkanHandle,
               buffer.second->mMemory?
                   buffer.second->mMemory->mVulkanHandle: VkDeviceMemory(0),
+              buffer.second->mMemoryOffset);
+
+         RecreateBufferData(
+              observer,
+              buffer.second->mDevice,
+              buffer.second->mVulkanHandle,
               host_buffer_memory_index,
               submit_queue->mVulkanHandle,
-              buffer.second->mMemoryOffset,
               data);
 
           if (need_to_clean_up_temps) {
@@ -885,18 +890,24 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 );
             }
 
-            RecreateBindAndFillImageMemory(
+            RecreateBindImageMemory(
+                observer,
+                image.second->mDevice,
+                image.second->mVulkanHandle,
+                image.second->mBoundMemory?
+                    image.second->mBoundMemory->mVulkanHandle: VkDeviceMemory(0),
+                image.second->mBoundMemoryOffset);
+
+            RecreateImageData(
                 observer,
                 image.second->mDevice,
                 image.second->mVulkanHandle,
                 imageLayout,
-                image.second->mBoundMemory?
-                    image.second->mBoundMemory->mVulkanHandle: VkDeviceMemory(0),
                 host_buffer_memory_index,
                 lastQueue,
-                image.second->mBoundMemoryOffset,
                 data_size,
                 data);
+
            if (need_to_clean_up_temps) {
                 device_functions.vkDestroyBuffer(
                     device, copy_buffer, nullptr
