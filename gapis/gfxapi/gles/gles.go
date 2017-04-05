@@ -29,15 +29,15 @@ func GetContext(s *gfxapi.State) *Context {
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
 func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
-	w, h, ifmt, err := GetState(state).getFramebufferAttachmentInfo(attachment)
-	var nilImgfmt imgfmt
-	if ifmt == nilImgfmt {
+	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(attachment)
+	if sizedFormat == 0 {
 		return 0, 0, nil, fmt.Errorf("No format set")
 	}
 	if err != nil {
 		return 0, 0, nil, err
 	}
-	f, err := ifmt.asImage()
+	fmt, ty := getUnsizedFormatAndType(sizedFormat)
+	f, err := getImageFormat(fmt, ty)
 	return w, h, f, err
 }
 

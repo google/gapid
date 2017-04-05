@@ -114,7 +114,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			t.glBindRenderbuffer(renderbufferID)
 
 			mutateAndWriteEach(ctx, out,
-				NewGlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt.sizedFormat, GLsizei(outW), GLsizei(outH)),
+				NewGlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
 				NewGlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
 				NewGlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
 			)
@@ -130,11 +130,12 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 func postColorData(ctx context.Context,
 	s *gfxapi.State,
 	width, height int32,
-	glfmt imgfmt,
+	sizedFormat GLenum,
 	out transform.Writer,
 	res replay.Result) {
 
-	imgFmt := glfmt.asImageOrPanic()
+	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
+	imgFmt := getImageFormatOrPanic(unsizedFormat, ty)
 
 	t := newTweaker(ctx, out)
 	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
@@ -148,7 +149,7 @@ func postColorData(ctx context.Context,
 		// depth buffer.
 
 		b.ReserveMemory(tmp.Range())
-		NewGlReadPixels(0, 0, GLsizei(width), GLsizei(height), glfmt.unsizedFormat, glfmt.ty, tmp.Ptr()).
+		NewGlReadPixels(0, 0, GLsizei(width), GLsizei(height), unsizedFormat, ty, tmp.Ptr()).
 			Call(ctx, s, b)
 
 		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r pod.Reader, err error) error {

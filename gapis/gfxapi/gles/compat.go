@@ -202,7 +202,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				data := eglImageData[boundTexture.EGLImage]
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(img.TexelFormat), img.Width, img.Height, 0, img.TexelFormat, img.TexelType, data).Call(ctx, s, b)
+					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(img.DataFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, data).Call(ctx, s, b)
 					return nil
 				}))
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, origUnpackAlignment))
@@ -235,10 +235,10 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						img := tex.Texture2D[0]
 						data, ok := eglImageData[tex.EGLImage]
 						if !ok {
-							data = atom.Must(atom.Alloc(ctx, s, uint64(img.Size))).Ptr()
+							data = atom.Must(atom.Alloc(ctx, s, img.Data.Count)).Ptr()
 							eglImageData[tex.EGLImage] = data
 						}
-						out.MutateAndWrite(ctx, i, NewGlReadPixels(0, 0, img.Width, img.Height, img.TexelFormat, img.TexelType, data))
+						out.MutateAndWrite(ctx, i, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
 						out.MutateAndWrite(ctx, i, NewGlGetError(0))
 						t.revert()
 					}

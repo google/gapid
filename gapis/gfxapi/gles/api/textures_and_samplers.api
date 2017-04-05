@@ -32,8 +32,6 @@ class TextureUnit {
 class Texture {
   @unused TextureId         ID
   GLenum                    Kind
-  @unused GLenum            TexelFormat
-  @unused GLenum            TexelType
   map!(GLint, Image)        Texture2D
   map!(GLint, CubemapLevel) Cubemap
 
@@ -78,9 +76,16 @@ class Image {
   GLsizei        Width
   GLsizei        Height
   @internal u8[] Data
-  u32            Size
-  @unused GLenum TexelFormat
-  @unused GLenum TexelType
+  // Tuple of (format, type) describing the Data field above.
+  // This describes the format of the data the user passed in,
+  // not the format of the data stored on the GPU (sizedFormat).
+  // TODO: We should use the GPU format, but that needs conversions.
+  // One of the following:
+  //   (GL_NONE, GL_NONE) - No data was uploaded yet.
+  //   (unsizedFormat, ty) - Uncompressed data.
+  //   (sizedFormat, GL_NONE) - Compressed data.
+  @unused GLenum DataFormat
+  @unused GLenum DataType
 }
 
 @internal
@@ -520,15 +525,13 @@ cmd void glCompressedTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
-        Size:         as!u32(image_size),
-        TexelFormat:  format,
+        DataFormat:   format,
+        DataType:     GL_NONE,
       )
       if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-        l.Data = clone(as!u8*(data)[0:l.Size])
+        l.Data = clone(as!u8*(data)[0:image_size])
       }
       t.Texture2D[level] = l
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = format
     }
     case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
@@ -536,17 +539,15 @@ cmd void glCompressedTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
-        Size:         as!u32(image_size),
-        TexelFormat:  format,
+        DataFormat:   format,
+        DataType:     GL_NONE,
       )
       if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-        l.Data = clone(as!u8*(data)[0:l.Size])
+        l.Data = clone(as!u8*(data)[0:image_size])
       }
       cube := t.Cubemap[level]
       cube.Faces[as!GLenum(target)] = l
       t.Cubemap[level] = cube
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = format
     }
   }
 }
@@ -679,6 +680,9 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
       glErrorInvalidEnum(format)
     }
   }
+
+  // TODO: Check that the data format is consistent.
+  // TODO: Update texture data field.
 
   ctx := GetContext()
   if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
@@ -1640,22 +1644,19 @@ cmd void glTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
-        Size:         imageSize(as!u32(width), as!u32(height), format, type),
-        TexelFormat:  format,
-        TexelType:    type,
+        DataFormat:   format,
+        DataType:     type,
       )
+      size := uncompressedImageSize(width, height, format, type)
       if (data != null) {
         if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-          l.Data = clone(as!u8*(data)[0:l.Size])
+          l.Data = clone(as!u8*(data)[0:size])
         }
       } else {
-        l.Data = make!u8(l.Size)
+        l.Data = make!u8(size)
       }
 
       t.Texture2D[level] = l
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = format
-      t.TexelType = type
     }
     case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
@@ -1663,23 +1664,20 @@ cmd void glTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
-        Size:         imageSize(as!u32(width), as!u32(height), format, type),
-        TexelFormat:  format,
-        TexelType:    type,
+        DataFormat:   format,
+        DataType:     type,
       )
+      size := uncompressedImageSize(width, height, format, type)
       if (data != null) {
         if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-          l.Data = clone(as!u8*(data)[0:l.Size])
+          l.Data = clone(as!u8*(data)[0:size])
         }
       } else {
-        l.Data = make!u8(l.Size)
+        l.Data = make!u8(size)
       }
       cube := t.Cubemap[level]
       cube.Faces[as!GLenum(target)] = l
       t.Cubemap[level] = cube
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = format
-      t.TexelType = type
     }
   }
 }
@@ -1747,7 +1745,7 @@ sub void TexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei wi
 
   ctx := GetContext()
   if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-    size := imageSize(as!u32(width), as!u32(height), format, type) * as!u32(depth)
+    size := uncompressedImageSize(width, height, format, type) * as!u32(depth)
     read(as!u8*(data)[0:size])
   }
 }
@@ -2020,30 +2018,15 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
     }
   }
 
-  info := getSizedFormatInfo(internalformat)
-  unsizedFormat := info.UnsizedFormat
-  ty := info.DataType
-
   switch (target) {
     case GL_TEXTURE_2D: {
       t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
       for i in (0 .. as!GLint(levels)) {
         w := max!GLsizei(width >> as!u32(i), 1)
         h := max!GLsizei(height >> as!u32(i), 1)
-        s := imageSize(as!u32(w), as!u32(h), unsizedFormat, ty)
-        l := Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
+        l := Image(Width: w, Height: h)
         t.Texture2D[i] = l
       }
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = unsizedFormat
-      t.TexelType = ty
       t.ImmutableFormat = GL_TRUE
     }
     case GL_TEXTURE_CUBE_MAP: {
@@ -2051,63 +2034,17 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
       for i in (0 .. as!GLint(levels)) {
         w := max!GLsizei(width >> as!u32(i), 1)
         h := max!GLsizei(height >> as!u32(i), 1)
-        s := imageSize(as!u32(w), as!u32(h), unsizedFormat, ty)
         cube := t.Cubemap[i]
 
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = Image(
-          Width:        w,
-          Height:       h,
-          Size:         s,
-          TexelFormat:  unsizedFormat,
-          TexelType:    ty,
-          Data:         make!u8(s)
-        )
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = Image(Width: w, Height: h)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = Image(Width: w, Height: h)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = Image(Width: w, Height: h)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = Image(Width: w, Height: h)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = Image(Width: w, Height: h)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = Image(Width: w, Height: h)
 
         t.Cubemap[i] = cube
       }
-      // TODO: Warning/Error if format has changed
-      t.TexelFormat = unsizedFormat
-      t.TexelType = ty
       t.ImmutableFormat = GL_TRUE
     }
     default: {
@@ -2343,20 +2280,35 @@ cmd void glTexSubImage2D(GLenum         target,
     case true:  as!u32(width)
     case false: as!u32(url)
   }
-  src_stride := imageSize(src_width, 1, format, type)
+  src_stride := uncompressedImageSize(as!GLsizei(src_width), 1, format, type)
   src_size := src_stride * as!u32(height)
-  dst_stride := imageSize(as!u32(image.Width), 1, format, type)
-  dst_offset := imageSize(as!u32(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
+  dst_stride := uncompressedImageSize(image.Width, 1, format, type)
+  dst_offset := uncompressedImageSize(as!GLsizei(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
   src_data := switch (pbo == 0) {
     case true:  as!u8*(data)[0:src_size]
     case false: ctx.Instances.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size)]
   }
-  line_bytes := imageSize(as!u32(width), 1, format, type)
+  line_bytes := uncompressedImageSize(width, 1, format, type)
 
+  image.DataFormat = format
+  image.DataType = type
+  if len(image.Data) == 0 {
+    image.Data = make!u8(uncompressedImageSize(image.Width, image.Height, format, type))
+  }
   for y in (0 .. as!u32(height)) {
     src := (src_stride * y)
     dst := (dst_stride * y) + dst_offset
     copy(image.Data[dst:dst + line_bytes], src_data[src:src + line_bytes])
+  }
+  switch (target) {
+    case GL_TEXTURE_2D:
+      t.Texture2D[level] = image
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      cbl := t.Cubemap[level]
+      cbl.Faces[as!GLenum(target)] = image
+      t.Cubemap[level] = cbl
+    }
   }
 }
 
@@ -2421,7 +2373,7 @@ sub void TexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
 
   ctx := GetContext()
   if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-    size := imageSize(as!u32(width), as!u32(height), format, type) * as!u32(depth)
+    size := uncompressedImageSize(width, height, format, type) * as!u32(depth)
     read(as!u8*(data)[0:size])
   }
 }

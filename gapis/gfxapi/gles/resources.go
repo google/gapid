@@ -69,8 +69,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 	case GLenum_GL_TEXTURE_2D:
 		levels := make([]*image.Info2D, len(t.Texture2D))
 		for i, level := range t.Texture2D {
+			if level.Data.Count == 0 {
+				// TODO: Make other results available
+				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+			}
 			levels[i] = &image.Info2D{
-				Format: newImgfmtFromUnsizedFormat(level.TexelFormat, level.TexelType).asImageOrPanic(),
+				Format: getImageFormatOrPanic(level.DataFormat, level.DataType),
 				Width:  uint32(level.Width),
 				Height: uint32(level.Height),
 				Data:   image.NewID(level.Data.ResourceID(ctx, s)),
@@ -83,8 +87,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 		for i, level := range t.Cubemap {
 			levels[i] = &gfxapi.CubemapLevel{}
 			for j, face := range level.Faces {
+				if face.Data.Count == 0 {
+					// TODO: Make other results available
+					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+				}
 				img := &image.Info2D{
-					Format: newImgfmtFromUnsizedFormat(face.TexelFormat, face.TexelType).asImageOrPanic(),
+					Format: getImageFormatOrPanic(face.DataFormat, face.DataType),
 					Width:  uint32(face.Width),
 					Height: uint32(face.Height),
 					Data:   image.NewID(face.Data.ResourceID(ctx, s)),

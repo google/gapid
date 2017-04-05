@@ -631,17 +631,14 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     info := EGLImages[as!EGLImageKHR(image)]
     t := GetBoundTextureOrErrorInvalidEnum(target)
     // TODO: Convert the format from EGLImage
-    fmt := GL_RGB
-    ty := GL_UNSIGNED_BYTE
-    t.TexelFormat = fmt
-    t.TexelType = ty
-    t.Texture2D[0] = Image(
+    i := Image(
       Width:        as!GLsizei(info.Width),
       Height:       as!GLsizei(info.Height),
-      Size:         imageSize(as!u32(info.Width), as!u32(info.Height), fmt, ty),
-      TexelFormat:  fmt,
-      TexelType:    ty,
+      DataFormat:   GL_RGB,
+      DataType:     GL_UNSIGNED_BYTE,
     )
+    i.Data = make!u8(uncompressedImageSize(i.Width, i.Height, i.DataFormat, i.DataType))
+    t.Texture2D[0] = i
     t.EGLImage = image
   }
 }
