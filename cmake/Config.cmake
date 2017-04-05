@@ -88,7 +88,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CXX_STANDARD_REQUIRED ON)
 add_definitions(-DTARGET_OS_${TARGET_OS})
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-DLOG_LEVEL=3)
+  add_definitions(-DLOG_LEVEL=LOG_LEVEL_VERBOSE)
 endif()
 
 if(MSVC)
