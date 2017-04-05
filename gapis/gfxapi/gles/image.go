@@ -157,8 +157,9 @@ func getStreamChannels(glChannels GLenum) (channels []stream.Channel, err error)
 func sampleAsFloat(glChannels GLenum, channelIndex int) bool {
 	switch glChannels {
 	case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER,
-		GLenum_GL_ALPHA_INTEGER_EXT, GLenum_GL_LUMINANCE_INTEGER_EXT, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT,
-		GLenum_GL_STENCIL, GLenum_GL_STENCIL_INDEX:
+		GLenum_GL_BGR_INTEGER, GLenum_GL_BGRA_INTEGER, GLenum_GL_ALPHA_INTEGER_EXT,
+		GLenum_GL_LUMINANCE_INTEGER_EXT, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT, GLenum_GL_STENCIL,
+		GLenum_GL_STENCIL_INDEX:
 		return false // Integer type.
 	case GLenum_GL_DEPTH_STENCIL:
 		return channelIndex == 0 // Only depth channel (index 0) is represented by float.
