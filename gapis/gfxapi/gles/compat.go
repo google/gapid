@@ -552,7 +552,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						// atom's reads now so that the indices can be read from the
 						// application pool.
 						a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
-						limits := e.calcIndexLimits(U8ᵖ(a.Indices), a.IndicesType, 0, uint32(a.IndicesCount))
+						indexSize := DataTypeSize(a.IndicesType)
+						data := U8ᵖ(a.Indices).Slice(0, uint64(indexSize*int(a.IndicesCount)), s)
+						limits := e.calcIndexLimits(data, indexSize)
 						moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 					}
 
@@ -566,9 +568,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// client memory and we need to move this into temporary buffer(s).
 					// The indices are server-side, so can just be read from the internal
 					// pooled buffer.
-					data := c.Instances.Buffers[ib].Data.Index(0, s)
-					base := uint32(a.Indices.Address)
-					limits := e.calcIndexLimits(data, a.IndicesType, base, uint32(a.IndicesCount))
+					data := c.Instances.Buffers[ib].Data
+					indexSize := DataTypeSize(a.IndicesType)
+					start := min(a.Indices.Address, data.Count)                            // Clamp
+					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.Count) // Clamp
+					limits := e.calcIndexLimits(data.Slice(start, end, s), indexSize)
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}
 			}

@@ -106,10 +106,13 @@ sub void DrawElements(ref!Context    ctx,
     if (id != 0) {
       // Element array buffer bound - indices is an offset on the buffer.
       index_data := ctx.Instances.Buffers[id].Data
-      offset := as!u32(as!u64(indices))
+      offset := as!s32(as!u64(indices))
 
       // Read the vertices
-      limits := IndexLimits(as!u8*(index_data), indices_type, offset, count)
+      index_size := IndexSize(indices_type)
+      index_start := min(offset, len(index_data)) // Clamp offset
+      index_end := min(offset+as!s32(index_size*count), len(index_data)) // Clamp count
+      limits := IndexLimits(index_data[index_start:index_end], as!s32(index_size))
       ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), limits.count, as!u32(instance_count))
 
       // No need to read the indices - they're already in a GPU-side buffer.
@@ -118,7 +121,8 @@ sub void DrawElements(ref!Context    ctx,
       index_data := as!u8*(indices)
 
       // Read the vertices
-      limits := IndexLimits(index_data, indices_type, 0, count)
+      index_size := IndexSize(indices_type)
+      limits := IndexLimits(index_data[0:index_size*count], as!s32(index_size))
       ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), limits.count, as!u32(instance_count))
 
       // Read the indices
