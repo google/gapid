@@ -67,15 +67,11 @@ func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra 
 	return FindAndroidNativeBufferExtra(e.a.Extras())
 }
 
-func (e externs) elSize(ty GLenum) uint64 {
-	return uint64(DataTypeSize(ty))
-}
-
-func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) resolve.IndexRange {
-	elSize := e.elSize(ty)
-	id := data.Slice(uint64(offset), uint64(offset)+uint64(count)*elSize, e.s).ResourceID(e.ctx, e.s)
+func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
+	id := data.ResourceID(e.ctx, e.s)
+	count := int(data.Count) / int(indexSize)
 	littleEndian := e.s.MemoryLayout.GetEndian() == device.LittleEndian
-	limits, err := resolve.IndexLimits(e.ctx, id, int(count), int(elSize), littleEndian)
+	limits, err := resolve.IndexLimits(e.ctx, id, count, indexSize, littleEndian)
 	if err != nil {
 		if errors.Cause(err) == context.Canceled {
 			// TODO: Propagate error
@@ -87,8 +83,8 @@ func (e externs) calcIndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) re
 	return *limits
 }
 
-func (e externs) IndexLimits(data U8ᵖ, ty GLenum, offset, count uint32) u32Limits {
-	limits := e.calcIndexLimits(data, ty, offset, count)
+func (e externs) IndexLimits(data U8ˢ, indexSize int32) u32Limits {
+	limits := e.calcIndexLimits(data, int(indexSize))
 	return u32Limits{First: limits.First, Count: limits.Count}
 }
 

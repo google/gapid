@@ -676,7 +676,7 @@ sub u32 IndexSize(GLenum indices_type) {
 }
 
 @internal class u32Limits { u32 first u32 count }
-extern u32Limits IndexLimits(u8* indices, GLenum indices_type, u32 offset, u32 count)
+extern u32Limits IndexLimits(u8[] indices, s32 sizeof_index)
 
 /////////////////////////////////////////////////////////////////
 // Desktop GL

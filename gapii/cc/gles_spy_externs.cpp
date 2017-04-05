@@ -28,39 +28,40 @@ void GlesSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
 MsgID GlesSpy::newMsg(CallObserver*, uint32_t, const char*) { return 0; }
 void GlesSpy::addTag(CallObserver*, uint32_t, const char*) {}
 
-u32Limits GlesSpy::IndexLimits(CallObserver*, uint8_t* indices, uint32_t indices_type, uint32_t offset, uint32_t count) {
-    if (count == 0) {
-        return u32Limits(0, 0);
-    }
+u32Limits GlesSpy::IndexLimits(CallObserver*, Slice<uint8_t> indices, int32_t sizeof_index) {
     uint32_t low = ~(uint32_t)0;
     uint32_t high = 0;
-    switch (indices_type) {
-        case gapii::GLenum::GL_UNSIGNED_BYTE: {
-            const uint8_t* p = reinterpret_cast<const uint8_t*>(&indices[offset]);
-            for (uint32_t i = 0; i < count; i++) {
-                low = min<uint32_t>(low, p[i]);
-                high = max<uint32_t>(high, p[i]);
+    switch (sizeof_index) {
+        case 1: {
+            for (auto i : indices.as<uint8_t>()) {
+                low = min<uint32_t>(low, i);
+                high = max<uint32_t>(high, i);
             }
             break;
         }
-        case gapii::GLenum::GL_UNSIGNED_SHORT: {
-            const uint16_t* p = reinterpret_cast<const uint16_t*>(&indices[offset]);
-            for (uint32_t i = 0; i < count; i++) {
-                low = min<uint32_t>(low, p[i]);
-                high = max<uint32_t>(high, p[i]);
+        case 2: {
+            for (auto i : indices.as<uint16_t>()) {
+                low = min<uint32_t>(low, i);
+                high = max<uint32_t>(high, i);
             }
             break;
         }
-        case gapii::GLenum::GL_UNSIGNED_INT: {
-            const uint32_t* p = reinterpret_cast<const uint32_t*>(&indices[offset]);
-            for (uint32_t i = 0; i < count; i++) {
-                low = min<uint32_t>(low, p[i]);
-                high = max<uint32_t>(high, p[i]);
+        case 4: {
+            for (auto i : indices.as<uint32_t>()) {
+                low = min<uint32_t>(low, i);
+                high = max<uint32_t>(high, i);
             }
             break;
+        }
+        default: {
+            GAPID_FATAL("Invalid index size");
         }
     }
-    return u32Limits(low, high+1-low);
+    if (low <= high) {
+        return u32Limits(low, high+1-low);
+    } else {
+        return u32Limits(0, 0);
+    }
 }
 
 void GlesSpy::onGlError(CallObserver* observer, GLenum_Error err) {
