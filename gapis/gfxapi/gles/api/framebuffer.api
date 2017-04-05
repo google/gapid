@@ -565,8 +565,10 @@ cmd void glFramebufferTexture(GLenum target, GLenum attachment, TextureId textur
 }
 
 sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture, GLint level) {
+  ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
+    if !(texture in ctx.Instances.Textures) { glErrorInvalidValue() }
     attachment_info.ObjectType = GL_TEXTURE
     attachment_info.ObjectName = as!GLuint(texture)
     attachment_info.TextureLevel = level
@@ -650,8 +652,10 @@ cmd void glFramebufferTextureLayer(GLenum    target,
                                    GLint     level,
                                    GLint     layer) {
   minRequiredVersion(3, 0)
+  ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
+    if !(texture in ctx.Instances.Textures) { glErrorInvalidValue() }
     attachment_info.ObjectType = GL_TEXTURE
     attachment_info.ObjectName = as!GLuint(texture)
     attachment_info.TextureLevel = level
