@@ -50,6 +50,10 @@ enum ResourceType {
 	ShaderResource = 5;
 	// ProgramResource represents the Program resource type
 	ProgramResource = 6;
+	// UninitializedTextureResource represents texture resource type
+	// which has been generated but was never assigned dimensions.
+	// TODO: Clean up texture handling as per issue #237
+	UninitializedTextureResource = 7;
 }
 
 // FramebufferAttachment values indicate the type of frame buffer attachment.

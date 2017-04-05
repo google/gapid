@@ -60,7 +60,7 @@ func (t *ImageObject) Order() uint64 {
 }
 
 // ResourceType returns the type of this resource.
-func (t *ImageObject) ResourceType() gfxapi.ResourceType {
+func (t *ImageObject) ResourceType(ctx context.Context) gfxapi.ResourceType {
 	if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
 		return gfxapi.ResourceType_CubemapResource
 	} else {
@@ -562,7 +562,7 @@ func (s *ShaderModuleObject) Order() uint64 {
 }
 
 // ResourceType returns the type of this resource.
-func (s *ShaderModuleObject) ResourceType() gfxapi.ResourceType {
+func (s *ShaderModuleObject) ResourceType(ctx context.Context) gfxapi.ResourceType {
 	return gfxapi.ResourceType_ShaderResource
 }
 
@@ -585,7 +585,7 @@ func (shader *ShaderModuleObject) SetResourceData(ctx context.Context, at *path.
 	}
 	resourceID := resourceIDs[shader]
 
-	resource := resources.Find(shader.ResourceType(), resourceID)
+	resource := resources.Find(shader.ResourceType(ctx), resourceID)
 	if resource == nil {
 		return fmt.Errorf("Couldn't find resource")
 	}
