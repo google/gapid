@@ -81,7 +81,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	types := map[gfxapi.ResourceType]*service.ResourcesByType{}
 	for _, r := range resources {
-		ty := r.resource.ResourceType()
+		ty := r.resource.ResourceType(ctx)
 		handle := r.resource.ResourceHandle()
 		label := r.resource.ResourceLabel()
 		order := r.resource.Order()

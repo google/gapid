@@ -51,13 +51,16 @@ func (t *Texture) Order() uint64 {
 }
 
 // ResourceType returns the type of this resource.
-func (t *Texture) ResourceType() gfxapi.ResourceType {
+func (t *Texture) ResourceType(ctx context.Context) gfxapi.ResourceType {
 	switch t.Kind {
+	case GLenum_GL_NONE:
+		return gfxapi.ResourceType_UninitializedTextureResource
 	case GLenum_GL_TEXTURE_2D:
 		return gfxapi.ResourceType_Texture2DResource
 	case GLenum_GL_TEXTURE_CUBE_MAP:
 		return gfxapi.ResourceType_CubemapResource
 	default:
+		log.E(ctx, "Unknown texture resource type: %v", t.Kind)
 		return gfxapi.ResourceType_UnknownResource
 	}
 }
@@ -146,7 +149,7 @@ func (s *Shader) Order() uint64 {
 }
 
 // ResourceType returns the type of this resource.
-func (s *Shader) ResourceType() gfxapi.ResourceType {
+func (s *Shader) ResourceType(ctx context.Context) gfxapi.ResourceType {
 	return gfxapi.ResourceType_ShaderResource
 }
 
@@ -181,7 +184,7 @@ func (shader *Shader) SetResourceData(ctx context.Context, at *path.Command,
 	}
 	resourceID := resourceIDs[shader]
 
-	resource := resources.Find(shader.ResourceType(), resourceID)
+	resource := resources.Find(shader.ResourceType(ctx), resourceID)
 	if resource == nil {
 		return fmt.Errorf("Couldn't find resource")
 	}
@@ -244,7 +247,7 @@ func (p *Program) Order() uint64 {
 }
 
 // ResourceType returns the type of this resource.
-func (p *Program) ResourceType() gfxapi.ResourceType {
+func (p *Program) ResourceType(ctx context.Context) gfxapi.ResourceType {
 	return gfxapi.ResourceType_ProgramResource
 }
 
