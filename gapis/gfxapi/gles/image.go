@@ -130,6 +130,12 @@ func getStreamChannels(glChannels GLenum) (channels []stream.Channel, err error)
 		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}, nil
 	case GLenum_GL_RGBA, GLenum_GL_RGBA_INTEGER:
 		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}, nil
+	case GLenum_GL_BGR, GLenum_GL_BGR_INTEGER:
+		return []stream.Channel{stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red}, nil
+	case GLenum_GL_BGRA, GLenum_GL_BGRA_INTEGER:
+		return []stream.Channel{stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red, stream.Channel_Alpha}, nil
+	case GLenum_GL_ABGR_EXT:
+		return []stream.Channel{stream.Channel_Alpha, stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red}, nil
 	case GLenum_GL_DEPTH_STENCIL:
 		return []stream.Channel{stream.Channel_Depth, stream.Channel_Stencil}, nil
 	case GLenum_GL_DEPTH, GLenum_GL_DEPTH_COMPONENT:
