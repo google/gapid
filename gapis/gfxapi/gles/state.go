@@ -65,7 +65,10 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 	switch a.ObjectType {
 	case GLenum_GL_TEXTURE:
 		id := TextureId(a.ObjectName)
-		t := c.Instances.Textures[id]
+		t, ok := c.Instances.Textures[id]
+		if !ok {
+			return 0, 0, imgfmt{}, fmt.Errorf("Invalid texture attachment %v", id)
+		}
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_2D:
 			l := t.Texture2D[a.TextureLevel]
