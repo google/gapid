@@ -50,32 +50,37 @@ type format interface {
 
 // Interface compliance check.
 var _ = []format{
-	&FmtASTC{},
+	&FmtUncompressed{},
+	&FmtPNG{},
 	&FmtATC_RGB_AMD{},
 	&FmtATC_RGBA_EXPLICIT_ALPHA_AMD{},
 	&FmtATC_RGBA_INTERPOLATED_ALPHA_AMD{},
-	&FmtETC1_RGB8{},
-	&FmtETC2_RGB8{},
-	&FmtETC2_RGBA8_EAC{},
-	&FmtPNG{},
+	&FmtETC1_RGB_U8_NORM{},
+	&FmtETC2_RGB_U8_NORM{},
+	&FmtETC2_RGBA_U8_NORM{},
+	&FmtETC2_RGBA_U8U8U8U1_NORM{},
+	&FmtETC2_R_U11_NORM{},
+	&FmtETC2_RG_U11_NORM{},
+	&FmtETC2_R_S11_NORM{},
+	&FmtETC2_RG_S11_NORM{},
 	&FmtS3_DXT1_RGB{},
 	&FmtS3_DXT1_RGBA{},
 	&FmtS3_DXT3_RGBA{},
 	&FmtS3_DXT5_RGBA{},
-	&FmtUncompressed{},
+	&FmtASTC{},
 }
 
 // Check returns an error if the combination of data, image width and image
 // height is invalid for the given format, otherwise Check returns nil.
 func (f *Format) Check(data []byte, width, height int) error {
-	return protoutil.OneOf(f.Format).(format).check(data, width, height)
+	return f.format().check(data, width, height)
 }
 
 // Size returns the number of bytes required to hold an image of the specified
 // dimensions in this format. If the size varies based on the image data, then
 // Size returns -1.
 func (f *Format) Size(width, height int) int {
-	return protoutil.OneOf(f.Format).(format).size(width, height)
+	return f.format().size(width, height)
 }
 
 // Key returns an object that can be used for equality-testing of the format
@@ -84,13 +89,17 @@ func (f *Format) Size(width, height int) int {
 // Formats can be deserialized into new objects so testing equality on the
 // Format object directly is not safe.
 func (f *Format) Key() interface{} {
-	return protoutil.OneOf(f.Format).(format).key()
+	return f.format().key()
 }
 
 // Channels returns the list of channels described by this format.
 // If the channels vary based on the image data, then Channels returns nil.
 func (f *Format) Channels() []stream.Channel {
-	return protoutil.OneOf(f.Format).(format).channels()
+	return f.format().channels()
+}
+
+func (f *Format) format() format {
+	return protoutil.OneOf(f.Format).(format)
 }
 
 // resizer is the interface implemented by formats that support resizing.
@@ -111,11 +120,9 @@ func (f *Format) Resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error)
 	return nil, ErrResizeUnsupported
 }
 
-func checkSize(data []byte, width, height int, bpp int) error {
-	expected := width * height * bpp / 8
-	actual := len(data)
-	if expected != actual {
-		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%d\n",
+func checkSize(data []byte, f format, width, height int) error {
+	if expected, actual := f.size(width, height), len(data); expected != actual {
+		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%d",
 			actual, expected, width, height)
 	}
 	return nil

@@ -49,6 +49,14 @@ var (
 		}},
 	}
 
+	R_S16_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S16,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
 	R_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,

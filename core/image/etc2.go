@@ -25,86 +25,226 @@ import (
 )
 
 var (
-	ETC2_RGB8      = NewETC2_RGB8("ETC2_RGB8")
-	ETC2_RGBA8_EAC = NewETC2_RGBA8_EAC("ETC2_RGBA8_EAC")
+	ETC2_RGB_U8_NORM         = NewETC2_RGB_U8_NORM("ETC2_RGB_U8_NORM")
+	ETC2_RGBA_U8_NORM        = NewETC2_RGBA_U8_NORM("ETC2_RGBA_U8_NORM")
+	ETC2_RGBA_U8U8U8U1_NORM  = NewETC2_RGBA_U8U8U8U1_NORM("ETC2_RGBA_U8U8U8U1_NORM")
+	ETC2_SRGB_U8_NORM        = NewETC2_SRGB_U8_NORM("ETC2_SRGB_U8_NORM")
+	ETC2_SRGBA_U8_NORM       = NewETC2_SRGBA_U8_NORM("ETC2_SRGBA_U8_NORM")
+	ETC2_SRGBA_U8U8U8U1_NORM = NewETC2_SRGBA_U8U8U8U1_NORM("ETC2_SRGBA_U8U8U8U1_NORM")
+	ETC2_R_U11_NORM          = NewETC2_R_U11_NORM("ETC2_R_U11_NORM")
+	ETC2_RG_U11_NORM         = NewETC2_RG_U11_NORM("ETC2_RG_U11_NORM")
+	ETC2_R_S11_NORM          = NewETC2_R_S11_NORM("ETC2_R_S11_NORM")
+	ETC2_RG_S11_NORM         = NewETC2_RG_S11_NORM("ETC2_RG_S11_NORM")
 )
 
-// NewETC2_RGB8 returns a format representing the COMPRESSED_RGB8_ETC2 block
-// texture compression format.
-func NewETC2_RGB8(name string) *Format {
-	return &Format{name, &Format_Etc2Rgb8{&FmtETC2_RGB8{}}}
-}
-
-// NewETC2_RGBA8_EAC returns a format representing the COMPRESSED_RGBA8_ETC2_EAC
+// NewETC2_RGB_U8_NORM returns a format representing the COMPRESSED_RGB8_ETC2
 // block texture compression format.
-func NewETC2_RGBA8_EAC(name string) *Format {
-	return &Format{name, &Format_Etc2Rgba8Eac{&FmtETC2_RGBA8_EAC{}}}
+func NewETC2_RGB_U8_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{}}}
 }
 
-func (f *FmtETC2_RGB8) key() interface{} {
+// NewETC2_SRGB_U8_NORM returns a format representing the COMPRESSED_SRGB8_ETC2
+// block texture compression format.
+func NewETC2_SRGB_U8_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{Srgb: true}}}
+}
+
+func (f *FmtETC2_RGB_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RGB8) size(w, h int) int {
+func (*FmtETC2_RGB_U8_NORM) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (*FmtETC2_RGB8) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 4)
+func (f *FmtETC2_RGB_U8_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
-func (*FmtETC2_RGB8) channels() []stream.Channel {
+func (*FmtETC2_RGB_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
 }
 
-func (f *FmtETC2_RGBA8_EAC) key() interface{} {
+// NewETC2_RGBA_U8_NORM returns a format representing the
+// COMPRESSED_RGBA8_ETC2_EAC block texture compression format.
+func NewETC2_RGBA_U8_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{}}}
+}
+
+// NewETC2_SRGBA_U8_NORM returns a format representing the
+// COMPRESSED_SRGBA8_ETC2_EAC block texture compression format.
+func NewETC2_SRGBA_U8_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{Srgb: true}}}
+}
+
+func (f *FmtETC2_RGBA_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RGBA8_EAC) size(w, h int) int {
+func (*FmtETC2_RGBA_U8_NORM) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }
-func (*FmtETC2_RGBA8_EAC) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 8)
+func (f *FmtETC2_RGBA_U8_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
-func (*FmtETC2_RGBA8_EAC) channels() []stream.Channel {
+func (*FmtETC2_RGBA_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
 }
 
-func init() {
-	RegisterConverter(ETC2_RGB8, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETC(src, width, height, false)
-	})
-	RegisterConverter(ETC2_RGBA8_EAC, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETC(src, width, height, true)
-	})
+// NewETC2_RGBA_U8U8U8U1_NORM returns a format representing the
+// COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
+func NewETC2_RGBA_U8U8U8U1_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{}}}
 }
 
-func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
-	dst := make([]byte, width*height*4)
+// NewETC2_SRGBA_U8U8U8U1_NORM returns a format representing the
+// COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
+func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{Srgb: true}}}
+}
 
-	blockWidth := sint.Max((width+3)/4, 1)
-	blockHeight := sint.Max((height+3)/4, 1)
+func (f *FmtETC2_RGBA_U8U8U8U1_NORM) key() interface{} {
+	return *f
+}
+func (*FmtETC2_RGBA_U8U8U8U1_NORM) size(w, h int) int {
+	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+}
+func (f *FmtETC2_RGBA_U8U8U8U1_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
+}
+func (*FmtETC2_RGBA_U8U8U8U1_NORM) channels() []stream.Channel {
+	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+}
 
-	const (
-		R = 0
-		G = 1
-		B = 2
-	)
-	c := [4][3]int{}
-	codes := [2][4]int{}
-	modTbl0 := [8][4]int{ // mode 0 (ETC1)
-		{2, 8, -2, -8},
-		{5, 17, -5, -17},
-		{9, 29, -9, -29},
-		{13, 42, -13, -42},
-		{18, 60, -18, -60},
-		{24, 80, -24, -80},
-		{33, 106, -33, -106},
-		{47, 183, -47, -183},
+// NewETC2_R_U11_NORM returns a format representing the COMPRESSED_R11_EAC
+// block texture compression format.
+func NewETC2_R_U11_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RU11Norm{&FmtETC2_R_U11_NORM{}}}
+}
+
+func (f *FmtETC2_R_U11_NORM) key() interface{} {
+	return *f
+}
+func (*FmtETC2_R_U11_NORM) size(w, h int) int {
+	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+}
+func (f *FmtETC2_R_U11_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
+}
+func (*FmtETC2_R_U11_NORM) channels() []stream.Channel {
+	return []stream.Channel{stream.Channel_Red}
+}
+
+// NewETC2_RG_U11_NORM returns a format representing the COMPRESSED_RG11_EAC
+// block texture compression format.
+func NewETC2_RG_U11_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgU11Norm{&FmtETC2_RG_U11_NORM{}}}
+}
+
+func (f *FmtETC2_RG_U11_NORM) key() interface{} {
+	return *f
+}
+func (*FmtETC2_RG_U11_NORM) size(w, h int) int {
+	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+}
+func (f *FmtETC2_RG_U11_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
+}
+func (*FmtETC2_RG_U11_NORM) channels() []stream.Channel {
+	return []stream.Channel{stream.Channel_Red, stream.Channel_Green}
+}
+
+// NewETC2_R_S11_NORM returns a format representing the
+// COMPRESSED_SIGNED_R11_EAC block texture compression format.
+func NewETC2_R_S11_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RS11Norm{&FmtETC2_R_S11_NORM{}}}
+}
+
+func (f *FmtETC2_R_S11_NORM) key() interface{} {
+	return *f
+}
+func (*FmtETC2_R_S11_NORM) size(w, h int) int {
+	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+}
+func (f *FmtETC2_R_S11_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
+}
+func (*FmtETC2_R_S11_NORM) channels() []stream.Channel {
+	return []stream.Channel{stream.Channel_Red}
+}
+
+// NewETC2_RG_S11_NORM returns a format representing the COMPRESSED_RG11_EAC
+// block texture compression format.
+func NewETC2_RG_S11_NORM(name string) *Format {
+	return &Format{name, &Format_Etc2RgS11Norm{&FmtETC2_RG_S11_NORM{}}}
+}
+
+func (f *FmtETC2_RG_S11_NORM) key() interface{} {
+	return *f
+}
+func (*FmtETC2_RG_S11_NORM) size(w, h int) int {
+	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+}
+func (f *FmtETC2_RG_S11_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
+}
+func (*FmtETC2_RG_S11_NORM) channels() []stream.Channel {
+	return []stream.Channel{stream.Channel_Red, stream.Channel_Green}
+}
+
+func init() {
+	RegisterConverter(ETC2_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETC(src, width, height, etcAlphaNone)
+	})
+	RegisterConverter(ETC2_RGBA_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETC(src, width, height, etcAlpha8Bit)
+	})
+	RegisterConverter(ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETC(src, width, height, etcAlpha1Bit)
+	})
+	RegisterConverter(ETC2_R_U11_NORM, R_U16_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETCU11(src, width, height, 1)
+	})
+	RegisterConverter(ETC2_RG_U11_NORM, RG_U16_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETCU11(src, width, height, 2)
+	})
+	RegisterConverter(ETC2_R_S11_NORM, R_S16_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETCS11(src, width, height, 1)
+	})
+	RegisterConverter(ETC2_RG_S11_NORM, RG_S16_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return decodeETCS11(src, width, height, 2)
+	})
+
+	for _, conv := range []struct {
+		src, dst *Format
+	}{
+		{ETC2_RGB_U8_NORM, RGB_U8_NORM},
+		{ETC2_RGBA_U8_NORM, RGBA_U8_NORM},
+		{ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM},
+		{ETC2_R_U11_NORM, R_U16_NORM},
+		{ETC2_RG_U11_NORM, RG_U16_NORM},
+		{ETC2_R_S11_NORM, R_S16_NORM},
+		{ETC2_RG_S11_NORM, RG_S16_NORM},
+	} {
+		conv := conv
+		if !registered(conv.src, RGB_U8_NORM) {
+			RegisterConverter(conv.src, RGB_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+				rgb, err := Convert(src, width, height, conv.src, conv.dst)
+				if err != nil {
+					return nil, err
+				}
+				return Convert(rgb, width, height, conv.dst, RGB_U8_NORM)
+			})
+		}
+		if !registered(conv.src, RGBA_U8_NORM) {
+			RegisterConverter(conv.src, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+				rgba, err := Convert(src, width, height, conv.src, conv.dst)
+				if err != nil {
+					return nil, err
+				}
+				return Convert(rgba, width, height, conv.dst, RGBA_U8_NORM)
+			})
+		}
 	}
-	modTbl1 := [8]int{3, 6, 11, 16, 23, 32, 41, 64}
-	diffTbl := [8]int{0, 1, 2, 3, -4, -3, -2, -1}
-	flipTbl := [2][16]int{
-		{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},
-		{0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1},
-	}
+}
+
+func decodeETCBaseMulModTbl(v uint64) (base, mul int, modTbl [8]int) {
 	alphaModTbl := [16][8]int{
 		{-3, -6, -9, -15, 2, 5, 8, 14},
 		{-3, -7, -10, -13, 2, 6, 9, 12},
@@ -123,6 +263,64 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 		{-4, -6, -8, -9, 3, 5, 7, 8},
 		{-3, -5, -7, -9, 2, 4, 6, 8},
 	}
+	// ┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
+	// ┃         Base          ┃Multiplier ┃Table Index┃
+	// ┣━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┫
+	// ┃₆₃│₆₂│₆₁│₆₀│₅₉│₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃
+	// ┖──┴──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┚
+	return int(v >> 56),
+		int((v >> 52) & 15),
+		alphaModTbl[(v>>48)&15]
+}
+
+type etcAlphaMode int
+
+const (
+	etcAlphaNone = etcAlphaMode(iota)
+	etcAlpha8Bit
+	etcAlpha1Bit
+)
+
+func decodeETC(src []byte, width, height int, alphaMode etcAlphaMode) ([]byte, error) {
+	dst := make([]byte, width*height*4)
+
+	blockWidth := sint.Max((width+3)/4, 1)
+	blockHeight := sint.Max((height+3)/4, 1)
+
+	const (
+		R = 0
+		G = 1
+		B = 2
+	)
+	c := [4][3]int{}
+	codes := [2][4]int{}
+	modTbl0 := [2][8][4]int{ // differential mode
+		{ // when opaque == 0:
+			{0, 8, 0, -8},
+			{0, 17, 0, -17},
+			{0, 29, 0, -29},
+			{0, 42, 0, -42},
+			{0, 60, 0, -60},
+			{0, 80, 0, -80},
+			{0, 106, 0, -106},
+			{0, 183, 0, -183},
+		}, { // when opaque == 1:
+			{2, 8, -2, -8},
+			{5, 17, -5, -17},
+			{9, 29, -9, -29},
+			{13, 42, -13, -42},
+			{18, 60, -18, -60},
+			{24, 80, -24, -80},
+			{33, 106, -33, -106},
+			{47, 183, -47, -183},
+		},
+	}
+	modTbl1 := [8]int{3, 6, 11, 16, 23, 32, 41, 64}
+	diffTbl := [8]int{0, 1, 2, 3, -4, -3, -2, -1}
+	flipTbl := [2][16]int{
+		{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},
+		{0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1},
+	}
 	alpha := [16]byte{
 		0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff,
@@ -133,16 +331,9 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
 	for by := 0; by < blockHeight; by++ {
 		for bx := 0; bx < blockWidth; bx++ {
-			if hasAlpha {
+			if alphaMode == etcAlpha8Bit {
 				v64 := r.Uint64()
-				// ┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
-				// ┃         Base          ┃Multiplier ┃Table Index┃
-				// ┣━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┫
-				// ┃₆₃│₆₂│₆₁│₆₀│₅₉│₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃
-				// ┖──┴──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┚
-				base := int(v64 >> 56)
-				mul := int((v64 >> 52) & 15)
-				modTbl := alphaModTbl[(v64>>48)&15]
+				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
 				for i := uint8(0); i < 16; i++ {
 					mod := modTbl[(v64>>(i*3))&7]
 					alpha[15-i] = sint.Byte(base + mod*mul)
@@ -152,10 +343,14 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 			v64 := r.Uint64()
 			flip := (v64 >> 32) & 1
 			diff := (v64 >> 33) & 1
+			opaque := 1
+			if alphaMode == etcAlpha1Bit {
+				opaque = int(diff)
+			}
 
 			mode := uint(0)
 			for i := uint(0); i < 3; i++ {
-				if diff == 0 {
+				if alphaMode != etcAlpha1Bit && diff == 0 {
 					// ┏━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
 					// ┃    R₀     ┃    R₁     ┃    G₀     ┃    G₁     ┃    B₀     ┃    B₁     ┃   C₀   ┃   C₁   ┃df┃fp┃
 					// ┣━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
@@ -184,9 +379,9 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 			}
 
 			switch mode {
-			case 0: // ETC1
-				codes[0] = modTbl0[(v64>>37)&7]
-				codes[1] = modTbl0[(v64>>34)&7]
+			case 0: // individual & differential mode (ETC1)
+				codes[0] = modTbl0[opaque][(v64>>37)&7]
+				codes[1] = modTbl0[opaque][(v64>>34)&7]
 
 				blockTbl := flipTbl[flip]
 
@@ -195,14 +390,21 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 					for y := by * 4; y < (by+1)*4; y++ {
 						if x < width && y < height {
 							block := blockTbl[i]
-							base := c[block]
 							k := 4 * (y*width + x)
 							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							shift := codes[block][idx]
-							dst[k+2] = sint.Byte(base[2] + shift)
-							dst[k+1] = sint.Byte(base[1] + shift)
-							dst[k+0] = sint.Byte(base[0] + shift)
-							dst[k+3] = alpha[i]
+							if opaque == 0 && idx == 2 {
+								dst[k+2] = 0
+								dst[k+1] = 0
+								dst[k+0] = 0
+								dst[k+3] = 0
+							} else {
+								base := c[block]
+								shift := codes[block][idx]
+								dst[k+2] = sint.Byte(base[2] + shift)
+								dst[k+1] = sint.Byte(base[1] + shift)
+								dst[k+0] = sint.Byte(base[0] + shift)
+								dst[k+3] = alpha[i]
+							}
 						}
 						i++
 					}
@@ -243,10 +445,17 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 						if x < width && y < height {
 							k := 4 * (y*width + x)
 							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							dst[k+0] = sint.Byte(c[idx][0])
-							dst[k+1] = sint.Byte(c[idx][1])
-							dst[k+2] = sint.Byte(c[idx][2])
-							dst[k+3] = alpha[i]
+							if opaque == 0 && idx == 2 {
+								dst[k+0] = 0
+								dst[k+1] = 0
+								dst[k+2] = 0
+								dst[k+3] = 0
+							} else {
+								dst[k+0] = sint.Byte(c[idx][0])
+								dst[k+1] = sint.Byte(c[idx][1])
+								dst[k+2] = sint.Byte(c[idx][2])
+								dst[k+3] = alpha[i]
+							}
 						}
 						i++
 					}
@@ -291,10 +500,17 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 						if x < width && y < height {
 							k := 4 * (y*width + x)
 							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							dst[k+0] = sint.Byte(c[idx][0])
-							dst[k+1] = sint.Byte(c[idx][1])
-							dst[k+2] = sint.Byte(c[idx][2])
-							dst[k+3] = alpha[i]
+							if opaque == 0 && idx == 2 {
+								dst[k+0] = 0
+								dst[k+1] = 0
+								dst[k+2] = 0
+								dst[k+3] = 0
+							} else {
+								dst[k+0] = sint.Byte(c[idx][0])
+								dst[k+1] = sint.Byte(c[idx][1])
+								dst[k+2] = sint.Byte(c[idx][2])
+								dst[k+3] = alpha[i]
+							}
 						}
 						i++
 					}
@@ -338,6 +554,84 @@ func decodeETC(src []byte, width, height int, hasAlpha bool) ([]byte, error) {
 							dst[k+3] = alpha[i]
 						}
 						i++
+					}
+				}
+			}
+		}
+	}
+
+	return dst, nil
+}
+
+func decodeETCU11(src []byte, width, height int, channels int) ([]byte, error) {
+	dst := make([]byte, width*height*channels*2)
+	blockWidth := sint.Max((width+3)/4, 1)
+	blockHeight := sint.Max((height+3)/4, 1)
+	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
+	for by := 0; by < blockHeight; by++ {
+		for bx := 0; bx < blockWidth; bx++ {
+			for c := 0; c < channels; c++ {
+				v64 := r.Uint64()
+				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
+				if mul != 0 {
+					mul *= 8
+				} else {
+					mul = 1
+				}
+				i := uint(15)
+				for x := bx * 4; x < bx*4+4; x++ {
+					for y := by * 4; y < by*4+4; y++ {
+						if x < width && y < height {
+							mod := modTbl[(v64>>(i*3))&7]
+							u11 := uint(sint.Clamp(base*8+4+mod*mul, 0, 2047))
+							u16 := (u11 << 5) | (u11 >> 5)
+							k := 2*channels*(y*width+x) + c*2
+							dst[k+0] = byte(u16)
+							dst[k+1] = byte(u16 >> 8)
+						}
+						i--
+					}
+				}
+			}
+		}
+	}
+
+	return dst, nil
+}
+
+func decodeETCS11(src []byte, width, height int, channels int) ([]byte, error) {
+	dst := make([]byte, width*height*channels*2)
+	blockWidth := sint.Max((width+3)/4, 1)
+	blockHeight := sint.Max((height+3)/4, 1)
+	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
+	for by := 0; by < blockHeight; by++ {
+		for bx := 0; bx < blockWidth; bx++ {
+			for c := 0; c < channels; c++ {
+				v64 := r.Uint64()
+				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
+				base = int(int8(base))
+				if mul != 0 {
+					mul *= 8
+				} else {
+					mul = 1
+				}
+				i := uint(15)
+				for x := bx * 4; x < bx*4+4; x++ {
+					for y := by * 4; y < by*4+4; y++ {
+						if x < width && y < height {
+							mod := modTbl[(v64>>(i*3))&7]
+							s11 := sint.Clamp(base*8+mod*mul, -1023, 1023)
+							var s16 int
+							if s11 >= 0 {
+								s16 = (s11 << 5) | (s11 >> 5)
+							} else {
+								s16 = -((-s11 << 5) | (-s11 >> 5))
+							}
+							k := 2*channels*(y*width+x) + c*2
+							dst[k+0] = byte(s16)
+							dst[k+1] = byte(s16 >> 8)
+						}
+						i--
 					}
 				}
 			}

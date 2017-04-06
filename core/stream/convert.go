@@ -16,9 +16,7 @@ package stream
 
 import (
 	"fmt"
-
 	"math"
-
 	"reflect"
 
 	"github.com/google/gapid/core/math/f16"
@@ -134,13 +132,17 @@ func (m *mapping) conv(count int) error {
 		return clone(count, m.dst, m.src)
 	case dstIsFloat && srcIsFloat:
 		return ftof(count, m.dst, m.src)
-	case dstIsInt && srcIsInt && s.IsNormalized():
-		if d.DataType.GetInteger().Bits > s.DataType.GetInteger().Bits {
-			return intExpand(count, m.dst, m.src)
+	case dstIsInt && srcIsInt:
+		if !s.IsNormalized() {
+			return intCast(count, m.dst, m.src)
 		}
-		return intCollapse(count, m.dst, m.src)
-	case dstIsInt && srcIsInt && !s.IsNormalized():
-		return intCast(count, m.dst, m.src)
+		// Source is normalized
+		if d.DataType.Signed == s.DataType.Signed {
+			if d.DataType.GetInteger().Bits > s.DataType.GetInteger().Bits {
+				return intExpand(count, m.dst, m.src)
+			}
+			return intCollapse(count, m.dst, m.src)
+		}
 	case dstIsFloat && srcIsInt:
 		if s.DataType.Signed {
 			return stof(count, m.dst, m.src)
@@ -151,9 +153,8 @@ func (m *mapping) conv(count int) error {
 			return ftos(count, m.dst, m.src)
 		}
 		return ftou(count, m.dst, m.src)
-	default:
-		return fmt.Errorf("Cannot convert from %v to %v", s, d)
 	}
+	return fmt.Errorf("Cannot convert from %v to %v", s, d)
 }
 
 // straight up copy.
@@ -232,7 +233,7 @@ func intExpand(count int, dst, src buf) error {
 func intCollapse(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	if dstTy.Signed != srcTy.Signed {
-		return nil // Cannot perform signed conversion
+		return fmt.Errorf("intCollapse cannot perform signed conversion")
 	}
 	dstBitsIncSign, srcBitsIncSign := dstTy.Bits(), srcTy.Bits()
 	dstBitsExcSign, srcBitsExcSign := dstTy.GetInteger().Bits, srcTy.GetInteger().Bits

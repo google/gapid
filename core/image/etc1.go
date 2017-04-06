@@ -20,30 +20,33 @@ import (
 )
 
 var (
-	ETC1_RGB8 = NewETC1_RGB8("ETC1_RGB8")
+	ETC1_RGB_U8_NORM = NewETC1_RGB_U8_NORM("ETC1_RGB_U8_NORM")
 )
 
-// NewETC1_RGB8 returns a format representing the ETC1_RGB8 block texture
+// NewETC1_RGB_U8_NORM returns a format representing the ETC1_RGB8 block texture
 // compression format.
-func NewETC1_RGB8(name string) *Format {
-	return &Format{name, &Format_Etc1Rgb8{&FmtETC1_RGB8{}}}
+func NewETC1_RGB_U8_NORM(name string) *Format {
+	return &Format{name, &Format_Etc1RgbU8Norm{&FmtETC1_RGB_U8_NORM{}}}
 }
 
-func (f *FmtETC1_RGB8) key() interface{} {
+func (f *FmtETC1_RGB_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC1_RGB8) size(w, h int) int {
+func (*FmtETC1_RGB_U8_NORM) size(w, h int) int {
 	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (*FmtETC1_RGB8) check(d []byte, w, h int) error {
-	return checkSize(d, sint.Max(sint.AlignUp(w, 4), 4), sint.Max(sint.AlignUp(h, 4), 4), 4)
+func (f *FmtETC1_RGB_U8_NORM) check(d []byte, w, h int) error {
+	return checkSize(d, f, w, h)
 }
-func (*FmtETC1_RGB8) channels() []stream.Channel {
+func (*FmtETC1_RGB_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
 }
 
 func init() {
-	RegisterConverter(ETC1_RGB8, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return Convert(src, width, height, ETC2_RGB8, RGBA_U8_NORM)
+	RegisterConverter(ETC1_RGB_U8_NORM, RGB_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return Convert(src, width, height, ETC2_RGB_U8_NORM, RGB_U8_NORM)
+	})
+	RegisterConverter(ETC1_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
+		return Convert(src, width, height, ETC2_RGB_U8_NORM, RGBA_U8_NORM)
 	})
 }

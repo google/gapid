@@ -21,9 +21,6 @@ func (c Component) Format(f fmt.State, r rune) {
 	fmt.Fprint(f, c.Channel)
 	fmt.Fprint(f, "_")
 	fmt.Fprint(f, c.DataType)
-	if c.IsNormalized() {
-		fmt.Fprint(f, "_NORM")
-	}
 	if c.Sampling != nil {
 		if s := fmt.Sprint(c.Sampling); len(s) > 0 {
 			fmt.Fprint(f, "_", s)
