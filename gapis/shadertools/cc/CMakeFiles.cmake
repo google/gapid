@@ -25,6 +25,8 @@ set(files
     libmanager.h
     name_manager.cpp
     name_manager.h
+    spirv2glsl.cpp
+    spirv2glsl.h
     spv_manager.cpp
     spv_manager.h
 )

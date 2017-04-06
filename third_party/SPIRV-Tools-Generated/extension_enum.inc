@@ -1,0 +1,12 @@
+kSPV_AMD_gcn_shader,
+kSPV_KHR_16bit_storage,
+kSPV_KHR_device_group,
+kSPV_KHR_multiview,
+kSPV_KHR_shader_ballot,
+kSPV_KHR_shader_draw_parameters,
+kSPV_KHR_subgroup_vote,
+kSPV_NVX_multiview_per_view_attributes,
+kSPV_NV_geometry_shader_passthrough,
+kSPV_NV_sample_mask_override_coverage,
+kSPV_NV_stereo_view_rendering,
+kSPV_NV_viewport_array2

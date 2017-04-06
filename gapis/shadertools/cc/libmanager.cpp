@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "third_party/khronos/SPIRV-Cross/spirv_glsl.hpp"
-#include "third_party/khronos/glslang/SPIRV/GlslangToSpv.h"
-#include "third_party/khronos/glslang/SPIRV/disassemble.h"
-#include "third_party/khronos/glslang/glslang/Public/ShaderLang.h"
+#include "third_party/glslang/SPIRV/GlslangToSpv.h"
+#include "third_party/glslang/SPIRV/disassemble.h"
+#include "third_party/glslang/glslang/Public/ShaderLang.h"
 
 #include "spv_manager.h"
 #include "libmanager.h"
+#include "spirv2glsl.h"
 
 #include <cstring>
 #include <iostream>
@@ -226,15 +226,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
     strcpy(result->disassembly_string, tmp.c_str());
   }
 
-  spirv_cross::CompilerGLSL glsl(std::move(spirv_new));
-  spirv_cross::CompilerGLSL::Options cross_options;
-  // use 330 for desktop environment
-  cross_options.version = 330;
-  cross_options.es = false;
-  cross_options.force_temporary = false;
-  cross_options.vertex.fixup_clipspace = false;
-  glsl.set_options(cross_options);
-  std::string source = glsl.compile().c_str();
+  std::string source = spirv2glsl(std::move(spirv_new));
 
   result->source_code = new char[source.length() + 1];
   strcpy(result->source_code, source.c_str());
@@ -286,7 +278,7 @@ const char* getDisassembleText(uint32_t* spirv_binary, size_t length) {
     spirv_vec[i] = spirv_binary[i];
   }
 
-  spvtools::SpvTools tools(SPV_ENV_VULKAN_1_0);
+  spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_0);
   std::string disassembly;
   const auto result = tools.Disassemble(
     spirv_vec, &disassembly,
@@ -314,7 +306,7 @@ spirv_binary_t* assembleToBinary(const char* text) {
   spirv_binary_t* binary = new spirv_binary_t{nullptr, 0};
   std::string disassembly(text);
   std::vector<uint32_t> words;
-  spvtools::SpvTools tools(SPV_ENV_VULKAN_1_0);
+  spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_0);
   const auto result = tools.Assemble(disassembly, &words);
   if (result != SPV_SUCCESS) {
     return nullptr;
