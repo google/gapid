@@ -280,7 +280,7 @@
   bool Vulkan::toggleVirtualSwapchainReturnAcquiredImage(Stack* stack) {
     auto pSwapchain = stack->pop<VkSwapchainKHR*>();
     if (stack->isValid()) {
-      GAPID_INFO("toggleVirtualSwapchainReturnAcquiredImage(%" PRIu32 ", %p)", pSwapchain);
+      GAPID_INFO("toggleVirtualSwapchainReturnAcquiredImage(%p)", pSwapchain);
       auto virtual_swapchain = reinterpret_cast<swapchain::VirtualSwapchain*>(*pSwapchain);
       virtual_swapchain->SetAlwaysGetAcquiredImage(true);
       return true;
