@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/google/gapid/core/log"
 )
@@ -42,6 +43,9 @@ func RemoveAll(f Path) error {
 
 // Symlink creates a new symbolic-link at link to target.
 func Symlink(link, target Path) error {
+	if relPath, err := filepath.Rel(link.Parent().value, target.value); err == nil {
+		return os.Symlink(relPath, link.value)
+	}
 	return os.Symlink(target.value, link.value)
 }
 
