@@ -18,8 +18,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/SPIRV-Tools/source)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/SPIRV-Tools-Generated)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/glslang/OGLCompilersDLL)
 
-glob_all_dirs()
-
 glob(sources
   PATH
     third_party/SPIRV-Cross
