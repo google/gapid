@@ -77,11 +77,6 @@ func layout() (out FileLayout) {
 	return unknownLayout{}
 }
 
-// File returns the path to the specified file for the given ABI.
-func File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
-	return layout().File(ctx, abi, name)
-}
-
 // Strings returns the path to the binary string table.
 func Strings(ctx context.Context) (file.Path, error) {
 	return layout().Strings(ctx)
@@ -90,4 +85,14 @@ func Strings(ctx context.Context) (file.Path, error) {
 // GapidApk returns the path to the gapid.apk corresponding to the given abi.
 func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return layout().GapidApk(ctx, abi)
+}
+
+// Library returns the path to the requested library.
+func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
+	return layout().Library(ctx, lib)
+}
+
+// Json returns the path to the Vulkan layer JSON definition for the given library.
+func Json(ctx context.Context, lib LibraryType) (file.Path, error) {
+	return layout().Json(ctx, lib)
 }

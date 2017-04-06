@@ -34,7 +34,6 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/gapii/client"
@@ -90,25 +89,13 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
 	cleanup := func() {}
-	suffix := ".so"
-	localABI := device.UnknownABI
-	switch runtime.GOOS {
-	case "linux":
-		localABI = device.LinuxX86_64
-	case "windows":
-		localABI = device.WindowsX86_64
-		suffix = ".dll"
-	default:
-		return cleanup, fmt.Errorf("Unsupported OS for local tracing")
-	}
 
-	libVkLayerGraphicsSpy, err := layout.File(ctx, localABI, "libVkLayerGraphicsSpy"+suffix)
+	graphcisSpy, err := layout.Library(ctx, layout.LibGraphicsSpy)
 	if err != nil {
 		return cleanup, err
 	}
 
-	// TODO (qining): library name may change for different OS/ABI
-	libgapii, err := layout.File(ctx, localABI, "libgapii"+suffix)
+	graphicsSpyJson, err := layout.Json(ctx, layout.LibGraphicsSpy)
 	if err != nil {
 		return cleanup, err
 	}
@@ -117,8 +104,7 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 		AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
 		AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
 	if runtime.GOOS == "windows" {
-		sourceFile := libVkLayerGraphicsSpy.Parent().System() + "\\GraphicsSpyLayer.json"
-		sourceContent, err := ioutil.ReadFile(sourceFile)
+		sourceContent, err := ioutil.ReadFile(graphicsSpyJson.System())
 		if err != nil {
 			return cleanup, err
 		}
@@ -129,13 +115,13 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 		cleanup = func() {
 			os.RemoveAll(tempdir)
 		}
-		fixedContent := strings.Replace(string(sourceContent[:len(sourceContent)]), "./libgapii.so", libgapii.System(), 1)
+		fixedContent := strings.Replace(string(sourceContent[:len(sourceContent)]), "./libgapii.so", graphcisSpy.System(), 1)
 		fixedContent = strings.Replace(fixedContent, "\\", "\\\\", -1)
 		ioutil.WriteFile(tempdir+"\\GraphicsSpyLayer.json", []byte(fixedContent), 0644)
 		env.AddPathStart("VK_LAYER_PATH", tempdir)
 	} else {
-		env.Set("LD_PRELOAD", libgapii.System()).
-			AddPathStart("VK_LAYER_PATH", libVkLayerGraphicsSpy.Parent().System())
+		env.Set("LD_PRELOAD", graphcisSpy.System()).
+			AddPathStart("VK_LAYER_PATH", graphicsSpyJson.Parent().System())
 	}
 
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
