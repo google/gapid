@@ -105,10 +105,12 @@ bool Context::interpret() {
             if (api_index == gapir::Vulkan::INDEX) {
                 // There is only one vulkan "renderer" so we create it when requested.
                 mBoundVulkanRenderer = VulkanRenderer::create();
-                Api* api = mBoundVulkanRenderer->api();
-                interpreter->setRendererFunctions(api->index(), &api->mFunctions);
-                GAPID_INFO("Bound Vulkan renderer");
-                return true;
+                if (mBoundVulkanRenderer->isValid()) {
+                    Api* api = mBoundVulkanRenderer->api();
+                    interpreter->setRendererFunctions(api->index(), &api->mFunctions);
+                    GAPID_INFO("Bound Vulkan renderer");
+                    return true;
+                }
             }
             return false;
         };
