@@ -68,6 +68,8 @@ public:
 
     // Returns the version of the renderer's graphics context.
     virtual const char* version() = 0;
+
+    virtual bool isValid() { return true; }
 };
 
 inline GlesRenderer::Backbuffer::Format::Format()

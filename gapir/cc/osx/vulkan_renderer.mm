@@ -27,6 +27,7 @@ public:
 
     virtual Api* api() override;
 
+    virtual bool isValid() override;
 private:
     Vulkan mApi;
 };
@@ -41,10 +42,15 @@ Api* VulkanRendererImpl::api() {
   return &mApi;
 }
 
+bool VulkanRendererImpl::isValid() {
+ return mApi.mFunctionStubs.vkCreateInstance != nullptr;
+}
+
 } // anonymous namespace
 
 VulkanRenderer* VulkanRenderer::create() {
     return new VulkanRendererImpl();
 }
+
 
 }  // namespace gapir

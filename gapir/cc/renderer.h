@@ -32,6 +32,8 @@ public:
     virtual Api* api() = 0;
 
     template <typename T> inline T* getApi();
+
+    virtual bool isValid() = 0;
 };
 
 template <typename T>

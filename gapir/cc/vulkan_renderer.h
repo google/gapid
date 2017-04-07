@@ -30,6 +30,9 @@ public:
 
     // Returns the renderer's API.
     virtual Api* api() = 0;
+
+    // Return true if this is a valid api for this system.
+    virtual bool isValid() = 0;
 };
 
 }  // namespace gapir
