@@ -26,18 +26,18 @@ func (s *State) getContext() *Context {
 
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (width, height uint32, ifmt imgfmt, err error) {
+func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
 	c := s.getContext()
 	if c == nil {
-		return 0, 0, imgfmt{}, fmt.Errorf("No context bound")
+		return 0, 0, 0, fmt.Errorf("No context bound")
 	}
 	if !c.Info.Initialized {
-		return 0, 0, imgfmt{}, fmt.Errorf("Context not initialized")
+		return 0, 0, 0, fmt.Errorf("Context not initialized")
 	}
 
 	framebuffer, ok := c.Instances.Framebuffers[c.BoundReadFramebuffer]
 	if !ok {
-		return 0, 0, imgfmt{}, fmt.Errorf("No GL_FRAMEBUFFER bound")
+		return 0, 0, 0, fmt.Errorf("No GL_FRAMEBUFFER bound")
 	}
 
 	var a FramebufferAttachment
@@ -55,11 +55,11 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 	case gfxapi.FramebufferAttachment_Stencil:
 		a = framebuffer.StencilAttachment
 	default:
-		return 0, 0, imgfmt{}, fmt.Errorf("Framebuffer attachment %v unsupported by gles", att)
+		return 0, 0, 0, fmt.Errorf("Framebuffer attachment %v unsupported by gles", att)
 	}
 
 	if a.ObjectType == GLenum_GL_NONE {
-		return 0, 0, imgfmt{}, fmt.Errorf("%s is not bound", att)
+		return 0, 0, 0, fmt.Errorf("%s is not bound", att)
 	}
 
 	switch a.ObjectType {
@@ -67,30 +67,29 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		id := TextureId(a.ObjectName)
 		t, ok := c.Instances.Textures[id]
 		if !ok {
-			return 0, 0, imgfmt{}, fmt.Errorf("Invalid texture attachment %v", id)
+			return 0, 0, 0, fmt.Errorf("Invalid texture attachment %v", id)
 		}
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_2D:
 			l := t.Texture2D[a.TextureLevel]
-			fmt := newImgfmtFromUnsizedFormat(t.TexelFormat, t.TexelType)
+			fmt := getSizedFormat(l.DataFormat, l.DataType)
 			return uint32(l.Width), uint32(l.Height), fmt, nil
 		case GLenum_GL_TEXTURE_CUBE_MAP:
 			l := t.Cubemap[a.TextureLevel]
 			f := l.Faces[a.TextureCubeMapFace]
-			fmt := newImgfmtFromUnsizedFormat(t.TexelFormat, t.TexelType)
+			fmt := getSizedFormat(f.DataFormat, f.DataType)
 			return uint32(f.Width), uint32(f.Height), fmt, nil
 		default:
-			return 0, 0, imgfmt{}, fmt.Errorf("Unknown texture kind %v", t.Kind)
+			return 0, 0, 0, fmt.Errorf("Unknown texture kind %v", t.Kind)
 		}
 	case GLenum_GL_RENDERBUFFER:
 		id := RenderbufferId(a.ObjectName)
 		r, ok := c.Instances.Renderbuffers[id]
 		if !ok {
-			return 0, 0, imgfmt{}, fmt.Errorf("Renderbuffer %v not found", id)
+			return 0, 0, 0, fmt.Errorf("Renderbuffer %v not found", id)
 		}
-		ifmt := newImgfmtFromSizedFormat(r.InternalFormat)
-		return uint32(r.Width), uint32(r.Height), ifmt, nil
+		return uint32(r.Width), uint32(r.Height), r.InternalFormat, nil
 	default:
-		return 0, 0, imgfmt{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.ObjectType)
+		return 0, 0, 0, fmt.Errorf("Unknown framebuffer attachment type %T", a.ObjectType)
 	}
 }

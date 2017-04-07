@@ -1000,7 +1000,7 @@ cmd void glReadPixels(GLint   x,
 
   ctx := GetContext()
   if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
-    requiredSize := imageSize(as!u32(width), as!u32(height), format, type)
+    requiredSize := uncompressedImageSize(width, height, format, type)
     write(data[0:requiredSize])
   }
 }
@@ -1022,7 +1022,7 @@ sub void ReadnPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum for
   checkReadPixels(width, height, format, type)
   ctx := GetContext()
   if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
-    requiredSize := imageSize(as!u32(width), as!u32(height), format, type)
+    requiredSize := uncompressedImageSize(width, height, format, type)
     if as!GLsizei(requiredSize) > bufSize { glErrorInvalidOperation() }
     write(data[0:requiredSize])
   }

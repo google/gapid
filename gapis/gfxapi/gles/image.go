@@ -21,27 +21,6 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
-type imgfmt struct {
-	// "Internal format" with explicit memory size. Includes compressed formats.
-	// (RGB565, RGBA8, R16UI, DEPTH24_STENCIL8, COMPRESSED_SRGB8_ETC2, ...)
-	sizedFormat GLenum
-	// "Base format" which specifies just the channels. Includes the _INTEGER suffix.
-	// (RGB, RGBA, RED, DEPTH_STENCIL, RGB_INTEGER, ...)
-	unsizedFormat GLenum
-	// Type of either one channel or the whole pixel. NONE for compressed formats.
-	// (UNSIGNED_BYTE, FLOAT, UNSIGNED_SHORT_5_6_5...)
-	ty GLenum
-}
-
-func newImgfmtFromUnsizedFormat(unsizedFormat, ty GLenum) imgfmt {
-	return imgfmt{getSizedFormat(unsizedFormat, ty), unsizedFormat, ty}
-}
-
-func newImgfmtFromSizedFormat(sizedFormat GLenum) imgfmt {
-	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
-	return imgfmt{sizedFormat, unsizedFormat, ty}
-}
-
 // getSizedFormat returns the sized internal format
 // (renderbuffer storage format) for the given base format and component type.
 func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
@@ -90,6 +69,9 @@ func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
 // given sized internal format (renderbuffer storage format).
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
 	info, _ := subGetSizedFormatInfo(nil, nil, nil, nil, nil, nil, sizedFormat)
+	if info.SizedFormat == GLenum_GL_NONE {
+		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
+	}
 	return info.UnsizedFormat, info.DataType
 }
 
@@ -112,16 +94,41 @@ func getSizedInternalFormatFromTypeCount(componentType GLenum, componentCount ui
 	return sizedInternalFormats8[componentCount-1]
 }
 
-// asImage returns the *image.Format for the given imgfmt, or panics if the
-// format cannot be matched.
+// getImageFormatOrPanic returns the *image.Format for the given
+// format-type tuple, or panics if the format cannot be matched.
 // TODO: We shouldn't be panicing in this package.
 // Handle errors gracefully and remove.
-func (f imgfmt) asImageOrPanic() *image.Format {
-	i, e := f.asImage()
+func getImageFormatOrPanic(format, ty GLenum) *image.Format {
+	i, e := getImageFormat(format, ty)
 	if e != nil {
 		panic(e)
 	}
 	return i
+}
+
+// getImageFormat returns the *image.Format for the given format-type tuple.
+// The tuple must be in one of the following two forms:
+//   (unsizedFormat, ty) - Uncompressed data.
+//   (sizedFormat, NONE) - Compressed data.
+//   (NONE, NONE) - Uninitialized content.
+// Sized uncompressed format (e.g. GL_RGB565) is not a valid input.
+func getImageFormat(format, ty GLenum) (*image.Format, error) {
+	if format != GLenum_GL_NONE {
+		if ty != GLenum_GL_NONE {
+			imgfmt, _ := getUncompressedStreamFormat(format, ty)
+			if imgfmt != nil {
+				return image.NewUncompressed(fmt.Sprintf("%v, %v", format, ty), imgfmt), nil
+			}
+		} else {
+			imgfmt, _ := getCompressedImageFormat(format)
+			if imgfmt != nil {
+				return imgfmt, nil
+			}
+		}
+	} else {
+		return image.NewUncompressed("<uninitialized>", &stream.Format{}), nil
+	}
+	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", format, ty)
 }
 
 // getStreamChannels converts GL channel enum to stream.Channel array.
@@ -270,115 +277,71 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 	return format, nil
 }
 
-// asImage returns the *image.Format for the given imgfmt.
-func (f imgfmt) asImage() (*image.Format, error) {
-	ty := f.ty
-	switch f.unsizedFormat {
-	case GLenum_GL_RGB:
-		switch ty {
-		case GLenum_GL_ATC_RGB_AMD:
-			return image.NewATC_RGB_AMD("GL_ATC_RGB_AMD"), nil
-		case GLenum_GL_ETC1_RGB8_OES:
-			return image.NewETC1_RGB_U8_NORM("GL_ETC1_RGB8_OES"), nil
-		case GLenum_GL_COMPRESSED_RGB8_ETC2:
-			return image.NewETC2_RGB_U8_NORM("GL_COMPRESSED_RGB8_ETC2"), nil
-		case GLenum_GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-			return image.NewS3_DXT1_RGB("GL_COMPRESSED_RGB_S3TC_DXT1_EXT"), nil
-		}
-	case GLenum_GL_RGBA:
-		switch ty {
-		// ATC
-		case GLenum_GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:
-			return image.NewATC_RGBA_EXPLICIT_ALPHA_AMD("GL_ATC_RGBA_EXPLICIT_ALPHA_AMD"), nil
-		case GLenum_GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:
-			return image.NewATC_RGBA_INTERPOLATED_ALPHA_AMD("GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD"), nil
+// getCompressedImageFormat returns *image.Format for the given compressed format.
+func getCompressedImageFormat(format GLenum) (*image.Format, error) {
+	switch format {
+	// ETC1
+	case GLenum_GL_ETC1_RGB8_OES:
+		return image.NewETC1_RGB_U8_NORM("GL_ETC1_RGB8_OES"), nil
 
-		// ETC
-		case GLenum_GL_COMPRESSED_R11_EAC:
-			return image.NewETC2_R_U11_NORM("GL_COMPRESSED_R11_EAC"), nil
-		case GLenum_GL_COMPRESSED_SIGNED_R11_EAC:
-			return image.NewETC2_R_S11_NORM("GL_COMPRESSED_SIGNED_R11_EAC"), nil
-		case GLenum_GL_COMPRESSED_RG11_EAC:
-			return image.NewETC2_RG_U11_NORM("GL_COMPRESSED_RG11_EAC"), nil
-		case GLenum_GL_COMPRESSED_SIGNED_RG11_EAC:
-			return image.NewETC2_RG_S11_NORM("GL_COMPRESSED_SIGNED_RG11_EAC"), nil
-		case GLenum_GL_COMPRESSED_RGB8_ETC2:
-			return image.NewETC2_RGB_U8_NORM("GL_COMPRESSED_RGB8_ETC2"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ETC2:
-			return image.NewETC2_SRGB_U8_NORM("GL_COMPRESSED_SRGB8_ETC2"), nil
-		case GLenum_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:
-			return image.NewETC2_RGBA_U8U8U8U1_NORM("GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:
-			return image.NewETC2_SRGBA_U8U8U8U1_NORM("GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2"), nil
-		case GLenum_GL_COMPRESSED_RGBA8_ETC2_EAC:
-			return image.NewETC2_RGBA_U8_NORM("GL_COMPRESSED_RGBA8_ETC2_EAC"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:
-			return image.NewETC2_SRGBA_U8_NORM("GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC"), nil
+	// ASTC
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_4x4_KHR:
+		return image.NewASTC_RGBA_4x4("GLenum_COMPRESSED_RGBA_ASTC_4x4_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_5x4_KHR:
+		return image.NewASTC_RGBA_5x4("GLenum_COMPRESSED_RGBA_ASTC_5x4_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_5x5_KHR:
+		return image.NewASTC_RGBA_5x5("GLenum_COMPRESSED_RGBA_ASTC_5x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_6x5_KHR:
+		return image.NewASTC_RGBA_6x5("GLenum_COMPRESSED_RGBA_ASTC_6x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_6x6_KHR:
+		return image.NewASTC_RGBA_6x6("GLenum_COMPRESSED_RGBA_ASTC_6x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_8x5_KHR:
+		return image.NewASTC_RGBA_8x5("GLenum_COMPRESSED_RGBA_ASTC_8x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_8x6_KHR:
+		return image.NewASTC_RGBA_8x6("GLenum_COMPRESSED_RGBA_ASTC_8x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_8x8_KHR:
+		return image.NewASTC_RGBA_8x8("GLenum_COMPRESSED_RGBA_ASTC_8x8_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_10x5_KHR:
+		return image.NewASTC_RGBA_10x5("GLenum_COMPRESSED_RGBA_ASTC_10x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_10x6_KHR:
+		return image.NewASTC_RGBA_10x6("GLenum_COMPRESSED_RGBA_ASTC_10x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_10x8_KHR:
+		return image.NewASTC_RGBA_10x8("GLenum_COMPRESSED_RGBA_ASTC_10x8_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_10x10_KHR:
+		return image.NewASTC_RGBA_10x10("GLenum_COMPRESSED_RGBA_ASTC_10x10_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_12x10_KHR:
+		return image.NewASTC_RGBA_12x10("GLenum_COMPRESSED_RGBA_ASTC_12x10_KHR"), nil
+	case GLenum_GL_COMPRESSED_RGBA_ASTC_12x12_KHR:
+		return image.NewASTC_RGBA_12x12("GLenum_COMPRESSED_RGBA_ASTC_12x12_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_4x4("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_5x4("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_5x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_6x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_6x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_8x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_8x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_8x8("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_10x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_10x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_10x8("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_10x10("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_12x10("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR"), nil
+	case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR:
+		return image.NewASTC_SRGB8_ALPHA8_12x12("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR"), nil
 
-		// S3TC
-		case GLenum_GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-			return image.NewS3_DXT1_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT1_EXT"), nil
-		case GLenum_GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-			return image.NewS3_DXT3_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT3_EXT"), nil
-		case GLenum_GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-			return image.NewS3_DXT5_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT5_EXT"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_4x4_KHR:
-			return image.NewASTC_RGBA_4x4("GLenum_COMPRESSED_RGBA_ASTC_4x4_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_5x4_KHR:
-			return image.NewASTC_RGBA_5x4("GLenum_COMPRESSED_RGBA_ASTC_5x4_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_5x5_KHR:
-			return image.NewASTC_RGBA_5x5("GLenum_COMPRESSED_RGBA_ASTC_5x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_6x5_KHR:
-			return image.NewASTC_RGBA_6x5("GLenum_COMPRESSED_RGBA_ASTC_6x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_6x6_KHR:
-			return image.NewASTC_RGBA_6x6("GLenum_COMPRESSED_RGBA_ASTC_6x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_8x5_KHR:
-			return image.NewASTC_RGBA_8x5("GLenum_COMPRESSED_RGBA_ASTC_8x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_8x6_KHR:
-			return image.NewASTC_RGBA_8x6("GLenum_COMPRESSED_RGBA_ASTC_8x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_8x8_KHR:
-			return image.NewASTC_RGBA_8x8("GLenum_COMPRESSED_RGBA_ASTC_8x8_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_10x5_KHR:
-			return image.NewASTC_RGBA_10x5("GLenum_COMPRESSED_RGBA_ASTC_10x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_10x6_KHR:
-			return image.NewASTC_RGBA_10x6("GLenum_COMPRESSED_RGBA_ASTC_10x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_10x8_KHR:
-			return image.NewASTC_RGBA_10x8("GLenum_COMPRESSED_RGBA_ASTC_10x8_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_10x10_KHR:
-			return image.NewASTC_RGBA_10x10("GLenum_COMPRESSED_RGBA_ASTC_10x10_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_12x10_KHR:
-			return image.NewASTC_RGBA_12x10("GLenum_COMPRESSED_RGBA_ASTC_12x10_KHR"), nil
-		case GLenum_GL_COMPRESSED_RGBA_ASTC_12x12_KHR:
-			return image.NewASTC_RGBA_12x12("GLenum_COMPRESSED_RGBA_ASTC_12x12_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_4x4("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_5x4("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_5x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_6x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_6x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_8x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_8x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_8x8("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_10x5("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_10x6("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_10x8("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_10x10("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_12x10("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR"), nil
-		case GLenum_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR:
-			return image.NewASTC_SRGB8_ALPHA8_12x12("GLenum_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR"), nil
-		}
 	// ATC
 	case GLenum_GL_ATC_RGB_AMD:
 		return image.NewATC_RGB_AMD("GL_ATC_RGB_AMD"), nil
@@ -420,9 +383,5 @@ func (f imgfmt) asImage() (*image.Format, error) {
 		return image.NewS3_DXT5_RGBA("GL_COMPRESSED_RGBA_S3TC_DXT5_EXT"), nil
 	}
 
-	if format, err := getUncompressedStreamFormat(f.unsizedFormat, f.ty); err == nil {
-		return image.NewUncompressed(fmt.Sprint(format), format), nil
-	}
-
-	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", f.unsizedFormat, ty)
+	return nil, fmt.Errorf("Unsupported compressed format: %s", format)
 }
