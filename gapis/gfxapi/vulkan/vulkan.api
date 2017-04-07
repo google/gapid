@@ -3043,6 +3043,28 @@ cmd void vkGetDeviceMemoryCommitment(
     VkDeviceSize*  pCommittedMemoryInBytes) {
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateBufferData(
+    VkDevice device,
+    VkBuffer buffer,
+    u32 hostBufferMemoryIndex,
+    VkQueue lastBoundQueue,
+    void* data) {
+  read(as!u8*(data)[0:Buffers[buffer].Info.Size])
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateBindBufferMemory(
+    VkDevice       device,
+    VkBuffer       buffer,
+    VkDeviceMemory memory,
+    VkDeviceSize   offset) {
+}
+
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory(
     VkDevice       device,
@@ -3053,6 +3075,30 @@ cmd VkResult vkBindBufferMemory(
   Buffers[buffer].MemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
   return ?
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateImageData(
+    VkDevice device,
+    VkImage image,
+    VkImageLayout lastLayout,
+    u32 hostMemoryIndex,
+    VkQueue lastBoundQueue,
+    VkDeviceSize dataSize,
+    void* data) {
+  read(as!u8*(data)[0:dataSize])
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateBindImageMemory(
+    VkDevice device,
+    VkImage image,
+    VkDeviceMemory memory,
+    VkDeviceSize offset) {
 }
 
 @indirect("VkDevice")
@@ -3377,20 +3423,6 @@ cmd void RecreateBuffer(
   write(pBuffer[0:1])
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateBindAndFillBufferMemory(
-    VkDevice device,
-    VkBuffer buffer,
-    VkDeviceMemory memory,
-    u32 hostBufferMemoryIndex,
-    VkQueue lastBoundQueue,
-    VkDeviceSize offset,
-    void* data) {
-  read(as!u8*(data)[0:Buffers[buffer].Info.Size])
-}
-
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -3545,22 +3577,6 @@ cmd void RecreateImage(
   }
 
   write(pImage[0:1])
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateBindAndFillImageMemory(
-    VkDevice device,
-    VkImage image,
-    VkImageLayout lastLayout,
-    VkDeviceMemory memory,
-    u32 hostMemoryIndex,
-    VkQueue lastBoundQueue,
-    VkDeviceSize offset,
-    VkDeviceSize dataSize,
-    void* data) {
-  read(as!u8*(data)[0:dataSize])
 }
 
 @threadSafety("system")

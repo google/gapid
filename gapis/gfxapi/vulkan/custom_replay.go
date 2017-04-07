@@ -1369,16 +1369,18 @@ func (a *RecreateImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.
 	return nil
 }
 
-func (a *RecreateBindAndFillImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
-
+func (a *RecreateBindImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if a.Memory != VkDeviceMemory(0) {
 		if err := NewVkBindImageMemory(a.Device, a.Image, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory[memory.ApplicationPool])
 	imageObject := GetState(s).Images[a.Image]
 	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 		queueObject := GetState(s).Queues[a.LastBoundQueue]
@@ -1529,24 +1531,26 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder
 	return nil
 }
 
-func (a *RecreateBindAndFillBufferMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
-
-	bufferObject := GetState(s).Buffers[a.Buffer]
-	bufferInfo := bufferObject.Info
-
+func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if a.Memory != VkDeviceMemory(0) {
 		if err := NewVkBindBufferMemory(a.Device, a.Buffer, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (a *RecreateBufferData) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory[memory.ApplicationPool])
 
 	// If we have data to fill this buffer with:
 	if a.Data != NewVoidᵖ(0) {
 		queue := a.LastBoundQueue
 		queueObject := GetState(s).Queues[queue]
 		device := queueObject.Device
+		bufferObject := GetState(s).Buffers[a.Buffer]
+		bufferInfo := bufferObject.Info
 
 		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, s, b, device, bufferInfo.Size, a.HostBufferMemoryIndex)
 		if err != nil {
