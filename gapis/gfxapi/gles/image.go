@@ -35,6 +35,22 @@ func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
 		return getSizedInternalFormatFromTypeCount(componentType, 3)
 	case GLenum_GL_RGBA, GLenum_GL_BGRA:
 		return getSizedInternalFormatFromTypeCount(componentType, 4)
+	case GLenum_GL_DEPTH_STENCIL:
+		switch componentType {
+		case GLenum_GL_FLOAT, GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
+			return GLenum_GL_DEPTH32F_STENCIL8
+		default:
+			return GLenum_GL_DEPTH24_STENCIL8
+		}
+	case GLenum_GL_DEPTH_COMPONENT:
+		switch componentType {
+		case GLenum_GL_FLOAT, GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
+			return GLenum_GL_DEPTH_COMPONENT32F
+		default:
+			return GLenum_GL_DEPTH_COMPONENT24
+		}
+	case GLenum_GL_STENCIL_INDEX:
+		return GLenum_GL_STENCIL_INDEX8
 
 	// Luminance/Alpha is not supported on desktop so convert it to R/G. (enums defined in EXT_texture_storage)
 	case GLenum_GL_LUMINANCE, GLenum_GL_ALPHA:
