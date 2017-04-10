@@ -87,6 +87,12 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	case DisableTests:
 		args = append(args, "-DNO_TESTS=1")
 	}
+	if options.BuildNum > 0 {
+		args = append(args, fmt.Sprintf("-DBUILD_NUMBER=%d", options.BuildNum))
+	}
+	if options.BuildSha != "" {
+		args = append(args, "-DBUILD_SHA="+options.BuildSha)
+	}
 	args = append(args, srcRoot.System())
 	run(ctx, cfg.out(), cfg.CMakePath, env, args...)
 }
