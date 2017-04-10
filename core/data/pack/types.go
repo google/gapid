@@ -59,11 +59,11 @@ func NewTypes() *Types {
 }
 
 // Get returns a type given it's tag index.
-func (t *Types) Get(index uint64) Type {
+func (t *Types) Get(index uint64) (Type, bool) {
 	if index < t.Count() {
-		return *t.entries[index]
+		return *t.entries[index], true
 	}
-	return Type{}
+	return Type{}, false
 }
 
 // GetName returns a type given it's cannocial type name.

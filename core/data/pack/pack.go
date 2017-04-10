@@ -14,7 +14,11 @@
 
 package pack
 
-import "github.com/google/gapid/core/fault"
+import (
+	"fmt"
+
+	"github.com/google/gapid/core/fault"
+)
 
 const (
 	// Magic is the file magic that prefixes all pack files.
@@ -22,9 +26,6 @@ const (
 
 	// ErrIncorrectMagic is the error returned when the file header is not matched.
 	ErrIncorrectMagic = fault.Const("Incorrect pack magic header")
-	// ErrUnknownVersion is the error returned when the header version is one this
-	// package cannot handle.
-	ErrUnknownVersion = fault.Const("Unknown pack file version")
 
 	// VersionMajor is the curent major version the package writes.
 	VersionMajor = 1
@@ -35,6 +36,16 @@ const (
 	maxVarintSize    = 10
 	specialSection   = 0
 )
+
+type (
+	// ErrUnknownVersion is the error returned when the header version is one this
+	// package cannot handle.
+	ErrUnknownVersion struct{ Version *Version }
+)
+
+func (e ErrUnknownVersion) Error() string {
+	return fmt.Sprintf("Unknown pack file version: %+v", e.Version)
+}
 
 var (
 	magicBytes = []byte(Magic)
