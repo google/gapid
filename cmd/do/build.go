@@ -43,6 +43,7 @@ func doBuild(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	runCMake := options.Rescan || !cfg.cacheFile().Exists()
 	if runCMake {
 		doCMake(ctx, cfg, options, targets...)
+		doGenerate(ctx, cfg)
 	}
 	if len(targets) == 0 || options.Install {
 		targets = append(targets, "install")
@@ -88,6 +89,10 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	}
 	args = append(args, srcRoot.System())
 	run(ctx, cfg.out(), cfg.CMakePath, env, args...)
+}
+
+func doGenerate(ctx context.Context, cfg Config) {
+	doNinja(ctx, cfg, BuildOptions{}, "generate")
 }
 
 func doNinja(ctx context.Context, cfg Config, options BuildOptions, targets ...string) {
