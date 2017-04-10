@@ -39,20 +39,17 @@ var (
 	_ = replay.Support(api{})
 )
 
-// CanReplayOnLocalAndroidDevice returns true if the API can be replayed on a
-// locally connected Android device.
-func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return true }
-
-// CanReplayOn returns true if the API can be replayed on the specified device.
-// The given layout is the memory_layout that was recorded in the capture
-// Vulkan can currently only replay on Android devices.
-func (a api) CanReplayOn(ctx context.Context, i *device.Instance, l *device.MemoryLayout) bool {
+// GetReplayPriority returns a uint32 representing the preference for
+// replaying this trace on the given device.
+// A lower number represents a higher priority, and Zero represents
+// an inability for the trace to be replayed on the given device.
+func (a api) GetReplayPriority(ctx context.Context, i *device.Instance, l *device.MemoryLayout) uint32 {
 	for _, abi := range i.GetConfiguration().GetABIs() {
 		if *abi.GetMemoryLayout() == *l {
-			return true
+			return 1
 		}
 	}
-	return false
+	return 0
 }
 
 // makeAttachementReadable is a transformation marking all color/depth/stencil attachment
