@@ -263,7 +263,7 @@ extern void InstallGapiiInterceptor(glw::Functions* gl) {
     gapii::CallObserver observer(n);
     n->lock(&observer, "<deqp>");
     auto call = [] {};
-    std::shared_ptr<gapii::Context> ctx = n->subCreateContext(&observer, call);
+    std::shared_ptr<gapii::Context> ctx = n->subCreateContext(&observer, call, nullptr);
     n->subSetContext(&observer, call, ctx);
     n->subApplyStaticContextState(&observer, call, ctx, staticState);
     n->subApplyDynamicContextState(&observer, call, ctx, dynamicState);

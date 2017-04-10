@@ -297,10 +297,10 @@ class Rect {
 type GLuint               UniformIndex
 type GLuint               AttributeLocation
 type GLuint               AttributeIndex
-type GLuint               SamplerId
-type GLuint               PipelineId
+@replay_remap type GLuint SamplerId
+@replay_remap type GLuint PipelineId
 @replay_remap type GLuint UniformBlockId
-type GLuint               TransformFeedbackId
+@replay_remap type GLuint TransformFeedbackId
 
 @replay_custom_value type const void* IndicesPointer
 @replay_custom_value type const void* VertexPointer
@@ -344,12 +344,13 @@ class SharedObjects {
   map!(GLsync, ref!SyncObject)                     SyncObjects
 }
 
-@internal type u32 ContextID
+@internal type s32 ContextID
 
 @internal
 class ContextCreationInfo {
-  bool         Initialized
-  @unused bool PreserveBuffersOnSwap
+  bool              Initialized
+  @unused bool      PreserveBuffersOnSwap
+  @unused ContextID SharedContext
 }
 
 @internal
@@ -394,7 +395,7 @@ class Context {
   MiscellaneousState                                    Miscellaneous
   map!(GLenum, QueryId)                                 ActiveQueries
   Objects                                               Objects
-  SharedObjects                                         SharedObjects
+  ref!SharedObjects                                     SharedObjects
   Constants                                             Constants
 }
 
@@ -418,21 +419,30 @@ sub void SetContext(ref!Context context) {
   Contexts[CurrentThread] = context
 }
 
-sub ref!Context CreateContext() {
+sub ref!Context CreateContext(ref!Context sharedContext) {
   identifier := NextContextID
   NextContextID = NextContextID + 1
 
   ctx := new!Context()
   ctx.Identifier = identifier
 
+  if sharedContext != null {
+    ctx.Info.SharedContext = sharedContext.Identifier
+    ctx.SharedObjects = sharedContext.SharedObjects
+  } else {
+    ctx.Info.SharedContext = -1
+    ctx.SharedObjects = new!SharedObjects()
+  }
+
   return ctx
 }
 
 sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticState) {
   if (staticState != null) {
-    color_id := as!RenderbufferId(0xffffffff)
-    depth_id := as!RenderbufferId(0xfffffffe)
-    stencil_id := as!RenderbufferId(0xfffffffd)
+    // Renderbuffers are shared so make sure we create unique IDs.
+    color_id := as!RenderbufferId(as!u32(0xff000001) + as!u32(16 * ctx.Identifier))
+    depth_id := as!RenderbufferId(as!u32(0xff000002) + as!u32(16 * ctx.Identifier))
+    stencil_id := as!RenderbufferId(as!u32(0xff000003) + as!u32(16 * ctx.Identifier))
 
     // First initialization for the context.
     ctx.Constants = staticState.Constants
@@ -552,14 +562,14 @@ map!(GLXContext, ref!Context) GLXContexts
 @custom @no_replay
 cmd GLXContext glXCreateContext(void* dpy, void* vis, GLXContext shareList, bool direct) {
   context := ?
-  GLXContexts[context] = CreateContext()
+  GLXContexts[context] = CreateContext(GLXContexts[shareList])
   return context
 }
 
 @custom @no_replay
 cmd GLXContext glXCreateNewContext(void* display, void* fbconfig, u32 type, GLXContext shared, bool direct) {
   context := ?
-  GLXContexts[context] = CreateContext()
+  GLXContexts[context] = CreateContext(GLXContexts[shared])
   return context
 }
 
@@ -599,7 +609,7 @@ map!(HGLRC, ref!Context) WGLContexts
 ///http://msdn.microsoft.com/en-us/library/windows/desktop/dd374379(v=vs.85).aspx
 cmd HGLRC wglCreateContext(HDC hdc) {
   context := ?
-  WGLContexts[context] = CreateContext()
+  WGLContexts[context] = CreateContext(null)
   return context
 }
 
@@ -607,7 +617,7 @@ cmd HGLRC wglCreateContext(HDC hdc) {
 ///http://www.opengl.org/registry/specs/ARB/wgl_create_context.txt
 cmd HGLRC wglCreateContextAttribsARB(HDC hdc, HGLRC hShareContext, int* attribList) {
   context := ?
-  WGLContexts[context] = CreateContext()
+  WGLContexts[context] = CreateContext(WGLContexts[hShareContext])
   return context
 }
 
@@ -639,7 +649,7 @@ map!(CGLContextObj, ref!Context) CGLContexts
 ///http://developer.apple.com/library/mac/documentation/GraphicsImaging/Reference/CGL_OpenGL/index.html#//apple_ref/c/func/CGLCreateContext
 cmd CGLError CGLCreateContext(CGLTexelFormatObj pix, CGLContextObj share, CGLContextObj* ctx) {
   context := ?
-  CGLContexts[context] = CreateContext()
+  CGLContexts[context] = CreateContext(CGLContexts[share])
   ctx[0] = context
   return context
 }

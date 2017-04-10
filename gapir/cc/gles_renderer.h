@@ -43,7 +43,7 @@ public:
     };
 
     // Construct and return an offscreen renderer.
-    static GlesRenderer* create();
+    static GlesRenderer* create(GlesRenderer* sharedContext);
 
     // Returns the renderer's API.
     virtual Api* api() = 0;

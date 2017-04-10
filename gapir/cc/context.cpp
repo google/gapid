@@ -148,7 +148,13 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                 }
                 delete prev;
             }
-            mGlesRenderers[id] = GlesRenderer::create();
+            // Share objects with the root GLES context.
+            // This will essentially make all objects shared between all contexts.
+            // It is ok since correct replay will only reference what it is supposed to.
+            if (!mRootGlesRenderer) {
+                mRootGlesRenderer.reset(GlesRenderer::create(nullptr));
+            }
+            mGlesRenderers[id] = GlesRenderer::create(mRootGlesRenderer.get());
             return true;
         } else {
             GAPID_WARNING("Error during calling function replayCreateRenderer");
@@ -159,6 +165,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Builtins::ReplayBindRenderer, [this, interpreter](Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
+            GAPID_DEBUG("replayBindRenderer(%u)", id);
             if (mBoundGlesRenderer != nullptr) {
                 mBoundGlesRenderer->unbind();
                 mBoundGlesRenderer = nullptr;

@@ -228,7 +228,7 @@ const char* GlesRendererImpl::version() {
 
 } // anonymous namespace
 
-GlesRenderer* GlesRenderer::create() {
+GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
     return new GlesRendererImpl();
 }
 
