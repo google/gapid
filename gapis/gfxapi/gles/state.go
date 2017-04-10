@@ -35,7 +35,7 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		return 0, 0, 0, fmt.Errorf("Context not initialized")
 	}
 
-	framebuffer, ok := c.Instances.Framebuffers[c.BoundReadFramebuffer]
+	framebuffer, ok := c.Objects.Framebuffers[c.BoundReadFramebuffer]
 	if !ok {
 		return 0, 0, 0, fmt.Errorf("No GL_FRAMEBUFFER bound")
 	}
@@ -65,7 +65,7 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 	switch a.ObjectType {
 	case GLenum_GL_TEXTURE:
 		id := TextureId(a.ObjectName)
-		t, ok := c.Instances.Textures[id]
+		t, ok := c.SharedObjects.Textures[id]
 		if !ok {
 			return 0, 0, 0, fmt.Errorf("Invalid texture attachment %v", id)
 		}
@@ -84,7 +84,7 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		}
 	case GLenum_GL_RENDERBUFFER:
 		id := RenderbufferId(a.ObjectName)
-		r, ok := c.Instances.Renderbuffers[id]
+		r, ok := c.SharedObjects.Renderbuffers[id]
 		if !ok {
 			return 0, 0, 0, fmt.Errorf("Renderbuffer %v not found", id)
 		}

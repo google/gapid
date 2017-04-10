@@ -214,7 +214,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
-		data = TexturePointer(c.Instances.Buffers[pb].Data.Index(base, s))
+		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
 		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {
@@ -260,7 +260,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
-		data = TexturePointer(c.Instances.Buffers[pb].Data.Index(base, s))
+		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
 		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {

@@ -54,7 +54,7 @@ func (a *GlDrawElements) getIndices(
 		GLenum_GL_UNSIGNED_SHORT: 2,
 		GLenum_GL_UNSIGNED_INT:   4,
 	}[a.IndicesType]
-	indexBufferID := c.Instances.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
+	indexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
 	size := uint64(a.IndicesCount) * indexSize
 
 	var decoder pod.Reader
@@ -63,7 +63,7 @@ func (a *GlDrawElements) getIndices(
 		decoder = a.Indices.Slice(0, size, s).Decoder(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
-		indexBuffer := c.Instances.Buffers[indexBufferID]
+		indexBuffer := c.SharedObjects.Buffers[indexBufferID]
 		if indexBuffer == nil {
 			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
 		}

@@ -52,7 +52,7 @@ cmd void glDeleteQueries(GLsizei count, const QueryId* queries) {
   for i in (0 .. count) {
     id := q[i]
     if id != 0 {
-      delete(ctx.Instances.Queries, id)
+      delete(ctx.Objects.Queries, id)
     }
   }
 }
@@ -89,7 +89,7 @@ cmd void glGenQueries(GLsizei count, QueryId* queries) {
   for i in (0 .. count) {
     id := as!QueryId(?)
     // TODO: This should only reserve the name, but not create the object.
-    ctx.Instances.Queries[id] = new!Query()
+    ctx.Objects.Queries[id] = new!Query()
     q[i] = id
   }
 }
@@ -158,5 +158,5 @@ cmd GLboolean glIsQuery(QueryId query) {
   minRequiredVersion(3, 0)
 
   ctx := GetContext()
-  return as!GLboolean(query in ctx.Instances.Queries)
+  return as!GLboolean(query in ctx.Objects.Queries)
 }

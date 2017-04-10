@@ -261,22 +261,22 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		_, isEglSwapBuffersWithDamageKHR := a.(*EglSwapBuffersWithDamageKHR)
 		if isEglSwapBuffers || isEglSwapBuffersWithDamageKHR {
 			// Get default renderbuffers
-			fb := c.Instances.Framebuffers[0]
+			fb := c.Objects.Framebuffers[0]
 			colorId := RenderbufferId(fb.ColorAttachments[0].ObjectName)
 			depthId := RenderbufferId(fb.DepthAttachment.ObjectName)
 			stencilId := RenderbufferId(fb.StencilAttachment.ObjectName)
 			if !c.Info.PreserveBuffersOnSwap {
-				b.write(g, renderbufferDataKey{c.Instances.Renderbuffers[colorId]})
+				b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[colorId]})
 			}
-			b.write(g, renderbufferDataKey{c.Instances.Renderbuffers[depthId]})
-			b.write(g, renderbufferDataKey{c.Instances.Renderbuffers[stencilId]})
+			b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[depthId]})
+			b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[stencilId]})
 		} else if a.AtomFlags().IsDrawCall() {
 			b.read(g, uniformGroupKey{c, c.BoundProgram})
 			b.read(g, vertexAttribGroupKey{c, c.BoundVertexArray})
 			for _, stateKey := range getAllUsedTextureData(ctx, a, s, c) {
 				b.read(g, stateKey)
 			}
-			fb := c.Instances.Framebuffers[c.BoundDrawFramebuffer]
+			fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
 			for _, att := range fb.ColorAttachments {
 				b.modify(g, getAttachmentData(g, c, att))
 			}
@@ -286,7 +286,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		} else {
 			switch a := a.(type) {
 			case *GlClear:
-				fb := c.Instances.Framebuffers[c.BoundDrawFramebuffer]
+				fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
 				if (a.Mask & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
 					for _, att := range fb.ColorAttachments {
 						b.write(g, getAttachmentData(g, c, att))
@@ -302,7 +302,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				// It may act as "resolve" of EGLImage - i.e. save the content in one context.
 				b.KeepAlive = true
 			case *GlFramebufferTexture2D:
-				b.read(g, textureSizeKey{c.Instances.Textures[a.Texture], a.Texture})
+				b.read(g, textureSizeKey{c.SharedObjects.Textures[a.Texture], a.Texture})
 				b.KeepAlive = true // Changes untracked state
 			case *GlBindTexture:
 				// It may act as "load" of EGLImage - i.e. load the content in other context.
@@ -350,7 +350,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
 	// Look for samplers used by the current program.
-	if prog, ok := c.Instances.Programs[c.BoundProgram]; ok {
+	if prog, ok := c.SharedObjects.Programs[c.BoundProgram]; ok {
 		for _, activeUniform := range prog.ActiveUniforms {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
@@ -391,7 +391,7 @@ func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 
 func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment) (key stateKey) {
 	if att.ObjectType == GLenum_GL_RENDERBUFFER {
-		rb := c.Instances.Renderbuffers[RenderbufferId(att.ObjectName)]
+		rb := c.SharedObjects.Renderbuffers[RenderbufferId(att.ObjectName)]
 		if rb != nil && rb.InternalFormat != GLenum_GL_NONE {
 			scissor := c.FragmentOperations.Scissor
 			fullBox := Rect{Width: rb.Width, Height: rb.Height}
@@ -403,7 +403,7 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 		}
 	}
 	if att.ObjectType == GLenum_GL_TEXTURE {
-		tex := c.Instances.Textures[TextureId(att.ObjectName)]
+		tex := c.SharedObjects.Textures[TextureId(att.ObjectName)]
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
 			if tex.EGLImage != GLeglImageOES(memory.Nullptr) {

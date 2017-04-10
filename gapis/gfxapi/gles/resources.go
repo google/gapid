@@ -256,7 +256,7 @@ func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 
 	shaders := []*gfxapi.Shader{}
 	for shaderType, shaderID := range p.Shaders {
-		shader := context.Instances.Shaders.Get(shaderID)
+		shader := context.SharedObjects.Shaders.Get(shaderID)
 		if shader == nil {
 			continue
 		}

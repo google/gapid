@@ -165,7 +165,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 
 	switch a := a.(type) {
 	case *GlShaderSource:
-		shader := c.Instances.Shaders[a.Shader]
+		shader := c.SharedObjects.Shaders[a.Shader]
 		var errs []error
 		var kind string
 		switch shader.Type {
@@ -228,7 +228,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
-					if shader := c.Instances.Shaders[a.Shader]; shader != nil {
+					if shader := c.SharedObjects.Shaders[a.Shader]; shader != nil {
 						originalSource = shader.Source
 					}
 					t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n", a.Shader, ntbs(infoLog), originalSource, ntbs(source)))
@@ -255,11 +255,11 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				r.Data(msg)
 				if res != uint32(GLboolean_GL_TRUE) {
 					vss, fss := "<unknown>", "<unknown>"
-					if program := c.Instances.Programs[a.Program]; program != nil {
-						if shader := c.Instances.Shaders[program.Shaders[GLenum_GL_VERTEX_SHADER]]; shader != nil {
+					if program := c.SharedObjects.Programs[a.Program]; program != nil {
+						if shader := c.SharedObjects.Shaders[program.Shaders[GLenum_GL_VERTEX_SHADER]]; shader != nil {
 							vss = shader.Source
 						}
-						if shader := c.Instances.Shaders[program.Shaders[GLenum_GL_FRAGMENT_SHADER]]; shader != nil {
+						if shader := c.SharedObjects.Shaders[program.Shaders[GLenum_GL_FRAGMENT_SHADER]]; shader != nil {
 							fss = shader.Source
 						}
 					}

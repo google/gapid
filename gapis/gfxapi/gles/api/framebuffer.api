@@ -126,12 +126,12 @@ sub ref!Framebuffer GetBoundFramebufferOrErrorInvalidEnum(GLenum framebuffer_tar
     case GL_DRAW_FRAMEBUFFER: ctx.BoundDrawFramebuffer
     case GL_READ_FRAMEBUFFER: ctx.BoundReadFramebuffer
   }
-  return ctx.Instances.Framebuffers[framebufferId]
+  return ctx.Objects.Framebuffers[framebufferId]
 }
 
 sub bool IsDefaultFramebuffer(ref!Framebuffer framebuffer) {
   ctx := GetContext()
-  return framebuffer == ctx.Instances.Framebuffers[0]
+  return framebuffer == ctx.Objects.Framebuffers[0]
 }
 
 sub void SetFramebufferAttachment(GLenum                framebuffer_target,
@@ -192,8 +192,8 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
       glErrorInvalidEnum(target)
     }
   }
-  if !(framebuffer in ctx.Instances.Framebuffers) {
-    ctx.Instances.Framebuffers[framebuffer] = new!Framebuffer()
+  if !(framebuffer in ctx.Objects.Framebuffers) {
+    ctx.Objects.Framebuffers[framebuffer] = new!Framebuffer()
   }
 }
 
@@ -213,8 +213,8 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
       glErrorInvalidEnum(target)
     }
   }
-  if !(renderbuffer in ctx.Instances.Renderbuffers) {
-    ctx.Instances.Renderbuffers[renderbuffer] = new!Renderbuffer()
+  if !(renderbuffer in ctx.SharedObjects.Renderbuffers) {
+    ctx.SharedObjects.Renderbuffers[renderbuffer] = new!Renderbuffer()
   }
 }
 
@@ -447,7 +447,7 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
   for i in (0 .. count) {
     id := f[i]
     if id != 0 {
-      delete(ctx.Instances.Framebuffers, id)
+      delete(ctx.Objects.Framebuffers, id)
       if id == ctx.BoundReadFramebuffer {
         ctx.BoundReadFramebuffer = 0
       }
@@ -471,7 +471,7 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
   for i in (0 .. count) {
     id := r[i]
     if id != 0 {
-      delete(ctx.Instances.Renderbuffers, id)
+      delete(ctx.SharedObjects.Renderbuffers, id)
     }
   }
 }
@@ -548,7 +548,7 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   ctx := GetContext()
   if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
   // SPEC: Only PDF spec mentions this:
-  if (renderbuffer != 0) && !(renderbuffer in ctx.Instances.Renderbuffers) { glErrorInvalidOperation() }
+  if (renderbuffer != 0) && !(renderbuffer in ctx.SharedObjects.Renderbuffers) { glErrorInvalidOperation() }
 
   attachment := FramebufferAttachment()
   if (renderbuffer != 0) {
@@ -568,7 +568,7 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Instances.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
     attachment_info.ObjectType = GL_TEXTURE
     attachment_info.ObjectName = as!GLuint(texture)
     attachment_info.TextureLevel = level
@@ -616,7 +616,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   ctx := GetContext()
   attachment := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Instances.Textures) { glErrorInvalidOperation() }
+    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidOperation() }
     kind := switch (texture_target) {
       case GL_TEXTURE_2D:
         GL_TEXTURE_2D
@@ -630,7 +630,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
         as!GLenum(0)
     }
     // TODO: Handle texture 0
-    if ctx.Instances.Textures[texture].Kind != kind { glErrorInvalidOperation() }
+    if ctx.SharedObjects.Textures[texture].Kind != kind { glErrorInvalidOperation() }
     attachment.ObjectType = GL_TEXTURE
     attachment.ObjectName = as!GLuint(texture)
     attachment.TextureLevel = level
@@ -657,7 +657,7 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Instances.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
     attachment_info.ObjectType = GL_TEXTURE
     attachment_info.ObjectName = as!GLuint(texture)
     attachment_info.TextureLevel = level
@@ -678,7 +678,7 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!FramebufferId(?)
-    ctx.Instances.Framebuffers[id] = new!Framebuffer()
+    ctx.Objects.Framebuffers[id] = new!Framebuffer()
     f[i] = id
   }
 }
@@ -695,7 +695,7 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!RenderbufferId(?)
-    ctx.Instances.Renderbuffers[id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[id] = new!Renderbuffer()
     r[i] = id
   }
 }
@@ -829,7 +829,7 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   ctx := GetContext()
   id := ctx.BoundRenderbuffer
   if id == 0 { glErrorInvalidOperation() } // PDF spec
-  rb := ctx.Instances.Renderbuffers[id]
+  rb := ctx.SharedObjects.Renderbuffers[id]
   values[0] = switch (parameter) {
     case GL_RENDERBUFFER_WIDTH:           as!GLint(rb.Width)
     case GL_RENDERBUFFER_HEIGHT:          as!GLint(rb.Height)
@@ -912,7 +912,7 @@ cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
   minRequiredVersion(2, 0)
 
   ctx := GetContext()
-  return as!GLboolean(framebuffer in ctx.Instances.Framebuffers)
+  return as!GLboolean(framebuffer in ctx.Objects.Framebuffers)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsRenderbuffer.xml","OpenGL ES 2.0")
@@ -923,7 +923,7 @@ cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
   minRequiredVersion(2, 0)
 
   ctx := GetContext()
-  return as!GLboolean(renderbuffer in ctx.Instances.Renderbuffers)
+  return as!GLboolean(renderbuffer in ctx.SharedObjects.Renderbuffers)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadBuffer.xhtml","OpenGL ES 3.0")
@@ -1094,7 +1094,7 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
 
   id := ctx.BoundRenderbuffer
   if id == 0 { glErrorInvalidOperation() }
-  rb := ctx.Instances.Renderbuffers[id]
+  rb := ctx.SharedObjects.Renderbuffers[id]
   rb.InternalFormat = internalformat
   rb.Width = width
   rb.Height = height

@@ -58,7 +58,7 @@ extern ref!ProgramInfo GetProgramInfoExtra(ProgramId programId)
 sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
   if (info != null) {
     ctx := GetContext()
-    program := ctx.Instances.Programs[programId]
+    program := ctx.SharedObjects.Programs[programId]
     program.LinkStatus = info.LinkStatus
     program.InfoLog = info.InfoLog
     program.ActiveAttributes = null

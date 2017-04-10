@@ -104,7 +104,7 @@ func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State,
 
 	// Unbind the index buffer
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(len(wireframeData))))
-	oldIndexBufferID := c.Instances.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
+	oldIndexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
 	out.MutateAndWrite(ctx, atom.NoID,
 		NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).
 			AddRead(tmp.Range(), resID))

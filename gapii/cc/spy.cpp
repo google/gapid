@@ -518,8 +518,8 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
       return false;
     }
 
-    auto framebuffer = ctx->mInstances.mFramebuffers.find(ctx->mBoundReadFramebuffer);
-    if (framebuffer == ctx->mInstances.mFramebuffers.end()) {
+    auto framebuffer = ctx->mObjects.mFramebuffers.find(ctx->mBoundReadFramebuffer);
+    if (framebuffer == ctx->mObjects.mFramebuffers.end()) {
         return false;
     }
 
@@ -530,8 +530,8 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
 
     switch (attachment->second.mObjectType) {
         case GL_TEXTURE: {
-            auto t = ctx->mInstances.mTextures.find(attachment->second.mObjectName);
-            if (t == ctx->mInstances.mTextures.end()) {
+            auto t = ctx->mSharedObjects.mTextures.find(attachment->second.mObjectName);
+            if (t == ctx->mSharedObjects.mTextures.end()) {
                 return false;
             }
             switch (t->second->mKind) {
@@ -560,8 +560,8 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
             }
         }
         case GL_RENDERBUFFER: {
-            auto r = ctx->mInstances.mRenderbuffers.find(attachment->second.mObjectName);
-            if (r == ctx->mInstances.mRenderbuffers.end()) {
+            auto r = ctx->mSharedObjects.mRenderbuffers.find(attachment->second.mObjectName);
+            if (r == ctx->mSharedObjects.mRenderbuffers.end()) {
                 return false;
             }
             width = uint32_t(r->second->mWidth);

@@ -91,7 +91,7 @@ func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 	return struct {
 		p *Program
 		i UniformBlockId
-	}{ctx.Instances.Programs[program], i}, true
+	}{ctx.SharedObjects.Programs[program], i}, true
 }
 
 func (i VertexArrayId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
@@ -131,12 +131,12 @@ func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, r
 	return struct {
 		p *Program
 		l UniformLocation
-	}{ctx.Instances.Programs[program], i}, true
+	}{ctx.SharedObjects.Programs[program], i}, true
 }
 
 func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
 	c := GetContext(s)
-	if c.Instances.VertexArrays[c.BoundVertexArray].ElementArrayBuffer != 0 {
+	if c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer != 0 {
 		return value.AbsolutePointer(i.Address)
 	} else {
 		return value.ObservedPointer(i.Address)
