@@ -27,7 +27,7 @@ glob(android_sources
 )
 
 list(APPEND sources
-    "${PROTO_CC_OUT}/github.com/google/gapid/core/os/device/device.pb.cc"
+    "${PROTO_CC_OUT}/core/os/device/device.pb.cc"
 )
 
 # glob(test_sources

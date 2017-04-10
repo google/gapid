@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PROTO_PATH
-    "${ROOT_DIR}/src"
-    "${CMAKE_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}/third_party/src"
-    "${PROTOBUF_DIR}/src"
-)
-
 set(PROTO_HEADER "# Copyright (C) 2017 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the \"License\")\;
@@ -191,7 +184,14 @@ function(_do_protoc_go go_package src_dir protos)
     file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-go" os_plugin)
     file(TO_NATIVE_PATH "${ROOT_DIR}/src" os_go_out)
 
-    _do_protoc("go" "${src_dir}" "${protos}" "${outputs}"
+    set(proto_path
+        "${ROOT_DIR}/src"
+        "${CMAKE_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/third_party/src"
+        "${PROTOBUF_DIR}/src"
+    )
+
+    _do_protoc("go" "${proto_path}" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=${os_plugin}"
         "--go_out=${IMPORTMAP},plugins=grpc:${os_go_out}")
 endfunction()
@@ -205,7 +205,14 @@ function(protoc_cc cc_package src_dir protos)
         list(APPEND outputs "${dest_dir}/${proto_name}.pb.cc" "${dest_dir}/${proto_name}.pb.h")
     endforeach()
     file(TO_NATIVE_PATH ${cc_out} os_cc_out)
-    _do_protoc("cc" "${src_dir}" "${protos}" "${outputs}" "--cpp_out=${os_cc_out}")
+
+    set(proto_path
+        "${CMAKE_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/third_party/src"
+        "${PROTOBUF_DIR}/src"
+    )
+
+    _do_protoc("cc" "${proto_path}" "${src_dir}" "${protos}" "${outputs}" "--cpp_out=${os_cc_out}")
 endfunction()
 
 function(protoc_java src_dir protos classes)
@@ -217,18 +224,24 @@ function(protoc_java src_dir protos classes)
     file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-grpc-java${CMAKE_HOST_EXECUTABLE_SUFFIX}" os_protoc_gen_grpc_java)
     file(TO_NATIVE_PATH "${JAVA_SERVICE}" os_java_service)
 
-    _do_protoc("java" "${src_dir}" "${protos}" "${outputs}"
+    set(proto_path
+        "${CMAKE_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/third_party/src"
+        "${PROTOBUF_DIR}/src"
+    )
+
+    _do_protoc("java" "${proto_path}" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=protoc-gen-grpc-java=${os_protoc_gen_grpc_java}"
         "--java_out=${os_java_service}"
         "--grpc-java_out=${os_java_service}"
     )
 endfunction()
 
-function(_do_protoc type src_dir protos outputs)
+function(_do_protoc type proto_path src_dir protos outputs)
     abs_list(protos "${CMAKE_SOURCE_DIR}/${src_dir}")
     paths_to_native(os_protos protos)
 
-    set(os_proto_path "${PROTO_PATH}")
+    set(os_proto_path "${proto_path}")
     file(TO_NATIVE_PATH "${os_proto_path}" os_proto_path)
     if (NOT WIN32)
         string(REPLACE ";" ":" os_proto_path "${os_proto_path}")
@@ -236,7 +249,7 @@ function(_do_protoc type src_dir protos outputs)
 
     add_custom_command(
         OUTPUT ${outputs}
-        COMMAND protoc
+        COMMAND "protoc"
             "--proto_path=${os_proto_path}"
             ${ARGN}
             ${os_protos}
