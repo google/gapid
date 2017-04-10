@@ -34,7 +34,7 @@ func layout() (out FileLayout) {
 		dir := base.Parent()
 		// Check the regular package layout first:
 		// pkg
-		//  ├─── source.properties
+		//  ├─── build.properties
 		//  ├─── strings
 		//  │     └─── en-us.stb
 		//  ├─── android
@@ -52,7 +52,7 @@ func layout() (out FileLayout) {
 		//  ├─── linux
 		//  │    ↓
 		//  ↓
-		if root := dir.Parent().Parent(); root.Join("source.properties").Exists() {
+		if root := dir.Parent().Parent(); root.Join("build.properties").Exists() {
 			return pkgLayout{root}
 		}
 		// Check bin layout from executable's directory.

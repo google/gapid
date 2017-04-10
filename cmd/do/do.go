@@ -69,12 +69,14 @@ type (
 		Interactive bool `help:"Interactive mode"`
 	}
 	BuildOptions struct {
-		Rescan  bool     `help:"Re-run build configuration"`
-		DryRun  bool     `help:"Do the build in dry run mode"`
-		Verbose bool     `help:"Do the build in verbose mode"`
-		Install bool     `help:"Run the install step after building"`
-		NumJobs int      `help:"Number of jobs passed to ninja"`
-		Test    TestMode `help:"Control the test mode"`
+		Rescan   bool     `help:"Re-run build configuration"`
+		DryRun   bool     `help:"Do the build in dry run mode"`
+		Verbose  bool     `help:"Do the build in verbose mode"`
+		Install  bool     `help:"Run the install step after building"`
+		NumJobs  int      `help:"Number of jobs passed to ninja"`
+		Test     TestMode `help:"Control the test mode"`
+		BuildNum int      `help:"The build number to use for the package"`
+		BuildSha string   `help:"The commit sha ot use for the package"`
 	}
 	RunOptions struct {
 		WD file.Path `help:"_Path to use as current working directory"`
