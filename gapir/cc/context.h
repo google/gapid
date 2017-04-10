@@ -106,6 +106,9 @@ private:
     // An array of timers.
     core::Timer mTimers[MAX_TIMERS];
 
+    // GLES renderer used as reference for all context sharing.
+    std::unique_ptr<GlesRenderer> mRootGlesRenderer;
+
     // The constructed GLES renderers.
     std::unordered_map<uint32_t, GlesRenderer*> mGlesRenderers;
 

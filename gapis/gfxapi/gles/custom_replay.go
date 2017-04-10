@@ -23,54 +23,60 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
-// ctxIDKey is an object identifier and context pair used for a remapping key.
+// objectKey is a map and object identifier pair used for a remapping key.
 // Ideally we'd just use the object or object pointer as the key, but we have
 // atoms that want to remap the identifier before the state object is created.
 // TODO: It maybe possible to rework the state-mutator and/or APIs to achieve
 // this.
-type ctxIDKey struct {
-	id  interface{}
-	ctx *Context
+type objectKey struct {
+	mapPtr interface{}
+	mapKey interface{}
 }
 
 func (i BufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Buffers, i}, true
 	}
 	return
 }
 
 func (i FramebufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.Objects.Framebuffers, i}, true
 	}
 	return
 }
 
 func (i RenderbufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Renderbuffers, i}, true
 	}
 	return
 }
 
 func (i ProgramId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Programs, i}, true
 	}
 	return
 }
 
 func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Shaders, i}, true
 	}
 	return
 }
 
 func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Textures, i}, true
 	}
 	return
 }
@@ -95,28 +101,55 @@ func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 }
 
 func (i VertexArrayId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.Objects.VertexArrays, i}, true
 	}
 	return
 }
 
 func (i QueryId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i != 0 {
-		key, remap = ctxIDKey{i, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.Objects.Queries, i}, true
 	}
 	return
 }
 
 func (i GLsync) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	if i.Address != 0 {
-		key, remap = ctxIDKey{i.Address, GetContext(s)}, true
+	ctx := GetContext(s)
+	if ctx != nil && i.Address != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.SyncObjects, i}, true
 	}
 	return
 }
 
 func (i GLsync) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
 	return value.AbsolutePointer(i.Address)
+}
+
+func (i SamplerId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.SharedObjects.Samplers, i}, true
+	}
+	return
+}
+
+func (i PipelineId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.Objects.Pipelines, i}, true
+	}
+	return
+}
+
+func (i TransformFeedbackId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+	ctx := GetContext(s)
+	if ctx != nil && i != 0 {
+		key, remap = objectKey{&ctx.Objects.TransformFeedbacks, i}, true
+	}
+	return
 }
 
 func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {

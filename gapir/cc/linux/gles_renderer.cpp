@@ -82,7 +82,7 @@ typedef GLXContext (*glXCreateContextAttribsARBProc)(Display *dpy, GLXFBConfig c
 
 class GlesRendererImpl : public GlesRenderer {
 public:
-    GlesRendererImpl();
+    GlesRendererImpl(GlesRendererImpl* sharedContext);
     virtual ~GlesRendererImpl() override;
 
     virtual Api* api() override;
@@ -107,15 +107,17 @@ private:
 
     Display *mDisplay;
     GLXContext mContext;
+    GLXContext mSharedContext;
     GLXPbuffer mPbuffer;
     GLXFBConfig mFBConfig;
 };
 
-GlesRendererImpl::GlesRendererImpl()
+GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* sharedContext)
         : mBound(false)
         , mNeedsResolve(false)
         , mDisplay(nullptr)
         , mContext(nullptr)
+        , mSharedContext(sharedContext != nullptr ? sharedContext->mContext : 0)
         , mPbuffer(0) {
 
     mDisplay = XOpenDisplay(nullptr);
@@ -154,6 +156,7 @@ void GlesRendererImpl::reset() {
 
     if (mContext != nullptr) {
         glXDestroyContext(mDisplay, mContext);
+        GAPID_DEBUG("Destroyed context %p", mContext);
         mContext = nullptr;
     }
 
@@ -269,8 +272,10 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
             None,
         };
         mContext = glXCreateContextAttribsARB(
-            mDisplay, mFBConfig, /* shared */ nullptr, /* direct */ True, contextAttribs);
+            mDisplay, mFBConfig, mSharedContext, /* direct */ True, contextAttribs);
         if (mContext != nullptr) {
+            GAPID_DEBUG("Created GL %i.%i context %p (shaded with context %p)",
+                        gl_version.major, gl_version.minor, mContext, mSharedContext);
             break;
         }
     }
@@ -352,8 +357,8 @@ const char* GlesRendererImpl::version() {
 
 } // anonymous namespace
 
-GlesRenderer* GlesRenderer::create() {
-    return new GlesRendererImpl();
+GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
+    return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(sharedContext));
 }
 
 }  // namespace gapir
