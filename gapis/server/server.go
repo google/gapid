@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"sort"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
@@ -152,6 +153,23 @@ func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	return paths, nil
 }
 
+type prioritizedDevice struct {
+	device   bind.Device
+	priority uint32
+}
+
+type prioritizedDevices []prioritizedDevice
+
+func (p prioritizedDevices) Len() int {
+	return len(p)
+}
+
+func (p prioritizedDevices) Less(i, j int) bool {
+	return p[i].priority < p[j].priority
+}
+
+func (p prioritizedDevices) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
 func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
 	c, err := capture.ResolveFromPath(ctx, p)
@@ -184,29 +202,38 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 	}
 
 	all := getSortedDevices(ctx)
-	filtered := make([]bind.Device, 0, len(all))
-nextDevice:
+	filtered := make([]prioritizedDevice, 0, len(all))
 	for _, device := range all {
 		instance := device.Instance()
+		p := uint32(1)
 		for _, api := range apis {
 			// TODO: Check if device is a LAD, and if so filter by supportsLAD.
 			ctx := log.V{
 				"api":    fmt.Sprintf("%T", api),
 				"device": instance,
 			}.Bind(ctx)
-			if api.CanReplayOn(ctx, instance, layout) {
-				log.I(ctx, "Compatible")
+			priority := api.GetReplayPriority(ctx, instance, layout)
+			p = p * priority
+			if priority != 0 {
+				log.I(ctx, "Compatible %d", priority)
 			} else {
 				log.I(ctx, "Incompatible")
-				continue nextDevice
 			}
 		}
-		filtered = append(filtered, device)
+		if p > 0 {
+			ctx := log.V{
+				"device": instance,
+			}.Bind(ctx)
+			log.I(ctx, "Priority %d", p)
+			filtered = append(filtered, prioritizedDevice{device, p})
+		}
 	}
+
+	sort.Sort(prioritizedDevices(filtered))
 
 	paths := make([]*path.Device, len(filtered))
 	for i, d := range filtered {
-		paths[i] = path.NewDevice(d.Instance().Id.ID())
+		paths[i] = path.NewDevice(d.device.Instance().Id.ID())
 	}
 	return paths, nil
 }

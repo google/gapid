@@ -27,14 +27,11 @@ import (
 // Support is the optional interface implemented by APIs that can describe
 // replay support for particular devices and device types.
 type Support interface {
-	// CanReplayOnLocalAndroidDevice returns true if the API can be replayed on
-	// a locally connected Android device.
-	CanReplayOnLocalAndroidDevice(context.Context) bool
-
-	// CanReplayOn returns true if the API can be replayed on the specified
-	// device. The MemoryLayout is the memory layout that was in the capture
-	// file.
-	CanReplayOn(context.Context, *device.Instance, *device.MemoryLayout) bool
+	// GetReplayPriority returns a uint32 representing the preference for
+	// replaying this trace on the given device.
+	// A lower number represents a higher priority, and Zero represents
+	// an inability for the trace to be replayed on the given device.
+	GetReplayPriority(context.Context, *device.Instance, *device.MemoryLayout) uint32
 }
 
 // QueryIssues is the interface implemented by types that can verify the replay

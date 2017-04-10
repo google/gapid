@@ -66,15 +66,16 @@ type framebufferRequest struct {
 	wireframeOverlay bool
 }
 
-// CanReplayOnLocalAndroidDevice returns true if the API can be replayed on a
-// locally connected Android device.
-func (a api) CanReplayOnLocalAndroidDevice(context.Context) bool { return false }
+// GetReplayPriority returns a uint32 representing the preference for
+// replaying this trace on the given device.
+// A lower number represents a higher priority, and Zero represents
+// an inability for the trace to be replayed on the given device.
+func (a api) GetReplayPriority(ctx context.Context, i *device.Instance, l *device.MemoryLayout) uint32 {
+	if i.GetConfiguration().GetOS().GetKind() != device.Android {
+		return 1
+	}
 
-// CanReplayOn returns true if the API can be replayed on the specified device.
-// The given layout is the memory_layout that was recorded in the capture
-// GLES can currently cannot replay on Android devices.
-func (a api) CanReplayOn(ctx context.Context, i *device.Instance, l *device.MemoryLayout) bool {
-	return i.GetConfiguration().GetOS().GetKind() != device.Android
+	return 2
 }
 
 func (a api) Replay(
