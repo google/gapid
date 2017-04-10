@@ -14,7 +14,7 @@
 
 // +build windows
 
-package device
+package host
 
 // #cgo LDFLAGS: -lopengl32 -lgdi32
 import "C"

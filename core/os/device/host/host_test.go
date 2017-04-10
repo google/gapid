@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package device_test
+package host_test
 
 import (
 	"sync"
@@ -22,21 +22,22 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 )
 
 func TestHost(t *testing.T) {
 	ctx := log.Testing(t)
-	host := device.Host(ctx)
+	h := host.Instance(ctx)
 	assert.For(ctx, "Host.ID").
-		That(host.Id.ID()).NotEquals(id.ID{})
+		That(h.Id.ID()).NotEquals(id.ID{})
 	assert.For(ctx, "Host.Name").
-		That(host.Name).NotEquals("")
+		That(h.Name).NotEquals("")
 	assert.For(ctx, "Host.Configuration.OS.Kind").
-		That(host.Configuration.OS.Kind).NotEquals(device.UnknownOS)
+		That(h.Configuration.OS.Kind).NotEquals(device.UnknownOS)
 	assert.For(ctx, "Host.Configuration.Hardware.CPU").
-		ThatString(host.Configuration.Hardware.CPU.Name).NotEquals("")
+		ThatString(h.Configuration.Hardware.CPU.Name).NotEquals("")
 	assert.For(ctx, "Host.Configuration.Hardware.GPU").
-		ThatString(host.Configuration.Hardware.GPU.Name).NotEquals("")
+		ThatString(h.Configuration.Hardware.GPU.Name).NotEquals("")
 }
 
 func TestHostConcurrent(t *testing.T) {
@@ -47,7 +48,7 @@ func TestHostConcurrent(t *testing.T) {
 		i := i
 		wg.Add(1)
 		go func() {
-			hosts[i] = device.Host(ctx)
+			hosts[i] = host.Instance(ctx)
 			wg.Done()
 		}()
 	}

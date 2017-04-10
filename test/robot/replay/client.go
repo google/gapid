@@ -21,7 +21,7 @@ import (
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
@@ -36,7 +36,7 @@ type client struct {
 // Run starts new replay client if any hardware is available.
 func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
 	c := &client{store: store, manager: manager, tempDir: tempDir}
-	host := device.Host(ctx)
+	host := host.Instance(ctx)
 	return manager.Register(ctx, host, host, c.replay)
 }
 

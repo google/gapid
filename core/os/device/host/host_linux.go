@@ -14,7 +14,7 @@
 
 // +build linux
 
-package device
+package host
 
 // #cgo LDFLAGS: -lGL -lX11
 import "C"

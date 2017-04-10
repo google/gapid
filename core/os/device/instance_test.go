@@ -20,11 +20,12 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 )
 
 func TestSamePhysicalDevice(t *testing.T) {
 	ctx := log.Testing(t)
-	a := device.Host(ctx)
+	a := host.Instance(ctx)
 	var b *device.Instance
 	c := a
 	log.I(ctx, "%#+v %#+v", a, b)

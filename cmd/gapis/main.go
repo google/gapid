@@ -25,8 +25,8 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/server"
@@ -81,7 +81,7 @@ func run(ctx context.Context) error {
 
 	return server.Listen(ctx, *rpc, server.Config{
 		Info: &service.ServerInfo{
-			Name:         device.Host(ctx).Name,
+			Name:         host.Instance(ctx).Name,
 			VersionMajor: uint32(version.Major),
 			VersionMinor: uint32(version.Minor),
 			Features:     features,
