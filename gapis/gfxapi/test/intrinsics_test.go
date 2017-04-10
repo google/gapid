@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	_ "github.com/google/gapid/framework/binary/any"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
@@ -33,7 +34,7 @@ func p(addr uint64) memory.Pointer {
 func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
 		NewCmdClone(p(0x1234), 10).
@@ -48,7 +49,7 @@ func TestClone(t *testing.T) {
 func TestMake(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
 	NewCmdMake(10).Mutate(ctx, s, nil)
 	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count).Equals(uint64(10))
@@ -58,7 +59,7 @@ func TestMake(t *testing.T) {
 func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
 		NewCmdMake(10),
@@ -74,7 +75,7 @@ func TestCopy(t *testing.T) {
 func TestCharsliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
 	NewCmdCharsliceToString(p(0x1234), uint32(len(expected))).
 		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
@@ -85,7 +86,7 @@ func TestCharsliceToString(t *testing.T) {
 func TestCharptrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
 	NewCmdCharptrToString(p(0x1234)).
 		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
@@ -96,7 +97,7 @@ func TestCharptrToString(t *testing.T) {
 func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	newLayout := s.MemoryLayout.Clone()
 	newLayout.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = newLayout

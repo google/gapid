@@ -71,14 +71,14 @@ list(APPEND sources
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} gapii ${dst} "libgapii.so"
-        DEPENDEES cc-core llvm-interceptor
+        DEPENDEES llvm-interceptor
         DEPENDS ${sources} ${android_files} cc-memory-tracker
     )
 endforeach()
 
 if(NOT DISABLED_CXX)
     add_library(gapii SHARED ${sources})
-    target_link_libraries(gapii cc-core cc-memory-tracker protobuf)
+    target_link_libraries(gapii cc-memory-tracker deviceinfo-static protobuf)
 
     target_include_directories(gapii PUBLIC "${PROTO_CC_OUT}")
     target_include_directories(gapii PUBLIC "${CMAKE_SOURCE_DIR}/external/protobuf/src")

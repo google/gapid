@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -125,7 +126,8 @@ func init() {
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	atoms, draw, swap := samples.DrawTexturedSquare(ctx, false)
-	p, err := capture.ImportAtomList(ctx, "sample", atoms)
+	h := &capture.Header{Abi: device.WindowsX86_64}
+	p, err := capture.ImportAtomList(ctx, "sample", atoms, h)
 	check(err)
 	buf := bytes.Buffer{}
 	check(capture.Export(ctx, p, &buf))

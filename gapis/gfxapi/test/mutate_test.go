@@ -52,7 +52,7 @@ type test struct {
 
 func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	b := builder.New(ra)
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	s.MemoryLayout = ca
 
 	for _, w := range test.writes {

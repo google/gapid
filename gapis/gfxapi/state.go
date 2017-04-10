@@ -65,19 +65,20 @@ type State struct {
 	AddTag func(msgID uint32, msg *stringtable.Msg)
 }
 
-func NewStateWithEmptyAllocator() *State {
-	return NewStateWithAllocator(memory.NewBasicAllocator(value.ValidMemoryRanges))
-}
-
-func NewStateWithNilAllocator() *State {
-	return NewStateWithAllocator(nil)
+// NewStateWithEmptyAllocator returns a new, default-initialized State object,
+// that uses an allocator with no allocations.
+func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *State {
+	return NewStateWithAllocator(
+		memory.NewBasicAllocator(value.ValidMemoryRanges),
+		memoryLayout,
+	)
 }
 
 // NewStateWithAllocator returns a new, default-initialized State object,
 // that uses the given memory.Allocator instance.
-func NewStateWithAllocator(allocator memory.Allocator) *State {
+func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *State {
 	return &State{
-		MemoryLayout: DefaultMemoryLayout,
+		MemoryLayout: memoryLayout,
 		Memory: map[memory.PoolID]*memory.Pool{
 			memory.ApplicationPool: {},
 		},
@@ -86,10 +87,6 @@ func NewStateWithAllocator(allocator memory.Allocator) *State {
 		Allocator:  allocator,
 	}
 }
-
-// DefaultMemoryLayout is the device memory layout used before the architecture
-// information is supplied in the atom stream.
-var DefaultMemoryLayout = device.Little32
 
 func (st State) String() string {
 	mem := make([]string, 0, len(st.Memory))

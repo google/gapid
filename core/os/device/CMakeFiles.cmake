@@ -31,7 +31,6 @@ set(files
     device.proto
     doc.go
     gpu.go
-    gpu_test.go
     hardware.go
     id.go
     instance.go
