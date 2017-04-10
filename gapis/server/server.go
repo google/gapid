@@ -184,22 +184,8 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 	if err != nil {
 		return nil, err
 	}
-	list, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	state := c.NewState()
-
-	// We expect the architecture atom to always be within the first 10
-	// TODO(awoloszyn): Remove this once we have a proper file-header
-	for i, a := range list.Atoms {
-		if i > 10 {
-			break
-		}
-		a.Mutate(ctx, state, nil /* no builder, just mutate */)
-	}
-	layout := state.MemoryLayout
 
 	apis := make([]replay.Support, 0, len(c.Apis))
 	for _, i := range c.Apis {
@@ -220,7 +206,7 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 				"api":    fmt.Sprintf("%T", api),
 				"device": instance,
 			}.Bind(ctx)
-			priority := api.GetReplayPriority(ctx, instance, layout)
+			priority := api.GetReplayPriority(ctx, instance, state.MemoryLayout)
 			p = p * priority
 			if priority != 0 {
 				log.I(ctx, "Compatible %d", priority)

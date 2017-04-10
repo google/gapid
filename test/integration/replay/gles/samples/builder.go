@@ -17,6 +17,7 @@ package samples
 import (
 	"context"
 
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles"
@@ -31,7 +32,7 @@ type builder struct {
 
 func newBuilder(ctx context.Context) *builder {
 	return &builder{
-		state: gfxapi.NewStateWithEmptyAllocator(),
+		state: gfxapi.NewStateWithEmptyAllocator(device.Little32),
 	}
 }
 

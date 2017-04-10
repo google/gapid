@@ -39,18 +39,6 @@ var (
 	executeCounter       = benchmark.GlobalCounters.Integer("replay.executor.invocations")
 )
 
-// captureMemoryLayout returns the device memory layout of the capture from the
-// atoms. This function assumes there's an architecture atom at the beginning of
-// the capture. TODO: Replace this with a proper capture header containing
-// device and process information.
-func captureMemoryLayout(ctx context.Context, list *atom.List) *device.MemoryLayout {
-	s := capture.NewState(ctx)
-	if len(list.Atoms) > 0 {
-		list.Atoms[0].Mutate(ctx, s, nil)
-	}
-	return s.MemoryLayout
-}
-
 // findABI looks for the ABI with the matching memory layout, retuning it if an
 // exact match is found. If no matching ABI is found then nil is returned.
 func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
@@ -114,12 +102,7 @@ func (m *Manager) execute(
 
 	intent := Intent{devicePath, capturePath}
 
-	atoms, err := c.Atoms(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load atom stream")
-	}
-
-	cml := captureMemoryLayout(ctx, atoms)
+	cml := c.Header.Abi.MemoryLayout
 	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
 
 	deviceABIs := d.Instance().GetConfiguration().GetABIs()

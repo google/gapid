@@ -19,14 +19,6 @@ api_index 0
 
 type u64 ThreadID
 
-// architecture is used to describe the architecture of the device used to make
-// the capture.
-@synthetic @custom
-cmd void architecture(u32  pointer_alignment,
-                      u32  pointer_size,
-                      u32  integer_size,
-                      bool little_endian) { }
-
 // switchThread changes the current thread to the thread with the specified identifier.
 @synthetic @custom
 cmd void switchThread(ThreadID threadID) {

@@ -32,7 +32,7 @@ func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) 
 	for i := len(l) - 1; i >= 0; i-- {
 		s := out.State()
 		if config.SeparateMutateStates {
-			s = gfxapi.NewStateWithAllocator(s.Allocator)
+			s = gfxapi.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}

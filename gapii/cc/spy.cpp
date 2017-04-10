@@ -28,7 +28,9 @@
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
 #include "core/cc/target.h"
+#include "core/os/device/deviceinfo/cc/query.h"
 
+#include "gapis/capture/capture.pb.h"
 #include "gapis/gfxapi/gles/gles_pb/api.pb.h"
 #include "gapis/gfxapi/gles/gles_pb/extras.pb.h"
 
@@ -38,7 +40,39 @@
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
-#endif // TARGET_OS
+#endif //  TARGET_OS == GAPID_OS_WINDOWS
+
+#if TARGET_OS == GAPID_OS_ANDROID
+#include <jni.h>
+static JavaVM* gJavaVM = nullptr;
+extern "C"
+jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+    GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
+    gJavaVM = vm;
+    return JNI_VERSION_1_6;
+}
+void* queryPlatformData() {
+    JNIEnv* env = nullptr;
+
+    auto res = gJavaVM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    switch (res) {
+    case JNI_OK:
+        break;
+    case JNI_EDETACHED:
+        res = gJavaVM->AttachCurrentThread(&env, nullptr);
+        if (res != 0) {
+            GAPID_FATAL("Failed to attach thread to JavaVM. (%d)", res);
+        }
+        break;
+    default:
+        GAPID_FATAL("Failed to get Java env. (%d)", res);
+    }
+    GAPID_INFO("queryPlatformData() env = %p", env);
+    return env;
+}
+#else  // TARGET_OS == GAPID_OS_ANDROID
+void* queryPlatformData() { return nullptr; }
+#endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace gapii::GLenum;
 
@@ -73,15 +107,6 @@ const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 
 const int32_t  kSuspendIndefinitely = -1;
 
-inline bool isLittleEndian() {
-    union {
-        uint32_t i;
-        char c[4];
-    } u;
-    u.i = 0x01020304;
-    return u.c[0] == 4;
-}
-
 core::Mutex gMutex;  // Guards gSpy.
 std::unique_ptr<gapii::Spy> gSpy;
 
@@ -89,84 +114,32 @@ std::unique_ptr<gapii::Spy> gSpy;
 
 namespace gapii {
 
-#if TARGET_OS == GAPID_OS_ANDROID
-
-/**
- * Parses "[key]: [value]" pairs from getprop output and returns them as a map.
- */
-static std::unordered_map<std::string, std::string> parseSystemProperties(FILE *f) {
-  std::unordered_map<std::string, std::string> result;
-  std::string key, val;
-  int m = 0; // Parsing state (m=0)[(m=1)key](m=2):(m=3)whitespace[(m=4)value](m=0)...
-  for (int x = getc(f); x != EOF; x = getc(f)) {
-    switch (m) {
-    case 0:
-        if (x == '[') {
-            key.clear(); m = 1;
-            break;
-        } else if (isspace(x)) {
-            break;
-        }
-        return result; // Unexpected value.
-    case 1:
-        if (x == ']') {
-            m = 2;
-        } else {
-            key.push_back((char) x);
-        }
-        break;
-    case 2:
-        if (x == ':') {
-            m = 3;
-            break;
-        }
-        return result; // Unexpected value.
-    case 3:
-        if (x == '[') {
-            val.clear(); m = 4;
-            break;
-        } else if (isspace(x)) {
-            break;
-        }
-        return result;
-    case 4:
-        if (x != '\n' && x != '\r') {
-            val.push_back((char) x);
-        } else {
-            if (val.back() == ']') {
-              val.pop_back();
-            }
-            result[key] = val;
-            m = 0;
-        }
-        break;
-    }
-  }
-  return result;
-}
-#endif
-
 Spy* Spy::get() {
-    core::Lock<core::Mutex> lock(&gMutex);
-    if (!gSpy) {
-        GAPID_INFO("Constructing spy...");
-        gSpy.reset(new Spy());
-        GAPID_INFO("Registering spy symbols...");
-        for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
-        	 gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
+    bool init;
+    {
+        core::Lock<core::Mutex> lock(&gMutex);
+        init = !gSpy;
+        if (init) {
+            GAPID_INFO("Constructing spy...");
+            gSpy.reset(new Spy());
+            GAPID_INFO("Registering spy symbols...");
+            for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
+                gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
+            }
         }
+    }
+    if (init) {
+        auto s = gSpy.get();
+        if (!s->try_to_enter()) {
+            GAPID_FATAL("Couldn't enter on init?!")
+        }
+        CallObserver observer(s);
+        s->lock(&observer, "writeHeader");
+        s->writeHeader();
+        s->unlock();
+        s->exit();
     }
     return gSpy.get();
-}
-
-// Returns the minimum alignment for the given type in a structure.
-template<typename T>
-uint32_t GetAlignment() {
-    struct AlignmentStruct {
-        char c;
-        T t;
-    };
-    return offsetof(AlignmentStruct, t);
 }
 
 Spy::Spy()
@@ -179,6 +152,7 @@ Spy::Spy()
   , mObserveDrawFrequency(0)
   , mDisablePrecompiledShaders(false)
   , mRecordGLErrorState(false) {
+
 
 #if TARGET_OS == GAPID_OS_ANDROID
     // Use a "localabstract" pipe on Android to prevent depending on the traced application
@@ -221,29 +195,6 @@ Spy::Spy()
     VulkanSpy::init();
     SpyBase::init(&observer, mEncoder);
 
-    atom_pb::FieldAlignments* alignments = new atom_pb::FieldAlignments();
-    alignments->set_charalignment(GetAlignment<char>());
-    alignments->set_intalignment(GetAlignment<int>());
-    alignments->set_u32alignment(GetAlignment<uint32_t>());
-    alignments->set_u64alignment(GetAlignment<uint64_t>());
-    alignments->set_pointeralignment(GetAlignment<void*>());
-    observer.addExtra(alignments);
-
-#if TARGET_OS == GAPID_OS_ANDROID
-    auto props = getDeviceProperties();
-
-    DeviceInfo deviceInfo;
-    deviceInfo.mProductManufacturer = props["ro.product.manufacturer"];
-    deviceInfo.mProductModel = props["ro.product.model"];
-    deviceInfo.mBuildDescription = props["ro.build.description"];
-    deviceInfo.mBuildVersionRelease = props["ro.build.version.release"];
-    deviceInfo.mBuildVersionSdk = props["ro.build.version.sdk"];
-    deviceInfo.mDebuggable = props["ro.debuggable"];
-    deviceInfo.mAbiList = props["ro.product.cpu.abilist"];
-    observer.addExtra(deviceInfo.toProto());
-
-#endif
-    CoreSpy::architecture(&observer, alignof(void*), sizeof(void*), sizeof(int), isLittleEndian());
     if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
         mDeferStartJob = std::unique_ptr<core::AsyncJob>(
         new core::AsyncJob([this, conn]() {
@@ -258,16 +209,15 @@ Spy::Spy()
     set_suspended(mSuspendCaptureFrames.load() != 0);
 }
 
-std::unordered_map<std::string, std::string> Spy::getDeviceProperties() {
-    std::unordered_map<std::string, std::string> result;
-#if TARGET_OS == GAPID_OS_ANDROID
-    FILE* f = popen("/system/bin/getprop", "r");
-    if (f != nullptr) {
-      result = parseSystemProperties(f);
-      pclose(f);
+void Spy::writeHeader() {
+    if (!query::createContext(queryPlatformData())) {
+        GAPID_ERROR("query::createContext() errored: %s", query::contextError());
     }
-#endif
-    return result;
+    capture::Header file_header;
+    file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
+    file_header.set_allocated_abi(query::currentABI());
+    mEncoder->message(&file_header);
+    query::destroyContext();
 }
 
 void Spy::resolveImports() {
