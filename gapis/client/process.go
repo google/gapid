@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/framework/binary/registry"
@@ -46,7 +47,7 @@ func init() {
 	}
 	// Search standard package structure
 	packagePath := file.Abs(".")
-	switch device.Host(context.Background()).Configuration.OS.Kind {
+	switch host.Instance(context.Background()).Configuration.OS.Kind {
 	case device.Windows:
 		packagePath = packagePath.Join("windows")
 	case device.OSX:

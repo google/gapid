@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -74,15 +75,15 @@ func (l pkgLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapit")
+	return l.File(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapit")
 }
 
 func (l pkgLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapir")
+	return l.File(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapir")
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.File(ctx, device.Host(ctx).Configuration.ABIs[0], "gapis")
+	return l.File(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapis")
 }
 
 func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
@@ -111,7 +112,7 @@ func abiDirectory(ctx context.Context, abi *device.ABI) (string, error) {
 }
 
 func (l binLayout) File(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
-	if abi.OS == device.Host(ctx).Configuration.OS.Kind {
+	if abi.OS == host.Instance(ctx).Configuration.OS.Kind {
 		return l.root.Join(name), nil
 	}
 	dir, err := abiDirectory(ctx, abi)

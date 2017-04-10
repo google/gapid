@@ -27,7 +27,7 @@ import (
 	"github.com/google/gapid/core/git"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/test/robot/build"
 	"google.golang.org/grpc"
 )
@@ -141,7 +141,7 @@ func (u *buildUploader) prepare(ctx context.Context, conn *grpc.ClientConn) erro
 	}
 	log.I(ctx, "Dectected build type %s", typ)
 	u.store = build.NewRemote(ctx, conn)
-	host := device.Host(ctx)
+	host := host.Instance(ctx)
 	u.info = &build.Information{
 		Type:        typ,
 		Branch:      buildFlags.branch,

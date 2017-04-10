@@ -33,12 +33,6 @@ set(files
     gpu.go
     gpu_test.go
     hardware.go
-    host.go
-    host_c.go
-    host_darwin.go
-    host_linux.go
-    host_test.go
-    host_windows.go
     id.go
     instance.go
     instance_test.go
@@ -51,4 +45,5 @@ set(files
 set(dirs
     bind
     deviceinfo
+    host
 )

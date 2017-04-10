@@ -25,8 +25,8 @@ import (
 	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
@@ -64,7 +64,7 @@ func (c *client) getRunner(d bind.Device) (r *runner, existing bool) {
 
 // TODO: not assume all android devices are valid trace targets
 func (c *client) OnDeviceAdded(ctx context.Context, d bind.Device) {
-	host := device.Host(ctx)
+	host := host.Instance(ctx)
 	inst := d.Instance()
 
 	r, existing := c.getRunner(d)

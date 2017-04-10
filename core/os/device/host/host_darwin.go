@@ -14,7 +14,7 @@
 
 // +build darwin
 
-package device
+package host
 
 // #cgo LDFLAGS: -framework Cocoa -framework OpenGL
 import "C"

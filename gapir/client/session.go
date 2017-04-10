@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
@@ -66,7 +67,7 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI) erro
 	defer close(s.inited)
 
 	var err error
-	if device.Host(ctx).SameAs(d.Instance()) {
+	if host.Instance(ctx).SameAs(d.Instance()) {
 		err = s.newHost(ctx, d)
 	} else if d, ok := d.(adb.Device); ok {
 		err = s.newADB(ctx, d, abi)

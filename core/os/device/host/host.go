@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package device
+package host
 
 import (
 	"context"
@@ -20,15 +20,17 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/os/device"
 )
 
 var (
-	host     Instance
+	host     device.Instance
 	hostOnce sync.Once
 )
 
-// Host returns the device information for the host computer running the code.
-func Host(ctx context.Context) *Instance {
+// Instance returns the device information for the host computer running the
+// code.
+func Instance(ctx context.Context) *device.Instance {
 	hostOnce.Do(func() {
 		buf, err := getHostDevice()
 		if err != nil {

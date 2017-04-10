@@ -50,7 +50,6 @@ if(NOT DISABLED_CXX)
     endif()
 
     target_include_directories(deviceinfo PUBLIC "${PROTO_CC_OUT}")
-    target_include_directories(deviceinfo PUBLIC "${PROTO_CC_OUT}/github.com/google/gapid")
     target_include_directories(deviceinfo PUBLIC "${CMAKE_SOURCE_DIR}/external/protobuf/src")
 
     find_package(GL REQUIRED)

@@ -12,5 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(deviceinfo)
-build_subdirectory(host)
+# Generated globbing source file
+# This file will be automatically regenerated if deleted, do not edit by hand.
+# If you add a new file to the directory, just delete this file, run any cmake
+# build and the file will be recreated, check in the new version.
+
+set(files
+    host.go
+    host_c.go
+    host_darwin.go
+    host_linux.go
+    host_test.go
+    host_windows.go
+)
+set(dirs
+)

@@ -18,22 +18,22 @@ import (
 	"context"
 	"sync"
 
-	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 )
 
 var (
 	hostMutex sync.Mutex
-	host      Device
+	hostDev   Device
 )
 
 // Host returns the Device to the host.
 func Host(ctx context.Context) Device {
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
-	if host == nil {
-		host = &Simple{
-			To: device.Host(ctx),
+	if hostDev == nil {
+		hostDev = &Simple{
+			To: host.Instance(ctx),
 		}
 	}
-	return host
+	return hostDev
 }
