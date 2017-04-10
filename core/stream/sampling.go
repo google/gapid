@@ -27,6 +27,11 @@ var (
 		Curve:      Curve_Linear,
 		Normalized: true,
 	}
+	// SRGBNormalized is a Sampling state using a normalized, srgb curve
+	SRGBNormalized = &Sampling{
+		Curve:      Curve_sRGB,
+		Normalized: true,
+	}
 )
 
 // Format prints the Sampling to f.

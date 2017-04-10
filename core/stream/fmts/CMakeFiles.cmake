@@ -19,6 +19,8 @@
 
 set(files
     a.go
+    abgr.go
+    argb.go
     bgr.go
     bgra.go
     d.go

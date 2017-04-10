@@ -17,6 +17,30 @@ package fmts
 import "github.com/google/gapid/core/stream"
 
 var (
+	RG_U4_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_S8 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
 	RG_U8 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U8,
@@ -25,6 +49,30 @@ var (
 		}, {
 			DataType: &stream.U8,
 			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_S8_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S8,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S8,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_U8_NORM_sRGB = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U8,
+			Sampling: stream.SRGBNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U8,
+			Sampling: stream.SRGBNormalized,
 			Channel:  stream.Channel_Green,
 		}},
 	}
@@ -41,6 +89,18 @@ var (
 		}},
 	}
 
+	RG_U16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
 	RG_U16_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U16,
@@ -49,6 +109,18 @@ var (
 		}, {
 			DataType: &stream.U16,
 			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_S16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S16,
+			Sampling: stream.Linear,
 			Channel:  stream.Channel_Green,
 		}},
 	}
@@ -77,6 +149,30 @@ var (
 		}},
 	}
 
+	RG_U32 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_S32 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
 	RG_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,
@@ -84,6 +180,42 @@ var (
 			Channel:  stream.Channel_Red,
 		}, {
 			DataType: &stream.F32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_U64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_S64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}},
+	}
+
+	RG_F64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.F64,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_Green,
 		}},
