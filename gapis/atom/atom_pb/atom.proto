@@ -51,22 +51,6 @@ message FramebufferObservation {
     bytes Data = 5;
 }
 
-// FieldAlignments holds the natural alignments of POD types inside a struct.
-// This is not captured by the existing architecture Atom, but rather than breaking
-// compatibility, we add it as an extra here.
-message FieldAlignments {
-    // Alignment of char elements inside a struct.
-    uint32 CharAlignment = 1;
-    // Alignment of int elements inside a struct.
-    uint32 IntAlignment = 2;
-    // Alignment of U32 elements inside a struct.
-    uint32 U32Alignment = 3;
-    // Alignment of U64 elements inside a struct.
-    uint32 U64Alignment = 4;
-    // Alignment of pointers inside a struct.
-    uint32 PointerAlignment = 5;
-}
-
 // CommandCounter holds the counter value of the begining and end of an API
 // command. It should only be sent for the first completed graphics command, or
 // for any graphics command which overlaps the startup or termination of

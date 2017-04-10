@@ -15,32 +15,32 @@
 package device
 
 var (
-	UnknownABI = abi("unknown", UnknownOS, UnknownArchitecture)
+	UnknownABI = abi("unknown", UnknownOS, UnknownArchitecture, &MemoryLayout{})
 
 	// Android ARM defaults to v7a which is the lowest that we support.
-	AndroidARM = abi("armeabi", Android, ARMv7a)
+	AndroidARM = abi("armeabi", Android, ARMv7a, Little32)
 
-	AndroidARMv7a     = abi("armeabi-v7a", Android, ARMv7a)
-	AndroidARMv7aHard = abi("armeabi-v7a-hard", Android, ARMv7a)
-	AndroidARM64v8a   = abi("arm64-v8a", Android, ARMv8a)
-	AndroidX86        = abi("x86", Android, X86)
-	AndroidX86_64     = abi("x86-64", Android, X86_64)
-	AndroidMIPS       = abi("mips", Android, MIPS)
-	AndroidMIPS64     = abi("mips64", Android, MIPS64)
+	AndroidARMv7a     = abi("armeabi-v7a", Android, ARMv7a, Little32)
+	AndroidARMv7aHard = abi("armeabi-v7a-hard", Android, ARMv7a, Little32)
+	AndroidARM64v8a   = abi("arm64-v8a", Android, ARMv8a, Little64)
+	AndroidX86        = abi("x86", Android, X86, Little32)
+	AndroidX86_64     = abi("x86-64", Android, X86_64, Little64)
+	AndroidMIPS       = abi("mips", Android, MIPS, Little32)
+	AndroidMIPS64     = abi("mips64", Android, MIPS64, Little64)
 
-	LinuxX86_64   = abi("linux_x64", Linux, X86_64)
-	OSXX86_64     = abi("osx_x64", OSX, X86_64)
-	WindowsX86_64 = abi("windows_x64", Windows, X86_64)
+	LinuxX86_64   = abi("linux_x64", Linux, X86_64, Little64)
+	OSXX86_64     = abi("osx_x64", OSX, X86_64, Little64)
+	WindowsX86_64 = abi("windows_x64", Windows, X86_64, Little64)
 )
 
 var abiByName = map[string]*ABI{}
 
-func abi(name string, os OSKind, arch Architecture) *ABI {
+func abi(name string, os OSKind, arch Architecture, ml *MemoryLayout) *ABI {
 	abi := &ABI{
 		Name:         name,
 		OS:           os,
 		Architecture: arch,
-		MemoryLayout: arch.MemoryLayout(),
+		MemoryLayout: ml,
 	}
 	abiByName[name] = abi
 	return abi

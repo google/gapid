@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
@@ -228,7 +229,8 @@ func TestDeadAtomRemoval(t *testing.T) {
 	for name, atoms := range tests {
 		inputAtoms := append(prologue, atoms...)
 
-		capturePath, err := capture.ImportAtomList(ctx, name, atom.NewList(inputAtoms...))
+		h := &capture.Header{Abi: device.WindowsX86_64}
+		capturePath, err := capture.ImportAtomList(ctx, name, atom.NewList(inputAtoms...), h)
 		if err != nil {
 			panic(err)
 		}

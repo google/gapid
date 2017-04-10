@@ -26,7 +26,6 @@ set(files
     data.go
     doc.go
     extras.go
-    field_alignments.go
     flags.go
     framebuffer_observation.go
     group.go

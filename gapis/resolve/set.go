@@ -133,7 +133,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		if !ok {
 			return nil, fmt.Errorf("Expected *atom.List, got %T", val)
 		}
-		c, err := capture.ImportAtomList(ctx, old.Name+"*", atoms)
+		c, err := capture.ImportAtomList(ctx, old.Name+"*", atoms, old.Header)
 		if err != nil {
 			return nil, err
 		}

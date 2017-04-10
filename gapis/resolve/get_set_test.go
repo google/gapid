@@ -42,6 +42,7 @@ import (
 import (
 	_ "github.com/google/gapid/core/data/id"
 	_ "github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/os/device"
 	_ "github.com/google/gapid/framework/binary/registry"
 	_ "github.com/google/gapid/framework/binary/schema"
 )
@@ -121,7 +122,8 @@ func (testAtom) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 }
 
 func newPathTest(ctx context.Context, a *atom.List) *path.Capture {
-	p, err := capture.ImportAtomList(ctx, "test", a)
+	h := &capture.Header{Abi: device.WindowsX86_64}
+	p, err := capture.ImportAtomList(ctx, "test", a, h)
 	if err != nil {
 		log.E(ctx, "Couldn't create capture: %v", err)
 	}

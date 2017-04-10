@@ -17,6 +17,7 @@ syntax = "proto3";
 package capture;
 // cc_package
 
+import "google/protobuf/timestamp.proto";
 import "core/os/device/device.proto";
 
 // Capture holds all the information about a single imported capture.
@@ -25,7 +26,7 @@ import "core/os/device/device.proto";
 message Capture {
 	ID id = 1;
 	string name = 2;
-	device.Instance device = 3;
+	Header header = 3;
 	ID commands = 4;
 	repeated ID apis = 5;
 	repeated MemoryRange observed = 6;
@@ -38,4 +39,13 @@ message ID {
 message MemoryRange {
     uint64 base = 1;
     uint64 size = 2;
+}
+
+// Header holds information about the capture that is generated when the trace
+// begins. It is stored in the trace file as the first section.
+message Header {
+	// The device used to take the capture.
+	device.Instance device = 1;
+	// The ABI used by the traced process.
+	device.ABI abi = 2;
 }

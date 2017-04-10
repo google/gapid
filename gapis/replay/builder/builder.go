@@ -87,10 +87,11 @@ type Builder struct {
 // New returns a newly constructed Builder configured to replay on a target
 // with the specified MemoryLayout.
 func New(memoryLayout *device.MemoryLayout) *Builder {
+	ptrAlignment := uint64(memoryLayout.GetPointer().GetAlignment())
 	return &Builder{
 		constantMemory:  newConstantEncoder(memoryLayout),
-		heap:            allocator{alignment: uint64(memoryLayout.GetPointerAlignment())},
-		temp:            allocator{alignment: uint64(memoryLayout.GetPointerAlignment())},
+		heap:            allocator{alignment: ptrAlignment},
+		temp:            allocator{alignment: ptrAlignment},
 		resourceIDToIdx: map[id.ID]uint32{},
 		resources:       []protocol.ResourceInfo{},
 		reservedMemory:  memory.RangeList{},
@@ -188,7 +189,7 @@ func (b *Builder) AllocateTemporaryMemory(size uint64) value.Pointer {
 // reading or writing to this memory will result in undefined behavior.
 // TODO: REMOVE
 func (b *Builder) AllocateTemporaryMemoryChunks(sizes []uint64) (ptrs []value.Pointer, size uint64) {
-	alignment := uint64(b.memoryLayout.GetPointerAlignment())
+	alignment := uint64(b.memoryLayout.GetPointer().GetAlignment())
 	ptrs = make([]value.Pointer, len(sizes))
 	for _, s := range sizes {
 		size = align(size, alignment)
@@ -286,7 +287,7 @@ func (b *Builder) RevertAtom(err error) {
 // address-space, otherwise the buffer will be built in the temporary
 // address-space.
 func (b *Builder) Buffer(count int) value.Pointer {
-	pointerSize := b.memoryLayout.GetPointerSize()
+	pointerSize := b.memoryLayout.GetPointer().GetSize()
 	dynamic := false
 	size := 0
 
@@ -411,8 +412,8 @@ func (b *Builder) StorePointer(idx value.PointerIndex, ptr value.Pointer) {
 		asm.Store{Destination: idx},
 	)
 	rng := memory.Range{
-		Base: uint64(idx) * uint64(b.memoryLayout.GetPointerSize()),
-		Size: uint64(b.memoryLayout.GetPointerSize()),
+		Base: uint64(idx) * uint64(b.memoryLayout.GetPointer().GetSize()),
+		Size: uint64(b.memoryLayout.GetPointer().GetSize()),
 	}
 	interval.Merge(&b.pointerMemory, rng.Span(), true)
 }
@@ -484,7 +485,7 @@ func (b *Builder) MapMemory(rng memory.Range) {
 	}
 
 	// Allocate memory to hold the target mapped base address.
-	target := b.AllocateMemory(uint64(b.memoryLayout.GetPointerSize()))
+	target := b.AllocateMemory(uint64(b.memoryLayout.GetPointer().GetSize()))
 	b.Store(target)
 
 	s := rng.Span()
@@ -743,7 +744,7 @@ func (l volatileMemoryLayout) ResolveObservedPointer(p value.ObservedPointer) (p
 }
 
 func (l volatileMemoryLayout) ResolvePointerIndex(i value.PointerIndex) value.VolatilePointer {
-	addr := uint64(i) * uint64(l.memoryLayout.GetPointerSize())
+	addr := uint64(i) * uint64(l.memoryLayout.GetPointer().GetSize())
 	bufferIdx := interval.IndexOf(l.pointerMemoryAsList, addr)
 	if bufferIdx < 0 {
 		// Pointer is not observed.

@@ -52,7 +52,7 @@ type test struct {
 
 func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	b := builder.New(ra)
-	s := gfxapi.NewStateWithEmptyAllocator()
+	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	s.MemoryLayout = ca
 
 	for _, w := range test.writes {
@@ -250,12 +250,18 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	a := &device.MemoryLayout{
-		PointerAlignment: 4,
-		PointerSize:      4,
-		IntegerSize:      8,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
+		Endian:  device.LittleEndian,
+		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Integer: &device.DataTypeLayout{Size: 8, Alignment: 4},
+		Size:    &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &device.DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &device.DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	}
 
 	test{
@@ -386,14 +392,7 @@ func TestOperationsOpCall_3_Strings(t *testing.T) {
 func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	a := &device.MemoryLayout{
-		PointerAlignment: 8,
-		PointerSize:      4,
-		IntegerSize:      8,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
-	}
+	a := device.Little64
 
 	aRng, aID := atom.Data(ctx, a, p(0x40000+5* /* sizeof(u8)  */ 1), []uint8{
 		5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -522,14 +521,7 @@ func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	ca := device.Little32
-	ra := &device.MemoryLayout{
-		PointerAlignment: 8,
-		PointerSize:      8,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
-	}
+	ra := device.Little64
 
 	aRng, aID := atom.Data(ctx, ca, p(0x100000), "array")
 	bRng, bID := atom.Data(ctx, ca, p(0x200000), "of")
@@ -727,13 +719,20 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	a := &device.MemoryLayout{
-		PointerAlignment: 16,
-		PointerSize:      4,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
+		Endian:  device.LittleEndian,
+		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
+		Integer: &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &device.DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &device.DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	}
+
 	aRng, aID := atom.Data(ctx, a, p(0x100000), float32(10))
 	bRng, bID := atom.Data(ctx, a, p(0x200000), uint16(20))
 	cRng, cID := atom.Data(ctx, a, p(0x300000), false)
@@ -836,12 +835,18 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	a := &device.MemoryLayout{
-		PointerAlignment: 16,
-		PointerSize:      4,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
+		Endian:  device.LittleEndian,
+		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
+		Integer: &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &device.DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &device.DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	}
 	test{
 		atoms: []atom.Atom{

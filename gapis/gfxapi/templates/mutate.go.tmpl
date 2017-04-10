@@ -62,7 +62,7 @@
     if ptr, found := ϟb.Remappings[key]; found {
       ϟb.Load(ty, ptr)
     } else {
-      ptr = ϟb.AllocateMemory(uint64(ty.Size(ϟb.MemoryLayout().GetPointerSize())))
+      ptr = ϟb.AllocateMemory(uint64(ty.Size(ϟb.MemoryLayout().GetPointer().GetSize())))
       ϟb.Push(val) // We have an input to an unknown id, use the unmapped value.
       ϟb.Clone(0)
       ϟb.Store(ptr)
@@ -208,7 +208,7 @@
     }
   {{else if IsSize $.Type}}
     {
-      size_size := ϟs.MemoryLayout.GetSizeSize() * 8
+      size_size := ϟs.MemoryLayout.GetSize().GetSize() * 8
       if size_size == 32 {
         ϟb.Push(value.U32({{$.Name}}))
       } else if size_size == 64 {
@@ -236,7 +236,7 @@
     {{if not (GetAnnotation $ "replay_custom_value")}}
       func (c {{$.Name}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Value {
         {{if IsSize $.To}}
-          if ϟs.MemoryLayout.GetPointerSize() == 4 {
+          if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
           } else {
             return value.U64(uint64(c))

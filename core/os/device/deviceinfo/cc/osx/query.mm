@@ -41,8 +41,13 @@ struct Context {
 };
 
 static Context gContext;
+static int gContextRefCount = 0;
 
 void destroyContext() {
+    if (--gContextRefCount > 0) {
+        return;
+    }
+
     if (gContext.mHwModel) {
         delete [] gContext.mHwModel;
     }
@@ -56,7 +61,11 @@ void destroyContext() {
     }
 }
 
-bool createContext(void*) {
+bool createContext(void* platform_data) {
+    if (gContextRefCount++ > 0) {
+        return true;
+    }
+
     memset(&gContext, 0, sizeof(gContext));
 
     NSOpenGLPixelFormatAttribute attributes[] = {
@@ -126,18 +135,16 @@ const char* contextError() {
 int numABIs() { return 1; }
 
 void abi(int idx, device::ABI* abi) {
-    auto memory_layout = new device::MemoryLayout();
-    memory_layout->set_pointeralignment(alignof(void*));
-    memory_layout->set_pointersize(sizeof(void*));
-    memory_layout->set_integersize(sizeof(int));
-    memory_layout->set_sizesize(sizeof(size_t));
-    memory_layout->set_u64alignment(alignof(uint64_t));
-    memory_layout->set_endian(device::LittleEndian);
-
     abi->set_name("X86_64");
     abi->set_os(device::OSX);
     abi->set_architecture(device::X86_64);
-    abi->set_allocated_memorylayout(memory_layout);
+    abi->set_allocated_memorylayout(currentMemoryLayout());
+}
+
+device::ABI* currentABI() {
+    auto out = new device::ABI();
+    abi(0, out);
+    return out;
 }
 
 int cpuNumCores() { return gContext.mNumCores; }
