@@ -38,11 +38,11 @@ func buildStubProgram(ctx context.Context, e *atom.Extras, s *gfxapi.State, prog
 	}
 	c := GetContext(s)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		_, ok := c.Instances.Buffers[BufferId(x)]
+		_, ok := c.SharedObjects.Buffers[BufferId(x)]
 		return ok
 	}))
 	fragmentShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		_, ok := c.Instances.Buffers[BufferId(x)]
+		_, ok := c.SharedObjects.Buffers[BufferId(x)]
 		return ok || x == uint32(vertexShaderID)
 	}))
 	return append(

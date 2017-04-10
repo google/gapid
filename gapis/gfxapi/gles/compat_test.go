@@ -187,7 +187,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		}
 		if _, ok := a.(*gles.GlDrawElements); ok {
 			ctx := gles.GetContext(s)
-			vao := ctx.Instances.VertexArrays[ctx.BoundVertexArray]
+			vao := ctx.Objects.VertexArrays[ctx.BoundVertexArray]
 			array := vao.VertexAttributeArrays[0]
 			binding := vao.VertexBufferBindings[array.Binding]
 			if binding.Buffer != 0 && array.Pointer.Address == 0 {

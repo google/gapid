@@ -72,13 +72,13 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshHasNoVertices()}
 	}
 
-	program, found := c.Instances.Programs[c.BoundProgram]
+	program, found := c.SharedObjects.Programs[c.BoundProgram]
 	if !found {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoProgramBound()}
 	}
 
 	vb := &vertex.Buffer{}
-	va := c.Instances.VertexArrays[c.BoundVertexArray]
+	va := c.Objects.VertexArrays[c.BoundVertexArray]
 	for _, attr := range program.ActiveAttributes {
 		vaa := va.VertexAttributeArrays[attr.Location]
 		if vaa.Enabled == GLboolean_GL_FALSE {
@@ -96,7 +96,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 			// upper bound doesn't really matter here, so long as it's big.
 			slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s))
 		} else {
-			slice = c.Instances.Buffers[vbb.Buffer].Data
+			slice = c.SharedObjects.Buffers[vbb.Buffer].Data
 		}
 		data, err := vertexStreamData(ctx, vaa, vbb, count, slice, s)
 		if err != nil {

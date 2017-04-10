@@ -49,7 +49,7 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 	if i == nil {
 		return nil, err
 	}
-	va, ok := c.Instances.VertexArrays[c.BoundVertexArray]
+	va, ok := c.Objects.VertexArrays[c.BoundVertexArray]
 	if !ok || !va.VertexAttributeArrays.Contains(o) {
 		return nil, nil
 	}
@@ -64,7 +64,7 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 // If nil, nil is returned then the path cannot be followed.
 func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Buffers.Contains(o) {
+	if i == nil || !c.SharedObjects.Buffers.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Buffers").MapIndex(int64(o)), nil
@@ -74,7 +74,7 @@ func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Framebuffers.Contains(o) {
+	if i == nil || !c.Objects.Framebuffers.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Framebuffers").MapIndex(int64(o)), nil
@@ -84,7 +84,7 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 // If nil, nil is returned then the path cannot be followed.
 func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Programs.Contains(o) {
+	if i == nil || !c.SharedObjects.Programs.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Programs").MapIndex(int64(o)), nil
@@ -94,7 +94,7 @@ func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Queries.Contains(o) {
+	if i == nil || !c.Objects.Queries.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Queries").MapIndex(int64(o)), nil
@@ -104,7 +104,7 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Renderbuffers.Contains(o) {
+	if i == nil || !c.SharedObjects.Renderbuffers.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Renderbuffers").MapIndex(int64(o)), nil
@@ -114,7 +114,7 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 // If nil, nil is returned then the path cannot be followed.
 func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Shaders.Contains(o) {
+	if i == nil || !c.SharedObjects.Shaders.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Shaders").MapIndex(int64(o)), nil
@@ -124,7 +124,7 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.Textures.Contains(o) {
+	if i == nil || !c.SharedObjects.Textures.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Textures").MapIndex(int64(o)), nil
@@ -153,7 +153,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 		program = c.BoundProgram
 	}
 
-	prog, ok := c.Instances.Programs[program]
+	prog, ok := c.SharedObjects.Programs[program]
 	if !ok || !prog.Uniforms.Contains(o) {
 		return nil, nil
 	}
@@ -169,7 +169,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 // If nil, nil is returned then the path cannot be followed.
 func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := instances(ctx, p)
-	if i == nil || !c.Instances.VertexArrays.Contains(o) {
+	if i == nil || !c.Objects.VertexArrays.Contains(o) {
 		return nil, err
 	}
 	return i.Field("VertexArrays").MapIndex(int64(o)), nil

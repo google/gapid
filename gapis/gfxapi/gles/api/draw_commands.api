@@ -102,10 +102,10 @@ sub void DrawElements(ref!Context    ctx,
   if instance_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
   if indices_count > 0 {
     count := as!u32(indices_count)
-    id := ctx.Instances.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
+    id := ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
     if (id != 0) {
       // Element array buffer bound - indices is an offset on the buffer.
-      index_data := ctx.Instances.Buffers[id].Data
+      index_data := ctx.SharedObjects.Buffers[id].Data
       offset := as!s32(as!u64(indices))
 
       // Read the vertices

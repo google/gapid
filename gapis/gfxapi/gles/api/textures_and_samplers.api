@@ -149,69 +149,69 @@ sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum targ
     case GL_TEXTURE_2D: {
       // minRequiredVersion(2, 0)
       switch (tu.Binding2d != 0) {
-        case true:  ctx.Instances.Textures[tu.Binding2d]
-        case false: ctx.Instances.DefaultTextures.Texture2d
+        case true:  ctx.SharedObjects.Textures[tu.Binding2d]
+        case false: ctx.Objects.DefaultTextures.Texture2d
       }
     }
     case GL_TEXTURE_EXTERNAL_OES: {
       // minRequiredVersion(2, 0)
       switch (tu.BindingExternalOes != 0) {
-        case true:  ctx.Instances.Textures[tu.BindingExternalOes]
-        case false: ctx.Instances.DefaultTextures.TextureExternalOes
+        case true:  ctx.SharedObjects.Textures[tu.BindingExternalOes]
+        case false: ctx.Objects.DefaultTextures.TextureExternalOes
       }
     }
     case GL_TEXTURE_2D_ARRAY: {
       // minRequiredVersion(3, 0)
       switch (tu.Binding2dArray != 0) {
-        case true:  ctx.Instances.Textures[tu.Binding2dArray]
-        case false: ctx.Instances.DefaultTextures.Texture2dArray
+        case true:  ctx.SharedObjects.Textures[tu.Binding2dArray]
+        case false: ctx.Objects.DefaultTextures.Texture2dArray
       }
     }
     case GL_TEXTURE_2D_MULTISAMPLE: {
       // minRequiredVersion(3, 1)
       switch (tu.Binding2dMultisample != 0) {
-        case true:  ctx.Instances.Textures[tu.Binding2dMultisample]
-        case false: ctx.Instances.DefaultTextures.Texture2dMultisample
+        case true:  ctx.SharedObjects.Textures[tu.Binding2dMultisample]
+        case false: ctx.Objects.DefaultTextures.Texture2dMultisample
       }
     }
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
       // minRequiredVersion(3, 2)
       switch (tu.Binding2dMultisampleArray != 0) {
-        case true:  ctx.Instances.Textures[tu.Binding2dMultisampleArray]
-        case false: ctx.Instances.DefaultTextures.Texture2dMultisampleArray
+        case true:  ctx.SharedObjects.Textures[tu.Binding2dMultisampleArray]
+        case false: ctx.Objects.DefaultTextures.Texture2dMultisampleArray
       }
     }
     case GL_TEXTURE_3D: {
       // minRequiredVersion(3, 0)
       switch (tu.Binding3d != 0) {
-        case true:  ctx.Instances.Textures[tu.Binding3d]
-        case false: ctx.Instances.DefaultTextures.Texture3d
+        case true:  ctx.SharedObjects.Textures[tu.Binding3d]
+        case false: ctx.Objects.DefaultTextures.Texture3d
       }
     }
     case GL_TEXTURE_BUFFER: {
       // minRequiredVersion(3, 2)
       switch (tu.BindingBuffer != 0) {
-        case true:  ctx.Instances.Textures[tu.BindingBuffer]
-        case false: ctx.Instances.DefaultTextures.TextureBuffer
+        case true:  ctx.SharedObjects.Textures[tu.BindingBuffer]
+        case false: ctx.Objects.DefaultTextures.TextureBuffer
       }
     }
     case GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
       // minRequiredVersion(2, 0)
       switch (tu.BindingCubeMap != 0) {
-        case true:  ctx.Instances.Textures[tu.BindingCubeMap]
-        case false: ctx.Instances.DefaultTextures.TextureCubeMap
+        case true:  ctx.SharedObjects.Textures[tu.BindingCubeMap]
+        case false: ctx.Objects.DefaultTextures.TextureCubeMap
       }
     }
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
       // minRequiredVersion(3, 2)
       switch (tu.BindingCubeMapArray != 0) {
-        case true:  ctx.Instances.Textures[tu.BindingCubeMapArray]
-        case false: ctx.Instances.DefaultTextures.TextureCubeMapArray
+        case true:  ctx.SharedObjects.Textures[tu.BindingCubeMapArray]
+        case false: ctx.Objects.DefaultTextures.TextureCubeMapArray
       }
     }
     default: {
       // glErrorInvalidEnum(target)
-      ctx.Instances.DefaultTextures.Texture2d
+      ctx.Objects.DefaultTextures.Texture2d
     }
   }
 }
@@ -348,21 +348,21 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
 
   // TODO: Do not initialize if the enum is not valid.
   if (texture != 0) {
-    if !(texture in ctx.Instances.Textures) {
+    if !(texture in ctx.SharedObjects.Textures) {
       if target == GL_TEXTURE_EXTERNAL_OES {
-        ctx.Instances.Textures[texture] = new!Texture(
+        ctx.SharedObjects.Textures[texture] = new!Texture(
           ID:         texture,
           WrapS:      GL_CLAMP_TO_EDGE,
           WrapT:      GL_CLAMP_TO_EDGE,
           MinFilter:  GL_LINEAR)
       } else {
-        ctx.Instances.Textures[texture] = new!Texture(
+        ctx.SharedObjects.Textures[texture] = new!Texture(
           ID: texture,
         )
       }
     }
 
-    t := ctx.Instances.Textures[texture]
+    t := ctx.SharedObjects.Textures[texture]
     if t.Kind == as!GLenum(0) {
       t.Kind = target
     } else {
@@ -831,7 +831,7 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
   for i in (0 .. count) {
     id := s[i]
     if id != 0 {
-      delete(ctx.Instances.Samplers, id)
+      delete(ctx.SharedObjects.Samplers, id)
     }
   }
 }
@@ -849,7 +849,7 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   for i in (0 .. count) {
     id := t[i]
     if id != 0 {
-      delete(ctx.Instances.Textures, id)
+      delete(ctx.SharedObjects.Textures, id)
     }
     // TODO: Unbind from all texture units.
   }
@@ -865,7 +865,7 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!SamplerId(?)
-    ctx.Instances.Samplers[id] = new!Sampler()
+    ctx.SharedObjects.Samplers[id] = new!Sampler()
     s[i] = id
   }
 }
@@ -882,7 +882,7 @@ cmd void glGenTextures(GLsizei count, TextureId* textures) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!TextureId(?)
-    ctx.Instances.Textures[id] = new!Texture(ID: id)
+    ctx.SharedObjects.Textures[id] = new!Texture(ID: id)
     t[i] = id
   }
 }
@@ -912,7 +912,7 @@ cmd void glGenerateMipmap(GLenum target) {
 
 sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
   ctx := GetContext()
-  s := ctx.Instances.Samplers[sampler]
+  s := ctx.SharedObjects.Samplers[sampler]
   switch (pname) {
     case GL_TEXTURE_COMPARE_FUNC: params[0] = as!T(s.CompareFunc)
     case GL_TEXTURE_COMPARE_MODE: params[0] = as!T(s.CompareMode)
@@ -1213,7 +1213,7 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
   minRequiredVersion(3, 0)
 
   ctx := GetContext()
-  return as!GLboolean(sampler in ctx.Instances.Samplers)
+  return as!GLboolean(sampler in ctx.SharedObjects.Samplers)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsTexture.xml","OpenGL ES 2.0")
@@ -1224,7 +1224,7 @@ cmd GLboolean glIsTexture(TextureId texture) {
   minRequiredVersion(1, 0)
 
   ctx := GetContext()
-  return as!GLboolean(texture in ctx.Instances.Textures)
+  return as!GLboolean(texture in ctx.SharedObjects.Textures)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml","OpenGL ES 2.0")
@@ -1294,7 +1294,7 @@ cmd void glPixelStorei(GLenum parameter, GLint value) {
 
 sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
   ctx := GetContext()
-  s := ctx.Instances.Samplers[sampler]
+  s := ctx.SharedObjects.Samplers[sampler]
   switch (pname) {
     case GL_TEXTURE_COMPARE_FUNC: s.CompareFunc = as!GLenum(params[0])
     case GL_TEXTURE_COMPARE_MODE: s.CompareMode = as!GLenum(params[0])
@@ -2020,7 +2020,7 @@ cmd void glTexSubImage2D(GLenum         target,
   dst_offset := uncompressedImageSize(as!GLsizei(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
   src_data := switch (pbo == 0) {
     case true:  as!u8*(data)[0:src_size]
-    case false: ctx.Instances.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size)]
+    case false: ctx.SharedObjects.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size)]
   }
   line_bytes := uncompressedImageSize(width, 1, format, type)
 

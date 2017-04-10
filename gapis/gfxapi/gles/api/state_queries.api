@@ -404,7 +404,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     case GL_ELEMENT_ARRAY_BUFFER_BINDING: {
       minRequiredVersion(2, 0)
-      v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer)
+      v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer)
     }
     case GL_FRAGMENT_INTERPOLATION_OFFSET_BITS: {
       minRequiredVersion(3, 2)
@@ -1432,7 +1432,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
       minRequiredVersion(3, 1)
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Divisor)
+        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Divisor)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1441,7 +1441,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
       minRequiredVersion(3, 1)
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Offset)
+        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Offset)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1450,7 +1450,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
       minRequiredVersion(3, 1)
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Instances.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Stride)
+        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Stride)
       } else {
         glErrorInvalidEnum(name)
       }

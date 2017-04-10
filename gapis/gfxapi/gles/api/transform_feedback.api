@@ -23,7 +23,7 @@ class TransformFeedback {
 
 sub ref!TransformFeedback GetBoundTransformFeedback() {
   ctx := GetContext()
-  return ctx.Instances.TransformFeedbacks[ctx.BoundTransformFeedback]
+  return ctx.Objects.TransformFeedbacks[ctx.BoundTransformFeedback]
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBeginTransformFeedback.xhtml","OpenGL ES 3.0")
@@ -56,8 +56,8 @@ cmd void glBindTransformFeedback(GLenum target, TransformFeedbackId id) {
     }
   }
   ctx := GetContext()
-  if !(id in ctx.Instances.TransformFeedbacks) {
-    ctx.Instances.TransformFeedbacks[id] = new!TransformFeedback()
+  if !(id in ctx.Objects.TransformFeedbacks) {
+    ctx.Objects.TransformFeedbacks[id] = new!TransformFeedback()
   }
   ctx.BoundTransformFeedback = id
 }
@@ -72,7 +72,7 @@ cmd void glDeleteTransformFeedbacks(GLsizei n, const TransformFeedbackId* ids) {
   for i in (0 .. n) {
     id := tfs[i]
     if id != 0 {
-      ctx.Instances.TransformFeedbacks[id] = null
+      ctx.Objects.TransformFeedbacks[id] = null
     }
   }
 }
@@ -95,7 +95,7 @@ cmd void glGenTransformFeedbacks(GLsizei n, TransformFeedbackId* ids) {
   ctx := GetContext()
   for i in (0 .. n) {
     id := as!TransformFeedbackId(?)
-    ctx.Instances.TransformFeedbacks[id] = new!TransformFeedback()
+    ctx.Objects.TransformFeedbacks[id] = new!TransformFeedback()
     tfs[i] = id
   }
 }
@@ -123,7 +123,7 @@ cmd void glGetTransformFeedbackVarying(ProgramId program,
 cmd GLboolean glIsTransformFeedback(TransformFeedbackId id) {
   minRequiredVersion(3, 0)
   ctx := GetContext()
-  return as!GLboolean(id in ctx.Instances.TransformFeedbacks)
+  return as!GLboolean(id in ctx.Objects.TransformFeedbacks)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPauseTransformFeedback.xhtml","OpenGL ES 3.0")

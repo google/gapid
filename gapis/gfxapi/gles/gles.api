@@ -320,20 +320,27 @@ class DefaultTextureObjects {
   ref!Texture TextureExternalOes
 }
 
+// Objects which are never shared between contexts.
 @internal
 class Objects {
-  map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
   DefaultTextureObjects                            DefaultTextures
-  map!(TextureId, ref!Texture)                     Textures
   map!(FramebufferId, ref!Framebuffer)             Framebuffers
-  map!(BufferId, ref!Buffer)                       Buffers
-  map!(SamplerId, ref!Sampler)                     Samplers
-  map!(ShaderId, ref!Shader)                       Shaders
-  map!(ProgramId, ref!Program)                     Programs
   @unused map!(PipelineId, ref!Pipeline)           Pipelines
   map!(VertexArrayId, ref!VertexArray)             VertexArrays
   map!(QueryId, ref!Query)                         Queries
   map!(TransformFeedbackId, ref!TransformFeedback) TransformFeedbacks
+}
+
+// Objects which can be shared between contexts.
+// See: Chapter 5 - "Shared Objects and Multiple Contexts"
+@internal
+class SharedObjects {
+  map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
+  map!(TextureId, ref!Texture)                     Textures
+  map!(BufferId, ref!Buffer)                       Buffers
+  map!(SamplerId, ref!Sampler)                     Samplers
+  map!(ShaderId, ref!Shader)                       Shaders
+  map!(ProgramId, ref!Program)                     Programs
   map!(GLsync, ref!SyncObject)                     SyncObjects
 }
 
@@ -386,7 +393,8 @@ class Context {
   PixelStorageState                                     PixelStorage
   MiscellaneousState                                    Miscellaneous
   map!(GLenum, QueryId)                                 ActiveQueries
-  Objects                                               Instances
+  Objects                                               Objects
+  SharedObjects                                         SharedObjects
   Constants                                             Constants
 }
 
@@ -429,28 +437,28 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     // First initialization for the context.
     ctx.Constants = staticState.Constants
 
-    ctx.Instances.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
-    ctx.Instances.Buffers[0] = new!Buffer()
-    ctx.Instances.Renderbuffers[0] = new!Renderbuffer()
-    ctx.Instances.TransformFeedbacks[0] = new!TransformFeedback()
-    ctx.Instances.VertexArrays[0] = NewVertexArray(ctx)
+    ctx.Objects.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
+    ctx.SharedObjects.Buffers[0] = new!Buffer()
+    ctx.SharedObjects.Renderbuffers[0] = new!Renderbuffer()
+    ctx.Objects.TransformFeedbacks[0] = new!TransformFeedback()
+    ctx.Objects.VertexArrays[0] = NewVertexArray(ctx)
     ctx.TextureUnits[GL_TEXTURE0] = new!TextureUnit()
 
-    ctx.Instances.DefaultTextures.Texture2d = new!Texture(Kind: GL_TEXTURE_2D)
-    ctx.Instances.DefaultTextures.Texture2dArray = new!Texture(Kind: GL_TEXTURE_2D_ARRAY)
-    ctx.Instances.DefaultTextures.Texture2dMultisample = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE)
-    ctx.Instances.DefaultTextures.Texture2dMultisampleArray = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
-    ctx.Instances.DefaultTextures.Texture3d = new!Texture(Kind: GL_TEXTURE_3D)
-    ctx.Instances.DefaultTextures.TextureBuffer = new!Texture(Kind: GL_TEXTURE_BUFFER)
-    ctx.Instances.DefaultTextures.TextureCubeMap = new!Texture(Kind: GL_TEXTURE_CUBE_MAP)
-    ctx.Instances.DefaultTextures.TextureCubeMapArray = new!Texture(Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
-    ctx.Instances.DefaultTextures.TextureExternalOes = new!Texture(Kind: GL_TEXTURE_EXTERNAL_OES)
+    ctx.Objects.DefaultTextures.Texture2d = new!Texture(Kind: GL_TEXTURE_2D)
+    ctx.Objects.DefaultTextures.Texture2dArray = new!Texture(Kind: GL_TEXTURE_2D_ARRAY)
+    ctx.Objects.DefaultTextures.Texture2dMultisample = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE)
+    ctx.Objects.DefaultTextures.Texture2dMultisampleArray = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+    ctx.Objects.DefaultTextures.Texture3d = new!Texture(Kind: GL_TEXTURE_3D)
+    ctx.Objects.DefaultTextures.TextureBuffer = new!Texture(Kind: GL_TEXTURE_BUFFER)
+    ctx.Objects.DefaultTextures.TextureCubeMap = new!Texture(Kind: GL_TEXTURE_CUBE_MAP)
+    ctx.Objects.DefaultTextures.TextureCubeMapArray = new!Texture(Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
+    ctx.Objects.DefaultTextures.TextureExternalOes = new!Texture(Kind: GL_TEXTURE_EXTERNAL_OES)
 
-    ctx.Instances.Renderbuffers[color_id] = new!Renderbuffer()
-    ctx.Instances.Renderbuffers[depth_id] = new!Renderbuffer()
-    ctx.Instances.Renderbuffers[stencil_id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[color_id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[depth_id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[stencil_id] = new!Renderbuffer()
 
-    backbuffer := ctx.Instances.Framebuffers[0]
+    backbuffer := ctx.Objects.Framebuffers[0]
     backbuffer.ColorAttachments[0] = FramebufferAttachment(
       ObjectName:          as!GLuint(color_id),
       ObjectType:          GL_RENDERBUFFER,
@@ -498,28 +506,28 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
 sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState) {
   if (dynamicState != null) {
-    backbuffer := ctx.Instances.Framebuffers[0]
+    backbuffer := ctx.Objects.Framebuffers[0]
     color_id := as!RenderbufferId(backbuffer.ColorAttachments[0].ObjectName)
     depth_id := as!RenderbufferId(backbuffer.DepthAttachment.ObjectName)
     stencil_id := as!RenderbufferId(backbuffer.StencilAttachment.ObjectName)
 
-    color_buffer := ctx.Instances.Renderbuffers[color_id]
+    color_buffer := ctx.SharedObjects.Renderbuffers[color_id]
     color_buffer.Width = dynamicState.BackbufferWidth
     color_buffer.Height = dynamicState.BackbufferHeight
     color_buffer.InternalFormat = dynamicState.BackbufferColorFmt
-    ctx.Instances.Renderbuffers[color_id] = color_buffer
+    ctx.SharedObjects.Renderbuffers[color_id] = color_buffer
 
-    depth_buffer := ctx.Instances.Renderbuffers[depth_id]
+    depth_buffer := ctx.SharedObjects.Renderbuffers[depth_id]
     depth_buffer.Width = dynamicState.BackbufferWidth
     depth_buffer.Height = dynamicState.BackbufferHeight
     depth_buffer.InternalFormat = dynamicState.BackbufferDepthFmt
-    ctx.Instances.Renderbuffers[depth_id] = depth_buffer
+    ctx.SharedObjects.Renderbuffers[depth_id] = depth_buffer
 
-    stencil_buffer := ctx.Instances.Renderbuffers[stencil_id]
+    stencil_buffer := ctx.SharedObjects.Renderbuffers[stencil_id]
     stencil_buffer.Width = dynamicState.BackbufferWidth
     stencil_buffer.Height = dynamicState.BackbufferHeight
     stencil_buffer.InternalFormat = dynamicState.BackbufferStencilFmt
-    ctx.Instances.Renderbuffers[stencil_id] = stencil_buffer
+    ctx.SharedObjects.Renderbuffers[stencil_id] = stencil_buffer
 
     if dynamicState.ResetViewportScissor {
       ctx.FragmentOperations.Scissor.Box.Width = dynamicState.BackbufferWidth
