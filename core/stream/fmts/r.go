@@ -25,6 +25,14 @@ var (
 		}},
 	}
 
+	R_S8 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
 	R_U8_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U8,
@@ -33,9 +41,25 @@ var (
 		}},
 	}
 
-	R_F16 = &stream.Format{
+	R_U8_NORM_sRGB = &stream.Format{
 		Components: []*stream.Component{{
-			DataType: &stream.F16,
+			DataType: &stream.U8,
+			Sampling: stream.SRGBNormalized,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_S8_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S8,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_U16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U16,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_Red,
 		}},
@@ -49,6 +73,14 @@ var (
 		}},
 	}
 
+	R_S16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
 	R_S16_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S16,
@@ -57,9 +89,57 @@ var (
 		}},
 	}
 
+	R_F16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_U32 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_S32 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
 	R_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_U64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_S64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S64,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	R_F64 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F64,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_Red,
 		}},

@@ -78,52 +78,360 @@ func (e *unsupportedVulkanFormatError) Error() string {
 
 func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	switch vkfmt {
-	case VkFormat_VK_FORMAT_R8G8B8A8_UNORM:
-		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_UNORM", fmts.RGBA_U8_NORM), nil
-	case VkFormat_VK_FORMAT_BC1_RGB_SRGB_BLOCK:
-		return image.NewS3_DXT1_RGB("VK_FORMAT_BC1_RGB_SRGB_BLOCK"), nil
-	case VkFormat_VK_FORMAT_BC1_RGB_UNORM_BLOCK:
-		return image.NewS3_DXT1_RGB("VK_FORMAT_BC1_RGB_UNORM_BLOCK"), nil
-	case VkFormat_VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
-		return image.NewS3_DXT1_RGBA("VK_FORMAT_BC1_RGBA_SRGB_BLOCK"), nil
-	case VkFormat_VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
-		return image.NewS3_DXT1_RGBA("VK_FORMAT_BC1_RGBA_UNORM_BLOCK"), nil
-	case VkFormat_VK_FORMAT_BC2_UNORM_BLOCK:
-		return image.NewS3_DXT3_RGBA("VK_FORMAT_BC2_UNORM_BLOCK"), nil
-	case VkFormat_VK_FORMAT_BC3_UNORM_BLOCK:
-		return image.NewS3_DXT5_RGBA("VK_FORMAT_BC3_UNORM_BLOCK"), nil
-	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
-		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_SFLOAT", fmts.RGBA_F16), nil
+	case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8:
+		return image.NewUncompressed("VK_FORMAT_R4G4_UNORM_PACK8", fmts.RG_U4_NORM), nil
 	case VkFormat_VK_FORMAT_R8_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R8_UNORM", fmts.R_U8_NORM), nil
+	case VkFormat_VK_FORMAT_R8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R8_SNORM", fmts.R_S8_NORM), nil
+	case VkFormat_VK_FORMAT_R8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R8_USCALED", fmts.R_U8), nil
+	case VkFormat_VK_FORMAT_R8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R8_SSCALED", fmts.R_S8), nil
+	case VkFormat_VK_FORMAT_R8_UINT:
+		return image.NewUncompressed("VK_FORMAT_R8_UINT", fmts.R_U8), nil
+	case VkFormat_VK_FORMAT_R8_SINT:
+		return image.NewUncompressed("VK_FORMAT_R8_SINT", fmts.R_S8), nil
+	case VkFormat_VK_FORMAT_R8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_R8_SRGB", fmts.R_U8_NORM_sRGB), nil
+	case VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_R4G4B4A4_UNORM_PACK16", fmts.RGBA_U4_NORM), nil
+	case VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_B4G4R4A4_UNORM_PACK16", fmts.BGRA_U4_NORM), nil
+	case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_R5G6B5_UNORM_PACK16", fmts.RGB_U5U6U5_NORM), nil
+	case VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_B5G6R5_UNORM_PACK16", fmts.BGR_U5U6U5_NORM), nil
+	case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_R5G5B5A1_UNORM_PACK16", fmts.RGBA_U5U5U5U1_NORM), nil
+	case VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_B5G5R5A1_UNORM_PACK16", fmts.BGRA_U5U5U5U1_NORM), nil
+	case VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+		return image.NewUncompressed("VK_FORMAT_A1R5G5B5_UNORM_PACK16", fmts.ARGB_U1U5U5U5_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8_UNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8_UNORM", fmts.RG_U8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8_SNORM", fmts.RG_S8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8_USCALED", fmts.RG_U8), nil
+	case VkFormat_VK_FORMAT_R8G8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8_SSCALED", fmts.RG_S8), nil
+	case VkFormat_VK_FORMAT_R8G8_UINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8_UINT", fmts.RG_U8), nil
+	case VkFormat_VK_FORMAT_R8G8_SINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8_SINT", fmts.RG_S8), nil
+	case VkFormat_VK_FORMAT_R8G8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_R8G8_SRGB", fmts.RG_U8_NORM_sRGB), nil
 	case VkFormat_VK_FORMAT_R16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16_UNORM", fmts.R_U16_NORM), nil
+	case VkFormat_VK_FORMAT_R16_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R16_SNORM", fmts.R_S16_NORM), nil
+	case VkFormat_VK_FORMAT_R16_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R16_USCALED", fmts.R_U16), nil
+	case VkFormat_VK_FORMAT_R16_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R16_USCALED", fmts.R_S16), nil
+	case VkFormat_VK_FORMAT_R16_UINT:
+		return image.NewUncompressed("VK_FORMAT_R16_UINT", fmts.R_U16), nil
+	case VkFormat_VK_FORMAT_R16_SINT:
+		return image.NewUncompressed("VK_FORMAT_R16_SINT", fmts.R_S16), nil
 	case VkFormat_VK_FORMAT_R16_SFLOAT:
 		return image.NewUncompressed("VK_FORMAT_R16_SFLOAT", fmts.R_F16), nil
-	case VkFormat_VK_FORMAT_R32_SFLOAT:
-		return image.NewUncompressed("VK_FORMAT_R32_SFLOAT", fmts.R_F32), nil
-	case VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
-		return image.NewUncompressed("VK_FORMAT_R32G32B32A32_SFLOAT", fmts.RGBA_F32), nil
+	case VkFormat_VK_FORMAT_R8G8B8_UNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_UNORM", fmts.RGB_U8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8B8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_SNORM", fmts.RGB_S8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8B8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_USCALED", fmts.RGB_U8), nil
+	case VkFormat_VK_FORMAT_R8G8B8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_SSCALED", fmts.RGB_S8), nil
+	case VkFormat_VK_FORMAT_R8G8B8_UINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_UINT", fmts.RGB_U8), nil
+	case VkFormat_VK_FORMAT_R8G8B8_SINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_SINT", fmts.RGB_S8), nil
+	case VkFormat_VK_FORMAT_R8G8B8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_SRGB", fmts.RGB_U8_NORM_sRGB), nil
+	case VkFormat_VK_FORMAT_B8G8R8_UNORM:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_UNORM", fmts.BGR_U8_NORM), nil
+	case VkFormat_VK_FORMAT_B8G8R8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_SNORM", fmts.BGR_S8_NORM), nil
+	case VkFormat_VK_FORMAT_B8G8R8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_SNORM", fmts.BGR_U8), nil
+	case VkFormat_VK_FORMAT_B8G8R8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_SSCALED", fmts.BGR_S8), nil
+	case VkFormat_VK_FORMAT_B8G8R8_UINT:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_UINT", fmts.BGR_U8), nil
+	case VkFormat_VK_FORMAT_B8G8R8_SINT:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_SINT", fmts.BGR_S8), nil
+	case VkFormat_VK_FORMAT_B8G8R8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8_SRGB", fmts.BGR_U8_NORM_sRGB), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_UNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_UNORM", fmts.RGBA_U8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_UNORM", fmts.RGBA_S8_NORM), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_USCALED", fmts.RGBA_U8), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_USCALED", fmts.RGBA_S8), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_UINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_UINT", fmts.RGBA_U8), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_SINT:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_SINT", fmts.RGBA_S8), nil
+	case VkFormat_VK_FORMAT_R8G8B8A8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_SRGB", fmts.RGBA_N_sRGBU8N_sRGBU8N_sRGBU8NU8), nil
 	case VkFormat_VK_FORMAT_B8G8R8A8_UNORM:
 		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_UNORM", fmts.BGRA_U8_NORM), nil
-	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.DS_F32U8), nil
-	case VkFormat_VK_FORMAT_D32_SFLOAT:
-		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT", fmts.D_F32), nil
-	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
-		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.DS_NU24U8), nil
-	case VkFormat_VK_FORMAT_D16_UNORM:
-		return image.NewUncompressed("VK_FORMAT_D16_UNORM", fmts.D_U16_NORM), nil
-	case VkFormat_VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK"), nil
-	case VkFormat_VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
-		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
-	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
-		return image.NewETC2_RGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK"), nil
-	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
-		return image.NewETC2_RGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_SNORM:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_SNORM", fmts.BGRA_S8_NORM), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_USCALED:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_USCALED", fmts.BGRA_U8), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_USCALED", fmts.BGRA_S8), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_UINT:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_UINT", fmts.BGRA_U8), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_SINT:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_SINT", fmts.BGRA_S8), nil
+	case VkFormat_VK_FORMAT_B8G8R8A8_SRGB:
+		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_SRGB", fmts.BGRA_N_sRGBU8N_sRGBU8N_sRGBU8NU8), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UNORM_PACK32", fmts.ABGR_U8_NORM), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SNORM_PACK32", fmts.ABGR_S8_NORM), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_USCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_USCALED_PACK32", fmts.ABGR_U8), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_SSCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SSCALED_PACK32", fmts.ABGR_S8), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UINT_PACK32", fmts.ABGR_U8), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SINT_PACK32", fmts.ABGR_S8), nil
+	case VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SRGB_PACK32", fmts.ABGR_NU8N_sRGBU8N_sRGBU8N_sRGBU8), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UNORM_PACK32", fmts.ARGB_U2U10U10U10_NORM), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SNORM_PACK32", fmts.ARGB_S2S10S10S10_NORM), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_USCALED_PACK32", fmts.ARGB_U2U10U10U10), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SSCALED_PACK32", fmts.ARGB_S2S10S10S10), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UINT_PACK32", fmts.ARGB_U2U10U10U10), nil
+	case VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SINT_PACK32", fmts.ARGB_S2S10S10S10), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UNORM_PACK32", fmts.ABGR_U2U10U10U10_NORM), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SNORM_PACK32", fmts.ABGR_S2S10S10S10_NORM), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_USCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_USCALED_PACK32", fmts.ABGR_U2U10U10U10), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SSCALED_PACK32", fmts.ABGR_S2S10S10S10), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UINT_PACK32", fmts.ABGR_U2U10U10U10), nil
+	case VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SINT_PACK32", fmts.ABGR_S2S10S10S10), nil
 	case VkFormat_VK_FORMAT_R16G16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16G16_UNORM", fmts.RG_U16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R16G16_SNORM", fmts.RG_S16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16_USCALED", fmts.RG_U16), nil
+	case VkFormat_VK_FORMAT_R16G16_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16_SSCALED", fmts.RG_S16), nil
+	case VkFormat_VK_FORMAT_R16G16_UINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16_UINT", fmts.RG_U16), nil
+	case VkFormat_VK_FORMAT_R16G16_SINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16_SINT", fmts.RG_S16), nil
+	case VkFormat_VK_FORMAT_R16G16_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R16G16_SFLOAT", fmts.RG_F16), nil
+	case VkFormat_VK_FORMAT_R32_UINT:
+		return image.NewUncompressed("VK_FORMAT_R32_UINT", fmts.R_U32), nil
+	case VkFormat_VK_FORMAT_R32_SINT:
+		return image.NewUncompressed("VK_FORMAT_R32_SINT", fmts.R_S32), nil
+	case VkFormat_VK_FORMAT_R32_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R32_SINT", fmts.R_F32), nil
+	case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+		return image.NewUncompressed("VK_FORMAT_B10G11R11_UFLOAT_PACK32", fmts.BGR_F10F11F11), nil
+	case VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_R16G16B16_UNORM:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_UNORM", fmts.RGB_U16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16B16_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_SNORM", fmts.RGB_S16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16B16_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_USCALED", fmts.RGB_U16), nil
+	case VkFormat_VK_FORMAT_R16G16B16_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_SSCALED", fmts.RGB_S16), nil
+	case VkFormat_VK_FORMAT_R16G16B16_UINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_UINT", fmts.RGB_U16), nil
+	case VkFormat_VK_FORMAT_R16G16B16_SINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_SINT", fmts.RGB_S16), nil
+	case VkFormat_VK_FORMAT_R16G16B16_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16_SFLOAT", fmts.RGB_F32), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_UNORM", fmts.RGBA_U16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_UNORM", fmts.RGBA_S16_NORM), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_USCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_USCALED", fmts.RGBA_U16), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SSCALED:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_USCALED", fmts.RGBA_S16), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_UINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_UINT", fmts.RGBA_U16), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SINT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_SINT", fmts.RGBA_S16), nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R16G16B16A16_SFLOAT", fmts.RGBA_F16), nil
+	case VkFormat_VK_FORMAT_R32G32_UINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32_UINT", fmts.RG_U32), nil
+	case VkFormat_VK_FORMAT_R32G32_SINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32_SINT", fmts.RG_S32), nil
+	case VkFormat_VK_FORMAT_R32G32_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R32G32_SFLOAT", fmts.RG_F32), nil
+	case VkFormat_VK_FORMAT_R64_UINT:
+		return image.NewUncompressed("VK_FORMAT_R64_UINT", fmts.R_U64), nil
+	case VkFormat_VK_FORMAT_R64_SINT:
+		return image.NewUncompressed("VK_FORMAT_R64_SINT", fmts.R_S64), nil
+	case VkFormat_VK_FORMAT_R64_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R64_SFLOAT", fmts.R_F64), nil
+	case VkFormat_VK_FORMAT_R32G32B32_UINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32_UINT", fmts.RGB_U32), nil
+	case VkFormat_VK_FORMAT_R32G32B32_SINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32_SINT", fmts.RGB_S32), nil
+	case VkFormat_VK_FORMAT_R32G32B32_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32_SFLOAT", fmts.RGB_F32), nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_UINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32A32_UINT", fmts.RGBA_U32), nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32A32_SINT", fmts.RGBA_S32), nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R32G32B32A32_SFLOAT", fmts.RGBA_F32), nil
+	case VkFormat_VK_FORMAT_R64G64_UINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64_UINT", fmts.RG_U64), nil
+	case VkFormat_VK_FORMAT_R64G64_SINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64_SINT", fmts.RG_S64), nil
+	case VkFormat_VK_FORMAT_R64G64_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R64G64_SFLOAT", fmts.RG_F64), nil
+	case VkFormat_VK_FORMAT_R64G64B64_UINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64_UINT", fmts.RGB_U64), nil
+	case VkFormat_VK_FORMAT_R64G64B64_SINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64_SINT", fmts.RGB_S64), nil
+	case VkFormat_VK_FORMAT_R64G64B64_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64_SFLOAT", fmts.RGB_F64), nil
+	case VkFormat_VK_FORMAT_R64G64B64A64_UINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64A64_UINT", fmts.RGBA_U64), nil
+	case VkFormat_VK_FORMAT_R64G64B64A64_SINT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64A64_SINT", fmts.RGBA_S64), nil
+	case VkFormat_VK_FORMAT_R64G64B64A64_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_R64G64B64A64_SFLOAT", fmts.RGBA_F64), nil
+	case VkFormat_VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+		return image.NewS3_DXT1_RGB("VK_FORMAT_BC1_RGB_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+		return image.NewS3_DXT1_RGB("VK_FORMAT_BC1_RGB_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+		return image.NewS3_DXT1_RGBA("VK_FORMAT_BC1_RGBA_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+		return image.NewS3_DXT1_RGBA("VK_FORMAT_BC1_RGBA_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC2_UNORM_BLOCK:
+		return image.NewS3_DXT3_RGBA("VK_FORMAT_BC2_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC2_SRGB_BLOCK:
+		return image.NewS3_DXT3_RGBA("VK_FORMAT_BC2_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC3_UNORM_BLOCK:
+		return image.NewS3_DXT5_RGBA("VK_FORMAT_BC3_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC3_SRGB_BLOCK:
+		return image.NewS3_DXT5_RGBA("VK_FORMAT_BC3_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_BC4_UNORM_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC4_SNORM_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC5_UNORM_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC5_SNORM_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC6H_UFLOAT_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC6H_SFLOAT_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC7_UNORM_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_BC7_SRGB_BLOCK:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+		return image.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+		return image.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+		return image.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+		return image.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_EAC_R11_UNORM_BLOCK:
+		return image.NewETC2_R_U11_NORM("VK_FORMAT_EAC_R11_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_EAC_R11_SNORM_BLOCK:
+		return image.NewETC2_R_S11_NORM("VK_FORMAT_EAC_R11_SNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+		return image.NewETC2_RG_U11_NORM("VK_FORMAT_EAC_R11G11_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+		return image.NewETC2_RG_S11_NORM("VK_FORMAT_EAC_R11G11_SNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
+		return image.NewASTC_RGBA_4x4("VK_FORMAT_ASTC_4x4_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
+		return image.NewASTC_RGBA_4x4("VK_FORMAT_ASTC_4x4_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_5x4_UNORM_BLOCK:
+		return image.NewASTC_RGBA_5x4("VK_FORMAT_ASTC_5x4_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_5x4_SRGB_BLOCK:
+		return image.NewASTC_RGBA_5x4("VK_FORMAT_ASTC_5x4_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_5x5_UNORM_BLOCK:
+		return image.NewASTC_RGBA_5x5("VK_FORMAT_ASTC_5x5_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_5x5_SRGB_BLOCK:
+		return image.NewASTC_RGBA_5x5("VK_FORMAT_ASTC_5x5_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_6x5_UNORM_BLOCK:
+		return image.NewASTC_RGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_6x5_SRGB_BLOCK:
+		return image.NewASTC_RGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_6x6_UNORM_BLOCK:
+		return image.NewASTC_RGBA_6x6("VK_FORMAT_ASTC_6x6_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_6x6_SRGB_BLOCK:
+		return image.NewASTC_RGBA_6x6("VK_FORMAT_ASTC_6x6_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x5_UNORM_BLOCK:
+		return image.NewASTC_RGBA_8x5("VK_FORMAT_ASTC_8x5_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x5_SRGB_BLOCK:
+		return image.NewASTC_RGBA_8x5("VK_FORMAT_ASTC_8x5_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x6_UNORM_BLOCK:
+		return image.NewASTC_RGBA_8x6("VK_FORMAT_ASTC_8x6_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x6_SRGB_BLOCK:
+		return image.NewASTC_RGBA_8x6("VK_FORMAT_ASTC_8x6_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x8_UNORM_BLOCK:
+		return image.NewASTC_RGBA_8x8("VK_FORMAT_ASTC_8x8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_8x8_SRGB_BLOCK:
+		return image.NewASTC_RGBA_8x8("VK_FORMAT_ASTC_8x8_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x5_UNORM_BLOCK:
+		return image.NewASTC_RGBA_10x5("VK_FORMAT_ASTC_10x5_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x5_SRGB_BLOCK:
+		return image.NewASTC_RGBA_10x5("VK_FORMAT_ASTC_10x5_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x6_UNORM_BLOCK:
+		return image.NewASTC_RGBA_10x6("VK_FORMAT_ASTC_10x6_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x6_SRGB_BLOCK:
+		return image.NewASTC_RGBA_10x6("VK_FORMAT_ASTC_10x6_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x8_UNORM_BLOCK:
+		return image.NewASTC_RGBA_10x8("VK_FORMAT_ASTC_10x8_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x8_SRGB_BLOCK:
+		return image.NewASTC_RGBA_10x8("VK_FORMAT_ASTC_10x8_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x10_UNORM_BLOCK:
+		return image.NewASTC_RGBA_10x10("VK_FORMAT_ASTC_10x10_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_10x10_SRGB_BLOCK:
+		return image.NewASTC_RGBA_10x10("VK_FORMAT_ASTC_10x10_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_12x10_UNORM_BLOCK:
+		return image.NewASTC_RGBA_12x10("VK_FORMAT_ASTC_12x10_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_12x10_SRGB_BLOCK:
+		return image.NewASTC_RGBA_12x10("VK_FORMAT_ASTC_12x10_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_12x12_UNORM_BLOCK:
+		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_UNORM_BLOCK"), nil
+	case VkFormat_VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
+		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_SRGB_BLOCK"), nil
 	default:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	}
@@ -144,6 +452,9 @@ func getDepthImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) 
 	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
 		// Only the depth field is considered, and assume the data is tightly packed.
 		return image.NewUncompressed("VK_FORMAT_D16_UNORM_S8_UINT", fmts.D_U16_NORM), nil
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
+		// Only the depth field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_X8_D24_UNORM_PACK32", fmts.D_U24_NORM), nil
 	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
 		// Only the depth field is considered, and assume the data is tightly packed.
 		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.D_U24_NORM), nil

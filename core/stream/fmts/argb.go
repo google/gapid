@@ -17,115 +17,103 @@ package fmts
 import "github.com/google/gapid/core/stream"
 
 var (
-	BGR_U5U6U5_NORM = &stream.Format{
+	ARGB_U1U5U5U5_NORM = &stream.Format{
 		Components: []*stream.Component{{
-			DataType: &stream.U5,
+			DataType: &stream.U1,
 			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Blue,
-		}, {
-			DataType: &stream.U6,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Green,
+			Channel:  stream.Channel_Alpha,
 		}, {
 			DataType: &stream.U5,
 			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_Red,
-		}},
-	}
-
-	BGR_F10F11F11 = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.F10,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Blue,
 		}, {
-			DataType: &stream.F11,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Green,
-		}, {
-			DataType: &stream.F11,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Red,
-		}},
-	}
-
-	BGR_U8 = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.U8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Blue,
-		}, {
-			DataType: &stream.U8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Green,
-		}, {
-			DataType: &stream.U8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Red,
-		}},
-	}
-
-	BGR_S8 = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.S8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Blue,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Green,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Red,
-		}},
-	}
-
-	BGR_U8_NORM = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.U8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Blue,
-		}, {
-			DataType: &stream.U8,
+			DataType: &stream.U5,
 			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_Green,
 		}, {
-			DataType: &stream.U8,
+			DataType: &stream.U5,
 			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Red,
+			Channel:  stream.Channel_Blue,
 		}},
 	}
 
-	BGR_S8_NORM = &stream.Format{
+	ARGB_U2U10U10U10 = &stream.Format{
 		Components: []*stream.Component{{
-			DataType: &stream.S8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Blue,
+			DataType: &stream.U2,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Alpha,
 		}, {
-			DataType: &stream.S8,
-			Sampling: stream.LinearNormalized,
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
 			Channel:  stream.Channel_Green,
 		}, {
-			DataType: &stream.S8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Red,
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Blue,
 		}},
 	}
 
-	BGR_U8_NORM_sRGB = &stream.Format{
+	ARGB_S2S10S10S10 = &stream.Format{
 		Components: []*stream.Component{{
-			DataType: &stream.U8,
-			Sampling: stream.SRGBNormalized,
-			Channel:  stream.Channel_Blue,
+			DataType: &stream.S2,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Alpha,
 		}, {
-			DataType: &stream.U8,
-			Sampling: stream.SRGBNormalized,
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
 			Channel:  stream.Channel_Green,
 		}, {
-			DataType: &stream.U8,
-			Sampling: stream.SRGBNormalized,
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Blue,
+		}},
+	}
+
+	ARGB_U2U10U10U10_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U2,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}},
+	}
+
+	ARGB_S2S10S10S10_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S2,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
 		}},
 	}
 )
