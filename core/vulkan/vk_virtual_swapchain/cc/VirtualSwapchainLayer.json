@@ -3,7 +3,7 @@
   "layer": {
     "name": "VirtualSwapchain",
     "type": "GLOBAL",
-    "library_path": "./${VirtualSwapchainName}",
+    "library_path": "<library>",
     "api_version" : "1.0.5",
     "implementation_version" : "1",
     "description" : "Virtual Swapchain Layer",
