@@ -23,12 +23,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
@@ -36,6 +34,7 @@ import (
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapii/client"
 )
 
@@ -88,40 +87,10 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	// Run the local application with VK_LAYER_PATH, VK_INSTANCE_LAYERS,
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
-	cleanup := func() {}
-
-	graphcisSpy, err := layout.Library(ctx, layout.LibGraphicsSpy)
+	env := shell.CloneEnv()
+	cleanup, err := loader.SetupTrace(ctx, env)
 	if err != nil {
 		return cleanup, err
-	}
-
-	graphicsSpyJson, err := layout.Json(ctx, layout.LibGraphicsSpy)
-	if err != nil {
-		return cleanup, err
-	}
-
-	env := shell.CloneEnv().
-		AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
-		AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
-	if runtime.GOOS == "windows" {
-		sourceContent, err := ioutil.ReadFile(graphicsSpyJson.System())
-		if err != nil {
-			return cleanup, err
-		}
-		tempdir, err := ioutil.TempDir("", "gapit_dir")
-		if err != nil {
-			return cleanup, err
-		}
-		cleanup = func() {
-			os.RemoveAll(tempdir)
-		}
-		fixedContent := strings.Replace(string(sourceContent[:len(sourceContent)]), "./libgapii.so", graphcisSpy.System(), 1)
-		fixedContent = strings.Replace(fixedContent, "\\", "\\\\", -1)
-		ioutil.WriteFile(tempdir+"\\GraphicsSpyLayer.json", []byte(fixedContent), 0644)
-		env.AddPathStart("VK_LAYER_PATH", tempdir)
-	} else {
-		env.Set("LD_PRELOAD", graphcisSpy.System()).
-			AddPathStart("VK_LAYER_PATH", graphicsSpyJson.Parent().System())
 	}
 
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")

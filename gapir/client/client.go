@@ -23,28 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/file"
 )
-
-func init() {
-	const name = "gapir"
-	// Search directory that this executable is in.
-	if path, err := file.FindExecutable(file.ExecutablePath().Parent().Join(name).System()); err == nil {
-		GapirPath = path
-		//the layer's manifest file should be placed at the same directory as
-		//gapir exectuable.
-		VirtualSwapchainLayerPath = GapirPath.Parent()
-		return
-	}
-	// Search $PATH.
-	if path, err := file.FindExecutable(name); err == nil {
-		GapirPath = path
-		//the layer's manifest file should be placed at the same directory as
-		//gapir exectuable.
-		VirtualSwapchainLayerPath = GapirPath.Parent()
-		return
-	}
-}
 
 // Client is interface used to connect to GAPIR instances on devices.
 type Client struct {

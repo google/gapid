@@ -3,7 +3,7 @@
   "layer": {
     "name": "VkGraphicsSpy",
     "type": "GLOBAL",
-    "library_path": "./libgapii.so",
+    "library_path": "<library>",
     "api_version" : "1.0.5",
     "implementation_version" : "1",
     "description" : "Graphics Spy Layer",

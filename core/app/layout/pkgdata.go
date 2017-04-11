@@ -87,6 +87,11 @@ func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return layout().GapidApk(ctx, abi)
 }
 
+// Gapir returns the path to the gapir binary.
+func Gapir(ctx context.Context) (file.Path, error) {
+	return layout().Gapir(ctx)
+}
+
 // Library returns the path to the requested library.
 func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
 	return layout().Library(ctx, lib)

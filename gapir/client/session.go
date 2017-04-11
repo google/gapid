@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -29,10 +30,10 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
-	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapis/replay/protocol"
 )
@@ -40,13 +41,6 @@ import (
 var (
 	// LogPath is the full filepath of the logfile new instances of gapir should write to.
 	LogPath string
-
-	// GapirPath is the full filepath to the gapir executable.
-	GapirPath file.Path
-
-	// VirtualSwapchainLayerPath is the path to the virtual swapchain layer for
-	// Vulkan application replaying.
-	VirtualSwapchainLayerPath file.Path
 )
 
 const sessionTimeout = time.Second * 10
@@ -95,9 +89,15 @@ func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...strin
 		args = append(args, "--log", LogPath)
 	}
 
-	if !GapirPath.Exists() {
-		log.F(ctx, "Couldn't locate gapir executable")
+	gapir, err := layout.Gapir(ctx)
+	if err != nil {
+		log.F(ctx, "Couldn't locate gapir executable: %v", err)
 		return nil
+	}
+
+	env := shell.CloneEnv()
+	if _, err := loader.SetupReplay(ctx, env); err != nil {
+		return err
 	}
 
 	parser := func(severity log.Severity) io.WriteCloser {
@@ -126,9 +126,8 @@ func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...strin
 		defer stderr.Close()
 	}
 
-	port, err := process.Start(ctx, GapirPath.System(), process.StartOptions{
-		// Set the VK_LAYER_PATH for replaying Vulkan applications.
-		Env:    shell.CloneEnv().Set("VK_LAYER_PATH", VirtualSwapchainLayerPath.System()),
+	port, err := process.Start(ctx, gapir.System(), process.StartOptions{
+		Env:    env,
 		Args:   args,
 		Stdout: stdout,
 		Stderr: stderr,
