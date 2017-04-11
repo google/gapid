@@ -285,7 +285,7 @@ const char* getDisassembleText(uint32_t* spirv_binary, size_t length) {
     (SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES |
      SPV_BINARY_TO_TEXT_OPTION_INDENT));
 
-  if (result != SPV_SUCCESS) {
+  if (result < 0) {
     return nullptr;
   }
 
