@@ -609,7 +609,9 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
       glErrorInvalidEnum(texture_target)
     }
   }
-  if level != 0 { glErrorInvalidValue() }
+  if level != 0 {
+    minRequiredVersion(3, 0)
+  }
 
   ctx := GetContext()
   attachment := FramebufferAttachment()
