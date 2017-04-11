@@ -70,7 +70,6 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_target(${abi} gapii ${dst} "libgapii.so"
         DEPENDEES cc-core llvm-interceptor
         DEPENDS ${sources} ${android_files} cc-memory-tracker
-        DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"
     )
 endforeach()
 
@@ -96,6 +95,6 @@ if(NOT DISABLED_CXX)
         find_package(GL REQUIRED)
         target_link_libraries(gapii GL::Lib)
 
-        install(TARGETS gapii DESTINATION ${TARGET_INSTALL_PATH})
+        install(TARGETS gapii DESTINATION "${TARGET_INSTALL_PATH}/lib")
     endif()
 endif()

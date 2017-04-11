@@ -18,13 +18,11 @@ package com.google.gapid.server;
 import static java.util.logging.Level.INFO;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.OS;
 
 import java.io.File;
-import java.util.Map;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -36,39 +34,13 @@ public final class GapiPaths {
 
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
-  private static final Map<String, String> ARCH_REMAP = ImmutableMap.<String, String>builder()
-    .put("i386", "x86")
-    .put("amd64", "x86_64")
-    .build();
-
-  private static final String HOST_OS;
-  private static final String HOST_ARCH;
-  private static final String GAPIS_EXECUTABLE_NAME;
-  private static final String GAPIT_EXECUTABLE_NAME;
+  private static final String EXE_EXTENSION = OS.isWindows ? ".exe" : "";
+  private static final String GAPIS_EXECUTABLE_NAME = "gapis" + EXE_EXTENSION;
+  private static final String GAPIT_EXECUTABLE_NAME = "gapit" + EXE_EXTENSION;
   private static final String STRINGS_DIR_NAME = "strings";
-  private static final String EXE_EXTENSION;
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
   private static final String GAPID_ROOT_ENV_VAR = "GAPID";
-
-  static {
-    if (OS.isWindows) {
-      HOST_OS = "windows";
-      EXE_EXTENSION = ".exe";
-    } else if (OS.isMac) {
-      HOST_OS = "osx";
-      EXE_EXTENSION = "";
-    } else if (OS.isLinux) {
-      HOST_OS = "linux";
-      EXE_EXTENSION = "";
-    } else {
-      HOST_OS = OS.name;
-      EXE_EXTENSION = "";
-    }
-    HOST_ARCH = ARCH_REMAP.getOrDefault(OS.arch, OS.arch);
-    GAPIS_EXECUTABLE_NAME = "gapis" + EXE_EXTENSION;
-    GAPIT_EXECUTABLE_NAME = "gapit" + EXE_EXTENSION;
-  }
 
   private static File baseDir;
   private static File gapisPath;
@@ -109,8 +81,8 @@ public final class GapiPaths {
     }
 
     baseDir = dir;
-    gapisPath = join(dir, HOST_OS, HOST_ARCH, GAPIS_EXECUTABLE_NAME);
-    gapitPath = join(dir, HOST_OS, HOST_ARCH, GAPIT_EXECUTABLE_NAME);
+    gapisPath = new File(dir, GAPIS_EXECUTABLE_NAME);
+    gapitPath = new File(dir, GAPIT_EXECUTABLE_NAME);
     stringsPath = new File(dir, STRINGS_DIR_NAME);
 
     LOG.log(INFO, "Looking for GAPID in " + dir + " -> " + gapisPath);

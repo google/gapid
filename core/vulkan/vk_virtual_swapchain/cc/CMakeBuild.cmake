@@ -27,7 +27,6 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_target(${abi} VkLayer_VirtualSwapchain ${dst} "libVkLayer_VirtualSwapchain.so"
         DEPENDS ${sources}
         DEPENDEES gapii
-        DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"
     )
 endforeach()
 
@@ -53,8 +52,8 @@ if(NOT DISABLED_CXX)
                 ${CMAKE_CURRENT_SOURCE_DIR}/VirtualSwapchainLayer.json
                 $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>)
         install(FILES $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>/VirtualSwapchainLayer.json
-            DESTINATION ${TARGET_INSTALL_PATH})
-        install(TARGETS VkLayer_VirtualSwapchain DESTINATION ${TARGET_INSTALL_PATH})
+            DESTINATION "${TARGET_INSTALL_PATH}/lib")
+        install(TARGETS VkLayer_VirtualSwapchain DESTINATION "${TARGET_INSTALL_PATH}/lib")
     endif()
 
     if(UNIX)
