@@ -241,40 +241,28 @@ sub GLenum GetTextureTargetFromSamplerType(GLenum samplerType) {
 	}
 }
 
-sub void CheckInternalFormat(GLenum internalformat) {
-  switch (internalformat) {
-    case // Unsized Internal Formats:
-        GL_RGB, GL_RGBA, GL_LUMINANCE_ALPHA, GL_LUMINANCE, GL_ALPHA,
-        // Sized Internal Formats (R):
-        GL_R8, GL_R8_SNORM, GL_R16F, GL_R32F, GL_R8UI, GL_R8I, GL_R16UI, GL_R16I, GL_R32UI, GL_R32I,
-        // Sized Internal Formats (RG):
-        GL_RG8, GL_RG8_SNORM, GL_RG16F, GL_RG32F, GL_RG8UI, GL_RG8I, GL_RG16UI, GL_RG16I, GL_RG32UI, GL_RG32I,
-        // Sized Internal Formats (RGB):
-        GL_RGB8, GL_SRGB8, GL_RGB565, GL_RGB8_SNORM, GL_R11F_G11F_B10F, GL_RGB9_E5, GL_RGB16F, GL_RGB32F,
-        GL_RGB8UI, GL_RGB8I, GL_RGB16UI, GL_RGB16I, GL_RGB32UI, GL_RGB32I,
-        // Sized Internal Formats (RGBA):
-        GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA8_SNORM, GL_RGB5_A1, GL_RGBA4, GL_RGB10_A2, GL_RGBA16F, GL_RGBA32F,
-        GL_RGBA8UI, GL_RGBA8I, GL_RGB10_A2UI, GL_RGBA16UI, GL_RGBA16I, GL_RGBA32I, GL_RGBA32UI,
-        // Sized Internal Formats (Depth/Stencil):
-        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F,
-        GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_STENCIL_INDEX8: {
-    }
-    case GL_DEPTH_COMPONENT: {
-      requiresExtension(GL_OES_depth_texture)
-    }
-    case GL_DEPTH_STENCIL: {
-      requiresExtension(GL_OES_packed_depth_stencil)
-    }
-    case GL_RED_EXT, GL_RG_EXT: {
-      requiresExtension(GL_EXT_texture_rg)
-    }
-    case GL_BGRA_EXT: {
-      requiresExtension(GL_EXT_texture_format_BGRA8888)
-    }
-    default: {
-      glErrorInvalidValue()
-    }
+sub SizedFormatInfo GetSizedFormatInfoOrEnumError(GLenum internalformat) {
+  info := GetSizedFormatInfo(internalformat)
+  if info.UnsizedFormat == GL_NONE {
+    glErrorInvalidEnum(internalformat)
   }
+  return info
+}
+
+sub SizedFormatInfo GetSizedFormatInfoOrValueError(GLint internalformat) {
+  info := GetSizedFormatInfo(as!GLenum(internalformat))
+  if info.UnsizedFormat == GL_NONE {
+    glErrorInvalidValue()
+  }
+  return info
+}
+
+sub UnsizedFormatInfo GetUnsizedFormatInfoOrEnumError(GLenum format) {
+  info := GetUnsizedFormatInfo(format)
+  if info.Count == 0 {
+    glErrorInvalidEnum(format)
+  }
+  return info
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml","OpenGL ES 2.0")
@@ -475,43 +463,9 @@ cmd void glCompressedTexImage2D(GLenum         target,
       glErrorInvalidEnum(target)
     }
   }
-  switch (format) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
-      minRequiredVersion(3, 0)
-    }
-    case GL_ATC_RGB_AMD, GL_ATC_RGBA_EXPLICIT_ALPHA_AMD, GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD: {
-      requiresExtension(GL_AMD_compressed_ATC_texture)
-      // TODO: Add to other commands as well.
-    }
-    case GL_ETC1_RGB8_OES: {
-      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
-      // TODO: Add to other commands as well.
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
-        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
-      requiresExtension(GL_EXT_texture_compression_s3tc)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
+  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
+  if sizedFormatInfo.Compression == Uncompressed {
+    glErrorInvalidEnum(format)
   }
 
   if (border != 0) || (image_size < 0) { glErrorInvalidValue() }
@@ -580,35 +534,9 @@ sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat,
       glErrorInvalidEnum(target)
     }
   }
-  switch (internalformat) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
-      // version 3.0
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
-        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
-      requiresExtension(GL_EXT_texture_compression_s3tc)
-    }
-    default: {
-      glErrorInvalidEnum(internalformat)
-    }
+  sizedFormatInfo := GetSizedFormatInfoOrEnumError(internalformat)
+  if sizedFormatInfo.Compression == Uncompressed {
+    glErrorInvalidEnum(internalformat)
   }
 
   _ = level // TODO
@@ -647,38 +575,9 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
       glErrorInvalidEnum(target)
     }
   }
-  switch (format) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
-      minRequiredVersion(3, 0)
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_ETC1_RGB8_OES: {
-      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
-    }
-    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
-        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
-      requiresExtension(GL_EXT_texture_compression_s3tc)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
+  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
+  if sizedFormatInfo.Compression == Uncompressed {
+    glErrorInvalidEnum(format)
   }
 
   // TODO: Check that the data format is consistent.
@@ -720,35 +619,9 @@ sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLin
       glErrorInvalidEnum(target)
     }
   }
-  switch (format) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: {
-      // version 3.0
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
-        GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: {
-      requiresExtension(GL_EXT_texture_compression_s3tc)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
+  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
+  if sizedFormatInfo.Compression == Uncompressed {
+    glErrorInvalidEnum(format)
   }
 
   _ = level // TODO
@@ -1595,25 +1468,11 @@ cmd void glTexImage2D(GLenum         target,
       glErrorInvalidEnum(target)
     }
   }
-  CheckInternalFormat(as!GLenum(internalformat))
-  switch (format) {
-    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
-      // version 2.0
-    }
-    case GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_RED, GL_RED_INTEGER, GL_RG, GL_RGBA_INTEGER,
-        GL_RGB_INTEGER, GL_RG_INTEGER: {
-      minRequiredVersion(3, 0)
-    }
-    case GL_STENCIL_INDEX: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_BGRA_EXT: {
-      requiresExtension(GL_EXT_texture_format_BGRA8888)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
+  _ = GetUnsizedFormatInfoOrEnumError(format)
+  if as!GLenum(internalformat) != format {
+    _ = GetSizedFormatInfoOrValueError(internalformat)
   }
+
   switch (type) {
     case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
         GL_UNSIGNED_SHORT_5_6_5: {
@@ -1711,18 +1570,9 @@ sub void TexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei wi
       glErrorInvalidEnum(target)
     }
   }
-  CheckInternalFormat(as!GLenum(internalformat))
-  switch (format) {
-    case GL_ALPHA, GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RED,
-        GL_RED_INTEGER, GL_RG, GL_RGB, GL_RGBA, GL_RGBA_INTEGER, GL_RGB_INTEGER, GL_RG_INTEGER: {
-      // version 3.0
-    }
-    case GL_STENCIL_INDEX: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
+  _ = GetUnsizedFormatInfoOrEnumError(format)
+  if as!GLenum(internalformat) != format {
+    _ = GetSizedFormatInfoOrValueError(internalformat)
   }
   switch (type) {
     case GL_HALF_FLOAT_OES: {
@@ -1970,53 +1820,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
     }
   }
   if levels < 1 { glErrorInvalidValue() }
-  switch (internalformat) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8,
-        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F,
-        GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
-        GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
-        GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB16F, GL_RGB16I, GL_RGB16UI,
-        GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1, GL_RGB8, GL_RGB8I, GL_RGB8UI,
-        GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I,
-        GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8,
-        GL_SRGB8_ALPHA8: {
-      // version 3.0
-    }
-    case GL_R16, GL_R16_SNORM, GL_RG16, GL_RG16_SNORM, GL_RGB16, GL_RGB16_SNORM, GL_RGBA16, GL_RGBA16_SNORM: {
-      minRequiredVersion(3, 1)
-      requiresExtension(GL_EXT_texture_norm16)
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8,
-        GL_STENCIL_INDEX8: {
-      minRequiredVersion(3, 2)
-    }
-    case GL_ALPHA8_EXT: {
-      requiresExtension(GL_EXT_texture_storage)
-      // TODO: GL_EXT_texture_storage has nice table of internal formats - use it.
-    }
-    case GL_ETC1_RGB8_OES: {
-      requiresExtension(GL_OES_compressed_ETC1_RGB8_texture)
-      // TODO: Add to other commands as well.
-    }
-    default: {
-      glErrorInvalidEnum(internalformat)
-    }
-  }
+  _ = GetSizedFormatInfoOrEnumError(internalformat)
 
   switch (target) {
     case GL_TEXTURE_2D: {
@@ -2070,23 +1874,9 @@ cmd void glTexStorage2DMultisample(GLenum    target,
       glErrorInvalidEnum(target)
     }
   }
-  switch (internalformat) {
-    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24,
-        GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I,
-        GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F,
-        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI,
-        GL_RGB16F, GL_RGB16I, GL_RGB16UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1,
-        GL_RGB8, GL_RGB8I, GL_RGB8UI, GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I,
-        GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I,
-        GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8, GL_SRGB8_ALPHA8: {
-      // version 3.1
-    }
-    case GL_STENCIL_INDEX8: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
+  fmtInfo := GetSizedFormatInfoOrEnumError(internalformat)
+  if fmtInfo.Compression != Uncompressed {
       glErrorInvalidEnum(internalformat)
-    }
   }
   // TODO
 }
@@ -2116,41 +1906,7 @@ sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
       glErrorInvalidEnum(target)
     }
   }
-  switch (internalformat) {
-    case GL_COMPRESSED_R11_EAC, GL_COMPRESSED_RG11_EAC, GL_COMPRESSED_RGB8_ETC2,
-        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_COMPRESSED_RGBA8_ETC2_EAC,
-        GL_COMPRESSED_SIGNED_R11_EAC, GL_COMPRESSED_SIGNED_RG11_EAC,
-        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, GL_COMPRESSED_SRGB8_ETC2,
-        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8,
-        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F,
-        GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
-        GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
-        GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB16F, GL_RGB16I, GL_RGB16UI,
-        GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1, GL_RGB8, GL_RGB8I, GL_RGB8UI,
-        GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I,
-        GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8,
-        GL_SRGB8_ALPHA8: {
-      // version 3.0
-    }
-    case GL_COMPRESSED_RGBA_ASTC_10x10, GL_COMPRESSED_RGBA_ASTC_10x5, GL_COMPRESSED_RGBA_ASTC_10x6,
-        GL_COMPRESSED_RGBA_ASTC_10x8, GL_COMPRESSED_RGBA_ASTC_12x10, GL_COMPRESSED_RGBA_ASTC_12x12,
-        GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_5x4, GL_COMPRESSED_RGBA_ASTC_5x5,
-        GL_COMPRESSED_RGBA_ASTC_6x5, GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_8x5,
-        GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5,
-        GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8,
-        GL_STENCIL_INDEX8: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(internalformat)
-    }
-  }
+  _ = GetSizedFormatInfoOrEnumError(internalformat)
 
   _ = levels // TODO
   _ = width // TODO
@@ -2179,20 +1935,9 @@ sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internal
       glErrorInvalidEnum(target)
     }
   }
-  switch (internalformat) {
-    case GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24,
-        GL_DEPTH_COMPONENT32F, GL_R11F_G11F_B10F, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I,
-        GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_R8_SNORM, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F,
-        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RG8_SNORM, GL_RGB10_A2, GL_RGB10_A2UI,
-        GL_RGB16F, GL_RGB16I, GL_RGB16UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGB565, GL_RGB5_A1,
-        GL_RGB8, GL_RGB8I, GL_RGB8UI, GL_RGB8_SNORM, GL_RGB9_E5, GL_RGBA16F, GL_RGBA16I,
-        GL_RGBA16UI, GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8, GL_RGBA8I,
-        GL_RGBA8UI, GL_RGBA8_SNORM, GL_SRGB8, GL_SRGB8_ALPHA8, GL_STENCIL_INDEX8: {
-      // version 3.2
-    }
-    default: {
+  fmtInfo := GetSizedFormatInfoOrEnumError(internalformat)
+  if fmtInfo.Compression != Uncompressed {
       glErrorInvalidEnum(internalformat)
-    }
   }
 
   _ = samples // TODO
@@ -2234,18 +1979,7 @@ cmd void glTexSubImage2D(GLenum         target,
   ctx := GetContext()
   checkMaxTextureSize(ctx, target, level, width, height)
 
-  switch (format) {
-    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
-      // version 2.0
-    }
-    case GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_RED, GL_RED_INTEGER, GL_RG, GL_RGBA_INTEGER,
-        GL_RGB_INTEGER, GL_RG_INTEGER: {
-      minRequiredVersion(3, 0)
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
-  }
+  _ = GetUnsizedFormatInfoOrEnumError(format)
   switch (type) {
     case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
         GL_UNSIGNED_SHORT_5_6_5: {
@@ -2342,15 +2076,7 @@ sub void TexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
       glErrorInvalidEnum(target)
     }
   }
-  switch (format) {
-    case GL_ALPHA, GL_DEPTH_COMPONENT, GL_DEPTH_STENCIL, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RED,
-        GL_RED_INTEGER, GL_RG, GL_RGB, GL_RGBA, GL_RGBA_INTEGER, GL_RGB_INTEGER, GL_RG_INTEGER: {
-      // version 3.0
-    }
-    default: {
-      glErrorInvalidEnum(format)
-    }
-  }
+  _ = GetUnsizedFormatInfoOrEnumError(format)
   switch (type) {
     case GL_HALF_FLOAT_OES: {
       requiresExtension(GL_OES_texture_half_float)

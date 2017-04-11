@@ -13,6 +13,69 @@
 // limitations under the License.
 
 @internal
+class UnsizedFormatInfo {
+  u32    Count
+  GLenum Channel0
+  GLenum Channel1
+  GLenum Channel2
+  GLenum Channel3
+  bool   Integer
+}
+
+sub UnsizedFormatInfo GetUnsizedFormatInfo(GLenum uf) {
+  x := GL_NONE
+  R := GL_RED
+  G := GL_GREEN
+  B := GL_BLUE
+  A := GL_ALPHA
+  L := GL_LUMINANCE
+  D := GL_DEPTH_COMPONENT
+  S := GL_STENCIL_INDEX
+  INTEGER := true
+  return switch uf {
+    // TODO: Where is this defined?
+    case GL_ABGR_EXT: UnsizedFormatInfo(4, A, B, G, R)
+    // GLES20
+    case GL_ALPHA:             UnsizedFormatInfo(1, A)
+    case GL_ALPHA_INTEGER_EXT: UnsizedFormatInfo(1, A, x, x, x, INTEGER)
+    case GL_BGR:               UnsizedFormatInfo(3, B, G, R)
+    case GL_BGR_INTEGER:       UnsizedFormatInfo(3, B, G, R, x, INTEGER)
+    // GL_EXT_texture_format_BGRA8888
+    case GL_BGRA:         UnsizedFormatInfo(4, B, G, R, A)
+    case GL_BGRA_INTEGER: UnsizedFormatInfo(4, B, G, R, A, INTEGER)
+    // GLES30 || GL_OES_depth_texture
+    case GL_DEPTH_COMPONENT: UnsizedFormatInfo(1, D)
+    // GLES30 || GL_OES_packed_depth_stencil
+    case GL_DEPTH_STENCIL: UnsizedFormatInfo(2, D, S)
+    // GLES20
+    case GL_LUMINANCE:             UnsizedFormatInfo(1, L)
+    case GL_LUMINANCE_INTEGER_EXT: UnsizedFormatInfo(1, L, x, x, x, INTEGER)
+    // GLES20
+    case GL_LUMINANCE_ALPHA:             UnsizedFormatInfo(2, L, A)
+    case GL_LUMINANCE_ALPHA_INTEGER_EXT: UnsizedFormatInfo(2, L, A, x, x, INTEGER)
+    // GLES30 || EXT_texture_rg
+    case GL_RED: UnsizedFormatInfo(1, R)
+    // GLES30
+    case GL_RED_INTEGER: UnsizedFormatInfo(1, R, x, x, x, INTEGER)
+    // GLES30 || EXT_texture_rg
+    case GL_RG: UnsizedFormatInfo(2, R, G)
+    // GLES30
+    case GL_RG_INTEGER: UnsizedFormatInfo(2, R, G, x, x, INTEGER)
+    // GLES20
+    case GL_RGB: UnsizedFormatInfo(3, R, G, B)
+    // GLES30
+    case GL_RGB_INTEGER: UnsizedFormatInfo(3, R, G, B, x, INTEGER)
+    // GLES20
+    case GL_RGBA: UnsizedFormatInfo(4, R, G, B, A)
+    // GLES30
+    case GL_RGBA_INTEGER: UnsizedFormatInfo(4, R, G, B, A, INTEGER)
+    // GLES32 || GL_OES_texture_stencil8
+    case GL_STENCIL_INDEX: UnsizedFormatInfo(1, S)
+    default:               UnsizedFormatInfo()
+  }
+}
+
+@internal
 class SizedFormatInfo {
   // "Internal format" with explicit memory size. Includes compressed formats.
   // (RGB565, RGBA8, R16UI, DEPTH24_STENCIL8, COMPRESSED_SRGB8_ETC2, ...)
@@ -48,7 +111,7 @@ enum CompressionAlgorithm {
   Uncompressed = 0,
   ETC1         = 1,
   ETC2         = 2,
-  S3           = 3,
+  S3TC         = 3,
   ASTC         = 4,
   ATC          = 5,
   EAC          = 6,
@@ -61,8 +124,9 @@ sub u32 uncompressedImageSize(GLsizei width, GLsizei height, GLenum format, GLen
 }
 
 // uncompressedPixelSize returns the pixel data size in bytes for the given format and type.
-sub u32 uncompressedPixelSize(GLenum format, GLenum ty) {
-  num_components := componentCount(format)
+sub u32 uncompressedPixelSize(GLenum unsizedFormat, GLenum ty) {
+  fmtInfo := GetUnsizedFormatInfo(unsizedFormat)
+  num_components := fmtInfo.Count
 
   return switch ty {
     case GL_UNSIGNED_BYTE:                  num_components * 1
@@ -87,138 +151,234 @@ sub u32 uncompressedPixelSize(GLenum format, GLenum ty) {
 }
 
 
-// componentCount returns the number of components in the given format.
-sub u32 componentCount(GLenum format) {
-  return switch format {
-    case GL_ALPHA:           1
-    case GL_LUMINANCE:       1
-    case GL_LUMINANCE_ALPHA: 2
-    case GL_RED:             1
-    case GL_RED_INTEGER:     1
-    case GL_RG:              2
-    case GL_RG_INTEGER:      2
-    case GL_RGB:             3
-    case GL_RGB_INTEGER:     3
-    case GL_RGBA:            4
-    case GL_RGBA_INTEGER:    4
-    case GL_DEPTH_COMPONENT: 1
-    case GL_DEPTH_STENCIL:   2
-    case GL_STENCIL_INDEX:   1
-    case GL_BGRA_EXT:        4
-  }
-}
-
-sub SizedFormatInfo getSizedFormatInfo(GLenum sf) {
+sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
   // Give the constant name for clarity
   sRGB := true
   linear := false
   return switch (sf) {
     // Uncompressed colour formats
+    // GL_EXT_texture_storage
     case GL_ALPHA8_EXT:     SizedFormatInfo(sf, GL_ALPHA, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_R11F_G11F_B10F: SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_R16:            SizedFormatInfo(sf, GL_RED, GL_UNSIGNED_SHORT)
+    // GLES30
     case GL_R16F:           SizedFormatInfo(sf, GL_RED, GL_HALF_FLOAT)
+    // GLES30
     case GL_R16I:           SizedFormatInfo(sf, GL_RED_INTEGER, GL_SHORT)
+    // GLES30
     case GL_R16UI:          SizedFormatInfo(sf, GL_RED_INTEGER, GL_UNSIGNED_SHORT)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_R16_SNORM:      SizedFormatInfo(sf, GL_RED, GL_SHORT)
+    // GLES30
     case GL_R32F:           SizedFormatInfo(sf, GL_RED, GL_FLOAT)
+    // GLES30
     case GL_R32I:           SizedFormatInfo(sf, GL_RED_INTEGER, GL_INT)
+    // GLES30
     case GL_R32UI:          SizedFormatInfo(sf, GL_RED_INTEGER, GL_UNSIGNED_INT)
+    // GLES30
     case GL_R8:             SizedFormatInfo(sf, GL_RED, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_R8I:            SizedFormatInfo(sf, GL_RED_INTEGER, GL_BYTE)
+    // GLES30
     case GL_R8UI:           SizedFormatInfo(sf, GL_RED_INTEGER, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_R8_SNORM:       SizedFormatInfo(sf, GL_RED, GL_BYTE)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RG16:           SizedFormatInfo(sf, GL_RG, GL_UNSIGNED_SHORT)
+    // GLES30
     case GL_RG16F:          SizedFormatInfo(sf, GL_RG, GL_HALF_FLOAT)
+    // GLES30
     case GL_RG16I:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_SHORT)
+    // GLES30
     case GL_RG16UI:         SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_SHORT)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RG16_SNORM:     SizedFormatInfo(sf, GL_RG, GL_SHORT)
+    // GLES30
     case GL_RG32F:          SizedFormatInfo(sf, GL_RG, GL_FLOAT)
+    // GLES30
     case GL_RG32I:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_INT)
+    // GLES30
     case GL_RG32UI:         SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_INT)
+    // GLES30
     case GL_RG8:            SizedFormatInfo(sf, GL_RG, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RG8I:           SizedFormatInfo(sf, GL_RG_INTEGER, GL_BYTE)
+    // GLES30
     case GL_RG8UI:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RG8_SNORM:      SizedFormatInfo(sf, GL_RG, GL_BYTE)
+    // GLES30
     case GL_RGB10_A2:       SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV)
+    // GLES30
     case GL_RGB10_A2UI:     SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RGB16:          SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_SHORT)
+    // GLES30
     case GL_RGB16F:         SizedFormatInfo(sf, GL_RGB, GL_HALF_FLOAT)
+    // GLES30
     case GL_RGB16I:         SizedFormatInfo(sf, GL_RGB_INTEGER, GL_SHORT)
+    // GLES30
     case GL_RGB16UI:        SizedFormatInfo(sf, GL_RGB_INTEGER, GL_UNSIGNED_SHORT)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RGB16_SNORM:    SizedFormatInfo(sf, GL_RGB, GL_SHORT)
+    // GLES30
     case GL_RGB32F:         SizedFormatInfo(sf, GL_RGB, GL_FLOAT)
+    // GLES30
     case GL_RGB32I:         SizedFormatInfo(sf, GL_RGB_INTEGER, GL_INT)
+    // GLES30
     case GL_RGB32UI:        SizedFormatInfo(sf, GL_RGB_INTEGER, GL_UNSIGNED_INT)
+    // GLES30
     case GL_RGB565:         SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_SHORT_5_6_5)
+    // GLES30
     case GL_RGB5_A1:        SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1)
+    // GLES30
     case GL_RGB8:           SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RGB8I:          SizedFormatInfo(sf, GL_RGB_INTEGER, GL_BYTE)
+    // GLES30
     case GL_RGB8UI:         SizedFormatInfo(sf, GL_RGB_INTEGER, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RGB8_SNORM:     SizedFormatInfo(sf, GL_RGB, GL_BYTE)
+    // GLES30
     case GL_RGB9_E5:        SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RGBA16:         SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT)
+    // GLES30
     case GL_RGBA16F:        SizedFormatInfo(sf, GL_RGBA, GL_HALF_FLOAT)
+    // GLES30
     case GL_RGBA16I:        SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_SHORT)
+    // GLES30
     case GL_RGBA16UI:       SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT)
+    // GLES31 || GL_EXT_texture_norm16
     case GL_RGBA16_SNORM:   SizedFormatInfo(sf, GL_RGBA, GL_SHORT)
+    // GLES30
     case GL_RGBA32F:        SizedFormatInfo(sf, GL_RGBA, GL_FLOAT)
+    // GLES30
     case GL_RGBA32I:        SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_INT)
+    // GLES30
     case GL_RGBA32UI:       SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT)
+    // GLES30
     case GL_RGBA4:          SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4)
+    // GLES30
     case GL_RGBA8:          SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RGBA8I:         SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_BYTE)
+    // GLES30
     case GL_RGBA8UI:        SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE)
+    // GLES30
     case GL_RGBA8_SNORM:    SizedFormatInfo(sf, GL_RGBA, GL_BYTE)
+    // GLES30
     case GL_SRGB8:          SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_BYTE, sRGB)
+    // GLES30
     case GL_SRGB8_ALPHA8:   SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_BYTE, sRGB)
     // Uncompressed depth/stencil formats
+    // GLES30
     case GL_DEPTH24_STENCIL8:   SizedFormatInfo(sf, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8)
+    // GLES30
     case GL_DEPTH32F_STENCIL8:  SizedFormatInfo(sf, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV)
+    // GLES30
     case GL_DEPTH_COMPONENT16:  SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT)
+    // GLES30
     case GL_DEPTH_COMPONENT24:  SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT)
+    // GLES30
     case GL_DEPTH_COMPONENT32F: SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_FLOAT)
+    // GLES32
     case GL_STENCIL_INDEX8:     SizedFormatInfo(sf, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE)
     // Compressed formats
+    // GLES30
     case GL_COMPRESSED_R11_EAC:                        SizedFormatInfo(sf, GL_RED, GL_NONE, linear, EAC, 4, 4, 8)
+    // GLES30
     case GL_COMPRESSED_RG11_EAC:                       SizedFormatInfo(sf, GL_RG, GL_NONE, linear, EAC, 4, 4, 16)
+    // GLES30
     case GL_COMPRESSED_RGB8_ETC2:                      SizedFormatInfo(sf, GL_RGB, GL_NONE, linear, ETC2, 4, 4, 8)
+    // GLES30
     case GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ETC2, 4, 4, 8)
+    // GLES30
     case GL_COMPRESSED_RGBA8_ETC2_EAC:                 SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ETC2, 4, 4, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_10x10:                SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 10, 10, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_10x5:                 SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 10, 5, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_10x6:                 SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 10, 6, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_10x8:                 SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 10, 8, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_12x10:                SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 12, 10, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_12x12:                SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 12, 12, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_4x4:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 4, 4, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_5x4:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 5, 4, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_5x5:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 5, 5, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_6x5:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 6, 5, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_6x6:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 6, 6, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_8x5:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 8, 5, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_8x6:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 8, 6, 16)
+    // GLES32
     case GL_COMPRESSED_RGBA_ASTC_8x8:                  SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ASTC, 8, 8, 16)
+    // GLES30
     case GL_COMPRESSED_SIGNED_R11_EAC:                 SizedFormatInfo(sf, GL_RED, GL_NONE, linear, EAC, 4, 4, 8)
+    // GLES30
     case GL_COMPRESSED_SIGNED_RG11_EAC:                SizedFormatInfo(sf, GL_RG, GL_NONE, linear, EAC, 4, 4, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10:        SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 10, 10, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5:         SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 10, 5, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6:         SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 10, 6, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8:         SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 10, 8, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10:        SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 12, 10, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12:        SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 12, 12, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 4, 4, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 5, 4, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 5, 5, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 6, 5, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 6, 6, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 8, 5, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 8, 6, 16)
+    // GLES32
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ASTC, 8, 8, 16)
+    // GLES30
     case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:          SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ETC2, 4, 4, 16)
+    // GLES30
     case GL_COMPRESSED_SRGB8_ETC2:                     SizedFormatInfo(sf, GL_RGB, GL_NONE, sRGB, ETC2, 4, 4, 8)
+    // GLES30
     case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: SizedFormatInfo(sf, GL_RGBA, GL_NONE, sRGB, ETC2, 4, 4, 8)
+    // GL_OES_compressed_ETC1_RGB8_texture
     case GL_ETC1_RGB8_OES:                             SizedFormatInfo(sf, GL_RGB, GL_NONE, linear, ETC1, 4, 4, 8)
+    // GL_EXT_texture_compression_s3tc
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:              SizedFormatInfo(sf, GL_RGB, GL_NONE, linear, S3TC, 4, 4, 8)
+    // GL_EXT_texture_compression_s3tc
+    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:             SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, S3TC, 4, 4, 8)
+    // GL_EXT_texture_compression_s3tc
+    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:             SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, S3TC, 4, 4, 16)
+    // GL_EXT_texture_compression_s3tc
+    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:             SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, S3TC, 4, 4, 16)
+    // GL_AMD_compressed_ATC_texture
+    case GL_ATC_RGB_AMD:                               SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ATC, 4, 4, 8)
+    // GL_AMD_compressed_ATC_texture
+    case GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:               SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ATC, 4, 4, 16)
+    // GL_AMD_compressed_ATC_texture
+    case GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:           SizedFormatInfo(sf, GL_RGBA, GL_NONE, linear, ATC, 4, 4, 16)
     default:
       SizedFormatInfo(GL_NONE)
   }
