@@ -20,5 +20,5 @@ stringgen(
 )
 
 if(TARGET stringgen-messages)
-    install(FILES ${GO_BIN}/strings/en-us.stb DESTINATION strings)
+    install(FILES ${GO_BIN}/strings/en-us.stb DESTINATION "${TARGET_INSTALL_PATH}/strings")
 endif()

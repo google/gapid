@@ -62,7 +62,6 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} llvm-interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources} llvm-llvm-tblgen
-        DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"
         SOURCE_PATH "llvm/src/llvm-build/lib/libinterceptor.so"
     )
 endforeach()

@@ -75,19 +75,10 @@ func withPlatformSuffix(lib string) string {
 	}
 }
 
-var packageOSToDir = map[device.OSKind]string{
-	device.UnknownOS: "unknown",
-	device.Windows:   "win32",
-	device.OSX:       "darwin",
-	device.Linux:     "linux",
-	device.Android:   "android",
-}
-
-var pkgABIToDir = map[device.Architecture]string{
-	device.ARMv7a: "armeabi-v7a",
-	device.ARMv8a: "arm64-v8a",
-	device.X86:    "x86",
-	device.X86_64: "x86_64",
+var abiToApk = map[device.Architecture]string{
+	device.ARMv7a: "gapid-armeabi.apk",
+	device.ARMv8a: "gapid-aarch64.apk",
+	device.X86:    "gapid-x86.apk",
 }
 
 // pkgLayout is the file layout used when running executables from a packaged
@@ -96,36 +87,32 @@ type pkgLayout struct {
 	root file.Path
 }
 
-func (l pkgLayout) file(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
-	return l.root.Join(packageOSToDir[abi.OS], pkgABIToDir[abi.Architecture], name), nil
-}
-
 func (l pkgLayout) Strings(ctx context.Context) (file.Path, error) {
 	return l.root.Join("strings", "en-us.stb"), nil
 }
 
 func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.file(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapit")
+	return l.root.Join("gapit"), nil
 }
 
 func (l pkgLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.file(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapir")
+	return l.root.Join("gapir"), nil
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.file(ctx, host.Instance(ctx).Configuration.ABIs[0], "gapis")
+	return l.root.Join("gapis"), nil
 }
 
 func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	return l.file(ctx, abi, "gapid.apk")
+	return l.root.Join(abiToApk[abi.Architecture]), nil
 }
 
 func (l pkgLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.file(ctx, host.Instance(ctx).Configuration.ABIs[0], libTypeToName[lib])
+	return l.root.Join("lib", libTypeToName[lib]), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.file(ctx, host.Instance(ctx).Configuration.ABIs[0], libTypeToJson[lib])
+	return l.root.Join("lib", libTypeToJson[lib]), nil
 }
 
 var binABIToDir = map[string]string{
@@ -177,7 +164,7 @@ func (l binLayout) Gapis(ctx context.Context) (file.Path, error) {
 }
 
 func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	return l.file(ctx, abi, "gapid.apk")
+	return l.file(ctx, abi, abiToApk[abi.Architecture])
 }
 
 func (l binLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {

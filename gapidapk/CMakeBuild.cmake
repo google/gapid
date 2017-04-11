@@ -137,7 +137,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
             filehash
     )
 
-    set(abi_gapid_apk "${abi_bin}/gapid.apk")
+    set(abi_gapid_apk "${abi_bin}/gapid-${abi}.apk")
     add_custom_command(
         OUTPUT "${abi_gapid_apk}"
         COMMAND "${CMAKE_COMMAND}" -E copy
@@ -148,5 +148,5 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
     add_custom_target("${abi}-gapid-apk" ALL DEPENDS ${abi_gapid_apk})
 
-    install(FILES "${abi_gapid_apk}" DESTINATION "android/${ANDROID_ABI_PATH_${abi}}")
+    install(FILES "${abi_gapid_apk}" DESTINATION ${TARGET_INSTALL_PATH})
 endforeach()

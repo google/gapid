@@ -27,7 +27,6 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_target(${abi} VkLayerGraphicsSpy ${dst} "libVkLayerGraphicsSpy.so"
         DEPENDS ${android_sources}
         DEPENDEES gapii
-        DESTINATION "android/${ANDROID_ABI_PATH_${abi}}"
     )
 endforeach()
 
@@ -51,8 +50,7 @@ if(NOT DISABLED_CXX)
                 ${CMAKE_CURRENT_SOURCE_DIR}/GraphicsSpyLayer.json
                 $<TARGET_FILE_DIR:VkLayerGraphicsSpy>)
         install(FILES $<TARGET_FILE_DIR:VkLayerGraphicsSpy>/GraphicsSpyLayer.json
-            DESTINATION ${TARGET_INSTALL_PATH})
-        install(TARGETS VkLayerGraphicsSpy DESTINATION ${TARGET_INSTALL_PATH})
+            DESTINATION "${TARGET_INSTALL_PATH}/lib")
     endif()
 
 endif()

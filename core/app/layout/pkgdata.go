@@ -17,6 +17,7 @@ package layout
 import (
 	"context"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
 )
@@ -25,44 +26,36 @@ import (
 // Call layout() instead of using this directly.
 var resolvedLayout FileLayout
 
-func layout() (out FileLayout) {
+func layout(ctx context.Context) (out FileLayout) {
 	if resolvedLayout != nil {
 		return resolvedLayout
 	}
 	defer func() { resolvedLayout = out }()
 	for _, base := range []file.Path{file.ExecutablePath(), file.Abs(".")} {
 		dir := base.Parent()
+		log.D(ctx, "Looking for package in %v", dir)
+
 		// Check the regular package layout first:
 		// pkg
 		//  ├─── build.properties
 		//  ├─── strings
 		//  │     └─── en-us.stb
-		//  ├─── android
-		//  │     ├─── arm64-v8a
-		//  │     │     └─── gapid.apk
-		//  │     ├─── armeabi-v7a
-		//  │     │     └─── gapid.apk
-		//  │     └─── x86
-		//  │           └─── gapid.apk
-		//  ├─── osx
-		//  │     └─── x86_64
-		//  │           ├─── gapir
-		//  │           ├─── gapis
-		//  │           ↓
-		//  ├─── linux
-		//  │    ↓
+		//  ├─── gapid-<abi>.ak
+		//  ├─── gapir
+		//  ├─── gapis
+		//  ├─── gapit
 		//  ↓
-		if root := dir.Parent().Parent(); root.Join("build.properties").Exists() {
-			return pkgLayout{root}
+		if dir.Join("build.properties").Exists() {
+			return pkgLayout{dir}
 		}
 		// Check bin layout from executable's directory.
 		// bin
 		//  ├─── android-armv7a
-		//  │     └─── gapid.apk
+		//  │     └─── gapid-armv7a.apk
 		//  ├─── android-armv8a
-		//  │     └─── gapid.apk
+		//  │     └─── gapid-armv8a.apk
 		//  ├─── android-x86
-		//  │     └─── gapid.apk
+		//  │     └─── gapid-x86.apk
 		//  ├─── strings
 		//  │     └─── en-us.stb
 		//  ├─── gapir
@@ -79,25 +72,25 @@ func layout() (out FileLayout) {
 
 // Strings returns the path to the binary string table.
 func Strings(ctx context.Context) (file.Path, error) {
-	return layout().Strings(ctx)
+	return layout(ctx).Strings(ctx)
 }
 
 // GapidApk returns the path to the gapid.apk corresponding to the given abi.
 func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	return layout().GapidApk(ctx, abi)
+	return layout(ctx).GapidApk(ctx, abi)
 }
 
 // Gapir returns the path to the gapir binary.
 func Gapir(ctx context.Context) (file.Path, error) {
-	return layout().Gapir(ctx)
+	return layout(ctx).Gapir(ctx)
 }
 
 // Library returns the path to the requested library.
 func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return layout().Library(ctx, lib)
+	return layout(ctx).Library(ctx, lib)
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
 func Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return layout().Json(ctx, lib)
+	return layout(ctx).Json(ctx, lib)
 }
