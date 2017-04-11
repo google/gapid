@@ -39,6 +39,7 @@ function(scan_for_protos)
     if(FORCING_GLOB OR NOT EXISTS ${proto_cmake})
         file(GLOB_RECURSE all_protos RELATIVE ${CMAKE_SOURCE_DIR}
             "${CMAKE_SOURCE_DIR}/core/*.proto"
+            "${CMAKE_SOURCE_DIR}/core/os/device/*.proto"
             "${CMAKE_SOURCE_DIR}/gapic/*.proto"
             "${CMAKE_SOURCE_DIR}/gapis/*.proto"
             "${CMAKE_SOURCE_DIR}/gapidapk/*.proto"
