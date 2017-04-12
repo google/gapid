@@ -21,6 +21,7 @@ set(files
     common.go
     devices.go
     dump.go
+    dump_shaders.go
     flags.go
     info.go
     inputs.go
@@ -32,5 +33,5 @@ set(files
     video.go
 )
 set(dirs
-    
+
 )

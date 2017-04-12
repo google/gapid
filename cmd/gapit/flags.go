@@ -109,6 +109,11 @@ type (
 			End   int `help:"frame to end capture on: -1 for last frame"`
 		}
 	}
+	DumpShadersFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Atom  int `help:"atom to dump the resources after"`
+	}
 	DumpFlags struct {
 		Gapis          GapisFlags
 		Gapir          GapirFlags

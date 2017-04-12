@@ -272,6 +272,13 @@ func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 	}
 }
 
+func (n *Command) ResourceAfter(id *ID) *ResourceData {
+	return &ResourceData{
+		Id:    id,
+		After: n,
+	}
+}
+
 // Mesh returns the path node to the mesh of this command.
 func (n *Command) Mesh(faceted bool) *Mesh {
 	return &Mesh{

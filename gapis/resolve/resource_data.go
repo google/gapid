@@ -74,7 +74,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	for k, v := range resources {
 		res, err := v.ResourceData(ctx, state)
 		if err != nil {
-			resourceData[k] = err;
+			resourceData[k] = err
 		} else {
 			resourceData[k] = res
 		}
