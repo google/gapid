@@ -63,6 +63,7 @@ import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -158,13 +159,25 @@ public class MainWindow extends ApplicationWindow {
   @Override
   protected Point getInitialSize() {
     Point size = models().settings.windowSize;
-    return (size != null) ? size : super.getInitialSize();
+    return (size != null) ? size : getDefaultInitialSize();
+  }
+
+  private Point getDefaultInitialSize() {
+    Rectangle bounds = getShell().getDisplay().getPrimaryMonitor().getClientArea();
+    return new Point((int)(0.6 * bounds.width), (int)(0.8 * bounds.height));
   }
 
   @Override
   protected Point getInitialLocation(Point initialSize) {
     Point location = models().settings.windowLocation;
-    return (location != null) ? location : super.getInitialLocation(initialSize);
+    return (location != null) ? location : getDefaultInitialLocation(initialSize);
+  }
+
+  private Point getDefaultInitialLocation(Point size) {
+    Rectangle bounds = getShell().getDisplay().getPrimaryMonitor().getClientArea();
+    // Center horizontally, split vertical space 1/3 - 2/3.
+    return new Point(Math.max(0, bounds.width - size.x ) / 2,
+        Math.max(0, bounds.height - size.y) / 3);
   }
 
   @Override
