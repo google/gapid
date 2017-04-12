@@ -289,13 +289,16 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
 				if (a.Mask & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
 					for _, att := range fb.ColorAttachments {
+						b.read(g, getAttachmentSize(g, c, att))
 						b.write(g, getAttachmentData(g, c, att))
 					}
 				}
 				if (a.Mask & GLbitfield_GL_DEPTH_BUFFER_BIT) != 0 {
+					b.read(g, getAttachmentSize(g, c, fb.DepthAttachment))
 					b.write(g, getAttachmentData(g, c, fb.DepthAttachment))
 				}
 				if (a.Mask & GLbitfield_GL_STENCIL_BUFFER_BIT) != 0 {
+					b.read(g, getAttachmentSize(g, c, fb.StencilAttachment))
 					b.write(g, getAttachmentData(g, c, fb.StencilAttachment))
 				}
 			case *GlBindFramebuffer:
@@ -410,6 +413,23 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 				key = eglImageDataKey{tex.EGLImage}
 			} else {
 				key = textureDataKey{tex, tex.ID}
+			}
+		}
+	}
+	if key != nil {
+		g.roots[g.addressMap.addressOf(key)] = true
+	}
+	return
+}
+
+func getAttachmentSize(g *DependencyGraph, c *Context, att FramebufferAttachment) (key stateKey) {
+	if att.Type == GLenum_GL_TEXTURE {
+		tex := att.Texture
+		if tex != nil {
+			if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+				key = eglImageSizeKey{tex.EGLImage}
+			} else {
+				key = textureSizeKey{tex, tex.ID}
 			}
 		}
 	}
