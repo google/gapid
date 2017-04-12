@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/gapis/atom/atom_pb"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/memory/memory_pb"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -33,9 +32,8 @@ const bits32 = uint64(1) << 32
 
 // Pointer is the type representing a memory pointer.
 type Pointer struct {
-	binary.Generate `java:"MemoryPointer"`
-	Address         uint64 // The memory address.
-	Pool            PoolID // The memory pool.
+	Address uint64 // The memory address.
+	Pool    PoolID // The memory pool.
 }
 
 // Offset returns the pointer offset by n bytes.
@@ -79,13 +77,20 @@ func (p Pointer) ToProto() *memory_pb.Pointer {
 	}
 }
 
-func (p *Pointer) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, p.ToProto())
-}
-
 func PointerFrom(from *memory_pb.Pointer) Pointer {
 	return Pointer{
 		Address: from.Address,
 		Pool:    PoolID(from.Pool),
 	}
+}
+
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a Pointer) (*memory_pb.Pointer, error) {
+			return a.ToProto(), nil
+		},
+		func(ctx context.Context, a *memory_pb.Pointer) (Pointer, error) {
+			return PointerFrom(a), nil
+		},
+	)
 }

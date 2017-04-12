@@ -46,8 +46,6 @@ import (
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/test/integration/replay/gles/samples"
-
-	_ "github.com/google/gapid/framework/binary/any"
 )
 
 const (
@@ -130,7 +128,7 @@ func (f *Fixture) storeCapture(ctx context.Context, a *atom.List) *path.Capture 
 		Device: dev,
 		Abi:    dev.Configuration.ABIs[0],
 	}
-	out, err := capture.ImportAtomList(ctx, "test-capture", a, h)
+	out, err := capture.New(ctx, "test-capture", h, a.Atoms)
 	assert.With(ctx).ThatError(err).Succeeded()
 	return out
 }
@@ -371,10 +369,8 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 	for i, path := range captures {
 		c, err := capture.ResolveFromPath(f.ctx, path)
 		assert.With(f.ctx).ThatError(err).Succeeded()
-		list, err := c.Atoms(f.ctx)
-		assert.With(f.ctx).ThatError(err).Succeeded()
-		lists = append(lists, list.Atoms)
-		remainingAtoms += len(list.Atoms)
+		lists = append(lists, c.Atoms)
+		remainingAtoms += len(c.Atoms)
 		threads = append(threads, core.ThreadID(0x10000+i))
 	}
 
@@ -618,9 +614,9 @@ func TestMultiContextCapture(t *testing.T) {
 	capture := mergeCaptures(f, t1, t2, t3)
 	maybeExportCapture(ctx, "multi_context", capture)
 
-	hierarchies, err := resolve.Hierarchies(ctx, capture.Hierarchies())
+	contexts, err := resolve.Contexts(ctx, capture.Contexts())
 	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(len(hierarchies)).Equals(4) // 1 + number of contexts
+	assert.With(ctx).That(len(contexts)).Equals(3)
 }
 
 func TestTraceWithIssues(t *testing.T) {
@@ -636,7 +632,7 @@ func TestExportAndImportCapture(t *testing.T) {
 	assert.With(ctx).ThatError(err).Succeeded()
 
 	ctx, f = newFixture(log.Testing(t))
-	recoveredCapture, err := capture.Import(ctx, "recovered", bytes.NewReader(exported.Bytes()))
+	recoveredCapture, err := capture.Import(ctx, "recovered", exported.Bytes())
 	assert.With(ctx).ThatError(err).Succeeded()
 	verifyTrace(ctx, recoveredCapture, f.mgr, f.device)
 }

@@ -18,18 +18,17 @@ package test
 import (
 	"context"
 
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
 type AtomA struct {
-	binary.Generate `id:"AtomAID"`
-	ID              atom.ID
-	Flags           atom.Flags
+	ID    atom.ID
+	Flags atom.Flags
 }
 
+func (a *AtomA) AtomName() string      { return "AtomA" }
 func (a *AtomA) API() gfxapi.API       { return nil }
 func (a *AtomA) AtomFlags() atom.Flags { return a.Flags }
 func (a *AtomA) Extras() *atom.Extras  { return nil }
@@ -38,11 +37,11 @@ func (a *AtomA) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 }
 
 type AtomB struct {
-	binary.Generate `id:"AtomBID"`
-	ID              atom.ID
-	Bool            bool
+	ID   atom.ID
+	Bool bool
 }
 
+func (a *AtomB) AtomName() string      { return "AtomB" }
 func (a *AtomB) API() gfxapi.API       { return nil }
 func (a *AtomB) AtomFlags() atom.Flags { return 0 }
 func (a *AtomB) Extras() *atom.Extras  { return nil }
@@ -51,10 +50,10 @@ func (a *AtomB) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 }
 
 type AtomC struct {
-	binary.Generate `id:"AtomCID"`
-	String          string
+	String string
 }
 
+func (a *AtomC) AtomName() string      { return "AtomC" }
 func (a *AtomC) API() gfxapi.API       { return nil }
 func (a *AtomC) AtomFlags() atom.Flags { return 0 }
 func (a *AtomC) Extras() *atom.Extras  { return nil }

@@ -20,8 +20,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/gapis/atom/atom_pb"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/memory/memory_pb"
@@ -30,9 +29,8 @@ import (
 // Observations is a collection of reads and write observations performed by an
 // atom.
 type Observations struct {
-	binary.Generate `javaDefineEmptyArrays:"true"`
-	Reads           []Observation
-	Writes          []Observation
+	Reads  []Observation
+	Writes []Observation
 }
 
 func (o *Observations) String() string {
@@ -72,10 +70,9 @@ func (o *Observations) ApplyWrites(p *memory.Pool) {
 // DataString returns a string describing all reads/writes and their raw data.
 func (o *Observations) DataString(ctx context.Context) string {
 	var buf bytes.Buffer
-	db := database.Get(ctx)
 	for _, read := range o.Reads {
 		buf.WriteString(fmt.Sprintf("[read] %v\n", read))
-		if data, err := db.Resolve(ctx, read.ID); err == nil {
+		if data, err := database.Resolve(ctx, read.ID); err == nil {
 			buf.WriteString(fmt.Sprintf("[data] %v\n", data))
 		} else {
 			buf.WriteString(fmt.Sprintf("[data] failed: %v\n", err))
@@ -83,7 +80,7 @@ func (o *Observations) DataString(ctx context.Context) string {
 	}
 	for _, write := range o.Writes {
 		buf.WriteString(fmt.Sprintf("[write] %v\n", write))
-		if data, err := db.Resolve(ctx, write.ID); err == nil {
+		if data, err := database.Resolve(ctx, write.ID); err == nil {
 			buf.WriteString(fmt.Sprintf("[data] %v\n", data))
 		} else {
 			buf.WriteString(fmt.Sprintf("[data] failed: %v\n", err))
@@ -92,28 +89,8 @@ func (o *Observations) DataString(ctx context.Context) string {
 	return buf.String()
 }
 
-func (o *Observations) Convert(ctx context.Context, out atom_pb.Handler) error {
-	for _, entry := range o.Reads {
-		if err := entry.Convert(ctx, out); err != nil {
-			return err
-		}
-	}
-	if len(o.Writes) > 0 {
-		if err := out(ctx, atom_pb.InvokeMarker); err != nil {
-			return err
-		}
-		for _, entry := range o.Writes {
-			if err := entry.Convert(ctx, out); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Observation represents a single read or write observation made by an atom.
 type Observation struct {
-	binary.Generate
 	Range memory.Range // Memory range that was observed.
 	ID    id.ID        // The resource identifier of the observed data.
 }
@@ -122,18 +99,21 @@ func (o Observation) String() string {
 	return fmt.Sprintf("{Range: %v, ID: %v}", o.Range, o.ID)
 }
 
-func (o *Observation) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, &memory_pb.Observation{
-		Base: o.Range.Base,
-		Size: o.Range.Size,
-		Id:   o.ID.String(),
-	})
-}
-
-func ObservationFrom(from *memory_pb.Observation) Observation {
-	o := Observation{}
-	o.Range.Base = from.Base
-	o.Range.Size = from.Size
-	o.ID.Parse(from.Id)
-	return o
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a Observation) (*memory_pb.Observation, error) {
+			return &memory_pb.Observation{
+				Base: a.Range.Base,
+				Size: a.Range.Size,
+				Id:   a.ID.String(),
+			}, nil
+		},
+		func(ctx context.Context, a *memory_pb.Observation) (Observation, error) {
+			o := Observation{}
+			o.Range.Base = a.Base
+			o.Range.Size = a.Size
+			o.ID.Parse(a.Id)
+			return o, nil
+		},
+	)
 }

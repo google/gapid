@@ -159,7 +159,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 		return nil, err
 	}
 
-	atom, err := resolve.Command(ctx, path.FindCommand(p))
+	atom, err := resolve.Atom(ctx, path.FindCommand(p))
 	if err != nil {
 		return nil, err
 	}

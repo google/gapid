@@ -17,86 +17,15 @@ package atom
 import (
 	"context"
 
-	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom/atom_pb"
-	"github.com/google/gapid/gapis/memory"
-	"github.com/google/gapid/gapis/memory/memory_pb"
 )
 
-type (
-	// Converter is the type for a function that converts from a storage atom
-	// to a live one.
-	Converter func(atom_pb.Atom) interface{}
-
-	// Convertible is the interface to something that can be converted to
-	// a proto.Atom stream.
-	Convertible interface {
-		// Convert emits the stream of serialized atoms for this object.
-		Convert(context.Context, atom_pb.Handler) error
-	}
-
-	invokeMarker struct{}
-)
-
-const (
-	// ErrNotConvertible is the error to indicate that an object that does not
-	// support the atom.Convertible interface was found in an atom list that
-	// was being converted.
-	ErrNotConvertible = fault.Const("Object is not atom.Convertible")
-)
-
-var (
-	converters = []Converter{internalConverter}
-)
-
-// RegisterConverter adds a new conversion function to the set.
-func RegisterConverter(c Converter) {
-	converters = append(converters, c)
-}
-
-// ConvertAllTo converts from the set of live atoms to a stream of storage atoms.
-func ConvertAllTo(ctx context.Context, atoms *List, handler func(context.Context, atom_pb.Atom) error) error {
-	for _, a := range atoms.Atoms {
-		c, ok := a.(Convertible)
-		if !ok {
-			return ErrNotConvertible
-		}
-		if err := c.Convert(ctx, handler); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ConvertFrom converts from a storage form to a live atom for any atom from this package.
-// It returns nil for any type it does not understand.
-func ConvertFrom(from atom_pb.Atom) interface{} {
-	// TODO: Memoise the type to converter mapping so we don't need to scan the list in future
-	for _, converter := range converters {
-		if a := converter(from); a != nil {
-			return a
-		}
-	}
-	return nil
-}
-
-// ConvertAllFrom goes through the list of storage atoms converting them all, to
-// the live form and handing the converted to the handler.
-func ConvertAllFrom(ctx context.Context, atoms []atom_pb.Atom, handler func(a Atom)) error {
-	converter := FromConverter(handler)
-	for _, a := range atoms {
-		if err := converter(ctx, a); err != nil {
-			return err
-		}
-	}
-	return converter(ctx, nil)
-}
-
-// FromConverter returns a function that converts all the storage atoms it is handed,
-// passing the generated live atoms to the handler.
+// ProtoToAtom returns a function that converts all the storage atoms it is
+// handed, passing the generated live atoms to the handler.
 // You must call this with a nil to flush the final atom.
-func FromConverter(handler func(a Atom)) func(context.Context, atom_pb.Atom) error {
+func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error {
 	var (
 		last         Atom
 		observations *Observations
@@ -112,7 +41,10 @@ func FromConverter(handler func(a Atom)) func(context.Context, atom_pb.Atom) err
 			last = nil
 			return nil
 		}
-		out := ConvertFrom(in)
+		out, err := protoconv.ToObject(ctx, in)
+		if err != nil {
+			return nil
+		}
 		switch out := out.(type) {
 		case Atom:
 			if last != nil {
@@ -135,14 +67,14 @@ func FromConverter(handler func(a Atom)) func(context.Context, atom_pb.Atom) err
 			} else {
 				observations.Writes = append(observations.Writes, out)
 			}
+		case invokeMarker:
+			invoked = true
 		case Extra:
 			e := last.Extras()
 			if e == nil {
 				return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
 			}
 			*e = append(*e, out)
-		case invokeMarker:
-			invoked = true
 		default:
 			return log.Errf(ctx, nil, "Unhandled type during conversion %T:%v", out, out)
 		}
@@ -150,28 +82,56 @@ func FromConverter(handler func(a Atom)) func(context.Context, atom_pb.Atom) err
 	}
 }
 
-func internalConverter(from atom_pb.Atom) interface{} {
-	switch from := from.(type) {
-	case *atom_pb.Invoke:
-		return invokeMarker{}
-	case *atom_pb.Aborted:
-		to := AbortedFrom(from)
-		return &to
-	case *atom_pb.Resource:
-		to := ResourceFrom(from)
-		return &to
-	case *atom_pb.FramebufferObservation:
-		to := FramebufferObservationFrom(from)
-		return &to
-	case *memory_pb.Observation:
-		return ObservationFrom(from)
-	case *memory_pb.Pointer:
-		to := memory.PointerFrom(from)
-		return &to
-	case *memory_pb.Slice:
-		to := memory.SliceInfoFrom(from)
-		return &to
-	default:
+// AtomToProto returns a function that converts all the atoms it is handed,
+// passing the generated proto atoms to the handler.
+func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error {
+	return func(ctx context.Context, in Atom) error {
+		out, err := protoconv.ToProto(ctx, in)
+		if err != nil {
+			return err
+		}
+		handler(out)
+
+		for _, e := range in.Extras().All() {
+			switch e := e.(type) {
+			case Observations:
+				for _, o := range e.Reads {
+					p, err := protoconv.ToProto(ctx, o)
+					if err != nil {
+						return nil
+					}
+					handler(p)
+				}
+				handler(atom_pb.InvokeMarker)
+				for _, o := range e.Writes {
+					p, err := protoconv.ToProto(ctx, o)
+					if err != nil {
+						return nil
+					}
+					handler(p)
+				}
+			default:
+				p, err := protoconv.ToProto(ctx, e)
+				if err != nil {
+					return nil
+				}
+				handler(p)
+			}
+		}
+
 		return nil
 	}
+}
+
+type invokeMarker struct{}
+
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a *invokeMarker) (*atom_pb.Invoke, error) {
+			return &atom_pb.Invoke{}, nil
+		},
+		func(ctx context.Context, a *atom_pb.Invoke) (*invokeMarker, error) {
+			return &invokeMarker{}, nil
+		},
+	)
 }

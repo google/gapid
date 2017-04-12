@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	_ "github.com/google/gapid/framework/binary/any"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
@@ -51,7 +50,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
 	a := h.Abi.MemoryLayout
-	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{}, h)
+	capturePath, err := capture.New(ctx, "test", h, []atom.Atom{})
 	if err != nil {
 		panic(err)
 	}
@@ -139,7 +138,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
 	a := h.Abi.MemoryLayout
-	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{}, h)
+	capturePath, err := capture.New(ctx, "test", h, []atom.Atom{})
 	if err != nil {
 		panic(err)
 	}

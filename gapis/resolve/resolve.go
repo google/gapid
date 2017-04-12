@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -37,40 +36,6 @@ func Capture(ctx context.Context, p *path.Capture) (*service.Capture, error) {
 		return nil, err
 	}
 	return c.Service(ctx, p), nil
-}
-
-// Commands resolves and returns the atom list from the path p.
-func Commands(ctx context.Context, p *path.Commands) (*atom.List, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
-	if err != nil {
-		return nil, err
-	}
-	return c.Atoms(ctx)
-}
-
-// NCommands resolves and returns the atom list from the path p, ensuring
-// that the number of commands is at least N.
-func NCommands(ctx context.Context, p *path.Commands, n uint64) (*atom.List, error) {
-	list, err := Commands(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-	if count := uint64(len(list.Atoms)); count < n {
-		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrValueOutOfBounds(n-1, "Index", uint64(0), count-1),
-			Path:   p.Index(n - 1).Path(),
-		}
-	}
-	return list, nil
-}
-
-// Command resolves and returns the atom from the path p.
-func Command(ctx context.Context, p *path.Command) (atom.Atom, error) {
-	list, err := NCommands(ctx, p.Commands, p.Index+1)
-	if err != nil {
-		return nil, err
-	}
-	return list.Atoms[p.Index], nil
 }
 
 // Device resolves and returns the device from the path p.
@@ -108,22 +73,9 @@ func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
 	return bytes, nil
 }
 
-// Parameter resolves and returns the parameter from the path p.
-func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
-	cmd, err := Resolve(ctx, p.Command)
-	if err != nil {
-		return nil, err
-	}
-	v, err := field(ctx, reflect.ValueOf(cmd), p.Name, p)
-	if err != nil {
-		return nil, err
-	}
-	return v.Interface(), nil
-}
-
 // Field resolves and returns the field from the path p.
 func Field(ctx context.Context, p *path.Field) (interface{}, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}
@@ -165,18 +117,15 @@ func field(ctx context.Context, s reflect.Value, name string, p path.Node) (refl
 
 // ArrayIndex resolves and returns the array or slice element from the path p.
 func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}
 	a := reflect.ValueOf(obj)
 	switch a.Kind() {
 	case reflect.Array, reflect.Slice, reflect.String:
-		if int(p.Index) >= a.Len() {
-			return nil, &service.ErrInvalidPath{
-				Reason: messages.ErrValueOutOfBounds(p.Index, "Index", uint64(0), uint64(a.Len()-1)),
-				Path:   p.Path(),
-			}
+		if count := uint64(a.Len()); p.Index >= count {
+			return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 		}
 		return a.Index(int(p.Index)).Interface(), nil
 
@@ -190,7 +139,7 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 
 // Slice resolves and returns the subslice from the path p.
 func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +164,7 @@ func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 
 // MapIndex resolves and returns the map value from the path p.
 func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}
@@ -248,8 +197,20 @@ func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
 	}
 }
 
-// Resolve resolves and returns the object, value or memory at the path p.
-func Resolve(ctx context.Context, p path.Node) (interface{}, error) {
+// ResolveService resolves and returns the object, value or memory at the path p,
+// converting the final result to the service representation.
+func ResolveService(ctx context.Context, p path.Node) (interface{}, error) {
+	v, err := ResolveInternal(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	return internalToService(v)
+}
+
+// ResolveInternal resolves and returns the object, value or memory at the path
+// p without converting the potentially internal result to a service
+// representation.
+func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 	switch p := p.(type) {
 	case *path.ArrayIndex:
 		return ArrayIndex(ctx, p)
@@ -260,19 +221,25 @@ func Resolve(ctx context.Context, p path.Node) (interface{}, error) {
 	case *path.Capture:
 		return Capture(ctx, p)
 	case *path.Command:
-		return Command(ctx, p)
+		return Atom(ctx, p)
 	case *path.Commands:
 		return Commands(ctx, p)
+	case *path.CommandTree:
+		return CommandTree(ctx, p)
+	case *path.CommandTreeNode:
+		return CommandTreeNode(ctx, p)
+	case *path.ConstantSet:
+		return ConstantSet(ctx, p)
 	case *path.Context:
 		return Context(ctx, p)
 	case *path.Contexts:
 		return Contexts(ctx, p)
 	case *path.Device:
 		return Device(ctx, p)
+	case *path.Events:
+		return Events(ctx, p)
 	case *path.Field:
 		return Field(ctx, p)
-	case *path.Hierarchies:
-		return Hierarchies(ctx, p)
 	case *path.ImageInfo:
 		return ImageInfo(ctx, p)
 	case *path.MapIndex:
@@ -293,6 +260,10 @@ func Resolve(ctx context.Context, p path.Node) (interface{}, error) {
 		return Slice(ctx, p)
 	case *path.State:
 		return APIState(ctx, p)
+	case *path.StateTree:
+		return StateTree(ctx, p)
+	case *path.StateTreeNode:
+		return StateTreeNode(ctx, p)
 	case *path.Thumbnail:
 		return Thumbnail(ctx, p)
 	default:
@@ -329,11 +300,10 @@ func convert(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
 		return reflect.Zero(ty), true
 	}
 	if valTy := val.Type(); valTy != ty {
-		if valTy.ConvertibleTo(ty) {
-			val = val.Convert(ty)
-		} else {
+		if !valTy.ConvertibleTo(ty) {
 			return val, false
 		}
+		val = val.Convert(ty)
 	}
 	return val, true
 }

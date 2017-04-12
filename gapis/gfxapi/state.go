@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/stringtable"
@@ -31,8 +30,6 @@ import (
 
 // State represents the graphics state across all contexts.
 type State struct {
-	binary.Object `java:"disable"`
-
 	// MemoryLayout holds information about the device memory layout that was
 	// used to create the capture.
 	MemoryLayout *device.MemoryLayout
@@ -44,7 +41,7 @@ type State struct {
 	NextPoolID memory.PoolID
 
 	// APIs holds the per-API context states.
-	APIs map[API]binary.Object
+	APIs map[API]interface{}
 
 	// Allocator keeps track of and reserves memory areas not used in the trace.
 	Allocator memory.Allocator
@@ -83,7 +80,7 @@ func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.Memo
 			memory.ApplicationPool: {},
 		},
 		NextPoolID: memory.ApplicationPool + 1,
-		APIs:       map[API]binary.Object{},
+		APIs:       map[API]interface{}{},
 		Allocator:  allocator,
 	}
 }

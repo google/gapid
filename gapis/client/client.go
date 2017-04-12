@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -143,18 +142,6 @@ func (c *client) GetProfile(ctx context.Context, name string, debug int32) ([]by
 		return nil, err.Get()
 	}
 	return res.GetData(), nil
-}
-
-func (c *client) GetSchema(ctx context.Context) (*schema.Message, error) {
-	res, err := c.client.GetSchema(ctx, &service.GetSchemaRequest{})
-	if err != nil {
-		return nil, err
-	}
-	obj, err := res.GetObject().Decode()
-	if err != nil {
-		return nil, err
-	}
-	return obj.(*schema.Message), nil
 }
 
 func (c *client) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {

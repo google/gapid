@@ -17,7 +17,6 @@ package replay
 import (
 	"context"
 
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -37,7 +36,7 @@ func (c Custom) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder)
 }
 
 // atom.Atom compliance
+func (Custom) AtomName() string      { return "<Custom>" }
 func (Custom) API() gfxapi.API       { return nil }
 func (Custom) AtomFlags() atom.Flags { return 0 }
 func (Custom) Extras() *atom.Extras  { return nil }
-func (Custom) Class() binary.Class   { return nil }

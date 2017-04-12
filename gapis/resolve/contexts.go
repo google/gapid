@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -42,13 +41,13 @@ func Contexts(ctx context.Context, p *path.Contexts) ([]*service.Context, error)
 
 // Context resolves the single context.
 func Context(ctx context.Context, p *path.Context) (*service.Context, error) {
-	contexts, err := Contexts(ctx, p.Contexts)
+	contexts, err := Contexts(ctx, p.Capture.Contexts())
 	if err != nil {
 		return nil, err
 	}
 	id := p.Id.ID()
 	for _, c := range contexts {
-		if c.Id.ID() == id {
+		if c.Path.Id.ID() == id {
 			return c, nil
 		}
 	}
@@ -67,14 +66,8 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	atoms, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	seen := map[gfxapi.ContextID]int{}
 	contexts := []*service.Context{}
-	ranges := []atom.RangeList{}
 
 	var currentAtomIndex int
 	var currentAtom atom.Atom
@@ -90,7 +83,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	}()
 
 	s := c.NewState()
-	for i, a := range atoms.Atoms {
+	for i, a := range c.Atoms {
 		currentAtomIndex, currentAtom = i, a
 		a.Mutate(ctx, s, nil)
 
@@ -105,18 +98,12 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 				idx = len(contexts)
 				seen[ctxID] = idx
 				contexts = append(contexts, &service.Context{
-					Id:   path.NewID(id.ID(ctxID)),
+					Path: r.Capture.Context(path.NewID(id.ID(ctxID))),
 					Name: context.Name(),
 					Api:  &path.API{Id: path.NewID(id.ID(api.ID()))},
 				})
-				ranges = append(ranges, atom.RangeList{})
 			}
-			interval.Merge(&ranges[idx], interval.U64Span{Start: uint64(i), End: uint64(i) + 1}, true)
 		}
-	}
-
-	for i, r := range ranges {
-		contexts[i].Ranges = service.NewCommandRangeList(r)
 	}
 
 	return contexts, nil

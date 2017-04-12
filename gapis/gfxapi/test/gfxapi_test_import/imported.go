@@ -17,14 +17,13 @@ package gfxapi_test_import
 import (
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 )
 
 type Imported struct {
-	binary.Generate
 	Value uint32
 }
 
@@ -44,7 +43,7 @@ func ImportedEncodeRaw(l *device.MemoryLayout, e pod.Writer, o *Imported) {
 	e.Uint32(o.Value)
 }
 
-func (Imported) Init() {}
-func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, l *device.MemoryLayout) value.Value {
-	return nil
-}
+func (Imported) Encode(ϟs *gfxapi.State, e pod.Writer)                                 {}
+func (Imported) Decode(ϟs *gfxapi.State, e pod.Reader)                                 {}
+func (Imported) Init()                                                                 {}
+func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Value { return nil }

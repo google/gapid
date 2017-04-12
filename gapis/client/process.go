@@ -25,8 +25,6 @@ import (
 	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
-	"github.com/google/gapid/framework/binary/registry"
-	"github.com/google/gapid/framework/binary/schema"
 	"google.golang.org/grpc"
 )
 
@@ -77,7 +75,7 @@ type Config struct {
 // Connect attempts to connect to a GAPIS process.
 // If port is zero, a new GAPIS server will be started, otherwise a connection
 // will be made to the specified port.
-func Connect(ctx context.Context, cfg Config) (Client, *schema.Message, error) {
+func Connect(ctx context.Context, cfg Config) (Client, error) {
 	if cfg.Path == nil {
 		cfg.Path = &GapisPath
 	}
@@ -96,7 +94,7 @@ func Connect(ctx context.Context, cfg Config) (Client, *schema.Message, error) {
 			Verbose: true,
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -106,20 +104,11 @@ func Connect(ctx context.Context, cfg Config) (Client, *schema.Message, error) {
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(auth.ClientInterceptor(cfg.Token)))
 	if err != nil {
-		return nil, nil, log.Err(ctx, err, "Dialing GAPIS")
+		return nil, log.Err(ctx, err, "Dialing GAPIS")
 	}
 	client := Bind(conn)
 
-	message, err := client.GetSchema(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error resolving schema: %v", err)
-	}
-
-	for _, entity := range message.Entities {
-		registry.Global.Add((*schema.ObjectClass)(entity))
-	}
-
-	return client, message, nil
+	return client, nil
 }
 
 func logLevel(ctx context.Context) log.Severity {

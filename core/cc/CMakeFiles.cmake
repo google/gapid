@@ -49,7 +49,6 @@ set(files
     mutex.h
     null_encoder.h
     null_writer.h
-    schema.h
     scratch_allocator.h
     scratch_allocator_test.cpp
     socket_connection.cpp

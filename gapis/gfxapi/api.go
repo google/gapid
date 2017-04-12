@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapil/constset"
 )
 
 // API is the common interface to a graphics programming api.
@@ -31,6 +32,9 @@ type API interface {
 
 	// ID returns the unique API identifier.
 	ID() ID
+
+	// ConstantSets returns the constant set pack for the API.
+	ConstantSets() *constset.Pack
 
 	// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
 	GetFramebufferAttachmentInfo(state *State, attachment FramebufferAttachment) (width, height uint32, format *image.Format, err error)

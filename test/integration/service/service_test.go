@@ -127,7 +127,7 @@ func init() {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	atoms, draw, swap := samples.DrawTexturedSquare(ctx, false)
 	h := &capture.Header{Abi: device.WindowsX86_64}
-	p, err := capture.ImportAtomList(ctx, "sample", atoms, h)
+	p, err := capture.New(ctx, "sample", h, atoms.Atoms)
 	check(err)
 	buf := bytes.Buffer{}
 	check(capture.Export(ctx, p, &buf))
@@ -140,14 +140,6 @@ func TestGetServerInfo(t *testing.T) {
 	got, err := server.GetServerInfo(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).That(got).DeepEquals(cfg.Info)
-}
-
-func TestGetSchema(t *testing.T) {
-	ctx, server, shutdown := setup(t)
-	defer shutdown()
-	got, err := server.GetSchema(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).IsNotNil()
 }
 
 func TestGetAvailableStringTables(t *testing.T) {
@@ -202,7 +194,7 @@ func TestGetFramebufferAttachment(t *testing.T) {
 	devices, err := server.GetDevices(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).ThatSlice(devices).IsNotEmpty()
-	after := capture.Commands().Index(swapAtomIndex)
+	after := capture.Command(swapAtomIndex)
 	attachment := gfxapi.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
 	got, err := server.GetFramebufferAttachment(ctx, devices[0], after, attachment, settings, nil)
@@ -225,11 +217,11 @@ func TestGet(t *testing.T) {
 		{capture, T((*service.Capture)(nil))},
 		{capture.Contexts(), T([]*service.Context{})},
 		{capture.Commands(), T((*atom.List)(nil))},
-		{capture.Commands().Index(swapAtomIndex), T((*atom.Atom)(nil)).Elem()},
-		{capture.Commands().Index(swapAtomIndex).StateAfter(), any},
-		{capture.Commands().Index(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.MemoryInfo)(nil))},
-		{capture.Commands().Index(drawAtomIndex).Mesh(false), T((*gfxapi.Mesh)(nil))},
-		{capture.Hierarchies(), T([]*service.Hierarchy{})},
+		{capture.Command(swapAtomIndex), T((*atom.Atom)(nil)).Elem()},
+		{capture.Command(swapAtomIndex).StateAfter(), any},
+		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.MemoryInfo)(nil))},
+		{capture.Command(drawAtomIndex).Mesh(false), T((*gfxapi.Mesh)(nil))},
+		{capture.CommandTree(nil, nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
 	} {

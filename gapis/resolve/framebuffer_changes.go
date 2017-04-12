@@ -57,18 +57,13 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		return nil, err
 	}
 
-	list, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	out := &AttachmentFramebufferChanges{
 		// TODO: Remove hardcoded upper limit
 		attachments: make([]framebufferAttachmentChanges, gfxapi.FramebufferAttachment_Color3+1),
 	}
 
 	s := c.NewState()
-	for i, a := range list.Atoms {
+	for i, a := range c.Atoms {
 		id = atom.ID(i)
 		a.Mutate(ctx, s, nil /* no builder, just mutate */)
 		api := a.API()

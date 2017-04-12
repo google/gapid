@@ -18,7 +18,6 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	_ "github.com/google/gapid/framework/binary/any"
 )
 
 var (

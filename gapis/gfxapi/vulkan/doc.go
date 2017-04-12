@@ -22,7 +22,6 @@ package vulkan
 import (
 	_ "github.com/google/gapid/core/data/id"
 	_ "github.com/google/gapid/core/math/u64"
-	_ "github.com/google/gapid/framework/binary/schema"
 	_ "github.com/google/gapid/gapis/atom/atom_pb"
 	_ "github.com/google/gapid/gapis/gfxapi/vulkan/vulkan_pb"
 	_ "github.com/google/gapid/gapis/memory/memory_pb"

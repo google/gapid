@@ -19,6 +19,7 @@ import "core/image/image.proto";
 import "core/log/log_pb/log.proto";
 import "core/os/device/device.proto";
 import "gapis/gfxapi/gfxapi.proto";
+import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
 import "gapis/stringtable/stringtable.proto";
 
@@ -67,32 +68,44 @@ message ServerInfo {
 
 // Messages that hold a repeated field so they can be used in oneofs.
 
-message Contexts { repeated Context list = 1; }
+message Commands { repeated path.Command list = 1; }
+message Contexts { repeated path.Context list = 1; }
 message Devices { repeated path.Device list = 1; }
-message Hierarchies { repeated Hierarchy list = 1; }
+message Events { repeated Event list = 1; }
 message StringTableInfos { repeated stringtable.Info list = 1; }
-
-message Object {
-  bytes data = 1;
-}
+message Threads { repeated path.Thread list = 1; }
 
 message Value {
   oneof val {
-    pod.Value pod = 1;
-    Object object = 2;
-    Capture capture = 3;
-    Contexts contexts = 4;
-    gfxapi.Mesh mesh = 7;
-    Hierarchies hierarchies = 8;
-    image.Info2D image_info_2d = 9;
-    MemoryInfo memory_info = 10;
-    Report report = 11;
-    Resources resources = 12;
-    gfxapi.Shader shader = 13;
-    gfxapi.Program program = 14;
-    gfxapi.Texture2D texture_2d = 15;
-    gfxapi.Cubemap cubemap = 16;
-    device.Instance device = 17;
+    Capture capture = 1;
+    Command command = 2;
+    CommandTree command_tree = 3;
+    CommandTreeNode command_tree_node = 4;
+    Commands commands = 5;
+    Context context = 6;
+    Contexts contexts = 7;
+    ConstantSet constant_set = 8;
+    Event event = 9;
+    Events events = 10;
+    MemoryInfo memory_info = 11;
+    Report report = 12;
+    Resources resources = 13;
+    StateTree state_tree = 14;
+    StateTreeNode state_tree_node = 15;
+    Thread thread = 16;
+    Threads threads = 17;
+
+    device.Instance device = 20;
+
+    gfxapi.Cubemap cubemap = 30;
+    gfxapi.Mesh mesh = 31;
+    gfxapi.Program program = 32;
+    gfxapi.Shader shader = 33;
+    gfxapi.Texture2D texture_2d = 34;
+
+    image.Info2D image_info_2d = 40;
+
+    box.Value box = 50;
   }
 }
 
@@ -166,14 +179,6 @@ message GetProfileRequest {
 message GetProfileResponse {
   oneof res {
     bytes data = 1;
-    Error error = 2;
-  }
-}
-
-message GetSchemaRequest {}
-message GetSchemaResponse {
-  oneof res {
-    Object object = 1;
     Error error = 2;
   }
 }
@@ -262,29 +267,85 @@ message GetFramebufferAttachmentResponse {
 
 message GetLogStreamRequest {}
 
+// Gapid is the RPC service to the GAPIS server.
 service Gapid {
+  // GetServerInfo returns information about the running server.
   rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
 
+  // Get resolves and returns the object, value or memory at the path p.
   rpc Get(GetRequest) returns (GetResponse) {}
+
+  // Set creates a copy of the capture referenced by p, but with the object, value
+  // or memory at p replaced with v. The path returned is identical to p, but with
+  // the base changed to refer to the new capture.
   rpc Set(SetRequest) returns (SetResponse) {}
+
+  // Follow returns the path to the object that the value at p links to.
+  // If the value at p does not link to anything then nil is returned.
   rpc Follow(FollowRequest) returns (FollowResponse) {}
 
-  rpc BeginCPUProfile(BeginCPUProfileRequest) returns (BeginCPUProfileResponse) {}
-  rpc EndCPUProfile(EndCPUProfileRequest) returns (EndCPUProfileResponse) {}
-  rpc GetPerformanceCounters(GetPerformanceCountersRequest) returns (GetPerformanceCountersResponse) {}
-  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {}
-
-  rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+  // GetAvailableStringTables returns list of available string table descriptions.
   rpc GetAvailableStringTables(GetAvailableStringTablesRequest) returns (GetAvailableStringTablesResponse) {}
+
+  // GetStringTable returns the requested string table.
   rpc GetStringTable(GetStringTableRequest) returns (GetStringTableResponse) {}
+
+  // Import imports capture data emitted by the graphics spy, returning the new
+  // capture identifier.
   rpc ImportCapture(ImportCaptureRequest) returns (ImportCaptureResponse) {}
+
+	// ExportCapture returns a capture's data that can be consumed by
+	// ImportCapture or LoadCapture.
   rpc ExportCapture(ExportCaptureRequest) returns (ExportCaptureResponse) {}
+
+  // LoadCapture imports capture data from a local file, returning the new
+  // capture identifier.
   rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {}
+
+  // GetDevices returns the full list of replay devices avaliable to the server.
+  // These include local replay devices and any connected Android devices.
+  // This list may change over time, as devices are connected and disconnected.
+  // If both connected Android and Local replay devices are found,
+  // the local Android devices will be returned first.
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
+
+  // GetDevicesForReplay returns the list of replay devices avaliable to the
+  // server that are capable of replaying the given capture.
+  // These include local replay devices and any connected Android devices.
+  // This list may change over time, as devices are connected and disconnected.
+  // If both connected Android and Local replay devices are found,
+  // the local Android devices will be returned first.
   rpc GetDevicesForReplay(GetDevicesForReplayRequest) returns (GetDevicesForReplayResponse) {}
+
+  // GetFramebufferAttachment returns the ImageInfo identifier describing the
+  // given framebuffer attachment and device, immediately following the atom
+  // after.
+  // The provided RenderSettings structure can be used to adjust maximum desired
+  // dimensions of the image, as well as applying debug visualizations.
   rpc GetFramebufferAttachment(GetFramebufferAttachmentRequest) returns (GetFramebufferAttachmentResponse) {}
 
+  // GetLogStream calls the handler with each log record raised until the
+  // context is cancelled.
   rpc GetLogStream(GetLogStreamRequest) returns (stream log_pb.Message) {}
+
+  ///////////////////////////////////////////////////////////////
+  // Below are debugging APIs which may be removed in the future.
+  ///////////////////////////////////////////////////////////////
+
+  // BeginCPUProfile starts CPU self-profiling of the server.
+  // If the CPU is already being profiled then this function will return an
+  // error.
+  rpc BeginCPUProfile(BeginCPUProfileRequest) returns (BeginCPUProfileResponse) {}
+
+  // EndCPUProfile ends the CPU profile, returning the pprof samples.
+  rpc EndCPUProfile(EndCPUProfileRequest) returns (EndCPUProfileResponse) {}
+
+  // GetPerformanceCounters returns the values of all global counters as
+  // a JSON blob.
+  rpc GetPerformanceCounters(GetPerformanceCountersRequest) returns (GetPerformanceCountersResponse) {}
+
+  // GetProfile returns the pprof profile with the given name.
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {}
 }
 
 message Error {
@@ -343,8 +404,8 @@ message Capture {
   device.Instance device = 2;
   // Information about the abi used by the traced process.
   device.ABI abi = 3;
-  // The path to the stream of commands in this capture.
-  path.Commands commands = 4;
+  // Number of commands in this capture.
+  uint64 num_commands = 4;
   // List of graphics APIs used by this capture.
   repeated path.API apis = 5;
   // List of all the memory observations made by the application.
@@ -373,6 +434,11 @@ message ReportItem {
   uint64 command = 3;
   // The references to tags associated with this item.
   repeated MsgRef tags = 4;
+}
+
+// Thread represents a single thread in the capture.
+message Thread {
+  string name = 1;
 }
 
 // MsgRef references a message in a Report.
@@ -468,8 +534,8 @@ message ResourcesByType {
 
 // Resource describes a single resource.
 message Resource {
-  // The resource instance unique identifier.
-  path.ID id = 1;
+  // The resource's path.
+  path.Resource path = 1;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.
@@ -482,76 +548,104 @@ message Resource {
 
 // Context represents a single rendering context in the capture.
 message Context {
-  // The context instance unique identifier.
-  path.ID id = 1;
+  // The context's path.
+  path.Context path = 1;
   // The context name.
   string name = 2;
   // The API that this context belongs to.
   path.API api = 3;
-  // The range of commands that belong to this context.
-  repeated CommandRange ranges = 4;
 }
 
-// Hierarchy represents a single atom hierarchy.
-message Hierarchy {
-  // Name of the hierarchy.
+// CommandTree represents a command tree hierarchy.
+message CommandTree {
+  path.CommandTreeNode root = 1;
+}
+
+// CommandTreeNode is a node in a command tree hierarchy.
+message CommandTreeNode {
+  // Number of child nodes.
+  uint64 num_children = 1;
+  // The data this node represents.
+  oneof data {
+    // Used when the tree node represents a group of sub-nodes.
+    string group = 2;
+    // Used when the tree node represents a command or sub-command.
+    path.Command command = 3;
+  }
+}
+
+// Command describes a single intercepted command or sub-command.
+message Command {
+  // The function name.
   string name = 1;
-  // Context identifier.
-  path.ID context = 2;
-  // The root of the hierarchy.
-  CommandGroup root = 3;
+  // The function's API.
+  path.API api = 2;
+  // The list of function parameters.
+  repeated Parameter parameters = 3;
+  // The thread associated with this comand. May be nil.
+  path.Thread thread = 4;
+  // The context associated with this comand. May be nil.
+  path.Context context = 5;
 }
 
-// CommandRange represents a contiguous range of commands.
-message CommandRange {
-  // The first command within the range.
-  uint64 first = 1;
-  // The number of commands within the range.
-  uint64 count = 2;
-}
-
-// Group represents a named, contiguous span of atoms with support for sparse
-// sub-groups. Groups are ideal for expressing nested hierarchies of atoms.
-//
-// Groups have the concept of items. An item is either an immediate sub-group,
-// or an atom index that is within this group's span but outside of any
-// sub-group.
-//
-// For example a Group spanning the atom index range [0 - 9] with two
-// sub-groups spanning [2 - 4] and [7 - 8] would have the following tree of
-// items:
-//
-//  Group
-//    │
-//    ├─── Item[0] ─── Atom[0]
-//    │
-//    ├─── Item[1] ─── Atom[1]
-//    │
-//    ├─── Item[2] ─── Sub-group 0
-//    │                   │
-//    │                   ├─── Item[0] ─── Atom[2]
-//    │                   │
-//    │                   ├─── Item[1] ─── Atom[3]
-//    │                   │
-//    │                   └─── Item[2] ─── Atom[4]
-//    │
-//    ├─── Item[3] ─── Atom[5]
-//    │
-//    ├─── Item[4] ─── Atom[6]
-//    │
-//    ├─── Item[5] ─── Sub-group 1
-//    │                   │
-//    │                   ├─── Item[0] ─── Atom[7]
-//    │                   │
-//    │                   └─── Item[1] ─── Atom[8]
-//    │
-//    └─── Item[6] ─── Atom[9]
-//
-message CommandGroup {
-  // Name of this group.
+// Parameter is a parameter of a command.
+message Parameter {
+  // The name of the parameter.
   string name = 1;
-  // The range of atoms this group (and sub-groups) represents.
-  CommandRange range = 2;
-  // All sub-groups of this group.
-  repeated CommandGroup subgroups = 3;
+  // The value of the parameter.
+  box.Value value = 2;
+  // The possible alternative named values for the parameter.
+  path.ConstantSet constants = 3;
+}
+
+// ConstantSet is a collection on name-value pairs to be used as an enumeration
+// of possible values for a field or parameter.
+message ConstantSet {
+  repeated Constant constants = 1;
+  bool is_bitfield = 2;
+}
+
+// Constant is a name-value pair that is owned by a ConstantSet.
+message Constant {
+  // The name of the constant.
+  string name = 1;
+  // The value of the constant.
+  uint64 value = 2;
+}
+
+// Event represents a single event in the capture.
+message Event {
+  EventKind kind = 1;
+  path.Command command = 2;
+}
+
+enum EventKind {
+    Unknown = 0;
+    DrawCall = 1;
+    FirstInFrame = 2;
+    LastInFrame = 3;
+    Clear = 4;
+    UserMarker = 5;
+    PushUserMarker = 6;
+    PopUserMarker = 7;
+    FramebufferObservation = 8;
+}
+
+// StateTree represents a state tree hierarchy.
+message StateTree {
+  path.StateTreeNode root = 1;
+}
+
+// StateTreeNode is a node in a state tree hierarchy.
+message StateTreeNode {
+  // Number of child nodes.
+  uint64 num_children = 1;
+  // The name of the field or group.
+  string name = 2;
+  // The path to the value.
+  path.Any path = 3;
+  // The value of the field. Nil if a group.
+  pod.Value value = 4;
+  // The possible alternative named values for the field.
+  path.ConstantSet constants = 5;
 }

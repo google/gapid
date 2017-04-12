@@ -19,6 +19,4 @@ package test
 import (
 	_ "github.com/google/gapid/core/data/id"
 	_ "github.com/google/gapid/core/data/pod"
-	_ "github.com/google/gapid/framework/binary/registry"
-	_ "github.com/google/gapid/framework/binary/schema"
 )

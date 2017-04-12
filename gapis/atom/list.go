@@ -14,16 +14,11 @@
 
 package atom
 
-import (
-	"context"
-
-	"github.com/google/gapid/framework/binary"
-)
+import "context"
 
 // List is a list of atoms.
 type List struct {
-	binary.Generate `java:"AtomList"`
-	Atoms           []Atom `variant:"true"`
+	Atoms []Atom
 }
 
 func NewList(atoms ...Atom) *List {

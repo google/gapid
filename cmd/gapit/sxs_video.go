@@ -50,14 +50,36 @@ type videoFrame struct {
 	squareError   float64
 }
 
-func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
+func (verb *videoVerb) sxsVideoSource(
+	ctx context.Context,
+	capture *path.Capture,
+	client service.Service,
+	device *path.Device) (videoFrameWriter, error) {
+
+	// Get the draw call and end-of-frame events.
+	events, err := getEvents(ctx, client, &path.Events{
+		Commands:                capture.Commands(),
+		DrawCalls:               true,
+		LastInFrame:             true,
+		FramebufferObservations: true,
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get events")
+	}
+
 	// Find maximum frame width / height of all frames, and get all observation
 	// atom indices.
 	videoFrames := []*videoFrame{}
 	w, h := 0, 0
 	frameIndex, numDrawCalls := 0, 0
-	for i, a := range atoms {
-		if fbo := asFbo(a); fbo != nil {
+	for i, e := range events {
+		switch e.Kind {
+		case service.EventKind_FramebufferObservation:
+			cmd, err := client.Get(ctx, e.Command.Path())
+			if err != nil {
+				return nil, log.Err(ctx, err, "Couldn't get framebuffer observation")
+			}
+			fbo := asFbo(cmd.(*service.Command))
 			if int(fbo.DataWidth) > w {
 				w = int(fbo.DataWidth)
 			}
@@ -69,13 +91,11 @@ func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, ca
 				fboIndex:     i,
 				frameIndex:   frameIndex,
 				numDrawCalls: numDrawCalls,
-				command:      capture.Commands().Index(uint64(i)),
+				command:      capture.Command(uint64(i)),
 			})
-		}
-		if a.AtomFlags().IsDrawCall() {
+		case service.EventKind_DrawCall:
 			numDrawCalls++
-		}
-		if a.AtomFlags().IsEndOfFrame() {
+		case service.EventKind_LastInFrame:
 			frameIndex++
 			numDrawCalls = 0
 		}
@@ -93,7 +113,7 @@ func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, ca
 				Stride: int(v.fbo.DataWidth) * 4,
 				Rect:   image.Rect(0, 0, int(v.fbo.DataWidth), int(v.fbo.DataHeight)),
 			}
-			if frame, err := getFrame(ctx, verb.VideoFlags, v.command.Next(), device, client); err == nil {
+			if frame, err := getFrame(ctx, verb.VideoFlags, v.command, device, client); err == nil {
 				v.rendered = frame
 			} else {
 				v.renderError = err
@@ -190,7 +210,7 @@ func (verb *videoVerb) sxsVideoSource(ctx context.Context, atoms []atom.Atom, ca
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
 			fmt.Fprintf(refw, "Dimensions:║%dx%d¶", v.fbo.OriginalWidth, v.fbo.OriginalHeight)
-			fmt.Fprintf(refw, "Atom:║%d/%d¶", v.fboIndex, len(atoms)-1)
+			fmt.Fprintf(refw, "Atom:║%d¶", v.fboIndex)
 			fmt.Fprintf(refw, "Frame:║%d¶", v.frameIndex)
 			fmt.Fprintf(refw, "Draw calls:║%d¶", v.numDrawCalls)
 			fmt.Fprintf(refw, "Difference:║%.4f¶", v.squareError)

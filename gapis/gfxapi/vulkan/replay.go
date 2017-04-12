@@ -460,10 +460,7 @@ func (a api) Replay(
 	capture *capture.Capture,
 	out transform.Writer) error {
 
-	atoms, err := capture.Atoms(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load atom stream")
-	}
+	atoms := atom.NewList(capture.Atoms...)
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
@@ -476,10 +473,11 @@ func (a api) Replay(
 	// Prepare data for dead-code-elimination
 	dceInfo := deadCodeEliminationInfo{}
 	if !config.DisableDeadCodeElimination {
-		dceInfo.dependencyGraph, err = GetDependencyGraph(ctx)
+		dg, err := GetDependencyGraph(ctx)
 		if err != nil {
 			return err
 		}
+		dceInfo.dependencyGraph = dg
 		dceInfo.deadCodeElimination = newDeadCodeElimination(ctx, dceInfo.dependencyGraph)
 	}
 

@@ -20,8 +20,6 @@
 set(files
     abort.go
     atom.go
-    atom_binary.go
-    cast.go
     convert.go
     data.go
     doc.go
@@ -39,8 +37,6 @@ set(files
     range.go
     range_list.go
     resource.go
-    schema.go
-    snippet.go
     writer.go
 )
 set(dirs

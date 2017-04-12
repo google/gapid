@@ -22,7 +22,6 @@ set(files
 )
 set(dirs
     analysis
-    annotate
     ast
     format
     fuzz
@@ -30,7 +29,6 @@ set(dirs
     parser
     resolver
     semantic
-    snippets
     template
     validate
 )

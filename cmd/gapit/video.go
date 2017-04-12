@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -65,17 +66,32 @@ func init() {
 }
 
 type videoFrameWriter func(chan<- image.Image) error
-type videoSource func(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error)
+type videoSource func(ctx context.Context, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error)
 type videoSink func(ctx context.Context, filepath string, vidFun videoFrameWriter) error
 
-func (verb *videoVerb) regularVideoSource(ctx context.Context, atoms []atom.Atom, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error) {
-	// Count the number of frames
-	frameCount := 0
-	for _, a := range atoms {
-		if a.AtomFlags().IsEndOfFrame() {
-			frameCount++
-		}
+func (verb *videoVerb) regularVideoSource(
+	ctx context.Context,
+	capture *path.Capture,
+	client service.Service,
+	device *path.Device) (videoFrameWriter, error) {
+
+	// Get the end-of-frame events.
+	eofEvents, err := getEvents(ctx, client, &path.Events{
+		Commands:    capture.Commands(),
+		LastInFrame: true,
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get frame events")
 	}
+
+	if verb.Frames.Start < len(eofEvents) {
+		eofEvents = eofEvents[verb.Frames.Start:]
+	}
+	if verb.Frames.End != allTheWay && verb.Frames.End < len(eofEvents) {
+		eofEvents = eofEvents[:verb.Frames.End]
+	}
+
+	frameCount := len(eofEvents)
 
 	log.I(ctx, "Frames: %d", frameCount)
 
@@ -84,68 +100,55 @@ func (verb *videoVerb) regularVideoSource(ctx context.Context, atoms []atom.Atom
 	events := &task.Events{}
 	pool, shutdown := task.Pool(0, workers)
 	defer shutdown(ctx)
-	shouldResize := verb.Type != IndividualFrames
 	executor := task.Batch(pool, events)
+	shouldResize := verb.Type != IndividualFrames
 	rendered := make([]*image.NRGBA, frameCount)
 	errors := make([]error, frameCount)
-	atomIndices := make([]int, frameCount)
-	frameIndex := 0
-	startFrame, lastFrame := verb.Frames.Start, frameCount-1
-	if verb.Frames.End != allTheWay {
-		lastFrame = verb.Frames.End
-	}
-	for i, a := range atoms {
-		if a.AtomFlags().IsEndOfFrame() {
-			atom, index := capture.Commands().Index(uint64(i)), frameIndex
-			atomIndices[frameIndex] = i
-			frameIndex++
-			if index < startFrame {
-				continue
+
+	var errorCount uint32
+	for i, e := range eofEvents {
+		i, e := i, e
+		executor(ctx, func(ctx context.Context) error {
+			if frame, err := getFrame(ctx, verb.VideoFlags, e.Command, device, client); err == nil {
+				rendered[i] = flipImg(frame)
+			} else {
+				errors[i] = err
+				atomic.AddUint32(&errorCount, 1)
 			}
-			if index > lastFrame {
-				break
-			}
-			executor(ctx, func(ctx context.Context) error {
-				if frame, err := getFrame(ctx, verb.VideoFlags, atom, device, client); err == nil {
-					rendered[index] = flipImg(frame)
-				} else {
-					errors[index] = err
-				}
-				return nil
-			})
-		}
+			return nil
+		})
 	}
 	events.Wait(ctx)
 
-	// Get the max width and height
-	width, height := 0, 0
-
-	if shouldResize {
-		for i := startFrame; i <= lastFrame; i++ {
-			if frame := rendered[i]; frame != nil {
-				width = sint.Max(width, frame.Bounds().Dx())
-				height = sint.Max(height, frame.Bounds().Dy())
-			}
-		}
-
-		// Video dimensions must be divisible by two.
-		if (width & 1) != 0 {
-			width++
-		}
-		if (height & 1) != 0 {
-			height++
-		}
-
-		log.I(ctx, "Max dimensions: (%d, %d)", width, height)
+	if errorCount > 0 {
+		log.W(ctx, "%d/%d frames errored", errorCount, len(eofEvents))
 	}
 
+	// Get the max width and height
+	width, height := 0, 0
+	for _, frame := range rendered {
+		if frame != nil {
+			width = sint.Max(width, frame.Bounds().Dx())
+			height = sint.Max(height, frame.Bounds().Dy())
+		}
+	}
+
+	// Video dimensions must be divisible by two.
+	if (width & 1) != 0 {
+		width++
+	}
+	if (height & 1) != 0 {
+		height++
+	}
+
+	log.I(ctx, "Max dimensions: (%d, %d)", width, height)
+
 	return func(frames chan<- image.Image) error {
-		for i := startFrame; i <= lastFrame; i++ {
+		for i, frame := range rendered {
 			if err := errors[i]; err != nil {
-				log.E(ctx, "Error at atom %d: %v", i, err)
+				log.E(ctx, "Error getting frame at %v: %v", eofEvents[i].Command.Text(), err)
 				continue
 			}
-			frame := rendered[i]
 
 			if shouldResize && (frame.Bounds().Dx() != width || frame.Bounds().Dy() != height) {
 				src, rect := frame, image.Rect(0, 0, width, height)
@@ -156,7 +159,7 @@ func (verb *videoVerb) regularVideoSource(ctx context.Context, atoms []atom.Atom
 			sb := new(bytes.Buffer)
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
-			fmt.Fprintf(refw, "Frame: %d, atom: %d", i, atomIndices[i])
+			fmt.Fprintf(refw, "Frame: %d, atom: %v", i, eofEvents[i].Command.Index)
 			refw.Flush()
 			str := sb.String()
 			font.DrawString(str, frame, image.Pt(4, 4), color.Black)
@@ -170,45 +173,23 @@ func (verb *videoVerb) regularVideoSource(ctx context.Context, atoms []atom.Atom
 }
 
 // asFbo returns the atom as an *atom.FramebufferObservation if it represents one.
-func asFbo(a atom.Atom) *atom.FramebufferObservation {
-	if fbo, ok := a.(*atom.FramebufferObservation); ok {
+func asFbo(a *service.Command) *atom.FramebufferObservation {
+	if a.Name == "FramebufferObservation" {
+		data := a.FindParameter("Data")
+		originalWidth := a.FindParameter("OriginalWidth")
+		originalHeight := a.FindParameter("OriginalHeight")
+		dataWidth := a.FindParameter("DataWidth")
+		dataHeight := a.FindParameter("DataHeight")
+		fbo := &atom.FramebufferObservation{
+			Data:           data.Value.GetPod().GetUint8Array(),
+			OriginalWidth:  originalWidth.Value.GetPod().GetUint32(),
+			OriginalHeight: originalHeight.Value.GetPod().GetUint32(),
+			DataWidth:      dataWidth.Value.GetPod().GetUint32(),
+			DataHeight:     dataHeight.Value.GetPod().GetUint32(),
+		}
 		return fbo
 	}
-
-	if d, ok := a.(*atom.Dynamic); ok {
-		schema := d.Class().Schema()
-		if schema != nil && schema.Name() == "FramebufferObservation" {
-			_, data := d.Parameter(schema.Fields.Find("Data"))
-			_, originalWidth := d.Parameter(schema.Fields.Find("OriginalWidth"))
-			_, originalHeight := d.Parameter(schema.Fields.Find("OriginalHeight"))
-			_, dataWidth := d.Parameter(schema.Fields.Find("DataWidth"))
-			_, dataHeight := d.Parameter(schema.Fields.Find("DataHeight"))
-
-			dataArr := data.([]interface{})
-			dataByteArr := make([]byte, len(dataArr))
-			for i := range dataByteArr {
-				dataByteArr[i] = dataArr[i].(byte)
-			}
-			fbo := &atom.FramebufferObservation{
-				Data:           dataByteArr,
-				OriginalWidth:  originalWidth.(uint32),
-				OriginalHeight: originalHeight.(uint32),
-				DataWidth:      dataWidth.(uint32),
-				DataHeight:     dataHeight.(uint32),
-			}
-			return fbo
-		}
-	}
 	return nil
-}
-
-func hasFramebufferObservations(atoms []atom.Atom) bool {
-	for _, a := range atoms {
-		if asFbo(a) != nil {
-			return true
-		}
-	}
-	return false
 }
 
 func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -238,11 +219,13 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	boxedAtoms, err := client.Get(ctx, capture.Commands().Path())
+	fboEvents, err := getEvents(ctx, client, &path.Events{
+		Commands:                capture.Commands(),
+		FramebufferObservations: true,
+	})
 	if err != nil {
-		return log.Err(ctx, err, "Acquiring the capture's atoms")
+		return log.Err(ctx, err, "Couldn't get framebuffer observation events")
 	}
-	atoms := boxedAtoms.(*atom.List).Atoms
 
 	var vidSrc videoSource
 	var vidFun videoFrameWriter
@@ -256,13 +239,13 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		vidSrc = verb.regularVideoSource
 		vidOut = verb.encodeVideo
 	case SxsVideo:
-		if !hasFramebufferObservations(atoms) {
-			return fmt.Errorf("Capture does not contain framebuffer observations.")
+		if len(fboEvents) == 0 {
+			return fmt.Errorf("Capture does not contain framebuffer observations")
 		}
 		vidSrc = verb.sxsVideoSource
 		vidOut = verb.encodeVideo
 	case AutoVideo:
-		if hasFramebufferObservations(atoms) {
+		if len(fboEvents) > 0 {
 			vidSrc = verb.sxsVideoSource
 		} else {
 			vidSrc = verb.regularVideoSource
@@ -270,7 +253,7 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		vidOut = verb.encodeVideo
 	}
 
-	if vidFun, err = vidSrc(ctx, atoms, capture, client, device); err != nil {
+	if vidFun, err = vidSrc(ctx, capture, client, device); err != nil {
 		return err
 	}
 
@@ -347,20 +330,20 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 }
 
 func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
-	ctx = log.V{"cmd": int(cmd.Index)}.Bind(ctx)
+	ctx = log.V{"cmd": cmd.Index}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(flags.Max.Width), MaxHeight: uint32(flags.Max.Height)}
 	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}
 	iio, err := client.Get(ctx, iip.Path())
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Get frame image.Info2D failed")
 	}
 	ii := iio.(*img.Info2D)
 	dataO, err := client.Get(ctx, path.NewBlob(ii.Data.ID()).Path())
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Get frame image data failed")
 	}
 	w, h, data := int(ii.Width), int(ii.Height), dataO.([]byte)
 

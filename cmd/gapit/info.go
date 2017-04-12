@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/google/gapid/core/app"
@@ -50,11 +51,10 @@ func (verb *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 	fmt.Println("total file size ", fstat.Size())
-	f, err := os.Open(filename)
+	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	path, err := capture.Import(ctx, "info", f)
 	if err != nil {

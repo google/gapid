@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(annotate)
 build_subdirectory(apic)
 build_subdirectory(clean_generated)
-build_subdirectory(codergen)
 build_subdirectory(copyright)
 build_subdirectory(dump-manifest)
 build_subdirectory(embed)

@@ -14,13 +14,8 @@
 
 package protocol
 
-import (
-	"github.com/google/gapid/framework/binary"
-)
-
 // ResourceInfo describes a resource used by a Payload.
 type ResourceInfo struct {
-	binary.Generate
 	ID   string // The resource identifier as a string.
 	Size uint32 // The size in bytes of the resource.
 }
@@ -28,7 +23,6 @@ type ResourceInfo struct {
 // Payload contains all the information to perform a replay. The encoded form
 // is what is passed to the replay system.
 type Payload struct {
-	binary.Generate
 	StackSize          uint32         // Maximum number of values.
 	VolatileMemorySize uint32         // In bytes.
 	Constants          []byte         // The constant buffer.

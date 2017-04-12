@@ -17,28 +17,12 @@ syntax = "proto3";
 package capture;
 // cc_package
 
-import "google/protobuf/timestamp.proto";
 import "core/os/device/device.proto";
 
-// Capture holds all the information about a single imported capture.
-// This is not the service representation of the capture as it contains internal
-// fields.
-message Capture {
-	ID id = 1;
-	string name = 2;
-	Header header = 3;
-	ID commands = 4;
-	repeated ID apis = 5;
-	repeated MemoryRange observed = 6;
-}
-
-message ID {
-    bytes data = 1;
-}
-
-message MemoryRange {
-    uint64 base = 1;
-    uint64 size = 2;
+// Record holds all the data for an entire capture.
+message Record {
+	string name = 1;
+	bytes data = 2;
 }
 
 // Header holds information about the capture that is generated when the trace

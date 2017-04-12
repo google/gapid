@@ -25,7 +25,7 @@ import (
 
 // Mesh resolves and returns the Mesh from the path p.
 func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}

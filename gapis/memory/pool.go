@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/u64"
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/database"
 	"github.com/pkg/errors"
 )
@@ -37,10 +36,9 @@ import (
 // Pool slice has Get called will any resolving, loading or copying of binary
 // data occur.
 type Pool struct {
-	binary.Generate `disable:"true"`
-	writes          poolWriteList
-	OnRead          func(Range)
-	OnWrite         func(Range)
+	writes  poolWriteList
+	OnRead  func(Range)
+	OnWrite func(Range)
 }
 
 type poolSlice struct {

@@ -26,7 +26,6 @@ set(files
     id.go
     memory.pb.go
     memory.proto
-    memory_binary.go
     pointer.go
     pool.go
     pool_test.go

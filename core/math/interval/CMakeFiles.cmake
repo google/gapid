@@ -20,11 +20,10 @@
 set(files
     algorithm.go
     doc.go
-    interval_binary_locked.go
     list.go
     u64.go
     u64_test.go
 )
 set(dirs
-    
+
 )

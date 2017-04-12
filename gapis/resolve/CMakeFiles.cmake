@@ -19,15 +19,20 @@
 
 set(files
     as.go
+    atoms.go
+    commands.go
     contexts.go
+    command_tree.go
+    constant_set.go
     doc.go
+    errors.go
+    events.go
     follow.go
     framebuffer_attachment.go
     framebuffer_attachment_data.go
     framebuffer_changes.go
     get.go
     get_set_test.go
-    hierarchies.go
     index_limits.go
     memory.go
     mesh.go
@@ -36,12 +41,13 @@ set(files
     resolvables.pb.go
     resolvables.proto
     resolve.go
-    resolve_binary_test.go
     resource_data.go
     resource_meta.go
     resources.go
     set.go
+    service.go
     state.go
+    state_tree.go
     thumbnail.go
 )
 set(dirs

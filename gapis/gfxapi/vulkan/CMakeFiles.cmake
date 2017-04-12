@@ -36,11 +36,8 @@ set(files
     resolvables.pb.go
     resolvables.proto
     resources.go
-    snippets_embed.go
     state.go
     vulkan.go
-    vulkan_binary.go
-    vulkan_binary_metatadata.go
 )
 set(dirs
     android

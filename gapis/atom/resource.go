@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/framework/binary"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -29,7 +29,6 @@ import (
 // atoms are typically only used for .gfxtrace files as they are stripped from
 // the stream on import and their resources are placed into the database.
 type Resource struct {
-	binary.Generate
 	ID   id.ID  // The resource identifier holding the memory that was observed.
 	Data []byte // The resource data
 }
@@ -38,21 +37,24 @@ func (a *Resource) String() string {
 	return fmt.Sprintf("ID: %s - 0x%x bytes", a.ID, len(a.Data))
 }
 
+func (a *Resource) AtomName() string { return "<Resource>" }
 func (a *Resource) API() gfxapi.API  { return nil }
 func (a *Resource) AtomFlags() Flags { return 0 }
 func (a *Resource) Extras() *Extras  { return nil }
 func (a *Resource) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	return nil
 }
-func (a *Resource) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, &atom_pb.Resource{
-		Id:   a.ID.String(),
-		Data: a.Data,
-	})
-}
-func ResourceFrom(from *atom_pb.Resource) Resource {
-	r := Resource{}
-	r.ID.Parse(from.Id)
-	r.Data = from.Data
-	return r
+
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a *Resource) (*atom_pb.Resource, error) {
+			return &atom_pb.Resource{Id: a.ID.String(), Data: a.Data}, nil
+		},
+		func(ctx context.Context, a *atom_pb.Resource) (*Resource, error) {
+			r := Resource{}
+			r.ID.Parse(a.Id)
+			r.Data = a.Data
+			return &r, nil
+		},
+	)
 }

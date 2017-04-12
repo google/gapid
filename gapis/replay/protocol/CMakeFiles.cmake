@@ -21,11 +21,10 @@ set(files
     doc.go
     opcode.go
     payload.go
-    protocol_binary.go
     replay_protocol.pb.go
     replay_protocol.proto
     type.go
 )
 set(dirs
-    
+
 )

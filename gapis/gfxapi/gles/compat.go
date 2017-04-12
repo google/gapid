@@ -15,7 +15,6 @@
 package gles
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
@@ -24,8 +23,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/framework/binary/cyclic"
-	"github.com/google/gapid/framework/binary/vle"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/config"
@@ -138,12 +135,6 @@ func getFeatures(ctx context.Context, version string, ext extensions) (features,
 type scratchBuffer struct {
 	size GLsizeiptr
 	id   BufferId
-}
-
-func cloneAtom(a atom.Atom) atom.Atom {
-	var b bytes.Buffer
-	cyclic.Encoder(vle.Writer(&b)).Variant(a)
-	return (cyclic.Decoder(vle.Reader(&b)).Variant()).(atom.Atom)
 }
 
 func compat(ctx context.Context, device *device.Instance) (transform.Transformer, error) {
@@ -261,10 +252,16 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// TODO(dsrbecky): This might make some atoms valid for replay which were invalid on trace.
 			scs := FindStaticContextState(a.Extras())
 			if scs != nil && !version.IsES && scs.Constants.MajorVersion < 3 {
-				a = cloneAtom(a).(*EglMakeCurrent)
-				scs = FindStaticContextState(a.Extras())
-				scs.Constants.MajorVersion = 3
-				scs.Constants.MinorVersion = 0
+				clone := *a
+				for i, e := range clone.extras.All() {
+					if cs, ok := e.(*StaticContextState); ok {
+						scs := *cs
+						scs.Constants.MajorVersion = 3
+						scs.Constants.MinorVersion = 0
+						clone.extras[i] = &scs
+					}
+				}
+				a = &clone
 			}
 
 			// Mutate to set the context, Version and Extensions strings.

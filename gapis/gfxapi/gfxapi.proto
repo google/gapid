@@ -16,6 +16,7 @@ syntax = "proto3";
 
 import "core/data/pod/pod.proto";
 import "core/image/image.proto";
+import "gapis/service/box/box.proto";
 import "gapis/vertex/vertex.proto";
 
 package gfxapi;
@@ -119,7 +120,7 @@ message Uniform {
 	string name = 2;
 	UniformFormat format = 3;
 	UniformType type = 4;
-	pod.Value value = 5;
+	box.Value value = 5;
 }
 
 // IndexBuffer is a stream of vertex indices used to draw a model.

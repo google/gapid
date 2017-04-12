@@ -16,8 +16,8 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -38,23 +38,27 @@ func GlobalState(ctx context.Context, p *path.State) (*gfxapi.State, error) {
 }
 
 // APIState resolves the specific API state at a requested point in a capture.
-func APIState(ctx context.Context, p *path.State) (binary.Object, error) {
+func APIState(ctx context.Context, p *path.State) (interface{}, error) {
 	obj, err := database.Build(ctx, &APIStateResolvable{p})
 	if err != nil {
 		return nil, err
 	}
-	return obj.(binary.Object), nil
+	return obj, nil
 }
 
 // Resolve implements the database.Resolver interface.
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
-	list, err := NCommands(ctx, r.Path.After.Commands, r.Path.After.Index+1)
+	ctx = capture.Put(ctx, r.Path.After.Capture)
+	atomIdx := r.Path.After.Index[0]
+	if len(r.Path.After.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+	list, err := NAtoms(ctx, r.Path.After.Capture.Commands(), atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
 	s := capture.NewState(ctx)
-	for _, a := range list.Atoms[:r.Path.After.Index+1] {
+	for _, a := range list.Atoms[:atomIdx+1] {
 		a.Mutate(ctx, s, nil)
 	}
 	return s, nil
@@ -62,27 +66,32 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.After.Commands.Capture)
-	list, err := NCommands(ctx, r.Path.After.Commands, r.Path.After.Index+1)
+	ctx = capture.Put(ctx, r.Path.After.Capture)
+	atomIdx := r.Path.After.Index[0]
+	if len(r.Path.After.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+	list, err := NAtoms(ctx, r.Path.After.Capture.Commands(), atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
 	return apiState(ctx, list.Atoms, r.Path)
 }
 
-func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (binary.Object, error) {
-	if p.After.Index >= uint64(len(atoms)) {
-		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrValueOutOfBounds(p.After.Index, "Index", uint64(0), uint64(len(atoms)-1)),
-			Path:   p.Path(),
-		}
+func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{}, error) {
+	atomIdx := p.After.Index[0]
+	if len(p.After.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
-	api := atoms[p.After.Index].API()
+	if count := uint64(len(atoms)); atomIdx >= count {
+		return nil, errPathOOB(atomIdx, "Index", 0, count-1, p)
+	}
+	api := atoms[atomIdx].API()
 	if api == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 	s := capture.NewState(ctx)
-	for _, a := range atoms[:p.After.Index+1] {
+	for _, a := range atoms[:atomIdx+1] {
 		a.Mutate(ctx, s, nil)
 	}
 	res, found := s.APIs[api]

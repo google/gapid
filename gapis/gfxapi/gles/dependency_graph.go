@@ -117,14 +117,10 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
-	atoms, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	g := &DependencyGraph{
-		atoms:      atoms.Atoms,
-		behaviours: make([]AtomBehaviour, len(atoms.Atoms)),
+		atoms:      c.Atoms,
+		behaviours: make([]AtomBehaviour, len(c.Atoms)),
 		roots:      map[StateAddress]bool{},
 		addressMap: addressMapping{
 			address: map[stateKey]StateAddress{nil: nullStateAddress},

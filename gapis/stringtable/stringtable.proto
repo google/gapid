@@ -14,8 +14,8 @@
 
 syntax = "proto3";
 
-import "core/data/pod/pod.proto";
 import "gapis/service/path/path.proto";
+import "gapis/service/box/box.proto";
 
 package stringtable;
 option java_package = "com.google.gapid.proto.stringtable";
@@ -43,7 +43,7 @@ message Msg {
 // Value is a single value that can be used as a message argument.
 message Value {
     oneof value {
-        pod.Value pod = 1;
+        box.Value box = 1;
         path.Any path = 2;
     }
 }

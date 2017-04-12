@@ -25,7 +25,6 @@ set(files
     gfxapi.proto
     mesh.go
     resource.go
-    snippet.go
     state.go
     texture.go
     texture_test.go

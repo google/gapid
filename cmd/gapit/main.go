@@ -16,7 +16,6 @@ package main
 
 import (
 	"github.com/google/gapid/core/app"
-	_ "github.com/google/gapid/framework/binary/any"
 )
 
 func main() {

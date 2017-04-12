@@ -19,6 +19,4 @@ package gfxapi_test_import
 // Having these here helps out tools that can't cope with missing dependancies
 import (
 	_ "github.com/google/gapid/core/data/id"
-	_ "github.com/google/gapid/framework/binary/registry"
-	_ "github.com/google/gapid/framework/binary/schema"
 )

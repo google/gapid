@@ -36,7 +36,7 @@ type ResolvedResources struct {
 // Resolve builds a ResolvedResources object for all of the resources
 // at the path r.After
 func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.After.Commands.Capture)
+	ctx = capture.Put(ctx, r.After.Capture)
 	resources, err := buildResources(ctx, r.After)
 
 	if err != nil {
@@ -46,7 +46,12 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 }
 
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
-	list, err := NCommands(ctx, p.Commands, p.Index+1)
+	atomIdx := p.Index[0]
+	if len(p.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+
+	list, err := NAtoms(ctx, p.Capture.Commands(), atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +69,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		resources[i] = r
 	}
 
-	for i, a := range list.Atoms[:p.Index+1] {
+	for i, a := range list.Atoms[:atomIdx+1] {
 		currentAtomResourceCount = 0
 		currentAtomIndex = uint64(i)
 		a.Mutate(ctx, state, nil /* no builder, just mutate */)

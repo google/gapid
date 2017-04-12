@@ -27,14 +27,20 @@ import (
 
 // Memory resolves and returns the memory from the path p.
 func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
-	ctx = capture.Put(ctx, p.After.Commands.Capture)
-	list, err := NCommands(ctx, p.After.Commands, p.After.Index+1)
+	ctx = capture.Put(ctx, path.FindCapture(p))
+
+	atomIdx := p.After.Index[0]
+	if len(p.After.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+
+	list, err := NAtoms(ctx, p.After.Capture.Commands(), atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
 
 	s := capture.NewState(ctx)
-	for _, a := range list.Atoms[:p.After.Index] {
+	for _, a := range list.Atoms[:atomIdx] {
 		a.Mutate(ctx, s, nil /* no builder, just mutate */)
 	}
 
@@ -56,7 +62,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
 			interval.Merge(&writes, rng.Window(r).Span(), false)
 		}
 	}
-	list.Atoms[p.After.Index].Mutate(ctx, s, nil /* no builder, just mutate */)
+	list.Atoms[atomIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
 
 	slice := pool.Slice(r)
 	data := make([]byte, slice.Size())

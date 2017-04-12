@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/framework/binary"
 )
 
 func min(a, b uint64) uint64 {
@@ -39,9 +38,8 @@ func max(a, b uint64) uint64 {
 
 // Range represents a region of memory.
 type Range struct {
-	binary.Generate `java:"MemoryRange"`
-	Base            uint64 // The address of the first byte in the memory range.
-	Size            uint64 // The size in bytes of the memory range.
+	Base uint64 // The address of the first byte in the memory range.
+	Size uint64 // The size in bytes of the memory range.
 }
 
 // Expand returns a new Range that is grown to include the address addr.

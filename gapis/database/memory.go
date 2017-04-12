@@ -20,7 +20,9 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/gapis/config"
 )
@@ -34,17 +36,45 @@ func NewInMemory(ctx context.Context) Database {
 }
 
 type record struct {
-	value        interface{}
+	proto        proto.Message
+	object       interface{}
 	resolveState *resolveState
 }
 
 type resolveState struct {
 	ctx      context.Context // Context for the resolve
-	valID    id.ID           // Identifier of the resolved result
 	err      error           // Error raised when resolving
 	finished chan struct{}   // Signal that resolve has finished. Set to nil when done.
 	waiting  uint32          // Number of go-routines waiting for the resolve
 	cancel   func()          // Cancels ctx
+}
+
+func (r *record) resolve(ctx context.Context) error {
+	// Deserialize the object from the proto if we don't have the object already.
+	if r.object == nil {
+		obj, err := protoconv.ToObject(ctx, r.proto)
+		switch err.(type) {
+		case protoconv.ErrNoConverterRegistered:
+			r.object = r.proto
+		case nil:
+			r.object = obj
+		default:
+			return err
+		}
+	}
+	for {
+		// If the object implements resolvable, then we need to resolve it.
+		// Is the database value resolvable?
+		resolvable, isResolvable := r.object.(Resolvable)
+		if !isResolvable {
+			return nil
+		}
+		resolved, err := resolvable.Resolve(ctx)
+		if err != nil {
+			return err
+		}
+		r.object = resolved
+	}
 }
 
 type memory struct {
@@ -54,22 +84,22 @@ type memory struct {
 }
 
 // Implements Database
-func (d *memory) Store(ctx context.Context, id id.ID, v interface{}) error {
+func (d *memory) store(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	return d.store(ctx, id, v)
+	return d.storeLocked(ctx, id, v, m)
 }
 
 // store function must be called with a locked mutex
-func (d *memory) store(ctx context.Context, id id.ID, v interface{}) error {
-	if v == nil {
+func (d *memory) storeLocked(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
+	if v == nil && m == nil {
 		panic(fmt.Errorf("Store nil in database (that is bad), id '%v'", id))
 	}
 	r, got := d.records[id]
 	if !got {
-		d.records[id] = &record{value: v}
+		d.records[id] = &record{object: v, proto: m}
 	} else if config.DebugDatabaseVerify {
-		if !reflect.DeepEqual(v, r.value) {
+		if !reflect.DeepEqual(m, r.proto) {
 			return fmt.Errorf("Duplicate object id %v", id)
 		}
 	}
@@ -77,15 +107,15 @@ func (d *memory) store(ctx context.Context, id id.ID, v interface{}) error {
 }
 
 // Implements Database
-func (d *memory) Resolve(ctx context.Context, id id.ID) (interface{}, error) {
+func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	return d.resolve(ctx, id)
+	return d.resolveLocked(ctx, id)
 }
 
 // resolve function must be called with a locked mutex and returns with a locked
 // mutex.
-func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
+func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, error) {
 	// Look up the record with the provided identifier.
 	r, got := d.records[id]
 	if !got {
@@ -93,26 +123,17 @@ func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
 		return nil, fmt.Errorf("Resource '%v' not found", id)
 	}
 
-	// Is the database value resolvable?
-	resolvable, isResolvable := r.value.(Resolvable)
-	if !isResolvable {
-		// Non-resolvable object. Just return the value.
-		return r.value, nil
-	}
+	// TODO: Don't kick a go-routine if the record doesn't need resolving.
 
 	rs := r.resolveState
 	if rs == nil {
 		// First request for this resolvable.
-
-		// Mutate the resolvable identifier to get the result value identifier.
-		valID := resolvedID(id)
 
 		// Build a cancellable context for the resolve.
 		resolveCtx, cancel := task.WithCancel(d.resolveCtx)
 
 		rs = &resolveState{
 			ctx:      resolveCtx,
-			valID:    valID,
 			finished: make(chan struct{}),
 			cancel:   cancel,
 		}
@@ -120,11 +141,8 @@ func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
 
 		// Build the resolvable on a separate go-routine.
 		go func() {
-			val, err := resolvable.Resolve(rs.ctx)
-			if err == nil {
-				// Resolved without error. Store the resulting values.
-				err = d.Store(ctx, rs.valID, val)
-			}
+			err := r.resolve(rs.ctx)
+
 			// Signal that the resolvable has finished.
 			d.mutex.Lock()
 			close(rs.finished)
@@ -164,13 +182,11 @@ func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	if rs.err != nil {
 		return nil, rs.err // Resolve errored.
 	}
-	// Resolve was successful.
-	// Resolve the value identifier to get the goods.
-	return d.resolve(ctx, rs.valID)
+	return r.object, nil // Done.
 }
 
 // Implements Database
-func (d *memory) Contains(ctx context.Context, id id.ID) (res bool) {
+func (d *memory) contains(ctx context.Context, id id.ID) (res bool) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	_, got := d.records[id]
