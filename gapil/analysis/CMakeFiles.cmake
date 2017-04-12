@@ -25,6 +25,7 @@ set(files
     class_value.go
     class_value_test.go
     enum_value.go
+    enum_value_test.go
     expressions.go
     map_value.go
     map_value_test.go
@@ -41,5 +42,5 @@ set(files
     value.go
 )
 set(dirs
-    
+
 )

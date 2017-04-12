@@ -93,51 +93,55 @@ func (s *scope) getInstance(n *semantic.Create) Value {
 	return s.parent.getInstance(n)
 }
 
-// setUnion sets all the values in s to be a union of those in a and b.
-// setUnion is used to merge the results of two child scopes.
-func (s *scope) setUnion(a, b *scope) {
+// setUnion sets all the values in s to be a union of those in l.
+// setUnion is used to merge the results of multiple child scopes.
+func (s *scope) setUnion(l ...*scope) {
 	locals := map[*semantic.Local]struct{}{}
-	for n := range a.locals {
-		locals[n] = struct{}{}
-	}
-	for n := range b.locals {
-		locals[n] = struct{}{}
-	}
-	for n := range locals {
-		s.locals[n] = unionOf(a.getLocal(n), b.getLocal(n))
+	parameters := map[*semantic.Parameter]struct{}{}
+	globals := map[*semantic.Global]struct{}{}
+	instances := map[*semantic.Create]struct{}{}
+	for _, ss := range l {
+		for n := range ss.locals {
+			locals[n] = struct{}{}
+		}
+		for n := range ss.parameters {
+			parameters[n] = struct{}{}
+		}
+		for n := range ss.globals {
+			globals[n] = struct{}{}
+		}
+		for n := range ss.instances {
+			instances[n] = struct{}{}
+		}
 	}
 
-	parameters := map[*semantic.Parameter]struct{}{}
-	for n := range a.parameters {
-		parameters[n] = struct{}{}
-	}
-	for n := range b.parameters {
-		parameters[n] = struct{}{}
+	for n := range locals {
+		vals := make([]Value, len(l))
+		for i, ss := range l {
+			vals[i] = ss.getLocal(n)
+		}
+		s.locals[n] = unionOf(vals...)
 	}
 	for n := range parameters {
-		s.parameters[n] = unionOf(a.getParameter(n), b.getParameter(n))
-	}
-
-	globals := map[*semantic.Global]struct{}{}
-	for n := range a.globals {
-		globals[n] = struct{}{}
-	}
-	for n := range b.globals {
-		globals[n] = struct{}{}
+		vals := make([]Value, len(l))
+		for i, ss := range l {
+			vals[i] = ss.getParameter(n)
+		}
+		s.parameters[n] = unionOf(vals...)
 	}
 	for n := range globals {
-		s.globals[n] = unionOf(a.getGlobal(n), b.getGlobal(n))
-	}
-
-	instances := map[*semantic.Create]struct{}{}
-	for n := range a.instances {
-		instances[n] = struct{}{}
-	}
-	for n := range b.instances {
-		instances[n] = struct{}{}
+		vals := make([]Value, len(l))
+		for i, ss := range l {
+			vals[i] = ss.getGlobal(n)
+		}
+		s.globals[n] = unionOf(vals...)
 	}
 	for n := range instances {
-		s.instances[n] = unionOf(a.getInstance(n), b.getInstance(n))
+		vals := make([]Value, len(l))
+		for i, ss := range l {
+			vals[i] = ss.getInstance(n)
+		}
+		s.instances[n] = unionOf(vals...)
 	}
 }
 
