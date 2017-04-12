@@ -802,6 +802,13 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return // Not supported in the core profile of OpenGL.
 			}
 
+		case *GlDebugMessageCallback,
+			*GlDebugMessageControl,
+			*GlDebugMessageCallbackKHR,
+			*GlDebugMessageControlKHR:
+			// Ignore - the callback function address is invalid in replay.
+			return
+
 		case *GlGetBooleani_v,
 			*GlGetBooleanv,
 			*GlGetFloatv,
