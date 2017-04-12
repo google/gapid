@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/core/os/shell"
 )
 
 type gapicEnv struct {
@@ -148,7 +147,7 @@ func (e *gapicEnv) run(ctx context.Context, args ...string) {
 	jar := e.out.Join("gapic-" + e.platform + ".jar")
 
 	jargs := make([]string, 0)
-	env := shell.CloneEnv()
+	env := env(e.cfg)
 	switch e.platform {
 	case "linux":
 		env.Set("SWT_GTK3", "0").
