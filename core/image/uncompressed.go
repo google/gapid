@@ -72,7 +72,7 @@ func (f *FmtUncompressed) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	return Convert(data, dstW, dstH, RGBA_F32, RGBA_F32)
+	return Convert(data, dstW, dstH, RGBA_F32, format)
 }
 
 func (f *FmtUncompressed) convert(data []byte, width, height int, dstFmt *Format) ([]byte, error) {

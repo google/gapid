@@ -129,6 +129,21 @@ func (f *Format) HasColorComponent() bool {
 	return false
 }
 
+// HasSingleColorComponent returns a component if the format contains a single
+// color component, otherwise nil. See ColorChannels for channels considered colors.
+func (f *Format) HasSingleColorComponent() *Component {
+	var c *Component = nil
+	for _, t := range f.Components {
+		if t.Channel.IsColor() {
+			if c != nil {
+				return nil
+			}
+			c = t
+		}
+	}
+	return c
+}
+
 // HasVectorComponent returns true if the format contains a vector component.
 // See VectorChannels for channels considered vectors.
 func (f *Format) HasVectorComponent() bool {
