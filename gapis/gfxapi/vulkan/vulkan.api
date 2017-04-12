@@ -3053,6 +3053,14 @@ cmd void RecreateBufferData(
     VkQueue lastBoundQueue,
     void* data) {
   read(as!u8*(data)[0:Buffers[buffer].Info.Size])
+  // If the backing memory is mapped and is coherent memory, we need to read its initial data
+  // so combined with following read observations of new writen data, we can get the complete
+  // data.
+  bufferObject := Buffers[buffer]
+  if (bufferObject.Memory.MappedLocation != null) && IsMemoryCoherent(bufferObject.Memory) {
+    start := bufferObject.MemoryOffset - bufferObject.Memory.MappedOffset
+    read(bufferObject.Memory.MappedLocation[as!u64(start):as!u64(start) + as!u64(bufferObject.Info.Size)])
+  }
 }
 
 @override
@@ -3089,6 +3097,14 @@ cmd void RecreateImageData(
     VkDeviceSize dataSize,
     void* data) {
   read(as!u8*(data)[0:dataSize])
+  // If the backing memory is mapped and is coherent memory, we need to read its initial data
+  // so combined with following read observations of new writen data, we can get the complete
+  // data.
+  imageObject := Images[image]
+  if (imageObject.BoundMemory.MappedLocation != null) && IsMemoryCoherent(imageObject.BoundMemory) {
+    start := imageObject.BoundMemoryOffset - imageObject.BoundMemory.MappedOffset
+    read(imageObject.BoundMemory.MappedLocation[as!u64(start):as!u64(start)+as!u64(dataSize)])
+  }
 }
 
 @override
