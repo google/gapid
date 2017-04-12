@@ -85,6 +85,11 @@ func Gapir(ctx context.Context) (file.Path, error) {
 	return layout(ctx).Gapir(ctx)
 }
 
+// Gapit returns the path to the gapir binary.
+func Gapit(ctx context.Context) (file.Path, error) {
+	return layout(ctx).Gapit(ctx)
+}
+
 // Library returns the path to the requested library.
 func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
 	return layout(ctx).Library(ctx, lib)

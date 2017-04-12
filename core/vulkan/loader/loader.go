@@ -19,6 +19,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/app/layout"
@@ -38,6 +39,14 @@ func SetupTrace(ctx context.Context, env *shell.Env) (func(), error) {
 		env.Set("LD_PRELOAD", lib.System()).
 			AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
 			AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
+		if runtime.GOOS == "windows" {
+			// Adds the extra MSYS DLL dependencies onto the path.
+			// TODO: remove this hacky work-around.
+			gapit, err := layout.Gapit(ctx)
+			if err == nil {
+				env.AddPathStart("PATH", gapit.Parent().System())
+			}
+		}
 	}
 	return cleanup, err
 }

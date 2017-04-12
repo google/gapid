@@ -53,7 +53,13 @@ if(NOT DISABLED_CXX)
                 $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>)
         install(FILES $<TARGET_FILE_DIR:VkLayer_VirtualSwapchain>/VirtualSwapchainLayer.json
             DESTINATION "${TARGET_INSTALL_PATH}/lib")
-        install(TARGETS VkLayer_VirtualSwapchain DESTINATION "${TARGET_INSTALL_PATH}/lib")
+
+        if(WIN32)
+            install(TARGETS VkLayer_VirtualSwapchain RUNTIME DESTINATION "${TARGET_INSTALL_PATH}/lib")
+        else()
+            install(TARGETS VkLayer_VirtualSwapchain LIBRARY DESTINATION "${TARGET_INSTALL_PATH}/lib")
+        endif()
+
     endif()
 
     if(UNIX)
