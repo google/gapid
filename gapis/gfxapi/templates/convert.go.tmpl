@@ -26,8 +26,7 @@
   import (»¶
     "context"¶
 ¶
-    "github.com/google/gapid/gapis/atom"¶
-    "github.com/google/gapid/gapis/atom/atom_pb"¶
+  	"github.com/google/gapid/core/data/protoconv"¶
     "github.com/google/gapid/gapis/gfxapi"¶
     "github.com/google/gapid/gapis/gfxapi/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/memory"¶
@@ -40,31 +39,30 @@
   var _ gfxapi.Char¶
   ¶
   func init() {»¶
-    atom.RegisterConverter(convertFrom)¶
-  «}¶
-  ¶
-  // convertFrom converts from a storage form to a live atom for any atom from this package.¶
-  // It returns nil for any type it does not understand.¶
-  func convertFrom(from atom_pb.Atom) interface{} {»¶
-    switch from := from.(type) {¶
-      {{range $c := AllCommands $}}
-        {{if not (GetAnnotation $c "pfn")}}
-          case *{{Global "Store"}}.{{$c.Name | ProtoGoName}}:»¶
-            to := {{$c.Name | GoCommandName}}From(from)¶
-            return &to«¶
-        {{end}}
+    {{range $c := AllCommands $}}
+      {{if not (GetAnnotation $c "pfn")}}
+        {{$proto := $c.Name | ProtoGoName}}
+        {{$p := print (Global "Store") "." $proto}}
+        {{$o := $c.Name | GoCommandName}}
+        protoconv.Register(¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
+        )¶
       {{end}}
-      {{range $c := $.Classes}}
-        {{if (GetAnnotation $c "serialize")}}
-          case *{{Global "Store"}}.{{$c.Name | ProtoGoName}}:»¶
-            to := {{$c.Name | GoCommandName}}From(from)¶
-            return &to«¶
-        {{end}}
+    {{end}}
+    {{range $c := $.Classes}}
+      {{if (GetAnnotation $c "serialize")}}
+        {{$proto := $c.Name | ProtoGoName}}
+        {{$p := print (Global "Store") "." $proto}}
+        {{$o := $c.Name | GoCommandName}}
+        protoconv.Register(¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
+        )¶
       {{end}}
-      default:»¶
-        return nil«¶
-    }¶
+    {{end}}
   «}¶
+
   {{range $c := AllCommands $}}
     {{if not (GetAnnotation $c "pfn")}}
       {{Template "CommandEntry" $c}}
@@ -98,17 +96,9 @@
     return to¶
   «}¶
   ¶
-  // Convert produces all the storage atoms from from the in memory form.¶
-  func (ϟa *{{$name}}) Convert(ctx context.Context, out atom_pb.Handler) error {»¶
-    if err := out(ctx, ϟa.ToProto()); err != nil {»¶
-      return err¶
-    «}¶
-    return ϟa.Extras().Convert(ctx, out)¶
-  «}¶
-  ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) {{$name}} {»¶
-    ϟa := {{$name}}{}¶
+  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) *{{$name}} {»¶
+    ϟa := &{{$name}}{}¶
     {{range $v := $.FullParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}
@@ -133,11 +123,6 @@
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
     {{end}}
     return to¶
-  «}¶
-
-  // Convert produces the storage form from the in memory form.¶
-  func (ϟa *{{$name}}) Convert(ctx context.Context, out atom_pb.Handler) error {»¶
-    return out(ctx, ϟa.ToProto())¶
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶

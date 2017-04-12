@@ -3,7 +3,6 @@
 The Graphics API Server is the central component of the GAPID tool suite, providing the interface between the client and the replay systems.
 
 GAPIS has been designed to support multiple graphics APIs.
-As new graphics APIs are added to GAPIS, they will become available to the client via runtime schemas.
 The client does not need to have any knowledge of any graphics APIs, making implementing new clients relatively trivial.
 
 
@@ -206,17 +205,6 @@ Example transformations include:
 GAPIS offers simultaneous connections from any number of clients. All client-server communication is performed through the [gRPC service interface](service/service.proto).
 
 The service relies heavily on resource identifiers and paths to refer to computed data. This means the list of RPC functions is relatively small when considering the number of different queries the client can make.
-
-
-## Schema
-
-One of the goals of the GAPID project is to keep the clients simple to implement, avoiding the need for each client implementation to require knowledge of the graphics APIs.
-
-The client does however need to display the commands (and arguments) that make up a capture, the state structure and the information that links one value to another (for example, a texture ID to texture object).
-
-GAPIS exposes the `GetSchema()` RPC function to describe the all the types used by all graphics APIs understood by the server. The returned value of GetSchema holds all the class information and named constants used by the stream. This information contains everything the client needs to decode the object serialized by the other RPC calls.
-
-The [framework/binary/schema](../framework/binary/schema) package contains all the Schema types.
 
 
 ## Paths

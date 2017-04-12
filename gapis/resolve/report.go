@@ -17,7 +17,6 @@ package resolve
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
@@ -48,13 +47,6 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	list, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	atoms := list.Atoms
 
 	builder := service.NewReportBuilder()
 
@@ -114,7 +106,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	apis := map[gfxapi.API]struct{}{}
-	for i, a := range atoms {
+	for i, a := range c.Atoms {
 		if api := a.API(); api != nil {
 			apis[api] = struct{}{}
 		}
@@ -151,8 +143,8 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 							Severity: issue.Severity,
 							Command:  uint64(issue.Atom),
 						}, messages.ErrReplayDriver(issue.Error.Error()))
-					if int(issue.Atom) < len(atoms) {
-						item.Tags = append(item.Tags, getAtomNameTag(atoms[issue.Atom]))
+					if int(issue.Atom) < len(c.Atoms) {
+						item.Tags = append(item.Tags, getAtomNameTag(c.Atoms[issue.Atom]))
 					}
 					builder.Add(ctx, item)
 				}
@@ -167,6 +159,5 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 }
 
 func getAtomNameTag(a atom.Atom) *stringtable.Msg {
-	atomName := a.Class().Schema().Name()
-	return messages.TagAtomName(strings.ToLower(atomName[:1]) + atomName[1:])
+	return messages.TagAtomName(a.AtomName())
 }

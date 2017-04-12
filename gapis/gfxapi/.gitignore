@@ -1,6 +1,7 @@
 gfxapi.pb.go
 
 /*/api.go
+/*/constant_sets.go
+/*/convert.go
 /*/enum.go
 /*/mutate.go
-/*/convert.go

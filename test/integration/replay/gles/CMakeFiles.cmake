@@ -18,10 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    direct_call.go
-    direct_call_test.go
     doc.go
-    gles_binary.go
     gles_test.go
     image.go
 )

@@ -21,13 +21,9 @@ set(files
     api.go
     convert.go
     core.go
-    core_binary.go
-    core_binary_metatadata.go
     custom_mutate.go
     doc.go
-    enum.go
     mutate.go
-    snippets_embed.go
 )
 set(dirs
     core_pb

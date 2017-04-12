@@ -59,11 +59,21 @@ func Execute(
 
 func (r executor) execute(ctx context.Context) error {
 	// Encode the payload
+	// TODO: Make this a proto.
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, r.memoryLayout.GetEndian())
-	if w.Simple(&r.payload); w.Error() != nil {
-		return w.Error()
+	w.Uint32(r.payload.StackSize)
+	w.Uint32(r.payload.VolatileMemorySize)
+	w.Uint32(uint32(len(r.payload.Constants)))
+	w.Data(r.payload.Constants)
+	w.Uint32(uint32(len(r.payload.Resources)))
+	for _, r := range r.payload.Resources {
+		w.String(r.ID)
+		w.Uint32(r.Size)
 	}
+	w.Uint32(uint32(len(r.payload.Opcodes)))
+	w.Data(r.payload.Opcodes)
+
 	data := buf.Bytes()
 
 	// Store the payload to the database

@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/framework/binary"
 )
 
 // Group represents a named, contiguous span of atoms with support for sparse
@@ -60,10 +59,9 @@ import (
 //    └─── Item[6] ─── Atom[9]
 //
 type Group struct {
-	binary.Generate `java:"AtomGroup"`
-	Name            string    // Name of this group.
-	Range           Range     // The range of atoms this group (and sub-groups) represents.
-	SubGroups       GroupList // All sub-groups of this group.
+	Name      string    // Name of this group.
+	Range     Range     // The range of atoms this group (and sub-groups) represents.
+	SubGroups GroupList // All sub-groups of this group.
 }
 
 func (g Group) info(depth int) string {
@@ -96,7 +94,7 @@ func (g Group) Count() uint64 {
 // If the item is a sub-group then baseAtomIndex is returned as the lowest atom
 // identifier found in the sub-group and subgroup is assigned the sub-group
 // pointer.
-func (g Group) Index(index uint64) (baseIndex uint64, subgroup *Group) {
+func (g Group) Index(index uint64) (baseAtomIndex uint64, subgroup *Group) {
 	base := g.Range.First()
 	for i := range g.SubGroups {
 		sg := &g.SubGroups[i]

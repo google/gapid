@@ -27,17 +27,12 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.RpcException;
-import com.google.gapid.rpclib.schema.ConstantSet;
-import com.google.gapid.rpclib.schema.Dynamic;
-import com.google.gapid.rpclib.schema.Entity;
-import com.google.gapid.rpclib.schema.Message;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapidClientCache;
 import com.google.gapid.server.GapidClientGrpc;
 import com.google.gapid.server.GapisConnection;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.server.Version;
-import com.google.gapid.service.atom.AtomMetadata;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -76,8 +71,6 @@ public class Server {
     try {
       status = "fetch server info";
       fetchServerInfo();
-      status = "fetch schema";
-      fetchSchema();
       status = "fetch string table";
       fetchStringTable();
       status = "monitoring logs";
@@ -156,27 +149,6 @@ public class Server {
     Stringtable.StringTable table =
         Rpc.get(client.getStringTable(info), FETCH_STRING_TABLE_TIMEOUT_MS, MILLISECONDS);
     Strings.setCurrent(table);
-  }
-
-  /**
-   * Requests and blocks for the schema from the server.
-   */
-  private void fetchSchema() throws ExecutionException, RpcException, TimeoutException {
-    Message schema = Rpc.get(client.getSchema(), FETCH_SCHEMA_TIMEOUT_MS, MILLISECONDS);
-    LOG.log(INFO, "Schema with " + schema.entities.length + " classes, " +
-        schema.constants.length + " constant sets");
-    int atoms = 0;
-    for (Entity type : schema.entities) {
-      // Find the atom metadata, if present
-      if (AtomMetadata.find(type) != null) {
-        atoms++;
-      }
-      Dynamic.register(type);
-    }
-    LOG.log(INFO, "Schema with " + atoms + " atoms");
-    for (ConstantSet set : schema.constants) {
-      ConstantSet.register(set);
-    }
   }
 
   private void monitorLogs() {

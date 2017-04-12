@@ -26,7 +26,7 @@ import (
 
 // Thumbnail resolves and returns the thumbnail from the path p.
 func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
-	obj, err := Resolve(ctx, p.Parent())
+	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
 	}

@@ -76,11 +76,6 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
-  public ListenableFuture<Service.GetSchemaResponse> getSchema(Service.GetSchemaRequest request) {
-    return client.getSchema(request);
-  }
-
-  @Override
   public ListenableFuture<Service.GetAvailableStringTablesResponse> getAvailableStringTables(
       Service.GetAvailableStringTablesRequest request) {
     return client.getAvailableStringTables(request);

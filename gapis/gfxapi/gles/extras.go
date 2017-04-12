@@ -17,7 +17,6 @@ package gles
 import (
 	"context"
 
-	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi/gles/gles_pb"
@@ -26,8 +25,6 @@ import (
 // ErrorState is an atom extra used to describe the GLES error state after
 // the atom has been executed. It is optional - we use it only for testing.
 type ErrorState struct {
-	binary.Generate
-
 	TraceDriversGlError GLenum
 	InterceptorsGlError GLenum
 }

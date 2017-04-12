@@ -21,7 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"runtime/pprof"
 	"sort"
@@ -32,17 +32,16 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/framework/binary/registry"
-	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/all"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+
+	// Register all the gfxapis
+	_ "github.com/google/gapid/gapis/gfxapi/all"
 )
 
 // Config holds the server configuration settings.
@@ -82,21 +81,6 @@ func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 	return s.info, nil
 }
 
-func (s *server) GetSchema(ctx context.Context) (*schema.Message, error) {
-	result := &schema.Message{}
-	result.Entities = make([]*binary.Entity, 0, registry.Global.Count())
-	all.GraphicsNamespace.Visit(func(c binary.Class) {
-		entity := c.Schema()
-		if entity != nil {
-			result.Entities = append(result.Entities, entity)
-		}
-	})
-	all.VisitConstantSets(func(c schema.ConstantSet) {
-		result.Constants = append(result.Constants, c)
-	})
-	return result, nil
-}
-
 func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
 	infos := make([]*stringtable.Info, len(s.stbs))
 	for i, table := range s.stbs {
@@ -115,7 +99,7 @@ func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*s
 }
 
 func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error) {
-	return capture.Import(ctx, name, bytes.NewReader(data))
+	return capture.Import(ctx, name, data)
 }
 
 func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error) {
@@ -128,7 +112,7 @@ func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, er
 
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	name := filepath.Base(path)
-	in, err := os.Open(path)
+	in, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -187,8 +171,8 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 
 	state := c.NewState()
 
-	apis := make([]replay.Support, 0, len(c.Apis))
-	for _, i := range c.Apis {
+	apis := make([]replay.Support, 0, len(c.APIs))
+	for _, i := range c.APIs {
 		api := gfxapi.Find(gfxapi.ID(i.ID()))
 		if f, ok := api.(replay.Support); ok {
 			apis = append(apis, f)
@@ -240,21 +224,19 @@ func (s *server) GetFramebufferAttachment(
 	settings *service.RenderSettings,
 	hints *service.UsageHints) (*path.ImageInfo, error) {
 
-	// TODO: Path validation
-	// if err := device.Validate(); err != nil {
-	// 	return nil, err
-	// }
-	// if err := after.Validate(); err != nil {
-	// 	return nil, err
-	// }
+	if err := device.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", device.Text())
+	}
+	if err := after.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", after.Text())
+	}
 	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings, hints)
 }
 
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
-	// TODO: Path validation
-	// if err := p.Validate(); err != nil {
-	// 	return nil, err
-	// }
+	if err := p.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+	}
 	v, err := resolve.Get(ctx, p)
 	if err != nil {
 		return nil, err
@@ -263,18 +245,16 @@ func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 }
 
 func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
-	// TODO: Path validation
-	// if err := p.Validate(); err != nil {
-	// 	return nil, err
-	// }
+	if err := p.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+	}
 	return resolve.Set(ctx, p, v)
 }
 
 func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
-	// TODO: Path validation
-	// if err := p.Validate(); err != nil {
-	// 	return nil, err
-	// }
+	if err := p.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+	}
 	return resolve.Follow(ctx, p)
 }
 

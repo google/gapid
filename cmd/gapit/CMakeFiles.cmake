@@ -18,6 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    commands.go
     common.go
     devices.go
     dump.go
@@ -28,6 +29,7 @@ set(files
     main.go
     packages.go
     report.go
+    state.go
     sxs_video.go
     trace.go
     video.go

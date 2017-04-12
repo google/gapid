@@ -16,6 +16,7 @@ syntax = "proto3";
 
 import "core/data/pod/pod.proto";
 import "core/image/image.proto";
+import "gapis/service/box/box.proto";
 import "gapis/vertex/vertex.proto";
 
 package path;
@@ -25,29 +26,34 @@ option java_outer_classname = "Path";
 // Any is a oneof union of all the path types.
 message Any {
   oneof path {
-    ArrayIndex array_index = 1;
-    As as = 2;
-    Blob blob = 3;
-    Capture capture = 4;
-    Command command = 5;
-    Commands commands = 6;
-    Context context = 7;
-    Contexts contexts = 8;
-    Device device = 9;
-    Field field = 10;
-    Hierarchies hierarchies = 11;
-    Hierarchy hierarchy = 12;
-    ImageInfo image_info = 13;
-    MapIndex map_index = 14;
-    Memory memory = 15;
-    Mesh mesh = 16;
-    Parameter parameter = 17;
-    Report report = 18;
-    ResourceData resource_data = 19;
-    Resources resources = 20;
-    Slice slice = 21;
-    State state = 22;
-    Thumbnail thumbnail = 23;
+    API api = 1;
+    ArrayIndex array_index = 2;
+    As as = 3;
+    Blob blob = 4;
+    Capture capture = 5;
+    Command command = 6;
+    Commands commands = 7;
+    CommandTree command_tree = 8;
+    CommandTreeNode command_tree_node = 9;
+    ConstantSet constant_set = 10;
+    Context context = 11;
+    Contexts contexts = 12;
+    Device device = 13;
+    Events events = 14;
+    Field field = 15;
+    ImageInfo image_info = 16;
+    MapIndex map_index = 17;
+    Memory memory = 18;
+    Mesh mesh = 19;
+    Parameter parameter = 20;
+    Report report = 21;
+    ResourceData resource_data = 22;
+    Resources resources = 23;
+    Slice slice = 24;
+    State state = 25;
+    StateTree state_tree = 26;
+    StateTreeNode state_tree_node = 27;
+    Thumbnail thumbnail = 28;
   }
 }
 
@@ -98,25 +104,70 @@ message Blob {
 }
 
 // Capture is a path to a capture.
+// Resolves to a service.Capture.
 message Capture {
     ID id = 1;
 }
 
-// Commands is a path to a list of commands in a capture.
-message Commands {
+// Command is the path to a command in the capture.
+// Resolves to a service.Command.
+message Command {
     Capture capture = 1;
+    // Index of this command in the capture.
+    // If there is more than one index, then the index refers to a sub-command.
+    repeated uint64 index = 2;
 }
 
-// Command is the path to a single command in a capture.
-message Command {
+// Commands is a path to a list of commands in a capture.
+// Resolves to a service.Commands.
+message Commands {
+    Capture capture = 1;
+    // The index of the first command in the interval.
+    // If there is more than one index, then the index refers to a sub-command.
+    repeated uint64 from = 2;
+    // The index of the last command in the interval.
+    // If there is more than one index, then the index refers to a sub-command.
+    repeated uint64 to = 4;
+}
+
+// ConstantSet is a path to an enumerator of constants.
+// Resolves to a service.ConstantSet.
+message ConstantSet {
+    API api = 1;
+    uint32 index = 2;
+}
+
+// Events is a path to a list of events in a capture.
+// Resolves to a service.Events.
+message Events {
     Commands commands = 1;
-    uint64 index = 2;
+    ID context = 2;
+    ID thread = 3;
+    bool draw_calls = 4;
+    bool first_in_frame = 5;
+    bool last_in_frame = 6;
+    bool clears = 7;
+    bool user_markers = 8;
+    bool push_user_markers = 9;
+    bool pop_user_markers = 10;
+    bool framebuffer_observations = 11;
 }
 
 // Parameter is the path to a single parameter on a command.
 message Parameter {
-    Command command = 1;
-    string name = 2;
+    string name = 1;
+    Command command = 2;
+}
+
+// Threads is path to a list of threads in a capture.
+message Threads {
+    Capture capture = 1;
+}
+
+// Thread is a path to a single thread in a capture.
+message Thread {
+    Capture capture = 1;
+    ID id = 2;
 }
 
 // Contexts is path to a list of contexts in a capture.
@@ -126,7 +177,7 @@ message Contexts {
 
 // Context is a path to a single context in a capture.
 message Context {
-    Contexts contexts = 1;
+    Capture capture = 1;
     ID id = 2;
 }
 
@@ -148,15 +199,23 @@ message Field {
     }
 }
 
-// Hierarchies is a path to a list of hierarchies in a capture.
-message Hierarchies {
+// CommandTree is a path to a hierarchy of command tree nodes.
+// Resolves to a service.CommandTree.
+message CommandTree {
     Capture capture = 1;
+    // context filters the tree to the specified context.
+    ID context = 2;
+    // context filters the tree to the specified thread.
+    ID thread = 3;
 }
 
-// Hierarchy is a path to a single hierarchy in a capture.
-message Hierarchy {
-    Hierarchies hierarchies = 1;
-    ID id = 2;
+// CommandTreeNode is a path to a command tree node.
+// Resolves to a service.CommandTreeNode.
+message CommandTreeNode {
+    // Unique identifier of the command tree.
+    ID tree = 1;
+    // Descending child index starting from the root CommandTreeNode.
+    repeated uint64 index = 2;
 }
 
 // ImageInfo is a path that refers to a image.Info2D.
@@ -167,7 +226,7 @@ message ImageInfo {
 // MapIndex is a path to a value held inside a map.
 message MapIndex {
     oneof key {
-        pod.Value pod = 1;
+        box.Value box = 1;
     }
     oneof map {
         Field field = 2;
@@ -212,6 +271,12 @@ message Resources {
     Capture capture = 1;
 }
 
+// Resource is a path to a single resource used in a capture.
+message Resource {
+    Capture capture = 1;
+    ID id = 2;
+}
+
 // ResourceData is a path to a single resource snapshot at a given point in an
 // atom stream.
 message ResourceData {
@@ -235,6 +300,21 @@ message Slice {
 // State is a path to the state at a point in a capture.
 message State {
     Command after = 1;
+}
+
+// StateTree is a path to a hierarchy of state tree nodes.
+// Resolves to a service.StateTree.
+message StateTree {
+    Command after = 1;
+}
+
+// StateTreeNode is a path to a state tree node.
+// Resolves to a service.StateTreeNode.
+message StateTreeNode {
+    // Unique identifier of the state tree.
+    ID tree = 1;
+    // Descending child index starting from the root StateTreeNode.
+    repeated uint64 index = 2;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.

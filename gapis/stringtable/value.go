@@ -17,7 +17,7 @@ package stringtable
 import (
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -27,8 +27,8 @@ func ToValue(v interface{}) *Value {
 	case *path.Any:
 		return &Value{&Value_Path{Path: v}}
 	default:
-		if val := pod.NewValue(v); val != nil {
-			return &Value{&Value_Pod{Pod: val}}
+		if val := box.NewValue(v); val != nil {
+			return &Value{&Value_Box{Box: val}}
 		}
 		panic(fmt.Errorf("Unsupported value type %T", v))
 	}
@@ -37,8 +37,8 @@ func ToValue(v interface{}) *Value {
 // Unpack returns the underlying value wrapped by the Value.
 func (v Value) Unpack() interface{} {
 	switch v := v.Value.(type) {
-	case *Value_Pod:
-		return v.Pod.Get()
+	case *Value_Box:
+		return v.Box.Get()
 	case *Value_Path:
 		return v.Path
 	default:

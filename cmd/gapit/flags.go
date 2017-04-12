@@ -112,16 +112,24 @@ type (
 	DumpShadersFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
-		Atom  int `help:"atom to dump the resources after"`
+		At    int `help:"command index to dump the resources after"`
 	}
 	DumpFlags struct {
 		Gapis          GapisFlags
 		Gapir          GapirFlags
-		Extras         bool `help:"if true then extras are also dumped."`
-		Observations   bool `help:"if true then the bytes of every observation are also dumped."`
 		Raw            bool `help:"if true then the value of constants, instead of their names, will be dumped."`
 		ShowDeviceInfo bool `help:"if true then show originating device information."`
 		ShowABIInfo    bool `help:"if true then show information of the ABI used for the trace."`
+	}
+	CommandsFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Raw   bool `help:"if true then the value of constants, instead of their names, will be dumped."`
+	}
+	StateFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		At    int `help:"command index to get the state after."`
 	}
 	TraceFlags struct {
 		Gapii GapiiFlags

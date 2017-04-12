@@ -18,9 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    constant_set.go
     doc.go
     errors.go
-    object.go
     report.go
     service.go
     service.pb.go

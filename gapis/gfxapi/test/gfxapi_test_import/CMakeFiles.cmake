@@ -19,9 +19,8 @@
 
 set(files
     doc.go
-    gfxapi_test_import_binary.go
     imported.go
 )
 set(dirs
-    
+
 )

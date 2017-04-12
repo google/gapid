@@ -18,35 +18,45 @@ package database
 import (
 	"context"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 )
 
 // Database is the interface to a resource store.
 type Database interface {
-	// Store adds a key-value pair to the database.
+	// store adds a key-value pair to the database.
 	// It is an error if the id is already mapped to an object.
-	Store(context.Context, id.ID, interface{}) error
-	// Resolve attempts to resolve the final value associated with an id.
+	store(context.Context, id.ID, interface{}, proto.Message) error
+	// resolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
-	Resolve(context.Context, id.ID) (interface{}, error)
-	// Containts returns true if the database has an entry for the specified id.
-	Contains(context.Context, id.ID) bool
+	resolve(context.Context, id.ID) (interface{}, error)
+	// containts returns true if the database has an entry for the specified id.
+	contains(context.Context, id.ID) bool
 }
 
-// Store is a helper that stores v to the database with the id calculated by
-// the Hash function.
+// Store stores v to the database held by the context.
 func Store(ctx context.Context, v interface{}) (id.ID, error) {
-	id, err := Hash(v)
+	m, err := toProto(ctx, v)
 	if err != nil {
-		return id, err
+		return id.ID{}, err
 	}
-	return id, Get(ctx).Store(ctx, id, v)
+	i, err := hashProto(v, m)
+	if err != nil {
+		return id.ID{}, err
+	}
+	if v == m {
+		v = nil // v is the proto.
+	}
+	if err := Get(ctx).store(ctx, i, v, m); err != nil {
+		return id.ID{}, err
+	}
+	return i, nil
 }
 
-// Resolve is a helper that resolves id with the database held by the context.
+// Resolve resolves id with the database held by the context.
 func Resolve(ctx context.Context, id id.ID) (interface{}, error) {
-	return Get(ctx).Resolve(ctx, id)
+	return Get(ctx).resolve(ctx, id)
 }
 
 // Build stores resolvable into d, and then resolves and returns the resolved
@@ -56,7 +66,7 @@ func Build(ctx context.Context, r Resolvable) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Get(ctx).Resolve(ctx, id)
+	return Get(ctx).resolve(ctx, id)
 }
 
 type databaseKeyTy string

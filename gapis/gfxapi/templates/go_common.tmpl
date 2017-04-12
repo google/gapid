@@ -155,16 +155,16 @@
   {{AssertType $.ErrHandler "string" "nil"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-{{else if IsStaticArray $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsStaticArray $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsMap         $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsPointer     $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsClass       $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
   {{else if IsPseudonym   $.Type}}
     {{$ty := $.Type.To | Unpack}}
-    {{     if IsStaticArray $ty}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsMap         $ty}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsPointer     $ty}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsClass       $ty}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
+    {{     if IsStaticArray $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsMap         $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsPointer     $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsClass       $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
     {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
     {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
     {{end}}
@@ -209,6 +209,8 @@
   {{else if IsInt         $.Type}}if ϟv := pod.ReadInt(d,  {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsUint        $.Type}}if ϟv := pod.ReadUint(d, {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsSize        $.Type}}if ϟv := pod.ReadUint(d, {{$size_size}}); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{else if IsSlice       $.Type}}
+  {{else if IsReference   $.Type}}
   {{else if IsVoid        $.Type}}
   {{else}}{{Error "macro Go.DecodePOD '%v' called with unsupported type: %v" $.Name $.Type.Name}}
   {{end}}
@@ -232,10 +234,10 @@
   {{$size_size := "ϟl.GetSize().GetSize()*8"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $ty}}if e.Simple(&{{$.Name}});          e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $ty}}if e.Simple(&{{$.Name}});          e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $ty}}if e.Simple(&{{$.Name}});          e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $ty}}if e.Simple(&{{$.Name}});          e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsEnum        $ty}}if e.Uint32(uint32({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsBool        $ty}}if e.Bool(bool({{$.Name}}));       e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsChar        $ty}}if e.Uint8(uint8({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
@@ -253,6 +255,8 @@
   {{else if IsInt         $ty}}if pod.WriteInt(e,  {{$int_size}},   int64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsUint        $ty}}if pod.WriteUint(e, {{$int_size}},  uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsSize        $ty}}if pod.WriteUint(e, {{$size_size}}, uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsSlice       $ty}}
+  {{else if IsReference   $ty}}
   {{else if IsVoid        $ty}}
   {{else}}{{Error "macro Go.Encode '%v' called with unsupported type: %v" $.Name $.Type.Name}}
   {{end}}

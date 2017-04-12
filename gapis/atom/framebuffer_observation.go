@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/framework/binary"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -28,7 +28,6 @@ import (
 // of the bound framebuffer at the time of capture. These atoms can be used to
 // verify that replay gave the same results as what was captured.
 type FramebufferObservation struct {
-	binary.Generate               `java:"disable"`
 	OriginalWidth, OriginalHeight uint32 // Framebuffer dimensions in pixels
 	DataWidth, DataHeight         uint32 // Dimensions of downsampled data.
 	Data                          []byte // The RGBA color-buffer data
@@ -39,40 +38,33 @@ func (a *FramebufferObservation) String() string {
 }
 
 // Atom compliance
-func (a *FramebufferObservation) API() gfxapi.API  { return nil }
-func (a *FramebufferObservation) AtomFlags() Flags { return 0 }
-func (a *FramebufferObservation) Extras() *Extras  { return nil }
-func (a *FramebufferObservation) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (FramebufferObservation) AtomName() string { return "<FramebufferObservation>" }
+func (FramebufferObservation) API() gfxapi.API  { return nil }
+func (FramebufferObservation) AtomFlags() Flags { return 0 }
+func (FramebufferObservation) Extras() *Extras  { return nil }
+func (FramebufferObservation) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	return nil
 }
 
-func (a *FramebufferObservation) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, &atom_pb.FramebufferObservation{
-		OriginalWidth:  a.OriginalWidth,
-		OriginalHeight: a.OriginalHeight,
-		DataWidth:      a.DataWidth,
-		DataHeight:     a.DataHeight,
-		Data:           a.Data,
-	})
-}
-
-func FramebufferObservationFrom(from *atom_pb.FramebufferObservation) FramebufferObservation {
-	return FramebufferObservation{
-		OriginalWidth:  from.OriginalWidth,
-		OriginalHeight: from.OriginalHeight,
-		DataWidth:      from.DataWidth,
-		DataHeight:     from.DataHeight,
-		Data:           from.Data,
-	}
-}
-
 func init() {
-	s := (*FramebufferObservation)(nil).Class().Schema()
-	s.Metadata = append(s.Metadata, &Metadata{
-		API:              gfxapi.ID{},
-		DisplayName:      "FramebufferObservation",
-		DrawCall:         false,
-		EndOfFrame:       false,
-		DocumentationUrl: "[]",
-	})
+	protoconv.Register(
+		func(ctx context.Context, a *FramebufferObservation) (*atom_pb.FramebufferObservation, error) {
+			return &atom_pb.FramebufferObservation{
+				OriginalWidth:  a.OriginalWidth,
+				OriginalHeight: a.OriginalHeight,
+				DataWidth:      a.DataWidth,
+				DataHeight:     a.DataHeight,
+				Data:           a.Data,
+			}, nil
+		},
+		func(ctx context.Context, a *atom_pb.FramebufferObservation) (*FramebufferObservation, error) {
+			return &FramebufferObservation{
+				OriginalWidth:  a.OriginalWidth,
+				OriginalHeight: a.OriginalHeight,
+				DataWidth:      a.DataWidth,
+				DataHeight:     a.DataHeight,
+				Data:           a.Data,
+			}, nil
+		},
+	)
 }

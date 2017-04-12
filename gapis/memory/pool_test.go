@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
-	_ "github.com/google/gapid/framework/binary/any"
 	"github.com/google/gapid/gapis/database"
 	"github.com/pkg/errors"
 )

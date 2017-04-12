@@ -11,12 +11,7 @@
 # General patterns
 *.gfxtrace
 *ycm_extra_conf.py*
-*_binary.go
-*_binary_test.go
 *_embed.go
-*_snippets.*
-snippets.base64
-snippets.text
 gapir.log
 gapis.log
 # Vim

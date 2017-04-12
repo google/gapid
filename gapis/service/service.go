@@ -19,30 +19,20 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/framework/binary/schema"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
-
-	_ "github.com/google/gapid/framework/binary/any"
 )
 
 type Service interface {
 	// GetServerInfo returns information about the running server.
 	GetServerInfo(ctx context.Context) (*ServerInfo, error)
-
-	// The GetSchema returns the type and constant schema descriptions for all
-	// objects used in the api.
-	// This includes all the types included in or referenced from the atom stream.
-	GetSchema(ctx context.Context) (*schema.Message, error)
 
 	// GetAvailableStringTables returns list of available string table descriptions.
 	GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error)
@@ -149,25 +139,37 @@ func (v *Error) Get() error { return protoutil.OneOf(v.Err).(error) }
 // NewValue attempts to box and return v into a Value.
 // If v cannot be boxed into a Value then nil is returned.
 func NewValue(v interface{}) *Value {
-	if v := pod.NewValue(v); v != nil {
-		return &Value{&Value_Pod{v}}
-	}
 	switch v := v.(type) {
 	case nil:
 		return &Value{}
-	case binary.Object:
-		out := &Object{}
-		if err := out.Encode(v); err != nil {
-			panic(err)
-		}
-		return &Value{Val: &Value_Object{out}}
-
 	case *Capture:
 		return &Value{&Value_Capture{v}}
 	case *Contexts:
 		return &Value{&Value_Contexts{v}}
-	case []*Context:
-		return &Value{&Value_Contexts{&Contexts{v}}}
+	case *Command:
+		return &Value{&Value_Command{v}}
+	case *Commands:
+		return &Value{&Value_Commands{v}}
+	case *CommandTree:
+		return &Value{&Value_CommandTree{v}}
+	case *CommandTreeNode:
+		return &Value{&Value_CommandTreeNode{v}}
+	case *ConstantSet:
+		return &Value{&Value_ConstantSet{v}}
+	case *Event:
+		return &Value{&Value_Event{v}}
+	case *Events:
+		return &Value{&Value_Events{v}}
+	case *MemoryInfo:
+		return &Value{&Value_MemoryInfo{v}}
+	case *Report:
+		return &Value{&Value_Report{v}}
+	case *Resources:
+		return &Value{&Value_Resources{v}}
+	case *StateTree:
+		return &Value{&Value_StateTree{v}}
+	case *StateTreeNode:
+		return &Value{&Value_StateTreeNode{v}}
 	case *gfxapi.Mesh:
 		return &Value{&Value_Mesh{v}}
 	case *gfxapi.Texture2D:
@@ -178,24 +180,17 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_Shader{v}}
 	case *gfxapi.Program:
 		return &Value{&Value_Program{v}}
-	case *Hierarchies:
-		return &Value{&Value_Hierarchies{v}}
-	case []*Hierarchy:
-		return &Value{&Value_Hierarchies{&Hierarchies{v}}}
 	case *image.Info2D:
 		return &Value{&Value_ImageInfo_2D{v}}
-	case *MemoryInfo:
-		return &Value{&Value_MemoryInfo{v}}
-	case *Report:
-		return &Value{&Value_Report{v}}
-	case *Resources:
-		return &Value{&Value_Resources{v}}
 	case *device.Instance:
 		return &Value{&Value_Device{v}}
 
 	default:
-		panic(fmt.Errorf("Cannot box value type %T", v))
+		if v := box.NewValue(v); v != nil {
+			return &Value{&Value_Box{v}}
+		}
 	}
+	panic(fmt.Errorf("Cannot box value type %T", v))
 }
 
 // Get returns the boxed value.
@@ -203,51 +198,10 @@ func (v *Value) Get() interface{} {
 	switch v := v.Val.(type) {
 	case nil:
 		return nil
-
-	case *Value_Pod:
-		return v.Pod.Get()
-
-	case *Value_Object:
-		o, err := v.Object.Decode()
-		if err != nil {
-			panic(err)
-		}
-		return o
-
-	case *Value_Contexts:
-		return v.Contexts.List
-	case *Value_Hierarchies:
-		return v.Hierarchies.List
-
+	case *Value_Box:
+		return v.Box.Get()
 	default:
 		return protoutil.OneOf(v)
-	}
-}
-
-// NewCommandRangeList returns a new slice of CommandRange filled with a copy of
-// l.
-func NewCommandRangeList(l atom.RangeList) []*CommandRange {
-	out := make([]*CommandRange, len(l))
-	for i, r := range l {
-		out[i] = &CommandRange{
-			First: r.Start,
-			Count: r.End - r.Start,
-		}
-	}
-	return out
-}
-
-// NewCommandGroup constructs and returns a new CommandGroup from the
-// atom.Group.
-func NewCommandGroup(group atom.Group) *CommandGroup {
-	subgroups := make([]*CommandGroup, len(group.SubGroups))
-	for i, g := range group.SubGroups {
-		subgroups[i] = NewCommandGroup(g)
-	}
-	return &CommandGroup{
-		Name:      group.Name,
-		Range:     &CommandRange{First: group.Range.Start, Count: group.Range.Length()},
-		Subgroups: subgroups,
 	}
 }
 
@@ -267,20 +221,11 @@ func NewMemoryRanges(l memory.RangeList) []*MemoryRange {
 	return out
 }
 
-// NewHierarchy constructs and returns a new Hierarchy.
-func NewHierarchy(name string, context id.ID, root atom.Group) *Hierarchy {
-	return &Hierarchy{
-		Name:    name,
-		Context: path.NewID(context),
-		Root:    NewCommandGroup(root),
-	}
-}
-
 // Link returns the link to the atom pointed by a report item.
 // If nil, nil is returned then the path cannot be followed.
 func (i ReportItem) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if capture := path.FindCapture(p); capture != nil {
-		return capture.Commands().Index(i.Command), nil
+		return capture.Command(i.Command), nil
 	}
 	return nil, nil
 }
@@ -290,7 +235,7 @@ func (r *Resources) Find(ty gfxapi.ResourceType, id id.ID) *Resource {
 	for _, t := range r.Types {
 		if t.Type == ty {
 			for _, r := range t.Resources {
-				if r.Id.ID() == id {
+				if r.Path.Id.ID() == id {
 					return r
 				}
 			}

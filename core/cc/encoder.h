@@ -28,10 +28,6 @@
 
 namespace core {
 
-namespace schema {
-class Entity;
-}
-
 class StreamWriter;
 class Encodable;
 class Encoder;
@@ -39,7 +35,6 @@ class Encoder;
 class Encodable {
 public:
     virtual void Encode(Encoder* to) const = 0;
-    virtual const schema::Entity* Schema() const = 0;
 };
 
 // Encoder provides methods for encoding values to the provided StreamWriter
@@ -64,7 +59,6 @@ public:
     void String(const std::string& str) { String(str.c_str()); }
     void Data(const void* ptr, int32_t size);
     void Id(const core::Id&);
-    void Entity(const schema::Entity*);
 
     void Encode(bool b) { Bool(b); }
     void Encode(int8_t v) { Int8(v); }
@@ -79,15 +73,8 @@ public:
     void Encode(const std::string& v) { String(v); }
     void Encode(const core::Id& id) { Id(id); }
 
-    void Struct(const Encodable& obj);
-    void Variant(const Encodable* obj);
-    void Object(const Encodable* obj);
-
 private:
-    std::unordered_map<core::Id, uint32_t> mIds;
-    std::unordered_map<const schema::Entity*, uint32_t> mEntities;
     std::shared_ptr<StreamWriter> mOutput;
-    uint32_t mLastObjectId;
 };
 
 

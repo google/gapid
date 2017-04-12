@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -44,7 +45,13 @@ func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if c := path.FindCapture(r.Path.Node()); c != nil {
 		ctx = capture.Put(ctx, c)
 	}
-	p, err := change(ctx, r.Path.Node(), r.Value.Get())
+
+	v, err := serviceToInternal(r.Value.Get())
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := change(ctx, r.Path.Node(), v)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +69,12 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, err
 		}
 
-		oldList, err := NCommands(ctx, p.After.Commands, p.After.Index+1)
+		atomIdx := p.After.Index[0]
+		if len(p.After.Index) > 1 {
+			return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		}
+
+		oldList, err := NAtoms(ctx, p.After.Capture.Commands(), atomIdx+1)
 		if err != nil {
 			return nil, err
 		}
@@ -75,21 +87,26 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		if err := meta.Resource.SetResourceData(ctx, p.After, val, meta.IDMap, replaceAtoms); err != nil {
 			return nil, err
 		}
-		commands, err := change(ctx, p.After.Commands, list)
+		commands, err := change(ctx, p.After.Capture.Commands(), list)
 		if err != nil {
 			return nil, err
 		}
 		return &path.ResourceData{
 			Id: p.Id, // TODO: Shouldn't this change?
 			After: &path.Command{
-				Commands: commands.(*path.Commands),
-				Index:    p.After.Index,
+				Capture: commands.(*path.Commands).Capture,
+				Index:   p.After.Index,
 			},
 		}, nil
 
 	case *path.Command:
+		atomIdx := p.Index[0]
+		if len(p.Index) > 1 {
+			return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		}
+
 		// Resolve the command list
-		oldList, err := NCommands(ctx, p.Commands, p.Index+1)
+		oldList, err := NAtoms(ctx, p.Capture.Commands(), atomIdx+1)
 		if err != nil {
 			return nil, err
 		}
@@ -107,43 +124,31 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		list := oldList.Clone()
 
 		// Propagate extras if the new atom omitted them
-		oldAtom := oldList.Atoms[p.Index]
+		oldAtom := oldList.Atoms[atomIdx]
 		if len(atom.Extras().All()) == 0 {
 			atom.Extras().Add(oldAtom.Extras().All()...)
 		}
-		list.Atoms[p.Index] = atom
+		list.Atoms[atomIdx] = atom
 
 		// Store the new atom list
-		commands, err := change(ctx, p.Commands, list)
+		c, err := changeAtoms(ctx, p.Capture, list.Atoms)
 		if err != nil {
 			return nil, err
 		}
 
 		return &path.Command{
-			Commands: commands.(*path.Commands),
-			Index:    p.Index,
+			Capture: c,
+			Index:   p.Index,
 		}, nil
 
 	case *path.Commands:
-		old, err := capture.ResolveFromPath(ctx, p.Capture)
-		if err != nil {
-			return nil, err
-		}
-		atoms, ok := val.(*atom.List)
-		if !ok {
-			return nil, fmt.Errorf("Expected *atom.List, got %T", val)
-		}
-		c, err := capture.ImportAtomList(ctx, old.Name+"*", atoms, old.Header)
-		if err != nil {
-			return nil, err
-		}
-		return c.Commands(), nil
+		return nil, fmt.Errorf("Commands can not be changed directly")
 
 	case *path.State:
 		return nil, fmt.Errorf("State can not currently be mutated")
 
 	case *path.Field, *path.Parameter, *path.ArrayIndex, *path.MapIndex:
-		oldObj, err := Resolve(ctx, p.Parent())
+		oldObj, err := ResolveInternal(ctx, p.Parent())
 		if err != nil {
 			return nil, err
 		}
@@ -155,11 +160,25 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 
 		switch p := p.(type) {
 		case *path.Parameter:
-			parent, err := setField(ctx, obj, reflect.ValueOf(val), p.Name, p)
+			// TODO: Deal with parameters belonging to sub-commands.
+			a := obj.Interface().(atom.Atom)
+			err := atom.SetParameter(ctx, a, p.Name, val)
+			switch err {
+			case nil:
+			case atom.ErrParameterNotFound:
+				return nil, &service.ErrInvalidPath{
+					Reason: messages.ErrParameterDoesNotExist(a.AtomName(), p.Name),
+					Path:   p.Path(),
+				}
+			default:
+				return nil, err
+			}
+
+			parent, err := change(ctx, p.Parent(), obj.Interface())
 			if err != nil {
 				return nil, err
 			}
-			return &path.Parameter{Name: p.Name, Command: parent.(*path.Command)}, nil
+			return parent.(*path.Command).Parameter(p.Name), nil
 
 		case *path.Field:
 			parent, err := setField(ctx, obj, reflect.ValueOf(val), p.Name, p)
@@ -187,11 +206,8 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 				return nil, fmt.Errorf("Slice or array at %s has element of type %v, got type %v",
 					p.Parent().Text(), ty, val.Type())
 			}
-			if int(p.Index) >= a.Len() {
-				return nil, &service.ErrInvalidPath{
-					Reason: messages.ErrValueOutOfBounds(p.Index, "Index", uint64(0), uint64(a.Len()-1)),
-					Path:   p.Path(),
-				}
+			if count := uint64(a.Len()); p.Index >= count {
+				return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 			}
 			if err := assign(a.Index(int(p.Index)), val); err != nil {
 				return nil, err
@@ -237,6 +253,18 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 	}
 	return nil, fmt.Errorf("Unknown path type %T", p)
+}
+
+func changeAtoms(ctx context.Context, p *path.Capture, newAtoms []atom.Atom) (*path.Capture, error) {
+	old, err := capture.ResolveFromPath(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	c, err := capture.New(ctx, old.Name+"*", old.Header, newAtoms)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func setField(ctx context.Context, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
@@ -292,26 +320,5 @@ func assign(dst, src reflect.Value) error {
 		return fmt.Errorf("Value is unassignable")
 	}
 
-	dstTy := dst.Type()
-
-	var srcTy reflect.Type
-	if !src.IsValid() {
-		src = reflect.Zero(dstTy)
-		srcTy = dstTy
-	} else {
-		srcTy = src.Type()
-	}
-
-	switch {
-	case srcTy.AssignableTo(dstTy):
-		dst.Set(src)
-		return nil
-
-	case srcTy.ConvertibleTo(dstTy):
-		dst.Set(src.Convert(dstTy))
-		return nil
-
-	default:
-		return fmt.Errorf("Cannot assign type %v to type %v", srcTy.Name(), dstTy.Name())
-	}
+	return deep.Copy(dst.Addr().Interface(), src.Interface())
 }

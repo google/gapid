@@ -47,6 +47,10 @@ No context bound in thread: {{thread:u64}}
 
 Value of type {{ty}} does not have field {{field}}.
 
+# ERR_PARAMETER_DOES_NOT_EXIST
+
+Command of type {{ty}} does not have parameter {{field}}.
+
 # ERR_MAP_KEY_DOES_NOT_EXIST
 
 Map does not contain entry with key {{key}}.

@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
@@ -27,6 +26,7 @@ import (
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -174,10 +174,20 @@ func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}
 	return &gfxapi.Shader{Type: ty, Source: s.Source}, nil
 }
 
-func (shader *Shader) SetResourceData(ctx context.Context, at *path.Command,
-	data interface{}, resourceIDs gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
+func (shader *Shader) SetResourceData(
+	ctx context.Context,
+	at *path.Command,
+	data interface{},
+	resourceIDs gfxapi.ResourceMap,
+	edits gfxapi.ReplaceCallback) error {
+
+	atomIdx := at.Index[0]
+	if len(at.Index) > 1 {
+		return fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+
 	// Dirty. TODO: Make separate type for getting info for a single resource.
-	capturePath := at.Commands.Capture
+	capturePath := at.Capture
 	resources, err := resolve.Resources(ctx, capturePath)
 	if err != nil {
 		return err
@@ -194,18 +204,13 @@ func (shader *Shader) SetResourceData(ctx context.Context, at *path.Command,
 		return err
 	}
 
-	list, err := c.Atoms(ctx)
-	if err != nil {
-		return err
-	}
-
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index] > at.Index && index >= 0 {
+	for resource.Accesses[index] > atomIdx && index >= 0 {
 		index--
 	}
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j]
-		if a, ok := list.Atoms[i].(*GlShaderSource); ok {
+		if a, ok := c.Atoms[i].(*GlShaderSource); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil
 		}
@@ -422,7 +427,7 @@ func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 			Name:            activeUniform.Name,
 			Format:          uniformFormat,
 			Type:            uniformType,
-			Value:           pod.NewValue(uniformValue(ctx, s, uniformType, uniform.Value)),
+			Value:           box.NewValue(uniformValue(ctx, s, uniformType, uniform.Value)),
 		})
 	}
 

@@ -28,7 +28,6 @@ import com.google.gapid.proto.service.Service.GetDevicesForReplayRequest;
 import com.google.gapid.proto.service.Service.GetDevicesRequest;
 import com.google.gapid.proto.service.Service.GetFramebufferAttachmentRequest;
 import com.google.gapid.proto.service.Service.GetRequest;
-import com.google.gapid.proto.service.Service.GetSchemaRequest;
 import com.google.gapid.proto.service.Service.GetServerInfoRequest;
 import com.google.gapid.proto.service.Service.GetStringTableRequest;
 import com.google.gapid.proto.service.Service.ImportCaptureRequest;
@@ -39,17 +38,10 @@ import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
-import com.google.gapid.rpclib.binary.BinaryObject;
-import com.google.gapid.rpclib.binary.Decoder;
-import com.google.gapid.rpclib.binary.Encoder;
 import com.google.gapid.rpclib.rpccore.RpcException;
-import com.google.gapid.rpclib.schema.Message;
 import com.google.gapid.util.Paths;
 import com.google.protobuf.ByteString;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -58,14 +50,6 @@ import java.util.logging.Logger;
  */
 public class Client {
   private static final Logger LOG = Logger.getLogger(Client.class.getName());
-
-  static {
-    com.google.gapid.rpclib.any.Factory.register();
-    com.google.gapid.rpclib.schema.Factory.register();
-    com.google.gapid.service.atom.Factory.register();
-    com.google.gapid.service.memory.Factory.register();
-    com.google.gapid.service.snippets.Factory.register();
-  }
 
   private final GapidClient client;
 
@@ -102,14 +86,6 @@ public class Client {
     return Futures.transformAsync(
         client.follow(FollowRequest.newBuilder().setPath(path).setPath(path).build()),
         in -> Futures.immediateFuture(throwIfError(in.getPath(), in.getError()))
-    );
-  }
-
-  public ListenableFuture<Message> getSchema() {
-    LOG.log(FINE, "RPC->getSchema()");
-    return Futures.transformAsync(
-        client.getSchema(GetSchemaRequest.newBuilder().build()),
-        in -> Futures.immediateFuture(decode(throwIfError(in.getObject(), in.getError())))
     );
   }
 
@@ -183,21 +159,6 @@ public class Client {
             .build()),
         in -> Futures.immediateFuture(throwIfError(in.getImage(), in.getError()))
     );
-  }
-
-  @SuppressWarnings("unchecked")
-  public static <V> V decode(Service.Object object) throws IOException {
-    Decoder d = new Decoder(new ByteArrayInputStream(object.getData().toByteArray()));
-    return (V)d.object();
-  }
-
-  public static Service.Object encode(BinaryObject object) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    Encoder e = new Encoder(baos);
-    e.object(object);
-    return Service.Object.newBuilder()
-        .setData(ByteString.copyFrom(baos.toByteArray()))
-        .build();
   }
 
   private static <V> V throwIfError(V value, Service.Error err) throws RpcException {

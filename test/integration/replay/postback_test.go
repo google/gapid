@@ -31,8 +31,6 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/value"
-
-	_ "github.com/google/gapid/framework/binary/any"
 )
 
 func TestMain(m *testing.M) {

@@ -16,24 +16,31 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	intent := replay.Intent{
 		Device:  r.Device,
-		Capture: r.After.Commands.Capture,
+		Capture: path.FindCapture(r.After),
 	}
 
-	after, err := Command(ctx, r.After)
+	after, err := Atom(ctx, r.After)
 	if err != nil {
 		return nil, err
+	}
+
+	atomIdx := r.After.Index[0]
+	if len(r.After.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
 	api := after.API()
@@ -64,7 +71,7 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 		ctx,
 		intent,
 		mgr,
-		atom.ID(r.After.Index),
+		atom.ID(atomIdx),
 		r.Width,
 		r.Height,
 		r.Attachment,

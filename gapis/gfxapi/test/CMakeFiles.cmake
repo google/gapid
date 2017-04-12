@@ -25,10 +25,8 @@ set(files
     intrinsics_test.go
     mutate.go
     mutate_test.go
-    snippets_embed.go
     subroutines_test.go
     test.go
-    test_binary.go
 )
 set(dirs
     gfxapi_test_import

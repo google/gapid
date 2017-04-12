@@ -18,23 +18,13 @@ package atom
 import (
 	"context"
 
-	"github.com/google/gapid/framework/binary"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
 
 // Extra is the interface implemented by atom 'extras' - additional information
 // that can be placed inside an atom instance.
-type Extra interface {
-	binary.Object
-}
-
-// ExtraCast is automatically called by the generated decoders.
-func ExtraCast(obj binary.Object) Extra {
-	if obj == nil {
-		return nil
-	}
-	return obj.(Extra)
-}
+type Extra interface{}
 
 // Extras is a list of Extra objects.
 type Extras []Extra
@@ -42,44 +32,38 @@ type Extras []Extra
 // Aborted is an extra used to mark atoms which did not finish execution.
 // This can be expected (e.g. GL error), or unexpected (failed assertion).
 type Aborted struct {
-	binary.Generate
-
 	IsAssert bool
 	Reason   string
 }
 
-func (a *Aborted) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, &atom_pb.Aborted{
-		IsAssert: a.IsAssert,
-		Reason:   a.Reason,
-	})
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a *Aborted) (*atom_pb.Aborted, error) {
+			return &atom_pb.Aborted{IsAssert: a.IsAssert, Reason: a.Reason}, nil
+		},
+		func(ctx context.Context, a *atom_pb.Aborted) (*Aborted, error) {
+			return &Aborted{IsAssert: a.IsAssert, Reason: a.Reason}, nil
+		},
+	)
 }
 
-func AbortedFrom(from *atom_pb.Aborted) Aborted {
-	return Aborted{
-		IsAssert: from.IsAssert,
-		Reason:   from.Reason,
-	}
-}
-
-func (extras *Extras) All() Extras {
-	if extras == nil {
+func (e *Extras) All() Extras {
+	if e == nil {
 		return nil
-	} else {
-		return *extras
 	}
+	return *e
 }
 
 // Add appends one or more extras to the list of extras.
-func (extras *Extras) Add(es ...Extra) {
-	if extras != nil {
-		*extras = append(*extras, es...)
+func (e *Extras) Add(es ...Extra) {
+	if e != nil {
+		*e = append(*e, es...)
 	}
 }
 
 // Aborted returns a pointer to the Aborted structure in the extras, or nil if not found.
-func (extras *Extras) Aborted() *Aborted {
-	for _, e := range extras.All() {
+func (e *Extras) Aborted() *Aborted {
+	for _, e := range e.All() {
 		if e, ok := e.(*Aborted); ok {
 			return e
 		}
@@ -119,11 +103,11 @@ func WithExtras(a Atom, extras ...Extra) Atom {
 // Convert calls the Convert method on all the extras in the list.
 func (e *Extras) Convert(ctx context.Context, out atom_pb.Handler) error {
 	for _, o := range e.All() {
-		c, ok := o.(Convertible)
-		if !ok {
-			return ErrNotConvertible
+		m, err := protoconv.ToProto(ctx, o)
+		if err != nil {
+			return err
 		}
-		if err := c.Convert(ctx, out); err != nil {
+		if err := out(ctx, m); err != nil {
 			return err
 		}
 	}

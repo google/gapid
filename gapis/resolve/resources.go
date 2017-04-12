@@ -44,11 +44,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, err
 	}
 
-	list, err := c.Atoms(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	resources := []trackedResource{}
 	seen := map[gfxapi.Resource]int{}
 
@@ -73,29 +68,29 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			}
 		}
 	}
-	for i, a := range list.Atoms {
+	for i, a := range c.Atoms {
 		currentAtomResourceCount = 0
 		currentAtomIndex = uint64(i)
 		a.Mutate(ctx, state, nil /* no builder, just mutate */)
 	}
 
 	types := map[gfxapi.ResourceType]*service.ResourcesByType{}
-	for _, r := range resources {
-		ty := r.resource.ResourceType(ctx)
-		handle := r.resource.ResourceHandle()
-		label := r.resource.ResourceLabel()
-		order := r.resource.Order()
+	for _, tr := range resources {
+		ty := tr.resource.ResourceType(ctx)
+		handle := tr.resource.ResourceHandle()
+		label := tr.resource.ResourceLabel()
+		order := tr.resource.Order()
 		b := types[ty]
 		if b == nil {
 			b = &service.ResourcesByType{Type: ty}
 			types[ty] = b
 		}
 		b.Resources = append(b.Resources, &service.Resource{
-			Id:       path.NewID(r.id),
+			Path:     r.Capture.Resource(path.NewID(tr.id)),
 			Handle:   handle,
 			Label:    label,
 			Order:    order,
-			Accesses: r.accesses,
+			Accesses: tr.accesses,
 		})
 	}
 

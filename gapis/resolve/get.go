@@ -32,5 +32,5 @@ func (r *GetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if c := path.FindCapture(r.Path.Node()); c != nil {
 		ctx = capture.Put(ctx, c)
 	}
-	return Resolve(ctx, r.Path.Node())
+	return ResolveService(ctx, r.Path.Node())
 }

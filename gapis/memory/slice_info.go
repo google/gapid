@@ -17,23 +17,20 @@ package memory
 import (
 	"context"
 
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/gapis/atom/atom_pb"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/memory/memory_pb"
 )
 
 // SliceInfo is the common data between all slice types.
 type SliceInfo struct {
-	binary.Generate `java:"MemorySliceInfo"`
-	Root            uint64 // Original pointer this slice derives from.
-	Base            uint64 // Address of first element.
-	Count           uint64 // Number of elements in the slice.
-	Pool            PoolID // The pool identifier.
+	Root  uint64 // Original pointer this slice derives from.
+	Base  uint64 // Address of first element.
+	Count uint64 // Number of elements in the slice.
+	Pool  PoolID // The pool identifier.
 }
 
 // SliceMetadata is the meta information about a slice.
 type SliceMetadata struct {
-	binary.Generate `java:"MemorySliceMetadata"`
 	ElementTypeName string // The name of the type that elements of the slice have.
 }
 
@@ -46,15 +43,18 @@ func (s SliceInfo) ToProto() *memory_pb.Slice {
 	}
 }
 
-func (s *SliceInfo) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, s.ToProto())
-}
-
-func SliceInfoFrom(from *memory_pb.Slice) SliceInfo {
-	return SliceInfo{
-		Root:  from.Root,
-		Base:  from.Base,
-		Count: from.Count,
-		Pool:  PoolID(from.Pool),
-	}
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, a *SliceInfo) (*memory_pb.Slice, error) {
+			return a.ToProto(), nil
+		},
+		func(ctx context.Context, a *memory_pb.Slice) (*SliceInfo, error) {
+			return &SliceInfo{
+				Root:  a.Root,
+				Base:  a.Base,
+				Count: a.Count,
+				Pool:  PoolID(a.Pool),
+			}, nil
+		},
+	)
 }

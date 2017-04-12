@@ -23,6 +23,7 @@ set(files
     compat.go
     compat_test.go
     context.go
+    constant_sets.go
     convert.go
     custom_replay.go
     dead_code_elimination.go
@@ -36,7 +37,6 @@ set(files
     extras.go
     find_issues.go
     gles.go
-    gles_binary.go
     glsl_compat.go
     glsl_compat_test.go
     guess_semantics.go
@@ -46,7 +46,6 @@ set(files
     links.go
     markers.go
     markers_test.go
-    metadata.go
     mutate.go
     read_framebuffer.go
     replay.go
@@ -54,7 +53,6 @@ set(files
     resolvables.proto
     resources.go
     resources_test.go
-    snippets_embed.go
     state.go
     string.go
     stub_program.go

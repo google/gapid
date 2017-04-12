@@ -81,11 +81,11 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	atomsObj, err := client.Get(ctx, capturePath.Commands().Path())
+	boxedCommands, err := client.Get(ctx, capturePath.Commands().Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's atoms")
 	}
-	atoms := atomsObj.(*atom.List).Atoms
+	commands := boxedCommands.(*service.Commands).List
 
 	boxedReport, err := client.Get(ctx, capturePath.Report(device).Path())
 	if err != nil {
@@ -106,7 +106,7 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	for _, e := range report.Items {
 		where := ""
 		if e.Command != uint64(atom.NoID) {
-			where = fmt.Sprintf("(%d) %v ", e.Command, atoms[e.Command])
+			where = fmt.Sprintf("(%d) %v ", e.Command, commands[e.Command])
 		}
 		msg := report.Msg(e.Message).Text(stringTable)
 		fmt.Fprintln(reportWriter, fmt.Sprintf("[%s] %s%s", e.Severity.String(), where, msg))

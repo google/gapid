@@ -26,6 +26,4 @@ package memory
 // Having these here helps out tools that can't cope with missing dependancies
 import (
 	_ "github.com/golang/protobuf/proto"
-	_ "github.com/google/gapid/framework/binary/registry"
-	_ "github.com/google/gapid/framework/binary/schema"
 )

@@ -230,7 +230,7 @@ func TestDeadAtomRemoval(t *testing.T) {
 		inputAtoms := append(prologue, atoms...)
 
 		h := &capture.Header{Abi: device.WindowsX86_64}
-		capturePath, err := capture.ImportAtomList(ctx, name, atom.NewList(inputAtoms...), h)
+		capturePath, err := capture.New(ctx, name, h, inputAtoms)
 		if err != nil {
 			panic(err)
 		}

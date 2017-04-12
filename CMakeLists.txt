@@ -74,34 +74,11 @@ build_subdirectory(gapir)
 build_subdirectory(gapis)
 build_subdirectory(gapidapk)
 build_subdirectory(test)
-build_subdirectory(tools)
 endif()
 
 scan_for_protos()
 
 # Add root as include path for all c includes.
 include_directories(${CMAKE_SOURCE_DIR})
-
-
-# The codergen rules are still slightly broken, because of the cpp
-# generation steps.
-# Might have to add an explicit dependancy on codergen-all to fix it.
-codergen(
-    gapil/snippets
-    framework/binary/any
-    framework/binary/test
-    gapis/atom
-    gapis/atom/test
-    gapis/gfxapi
-    gapis/gfxapi/core
-    gapis/gfxapi/gles
-    gapis/gfxapi/test
-    gapis/gfxapi/test/gfxapi_test_import
-    gapis/gfxapi/vulkan
-    gapis/memory
-    gapis/replay/protocol
-    gapis/resolve
-    test/integration/replay/gles
-)
 
 include(Package)

@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -52,13 +51,12 @@ type session struct {
 
 	atoms []atom.Atom
 
-	schema          *schema.Message
 	features        []string
 	stringTables    []*stringtable.StringTable
 	resourceBundles interface{}
 	report          interface{}
 	contexts        interface{}
-	hierarchies     interface{}
+	commandTree     interface{}
 }
 
 func fullRun(ctx context.Context, bench *Benchmark) (err error) {
@@ -128,7 +126,6 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 	case "startup":
 		actions = []func() error{
 			s.maybeBeginProfile,
-			s.getSchema,
 			s.getStringTables,
 			s.getDevices,
 			s.loadCapture,
@@ -143,7 +140,7 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 				return s.get("Contexts", s.capture.Contexts(), &(s.contexts))
 			},
 			func() error {
-				return s.get("Hierarchies", s.capture.Hierarchies(), &(s.hierarchies))
+				return s.get("CommandTree", s.capture.CommandTree(nil, nil), &(s.commandTree))
 			},
 			s.maybeSaveProfileData,
 		}
@@ -221,7 +218,7 @@ func (s *session) gapisConnect() error {
 	log.I(s.ctx, "Connecting to GAPIS...")
 	start := time.Now()
 	ctx := log.PutFilter(s.ctx, log.SeverityFilter(log.Info))
-	client, _, err := client.Connect(ctx, client.Config{})
+	client, err := client.Connect(ctx, client.Config{})
 	if err != nil {
 		return fmt.Errorf("Failed to connect to the GAPIS server: %v", err)
 	}
@@ -241,18 +238,6 @@ func (s *session) getDevices() error {
 	if len(devices) != 0 {
 		s.device = devices[0]
 	}
-	return nil
-}
-
-func (s *session) getSchema() error {
-	log.I(s.ctx, "Getting schema...")
-	start := time.Now()
-	schema, err := s.client.GetSchema(s.ctx)
-	if err != nil {
-		return log.Err(s.ctx, err, "GetSchema")
-	}
-	s.bench.Metric("GetSchema", time.Since(start))
-	s.schema = schema
 	return nil
 }
 
@@ -377,7 +362,7 @@ func (s *session) grabSamples() error {
 		}
 
 		start := time.Now()
-		if err := grabSample(ctx, s, s.capture.Commands().Index(uint64(index))); err != nil {
+		if err := grabSample(ctx, s, s.capture.Command(uint64(index))); err != nil {
 			return err
 		}
 		s.bench.Samples.Add(int64(index), time.Since(start))

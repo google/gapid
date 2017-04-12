@@ -18,13 +18,7 @@ build_subdirectory(test_pb)
 
 apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
 apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
+apic(${api} TEMPLATE constant_sets.go.tmpl OUTPUTS constant_sets.go)
 apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)
-
-annotate(${api})
-embed(
-    OUTPUT "snippets_embed.go"
-    snippets.base64
-    globals_snippets.base64
-)
 
 go_package()

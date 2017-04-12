@@ -34,7 +34,6 @@ public interface GapidClient {
   public ListenableFuture<Service.GetPerformanceCountersResponse> getPerformanceCounters(
       Service.GetPerformanceCountersRequest request);
   public ListenableFuture<Service.GetProfileResponse> getProfile(Service.GetProfileRequest request);
-  public ListenableFuture<Service.GetSchemaResponse> getSchema(Service.GetSchemaRequest request);
   public ListenableFuture<Service.GetAvailableStringTablesResponse> getAvailableStringTables(
       Service.GetAvailableStringTablesRequest request);
   public ListenableFuture<Service.GetStringTableResponse> getStringTable(

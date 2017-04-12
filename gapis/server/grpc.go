@@ -135,18 +135,6 @@ func (s *grpcServer) GetProfile(ctx xctx.Context, req *service.GetProfileRequest
 	return &service.GetProfileResponse{Res: &service.GetProfileResponse_Data{Data: data}}, nil
 }
 
-func (s *grpcServer) GetSchema(ctx xctx.Context, req *service.GetSchemaRequest) (*service.GetSchemaResponse, error) {
-	msg, err := s.handler.GetSchema(s.bindCtx(ctx))
-	if err := service.NewError(err); err != nil {
-		return &service.GetSchemaResponse{Res: &service.GetSchemaResponse_Error{Error: err}}, nil
-	}
-	obj := &service.Object{}
-	if err := obj.Encode(msg); err != nil {
-		return nil, err
-	}
-	return &service.GetSchemaResponse{Res: &service.GetSchemaResponse_Object{Object: obj}}, nil
-}
-
 func (s *grpcServer) GetAvailableStringTables(ctx xctx.Context, req *service.GetAvailableStringTablesRequest) (*service.GetAvailableStringTablesResponse, error) {
 	tables, err := s.handler.GetAvailableStringTables(s.bindCtx(ctx))
 	if err := service.NewError(err); err != nil {

@@ -54,7 +54,7 @@ func (t *FileLog) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Wr
 						t.file.WriteString(o.String())
 					}
 				} else {
-					t.file.WriteString(fmt.Sprintf("[extra] %s: %v\n", e.Class().Schema().Identity, e))
+					t.file.WriteString(fmt.Sprintf("[extra] %T: %v\n", e, e))
 				}
 			}
 		}

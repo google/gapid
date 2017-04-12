@@ -89,10 +89,7 @@ func (a api) Replay(
 
 	ctx = PutUnusedIDMap(ctx)
 
-	atoms, err := capture.Atoms(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load atom stream")
-	}
+	atoms := atom.NewList(capture.Atoms...)
 
 	transforms := transform.Transforms{}
 

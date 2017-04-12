@@ -586,12 +586,22 @@ func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State) 
 	return &gfxapi.Shader{Type: gfxapi.ShaderType_Spirv, Source: source}, nil
 }
 
-func (shader *ShaderModuleObject) SetResourceData(ctx context.Context, at *path.Command,
-	data interface{}, resourceIDs gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
+func (shader *ShaderModuleObject) SetResourceData(
+	ctx context.Context,
+	at *path.Command,
+	data interface{},
+	resourceIDs gfxapi.ResourceMap,
+	edits gfxapi.ReplaceCallback) error {
+
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
+
+	atomIdx := at.Index[0]
+	if len(at.Index) > 1 {
+		return fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+
 	// Dirty. TODO: Make separate type for getting info for a single resource.
-	capturePath := at.Commands.Capture
-	resources, err := resolve.Resources(ctx, capturePath)
+	resources, err := resolve.Resources(ctx, at.Capture)
 	if err != nil {
 		return err
 	}
@@ -602,23 +612,18 @@ func (shader *ShaderModuleObject) SetResourceData(ctx context.Context, at *path.
 		return fmt.Errorf("Couldn't find resource")
 	}
 
-	c, err := capture.ResolveFromPath(ctx, capturePath)
-	if err != nil {
-		return err
-	}
-
-	list, err := c.Atoms(ctx)
+	c, err := capture.ResolveFromPath(ctx, at.Capture)
 	if err != nil {
 		return err
 	}
 
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index] > at.Index && index >= 0 {
+	for resource.Accesses[index] > atomIdx && index >= 0 {
 		index--
 	}
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j]
-		if a, ok := list.Atoms[i].(*VkCreateShaderModule); ok {
+		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil
 		} else if a, ok := list.Atoms[i].(*RecreateShaderModule); ok {

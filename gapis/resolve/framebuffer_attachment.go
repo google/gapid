@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/google/gapid/core/image"
@@ -56,12 +57,15 @@ func FramebufferAttachment(
 // will trigger a computation for all atoms of this capture, which will be
 // cached to the database for subsequent calls, regardless of the given atom.
 func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att gfxapi.FramebufferAttachment) (framebufferAttachmentInfo, error) {
-	changes, err := FramebufferChanges(ctx, after.Commands.Capture)
+	changes, err := FramebufferChanges(ctx, path.FindCapture(after))
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
-
-	info, err := changes.attachments[att].after(ctx, after.Index)
+	atomIdx := after.Index[0]
+	if len(after.Index) > 1 {
+		return framebufferAttachmentInfo{}, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+	info, err := changes.attachments[att].after(ctx, atomIdx)
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}

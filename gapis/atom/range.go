@@ -18,12 +18,10 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/framework/binary"
 )
 
 // Range describes an interval of atoms in a stream.
 type Range struct {
-	binary.Generate
 	Start uint64 // The first atom within the range.
 	End   uint64 // One past the last atom within the range.
 }

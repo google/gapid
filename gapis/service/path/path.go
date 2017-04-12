@@ -16,11 +16,13 @@ package path
 
 import (
 	"fmt"
+	"math"
+	"strings"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapis/service/box"
 )
 
 // Node is the interface for types that represent a reference to a capture,
@@ -39,86 +41,116 @@ type Node interface {
 	// Path returns this path node as a path.
 	Path() *Any
 
-	// Clone returns a deep-copy of the path.
-	// Clone() Any
-
 	// Validate checks the path for correctness, returning an error if any
 	// issues are found.
-	// Validate() error
+	Validate() error
 }
 
-func (n *ArrayIndex) Path() *Any   { return &Any{&Any_ArrayIndex{n}} }
-func (n *As) Path() *Any           { return &Any{&Any_As{n}} }
-func (n *Blob) Path() *Any         { return &Any{&Any_Blob{n}} }
-func (n *Capture) Path() *Any      { return &Any{&Any_Capture{n}} }
-func (n *Command) Path() *Any      { return &Any{&Any_Command{n}} }
-func (n *Commands) Path() *Any     { return &Any{&Any_Commands{n}} }
-func (n *Context) Path() *Any      { return &Any{&Any_Context{n}} }
-func (n *Contexts) Path() *Any     { return &Any{&Any_Contexts{n}} }
-func (n *Device) Path() *Any       { return &Any{&Any_Device{n}} }
-func (n *Field) Path() *Any        { return &Any{&Any_Field{n}} }
-func (n *Hierarchies) Path() *Any  { return &Any{&Any_Hierarchies{n}} }
-func (n *Hierarchy) Path() *Any    { return &Any{&Any_Hierarchy{n}} }
-func (n *ImageInfo) Path() *Any    { return &Any{&Any_ImageInfo{n}} }
-func (n *MapIndex) Path() *Any     { return &Any{&Any_MapIndex{n}} }
-func (n *Memory) Path() *Any       { return &Any{&Any_Memory{n}} }
-func (n *Mesh) Path() *Any         { return &Any{&Any_Mesh{n}} }
-func (n *Parameter) Path() *Any    { return &Any{&Any_Parameter{n}} }
-func (n *Report) Path() *Any       { return &Any{&Any_Report{n}} }
-func (n *ResourceData) Path() *Any { return &Any{&Any_ResourceData{n}} }
-func (n *Resources) Path() *Any    { return &Any{&Any_Resources{n}} }
-func (n *Slice) Path() *Any        { return &Any{&Any_Slice{n}} }
-func (n *State) Path() *Any        { return &Any{&Any_State{n}} }
-func (n *Thumbnail) Path() *Any    { return &Any{&Any_Thumbnail{n}} }
+func printIndices(index []uint64) string {
+	parts := make([]string, len(index))
+	for i, v := range index {
+		parts[i] = fmt.Sprint(v)
+	}
+	return strings.Join(parts, ".")
+}
 
-func (n ArrayIndex) Parent() Node   { return oneOfNode(n.Array) }
-func (n As) Parent() Node           { return oneOfNode(n.From) }
-func (n Blob) Parent() Node         { return nil }
-func (n Capture) Parent() Node      { return nil }
-func (n Command) Parent() Node      { return n.Commands }
-func (n Commands) Parent() Node     { return n.Capture }
-func (n Context) Parent() Node      { return n.Contexts }
-func (n Contexts) Parent() Node     { return n.Capture }
-func (n Device) Parent() Node       { return nil }
-func (n Field) Parent() Node        { return oneOfNode(n.Struct) }
-func (n Hierarchies) Parent() Node  { return n.Capture }
-func (n Hierarchy) Parent() Node    { return n.Hierarchies }
-func (n ImageInfo) Parent() Node    { return nil }
-func (n MapIndex) Parent() Node     { return oneOfNode(n.Map) }
-func (n Memory) Parent() Node       { return n.After }
-func (n Mesh) Parent() Node         { return oneOfNode(n.Object) }
-func (n Parameter) Parent() Node    { return n.Command }
-func (n Report) Parent() Node       { return n.Capture }
-func (n ResourceData) Parent() Node { return n.After }
-func (n Resources) Parent() Node    { return n.Capture }
-func (n Slice) Parent() Node        { return oneOfNode(n.Array) }
-func (n State) Parent() Node        { return n.After }
-func (n Thumbnail) Parent() Node    { return oneOfNode(n.Object) }
+func (n *API) Path() *Any             { return &Any{&Any_Api{n}} }
+func (n *ArrayIndex) Path() *Any      { return &Any{&Any_ArrayIndex{n}} }
+func (n *As) Path() *Any              { return &Any{&Any_As{n}} }
+func (n *Blob) Path() *Any            { return &Any{&Any_Blob{n}} }
+func (n *Capture) Path() *Any         { return &Any{&Any_Capture{n}} }
+func (n *ConstantSet) Path() *Any     { return &Any{&Any_ConstantSet{n}} }
+func (n *Command) Path() *Any         { return &Any{&Any_Command{n}} }
+func (n *Commands) Path() *Any        { return &Any{&Any_Commands{n}} }
+func (n *CommandTree) Path() *Any     { return &Any{&Any_CommandTree{n}} }
+func (n *CommandTreeNode) Path() *Any { return &Any{&Any_CommandTreeNode{n}} }
+func (n *Context) Path() *Any         { return &Any{&Any_Context{n}} }
+func (n *Contexts) Path() *Any        { return &Any{&Any_Contexts{n}} }
+func (n *Device) Path() *Any          { return &Any{&Any_Device{n}} }
+func (n *Events) Path() *Any          { return &Any{&Any_Events{n}} }
+func (n *Field) Path() *Any           { return &Any{&Any_Field{n}} }
+func (n *ImageInfo) Path() *Any       { return &Any{&Any_ImageInfo{n}} }
+func (n *MapIndex) Path() *Any        { return &Any{&Any_MapIndex{n}} }
+func (n *Memory) Path() *Any          { return &Any{&Any_Memory{n}} }
+func (n *Mesh) Path() *Any            { return &Any{&Any_Mesh{n}} }
+func (n *Parameter) Path() *Any       { return &Any{&Any_Parameter{n}} }
+func (n *Report) Path() *Any          { return &Any{&Any_Report{n}} }
+func (n *ResourceData) Path() *Any    { return &Any{&Any_ResourceData{n}} }
+func (n *Resources) Path() *Any       { return &Any{&Any_Resources{n}} }
+func (n *Slice) Path() *Any           { return &Any{&Any_Slice{n}} }
+func (n *State) Path() *Any           { return &Any{&Any_State{n}} }
+func (n *StateTree) Path() *Any       { return &Any{&Any_StateTree{n}} }
+func (n *StateTreeNode) Path() *Any   { return &Any{&Any_StateTreeNode{n}} }
+func (n *Thumbnail) Path() *Any       { return &Any{&Any_Thumbnail{n}} }
 
-func (n ArrayIndex) Text() string  { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
-func (n As) Text() string          { return fmt.Sprintf("%v.as<%v>", n.Parent().Text(), protoutil.OneOf(n.To)) }
-func (n Blob) Text() string        { return fmt.Sprintf("blob<%x>", n.Id.Data) }
-func (n Capture) Text() string     { return fmt.Sprintf("capture<%x>", n.Id.Data) }
-func (n Command) Text() string     { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
-func (n Commands) Text() string    { return fmt.Sprintf("%v.commands", n.Parent().Text()) }
-func (n Context) Text() string     { return fmt.Sprintf("%v[%x]", n.Parent().Text(), n.Id.Data) }
-func (n Contexts) Text() string    { return fmt.Sprintf("%v.contexts", n.Parent().Text()) }
-func (n Device) Text() string      { return fmt.Sprintf("device<%x>", n.Id.Data) }
-func (n Field) Text() string       { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
-func (n Hierarchies) Text() string { return fmt.Sprintf("%v.hierarchies", n.Parent().Text()) }
-func (n Hierarchy) Text() string   { return fmt.Sprintf("%v[%x]", n.Parent().Text(), n.Id.Data) }
-func (n ImageInfo) Text() string   { return fmt.Sprintf("image-info<%x>", n.Id.Data) }
-func (n MapIndex) Text() string    { return fmt.Sprintf("%v[%x]", n.Parent().Text(), n.Key) }
-func (n Memory) Text() string      { return fmt.Sprintf("%v.memory-after", n.Parent().Text()) }
-func (n Mesh) Text() string        { return fmt.Sprintf("%v.mesh", n.Parent().Text()) }
-func (n Parameter) Text() string   { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
-func (n Report) Text() string      { return fmt.Sprintf("%v.report", n.Parent().Text()) }
+func (n API) Parent() Node             { return nil }
+func (n ArrayIndex) Parent() Node      { return oneOfNode(n.Array) }
+func (n As) Parent() Node              { return oneOfNode(n.From) }
+func (n Blob) Parent() Node            { return nil }
+func (n Capture) Parent() Node         { return nil }
+func (n ConstantSet) Parent() Node     { return n.Api }
+func (n Command) Parent() Node         { return n.Capture }
+func (n Commands) Parent() Node        { return n.Capture }
+func (n CommandTree) Parent() Node     { return n.Capture }
+func (n CommandTreeNode) Parent() Node { return nil }
+func (n Context) Parent() Node         { return n.Capture }
+func (n Contexts) Parent() Node        { return n.Capture }
+func (n Device) Parent() Node          { return nil }
+func (n Events) Parent() Node          { return n.Commands }
+func (n Field) Parent() Node           { return oneOfNode(n.Struct) }
+func (n ImageInfo) Parent() Node       { return nil }
+func (n MapIndex) Parent() Node        { return oneOfNode(n.Map) }
+func (n Memory) Parent() Node          { return n.After }
+func (n Mesh) Parent() Node            { return oneOfNode(n.Object) }
+func (n Parameter) Parent() Node       { return n.Command }
+func (n Report) Parent() Node          { return n.Capture }
+func (n ResourceData) Parent() Node    { return n.After }
+func (n Resources) Parent() Node       { return n.Capture }
+func (n Slice) Parent() Node           { return oneOfNode(n.Array) }
+func (n State) Parent() Node           { return n.After }
+func (n StateTree) Parent() Node       { return n.After }
+func (n StateTreeNode) Parent() Node   { return nil }
+func (n Thumbnail) Parent() Node       { return oneOfNode(n.Object) }
+
+func (n ArrayIndex) Text() string { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
+func (n API) Text() string        { return fmt.Sprintf("api<%v>", n.Id) }
+func (n As) Text() string         { return fmt.Sprintf("%v.as<%v>", n.Parent().Text(), protoutil.OneOf(n.To)) }
+func (n Blob) Text() string       { return fmt.Sprintf("blob<%x>", n.Id) }
+func (n Capture) Text() string    { return fmt.Sprintf("capture<%x>", n.Id) }
+func (n ConstantSet) Text() string {
+	return fmt.Sprintf("%v.constant-set<%v>", n.Parent().Text(), n.Index)
+}
+func (n Command) Text() string {
+	return fmt.Sprintf("%v.commands[%v]", n.Parent().Text(), printIndices(n.Index))
+}
+func (n Commands) Text() string {
+	return fmt.Sprintf("%v.commands[%v-%v]", n.Parent().Text(), printIndices(n.From), printIndices(n.To))
+}
+func (n CommandTree) Text() string { return fmt.Sprintf("%v.command-tree") }
+func (n CommandTreeNode) Text() string {
+	return fmt.Sprintf("command-tree<%v>[%v]", n.Tree, printIndices(n.Index))
+}
+func (n Context) Text() string   { return fmt.Sprintf("%v.[%x]", n.Parent().Text(), n.Id) }
+func (n Contexts) Text() string  { return fmt.Sprintf("%v.contexts", n.Parent().Text()) }
+func (n Device) Text() string    { return fmt.Sprintf("device<%x>", n.Id) }
+func (n Events) Text() string    { return fmt.Sprintf(".events", n.Parent().Text()) }
+func (n Field) Text() string     { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
+func (n ImageInfo) Text() string { return fmt.Sprintf("image-info<%x>", n.Id) }
+func (n MapIndex) Text() string  { return fmt.Sprintf("%v[%x]", n.Parent().Text(), n.Key) }
+func (n Memory) Text() string    { return fmt.Sprintf("%v.memory-after", n.Parent().Text()) }
+func (n Mesh) Text() string      { return fmt.Sprintf("%v.mesh", n.Parent().Text()) }
+func (n Parameter) Text() string { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
+func (n Report) Text() string    { return fmt.Sprintf("%v.report", n.Parent().Text()) }
 func (n ResourceData) Text() string {
-	return fmt.Sprintf("%v.resource-data<%x>", n.Parent().Text(), n.Id.Data)
+	return fmt.Sprintf("%v.resource-data<%x>", n.Parent().Text(), n.Id)
 }
 func (n Resources) Text() string { return fmt.Sprintf("%v.resources", n.Parent().Text()) }
 func (n Slice) Text() string     { return fmt.Sprintf("%v[%v:%v]", n.Parent().Text(), n.Start, n.End) }
 func (n State) Text() string     { return fmt.Sprintf("%v.state-after", n.Parent().Text()) }
+func (n StateTree) Text() string { return fmt.Sprintf("%v.state-tree") }
+func (n StateTreeNode) Text() string {
+	return fmt.Sprintf("state-tree<%v>[%v]", n.Tree, printIndices(n.Index))
+}
 func (n Thumbnail) Text() string { return fmt.Sprintf("%v.thumbnail", n.Parent().Text()) }
 
 func (n *ArrayIndex) SetParent(p Node) {
@@ -178,6 +210,23 @@ func (n *MapIndex) SetParent(p Node) {
 	}
 }
 
+func (n *Slice) SetParent(p Node) {
+	switch p := p.(type) {
+	case *Field:
+		n.Array = &Slice_Field{p}
+	case *Slice:
+		n.Array = &Slice_Slice{p}
+	case *ArrayIndex:
+		n.Array = &Slice_ArrayIndex{p}
+	case *MapIndex:
+		n.Array = &Slice_MapIndex{p}
+	case *Parameter:
+		n.Array = &Slice_Parameter{p}
+	default:
+		panic(fmt.Errorf("Cannot set Slice.Array to %T", p))
+	}
+}
+
 func oneOfNode(v interface{}) Node {
 	return protoutil.OneOf(v).(Node)
 }
@@ -232,6 +281,45 @@ func NewImageInfo(id id.ID) *ImageInfo {
 	return &ImageInfo{Id: image.NewID(id)}
 }
 
+// NewField returns a new Field path.
+func NewField(name string, s Node) *Field {
+	out := &Field{Name: name}
+	out.SetParent(s)
+	return out
+}
+
+// NewArrayIndex returns a new ArrayIndex path.
+func NewArrayIndex(idx uint64, a Node) *ArrayIndex {
+	out := &ArrayIndex{Index: idx}
+	out.SetParent(a)
+	return out
+}
+
+// NewMapIndex returns a new MapIndex path.
+func NewMapIndex(k interface{}, m Node) *MapIndex {
+	if v := box.NewValue(k); v != nil {
+		out := &MapIndex{Key: &MapIndex_Box{v}}
+		out.SetParent(m)
+		return out
+	}
+	panic(fmt.Errorf("Cannot set MapIndex.Key to %T", k))
+}
+
+// NewSlice returns a new Slice path.
+func NewSlice(s, e uint64, n Node) *Slice {
+	out := &Slice{Start: s, End: e}
+	out.SetParent(n)
+	return out
+}
+
+// ConstantSet returns a path to the API's i'th ConstantSet.
+func (n *API) ConstantSet(i int) *ConstantSet {
+	return &ConstantSet{
+		Api:   n,
+		Index: uint32(i),
+	}
+}
+
 // Resources returns the path node to the capture's resources.
 func (n *Capture) Resources() *Resources {
 	return &Resources{Capture: n}
@@ -247,19 +335,52 @@ func (n *Capture) Contexts() *Contexts {
 	return &Contexts{Capture: n}
 }
 
-// Hierarchies returns the path node to the capture's hierarchies.
-func (n *Capture) Hierarchies() *Hierarchies {
-	return &Hierarchies{Capture: n}
-}
-
 // Commands returns the path node to the capture's commands.
 func (n *Capture) Commands() *Commands {
-	return &Commands{Capture: n}
+	return &Commands{
+		Capture: n,
+		From:    []uint64{0},
+		To:      []uint64{math.MaxUint64},
+	}
 }
 
-// Index returns the path node to a single command in the a list of commands.
-func (n *Commands) Index(i uint64) *Command {
-	return &Command{Commands: n, Index: i}
+// CommandRange returns the path node to a range of the capture's commands.
+func (n *Capture) CommandRange(from, to uint64) *Commands {
+	return &Commands{
+		Capture: n,
+		From:    []uint64{from},
+		To:      []uint64{to},
+	}
+}
+
+// CommandTree returns the path to the root node of a capture's command tree
+// filtered by the specified context and thread.
+func (n *Capture) CommandTree(c *Context, t *Thread) *CommandTree {
+	return &CommandTree{Capture: n, Context: c.GetId(), Thread: t.GetId()}
+}
+
+// Child returns the path to the i'th child of the CommandTreeNode.
+func (n *CommandTreeNode) Child(i uint64) *CommandTreeNode {
+	newIndex := make([]uint64, len(n.Index)+1)
+	copy(newIndex, n.Index)
+	newIndex[len(n.Index)] = i
+	return &CommandTreeNode{Tree: n.Tree, Index: newIndex}
+}
+
+// Command returns the path node to a single command in the capture.
+func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
+	index := append([]uint64{i}, subidx...)
+	return &Command{Capture: n, Index: index}
+}
+
+// Context returns the path node to the a context with the given ID.
+func (n *Capture) Context(id *ID) *Context {
+	return &Context{Capture: n, Id: id}
+}
+
+// Resource returns the path node to the resource with the given ID.
+func (n *Capture) Resource(id *ID) *Resource {
+	return &Resource{Capture: n, Id: id}
 }
 
 // MemoryAfter returns the path node to the memory after this command.
@@ -292,8 +413,17 @@ func (n *Command) StateAfter() *State {
 	return &State{After: n}
 }
 
-func (n *Command) Next() *Command {
-	return &Command{Commands: n.Commands, Index: n.Index + 1}
+// StateTreeAfter returns the path node to the state tree after this command.
+func (n *Command) StateTreeAfter() *StateTree {
+	return &StateTree{After: n}
+}
+
+// Child returns the path to the i'th child of the StateTreeNode.
+func (n *StateTreeNode) Child(i uint64) *StateTreeNode {
+	newIndex := make([]uint64, len(n.Index)+1)
+	copy(newIndex, n.Index)
+	newIndex[len(n.Index)] = i
+	return &StateTreeNode{Tree: n.Tree, Index: newIndex}
 }
 
 // Parameter returns the path node to the parameter with the given name.
@@ -301,63 +431,25 @@ func (n *Command) Parameter(name string) *Parameter {
 	return &Parameter{Name: name, Command: n}
 }
 
-func (n *Parameter) ArrayIndex(i uint64) *ArrayIndex {
-	return &ArrayIndex{Index: i, Array: &ArrayIndex_Parameter{n}}
-}
-
-func (n *Parameter) Field(name string) *Field {
-	return &Field{Name: name, Struct: &Field_Parameter{n}}
-}
-
-func (n *Parameter) MapIndex(k interface{}) *MapIndex {
-	out := &MapIndex{Map: &MapIndex_Parameter{n}}
-	if v := pod.NewValue(k); v != nil {
-		out.Key = &MapIndex_Pod{v}
-		return out
-	}
-
-	panic(fmt.Errorf("Cannot set MapIndex.Key to %T", k))
-}
-
-func (n *Parameter) Slice(s, e uint64) *Slice {
-	return &Slice{Start: s, End: e, Array: &Slice_Parameter{n}}
-}
-
-func (n *Field) ArrayIndex(i uint64) *ArrayIndex {
-	return &ArrayIndex{Index: i, Array: &ArrayIndex_Field{n}}
-}
-
-func (n *Field) Field(name string) *Field {
-	return &Field{Name: name, Struct: &Field_Field{n}}
-}
-
-func (n *Field) MapIndex(k interface{}) *MapIndex {
-	out := &MapIndex{Map: &MapIndex_Field{n}}
-	if v := pod.NewValue(k); v != nil {
-		out.Key = &MapIndex_Pod{v}
-		return out
-	}
-
-	panic(fmt.Errorf("Cannot set MapIndex.Key to %T", k))
-}
-
-func (n *Field) Slice(s, e uint64) *Slice {
-	return &Slice{Start: s, End: e, Array: &Slice_Field{n}}
-}
-
-func (n *State) Field(name string) *Field {
-	return &Field{Name: name, Struct: &Field_State{n}}
-}
-
-func (n *MapIndex) Field(name string) *Field {
-	return &Field{Name: name, Struct: &Field_MapIndex{n}}
-}
+func (n *State) Field(name string) *Field             { return NewField(name, n) }
+func (n *Parameter) ArrayIndex(i uint64) *ArrayIndex  { return NewArrayIndex(i, n) }
+func (n *Parameter) Field(name string) *Field         { return NewField(name, n) }
+func (n *Parameter) MapIndex(k interface{}) *MapIndex { return NewMapIndex(k, n) }
+func (n *Parameter) Slice(s, e uint64) *Slice         { return NewSlice(s, e, n) }
+func (n *Field) ArrayIndex(i uint64) *ArrayIndex      { return NewArrayIndex(i, n) }
+func (n *Field) Field(name string) *Field             { return NewField(name, n) }
+func (n *Field) MapIndex(k interface{}) *MapIndex     { return NewMapIndex(k, n) }
+func (n *Field) Slice(s, e uint64) *Slice             { return NewSlice(s, e, n) }
+func (n *MapIndex) ArrayIndex(i uint64) *ArrayIndex   { return NewArrayIndex(i, n) }
+func (n *MapIndex) Field(name string) *Field          { return NewField(name, n) }
+func (n *MapIndex) MapIndex(k interface{}) *MapIndex  { return NewMapIndex(k, n) }
+func (n *MapIndex) Slice(s, e uint64) *Slice          { return NewSlice(s, e, n) }
 
 func (n *MapIndex) KeyValue() interface{} {
 	switch k := protoutil.OneOf(n.Key).(type) {
 	case nil:
 		return nil
-	case *pod.Value:
+	case *box.Value:
 		return k.Get()
 	default:
 		panic(fmt.Errorf("Unsupport MapIndex key type %T", k))

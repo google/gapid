@@ -199,7 +199,6 @@ int main(int argc, const char* argv[]) {
     GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
     MemoryManager memoryManager(memorySizes);
-    GAPID_INFO("gapir listening on port %s", portStr);
     auto conn = SocketConnection::createSocket("127.0.0.1", portStr);
     if (conn == nullptr) {
         GAPID_FATAL("Failed to create listening socket on port: %s", portStr);

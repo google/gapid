@@ -20,7 +20,6 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	_ "github.com/google/gapid/framework/binary/any"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"

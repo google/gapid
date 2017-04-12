@@ -22,7 +22,6 @@ package gles
 import (
 	_ "github.com/golang/protobuf/proto"
 	_ "github.com/google/gapid/core/math/u64"
-	_ "github.com/google/gapid/framework/binary/schema"
 	_ "github.com/google/gapid/gapis/memory/memory_pb"
 	_ "github.com/google/gapid/gapis/replay/protocol"
 )

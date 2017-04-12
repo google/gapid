@@ -28,8 +28,6 @@
 
     "github.com/google/gapid/core/data/pod"
     "github.com/google/gapid/core/math/u64"
-    "github.com/google/gapid/framework/binary"
-    "github.com/google/gapid/framework/binary/schema"
     "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/gapis/capture"
     "github.com/google/gapid/gapis/gfxapi"
@@ -98,16 +96,12 @@
     "fmt"
 
     "github.com/google/gapid/gapis/atom"
-    "github.com/google/gapid/framework/binary"
-    "github.com/google/gapid/framework/binary/schema"
     "github.com/google/gapid/gapis/gfxapi"
     "github.com/google/gapid/core/log"
     "github.com/google/gapid/gapis/memory"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/service"
   )
-
-  var ConstantValues schema.Constants
 
   {{range $e := $.Enums}}
     {{template "Enum" $e}}
@@ -127,8 +121,21 @@
   {{     if IsPointer  $u}}{{Template "Pointer" $}}
   {{else if IsSlice    $u}}{{Template "Slice"   $}}
   {{else if IsVoid     $u}}
-  {{else                 }}type {{$.Name}} {{Template "Go.Type" $.To}}
-{{end}}
+  {{else}}
+    {{$to := Macro "Go.Type" $.To}}
+
+    type {{$.Name}} {{$to}}
+
+    {{$out := print "(*(*" $to ")(a))"}}
+
+    func (a *{{$.Name}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+      {{Template "Go.Encode" "Name" $out "Type" $.To "ErrHandler" "panic(e.Error())"}}
+    }
+
+    func (a *{{$.Name}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+      {{Template "Go.Decode" "Name" $out "Type" $.To "ErrHandler" "panic(d.Error())"}}
+    }
+  {{end}}
 
   {{template "LabelsForLabeledType" $}}
 {{end}}
@@ -144,16 +151,28 @@
 
   {{$ty := Macro "Go.Type" $}}
   type {{$ty}} struct {
-    binary.Generate
     Elements [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
   }
-  {{if IsNumericType $.ValueType}}
-  func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
+
+  func (a *{{$ty}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
     for _, v := range a.Elements {
-      ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
+      {{Template "Go.Encode" "Name" "v" "Type" $.ValueType "ErrHandler" "panic(e.Error())"}}
     }
-    return ϟb.Buffer({{$.Size}})
   }
+
+  func (a *{{$ty}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+    for i := range a.Elements {
+      {{Template "Go.Decode" "Name" "a.Elements[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
+    }
+  }
+
+  {{if IsNumericType $.ValueType}}
+    func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
+      for _, v := range a.Elements {
+        ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
+      }
+      return ϟb.Buffer({{$.Size}})
+    }
   {{end}}
 {{end}}
 
@@ -187,6 +206,16 @@
   // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
   func New{{$ptr_ty}}(addr uint64) {{$ptr_ty}} {
     return {{$ptr_ty}}{ Address: addr, Pool: memory.ApplicationPool }
+  }
+
+  func (p {{$ptr_ty}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+      e.Uint64(p.Address);
+      e.Uint32(uint32(p.Pool));
+  }
+
+  func (p *{{$ptr_ty}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+      p.Address = d.Uint64();
+      p.Pool = memory.PoolID(d.Uint32());
   }
 
   // ElementSize returns the size in bytes of an element that {{$ptr_ty}} points to.
@@ -365,7 +394,6 @@
 
   // {{$slice_ty}} is a slice of {{$el_ty}}.
   type {{$slice_ty}} struct {
-    binary.Generate
     memory.SliceInfo
   }
 
@@ -678,7 +706,7 @@
   // If nil, nil is returned then the path cannot be followed.
   func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
-      c, err := capture.ResolveFromPath(ϟctx, cmd.Commands.Capture)
+      c, err := capture.ResolveFromPath(ϟctx, cmd.Capture)
       if err != nil {
         return nil, err
       }
@@ -799,7 +827,6 @@
   }
 {{end}}
 
-
 {{/*
 -------------------------------------------------------------------------------
   Emits a type declaration and implementation for the specified command.
@@ -815,14 +842,14 @@
     {{template "Go.CommentHeader" $name}}
 
     type {{$name}} struct {
-      binary.Generate `§
-      {{if $isDrawCall}}implements:"{{Global "API"}}.drawCall" {{end}}§
-        display:"{{$.Command | CommandName}}"`
       extras atom.Extras
       {{range $p := $.Command.FullParameters}}
-        {{$p | GoPublicName}} {{Template "Go.Type" $p}}
+        {{$cs := ConstantSetIndex $p}}
+        {{$p | GoPublicName}} {{Template "Go.Type" $p}} `param:"true"{{if ge $cs 0}} constset:"{{$cs}}"{{end}}`
       {{end}}
     }
+
+    func (ϟa *{{$name}}) AtomName() string { return "{{$.Command | CommandName}}" }
 
     func (ϟa *{{$name}}) String() string {
       return fmt.Sprintf("{{$.Command | CommandName}}(§
@@ -881,7 +908,6 @@
     }
   {{else}}
     type {{$.Name}} struct {
-      binary.Generate {{if not (GetAnnotation $ "serialize")}}`cpp:"disable"`{{end}}
       {{Template "ClassFields" $}}
       {{/* TODO: Remove this once closure support is in the API language */}}
       {{if (eq $.Name "CommandBufferObject")}}
@@ -916,6 +942,18 @@
           }
         {{end}}
         return alignment
+      }
+
+      func (c {{$.Name}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+        {{range $v := $.Fields}}
+          {{Template "Go.Encode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(e.Error())"}}
+        {{end}}
+      }
+
+      func (c *{{$.Name}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+        {{range $v := $.Fields}}
+          {{Template "Go.Decode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(d.Error())"}}
+        {{end}}
       }
 
       // {{$.Name}}DecodeRaw decodes a structure as it would have been stored
@@ -1008,7 +1046,8 @@
 {{define "ClassFields"}}
   {{AssertType $ "Class"}}
   {{range $v := $.Fields}}
-    {{Title $v.Name}} {{Template "Go.Type" $v}}
+    {{$cs := ConstantSetIndex $v}}
+    {{Title $v.Name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}
   {{end}}
 {{end}}
 
@@ -1057,7 +1096,15 @@
   type {{$.Name}} uint32
 
   {{Template "EnumConstants" "Enum" $ "Name" $.Name}}
-  {{Template "EnumSchema" "Enum" $ "Name" $.Name}}
+
+  func (e {{$.Name}}) String() string {
+    switch e {
+      {{range $e := UniqueEnumKeys $}}
+        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
+      {{end}}
+    }
+    return fmt.Sprintf("{{$.Name}}(%d)", e)
+  }
 {{end}}
 
 
@@ -1079,42 +1126,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a the schema entries for the specified enum.
--------------------------------------------------------------------------------
-*/}}
-{{define "EnumSchema"}}
-  {{AssertType $.Enum "Enum"}}
-  {{AssertType $.Name "string"}}
-  var _{{$.Name}}_map = map[{{$.Name}}]string{}
-
-  func init() {
-    _{{$.Name}}_cs := schema.ConstantSet{
-      Type: &schema.Primitive{Name: "{{$.Name}}", Method: schema.Uint32},
-        Entries: []schema.Constant{
-        {{range $e := $.Enum.Entries}}
-          {Name: "{{$e.Name}}", Value: uint32({{$e.Value}})},
-        {{end}}
-      },
-    }
-    ConstantValues = append(ConstantValues, _{{$.Name}}_cs)
-    for _, cv := range _{{$.Name}}_cs.Entries {
-      _{{$.Name}}_map[{{$.Name}}(cv.Value.(uint32))] = cv.Name
-    }
-  }
-
-  func (e {{$.Name}}) String() string {
-    name, found := _{{$.Name}}_map[e]
-    if found {
-      return name
-    }
-    return fmt.Sprintf("{{$.Name}}(%v)", uint32(e))
-  }
-
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits a type declaration and implementation for the specified label group.
 -------------------------------------------------------------------------------
 */}}
@@ -1123,8 +1134,6 @@
     {{template "Go.CommentHeader" print "Labels (named constants) for " $.Name }}
 
     {{Template "LabelConstants" "Labeled" $ "Name" $.Name}}
-
-    {{Template "LabelSchema" "Labeled" $ "Name" $.Name}}
   {{end}}
 {{end}}
 
@@ -1141,43 +1150,15 @@
         {{$.Name}}_{{$e.Name}} = {{$.Name}}({{Template "Go.ReadNoCast" $e.Value}})
      {{end}}
   )
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the schema entries for the specified labeled type.
--------------------------------------------------------------------------------
-*/}}
-{{define "LabelSchema"}}
-  {{AssertType $.Name "string"}}
-  {{$underlying := $.Labeled | Underlying}}
-
-  var _{{$.Name}}_map = map[{{$.Name}}]string{}
-
-  func init() {
-    _{{$.Name}}_cs := schema.ConstantSet{
-      Type: &schema.Primitive{Name: "{{$.Name}}", Method: {{Template "Go.SchemaMethod" $underlying}}},
-        Entries: []schema.Constant{
-        {{range $e := $.Labeled.Labels}}
-          {Name: "{{$e.Name}}", Value: {{Template "Go.Type" $underlying}}({{Template "Go.ReadNoCast" $e.Value}})},
-        {{end}}
-      },
-    }
-    ConstantValues = append(ConstantValues, _{{$.Name}}_cs)
-    for _, cv := range _{{$.Name}}_cs.Entries {
-      _{{$.Name}}_map[{{$.Name}}(cv.Value.({{Template "Go.Type" $underlying}}))] = cv.Name
-    }
-  }
 
   func (e {{$.Name}}) String() string {
-    name, found := _{{$.Name}}_map[e]
-    if found {
-      return name
+    switch e {
+      {{range $e := $.Labeled.Labels}}
+        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
+      {{end}}
     }
-    return fmt.Sprintf("%v", {{Template "Go.Type" $underlying}}(e))
+    return fmt.Sprintf("{{$.Name}}(%d)", e)
   }
-
 {{end}}
 
 
@@ -1189,7 +1170,6 @@
 {{define "State"}}
   {{template "Go.CommentHeader" "State"}}
   type State struct {
-    binary.Generate `globals:"State" cpp:"disable"`
     {{range $g := $.Globals}}
       {{Title $g.Name}} {{Template "Go.Type" $g}}
     {{end}}

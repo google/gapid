@@ -15,15 +15,13 @@
  */
 
 #include "encoder.h"
-#include "schema.h"
 #include "stream_writer.h"
 
 #include <cstring>
 
 namespace core {
 
-Encoder::Encoder(std::shared_ptr<StreamWriter> output) : mOutput(output), mLastObjectId(0) {
-    mEntities.insert(std::make_pair(nullptr, 0));
+Encoder::Encoder(std::shared_ptr<StreamWriter> output) : mOutput(output) {
 }
 
 void Encoder::Bool(bool v) {
@@ -142,41 +140,6 @@ void Encoder::String(const char* v) {
 
 void Encoder::Data(const void* ptr, int32_t size) {
     mOutput->write(ptr, size);
-}
-
-void Encoder::Entity(const schema::Entity* entity) {
-    auto ret = mEntities.insert(
-        std::make_pair(entity, mEntities.size()));
-    uint32_t sid = ret.first->second;
-    if (!ret.second) {
-        Uint32(sid << 1);
-    } else {
-        Uint32((sid << 1) | 1);
-        entity->encode(*this);
-    }
-}
-
-void Encoder::Struct(const Encodable& obj) {
-    obj.Encode(this);
-}
-
-void Encoder::Variant(const Encodable* obj) {
-    if (obj == nullptr) {
-        Entity(nullptr);
-        return;
-    }
-    Entity(obj->Schema());
-    obj->Encode(this);
-}
-
-void Encoder::Object(const Encodable* obj) {
-    if (obj == nullptr) {
-        Uint32(0);
-        return;
-    }
-    uint32_t sid = ++mLastObjectId;
-    Uint32((sid << 1) | 1);
-    Variant(obj);
 }
 
 }  // namespace core

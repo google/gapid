@@ -18,14 +18,8 @@ package main
 import (
 	"context"
 	"flag"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/copyright"
-	"github.com/google/gapid/tools/codergen/template"
 )
 
 var (
@@ -47,6 +41,7 @@ If the -n flag is not specified, the file will then be removed.
 }
 
 func run(ctx context.Context) error {
+	/* TODO: Depended on codergen.
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -118,5 +113,6 @@ func run(ctx context.Context) error {
 			return err
 		}
 	}
+	*/
 	return nil
 }

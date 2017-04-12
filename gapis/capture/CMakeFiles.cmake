@@ -23,8 +23,7 @@ set(files
     capture.proto
     context.go
     doc.go
-    id.go
 )
 set(dirs
-    
+
 )

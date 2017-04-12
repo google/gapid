@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/framework/binary"
-	"github.com/google/gapid/framework/binary/schema"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -33,10 +31,11 @@ import (
 // binary compatibility with old capture formats. Any change to the Atom's
 // binary format should also result in a new Signature.
 type Atom interface {
-	binary.Object
-
 	// All atoms belong to an API
 	gfxapi.APIObject
+
+	// AtomName returns the name of the atom.
+	AtomName() string
 
 	// AtomFlags returns the flags of the atom.
 	AtomFlags() Flags
@@ -71,19 +70,4 @@ func (id ID) String() string {
 	} else {
 		return fmt.Sprintf("%v", uint64(id))
 	}
-}
-
-// AtomCast is automatically called by the generated decoders.
-func AtomCast(obj binary.Object) Atom {
-	if o, found := obj.(*schema.Object); found {
-		a, err := Wrap(o)
-		if err != nil {
-			panic(err)
-		}
-		return a
-	}
-	if obj == nil {
-		return nil
-	}
-	return obj.(Atom)
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/gapis/client"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -45,7 +46,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	} else {
 		token = auth.Token(gapisFlags.Token)
 	}
-	client, _, err := client.Connect(ctx, client.Config{
+	client, err := client.Connect(ctx, client.Config{
 		Port:  gapisFlags.Port,
 		Args:  args,
 		Token: token,
@@ -54,9 +55,9 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 		return nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 
-	if h := log.GetHandler(ctx); h != nil {
-		go client.GetLogStream(ctx, h)
-	}
+	// if h := log.GetHandler(ctx); h != nil {
+	// 	go client.GetLogStream(ctx, h)
+	// }
 
 	return client, nil
 }
@@ -109,4 +110,58 @@ func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
 		return nil, fmt.Errorf("Multiple devices matching %q found", pattern)
 	}
 	return matchingDevices[0], nil
+}
+
+func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*service.Event, error) {
+	b, err := client.Get(ctx, p.Path())
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Couldn't get events at: %v", p.Text())
+	}
+	return b.(*service.Events).List, nil
+}
+
+func getCommand(ctx context.Context, client service.Service, p *path.Command) (*service.Command, error) {
+	boxedCmd, err := client.Get(ctx, p.Path())
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Couldn't load command at: %v", p.Text())
+	}
+	return boxedCmd.(*service.Command), nil
+}
+
+func getConstantSet(ctx context.Context, client service.Service, p *path.ConstantSet) (*service.ConstantSet, error) {
+	boxedConstants, err := client.Get(ctx, p.Path())
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Couldn't local constant set at: %v", p.Text())
+	}
+	return boxedConstants.(*service.ConstantSet), nil
+}
+
+func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command) error {
+	indices := make([]string, len(p.Index))
+	for i, v := range p.Index {
+		indices[i] = fmt.Sprintf("%d", v)
+	}
+
+	params := make([]string, len(c.Parameters))
+	for i, p := range c.Parameters {
+		v := p.Value.Get()
+		if p.Constants != nil {
+			constants, err := getConstantSet(ctx, client, p.Constants)
+			if err != nil {
+				return log.Err(ctx, err, "Couldn't fetch constant set")
+			}
+			v = constants.Sprint(v)
+		}
+		params[i] = fmt.Sprintf("%v: %v", p.Name, v)
+	}
+	fmt.Fprintf(os.Stdout, "%v %v(%v)\n", indices, c.Name, strings.Join(params, ", "))
+	return nil
+}
+
+func getAndPrintCommand(ctx context.Context, client service.Service, p *path.Command) error {
+	cmd, err := getCommand(ctx, client, p)
+	if err != nil {
+		return err
+	}
+	return printCommand(ctx, client, p, cmd)
 }

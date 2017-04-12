@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
@@ -34,7 +35,7 @@ func Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 
 // Resolve implements the database.Resolver interface.
 func (r *FollowResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	obj, err := Resolve(ctx, r.Path.Node())
+	obj, err := ResolveInternal(ctx, r.Path.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -51,10 +52,9 @@ func (r *FollowResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if link == nil {
 		return nil, &service.ErrPathNotFollowable{Path: r.Path}
 	}
-	// TODO: Validation
-	// if err := link.Validate(); err != nil {
-	// 	return nil, fmt.Errorf("Following path %v gave an invalid link %v: %v",
-	// 		r.Path, link, err)
-	// }
+	if err := link.Validate(); err != nil {
+		return nil, fmt.Errorf("Following path %v gave an invalid link %v: %v",
+			r.Path, link, err)
+	}
 	return link.Path(), nil
 }
