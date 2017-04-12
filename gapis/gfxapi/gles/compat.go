@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -966,6 +967,23 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// TODO: Support multi-sample rendering.
 				a := NewGlFramebufferTexture2D(a.Target, a.Attachment, a.Textarget, a.Texture, a.Level)
 				out.MutateAndWrite(ctx, i, a)
+				return
+			}
+
+		case *GlLinkProgram:
+			{
+				out.MutateAndWrite(ctx, i, a)
+				// Forcefully get all uniform locations, so that we can remap for applications that
+				// just assume locations (in particular, apps tend to assume arrays are consecutive)
+				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
+				prog := c.SharedObjects.Programs[a.Program]
+				for _, uniform := range prog.ActiveUniforms {
+					for i := 0; i < int(uniform.ArraySize); i++ {
+						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
+						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
+						out.MutateAndWrite(ctx, atom.NoID, NewGlGetUniformLocation(a.Program, name, loc))
+					}
+				}
 				return
 			}
 
