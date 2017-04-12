@@ -52,6 +52,19 @@ glob(sources
     EXCLUDE "_test.cpp$"
 )
 
+list(APPEND sources
+    "${PROTO_CC_OUT}/core/data/pack/pack.pb.cc"
+    "${PROTO_CC_OUT}/core/os/device/device.pb.cc"
+    "${PROTO_CC_OUT}/gapis/atom/atom_pb/atom.pb.cc"
+    "${PROTO_CC_OUT}/gapis/memory/memory.pb.cc"
+    "${PROTO_CC_OUT}/gapis/memory/memory_pb/memory.pb.cc"
+    "${PROTO_CC_OUT}/gapis/capture/capture.pb.cc"
+    "${PROTO_CC_OUT}/gapis/gfxapi/core/core_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/gfxapi/vulkan/vulkan_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/gfxapi/gles/gles_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/gfxapi/gles/gles_pb/extras.pb.cc"
+)
+
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} gapii ${dst} "libgapii.so"
@@ -63,7 +76,10 @@ endforeach()
 
 if(NOT DISABLED_CXX)
     add_library(gapii SHARED ${sources})
-    target_link_libraries(gapii cc-core cc-memory-tracker)
+    target_link_libraries(gapii cc-core cc-memory-tracker protobuf)
+
+    target_include_directories(gapii PUBLIC "${PROTO_CC_OUT}")
+    target_include_directories(gapii PUBLIC "${CMAKE_SOURCE_DIR}/external/protobuf/src")
 
     if(APPLE)
         find_package(Cocoa REQUIRED)

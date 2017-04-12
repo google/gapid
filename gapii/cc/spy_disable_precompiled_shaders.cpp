@@ -17,8 +17,6 @@
 #include "gapii/cc/spy.h"
 #include "gapii/cc/call_observer.h"
 
-#include "core/cc/coder/gles.h"
-
 // This file contains a number of GLES method 'overrides' to optionally lie to the
 // application about the driver not supporting precompiled shaders or programs.
 
@@ -29,7 +27,6 @@ const char* kReplacementExtension = "__GAPID_PCS_DISABLED__"; // Must be the sam
 
 }  // anonymous namespace
 
-using core::coder::atom::Observations;
 using namespace gapii::GLenum;
 
 namespace gapii {
@@ -41,17 +38,15 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t bin
         // GL_SHADER_BINARY_FORMATS.
         setFakeGlError(GL_INVALID_ENUM);
 
-        core::coder::gles::GlProgramBinary coder(
-                observer->getScratch()->vector<core::Encodable*>(kMaxExtras),
-                program,
-                binary_format,
-                core::coder::gles::Void__CP(reinterpret_cast<uintptr_t>(binary), 0),
-                binary_size);
         observer->read(binary, binary_size);
-        observer->observeReads();
-        observer->observeWrites();
-        coder.mextras.append(observer->getExtras());
-        mEncoder->Variant(&coder);
+        observer->invoke();
+
+        auto cmd = new gles_pb::glProgramBinary();
+        cmd->set_program(program);
+        cmd->set_binaryformat(binary_format);
+        toProtoPointer(cmd->mutable_binary(), binary);
+        cmd->set_length(binary_size);
+        observer->encodeAndDeleteCommand(cmd);
     } else {
         GlesSpy::glProgramBinary(observer, program, binary_format, binary, binary_size);
     }
@@ -64,17 +59,15 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t 
         // GL_SHADER_BINARY_FORMATS.
         setFakeGlError(GL_INVALID_ENUM);
 
-        core::coder::gles::GlProgramBinaryOES coder(
-                observer->getScratch()->vector<core::Encodable*>(kMaxExtras),
-                program,
-                binary_format,
-                core::coder::gles::Void__CP(reinterpret_cast<uintptr_t>(binary), 0),
-                binary_size);
         observer->read(binary, binary_size);
-        observer->observeReads();
-        observer->observeWrites();
-        coder.mextras.append(observer->getExtras());
-        mEncoder->Variant(&coder);
+        observer->invoke();
+
+        auto cmd = new gles_pb::glProgramBinaryOES();
+        cmd->set_program(program);
+        cmd->set_binary_format(binary_format);
+        toProtoPointer(cmd->mutable_binary(), binary);
+        cmd->set_binary_size(binary_size);
+        observer->encodeAndDeleteCommand(cmd);
     } else {
         GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary, binary_size);
     }
@@ -88,17 +81,16 @@ void Spy::glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shader
 
         observer->read(slice(shaders, (uint64_t)((GLsizei)(0)), (uint64_t)(count)));
         observer->read(slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
-        observer->observeReads();
-        observer->observeWrites();
-        core::coder::gles::GlShaderBinary coder(
-                observer->getScratch()->vector<core::Encodable*>(kMaxExtras),
-                count,
-                core::coder::gles::ShaderId__CP(reinterpret_cast<uintptr_t>(shaders), 0),
-                binary_format,
-                core::coder::gles::Void__CP(reinterpret_cast<uintptr_t>(binary), 0),
-                binary_size);
-        coder.mextras.append(observer->getExtras());
-        mEncoder->Variant(&coder);
+
+        observer->invoke();
+
+        auto cmd = new gles_pb::glShaderBinary();
+        cmd->set_count(count);
+        toProtoPointer(cmd->mutable_shaders(), shaders);
+        cmd->set_binary_format(binary_format);
+        toProtoPointer(cmd->mutable_binary(), binary);
+        cmd->set_binary_size(binary_size);
+        observer->encodeAndDeleteCommand(cmd);
     } else {
         GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary, binary_size);
     }
@@ -109,15 +101,13 @@ void Spy::glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* value
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->observeReads();
+        observer->invoke();
         observer->write(slice(values, 0, 1));
-        observer->observeWrites();
-        core::coder::gles::GlGetInteger64v coder(
-                observer->getScratch()->vector<core::Encodable*>(kMaxExtras),
-                param,
-                core::coder::gles::GLint64__P(reinterpret_cast<uintptr_t>(values), 0));
-        coder.mextras.append(observer->getExtras());
-        mEncoder->Variant(&coder);
+
+        auto cmd = new gles_pb::glGetInteger64v();
+        cmd->set_param(param);
+        toProtoPointer(cmd->mutable_values(), values);
+        observer->encodeAndDeleteCommand(cmd);
     } else {
         GlesSpy::glGetInteger64v(observer, param, values);
     }
@@ -128,15 +118,13 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->observeReads();
+        observer->invoke();
         observer->write(slice(values, 0, 1));
-        observer->observeWrites();
-        core::coder::gles::GlGetIntegerv coder(
-                observer->getScratch()->vector<core::Encodable*>(kMaxExtras),
-                param,
-                core::coder::gles::GLint__P(reinterpret_cast<uintptr_t>(values), 0));
-        coder.mextras.append(observer->getExtras());
-        mEncoder->Variant(&coder);
+
+        auto cmd = new gles_pb::glGetIntegerv();
+        cmd->set_param(param);
+        toProtoPointer(cmd->mutable_values(), values);
+        observer->encodeAndDeleteCommand(cmd);
     } else {
         GlesSpy::glGetIntegerv(observer, param, values);
     }

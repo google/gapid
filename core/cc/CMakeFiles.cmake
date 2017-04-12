@@ -68,7 +68,6 @@ set(files
 )
 set(dirs
     android
-    coder
     gl
     linux
     osx

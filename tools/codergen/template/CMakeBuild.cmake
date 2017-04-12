@@ -13,7 +13,6 @@
 # limitations under the License.
 
 embed(
-    cpp_binary.tmpl
     go_binary.tmpl
     go_common.tmpl
     java_binary.tmpl

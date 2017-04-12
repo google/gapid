@@ -39,8 +39,14 @@ func (id ID) String() string {
 	return hex.EncodeToString(id[:])
 }
 
-// Parse parses lowercase string s as a 20 byte hex-encoded ID.
+// Parse parses lowercase string s as a 20 byte hex-encoded ID, or copies s
+// to the ID if it is 20 bytes long.
 func (id *ID) Parse(s string) error {
+	if len(s) == Size {
+		copy((*id)[:], s)
+		return nil
+	}
+
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
 		return err

@@ -43,17 +43,12 @@ function(codergen)
             endif()
         endforeach()
     endforeach()
-    glob(cc_coders PATH "${CMAKE_CURRENT_SOURCE_DIR}/core/cc/coder" INCLUDE "\.(cpp|h)$")
-    foreach(fil ${cc_coders})
-        list(APPEND outputs ${fil})
-    endforeach()
     add_custom_command(
         OUTPUT ${signatures} ${outputs}
         COMMAND codergen
         --gopath "${GO_PATH}"
         --signatures ${signatures}
         --go
-        -cpp ${CMAKE_SOURCE_DIR}/core/cc/coder
         -java ${JAVA_BASE}
         ${package}/...
         DEPENDS codergen ${inputs}

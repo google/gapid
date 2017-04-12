@@ -15,6 +15,7 @@
 package pack
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 
@@ -70,7 +71,10 @@ func (r *Reader) Unmarshal() (proto.Message, error) {
 			return nil, err
 		}
 		if tag != specialSection {
-			typ := r.Types.Get(tag)
+			typ, ok := r.Types.Get(tag)
+			if !ok {
+				return nil, fmt.Errorf("Unknown tag: %v. Type count: %v", tag, r.Types.Count())
+			}
 			msg := reflect.New(typ.Type).Interface().(proto.Message)
 			if err := r.pb.Unmarshal(msg); err != nil {
 				return nil, err
@@ -120,7 +124,7 @@ func (r *Reader) readHeader() (*Header, error) {
 		return nil, err
 	}
 	if header.GetVersion().GetMajor() != version.GetMajor() {
-		return header, ErrUnknownVersion
+		return header, ErrUnknownVersion{header.GetVersion()}
 	}
 	return header, nil
 }

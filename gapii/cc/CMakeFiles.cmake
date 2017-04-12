@@ -39,8 +39,6 @@ set(files
     core_spy_subroutines_0.cpp
     core_spy_subroutines_1.cpp
     core_types.h
-    deqp.cpp
-    deqp.h
     gles_context.cpp
     gles_exports.cpp
     gles_exports.h
@@ -60,6 +58,8 @@ set(files
     gles_spy_subroutines_0.cpp
     gles_spy_subroutines_1.cpp
     gles_types.h
+    pack_encoder.h
+    pack_encoder.cpp
     pool.cpp
     pool.h
     return_handler.h
@@ -69,7 +69,7 @@ set(files
     spy_base.cpp
     spy_base.h
     spy_disable_precompiled_shaders.cpp
-    to_encoder.h
+    to_proto.h
     vulkan_VkCommandBuffer_exports.cpp
     vulkan_VkDevice_exports.cpp
     vulkan_VkInstance_exports.cpp

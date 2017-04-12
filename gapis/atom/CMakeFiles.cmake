@@ -22,7 +22,6 @@ set(files
     atom.go
     atom_binary.go
     cast.go
-    command_counter.go
     convert.go
     data.go
     doc.go

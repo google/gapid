@@ -418,6 +418,9 @@ func process(ctx context.Context, a *atom.List) (*atom.List, []*MemoryRange, err
 			if err != nil {
 				return nil, nil, err
 			}
+			if _, dup := idmap[a.ID]; dup {
+				return nil, nil, log.Errf(ctx, nil, "Duplicate resource with ID: %v", a.ID)
+			}
 			idmap[a.ID] = id
 
 		default:

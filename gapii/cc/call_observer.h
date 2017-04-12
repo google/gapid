@@ -21,10 +21,13 @@
 #include "gapii/cc/gles_types.h"
 #include "gapii/cc/slice.h"
 
-#include "core/cc/coder/atom.h"
+#include "gapis/memory/memory_pb/memory.pb.h"
+
 #include "core/cc/interval_list.h"
 #include "core/cc/scratch_allocator.h"
 #include "core/cc/vector.h"
+
+#include <google/protobuf/arena.h>
 
 namespace gapii {
 
@@ -37,7 +40,7 @@ class SpyBase;
 // deleted at the end.
 class CallObserver {
 public:
-    typedef core::coder::atom::Observation Observation;
+    typedef memory_pb::Observation Observation;
 
     CallObserver(SpyBase* spy_p);
 
@@ -74,15 +77,11 @@ public:
     // actual copying of the data is deferred until the data is to be sent.
     void write(const void* base, uint64_t size);
 
-    // observeReads observes all the pending read memory observations into
-    // mObservations.mReads. The list of pending memory observations is
-    // cleared on returning.
-    inline void observeReads();
-
-    // observeWrites observes all the pending write memory observations into
-    // mObservations.mWrites. The list of pending memory observations is
-    // cleared on returning.
-    inline void observeWrites();
+    // invoke should be called when the imported function is called (at the
+    // fence). It observes all the pending read memory observations and inserts
+    // a atom_pb::Invoke to mExtras to separate read observations from write
+    // observations.
+    void invoke();
 
     // read records the memory range for the given slice as a read operation.
     // The actual copying of the data is deferred until the data is to be sent.
@@ -125,22 +124,20 @@ public:
     // slice is observed as a read operation.
     inline std::string string(const Slice<char>& slice);
 
-    // observe observes all the pending memory observations, returning the list
-    // of observations made.
-    // The list of pending memory observations is cleared on returning.
-    void observe(core::Vector<Observation>& observations);
+    // encodeAndDeleteCommand encodes the command to the PackEncoder along with
+    // all extras, and then deletes the message.
+    void encodeAndDeleteCommand(::google::protobuf::Message* cmd);
 
-    // getExtras return the list of atom extras to be appended to the current
-    // atom.
-    core::Vector<core::Encodable*>& getExtras() {
-        return mExtras;
-    }
-
-    void addExtra(core::Encodable* extra) {
+    void addExtra(::google::protobuf::Message* extra) {
         mExtras.append(extra);
     }
 
 private:
+    // observe observes all the pending memory observations, populating the
+    // mObservations vector.
+    // The list of pending memory observations is cleared on returning.
+    void observePending();
+
     // shouldObserve returns true if the given slice is located in application
     // pool and we are supposed to observe application pool.
     template <class T>
@@ -164,38 +161,18 @@ private:
     // A pre-allocated memory allocator to store observation data.
     core::DefaultScratchAllocator mScratch;
 
-    // The observations extra that will be bundled in atom writes.
-    core::coder::atom::Observations* mObservations;
+    // The protobuf Arena to use for proto allocations.
+    google::protobuf::Arena mArena;
 
     // The list of pending reads or writes observations that are yet to be made.
     core::IntervalList<uintptr_t> mPendingObservations;
 
     // The list of pending extras to be appended to the atom.
-    core::Vector<core::Encodable*> mExtras;
+    core::Vector<::google::protobuf::Message*> mExtras;
 
     // Record GL error which was raised during this call.
     GLenum_Error mError;
 };
-
-inline void CallObserver::observeReads() {
-    if (mPendingObservations.count() > 0) {
-        if (mObservations == nullptr) {
-            mObservations = mScratch.create<core::coder::atom::Observations>();
-            addExtra(mObservations);
-        }
-        observe(mObservations->mReads);
-    }
-}
-
-inline void CallObserver::observeWrites() {
-    if (mPendingObservations.count() > 0) {
-        if (mObservations == nullptr) {
-            mObservations = mScratch.create<core::coder::atom::Observations>();
-            addExtra(mObservations);
-        }
-        observe(mObservations->mWrites);
-    }
-}
 
 template <typename T>
 inline void CallObserver::read(const Slice<T>& slice) {

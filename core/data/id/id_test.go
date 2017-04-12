@@ -65,7 +65,7 @@ func TestParseTruncatedID(t *testing.T) {
 
 func TestParseInvalidID(t *testing.T) {
 	ctx := assert.Context(t)
-	_, err := id.Parse("abcdefghijklmnopqrst")
+	_, err := id.Parse("abcdefghijklmnopqrs")
 	assert.With(ctx).ThatError(err).Failed()
 }
 

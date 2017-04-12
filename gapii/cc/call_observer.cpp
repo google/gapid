@@ -20,7 +20,6 @@
 
 #include "spy_base.h"
 
-using core::coder::memory::Range;
 using core::Interval;
 
 namespace {
@@ -58,10 +57,9 @@ CallObserver::CallObserver(SpyBase* spy_p)
       mScratch(
           [](size_t size) { return createBuffer(size, SCRATCH_BUFFER_SIZE); },
           [](uint8_t* buffer) { return releaseBuffer(buffer); }),
-      mObservations(nullptr),
       mError(GLenum::GL_NO_ERROR) {
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
-    mExtras = mScratch.vector<core::Encodable*>(MAX_EXTRAS);
+    mExtras = mScratch.vector<google::protobuf::Message*>(MAX_EXTRAS);
 }
 
 // Releases the observation data memory at the end.
@@ -85,20 +83,43 @@ void CallObserver::write(const void* base, uint64_t size) {
     }
 }
 
-void CallObserver::observe(core::Vector<Observation>& observations) {
+void CallObserver::observePending() {
     if (mSpyPtr->is_suspended()) return;
-    observations = mScratch.vector<Observation>(mPendingObservations.count());
     for (auto p : mPendingObservations) {
         core::Vector<uint8_t> data(reinterpret_cast<uint8_t*>(p.start()),
                                     p.end() - p.start());
         core::Id id = core::Id::Hash(data.data(), data.count());
         if (mSpyPtr->getResources().count(id) == 0) {
-            core::coder::atom::Resource resource(id, data);
-            mSpyPtr->getEncoder()->Variant(&resource);
+            atom_pb::Resource resource;
+            resource.set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
+            resource.set_data(data.data(), data.count());
+            mSpyPtr->getEncoder()->message(&resource);
             mSpyPtr->getResources().emplace(id);
         }
-        observations.append(Observation(Range(p.start(), data.count()), id));
+        auto observation = new memory_pb::Observation();
+        observation->set_base(p.start());
+        observation->set_size(data.count());
+        observation->set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
+        addExtra(observation);
     }
     mPendingObservations.clear();
 }
+
+void CallObserver::invoke() {
+    observePending();
+    addExtra(new atom_pb::Invoke());
+}
+
+void CallObserver::encodeAndDeleteCommand(::google::protobuf::Message* cmd) {
+    observePending();
+    auto encoder = mSpyPtr->getEncoder();
+    encoder->message(cmd);
+    delete cmd;
+    for (auto extra : mExtras) {
+        encoder->message(extra);
+        delete extra;
+    }
+    mExtras.clear();
+}
+
 }  // namespace gapii

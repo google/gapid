@@ -85,7 +85,7 @@ private:
     // returns a map of properties to values.
     std::unordered_map<std::string, std::string> getDeviceProperties();
 
-    std::shared_ptr<core::Encoder> mEncoder;
+    std::shared_ptr<gapii::PackEncoder> mEncoder;
     std::unordered_map<std::string, void*> mSymbols;
 
     int mNumFrames;

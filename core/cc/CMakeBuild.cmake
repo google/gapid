@@ -15,7 +15,7 @@
 glob_all_dirs()
 
 glob(sources
-    PATH . gl coder ${PlatformSourcePath}
+    PATH . gl ${PlatformSourcePath}
     INCLUDE ".cpp$"
     EXCLUDE "_test.cpp$"
 )
