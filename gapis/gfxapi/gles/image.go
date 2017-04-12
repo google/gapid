@@ -147,59 +147,30 @@ func getImageFormat(format, ty GLenum) (*image.Format, error) {
 	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", format, ty)
 }
 
-// getStreamChannels converts GL channel enum to stream.Channel array.
-func getStreamChannels(glChannels GLenum) (channels []stream.Channel, err error) {
-	switch glChannels {
-	case GLenum_GL_RED, GLenum_GL_RED_INTEGER:
-		return []stream.Channel{stream.Channel_Red}, nil
-	case GLenum_GL_RG, GLenum_GL_RG_INTEGER:
-		return []stream.Channel{stream.Channel_Red, stream.Channel_Green}, nil
-	case GLenum_GL_RGB, GLenum_GL_RGB_INTEGER:
-		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}, nil
-	case GLenum_GL_RGBA, GLenum_GL_RGBA_INTEGER:
-		return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}, nil
-	case GLenum_GL_BGR, GLenum_GL_BGR_INTEGER:
-		return []stream.Channel{stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red}, nil
-	case GLenum_GL_BGRA, GLenum_GL_BGRA_INTEGER:
-		return []stream.Channel{stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red, stream.Channel_Alpha}, nil
-	case GLenum_GL_ABGR_EXT:
-		return []stream.Channel{stream.Channel_Alpha, stream.Channel_Blue, stream.Channel_Green, stream.Channel_Red}, nil
-	case GLenum_GL_DEPTH_STENCIL:
-		return []stream.Channel{stream.Channel_Depth, stream.Channel_Stencil}, nil
-	case GLenum_GL_DEPTH, GLenum_GL_DEPTH_COMPONENT:
-		return []stream.Channel{stream.Channel_Depth}, nil
-	case GLenum_GL_STENCIL, GLenum_GL_STENCIL_INDEX:
-		return []stream.Channel{stream.Channel_Stencil}, nil
-	case GLenum_GL_ALPHA, GLenum_GL_ALPHA_INTEGER_EXT:
-		return []stream.Channel{stream.Channel_Alpha}, nil
-	case GLenum_GL_LUMINANCE, GLenum_GL_LUMINANCE_INTEGER_EXT:
-		return []stream.Channel{stream.Channel_Luminance}, nil
-	case GLenum_GL_LUMINANCE_ALPHA, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT:
-		return []stream.Channel{stream.Channel_Luminance, stream.Channel_Alpha}, nil
-	default:
-		return nil, fmt.Errorf("Unsupported channel type: ", glChannels)
-	}
-}
-
-// sampleAsFloat returns true if the channel's value is returned as float in shader.
-func sampleAsFloat(glChannels GLenum, channelIndex int) bool {
-	switch glChannels {
-	case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER,
-		GLenum_GL_BGR_INTEGER, GLenum_GL_BGRA_INTEGER, GLenum_GL_ALPHA_INTEGER_EXT,
-		GLenum_GL_LUMINANCE_INTEGER_EXT, GLenum_GL_LUMINANCE_ALPHA_INTEGER_EXT, GLenum_GL_STENCIL,
-		GLenum_GL_STENCIL_INDEX:
-		return false // Integer type.
-	case GLenum_GL_DEPTH_STENCIL:
-		return channelIndex == 0 // Only depth channel (index 0) is represented by float.
-	}
-	return true // Float type.
+var glChannelToStreamChannel = map[GLenum]stream.Channel{
+	GLenum_GL_RED:             stream.Channel_Red,
+	GLenum_GL_GREEN:           stream.Channel_Green,
+	GLenum_GL_BLUE:            stream.Channel_Blue,
+	GLenum_GL_ALPHA:           stream.Channel_Alpha,
+	GLenum_GL_LUMINANCE:       stream.Channel_Luminance,
+	GLenum_GL_DEPTH_COMPONENT: stream.Channel_Depth,
+	GLenum_GL_STENCIL_INDEX:   stream.Channel_Stencil,
 }
 
 // getUncompressedStreamFormat returns the decoding format which can be used to read single pixel.
-func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.Format, err error) {
-	channels, err := getStreamChannels(glChannels)
-	if err != nil {
-		return nil, err
+func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Format, err error) {
+	info, _ := subGetUnsizedFormatInfo(nil, nil, nil, nil, nil, nil, unsizedFormat)
+	if info.Count == 0 {
+		return nil, fmt.Errorf("Unknown unsized format: %v", unsizedFormat)
+	}
+	glChannels := []GLenum{info.Channel0, info.Channel1, info.Channel2, info.Channel3}
+	channels := make([]stream.Channel, info.Count)
+	for i := range channels {
+		channel, ok := glChannelToStreamChannel[glChannels[i]]
+		if !ok {
+			return nil, fmt.Errorf("Unknown GL channel: %v", glChannels[i])
+		}
+		channels[i] = channel
 	}
 
 	// Helper method to build the format.
@@ -210,7 +181,15 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 			channel = channels[channelIndex]
 		}
 		sampling := stream.Linear
-		if datatype.IsInteger() && sampleAsFloat(glChannels, channelIndex) {
+		var sampleAsFloat bool
+		if channel == stream.Channel_Depth {
+			sampleAsFloat = true
+		} else if channel == stream.Channel_Stencil {
+			sampleAsFloat = false
+		} else /* colour */ {
+			sampleAsFloat = !info.Integer
+		}
+		if datatype.IsInteger() && sampleAsFloat {
 			sampling = stream.LinearNormalized // Convert int to float
 		}
 		format.Components = append(format.Components, &stream.Component{datatype, sampling, channel})
@@ -218,7 +197,7 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 
 	// Read the components in increasing memory order (assuming little-endian architecture).
 	// Note that the GL names are based on big-endian, so the order is generally backwards.
-	switch glDataType {
+	switch ty {
 	case GLenum_GL_UNSIGNED_BYTE:
 		for i := range channels {
 			addComponent(i, &stream.U8)
@@ -288,7 +267,7 @@ func getUncompressedStreamFormat(glChannels, glDataType GLenum) (format *stream.
 		addComponent(1, &stream.U8)
 		addComponent(-1, &stream.U24)
 	default:
-		return nil, fmt.Errorf("Unsupported data type: ", glDataType)
+		return nil, fmt.Errorf("Unsupported data type: ", ty)
 	}
 	return format, nil
 }
