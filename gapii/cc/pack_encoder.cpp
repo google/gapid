@@ -74,13 +74,13 @@ void PackEncoderImpl::message(const Message* msg) {
     if (insert.second) {
         writeType(desc);
     }
-	writeSection(insert.first->second, "", msg);
+    writeSection(insert.first->second, "", msg);
 }
 
 void PackEncoderImpl::writeType(const Descriptor* desc) {
     DescriptorProto msg;
     desc->CopyTo(&msg);
-	writeSection(specialSection, desc->full_name(), &msg);
+    writeSection(specialSection, desc->full_name(), &msg);
 }
 
 void PackEncoderImpl::writeSection(uint64_t tag, const std::string& name, const Message* msg) {
@@ -93,7 +93,7 @@ void PackEncoderImpl::writeSection(uint64_t tag, const std::string& name, const 
 }
 
 void PackEncoderImpl::flushChunk() {
-	writeVarintDirect(mBuffer.size());
+    writeVarintDirect(mBuffer.size());
     mWriter->write(mBuffer.data(), mBuffer.size());
     mBuffer.clear();
 }

@@ -160,6 +160,14 @@ inline void toProtoPointer(memory_pb::Pointer* out, const T* in) {
     toProto(out, in);
 }
 
+inline const std::string& toProtoString(const std::string& str) {
+    return str;
+}
+
+inline const char* toProtoString(const char* str) {
+    return (str != nullptr) ? str : "";
+}
+
 }  // namespace gapii
 
 #endif // GAPII_TO_PROTO_H

@@ -171,7 +171,7 @@
     {{$synthetic := GetAnnotation $ "synthetic"}}
 
     {{Template "C++.ReturnType" $}} {{$spyname}}::{{$name}}({{Macro "C++.CallParameters" $ | Strings "CallObserver* observer" | JoinWith ", "}}) {
-      GAPID_WARNING({{Template "C++.PrintfCommandCall" $}});
+      GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
 ¶
       {{if (and (not (GetAnnotation $ "synthetic")) (not (GetAnnotation $ "override")))}}
         if (§
