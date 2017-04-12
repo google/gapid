@@ -178,6 +178,21 @@ void GlesRendererImpl::createPbuffer(int width, int height) {
     mPbuffer = glXCreatePbuffer(mDisplay, mFBConfig, pbufferAttribs);
 }
 
+static void* DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint id, Gles::GLenum severity,
+                           Gles::GLsizei length, const Gles::GLchar* message, const void* userParam) {
+  switch (severity) {
+    case Gles::GLenum::GL_DEBUG_SEVERITY_HIGH:
+      GAPID_ERROR("KHR_debug: %s", message);
+      break;
+    case Gles::GLenum::GL_DEBUG_SEVERITY_MEDIUM:
+      GAPID_WARNING("KHR_debug: %s", message);
+      break;
+    default:
+      GAPID_DEBUG("KHR_debug: %s", message);
+      break;
+  }
+}
+
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     if (mBackbuffer == backbuffer) {
         return; // No change
@@ -286,6 +301,13 @@ void GlesRendererImpl::bind() {
         if (mNeedsResolve) {
             mNeedsResolve = false;
             mApi.resolve();
+        }
+
+        if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+            mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), nullptr);
+            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            GAPID_DEBUG("Enabled KHR_debug extension");
         }
     }
 }
