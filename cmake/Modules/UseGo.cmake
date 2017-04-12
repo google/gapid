@@ -41,6 +41,9 @@ function(go_install)
         if(GO_DESTINATION)
             install(TARGETS ${name} DESTINATION ${GO_DESTINATION})
         endif()
+        if (WIN32)
+            _go_msys_dlls(${name})
+        endif(WIN32)
     endforeach()
 endfunction(go_install)
 
@@ -168,6 +171,24 @@ function(_go_names)
     set(path ${path} PARENT_SCOPE)
     set(tag_name "${tag_name}" PARENT_SCOPE)
 endfunction(_go_names)
+
+# _go_msys_dlls is an internal function that copies the MSYS DLLs to the output.
+# The binaries on Windows currently have a dependency on some DLLs from MSYS.
+# TODO - remove this dependency
+function(_go_msys_dlls tgt)
+    list(APPEND go_msys_dlls
+        ${MINGW_PATH}/bin/libwinpthread-1.dll
+        ${MINGW_PATH}/bin/libstdc++-6.dll
+        ${MINGW_PATH}/bin/libgcc_s_seh-1.dll
+    )
+
+    add_custom_command(TARGET ${tgt} POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            ${go_msys_dlls} $<TARGET_FILE_DIR:${tgt}>)
+    if(GO_DESTINATION)
+        install(FILES ${go_msys_dlls} DESTINATION ${GO_DESTINATION})
+    endif()
+endfunction(_go_msys_dlls)
 
 # go_glob does the glob file generation step for a given directory.
 function(go_glob path)
