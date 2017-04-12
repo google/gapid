@@ -233,8 +233,9 @@ func (s *scope) unknownOf(ty semantic.Type) (out Value) {
 
 	case *semantic.Enum:
 		return &EnumValue{
+			Ty:      ty,
 			Numbers: s.unknownOf(semantic.Uint64Type).(*UintValue),
-			Labels:  map[uint64]string{},
+			Labels:  Labels{},
 		}
 
 	case *semantic.Reference:
@@ -307,8 +308,9 @@ func (s *scope) defaultOf(ty semantic.Type) (out Value) {
 
 	case *semantic.Enum:
 		return &EnumValue{
+			Ty:      ty,
 			Numbers: s.defaultOf(semantic.Uint64Type).(*UintValue),
-			Labels:  map[uint64]string{},
+			Labels:  Labels{},
 		}
 
 	case *semantic.Reference:
@@ -391,8 +393,9 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 	case *semantic.EnumEntry:
 		v, _ := s.valueOf(semantic.Uint64Value(n.Value))
 		return &EnumValue{
+			Ty:      n.Owner().(*semantic.Enum),
 			Numbers: v.(*UintValue),
-			Labels:  map[uint64]string{uint64(n.Value): n.Name()},
+			Labels:  Labels{uint64(n.Value): n.Name()},
 		}, nil
 
 	case *semantic.Cast:

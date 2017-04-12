@@ -139,6 +139,10 @@ func (s *scope) traverse(n semantic.Node) {
 
 	case *semantic.Branch:
 		cond, _ := s.valueOf(n.Condition)
+
+		flows := []*scope{}
+		defer func() { s.setUnion(flows...) }()
+
 		if cond.(*BoolValue).MaybeTrue() {
 			// Create a new scope for evaluating the true block.
 			bs, pop := s.push()
@@ -147,25 +151,35 @@ func (s *scope) traverse(n semantic.Node) {
 			bs.considerTrue(n.Condition)
 			// Evaluate the true block.
 			bs.traverse(n.True)
-			if bs.abort != nil {
+			if bs.abort == nil {
+				flows = append(flows, bs)
+			} else {
 				// If the true block resulted in an abort then only the false
 				// block allows execution to continue below the if-statement.
 				s.considerFalse(n.Condition)
 			}
 		}
 
-		if n.False != nil && cond.(*BoolValue).MaybeFalse() {
-			// Create a new scope for evaluating the false block.
-			bs, pop := s.push()
-			defer pop()
-			// The if-condition must have been false to enter this block.
-			bs.considerFalse(n.Condition)
-			// Evaluate the false block.
-			bs.traverse(n.False)
-			if bs.abort != nil {
-				// If the false block resulted in an abort then only the true
-				// block allows execution to continue below the if-statement.
-				s.considerTrue(n.Condition)
+		if cond.(*BoolValue).MaybeFalse() {
+			if n.False != nil {
+				// Create a new scope for evaluating the false block.
+				bs, pop := s.push()
+				defer pop()
+				// The if-condition must have been false to enter this block.
+				bs.considerFalse(n.Condition)
+				// Evaluate the false block.
+				bs.traverse(n.False)
+				if bs.abort == nil {
+					flows = append(flows, bs)
+				} else {
+					// If the false block resulted in an abort then only the true
+					// block allows execution to continue below the if-statement.
+					s.considerTrue(n.Condition)
+				}
+			} else {
+				// Not always true, and no false block means we might
+				// be able to flow over the if-statement.
+				flows = append(flows, s)
 			}
 		}
 
@@ -230,6 +244,9 @@ func (s *scope) traverse(n semantic.Node) {
 		ss, pop := s.push()
 		defer pop()
 
+		flows := []*scope{}
+		defer func() { s.setUnion(flows...) }()
+
 		for _, kase := range n.Cases {
 			for _, cond := range kase.Conditions {
 				// For each case and condition...
@@ -249,7 +266,9 @@ func (s *scope) traverse(n semantic.Node) {
 				// Process the block's statements.
 				cs.traverse(kase.Block)
 				pop()
-				if cs.abort != nil {
+				if cs.abort == nil {
+					flows = append(flows, cs)
+				} else {
 					// case resulted in an abort.
 					// Statements below the switch can consider this case false.
 					s.considerFalse(isTrue)
@@ -268,23 +287,12 @@ func (s *scope) traverse(n semantic.Node) {
 			// Process the block's statements.
 			cs.traverse(n.Default)
 			pop()
-			if cs.abort != nil {
-				// default resulted in an abort.
-				// Statements below the switch can consider one of the case
-				// conditions to be true.
-				if _, set := s.valueOf(n.Value); set != nil {
-					conditions := []Value{}
-					for _, kase := range n.Cases {
-						for _, cond := range kase.Conditions {
-							v, _ := s.valueOf(cond)
-							conditions = append(conditions, v)
-						}
-					}
-					if len(conditions) > 0 {
-						set(unionOf(conditions...))
-					}
-				}
+			if cs.abort == nil {
+				flows = append(flows, cs)
 			}
+		} else {
+			// No default case? Then we're flowing over the switch.
+			flows = append(flows, s)
 		}
 
 	case *semantic.Call:
@@ -406,6 +414,13 @@ func (s *scope) considerTrue(n semantic.Expression) {
 			}
 		}
 
+	case *semantic.BitTest:
+		lhs, _ := s.valueOf(n.Bits)
+		rhs, setRHS := s.valueOf(n.Bitfield)
+		if setRHS != nil {
+			setRHS(rhs.Union(lhs)) // TODO: Not really true, need more complex bit logic.
+		}
+
 	case *semantic.MapContains:
 		// TODO: Put an entry that says the map contained the key.
 
@@ -452,6 +467,13 @@ func (s *scope) considerFalse(n semantic.Expression) {
 
 		case ast.OpGE: // !(lhs >= rhs) <=> lhs < rhs
 			s.considerTrue(lt(n.LHS, n.RHS))
+		}
+
+	case *semantic.BitTest:
+		lhs, _ := s.valueOf(n.Bits)
+		rhs, setRHS := s.valueOf(n.Bitfield)
+		if setRHS != nil {
+			setRHS(rhs.Union(lhs)) // TODO: Not really true, need more complex bit logic.
 		}
 
 	case *semantic.MapContains:

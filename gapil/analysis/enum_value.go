@@ -27,12 +27,22 @@ var (
 	_ = SetRelational(&EnumValue{})
 )
 
+// Labels is a map of value to name.
+type Labels map[uint64]string
+
+// Merge adds all the labels from o into l.
+func (l Labels) Merge(o Labels) {
+	for i, s := range o {
+		l[i] = s
+	}
+}
+
 // EnumValue is an implementation of Value that represents all the possible
 // values of an enumerator.
 type EnumValue struct {
 	Ty      *semantic.Enum
 	Numbers *UintValue
-	Labels  map[uint64]string
+	Labels  Labels
 }
 
 // Print returns a textual representation of the value.
@@ -100,7 +110,8 @@ func (v *EnumValue) LessEqual(o Value) Possibility {
 func (v *EnumValue) SetGreaterThan(o Value) Value {
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
-		Numbers: v.Numbers.SetGreaterThan(o.(*EnumValue).Numbers).(*UintValue),
+		Ty:      a.Ty,
+		Numbers: a.Numbers.SetGreaterThan(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
 }
@@ -111,7 +122,8 @@ func (v *EnumValue) SetGreaterThan(o Value) Value {
 func (v *EnumValue) SetGreaterEqual(o Value) Value {
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
-		Numbers: v.Numbers.SetGreaterEqual(o.(*EnumValue).Numbers).(*UintValue),
+		Ty:      a.Ty,
+		Numbers: a.Numbers.SetGreaterEqual(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
 }
@@ -122,7 +134,8 @@ func (v *EnumValue) SetGreaterEqual(o Value) Value {
 func (v *EnumValue) SetLessThan(o Value) Value {
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
-		Numbers: v.Numbers.SetLessThan(o.(*EnumValue).Numbers).(*UintValue),
+		Ty:      a.Ty,
+		Numbers: a.Numbers.SetLessThan(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
 }
@@ -133,6 +146,7 @@ func (v *EnumValue) SetLessThan(o Value) Value {
 func (v *EnumValue) SetLessEqual(o Value) Value {
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
+		Ty:      a.Ty,
 		Numbers: a.Numbers.SetLessEqual(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
@@ -186,6 +200,7 @@ func (v *EnumValue) Union(o Value) Value {
 	}
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
+		Ty:      a.Ty,
 		Numbers: a.Numbers.Union(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
@@ -199,6 +214,7 @@ func (v *EnumValue) Intersect(o Value) Value {
 	}
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
+		Ty:      a.Ty,
 		Numbers: a.Numbers.Intersect(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
@@ -209,6 +225,7 @@ func (v *EnumValue) Intersect(o Value) Value {
 func (v *EnumValue) Difference(o Value) Value {
 	a, b := v, o.(*EnumValue)
 	return &EnumValue{
+		Ty:      a.Ty,
 		Numbers: a.Numbers.Difference(b.Numbers).(*UintValue),
 		Labels:  a.joinLabels(b),
 	}
@@ -219,7 +236,7 @@ func (v *EnumValue) Clone() Value {
 	out := &EnumValue{
 		Ty:      v.Ty,
 		Numbers: v.Numbers.Clone().(*UintValue),
-		Labels:  make(map[uint64]string, len(v.Labels)),
+		Labels:  make(Labels, len(v.Labels)),
 	}
 	for i, s := range v.Labels {
 		out.Labels[i] = s
@@ -227,13 +244,9 @@ func (v *EnumValue) Clone() Value {
 	return out
 }
 
-func (v *EnumValue) joinLabels(o *EnumValue) map[uint64]string {
-	out := make(map[uint64]string, len(v.Labels)+len(o.Labels))
-	for i, s := range v.Labels {
-		out[i] = s
-	}
-	for i, s := range o.Labels {
-		out[i] = s
-	}
+func (v *EnumValue) joinLabels(o *EnumValue) Labels {
+	out := make(Labels, len(v.Labels)+len(o.Labels))
+	out.Merge(v.Labels)
+	out.Merge(o.Labels)
 	return out
 }

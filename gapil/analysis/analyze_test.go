@@ -65,6 +65,11 @@ func u64(vals ...uint64) *analysis.UintValue {
 	return out
 }
 
+var anyU64 = &analysis.UintValue{
+	Ty:     semantic.Uint64Type,
+	Ranges: interval.U64SpanList{{End: 0xffffffffffffffff}},
+}
+
 func toValue(v interface{}) analysis.Value {
 	switch v := v.(type) {
 	case int:
@@ -159,45 +164,6 @@ func TestU32GlobalAnalysis(t *testing.T) {
 		{`cmd void c(u32 a, u32 b) { if a < b { G = b } }`, u32Rng(1, 0x100000000)},
 		{`cmd void c(u32 a, u32 b) { if a >= b { G = b } }`, u32Rng(0, 0x100000000)},
 		{`cmd void c(u32 a, u32 b) { if a <= b { G = b } }`, u32Rng(0, 0x100000000)},
-	} {
-		ctx := log.V{"source": test.source}.Bind(ctx)
-		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
-		res := analysis.Analyze(api, mappings)
-		values := res.Globals[api.Globals[0]]
-		assert.With(ctx).That(values).DeepEquals(test.expected)
-	}
-}
-
-func TestEnumGlobalAnalysis(t *testing.T) {
-	ctx := log.Testing(t)
-
-	common := `
-    enum E{ A = 0x1  B = 0x2  C = 0x3 }
-	E G
-	`
-
-	for _, test := range []struct {
-		source   string
-		expected analysis.Value
-	}{
-		{``, &analysis.EnumValue{
-			Numbers: u64(0),
-			Labels:  map[uint64]string{},
-		}},
-		{`cmd void c(E e) { G = e }`, &analysis.EnumValue{
-			Numbers: u64Rng(0, 0xffffffffffffffff),
-			Labels:  map[uint64]string{},
-		}},
-		{`cmd void c(E e) {
-            switch e {
-              case A, B, C:
-                G = e
-            }
-          }`, &analysis.EnumValue{
-			Numbers: u64(0, 1, 2, 3),
-			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
-		}},
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
