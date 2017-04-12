@@ -21,9 +21,9 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// instances returns the path to the Instances field of the currently bound
+// objects returns the path to the Objects field of the currently bound
 // context, and the context at p.
-func instances(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
+func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
@@ -37,7 +37,28 @@ func instances(ctx context.Context, p path.Node) (*path.Field, *Context, error) 
 		return cmdPath.StateAfter().
 			Field("Contexts").
 			MapIndex(uint64(state.CurrentThread)).
-			Field("Instances"), context, nil
+			Field("Objects"), context, nil
+	}
+	return nil, nil, nil
+}
+
+// sharedObjects returns the path to the SharedObjects field of the currently bound
+// context, and the context at p.
+func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
+	if cmdPath := path.FindCommand(p); cmdPath != nil {
+		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
+		if err != nil {
+			return nil, nil, err
+		}
+		state := stateObj.(*State)
+		context, ok := state.Contexts[state.CurrentThread]
+		if !ok {
+			return nil, nil, nil
+		}
+		return cmdPath.StateAfter().
+			Field("Contexts").
+			MapIndex(uint64(state.CurrentThread)).
+			Field("SharedObjects"), context, nil
 	}
 	return nil, nil, nil
 }
@@ -45,7 +66,7 @@ func instances(ctx context.Context, p path.Node) (*path.Field, *Context, error) 
 // Link returns the link to the attribute vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := objects(ctx, p)
 	if i == nil {
 		return nil, err
 	}
@@ -63,7 +84,7 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 // Link returns the link to the buffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil || !c.SharedObjects.Buffers.Contains(o) {
 		return nil, err
 	}
@@ -73,7 +94,7 @@ func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // Link returns the link to the framebuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := objects(ctx, p)
 	if i == nil || !c.Objects.Framebuffers.Contains(o) {
 		return nil, err
 	}
@@ -83,7 +104,7 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 // Link returns the link to the program in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil || !c.SharedObjects.Programs.Contains(o) {
 		return nil, err
 	}
@@ -93,7 +114,7 @@ func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // Link returns the link to the query object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := objects(ctx, p)
 	if i == nil || !c.Objects.Queries.Contains(o) {
 		return nil, err
 	}
@@ -103,7 +124,7 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // Link returns the link to the renderbuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil || !c.SharedObjects.Renderbuffers.Contains(o) {
 		return nil, err
 	}
@@ -113,7 +134,7 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 // Link returns the link to the shader object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil || !c.SharedObjects.Shaders.Contains(o) {
 		return nil, err
 	}
@@ -123,7 +144,7 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // Link returns the link to the texture object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil || !c.SharedObjects.Textures.Contains(o) {
 		return nil, err
 	}
@@ -133,7 +154,7 @@ func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // Link returns the link to the uniform in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := sharedObjects(ctx, p)
 	if i == nil {
 		return nil, err
 	}
@@ -168,7 +189,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 // Link returns the link to the vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := instances(ctx, p)
+	i, c, err := objects(ctx, p)
 	if i == nil || !c.Objects.VertexArrays.Contains(o) {
 		return nil, err
 	}
