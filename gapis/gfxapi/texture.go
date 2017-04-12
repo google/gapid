@@ -47,6 +47,10 @@ type imageMatcher struct {
 }
 
 func (m *imageMatcher) consider(i *image.Info2D) {
+	if i == nil {
+		return
+	}
+
 	if m.best == nil {
 		m.score = 0xffffffff
 	}
@@ -108,7 +112,9 @@ func (t *Cubemap) ConvertTo(ctx context.Context, f *image.Format) (interface{}, 
 		out.Levels[i] = &CubemapLevel{}
 		dst, src := out.Levels[i].faces(), m.faces()
 		for j := range src {
-			if obj, err := src[j].ConvertTo(ctx, f); err == nil {
+			if src[j] == nil {
+				dst[j] = nil
+			} else if obj, err := src[j].ConvertTo(ctx, f); err == nil {
 				dst[j] = obj
 			} else {
 				return nil, err
