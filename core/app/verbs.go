@@ -83,6 +83,13 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 	}
 	verb := args[0]
 	matches := v.Filter(verb)
+	for _, verbs := range matches {
+		if verbs.Name == verb {
+			matches = []*Verb{verbs}
+			break
+		}
+	}
+
 	switch len(matches) {
 	case 1:
 		v.selected = matches[0]
