@@ -3802,6 +3802,13 @@ cmd VkResult vkCreateShaderModule(
   return ?
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateDestroyShaderModule(
+  VkDevice       device,
+  VkShaderModule shaderModule) {}
+
 @indirect("VkDevice")
 cmd void vkDestroyShaderModule(
     VkDevice                     device,

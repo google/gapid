@@ -850,6 +850,12 @@ func (a *RecreateShaderModule) Mutate(ctx context.Context, s *gfxapi.State, b *b
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkDestroyShaderModule(a.Device, a.ShaderModule, memory.Pointer{})
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateDescriptorPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	createInfo := memory.Pointer(a.PCreateInfo)
 	allocator := memory.Pointer{}

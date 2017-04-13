@@ -26,6 +26,44 @@
 
 namespace gapii {
 
+namespace {
+class TemporaryShaderModule {
+ public:
+  TemporaryShaderModule(CallObserver* observer, VulkanSpy* spy)
+      : observer_(observer), spy_(spy), temporary_shader_modules_() {}
+
+  VkShaderModule CreateShaderModule(
+      std::shared_ptr<ShaderModuleObject> module_obj) {
+    if (!module_obj) {
+      return VkShaderModule(0);
+    }
+    VkShaderModuleCreateInfo create_info{
+        VkStructureType::VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,  // sType
+        nullptr,                                                       // pNext
+        0,                                                             // flags
+        module_obj->shaderWords.size() * 4,  // codeSize
+        module_obj->shaderWords.data(),      // pCode
+    };
+    spy_->RecreateShaderModule(observer_, module_obj->mDevice, &create_info,
+                               &module_obj->mVulkanHandle);
+    temporary_shader_modules_.push_back(module_obj);
+    return module_obj->mVulkanHandle;
+  }
+
+  ~TemporaryShaderModule() {
+    for (auto m : temporary_shader_modules_) {
+      spy_->RecreateDestroyShaderModule(observer_, m->mDevice,
+                                        m->mVulkanHandle);
+    }
+  }
+
+ private:
+  CallObserver* observer_;
+  VulkanSpy* spy_;
+  std::vector<std::shared_ptr<ShaderModuleObject>> temporary_shader_modules_;
+};
+}  // anonymous namespace
+
 void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
     for(auto& instance: Instances) {
         VkInstanceCreateInfo create_info = {};
@@ -1132,81 +1170,116 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             RecreateShaderModule(observer, shaderModule.second->mDevice, &create_info, &shaderModule.second->mVulkanHandle);
         }
     }
-    for (auto& compute_pipeline: ComputePipelines) {
+
+    // Scope for creating and deleting temporary shader modules. Pipelines are
+    // allowed to use destroyed shader modules. Such shader module may not be
+    // alive when we enumerate Vulkan resources, so we need to create them,
+    // use them in the recreated pipelines, then delete them.
+    {
+      TemporaryShaderModule temporary_shader_modules(observer, this);
+
+      for (auto& compute_pipeline : ComputePipelines) {
         auto& pipeline = *compute_pipeline.second;
         VkComputePipelineCreateInfo create_info = {};
-        create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        create_info.msType =
+            VkStructureType::VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
         create_info.mflags = pipeline.mFlags;
         create_info.mlayout = pipeline.mPipelineLayout->mVulkanHandle;
         create_info.mbasePipelineHandle = pipeline.mBasePipeline;
 
         VkSpecializationInfo specialization_info;
         std::vector<VkSpecializationMapEntry> specialization_entries;
-        create_info.mstage.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        create_info.mstage.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         create_info.mstage.mstage = pipeline.mStage.mStage;
-        create_info.mstage.mmodule = pipeline.mStage.mModule->mVulkanHandle;
-
-        create_info.mstage.mpName = const_cast<char*>(pipeline.mStage.mEntryPoint.c_str());
-        if (pipeline.mStage.mSpecialization) {
-            specialization_info.mmapEntryCount = pipeline.mStage.mSpecialization->mSpecializations.size();
-            for (size_t j = 0; j < specialization_info.mmapEntryCount; ++j) {
-                specialization_entries.push_back(pipeline.mStage.mSpecialization->mSpecializations[j]);
-            }
-            specialization_info.mpMapEntries = specialization_entries.data();
-            specialization_info.mdataSize = pipeline.mStage.mSpecialization->specializationData.size();
-            specialization_info.mpData = pipeline.mStage.mSpecialization->specializationData.data();
-            create_info.mstage.mpSpecializationInfo = &specialization_info;
+        // Create temporary shader module if the shader module has been
+        // destroyed
+        if (ShaderModules.find(pipeline.mStage.mModule->mVulkanHandle) ==
+            ShaderModules.end()) {
+          create_info.mstage.mmodule =
+              temporary_shader_modules.CreateShaderModule(
+                  pipeline.mStage.mModule);
+        } else {
+          create_info.mstage.mmodule = pipeline.mStage.mModule->mVulkanHandle;
         }
-        RecreateComputePipeline(
-            observer,
-            pipeline.mDevice,
-            pipeline.mPipelineCache->mVulkanHandle,
-            &create_info,
-            &pipeline.mVulkanHandle);
-    }
 
-    for (auto& graphics_pipeline: GraphicsPipelines) {
+        create_info.mstage.mpName =
+            const_cast<char*>(pipeline.mStage.mEntryPoint.c_str());
+        if (pipeline.mStage.mSpecialization) {
+          specialization_info.mmapEntryCount =
+              pipeline.mStage.mSpecialization->mSpecializations.size();
+          for (size_t j = 0; j < specialization_info.mmapEntryCount; ++j) {
+            specialization_entries.push_back(
+                pipeline.mStage.mSpecialization->mSpecializations[j]);
+          }
+          specialization_info.mpMapEntries = specialization_entries.data();
+          specialization_info.mdataSize =
+              pipeline.mStage.mSpecialization->specializationData.size();
+          specialization_info.mpData =
+              pipeline.mStage.mSpecialization->specializationData.data();
+          create_info.mstage.mpSpecializationInfo = &specialization_info;
+        }
+        RecreateComputePipeline(observer, pipeline.mDevice,
+                                pipeline.mPipelineCache->mVulkanHandle,
+                                &create_info, &pipeline.mVulkanHandle);
+      }
+
+      for (auto& graphics_pipeline : GraphicsPipelines) {
         auto& pipeline = *graphics_pipeline.second;
         VkGraphicsPipelineCreateInfo create_info = {};
-        create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        create_info.msType =
+            VkStructureType::VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
         std::vector<VkPipelineShaderStageCreateInfo> stages;
         std::deque<VkSpecializationInfo> specialization_infos;
-        std::deque<std::vector<VkSpecializationMapEntry>> specialization_entries;
-        std::vector<VkVertexInputBindingDescription> vertex_binding_descriptions;
-        std::vector<VkVertexInputAttributeDescription> vertex_attribute_descriptions;
+        std::deque<std::vector<VkSpecializationMapEntry>>
+            specialization_entries;
+        std::vector<VkVertexInputBindingDescription>
+            vertex_binding_descriptions;
+        std::vector<VkVertexInputAttributeDescription>
+            vertex_attribute_descriptions;
         std::vector<VkViewport> viewports;
         std::vector<VkRect2D> scissors;
         std::vector<uint32_t> sample_mask;
-        std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachment_states;
+        std::vector<VkPipelineColorBlendAttachmentState>
+            color_blend_attachment_states;
         std::vector<uint32_t> dynamic_states;
 
         VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
-        vertex_input_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertex_input_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
-        input_assembly_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 
         VkPipelineTessellationStateCreateInfo tessellation_state = {};
-        tessellation_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+        tessellation_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
 
         VkPipelineViewportStateCreateInfo viewport_state = {};
-        viewport_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 
         VkPipelineRasterizationStateCreateInfo rasterization_state = {};
-        rasterization_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterization_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
         VkPipelineMultisampleStateCreateInfo multisample_state = {};
-        multisample_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisample_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 
         VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
-        depth_stencil_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 
         VkPipelineColorBlendStateCreateInfo color_blend_state = {};
-        color_blend_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        color_blend_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 
         VkPipelineDynamicStateCreateInfo dynamic_state = {};
-        dynamic_state.msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamic_state.msType = VkStructureType::
+            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 
         create_info.mflags = pipeline.mFlags;
         create_info.mstageCount = pipeline.mStages.size();
@@ -1216,131 +1289,190 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         create_info.mbasePipelineHandle = pipeline.mBasePipeline;
 
         for (size_t i = 0; i < pipeline.mStages.size(); ++i) {
-            auto& stage = pipeline.mStages[i];
-            stages.push_back({});
-            stages.back().msType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            stages.back().mstage = stage.mStage;
+          auto& stage = pipeline.mStages[i];
+          stages.push_back({});
+          stages.back().msType = VkStructureType::
+              VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+          stages.back().mstage = stage.mStage;
+          // Create temporary shader module if the shader module has been
+          // destroyed
+          if (ShaderModules.find(stage.mModule->mVulkanHandle) ==
+              ShaderModules.end()) {
+            stages.back().mmodule =
+                temporary_shader_modules.CreateShaderModule(stage.mModule);
+          } else {
             stages.back().mmodule = stage.mModule->mVulkanHandle;
-            stages.back().mpName = const_cast<char*>(stage.mEntryPoint.c_str());
-            if (stage.mSpecialization) {
-                specialization_infos.push_back({});
-                specialization_entries.push_back({});
-                specialization_infos.back().mmapEntryCount = stage.mSpecialization->mSpecializations.size();
-                for (size_t j = 0; j < specialization_infos.back().mmapEntryCount; ++j) {
-                    specialization_entries.back().push_back(stage.mSpecialization->mSpecializations[j]);
-                }
-                specialization_infos.back().mpMapEntries = specialization_entries.back().data();
-                specialization_infos.back().mdataSize = stage.mSpecialization->specializationData.size();
-                specialization_infos.back().mpData = stage.mSpecialization->specializationData.data();
-                stages.back().mpSpecializationInfo = &specialization_infos.back();
+          }
+          stages.back().mpName = const_cast<char*>(stage.mEntryPoint.c_str());
+          if (stage.mSpecialization) {
+            specialization_infos.push_back({});
+            specialization_entries.push_back({});
+            specialization_infos.back().mmapEntryCount =
+                stage.mSpecialization->mSpecializations.size();
+            for (size_t j = 0; j < specialization_infos.back().mmapEntryCount;
+                 ++j) {
+              specialization_entries.back().push_back(
+                  stage.mSpecialization->mSpecializations[j]);
             }
+            specialization_infos.back().mpMapEntries =
+                specialization_entries.back().data();
+            specialization_infos.back().mdataSize =
+                stage.mSpecialization->specializationData.size();
+            specialization_infos.back().mpData =
+                stage.mSpecialization->specializationData.data();
+            stages.back().mpSpecializationInfo = &specialization_infos.back();
+          }
         }
         create_info.mpStages = stages.data();
-        for (size_t i = 0; i < pipeline.mVertexInputState.mBindingDescriptions.size(); ++i) {
-            vertex_binding_descriptions.push_back(pipeline.mVertexInputState.mBindingDescriptions[i]);
+        for (size_t i = 0;
+             i < pipeline.mVertexInputState.mBindingDescriptions.size(); ++i) {
+          vertex_binding_descriptions.push_back(
+              pipeline.mVertexInputState.mBindingDescriptions[i]);
         }
-        for (size_t i = 0; i < pipeline.mVertexInputState.mAttributeDescriptions.size(); ++i) {
-            vertex_attribute_descriptions.push_back(pipeline.mVertexInputState.mAttributeDescriptions[i]);
+        for (size_t i = 0;
+             i < pipeline.mVertexInputState.mAttributeDescriptions.size();
+             ++i) {
+          vertex_attribute_descriptions.push_back(
+              pipeline.mVertexInputState.mAttributeDescriptions[i]);
         }
-        vertex_input_state.mvertexBindingDescriptionCount = vertex_binding_descriptions.size();
-        vertex_input_state.mpVertexBindingDescriptions = vertex_binding_descriptions.data();
-        vertex_input_state.mvertexAttributeDescriptionCount = vertex_attribute_descriptions.size();
-        vertex_input_state.mpVertexAttributeDescriptions = vertex_attribute_descriptions.data();
+        vertex_input_state.mvertexBindingDescriptionCount =
+            vertex_binding_descriptions.size();
+        vertex_input_state.mpVertexBindingDescriptions =
+            vertex_binding_descriptions.data();
+        vertex_input_state.mvertexAttributeDescriptionCount =
+            vertex_attribute_descriptions.size();
+        vertex_input_state.mpVertexAttributeDescriptions =
+            vertex_attribute_descriptions.data();
         create_info.mpVertexInputState = &vertex_input_state;
 
         input_assembly_state.mtopology = pipeline.mInputAssemblyState.mTopology;
-        input_assembly_state.mprimitiveRestartEnable = pipeline.mInputAssemblyState.mPrimitiveRestartEnable;
+        input_assembly_state.mprimitiveRestartEnable =
+            pipeline.mInputAssemblyState.mPrimitiveRestartEnable;
         create_info.mpInputAssemblyState = &input_assembly_state;
 
         if (pipeline.mTessellationState) {
-            tessellation_state.mpatchControlPoints = pipeline.mTessellationState->mPatchControlPoints;
-            create_info.mpTessellationState = &tessellation_state;
+          tessellation_state.mpatchControlPoints =
+              pipeline.mTessellationState->mPatchControlPoints;
+          create_info.mpTessellationState = &tessellation_state;
         }
 
         if (pipeline.mViewportState) {
-            for (size_t i = 0; i < pipeline.mViewportState->mViewports.size(); ++i) {
-                viewports.push_back(pipeline.mViewportState->mViewports[i]);
-            }
-            for (size_t i = 0; i < pipeline.mViewportState->mScissors.size(); ++i) {
-                scissors.push_back(pipeline.mViewportState->mScissors[i]);
-            }
-            viewport_state.mviewportCount = viewports.size();
-            viewport_state.mpViewports = viewports.data();
-            viewport_state.mscissorCount = scissors.size();
-            viewport_state.mpScissors = scissors.data();
-            create_info.mpViewportState = &viewport_state;
+          for (size_t i = 0; i < pipeline.mViewportState->mViewports.size();
+               ++i) {
+            viewports.push_back(pipeline.mViewportState->mViewports[i]);
+          }
+          for (size_t i = 0; i < pipeline.mViewportState->mScissors.size();
+               ++i) {
+            scissors.push_back(pipeline.mViewportState->mScissors[i]);
+          }
+          viewport_state.mviewportCount = viewports.size();
+          viewport_state.mpViewports = viewports.data();
+          viewport_state.mscissorCount = scissors.size();
+          viewport_state.mpScissors = scissors.data();
+          create_info.mpViewportState = &viewport_state;
         }
 
-        rasterization_state.mdepthClampEnable = pipeline.mRasterizationState.mDepthClampEnable;
-        rasterization_state.mrasterizerDiscardEnable = pipeline.mRasterizationState.mRasterizerDiscardEnable;
-        rasterization_state.mpolygonMode = pipeline.mRasterizationState.mPolygonMode;
+        rasterization_state.mdepthClampEnable =
+            pipeline.mRasterizationState.mDepthClampEnable;
+        rasterization_state.mrasterizerDiscardEnable =
+            pipeline.mRasterizationState.mRasterizerDiscardEnable;
+        rasterization_state.mpolygonMode =
+            pipeline.mRasterizationState.mPolygonMode;
         rasterization_state.mcullMode = pipeline.mRasterizationState.mCullMode;
-        rasterization_state.mfrontFace = pipeline.mRasterizationState.mFrontFace;
-        rasterization_state.mdepthBiasEnable = pipeline.mRasterizationState.mDepthBiasEnable;
-        rasterization_state.mdepthBiasConstantFactor = pipeline.mRasterizationState.mDepthBiasConstantFactor;
-        rasterization_state.mdepthBiasClamp = pipeline.mRasterizationState.mDepthBiasClamp;
-        rasterization_state.mdepthBiasSlopeFactor = pipeline.mRasterizationState.mDepthBiasSlopeFactor;
-        rasterization_state.mlineWidth = pipeline.mRasterizationState.mLineWidth;
+        rasterization_state.mfrontFace =
+            pipeline.mRasterizationState.mFrontFace;
+        rasterization_state.mdepthBiasEnable =
+            pipeline.mRasterizationState.mDepthBiasEnable;
+        rasterization_state.mdepthBiasConstantFactor =
+            pipeline.mRasterizationState.mDepthBiasConstantFactor;
+        rasterization_state.mdepthBiasClamp =
+            pipeline.mRasterizationState.mDepthBiasClamp;
+        rasterization_state.mdepthBiasSlopeFactor =
+            pipeline.mRasterizationState.mDepthBiasSlopeFactor;
+        rasterization_state.mlineWidth =
+            pipeline.mRasterizationState.mLineWidth;
         create_info.mpRasterizationState = &rasterization_state;
 
         if (pipeline.mMultisampleState) {
-            multisample_state.mrasterizationSamples = pipeline.mMultisampleState->mRasterizationSamples;
-            multisample_state.msampleShadingEnable = pipeline.mMultisampleState->mSampleShadingEnable;
-            multisample_state.mminSampleShading = pipeline.mMultisampleState->mMinSampleShading;
-            multisample_state.malphaToCoverageEnable = pipeline.mMultisampleState->mAlphaToCoverageEnable;
-            multisample_state.malphaToOneEnable = pipeline.mMultisampleState->mAlphaToOneEnable;
-            for (size_t i = 0; i < pipeline.mMultisampleState->mSampleMask.size(); ++i) {
-                sample_mask.push_back(pipeline.mMultisampleState->mSampleMask[i]);
-            }
-            if (sample_mask.size() > 0) {
-                multisample_state.mpSampleMask = sample_mask.data();
-            }
-            create_info.mpMultisampleState = &multisample_state;
+          multisample_state.mrasterizationSamples =
+              pipeline.mMultisampleState->mRasterizationSamples;
+          multisample_state.msampleShadingEnable =
+              pipeline.mMultisampleState->mSampleShadingEnable;
+          multisample_state.mminSampleShading =
+              pipeline.mMultisampleState->mMinSampleShading;
+          multisample_state.malphaToCoverageEnable =
+              pipeline.mMultisampleState->mAlphaToCoverageEnable;
+          multisample_state.malphaToOneEnable =
+              pipeline.mMultisampleState->mAlphaToOneEnable;
+          for (size_t i = 0; i < pipeline.mMultisampleState->mSampleMask.size();
+               ++i) {
+            sample_mask.push_back(pipeline.mMultisampleState->mSampleMask[i]);
+          }
+          if (sample_mask.size() > 0) {
+            multisample_state.mpSampleMask = sample_mask.data();
+          }
+          create_info.mpMultisampleState = &multisample_state;
         }
 
         if (pipeline.mDepthState) {
-            depth_stencil_state.mdepthTestEnable = pipeline.mDepthState->mDepthTestEnable;
-            depth_stencil_state.mdepthWriteEnable = pipeline.mDepthState->mDepthWriteEnable;
-            depth_stencil_state.mdepthCompareOp = pipeline.mDepthState->mDepthCompareOp;
-            depth_stencil_state.mdepthBoundsTestEnable = pipeline.mDepthState->mDepthBoundsTestEnable;
-            depth_stencil_state.mstencilTestEnable = pipeline.mDepthState->mStencilTestEnable;
-            depth_stencil_state.mfront = pipeline.mDepthState->mFront;
-            depth_stencil_state.mback = pipeline.mDepthState->mBack;
-            depth_stencil_state.mminDepthBounds = pipeline.mDepthState->mMinDepthBounds;
-            depth_stencil_state.mmaxDepthBounds = pipeline.mDepthState->mMaxDepthBounds;
-            create_info.mpDepthStencilState = &depth_stencil_state;
+          depth_stencil_state.mdepthTestEnable =
+              pipeline.mDepthState->mDepthTestEnable;
+          depth_stencil_state.mdepthWriteEnable =
+              pipeline.mDepthState->mDepthWriteEnable;
+          depth_stencil_state.mdepthCompareOp =
+              pipeline.mDepthState->mDepthCompareOp;
+          depth_stencil_state.mdepthBoundsTestEnable =
+              pipeline.mDepthState->mDepthBoundsTestEnable;
+          depth_stencil_state.mstencilTestEnable =
+              pipeline.mDepthState->mStencilTestEnable;
+          depth_stencil_state.mfront = pipeline.mDepthState->mFront;
+          depth_stencil_state.mback = pipeline.mDepthState->mBack;
+          depth_stencil_state.mminDepthBounds =
+              pipeline.mDepthState->mMinDepthBounds;
+          depth_stencil_state.mmaxDepthBounds =
+              pipeline.mDepthState->mMaxDepthBounds;
+          create_info.mpDepthStencilState = &depth_stencil_state;
         }
 
         if (pipeline.mColorBlendState) {
-            color_blend_state.mlogicOpEnable = pipeline.mColorBlendState->mLogicOpEnable;
-            color_blend_state.mlogicOp = pipeline.mColorBlendState->mLogicOp;
-            color_blend_state.mblendConstants[0] = pipeline.mColorBlendState->mLogicOpEnable;
-            color_blend_state.mblendConstants[1] = pipeline.mColorBlendState->mLogicOpEnable;
-            color_blend_state.mblendConstants[2] = pipeline.mColorBlendState->mLogicOpEnable;
-            color_blend_state.mblendConstants[3] = pipeline.mColorBlendState->mLogicOpEnable;
-            for (size_t i = 0; i < pipeline.mColorBlendState->mAttachments.size(); ++i) {
-                color_blend_attachment_states.push_back(pipeline.mColorBlendState->mAttachments[i]);
-            }
-            color_blend_state.mattachmentCount = color_blend_attachment_states.size();
-            color_blend_state.mpAttachments = color_blend_attachment_states.data();
-            create_info.mpColorBlendState = &color_blend_state;
+          color_blend_state.mlogicOpEnable =
+              pipeline.mColorBlendState->mLogicOpEnable;
+          color_blend_state.mlogicOp = pipeline.mColorBlendState->mLogicOp;
+          color_blend_state.mblendConstants[0] =
+              pipeline.mColorBlendState->mLogicOpEnable;
+          color_blend_state.mblendConstants[1] =
+              pipeline.mColorBlendState->mLogicOpEnable;
+          color_blend_state.mblendConstants[2] =
+              pipeline.mColorBlendState->mLogicOpEnable;
+          color_blend_state.mblendConstants[3] =
+              pipeline.mColorBlendState->mLogicOpEnable;
+          for (size_t i = 0; i < pipeline.mColorBlendState->mAttachments.size();
+               ++i) {
+            color_blend_attachment_states.push_back(
+                pipeline.mColorBlendState->mAttachments[i]);
+          }
+          color_blend_state.mattachmentCount =
+              color_blend_attachment_states.size();
+          color_blend_state.mpAttachments =
+              color_blend_attachment_states.data();
+          create_info.mpColorBlendState = &color_blend_state;
         }
 
         if (pipeline.mDynamicState) {
-            for (size_t i = 0; i < pipeline.mDynamicState->mDynamicStates.size(); ++i) {
-                dynamic_states.push_back(pipeline.mDynamicState->mDynamicStates[i]);
-            }
-            dynamic_state.mdynamicStateCount = dynamic_states.size();
-            dynamic_state.mpDynamicStates = dynamic_states.data();
-            create_info.mpDynamicState = &dynamic_state;
+          for (size_t i = 0; i < pipeline.mDynamicState->mDynamicStates.size();
+               ++i) {
+            dynamic_states.push_back(pipeline.mDynamicState->mDynamicStates[i]);
+          }
+          dynamic_state.mdynamicStateCount = dynamic_states.size();
+          dynamic_state.mpDynamicStates = dynamic_states.data();
+          create_info.mpDynamicState = &dynamic_state;
         }
-        RecreateGraphicsPipeline(
-            observer,
-            pipeline.mDevice,
-            pipeline.mPipelineCache->mVulkanHandle,
-            &create_info,
-            &pipeline.mVulkanHandle);
+        RecreateGraphicsPipeline(observer, pipeline.mDevice,
+                                 pipeline.mPipelineCache->mVulkanHandle,
+                                 &create_info, &pipeline.mVulkanHandle);
+      }
     }
+
     {
         VkImageViewCreateInfo create_info = {};
         create_info.msType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
