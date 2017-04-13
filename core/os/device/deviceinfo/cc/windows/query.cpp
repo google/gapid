@@ -97,13 +97,12 @@ bool createContext(void*) {
 	}
 	wglMakeCurrent(gContext.mHDC, gContext.mCtx);
 
-    OSVERSIONINFOEX osinfo;
-    gContext.mOsVersion.dwOSVersionInfoSize = sizeof(osinfo);
+    gContext.mOsVersion.dwOSVersionInfoSize = sizeof(gContext.mOsVersion);
     GetVersionEx((OSVERSIONINFO*)(&gContext.mOsVersion));
-    int major = osinfo.dwMajorVersion;
-    int minor = osinfo.dwMinorVersion;
-    int point = osinfo.dwBuildNumber;
-    bool isNTWorkstation = (osinfo.wProductType == VER_NT_WORKSTATION) ? 1 : 0;
+    int major = gContext.mOsVersion.dwMajorVersion;
+    int minor = gContext.mOsVersion.dwMinorVersion;
+    int point = gContext.mOsVersion.dwBuildNumber;
+    bool isNTWorkstation = (gContext.mOsVersion.wProductType == VER_NT_WORKSTATION);
 
 	if (major == 10 && isNTWorkstation) {
 		gContext.mOsName = "Windows 10";
@@ -137,7 +136,7 @@ bool createContext(void*) {
 	GetSystemInfo(&sysInfo);
 	gContext.mNumCores = sysInfo.dwNumberOfProcessors;
 
-	DWORD size = MAX_COMPUTERNAME_LENGTH;
+	DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
 	GetComputerNameA(gContext.mHostName, &size);
 
 	return true;
