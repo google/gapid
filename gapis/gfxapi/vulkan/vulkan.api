@@ -8125,9 +8125,12 @@ sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
   info := applicationInfo[0]
 
   // TODO: handle pNext
-  _ = as!string(info.pApplicationName)
-  _ = as!string(info.pEngineName)
-
+  if (info.pApplicationName != null) {
+    _ = as!string(info.pApplicationName)
+  }
+  if (info.pEngineName != null) {
+    _ = as!string(info.pEngineName)
+  }
   return info.apiVersion
 }
 
