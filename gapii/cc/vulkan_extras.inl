@@ -54,6 +54,7 @@ void SpyOverride_RecreateDescriptorSetLayout(VkDevice, const VkDescriptorSetLayo
 void SpyOverride_RecreatePipelineLayout(VkDevice, const VkPipelineLayoutCreateInfo*, VkPipelineLayout*) {}
 void SpyOverride_RecreateRenderPass(VkDevice, const VkRenderPassCreateInfo*, VkRenderPass*) {}
 void SpyOverride_RecreateShaderModule(VkDevice, const VkShaderModuleCreateInfo*, VkShaderModule*) {}
+void SpyOverride_RecreateDestroyShaderModule(VkDevice, VkShaderModule) {}
 void SpyOverride_RecreateDescriptorPool(VkDevice, const VkDescriptorPoolCreateInfo*, VkDescriptorPool*) {}
 void SpyOverride_RecreateSwapchain(VkDevice, const VkSwapchainCreateInfoKHR*, VkImage*, const uint32_t*, const VkQueue*, VkSwapchainKHR*) {}
 void SpyOverride_RecreateImage(VkDevice, const VkImageCreateInfo*, VkImage*) {}
