@@ -21,6 +21,8 @@ if(ToolchainTarget STREQUAL ${ToolchainHost})
     endif()
 
     set(MINGW_PATH "${MSYS2_PATH}/mingw64")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-mbig-obj")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
 else()
     # Cross compiling
     message(FATAL_ERROR "Cross compiling to windows was only supported with PREBUILTS")
