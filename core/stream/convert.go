@@ -114,10 +114,11 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 				m.src = buf0
 			}
 		case Channel_Luminance:
-			if c := srcFmt.HasSingleColorComponent(); c != nil {
+			if c := srcFmt.GetSingleColorComponent(); c != nil {
+				// A format with a signle color channel is equivalent to a luninance format.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			}
-			// TODO: RGB->Luminance conversion
+			// TODO: RGB->Luminance conversion (#276)
 		}
 	}
 	return mappings

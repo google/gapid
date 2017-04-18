@@ -129,9 +129,9 @@ func (f *Format) HasColorComponent() bool {
 	return false
 }
 
-// HasSingleColorComponent returns a component if the format contains a single
+// GetSingleColorComponent returns a component if the format contains a single
 // color component, otherwise nil. See ColorChannels for channels considered colors.
-func (f *Format) HasSingleColorComponent() *Component {
+func (f *Format) GetSingleColorComponent() *Component {
 	var c *Component = nil
 	for _, t := range f.Components {
 		if t.Channel.IsColor() {
