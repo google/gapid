@@ -157,13 +157,31 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
   linear := false
   return switch (sf) {
     // Uncompressed colour formats
-    // GL_EXT_texture_storage
-    case GL_ALPHA8_EXT:     SizedFormatInfo(sf, GL_ALPHA, GL_UNSIGNED_BYTE)
+    // EXT_texture_storage
+    case GL_LUMINANCE8_ALPHA8_EXT:  SizedFormatInfo(sf, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE)
+    // EXT_texture_storage
+    case GL_LUMINANCE8_EXT:         SizedFormatInfo(sf, GL_LUMINANCE, GL_UNSIGNED_BYTE)
+    // EXT_texture_storage
+    case GL_ALPHA8_EXT:             SizedFormatInfo(sf, GL_ALPHA, GL_UNSIGNED_BYTE)
+    // EXT_texture_storage && OES_texture_float
+    case GL_LUMINANCE_ALPHA32F_EXT: SizedFormatInfo(sf, GL_LUMINANCE_ALPHA, GL_FLOAT)
+    // EXT_texture_storage && OES_texture_float
+    case GL_LUMINANCE32F_EXT:       SizedFormatInfo(sf, GL_LUMINANCE, GL_FLOAT )
+    // EXT_texture_storage && OES_texture_float
+    case GL_ALPHA32F_EXT:           SizedFormatInfo(sf, GL_ALPHA, GL_FLOAT)
+    // EXT_texture_storage && OES_texture_half_float
+    case GL_LUMINANCE_ALPHA16F_EXT: SizedFormatInfo(sf, GL_LUMINANCE_ALPHA, GL_HALF_FLOAT)
+    // EXT_texture_storage && OES_texture_half_float
+    case GL_LUMINANCE16F_EXT:       SizedFormatInfo(sf, GL_LUMINANCE, GL_HALF_FLOAT )
+    // EXT_texture_storage && OES_texture_half_float
+    case GL_ALPHA16F_EXT:           SizedFormatInfo(sf, GL_ALPHA, GL_HALF_FLOAT)
+    // EXT_texture_storage && EXT_texture_format_BGRA8888
+    case GL_BGRA8_EXT:      SizedFormatInfo(sf, GL_BGRA, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_R11F_G11F_B10F: SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV)
     // GLES31 || GL_EXT_texture_norm16
     case GL_R16:            SizedFormatInfo(sf, GL_RED, GL_UNSIGNED_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg && OES_texture_half_float
     case GL_R16F:           SizedFormatInfo(sf, GL_RED, GL_HALF_FLOAT)
     // GLES30
     case GL_R16I:           SizedFormatInfo(sf, GL_RED_INTEGER, GL_SHORT)
@@ -171,13 +189,13 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_R16UI:          SizedFormatInfo(sf, GL_RED_INTEGER, GL_UNSIGNED_SHORT)
     // GLES31 || GL_EXT_texture_norm16
     case GL_R16_SNORM:      SizedFormatInfo(sf, GL_RED, GL_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg && OES_texture_float
     case GL_R32F:           SizedFormatInfo(sf, GL_RED, GL_FLOAT)
     // GLES30
     case GL_R32I:           SizedFormatInfo(sf, GL_RED_INTEGER, GL_INT)
     // GLES30
     case GL_R32UI:          SizedFormatInfo(sf, GL_RED_INTEGER, GL_UNSIGNED_INT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg
     case GL_R8:             SizedFormatInfo(sf, GL_RED, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_R8I:            SizedFormatInfo(sf, GL_RED_INTEGER, GL_BYTE)
@@ -187,7 +205,7 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_R8_SNORM:       SizedFormatInfo(sf, GL_RED, GL_BYTE)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RG16:           SizedFormatInfo(sf, GL_RG, GL_UNSIGNED_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg && OES_texture_half_float
     case GL_RG16F:          SizedFormatInfo(sf, GL_RG, GL_HALF_FLOAT)
     // GLES30
     case GL_RG16I:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_SHORT)
@@ -195,13 +213,13 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_RG16UI:         SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_SHORT)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RG16_SNORM:     SizedFormatInfo(sf, GL_RG, GL_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg && OES_texture_float
     case GL_RG32F:          SizedFormatInfo(sf, GL_RG, GL_FLOAT)
     // GLES30
     case GL_RG32I:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_INT)
     // GLES30
     case GL_RG32UI:         SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_INT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && EXT_texture_rg
     case GL_RG8:            SizedFormatInfo(sf, GL_RG, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_RG8I:           SizedFormatInfo(sf, GL_RG_INTEGER, GL_BYTE)
@@ -209,13 +227,15 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_RG8UI:          SizedFormatInfo(sf, GL_RG_INTEGER, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_RG8_SNORM:      SizedFormatInfo(sf, GL_RG, GL_BYTE)
-    // GLES30
+    // EXT_texture_storage && EXT_texture_type_2_10_10_10_REV
+    case GL_RGB10:          SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_INT_2_10_10_10_REV)
+    // GLES30 || EXT_texture_storage && EXT_texture_type_2_10_10_10_REV
     case GL_RGB10_A2:       SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV)
     // GLES30
     case GL_RGB10_A2UI:     SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RGB16:          SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_texture_half_float
     case GL_RGB16F:         SizedFormatInfo(sf, GL_RGB, GL_HALF_FLOAT)
     // GLES30
     case GL_RGB16I:         SizedFormatInfo(sf, GL_RGB_INTEGER, GL_SHORT)
@@ -223,17 +243,17 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_RGB16UI:        SizedFormatInfo(sf, GL_RGB_INTEGER, GL_UNSIGNED_SHORT)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RGB16_SNORM:    SizedFormatInfo(sf, GL_RGB, GL_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_texture_float
     case GL_RGB32F:         SizedFormatInfo(sf, GL_RGB, GL_FLOAT)
     // GLES30
     case GL_RGB32I:         SizedFormatInfo(sf, GL_RGB_INTEGER, GL_INT)
     // GLES30
     case GL_RGB32UI:        SizedFormatInfo(sf, GL_RGB_INTEGER, GL_UNSIGNED_INT)
-    // GLES30
+    // GLES30 || EXT_texture_storage
     case GL_RGB565:         SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_SHORT_5_6_5)
-    // GLES30
+    // GLES30 || EXT_texture_storage
     case GL_RGB5_A1:        SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1)
-    // GLES30
+    // GLES30 || EXT_texture_storage
     case GL_RGB8:           SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_RGB8I:          SizedFormatInfo(sf, GL_RGB_INTEGER, GL_BYTE)
@@ -245,7 +265,7 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_RGB9_E5:        SizedFormatInfo(sf, GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RGBA16:         SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_texture_half_float
     case GL_RGBA16F:        SizedFormatInfo(sf, GL_RGBA, GL_HALF_FLOAT)
     // GLES30
     case GL_RGBA16I:        SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_SHORT)
@@ -253,15 +273,15 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     case GL_RGBA16UI:       SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT)
     // GLES31 || GL_EXT_texture_norm16
     case GL_RGBA16_SNORM:   SizedFormatInfo(sf, GL_RGBA, GL_SHORT)
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_texture_float
     case GL_RGBA32F:        SizedFormatInfo(sf, GL_RGBA, GL_FLOAT)
     // GLES30
     case GL_RGBA32I:        SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_INT)
     // GLES30
     case GL_RGBA32UI:       SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_UNSIGNED_INT)
-    // GLES30
+    // GLES30 || EXT_texture_storage
     case GL_RGBA4:          SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4)
-    // GLES30
+    // GLES30 || EXT_texture_storage
     case GL_RGBA8:          SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_BYTE)
     // GLES30
     case GL_RGBA8I:         SizedFormatInfo(sf, GL_RGBA_INTEGER, GL_BYTE)
@@ -274,14 +294,16 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
     // GLES30
     case GL_SRGB8_ALPHA8:   SizedFormatInfo(sf, GL_RGBA, GL_UNSIGNED_BYTE, sRGB)
     // Uncompressed depth/stencil formats
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_packed_depth_stencil
     case GL_DEPTH24_STENCIL8:   SizedFormatInfo(sf, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8)
     // GLES30
     case GL_DEPTH32F_STENCIL8:  SizedFormatInfo(sf, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV)
-    // GLES30
+    // GLES30 || EXT_texture_storage && OES_depth_texture
     case GL_DEPTH_COMPONENT16:  SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT)
     // GLES30
     case GL_DEPTH_COMPONENT24:  SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT)
+    // EXT_texture_storage && OES_depth_texture
+    case GL_DEPTH_COMPONENT32:  SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT)
     // GLES30
     case GL_DEPTH_COMPONENT32F: SizedFormatInfo(sf, GL_DEPTH_COMPONENT, GL_FLOAT)
     // GLES32
