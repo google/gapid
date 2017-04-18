@@ -405,3 +405,92 @@ sub SizedFormatInfo GetSizedFormatInfo(GLenum sf) {
       SizedFormatInfo(GL_NONE)
   }
 }
+
+// GLES 2.0 omits sized internal format from commands and uses (format, type) tuple instead.
+// We need to check that the tuple is valid and convert it to sized format for internal use.
+sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
+  return switch unsizedFormat {
+    // EXT_texture_format_BGRA8888
+    case GL_BGRA_EXT: switch type {
+      case GL_UNSIGNED_BYTE: GL_BGRA8_EXT
+      default: GL_NONE
+    }
+    // EXT_texture_rg
+    case GL_RED_EXT: switch type {
+      case GL_UNSIGNED_BYTE: GL_R8
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_R16F
+      // OES_texture_float
+      case GL_FLOAT: GL_R32F
+      default: GL_NONE
+    }
+    // EXT_texture_rg
+    case GL_RG_EXT: switch type {
+      case GL_UNSIGNED_BYTE: GL_RG8
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_RG16F
+      // OES_texture_float
+      case GL_FLOAT: GL_RG32F
+      default: GL_NONE
+    }
+    case GL_RGB: switch type {
+      case GL_UNSIGNED_BYTE: GL_RGB8
+      case GL_UNSIGNED_SHORT_5_6_5: GL_RGB565
+      // EXT_texture_type_2_10_10_10_REV
+      case GL_UNSIGNED_INT_2_10_10_10_REV: GL_RGB10
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_RGB16F
+      // OES_texture_float
+      case GL_FLOAT: GL_RGB32F
+      default: GL_NONE
+    }
+    case GL_RGBA: switch type {
+      case GL_UNSIGNED_BYTE: GL_RGBA8
+      case GL_UNSIGNED_SHORT_4_4_4_4: GL_RGBA4
+      case GL_UNSIGNED_SHORT_5_5_5_1: GL_RGB5_A1
+      // EXT_texture_type_2_10_10_10_REV
+      case GL_UNSIGNED_INT_2_10_10_10_REV: GL_RGB10_A2
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_RGBA16F
+      // OES_texture_float
+      case GL_FLOAT: GL_RGBA32F
+      default: GL_NONE
+    }
+    // OES_depth_texture
+    case GL_DEPTH_COMPONENT: switch type {
+      case GL_UNSIGNED_SHORT: GL_DEPTH_COMPONENT16
+      case GL_UNSIGNED_INT: GL_DEPTH_COMPONENT32
+      default: GL_NONE
+    }
+    // OES_packed_depth_stencil
+    case GL_DEPTH_STENCIL: switch type {
+      case GL_UNSIGNED_INT_24_8: GL_DEPTH24_STENCIL8
+      default: GL_NONE
+    }
+    case GL_LUMINANCE_ALPHA: switch type {
+      case GL_UNSIGNED_BYTE: GL_LUMINANCE8_ALPHA8_EXT
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_LUMINANCE_ALPHA16F_EXT
+      // OES_texture_float
+      case GL_FLOAT: GL_LUMINANCE_ALPHA32F_EXT
+      default: GL_NONE
+    }
+    case GL_LUMINANCE: switch type {
+      case GL_UNSIGNED_BYTE: GL_LUMINANCE8_EXT
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_LUMINANCE16F_EXT
+      // OES_texture_float
+      case GL_FLOAT: GL_LUMINANCE32F_EXT
+      default: GL_NONE
+    }
+    case GL_ALPHA: switch type {
+      case GL_UNSIGNED_BYTE: GL_ALPHA8_EXT
+      // OES_texture_half_float
+      case GL_HALF_FLOAT_OES: GL_ALPHA16F_EXT
+      // OES_texture_float
+      case GL_FLOAT: GL_ALPHA32F_EXT
+      default: GL_NONE
+    }
+    default: GL_NONE
+  }
+}

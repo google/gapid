@@ -75,6 +75,10 @@ class CubemapLevel {
 class Image {
   GLsizei        Width
   GLsizei        Height
+  // GPU format of the texture including bit-sizes of the channels.
+  // This is unrelated to the format of the data passed to the API.
+  GLenum         SizedFormat
+
   @internal u8[] Data
   // Tuple of (format, type) describing the Data field above.
   // This describes the format of the data the user passed in,
@@ -479,6 +483,7 @@ cmd void glCompressedTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
+        SizedFormat:  format,
         DataFormat:   format,
         DataType:     GL_NONE,
       )
@@ -493,6 +498,7 @@ cmd void glCompressedTexImage2D(GLenum         target,
       l := Image(
         Width:        width,
         Height:       height,
+        SizedFormat:  format,
         DataFormat:   format,
         DataType:     GL_NONE,
       )
@@ -1468,9 +1474,23 @@ cmd void glTexImage2D(GLenum         target,
       glErrorInvalidEnum(target)
     }
   }
+
+  img := Image(
+    Width:        width,
+    Height:       height,
+    DataFormat:   format,
+    DataType:     type,
+  )
   _ = GetUnsizedFormatInfoOrEnumError(format)
   if as!GLenum(internalformat) != format {
     _ = GetSizedFormatInfoOrValueError(internalformat)
+    img.SizedFormat = as!GLenum(internalformat)
+  } else {
+    sf := GetSizedFormatFromTuple(format, type)
+    if sf == GL_NONE {
+      glErrorInvalidOperation() // Invalid combination of format and type
+    }
+    img.SizedFormat = sf
   }
 
   switch (type) {
@@ -1500,12 +1520,7 @@ cmd void glTexImage2D(GLenum         target,
   switch (target) {
     case GL_TEXTURE_2D: {
       t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
-      l := Image(
-        Width:        width,
-        Height:       height,
-        DataFormat:   format,
-        DataType:     type,
-      )
+      l := img
       size := uncompressedImageSize(width, height, format, type)
       if (data != null) {
         if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
@@ -1520,12 +1535,7 @@ cmd void glTexImage2D(GLenum         target,
     case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
       t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
-      l := Image(
-        Width:        width,
-        Height:       height,
-        DataFormat:   format,
-        DataType:     type,
-      )
+      l := img
       size := uncompressedImageSize(width, height, format, type)
       if (data != null) {
         if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
@@ -1828,7 +1838,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
       for i in (0 .. as!GLint(levels)) {
         w := max!GLsizei(width >> as!u32(i), 1)
         h := max!GLsizei(height >> as!u32(i), 1)
-        l := Image(Width: w, Height: h)
+        l := Image(Width: w, Height: h, SizedFormat: internalformat)
         t.Texture2D[i] = l
       }
       t.ImmutableFormat = GL_TRUE
@@ -1840,12 +1850,13 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
         h := max!GLsizei(height >> as!u32(i), 1)
         cube := t.Cubemap[i]
 
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = Image(Width: w, Height: h)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = Image(Width: w, Height: h)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = Image(Width: w, Height: h)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = Image(Width: w, Height: h)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = Image(Width: w, Height: h)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = Image(Width: w, Height: h)
+        img := Image(Width: w, Height: h, SizedFormat: internalformat)
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = img
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = img
+        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = img
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = img
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = img
+        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = img
 
         t.Cubemap[i] = cube
       }
