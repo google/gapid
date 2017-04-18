@@ -30,55 +30,35 @@ var luminanceSwizzle = map[GLenum]GLenum{
 	GLenum_GL_GREEN: GLenum_GL_RED,
 	GLenum_GL_BLUE:  GLenum_GL_RED,
 	GLenum_GL_ALPHA: GLenum_GL_ONE,
-	GLenum_GL_ONE:   GLenum_GL_ONE,
-	GLenum_GL_ZERO:  GLenum_GL_ZERO,
 }
 var alphaSwizzle = map[GLenum]GLenum{
 	GLenum_GL_RED:   GLenum_GL_ZERO,
 	GLenum_GL_GREEN: GLenum_GL_ZERO,
 	GLenum_GL_BLUE:  GLenum_GL_ZERO,
 	GLenum_GL_ALPHA: GLenum_GL_RED,
-	GLenum_GL_ONE:   GLenum_GL_ONE,
-	GLenum_GL_ZERO:  GLenum_GL_ZERO,
 }
 var luminanceAlphaSwizzle = map[GLenum]GLenum{
 	GLenum_GL_RED:   GLenum_GL_RED,
 	GLenum_GL_GREEN: GLenum_GL_RED,
 	GLenum_GL_BLUE:  GLenum_GL_RED,
 	GLenum_GL_ALPHA: GLenum_GL_GREEN,
-	GLenum_GL_ONE:   GLenum_GL_ONE,
-	GLenum_GL_ZERO:  GLenum_GL_ZERO,
 }
-var noSwizzle = map[GLenum]GLenum{
-	GLenum_GL_RED:   GLenum_GL_RED,
-	GLenum_GL_GREEN: GLenum_GL_GREEN,
-	GLenum_GL_BLUE:  GLenum_GL_BLUE,
-	GLenum_GL_ALPHA: GLenum_GL_ALPHA,
-	GLenum_GL_ONE:   GLenum_GL_ONE,
-	GLenum_GL_ZERO:  GLenum_GL_ZERO,
-}
-
-// getLuminanceAlphaSwizzle emulates Luminance/Alpha by mapping the channels to Red/Green.
-func getLuminanceAlphaSwizzle(internalformat GLenum) map[GLenum]GLenum {
-	switch internalformat {
-	case GLenum_GL_LUMINANCE,
-		GLenum_GL_LUMINANCE8_EXT,
-		GLenum_GL_LUMINANCE16F_EXT,
-		GLenum_GL_LUMINANCE32F_EXT:
-		return luminanceSwizzle
-	case GLenum_GL_ALPHA,
-		GLenum_GL_ALPHA8_EXT,
-		GLenum_GL_ALPHA16F_EXT,
-		GLenum_GL_ALPHA32F_EXT:
-		return alphaSwizzle
-	case GLenum_GL_LUMINANCE_ALPHA,
-		GLenum_GL_LUMINANCE8_ALPHA8_EXT,
-		GLenum_GL_LUMINANCE_ALPHA16F_EXT,
-		GLenum_GL_LUMINANCE_ALPHA32F_EXT:
-		return luminanceAlphaSwizzle
-	default:
-		return noSwizzle
-	}
+var luminanceAlphaCompat = map[GLenum]struct {
+	rgFormat      GLenum
+	compatSwizzle map[GLenum]GLenum
+}{
+	GLenum_GL_LUMINANCE:              {GLenum_GL_RED, luminanceSwizzle},
+	GLenum_GL_LUMINANCE8_EXT:         {GLenum_GL_R8, luminanceSwizzle},
+	GLenum_GL_LUMINANCE16F_EXT:       {GLenum_GL_R16F, luminanceSwizzle},
+	GLenum_GL_LUMINANCE32F_EXT:       {GLenum_GL_R32F, luminanceSwizzle},
+	GLenum_GL_ALPHA:                  {GLenum_GL_RED, alphaSwizzle},
+	GLenum_GL_ALPHA8_EXT:             {GLenum_GL_R8, alphaSwizzle},
+	GLenum_GL_ALPHA16F_EXT:           {GLenum_GL_R16F, alphaSwizzle},
+	GLenum_GL_ALPHA32F_EXT:           {GLenum_GL_R32F, alphaSwizzle},
+	GLenum_GL_LUMINANCE_ALPHA:        {GLenum_GL_RG, luminanceAlphaSwizzle},
+	GLenum_GL_LUMINANCE8_ALPHA8_EXT:  {GLenum_GL_RG8, luminanceAlphaSwizzle},
+	GLenum_GL_LUMINANCE_ALPHA16F_EXT: {GLenum_GL_RG16F, luminanceAlphaSwizzle},
+	GLenum_GL_LUMINANCE_ALPHA32F_EXT: {GLenum_GL_RG32F, luminanceAlphaSwizzle},
 }
 
 type textureCompat struct {
@@ -91,7 +71,7 @@ type textureCompat struct {
 	origSwizzle map[GLenum]map[*Texture]GLenum
 
 	// Compatibility component remapping needed to support luminance/alpha formats.
-	// Texture -> (GL_{RED,GREEN,BLUE,ALPHA,ONE,ZERO} -> GL_{RED,GREEN,BLUE,ALPHA,ONE,ZERO})
+	// Texture -> (GL_{RED,GREEN,BLUE,ALPHA} -> GL_{RED,GREEN,ONE,ZERO})
 	compatSwizzle map[*Texture]map[GLenum]GLenum
 }
 
@@ -119,7 +99,9 @@ func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, par
 	orig, curr := tc.getSwizzle(t, parameter)
 	compat := orig
 	if compatSwizzle, ok := tc.compatSwizzle[t]; ok {
-		compat = compatSwizzle[compat]
+		if v, ok := compatSwizzle[compat]; ok {
+			compat = v
+		}
 	}
 	if compat != curr {
 		out.MutateAndWrite(ctx, atom.NoID, NewGlTexParameteri(target, parameter, GLint(compat)))
@@ -133,6 +115,12 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 		return
 	}
 
+	// ES and desktop disagree how unsized internal formats are represented
+	// (floats in particular), so always explicitly use one of the sized formats.
+	if internalformat != nil && format != nil && componentType != nil && *internalformat == *format {
+		*internalformat = getSizedFormatFromTuple(*internalformat, *componentType)
+	}
+
 	if internalformat != nil {
 		s := out.State()
 
@@ -143,19 +131,27 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 			target = GLenum_GL_TEXTURE_CUBE_MAP
 		}
 
-		// Set swizzles to emulate luminance/alpha formats. We need to do this before we convert the format.
+		// Luminance/Alpha is not supported on desktop so convert it to R/G.
 		if t, err := subGetBoundTextureOrErrorInvalidEnum(tc.ctx, nil, nil, s, GetState(s), nil, target); err == nil {
-			tc.compatSwizzle[t] = getLuminanceAlphaSwizzle(*internalformat)
+			if laCompat, ok := luminanceAlphaCompat[*internalformat]; ok {
+				*internalformat = laCompat.rgFormat
+				tc.compatSwizzle[t] = laCompat.compatSwizzle
+			} else {
+				// Remove the compat mapping and reset swizzles to the original values below.
+				delete(tc.compatSwizzle, t)
+			}
 			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_R, out)
 			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_G, out)
 			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_B, out)
 			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_A, out)
 		}
 
-		if componentType != nil {
-			*internalformat = getSizedFormat(*internalformat, *componentType)
-		} else {
-			*internalformat = getSizedFormat(*internalformat, GLenum_GL_UNSIGNED_BYTE)
+		switch *internalformat {
+		case GLenum_GL_RGB565: // Not supported in GL 3.2
+			*internalformat = GLenum_GL_RGB8
+		case GLenum_GL_RGB10_A2UI: // Not supported in GL 3.2
+			*internalformat = GLenum_GL_RGBA16UI
+		case GLenum_GL_STENCIL_INDEX8: // TODO: not supported on desktop.
 		}
 
 		// Compressed formats are replaced by RGBA8
