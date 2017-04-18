@@ -21,93 +21,22 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
-// getSizedFormat returns the sized internal format
-// (renderbuffer storage format) for the given base format and component type.
-func getSizedFormat(unsizedFormat, componentType GLenum) (sizedFormat GLenum) {
-	switch unsizedFormat {
-	// ES and desktop disagree how unsized internal formats are represented (floating point in particular),
-	// so always explicitly use one of the sized internal formats.
-	case GLenum_GL_RED:
-		return getSizedInternalFormatFromTypeCount(componentType, 1)
-	case GLenum_GL_RG:
-		return getSizedInternalFormatFromTypeCount(componentType, 2)
-	case GLenum_GL_RGB, GLenum_GL_BGR:
-		return getSizedInternalFormatFromTypeCount(componentType, 3)
-	case GLenum_GL_RGBA, GLenum_GL_BGRA:
-		return getSizedInternalFormatFromTypeCount(componentType, 4)
-	case GLenum_GL_DEPTH_STENCIL:
-		switch componentType {
-		case GLenum_GL_FLOAT, GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return GLenum_GL_DEPTH32F_STENCIL8
-		default:
-			return GLenum_GL_DEPTH24_STENCIL8
-		}
-	case GLenum_GL_DEPTH_COMPONENT:
-		switch componentType {
-		case GLenum_GL_FLOAT, GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-			return GLenum_GL_DEPTH_COMPONENT32F
-		default:
-			return GLenum_GL_DEPTH_COMPONENT24
-		}
-	case GLenum_GL_STENCIL_INDEX:
-		return GLenum_GL_STENCIL_INDEX8
-
-	// Luminance/Alpha is not supported on desktop so convert it to R/G. (enums defined in EXT_texture_storage)
-	case GLenum_GL_LUMINANCE, GLenum_GL_ALPHA:
-		return getSizedInternalFormatFromTypeCount(componentType, 1)
-	case GLenum_GL_LUMINANCE_ALPHA:
-		return getSizedInternalFormatFromTypeCount(componentType, 2)
-	case GLenum_GL_ALPHA8_EXT, GLenum_GL_LUMINANCE8_EXT:
-		return GLenum_GL_R8
-	case GLenum_GL_LUMINANCE8_ALPHA8_EXT:
-		return GLenum_GL_RG8
-	case GLenum_GL_ALPHA16F_EXT, GLenum_GL_LUMINANCE16F_EXT:
-		return GLenum_GL_R16F
-	case GLenum_GL_LUMINANCE_ALPHA16F_EXT:
-		return GLenum_GL_RG16F
-	case GLenum_GL_ALPHA32F_EXT, GLenum_GL_LUMINANCE32F_EXT:
-		return GLenum_GL_R32F
-	case GLenum_GL_LUMINANCE_ALPHA32F_EXT:
-		return GLenum_GL_RG32F
-
-	case GLenum_GL_RGB565: // Not supported in GL 3.2
-		return GLenum_GL_RGB8
-	case GLenum_GL_RGB10_A2UI: // Not supported in GL 3.2
-		return GLenum_GL_RGBA16UI
-	case GLenum_GL_STENCIL_INDEX8:
-		// TODO: May not be supported on desktop.
+// getSizedFormatFromTuple returns sized format from unsized format and component type.
+func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
+	sf, _ := subGetSizedFormatFromTuple(nil, nil, nil, nil, nil, nil, unsizedFormat, ty)
+	if sf == GLenum_GL_NONE {
+		panic(fmt.Errorf("Unknown unsized format: %v, %v", unsizedFormat, ty))
 	}
-
-	return unsizedFormat
+	return sf
 }
 
-// getUnsizedFormatAndType returns the base format and component type for the
-// given sized internal format (renderbuffer storage format).
+// getUnsizedFormatAndType returns unsized format and component type from sized format.
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
 	info, _ := subGetSizedFormatInfo(nil, nil, nil, nil, nil, nil, sizedFormat)
 	if info.SizedFormat == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
 	}
 	return info.UnsizedFormat, info.DataType
-}
-
-var sizedInternalFormats8 = [4]GLenum{GLenum_GL_R8, GLenum_GL_RG8, GLenum_GL_RGB8, GLenum_GL_RGBA8}
-var sizedInternalFormats16F = [4]GLenum{GLenum_GL_R16F, GLenum_GL_RG16F, GLenum_GL_RGB16F, GLenum_GL_RGBA16F}
-var sizedInternalFormats32F = [4]GLenum{GLenum_GL_R32F, GLenum_GL_RG32F, GLenum_GL_RGB32F, GLenum_GL_RGBA32F}
-
-// getSizedInternalFormatFromTypeCount returns internal texture format
-// appropriate to store given component type and count.
-func getSizedInternalFormatFromTypeCount(componentType GLenum, componentCount uint32) GLenum {
-	// TODO: Handle integer formats.
-	switch componentType {
-	case GLenum_GL_FLOAT:
-		return sizedInternalFormats32F[componentCount-1]
-	case GLenum_GL_HALF_FLOAT, GLenum_GL_HALF_FLOAT_OES:
-		return sizedInternalFormats16F[componentCount-1]
-	case GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
-		return GLenum_GL_RGB10_A2
-	}
-	return sizedInternalFormats8[componentCount-1]
 }
 
 // getImageFormatOrPanic returns the *image.Format for the given
