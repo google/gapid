@@ -111,14 +111,16 @@ func (t *Cubemap) ConvertTo(ctx context.Context, f *image.Format) (interface{}, 
 	for i, m := range t.Levels {
 		out.Levels[i] = &CubemapLevel{}
 		dst, src := out.Levels[i].faces(), m.faces()
-		for j := range src {
-			if src[j] == nil {
-				dst[j] = nil
-			} else if obj, err := src[j].ConvertTo(ctx, f); err == nil {
-				dst[j] = obj
-			} else {
+		for j, srcFace := range src {
+			if srcFace == nil {
+				continue
+			}
+
+			cnvFace, err := srcFace.ConvertTo(ctx, f)
+			if err != nil {
 				return nil, err
 			}
+			dst[j] = cnvFace
 		}
 		out.Levels[i].setFaces(dst)
 	}
