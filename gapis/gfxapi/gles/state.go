@@ -72,13 +72,11 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_2D:
 			l := t.Texture2D[a.TextureLevel]
-			fmt := getSizedFormat(l.DataFormat, l.DataType)
-			return uint32(l.Width), uint32(l.Height), fmt, nil
+			return uint32(l.Width), uint32(l.Height), l.SizedFormat, nil
 		case GLenum_GL_TEXTURE_CUBE_MAP:
 			l := t.Cubemap[a.TextureLevel]
 			f := l.Faces[a.TextureCubeMapFace]
-			fmt := getSizedFormat(f.DataFormat, f.DataType)
-			return uint32(f.Width), uint32(f.Height), fmt, nil
+			return uint32(f.Width), uint32(f.Height), f.SizedFormat, nil
 		default:
 			return 0, 0, 0, fmt.Errorf("Unknown texture kind %v", t.Kind)
 		}
