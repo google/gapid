@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package resolve;
 
+import "core/image/image.proto";
 import "gapis/gfxapi/gfxapi.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/service.proto";
@@ -48,6 +49,7 @@ message FramebufferAttachmentDataResolvable {
 	gfxapi.FramebufferAttachment attachment = 5;
 	service.WireframeMode wireframe_mode = 6;
 	service.UsageHints hints = 7;
+	image.Format image_format = 8;
 }
 
 // Get resolves the object, value or memory at Path.

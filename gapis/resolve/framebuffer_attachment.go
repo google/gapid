@@ -87,6 +87,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Attachment:    r.Attachment,
 		WireframeMode: r.Settings.WireframeMode,
 		Hints:         r.Hints,
+		ImageFormat:   fbInfo.format,
 	})
 	if err != nil {
 		return nil, err
