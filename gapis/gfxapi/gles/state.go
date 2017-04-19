@@ -35,7 +35,7 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		return 0, 0, 0, fmt.Errorf("Context not initialized")
 	}
 
-	framebuffer, ok := c.Objects.Framebuffers[c.BoundReadFramebuffer]
+	framebuffer, ok := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
 	if !ok {
 		return 0, 0, 0, fmt.Errorf("No GL_FRAMEBUFFER bound")
 	}
