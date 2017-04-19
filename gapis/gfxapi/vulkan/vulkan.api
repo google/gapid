@@ -5278,7 +5278,7 @@ extern void setSpecData(ref!SpecializationInfo info, size numBytes, const void* 
 extern void resetCmd(VkCommandBuffer cmdBuf)
 extern void execCommands(VkCommandBuffer cmdBuf)
 extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
-extern ref!RecreateUpdateBufferData createUpdateBufferData(
+extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
   VkBuffer        dstBuffer
   VkDeviceSize    dstOffset
   VkDeviceSize    dataSize
@@ -6682,7 +6682,7 @@ sub void doCmdUpdateBuffer(VkBuffer args) {
   Buffers[args].LastBoundQueue = LastBoundQueue
 }
 
-@internal class RecreateUpdateBufferData {
+@internal class RecreateCmdUpdateBufferData {
   VkBuffer        dstBuffer
   VkDeviceSize    dstOffset
   VkDeviceSize    dataSize
@@ -6691,7 +6691,7 @@ sub void doCmdUpdateBuffer(VkBuffer args) {
 @override
 @custom
 @no_replay
-cmd void RecreateUpdateBuffer(
+cmd void RecreateCmdUpdateBuffer(
     VkCommandBuffer commandBuffer,
     VkBuffer        dstBuffer,
     VkDeviceSize    dstOffset,
