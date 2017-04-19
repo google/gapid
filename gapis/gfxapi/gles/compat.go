@@ -977,7 +977,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
 				prog := c.SharedObjects.Programs[a.Program]
-				for _, uniform := range prog.ActiveUniforms {
+				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
+					uniform := prog.ActiveUniforms[uniformIndex]
 					for i := 0; i < int(uniform.ArraySize); i++ {
 						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
 						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
