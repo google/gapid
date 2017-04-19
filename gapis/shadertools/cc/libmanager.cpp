@@ -280,12 +280,12 @@ const char* getDisassembleText(uint32_t* spirv_binary, size_t length) {
 
   spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_0);
   std::string disassembly;
-  const auto result = tools.Disassemble(
+  const bool result = tools.Disassemble(
     spirv_vec, &disassembly,
     (SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES |
      SPV_BINARY_TO_TEXT_OPTION_INDENT));
 
-  if (result < 0) {
+  if (!result) {
     return nullptr;
   }
 
