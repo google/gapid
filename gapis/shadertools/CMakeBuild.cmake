@@ -14,4 +14,5 @@
 
 build_subdirectory(cc)
 
+cgo_dependency(khronos)
 cgo_dependency(spv)
