@@ -128,6 +128,40 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			out.MutateAndWrite(ctx, id, newAtom)
 			return
 		}
+	} else if recreateImage, ok := a.(*RecreateImage); ok {
+		pinfo := recreateImage.PCreateInfo
+		info := pinfo.Read(ctx, image, s, nil)
+
+		if newUsage, changed := patchImageUsage(info.Usage); changed {
+			device := recreateImage.Device
+			pimage := memory.Pointer(recreateImage.PImage)
+
+			info.Usage = newUsage
+			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newAtom := NewRecreateImage(device, newInfo.Ptr(), pimage)
+			// Carry all non-observation extras through.
+			for _, e := range recreateImage.Extras().All() {
+				if _, ok := e.(*atom.Observations); !ok {
+					newAtom.Extras().Add(e)
+				}
+			}
+			// Carry observations through. We cannot merge these code with the
+			// above code for handling extras together since we'd like to change
+			// the observations, which are slices.
+			observations := recreateImage.Extras().Observations()
+			for _, r := range observations.Reads {
+				// TODO: filter out the old RecreateImage. That should be done via
+				// creating new observations for data we are interested from t.state.
+				newAtom.AddRead(r.Range, r.ID)
+			}
+			// Use our new VkImageCreateInfo.
+			newAtom.AddRead(newInfo.Data())
+			for _, w := range observations.Writes {
+				newAtom.AddWrite(w.Range, w.ID)
+			}
+			out.MutateAndWrite(ctx, id, newAtom)
+			return
+		}
 	} else if swapchain, ok := a.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo
 		info := pinfo.Read(ctx, swapchain, s, nil)
@@ -147,6 +181,38 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 				}
 			}
 			observations := swapchain.Extras().Observations()
+			for _, r := range observations.Reads {
+				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
+				// creating new observations for data we are interested from t.state.
+				newAtom.AddRead(r.Range, r.ID)
+			}
+			newAtom.AddRead(newInfo.Data())
+			for _, w := range observations.Writes {
+				newAtom.AddWrite(w.Range, w.ID)
+			}
+			out.MutateAndWrite(ctx, id, newAtom)
+			return
+		}
+	} else if recreateSwapchain, ok := a.(*RecreateSwapchain); ok {
+		pinfo := recreateSwapchain.PCreateInfo
+		info := pinfo.Read(ctx, recreateSwapchain, s, nil)
+
+		if newUsage, changed := patchImageUsage(info.ImageUsage); changed {
+			device := recreateSwapchain.Device
+			pswapchain := memory.Pointer(recreateSwapchain.PSwapchain)
+			pswapchainImages := memory.Pointer(recreateSwapchain.PSwapchainImages)
+			pswapchainLayouts := memory.Pointer(recreateSwapchain.PSwapchainLayouts)
+			pinitialQueues := memory.Pointer(recreateSwapchain.PInitialQueues)
+
+			info.ImageUsage = newUsage
+			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newAtom := NewRecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
+			for _, e := range recreateSwapchain.Extras().All() {
+				if _, ok := e.(*atom.Observations); !ok {
+					newAtom.Extras().Add(e)
+				}
+			}
+			observations := recreateSwapchain.Extras().Observations()
 			for _, r := range observations.Reads {
 				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
 				// creating new observations for data we are interested from t.state.
@@ -196,6 +262,45 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		newAtom.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
 		for _, w := range createRenderPass.Extras().Observations().Writes {
+			newAtom.AddWrite(w.Range, w.ID)
+		}
+		out.MutateAndWrite(ctx, id, newAtom)
+		return
+	} else if recreateRenderPass, ok := a.(*RecreateRenderPass); ok {
+		pInfo := recreateRenderPass.PCreateInfo
+		info := pInfo.Read(ctx, recreateRenderPass, s, nil)
+		pAttachments := info.PAttachments
+		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), s).Read(ctx, recreateRenderPass, s, nil)
+		changed := false
+		for i := range attachments {
+			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
+				changed = true
+				attachments[i].StoreOp = VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE
+			}
+		}
+		// Returns if no attachment description needs to be changed
+		if !changed {
+			out.MutateAndWrite(ctx, id, a)
+			return
+		}
+		// Build new attachments data, new create info and new atom
+		newAttachments := atom.Must(atom.AllocData(ctx, s, attachments))
+		info.PAttachments = VkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
+		newInfo := atom.Must(atom.AllocData(ctx, s, info))
+		newAtom := NewRecreateRenderPass(recreateRenderPass.Device,
+			newInfo.Ptr(),
+			memory.Pointer(recreateRenderPass.PRenderPass))
+		// Add back the extras and read/write observations
+		for _, e := range recreateRenderPass.Extras().All() {
+			if _, ok := e.(*atom.Observations); !ok {
+				newAtom.Extras().Add(e)
+			}
+		}
+		for _, r := range recreateRenderPass.Extras().Observations().Reads {
+			newAtom.AddRead(r.Range, r.ID)
+		}
+		newAtom.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
+		for _, w := range recreateRenderPass.Extras().Observations().Writes {
 			newAtom.AddWrite(w.Range, w.ID)
 		}
 		out.MutateAndWrite(ctx, id, newAtom)
