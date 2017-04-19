@@ -78,5 +78,10 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 		return nil, log.Err(ctx, err, "Couldn't get framebuffer attachment")
 	}
 
+	res, err = res.Convert(r.ImageFormat)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get framebuffer attachment")
+	}
+
 	return res.Data, nil
 }
