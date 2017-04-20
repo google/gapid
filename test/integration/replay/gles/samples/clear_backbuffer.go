@@ -19,13 +19,14 @@ import (
 
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi/gles"
+	"github.com/google/gapid/gapis/memory"
 )
 
 // ClearBackbuffer returns the atom list needed to create a context then clear,
 // sequentially the backbuffer to red, green, blue and black.
 func ClearBackbuffer(ctx context.Context) (atoms *atom.List, red, green, blue, black atom.ID) {
 	b := newBuilder(ctx)
-	b.newEglContext(64, 64, false)
+	b.newEglContext(64, 64, memory.Nullptr, false)
 	red = b.Add(
 		gles.NewGlClearColor(1.0, 0.0, 0.0, 1.0),
 		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
