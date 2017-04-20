@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: This file is exactly the same as gles/dead_code_elimination.go. Find
+// a way to extract the dependency graph building logic and move this file,
+// also the gles one and also the definition of dependency graph to another
+// proper place so they can be shared from both GLES and Vulkan side.
+
 package vulkan
 
 import (
@@ -166,7 +171,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
 		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
 		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
-		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
+		log.W(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
 			100*numDead/num, numDead, deadMem/1024/1024, numDeadDraws,
 			100*numLive/num, numLive, liveMem/1024/1024, numLiveDraws)
 	}

@@ -51,6 +51,8 @@ type vulkanDeviceMemoryBinding struct {
 	data   *vulkanDeviceMemoryData
 }
 
+var emptyMemoryBindings = []*vulkanDeviceMemoryBinding{}
+
 type vulkanDeviceMemoryData struct {
 	binding *vulkanDeviceMemoryBinding
 }
@@ -153,6 +155,8 @@ func (c *vulkanRecordedCommands) appendCommand(f func(b *AtomBehaviour)) *vulkan
 }
 
 // Dependency graph and the node type in the graph
+// TODO(qining): Move the dependency graph and other types, which are shared
+// with GLES, to another proper place.
 const nullStateAddress = StateAddress(0)
 
 type DependencyGraph struct {
@@ -266,7 +270,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 
 // State address is assigned in the function addressOf() and used as the
 // identity of Vulkan handles (vulkan object), Device memory stateKey or
-// CommandBuffer stateKey in the dep graph.
+// CommandBuffer stateKey in the dependency graph.
 func (m *addressMapping) addressOf(state stateKey) StateAddress {
 	if a, ok := m.address[state]; ok {
 		return a
@@ -304,7 +308,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	// Helper function for debug info logging when debug info dumpping is turned on
 	debug := func(fmt string, args ...interface{}) {
 		if config.DebugDeadCodeElimination {
-			log.I(ctx, fmt, args...)
+			log.D(ctx, fmt, args...)
 		}
 	}
 
@@ -356,6 +360,20 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 	}
 
+	// Helper function that reads the given image handle, and returns the memory
+	// bindings of the image
+	readImageHandleAndGetBindings := func(b *AtomBehaviour, image VkImage) []*vulkanDeviceMemoryBinding {
+		b.read(g, vulkanStateKey(image))
+		return getOverlappedBindingsForImage(image)
+	}
+
+	// Helper function that reads the given buffer handle, and returns the memory
+	// bindings of the buffer
+	readBufferHandleAndGetBindings := func(b *AtomBehaviour, buffer VkBuffer) []*vulkanDeviceMemoryBinding {
+		b.read(g, vulkanStateKey(buffer))
+		return getOverlappedBindingsForBuffer(buffer)
+	}
+
 	// Helper function that 'read' the given memory bindings
 	readMemoryBindingsData := func(pb *AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
@@ -380,11 +398,50 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 	}
 
-	// Helper function that records a given behavior, that to be carried out
-	// when being submitted, to the command record list of a given command buffer
-	recordCommand := func(handle VkCommandBuffer, c func(b *AtomBehaviour)) {
+	// Helper function that adds 'read' to the given command buffer handle and
+	// 'modify' to the given comamnd buffer records to the current behavior, if
+	// such behaviours have not been added before. And records a callback to
+	// carry out other behaviours later when the command buffer is submitted.
+	recordCommand := func(currentBehaviour *AtomBehaviour,
+		handle VkCommandBuffer,
+		c func(futureBehaviour *AtomBehaviour)) {
 		cmdBuf := g.getOrCreateCommandBuffer(handle)
+		if len(currentBehaviour.Read) == 0 || currentBehaviour.Read[len(currentBehaviour.Read)-1] !=
+			g.addressMap.addressOf(cmdBuf.handle) {
+			currentBehaviour.read(g, cmdBuf.handle)
+		}
+		if len(currentBehaviour.Modify) == 0 || currentBehaviour.Modify[len(currentBehaviour.Modify)-1] !=
+			g.addressMap.addressOf(cmdBuf.records) {
+			currentBehaviour.modify(g, cmdBuf.records)
+		}
+
 		cmdBuf.records.appendCommand(c)
+	}
+
+	// Helper function that adds 'read' to the given command buffer handle and
+	// 'modify' to the given comamnd buffer records to the current behavior, if
+	// such behaviours have not been added before. And records 'read' of the
+	// given read memory bindings, 'modify' of the given modify memory bindings
+	// and 'write' of the given write memory bindings, to be carried out later
+	// when the command buffer is submitted.
+	recordTouchingMemoryBindingsData := func(currentBehaviour *AtomBehaviour,
+		handle VkCommandBuffer,
+		readBindings, modifyBindings, writeBindings []*vulkanDeviceMemoryBinding) {
+		cmdBuf := g.getOrCreateCommandBuffer(handle)
+		if len(currentBehaviour.Read) == 0 || currentBehaviour.Read[len(currentBehaviour.Read)-1] !=
+			g.addressMap.addressOf(cmdBuf.handle) {
+			currentBehaviour.read(g, cmdBuf.handle)
+		}
+		if len(currentBehaviour.Modify) == 0 || currentBehaviour.Modify[len(currentBehaviour.Modify)-1] !=
+			g.addressMap.addressOf(cmdBuf.records) {
+			currentBehaviour.modify(g, cmdBuf.records)
+		}
+
+		cmdBuf.records.appendCommand(func(b *AtomBehaviour) {
+			readMemoryBindingsData(b, readBindings)
+			modifyMemoryBindingsData(b, modifyBindings)
+			writeMemoryBindingsData(b, writeBindings)
+		})
 	}
 
 	// Mutate the state with the atom.
@@ -395,27 +452,49 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	debug("DCE::DependencyGraph::getBehaviour: %v, %v", id, reflect.TypeOf(a))
 
-	// Add behaviors for the atom according to its type
-	switch typedAtom := a.(type) {
+	// Add behaviors for the atom according to its type.
+	// Note that there are a few cases in which the behaviour is NOT added to the
+	// place that the behaviour is carried out in real execution of the API
+	// commands:
+	// Draw commands (vkCmdDraw, RecreateCmdDraw, vkCmdDrawIndexed, etc):
+	// The 'read' behaviour of the currently bound vertex buffer and index
+	// buffers are recorded to the command buffer records by binding commands,
+	// like: vkCmdBindVertexBuffers etc, not by the draw commands. This is
+	// because after the call to vkQueueSubmit's Mutate(), when we process the
+	// recorded draw command, only the last set of bound vertex buffers and
+	// bound index buffer will be kept in the global's state
+	// CurrentBoundVertexBuffers. So we cannot obtain previous bound vertex
+	// buffers from it and so we cannot add 'read' behaviours to the buffers
+	// data. To solve the problem, we read the buffer memory data here. This may
+	// result into a dummy read behavior of the buffer data, as the buffer may
+	// never be used later. But this ensures the correctness of the trace and the
+	// state.
+	// 'Read' and 'modify' behaviours to descriptors, like textures, uniform
+	// buffers, etc, have similar problem, as we cannot application is allowed
+	// to call vkCmdBindDescriptorSets multiple times and we only get the last
+	// bound one after VkQueueSubmit's Mutate() is called. So we records the
+	// behaviours in VkCmdBindDescriptorSets and RecreateCmdBindDescriptorSets,
+	// instead of the draw calls.
+	switch a := a.(type) {
 	case *VkCreateImage:
-		image := typedAtom.PImage.Read(ctx, a, s, nil)
+		image := a.PImage.Read(ctx, a, s, nil)
 		addWrite(&b, g, vulkanStateKey(image))
 
 	case *VkCreateBuffer:
-		buffer := typedAtom.PBuffer.Read(ctx, a, s, nil)
+		buffer := a.PBuffer.Read(ctx, a, s, nil)
 		addWrite(&b, g, vulkanStateKey(buffer))
 
 	case *RecreateImage:
-		image := typedAtom.PImage.Read(ctx, a, s, nil)
+		image := a.PImage.Read(ctx, a, s, nil)
 		addWrite(&b, g, vulkanStateKey(image))
 
 	case *RecreateBuffer:
-		buffer := typedAtom.PBuffer.Read(ctx, a, s, nil)
+		buffer := a.PBuffer.Read(ctx, a, s, nil)
 		addWrite(&b, g, vulkanStateKey(buffer))
 
 	case *VkAllocateMemory:
-		allocateInfo := typedAtom.PAllocateInfo.Read(ctx, a, s, nil)
-		memory := typedAtom.PMemory.Read(ctx, a, s, nil)
+		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
+		memory := a.PMemory.Read(ctx, a, s, nil)
 		addWrite(&b, g, g.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
@@ -440,8 +519,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateDeviceMemory:
-		allocateInfo := typedAtom.PAllocateInfo.Read(ctx, a, s, nil)
-		memory := typedAtom.PMemory.Read(ctx, a, s, nil)
+		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
+		memory := a.PMemory.Read(ctx, a, s, nil)
 		addWrite(&b, g, g.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
@@ -466,8 +545,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkBindImageMemory:
-		image := typedAtom.Image
-		memory := typedAtom.Memory
+		image := a.Image
+		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
 		offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
@@ -486,8 +565,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addWrite(&b, g, binding)
 
 	case *VkBindBufferMemory:
-		buffer := typedAtom.Buffer
-		memory := typedAtom.Memory
+		buffer := a.Buffer
+		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
 		offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
@@ -496,8 +575,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addWrite(&b, g, binding)
 
 	case *RecreateBindImageMemory:
-		image := typedAtom.Image
-		memory := typedAtom.Memory
+		image := a.Image
+		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
 		offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
@@ -506,8 +585,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addWrite(&b, g, binding)
 
 	case *RecreateBindBufferMemory:
-		buffer := typedAtom.Buffer
-		memory := typedAtom.Memory
+		buffer := a.Buffer
+		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
 		offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
@@ -516,29 +595,29 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addWrite(&b, g, binding)
 
 	case *RecreateImageData:
-		image := typedAtom.Image
+		image := a.Image
 		addModify(&b, g, vulkanStateKey(image))
 		overlappingBindings := getOverlappedBindingsForImage(image)
 		writeMemoryBindingsData(&b, overlappingBindings)
 
 	case *RecreateBufferData:
-		buffer := typedAtom.Buffer
+		buffer := a.Buffer
 		addModify(&b, g, vulkanStateKey(buffer))
 		overlappingBindings := getOverlappedBindingsForBuffer(buffer)
 		writeMemoryBindingsData(&b, overlappingBindings)
 
 	case *VkDestroyImage:
-		image := typedAtom.Image
+		image := a.Image
 		addModify(&b, g, vulkanStateKey(image))
 		b.KeepAlive = true
 
 	case *VkDestroyBuffer:
-		buffer := typedAtom.Buffer
+		buffer := a.Buffer
 		addModify(&b, g, vulkanStateKey(buffer))
 		b.KeepAlive = true
 
 	case *VkFreeMemory:
-		memory := typedAtom.Memory
+		memory := a.Memory
 		// Free/deletion atoms are kept alive so the creation atom of the
 		// corresponding handle will also be kept alive, even though the handle
 		// may not be used anywhere else.
@@ -546,18 +625,18 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		b.KeepAlive = true
 
 	case *VkMapMemory:
-		memory := typedAtom.Memory
+		memory := a.Memory
 		addModify(&b, g, g.getOrCreateDeviceMemory(memory))
 
 	case *VkUnmapMemory:
-		memory := typedAtom.Memory
+		memory := a.Memory
 		addModify(&b, g, g.getOrCreateDeviceMemory(memory))
 
 	case *VkFlushMappedMemoryRanges:
-		ranges := typedAtom.PMemoryRanges.Slice(0, uint64(typedAtom.MemoryRangeCount), s)
+		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), s)
 		// TODO: Link the contiguous ranges into one so that we don't miss
 		// potential overwrites
-		for i := uint64(0); i < uint64(typedAtom.MemoryRangeCount); i++ {
+		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
 			mappedRange := ranges.Index(i, s).Read(ctx, a, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
@@ -584,9 +663,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkInvalidateMappedMemoryRanges:
-		ranges := typedAtom.PMemoryRanges.Slice(0, uint64(typedAtom.MemoryRangeCount), s)
+		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), s)
 		// TODO: Link the contiguous ranges
-		for i := uint64(0); i < uint64(typedAtom.MemoryRangeCount); i++ {
+		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
 			mappedRange := ranges.Index(i, s).Read(ctx, a, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
@@ -596,47 +675,47 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkCreateImageView:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		image := createInfo.Image
-		view := typedAtom.PView.Read(ctx, a, s, nil)
+		view := a.PView.Read(ctx, a, s, nil)
 		addRead(&b, g, vulkanStateKey(image))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *RecreateImageView:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		image := createInfo.Image
-		view := typedAtom.PImageView.Read(ctx, a, s, nil)
+		view := a.PImageView.Read(ctx, a, s, nil)
 		addRead(&b, g, vulkanStateKey(image))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *VkCreateBufferView:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		buffer := createInfo.Buffer
-		view := typedAtom.PView.Read(ctx, a, s, nil)
+		view := a.PView.Read(ctx, a, s, nil)
 		addRead(&b, g, vulkanStateKey(buffer))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *RecreateBufferView:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		buffer := createInfo.Buffer
-		view := typedAtom.PBufferView.Read(ctx, a, s, nil)
+		view := a.PBufferView.Read(ctx, a, s, nil)
 		addRead(&b, g, vulkanStateKey(buffer))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *VkUpdateDescriptorSets:
 		// handle descriptor writes
-		writeCount := typedAtom.DescriptorWriteCount
+		writeCount := a.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := typedAtom.PDescriptorWrites.Slice(0, uint64(writeCount), s)
+			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), s)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return AtomBehaviour{Aborted: true}
 			}
 		}
 		// handle descriptor copies
-		copyCount := typedAtom.DescriptorCopyCount
+		copyCount := a.DescriptorCopyCount
 		if copyCount > 0 {
-			copies := typedAtom.PDescriptorCopies.Slice(0, uint64(copyCount), s)
+			copies := a.PDescriptorCopies.Slice(0, uint64(copyCount), s)
 			for i := uint32(0); i < copyCount; i++ {
 				copy := copies.Index(uint64(i), s).Read(ctx, a, s, nil)
 				srcDescriptor := copy.SrcSet
@@ -648,9 +727,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *RecreateDescriptorSet:
 		// handle descriptor writes
-		writeCount := typedAtom.DescriptorWriteCount
+		writeCount := a.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := typedAtom.PDescriptorWrites.Slice(0, uint64(writeCount), s)
+			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), s)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return AtomBehaviour{Aborted: true}
@@ -658,10 +737,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkCreateFramebuffer:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PFramebuffer.Read(ctx, a, s, nil)))
-		addRead(&b, g, vulkanStateKey(typedAtom.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
+		addWrite(&b, g, vulkanStateKey(a.PFramebuffer.Read(ctx, a, s, nil)))
+		addRead(&b, g, vulkanStateKey(a.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
 		// process the attachments
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		attachmentCount := createInfo.AttachmentCount
 		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), s)
 		for i := uint32(0); i < attachmentCount; i++ {
@@ -670,10 +749,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateFramebuffer:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PFramebuffer.Read(ctx, a, s, nil)))
-		addRead(&b, g, vulkanStateKey(typedAtom.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
+		addWrite(&b, g, vulkanStateKey(a.PFramebuffer.Read(ctx, a, s, nil)))
+		addRead(&b, g, vulkanStateKey(a.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
 		// process the attachments
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		attachmentCount := createInfo.AttachmentCount
 		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), s)
 		for i := uint32(0); i < attachmentCount; i++ {
@@ -682,15 +761,15 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkCreateRenderPass:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PRenderPass.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
 
 	case *RecreateRenderPass:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PRenderPass.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
 
 	case *VkCreateGraphicsPipelines:
-		pipelineCount := uint64(typedAtom.CreateInfoCount)
-		createInfos := typedAtom.PCreateInfos.Slice(0, pipelineCount, s)
-		pipelines := typedAtom.PPipelines.Slice(0, pipelineCount, s)
+		pipelineCount := uint64(a.CreateInfoCount)
+		createInfos := a.PCreateInfos.Slice(0, pipelineCount, s)
+		pipelines := a.PPipelines.Slice(0, pipelineCount, s)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shaders
 			stageCount := uint64(createInfos.Index(i, s).Read(ctx, a, s, nil).StageCount)
@@ -709,7 +788,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateGraphicsPipeline:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		stageCount := uint64(createInfo.StageCount)
 		shaderStages := createInfo.PStages.Slice(0, stageCount, s)
 		for i := uint64(0); i < stageCount; i++ {
@@ -717,12 +796,12 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			addRead(&b, g, vulkanStateKey(shaderStage.Module))
 		}
 		addRead(&b, g, vulkanStateKey(createInfo.RenderPass))
-		addWrite(&b, g, vulkanStateKey(typedAtom.PPipeline.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PPipeline.Read(ctx, a, s, nil)))
 
 	case *VkCreateComputePipelines:
-		pipelineCount := uint64(typedAtom.CreateInfoCount)
-		createInfos := typedAtom.PCreateInfos.Slice(0, pipelineCount, s)
-		pipelines := typedAtom.PPipelines.Slice(0, pipelineCount, s)
+		pipelineCount := uint64(a.CreateInfoCount)
+		createInfos := a.PCreateInfos.Slice(0, pipelineCount, s)
+		pipelines := a.PPipelines.Slice(0, pipelineCount, s)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shader
 			shaderStage := createInfos.Index(i, s).Read(ctx, a, s, nil).Stage
@@ -734,577 +813,305 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateComputePipeline:
-		createInfo := typedAtom.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		module := createInfo.Stage.Module
 		addRead(&b, g, vulkanStateKey(module))
-		addWrite(&b, g, vulkanStateKey(typedAtom.PPipeline.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PPipeline.Read(ctx, a, s, nil)))
 
 	case *VkCreateShaderModule:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PShaderModule.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PShaderModule.Read(ctx, a, s, nil)))
 
 	case *RecreateShaderModule:
-		addWrite(&b, g, vulkanStateKey(typedAtom.PShaderModule.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(a.PShaderModule.Read(ctx, a, s, nil)))
 
 	case *VkCmdCopyImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyImageToBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyImageToBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyBufferToImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcBuffer))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForBuffer(typedAtom.SrcBuffer)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyBufferToImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcBuffer))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForBuffer(typedAtom.SrcBuffer)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcBuffer))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		srcBindings := getOverlappedBindingsForBuffer(typedAtom.SrcBuffer)
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcBuffer))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		srcBindings := getOverlappedBindingsForBuffer(typedAtom.SrcBuffer)
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdBlitImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdBlitImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdResolveImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdResolveImage:
-		addRead(&b, g, vulkanStateKey(typedAtom.SrcImage))
-		addRead(&b, g, vulkanStateKey(typedAtom.DstImage))
-		srcBindings := getOverlappedBindingsForImage(typedAtom.SrcImage)
-		dstBindings := getOverlappedBindingsForImage(typedAtom.DstImage)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, srcBindings)
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		// TODO(qining): Track all the memory ranges
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdFillBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdFillBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdUpdateBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
-	case *RecreateUpdateBuffer:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+	case *RecreateCmdUpdateBuffer:
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyQueryPoolResults:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyQueryPoolResults:
-		addRead(&b, g, vulkanStateKey(typedAtom.DstBuffer))
-		dstBindings := getOverlappedBindingsForBuffer(typedAtom.DstBuffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Be conservative here. Without tracking all the memory ranges and
-			// calculating the memory according to the copy region, we cannot assume
-			// this command overwrites the data. So it is labelled as 'modify' to
-			// kept the previous writes
-			modifyMemoryBindingsData(b, dstBindings)
-		})
+		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		// Be conservative here. Without tracking all the memory ranges and
+		// calculating the memory according to the copy region, we cannot assume
+		// this command overwrites the data. So it is labelled as 'modify' to
+		// kept the previous writes
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdBindVertexBuffers:
-		count := typedAtom.BindingCount
-		buffers := typedAtom.PBuffers.Slice(0, uint64(count), s)
+		count := a.BindingCount
+		buffers := a.PBuffers.Slice(0, uint64(count), s)
 		for i := uint64(0); i < uint64(count); i++ {
 			buffer := buffers.Index(i, s).Read(ctx, a, s, nil)
-			addRead(&b, g, vulkanStateKey(buffer))
-			addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-			addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-			recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
 				// Read the vertex buffer memory data here.
-				// Theoretically, the read of the buffer data should be triggered in
-				// draw commands (like vkCmdDraw). However, after the call to
-				// vkQueueSubmit's Mutate(), when we process the recorded draw command,
-				// only the last set of bound vertex buffers will be kept in the
-				// global's state CurrentBoundVertexBuffers. So we cannot obtain
-				// previous bound vertex buffers from it and so we cannot add 'read'
-				// behaviours to the buffers data.
-				// To solve the problem, we read the buffer memory data here. This may
-				// result into a dummy read behavior of the buffer data, as the
-				// buffer may never be used in the commands submitted. But this ensures
-				// the correctness of the trace and the state.
-				memoryBindings := getOverlappedBindingsForBuffer(buffer)
-				readMemoryBindingsData(b, memoryBindings)
+				readMemoryBindingsData(b, bufferBindings)
 			})
 		}
 
 	case *RecreateCmdBindVertexBuffers:
-		count := typedAtom.BindingCount
-		buffers := typedAtom.PBuffers.Slice(0, uint64(count), s)
+		count := a.BindingCount
+		buffers := a.PBuffers.Slice(0, uint64(count), s)
 		for i := uint64(0); i < uint64(count); i++ {
 			buffer := buffers.Index(i, s).Read(ctx, a, s, nil)
-			addRead(&b, g, vulkanStateKey(buffer))
-			addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-			addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-			recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
 				// Read the vertex buffer memory data here.
-				// Theoretically, the read of the buffer data should be triggered in
-				// draw commands (like vkCmdDraw). However, after the call to
-				// vkQueueSubmit's Mutate(), when we process the recorded draw command,
-				// only the last set of bound vertex buffers will be kept in the
-				// global's state CurrentBoundVertexBuffers. So we cannot obtain
-				// previous bound vertex buffers from it and so we cannot add 'read'
-				// behaviours to the buffers data.
-				// To solve the problem, we read the buffer memory data here. This may
-				// result into a dummy read behavior of the buffer data, as the
-				// buffer may never be used in the commands submitted. But this ensures
-				// the correctness of the trace and the state.
-				memoryBindings := getOverlappedBindingsForBuffer(buffer)
-				readMemoryBindingsData(b, memoryBindings)
+				readMemoryBindingsData(b, bufferBindings)
 			})
 		}
 
 	case *VkCmdBindIndexBuffer:
-		buffer := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(buffer))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+		buffer := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
 			// Read the index buffer memory data here.
-			// Theoretically, the read of the buffer data should be triggered in draw
-			// commands (like vkCmdDrawIndexed). However, after the call to
-			// vkQueueSubmit's Mutate(), when we process the recorded draw command,
-			// only the last bound index buffer will be kept in the global's state
-			// CurrentBoundIndexBuffer. So we cannot obtain previous bound index
-			// buffer from it and so we cannot add a 'read' behaviour to the buffer
-			// data.
-			// To solve the problem, we read the buffer memory data here. This may
-			// result into a dummy read behavior of the buffer data, as the index
-			// buffer may never be used in the commands submitted. But this ensures
-			// the correctness of the trace and the state.
-			memoryBindings := getOverlappedBindingsForBuffer(buffer)
-			readMemoryBindingsData(b, memoryBindings)
+			readMemoryBindingsData(b, bufferBindings)
 		})
 
 	case *RecreateCmdBindIndexBuffer:
-		buffer := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(buffer))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+		buffer := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
 			// Read the index buffer memory data here.
-			// Theoretically, the read of the buffer data should be triggered in draw
-			// commands (like vkCmdDrawIndexed). However, after the call to
-			// vkQueueSubmit's Mutate(), when we process the recorded draw command,
-			// only the last bound index buffer will be kept in the global's state
-			// CurrentBoundIndexBuffer. So we cannot obtain previous bound index
-			// buffer from it and so we cannot add a 'read' behaviour to the buffer
-			// data.
-			// To solve the problem, we read the buffer memory data here. This may
-			// result into a dummy read behavior of the buffer data, as the index
-			// buffer may never be used in the commands submitted. But this ensures
-			// the correctness of the trace and the state.
-			memoryBindings := getOverlappedBindingsForBuffer(buffer)
-			readMemoryBindingsData(b, memoryBindings)
+			readMemoryBindingsData(b, bufferBindings)
 		})
 
 	case *VkCmdDraw:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically vertex buffers should be 'read' as the effect of a recorded
-		// command. Details in the handling of VkCmdBindVertexBuffers
-		// Same logical for descriptors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdDraw:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically vertex buffers should be 'read' as the effect of a recorded
-		// command. Details in the handling of VkCmdBindVertexBuffers
-		// Same logical for descriptors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdDrawIndexed:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically vertex buffers and index buffer should be 'read' as the
-		// effect of a recorded command. Details in the handling of
-		// VkCmdBindVertexBuffers and VkCmdBindIndexBuffer
-		// Same logical for descriptors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdDrawIndexed:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically vertex buffers and index buffer should be 'read' as the
-		// effect of a recorded command. Details in the handling of
-		// VkCmdBindVertexBuffers and VkCmdBindIndexBuffer
-		// Same logical for descriptors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdDrawIndirect:
-		indirectBuf := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(indirectBuf))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Theoretically vertex buffers should be 'read' as the effect of a recorded
-			// command. Details in the handling of VkCmdBindVertexBuffers
-			memoryBindings := getOverlappedBindingsForBuffer(indirectBuf)
-			readMemoryBindingsData(b, memoryBindings)
-			// Theoretically current attachments should be 'written' or 'modified' as
-			// the effect of this recorded command. However, after the Mutate() of
-			// VkQueueSubmit, the global state's LastBoundFramebuffer only records
-			// the last bound framebuffer and it can be different from the one used
-			// when this command is executed. So we rely on the last spot where
-			// attachments can be obtained through command parameters (not global
-			// state): vkCmdBeginRenderPass, to add the 'written' and 'modified'
-			// behavior to the attachments and the underlying data.
-			// Same logical for descriptors.
-		})
+		indirectBuf := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDrawIndirect:
-		indirectBuf := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(indirectBuf))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Theoretically vertex buffers should be 'read' as the effect of a recorded
-			// command. Details in the handling of VkCmdBindVertexBuffers
-			memoryBindings := getOverlappedBindingsForBuffer(indirectBuf)
-			readMemoryBindingsData(b, memoryBindings)
-			// Theoretically current attachments should be 'written' or 'modified' as
-			// the effect of this recorded command. However, after the Mutate() of
-			// VkQueueSubmit, the global state's LastBoundFramebuffer only records
-			// the last bound framebuffer and it can be different from the one used
-			// when this command is executed. So we rely on the last spot where
-			// attachments can be obtained through command parameters (not global
-			// state): vkCmdBeginRenderPass, to add the 'written' and 'modified'
-			// behavior to the attachments and the underlying data.
-			// Same logical for descriptors.
-		})
+		indirectBuf := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdDrawIndexedIndirect:
-		indirectBuf := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(indirectBuf))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Theoretically vertex buffers and index buffer should be 'read' as the
-			// effect of a recorded command. Details in the handling of
-			// VkCmdBindVertexBuffers and VkCmdBindIndexBuffer
-			indirectBufMemoryBindings := getOverlappedBindingsForBuffer(indirectBuf)
-			readMemoryBindingsData(b, indirectBufMemoryBindings)
-			// Theoretically current attachments should be 'written' or 'modified' as
-			// the effect of this recorded command. However, after the Mutate() of
-			// VkQueueSubmit, the global state's LastBoundFramebuffer only records
-			// the last bound framebuffer and it can be different from the one used
-			// when this command is executed. So we rely on the last spot where
-			// attachments can be obtained through command parameters (not global
-			// state): vkCmdBeginRenderPass, to add the 'written' and 'modified'
-			// behavior to the attachments and the underlying data.
-			// Same logical for descriptors.
-		})
+		indirectBuf := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDrawIndexedIndirect:
-		indirectBuf := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(indirectBuf))
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			// Theoretically vertex buffers and index buffer should be 'read' as the
-			// effect of a recorded command. Details in the handling of
-			// VkCmdBindVertexBuffers and VkCmdBindIndexBuffer
-			indirectBufMemoryBindings := getOverlappedBindingsForBuffer(indirectBuf)
-			readMemoryBindingsData(b, indirectBufMemoryBindings)
-			// Theoretically current attachments should be 'written' or 'modified' as
-			// the effect of this recorded command. However, after the Mutate() of
-			// VkQueueSubmit, the global state's LastBoundFramebuffer only records
-			// the last bound framebuffer and it can be different from the one used
-			// when this command is executed. So we rely on the last spot where
-			// attachments can be obtained through command parameters (not global
-			// state): vkCmdBeginRenderPass, to add the 'written' and 'modified'
-			// behavior to the attachments and the underlying data.
-			// Same logical for descriptors.
-		})
+		indirectBuf := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdDispatch:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically writable descriptors should be 'read' and 'modified' as
-		// the effect of this recorded command. However, the
-		// CurrentComputePipeline in the global state after VkQueueSubmit's
-		// Mutate() is call, is only the last bound compute pipeline and can be
-		// different than the one used when this command is executed. So we rely
-		// on the last spot where descriptors can be obtained through command
-		// parameters (not global state): vkCmdBindDescriptorSets to add the
-		// 'modify' and 'read' behaviors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdDispatch:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		// Theoretically writable descriptors should be 'read' and 'modified' as
-		// the effect of this recorded command. However, the
-		// CurrentComputePipeline in the global state after VkQueueSubmit's
-		// Mutate() is call, is only the last bound compute pipeline and can be
-		// different than the one used when this command is executed. So we rely
-		// on the last spot where descriptors can be obtained through command
-		// parameters (not global state): vkCmdBindDescriptorSets to add the
-		// 'modify' and 'read' behaviors.
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdDispatchIndirect:
-		buffer := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(buffer))
-		memoryBindings := getOverlappedBindingsForBuffer(buffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, memoryBindings)
-			// Theoretically writable descriptors should be 'read' and 'modified' as
-			// the effect of this recorded command. However, the
-			// CurrentComputePipeline in the global state after VkQueueSubmit's
-			// Mutate() is call, is only the last bound compute pipeline and can be
-			// different than the one used when this command is executed. So we rely
-			// on the last spot where descriptors can be obtained through command
-			// parameters (not global state): vkCmdBindDescriptorSets to add the
-			// 'modify' and 'read' behaviors.
-		})
+		buffer := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDispatchIndirect:
-		buffer := typedAtom.Buffer
-		addRead(&b, g, vulkanStateKey(buffer))
-		memoryBindings := getOverlappedBindingsForBuffer(buffer)
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			readMemoryBindingsData(b, memoryBindings)
-			// Theoretically writable descriptors should be 'read' and 'modified' as
-			// the effect of this recorded command. However, the
-			// CurrentComputePipeline in the global state after VkQueueSubmit's
-			// Mutate() is call, is only the last bound compute pipeline and can be
-			// different than the one used when this command is executed. So we rely
-			// on the last spot where descriptors can be obtained through command
-			// parameters (not global state): vkCmdBindDescriptorSets to add the
-			// 'modify' and 'read' behaviors.
-		})
+		buffer := a.Buffer
+		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdBeginRenderPass:
-		beginInfo := typedAtom.PRenderPassBegin.Read(ctx, a, s, nil)
+		beginInfo := a.PRenderPassBegin.Read(ctx, a, s, nil)
 		framebuffer := beginInfo.Framebuffer
 		addRead(&b, g, vulkanStateKey(framebuffer))
 		renderpass := beginInfo.RenderPass
@@ -1314,31 +1121,43 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		attDescs := GetState(s).RenderPasses.Get(renderpass).AttachmentDescriptions
 		for i := uint32(0); i < uint32(len(atts)); i++ {
 			img := atts.Get(i).Image.VulkanHandle
+			// This can be wrong as this is getting all the memory bindings
+			// that OVERLAP with the attachment image, so extra memories might be
+			// covered. However in practical, image should be bound to only one
+			// memory binding as a whole. So here should be a problem.
+			// TODO: Use intersection operation to get the memory ranges
+			imgBindings := getOverlappedBindingsForImage(img)
 			loadOp := attDescs.Get(i).LoadOp
-			if loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR {
-				// This can be wrong as this is clearing all the memory bindings
-				// that overlap with the attachment image, so extra memories might be
-				// cleared. However in practical, image should be bound to only one
-				// memory binding as a whole. So here should be a problem.
-				// TODO: Add intersection operation to get the memory ranges to clear
-				bindingsToClear := getOverlappedBindingsForImage(img)
-				addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-				addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-				recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-					writeMemoryBindingsData(b, bindingsToClear)
-				})
-			} else {
-				bindingsToRead := getOverlappedBindingsForImage(img)
-				addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-				addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-				recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-					readMemoryBindingsData(b, bindingsToRead)
-				})
+			storeOp := attDescs.Get(i).StoreOp
+
+			if (loadOp != VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the loadOp is not LOAD, and the storeOp is not DONT_CARE, the
+				// render target attachment's data should be overwritten later.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+					emptyMemoryBindings, emptyMemoryBindings, imgBindings)
+			} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the loadOp is LOAD, and the storeOp is not DONT_CARE, the
+				// render target attachment should be 'modified'.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+					emptyMemoryBindings, imgBindings, emptyMemoryBindings)
+			} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the storeOp is DONT_CARE, and the loadOp is LOAD, the render target
+				// attachment should be 'read'.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer, imgBindings,
+					emptyMemoryBindings, emptyMemoryBindings)
 			}
+			// If the LoadOp is not LOAD and the storeOp is DONT_CARE, no operation
+			// must be done to the attahcment then.
+			// TODO(qining): Actually we should disable all the 'write', 'modify'
+			// behaviour in this render pass.
 		}
 
 	case *RecreateCmdBeginRenderPass:
-		beginInfo := typedAtom.PRenderPassBegin.Read(ctx, a, s, nil)
+
+		beginInfo := a.PRenderPassBegin.Read(ctx, a, s, nil)
 		framebuffer := beginInfo.Framebuffer
 		addRead(&b, g, vulkanStateKey(framebuffer))
 		renderpass := beginInfo.RenderPass
@@ -1348,89 +1167,87 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		attDescs := GetState(s).RenderPasses.Get(renderpass).AttachmentDescriptions
 		for i := uint32(0); i < uint32(len(atts)); i++ {
 			img := atts.Get(i).Image.VulkanHandle
+			// This can be wrong as this is getting all the memory bindings
+			// that OVERLAP with the attachment image, so extra memories might be
+			// covered. However in practical, image should be bound to only one
+			// memory binding as a whole. So here should be a problem.
+			// TODO: Use intersection operation to get the memory ranges
+			imgBindings := getOverlappedBindingsForImage(img)
 			loadOp := attDescs.Get(i).LoadOp
-			if loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR {
-				// This can be wrong as this is clearing all the memory bindings
-				// that overlap with the attachment image, so extra memorise might be
-				// cleared. However in real case, image should be bound to only one
-				// memory binding as a whole. So here should be cause problem.
-				// TODO: Add intersection operation to get the memory ranges to clear
-				bindingsToClear := getOverlappedBindingsForImage(img)
-				addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-				addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-				recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-					writeMemoryBindingsData(b, bindingsToClear)
-				})
-			} else {
-				bindingsToRead := getOverlappedBindingsForImage(img)
-				addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-				addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-				recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-					readMemoryBindingsData(b, bindingsToRead)
-				})
+			storeOp := attDescs.Get(i).StoreOp
+
+			if (loadOp != VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the loadOp is not LOAD, and the storeOp is not DONT_CARE, the
+				// render target attachment's data should be overwritten later.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+					emptyMemoryBindings, emptyMemoryBindings, imgBindings)
+			} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the loadOp is LOAD, and the storeOp is not DONT_CARE, the
+				// render target attachment should be 'modified'.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+					emptyMemoryBindings, imgBindings, emptyMemoryBindings)
+			} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
+				(storeOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
+				// If the storeOp is DONT_CARE, and the loadOp is LOAD, the render target
+				// attachment should be 'read'.
+				recordTouchingMemoryBindingsData(&b, a.CommandBuffer, imgBindings,
+					emptyMemoryBindings, emptyMemoryBindings)
 			}
+			// If the LoadOp is not LOAD and the storeOp is DONT_CARE, no operation
+			// must be done to the attahcment then.
+			// TODO(qining): Actually we should disable all the 'write', 'modify'
+			// behaviour in this render pass.
 		}
 
 	case *VkCmdEndRenderPass:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdEndRenderPass:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdNextSubpass:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdNextSubpass:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdPushConstants:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdPushConstants:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdSetLineWidth:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdSetLineWidth:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdSetScissor:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdSetScissor:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdSetViewport:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdSetViewport:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdBindDescriptorSets:
-		descriptorSetCount := typedAtom.DescriptorSetCount
-		descriptorSets := typedAtom.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
+		descriptorSetCount := a.DescriptorSetCount
+		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
 		for i := uint32(0); i < descriptorSetCount; i++ {
 			descriptorSet := descriptorSets.Index(uint64(i), s).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
 				for _, bufferInfo := range descBinding.BufferBinding {
 					buf := bufferInfo.Buffer
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						// Descriptors might be modified
 						addModify(b, g, vulkanStateKey(buf))
 						// Advance the read/modify behavior of the descriptors from
@@ -1441,9 +1258,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				}
 				for _, imageInfo := range descBinding.ImageBinding {
 					view := imageInfo.ImageView
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						addRead(b, g, vulkanStateKey(view))
 						img := GetState(s).ImageViews.Get(view).Image.VulkanHandle
 						// Advance the read/modify behavior of the descriptors from
@@ -1453,9 +1269,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					})
 				}
 				for _, bufferView := range descBinding.BufferViewBindings {
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						addRead(b, g, vulkanStateKey(bufferView))
 						buf := GetState(s).BufferViews.Get(bufferView).Buffer.VulkanHandle
 						// Advance the read/modify behavior of the descriptors from
@@ -1468,33 +1283,30 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateCmdBindDescriptorSets:
-		descriptorSetCount := typedAtom.DescriptorSetCount
-		descriptorSets := typedAtom.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
+		descriptorSetCount := a.DescriptorSetCount
+		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
 		for i := uint32(0); i < descriptorSetCount; i++ {
 			descriptorSet := descriptorSets.Index(uint64(i), s).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
 				for _, bufferInfo := range descBinding.BufferBinding {
 					buf := bufferInfo.Buffer
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						// Descriptors might be modified
 						addModify(b, g, vulkanStateKey(buf))
 					})
 				}
 				for _, imageInfo := range descBinding.ImageBinding {
 					view := imageInfo.ImageView
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						addRead(b, g, vulkanStateKey(view))
 					})
 				}
 				for _, bufferView := range descBinding.BufferViewBindings {
-					addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-					addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-					recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+
+					recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 						addRead(b, g, vulkanStateKey(bufferView))
 					})
 				}
@@ -1502,126 +1314,102 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkBeginCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(typedAtom.CommandBuffer)
+		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
 		addRead(&b, g, cmdbuf.handle)
 		addWrite(&b, g, cmdbuf.records)
 
 	case *VkEndCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(typedAtom.CommandBuffer)
+		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *RecreateAndBeginCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(typedAtom.PCommandBuffer.Read(ctx, a, s, nil))
+		cmdbuf := g.getOrCreateCommandBuffer(a.PCommandBuffer.Read(ctx, a, s, nil))
 		addWrite(&b, g, cmdbuf)
 
 	case *RecreateEndCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(typedAtom.CommandBuffer)
+		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *VkCmdPipelineBarrier:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *RecreateCmdPipelineBarrier:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *VkCmdBindPipeline:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			addRead(b, g, vulkanStateKey(typedAtom.Pipeline))
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			addRead(b, g, vulkanStateKey(a.Pipeline))
 		})
-		addRead(&b, g, vulkanStateKey(typedAtom.Pipeline))
+		addRead(&b, g, vulkanStateKey(a.Pipeline))
 
 	case *RecreateCmdBindPipeline:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
-			addRead(b, g, vulkanStateKey(typedAtom.Pipeline))
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			addRead(b, g, vulkanStateKey(a.Pipeline))
 		})
-		addRead(&b, g, vulkanStateKey(typedAtom.Pipeline))
+		addRead(&b, g, vulkanStateKey(a.Pipeline))
 
 	case *VkCmdBeginQuery:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdBeginQuery:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdEndQuery:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdEndQuery:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdResetQueryPool:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdResetQueryPool:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdClearAttachments:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdClearAttachments:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the case that the attachment is fully cleared.
 
 	case *VkCmdClearColorImage:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *RecreateCmdClearColorImage:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *VkCmdClearDepthStencilImage:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *RecreateCmdClearDepthStencilImage:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *VkCmdSetDepthBias:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdSetDepthBias:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdSetBlendConstants:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *RecreateCmdSetBlendConstants:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdExecuteCommands:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		secondaryCmdBufs := typedAtom.PCommandBuffers.Slice(0, uint64(typedAtom.CommandBufferCount), s)
-		for i := uint32(0); i < typedAtom.CommandBufferCount; i++ {
+		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), s)
+		for i := uint32(0); i < a.CommandBufferCount; i++ {
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), s).Read(ctx, a, s, nil)
 			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				for _, c := range scb.records.Commands {
 					c(b)
 				}
@@ -1629,14 +1417,12 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateCmdExecuteCommands:
-		addRead(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).handle)
-		addModify(&b, g, g.getOrCreateCommandBuffer(typedAtom.CommandBuffer).records)
-		secondaryCmdBufs := typedAtom.PCommandBuffers.Slice(0, uint64(typedAtom.CommandBufferCount), s)
-		for i := uint32(0); i < typedAtom.CommandBufferCount; i++ {
+		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), s)
+		for i := uint32(0); i < a.CommandBufferCount; i++ {
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), s).Read(ctx, a, s, nil)
 			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(typedAtom.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				for _, c := range scb.records.Commands {
 					c(b)
 				}
@@ -1648,11 +1434,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		b.KeepAlive = true
 
 		// handle queue
-		addModify(&b, g, vulkanStateKey(typedAtom.Queue))
+		addModify(&b, g, vulkanStateKey(a.Queue))
 
 		// handle command buffers
-		submitCount := typedAtom.SubmitCount
-		submits := typedAtom.PSubmits.Slice(0, uint64(submitCount), s)
+		submitCount := a.SubmitCount
+		submits := a.PSubmits.Slice(0, uint64(submitCount), s)
 		for i := uint32(0); i < submitCount; i++ {
 			submit := submits.Index(uint64(i), s).Read(ctx, a, s, nil)
 			commandBufferCount := submit.CommandBufferCount
@@ -1671,8 +1457,8 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkQueuePresentKHR:
-		addRead(&b, g, vulkanStateKey(typedAtom.Queue))
-		g.roots[g.addressMap.addressOf(vulkanStateKey(typedAtom.Queue))] = true
+		addRead(&b, g, vulkanStateKey(a.Queue))
+		g.roots[g.addressMap.addressOf(vulkanStateKey(a.Queue))] = true
 		b.KeepAlive = true
 
 	default:
