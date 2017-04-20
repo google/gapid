@@ -167,6 +167,7 @@ type (
 		Capture struct {
 			Frames int `help:"only capture the given number of frames. 0 for all"`
 		}
+		API string `help: "only capture the given API valid options are gles and vulkan"`
 	}
 	PackagesFlags struct {
 		DeviceFlags

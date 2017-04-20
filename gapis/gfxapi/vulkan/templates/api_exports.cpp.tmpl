@@ -20,6 +20,8 @@
 {{/* ---- Overrides ---- */}}
 {{Global "C++.EnumTypeOverride" "uint32_t"}}
 
+{{Global "ApiIndex" $.Index}}
+
 {{$filename := print (Global "API") "_exports.h" }}
 {{$ | Macro "ExportHeader" | Reflow 4 | Write $filename}}
 
@@ -131,7 +133,7 @@
       GAPID_FATAL("Unexpected re-entrant call to vulkan function");
       return {{if not (IsVoid $.Return.Type)}}{{Template "C++.Null" $.Return.Type}}{{end}};
     }
-    CallObserver observer(s);
+    CallObserver observer(s, {{Global "ApiIndex"}});
     s->lock(&observer, "{{$name}}");
     {{if not (IsVoid $.Return.Type)}} auto _result_ = §{{end}}
     s->{{$name}}({{Macro "C++.CallArguments" $ | Strings "&observer" | JoinWith ", "}});

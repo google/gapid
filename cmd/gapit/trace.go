@@ -49,12 +49,19 @@ func init() {
 	})
 }
 
+// These are hard-coded and need to be kept in sync with the api_index
+// in the *.api files.
+const coreAPI = uint32(1 << 0)
+const glesAPI = uint32(1 << 1)
+const vulkanAPI = uint32(1 << 2)
+
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	options := client.Options{
 		ObserveFrameFrequency: uint32(verb.Observe.Frames),
 		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
 		StartFrame:            uint32(verb.Start.At.Frame),
 		FramesToCapture:       uint32(verb.Capture.Frames),
+		APIs:                  uint32(0xFFFFFFFF),
 		APK:                   verb.APK,
 	}
 
@@ -66,6 +73,17 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	if verb.Start.Defer {
 		options.Flags |= client.DeferStart
+	}
+
+	switch verb.API {
+	case "vulkan":
+		options.APIs = coreAPI | vulkanAPI
+	case "gles":
+		options.APIs = coreAPI | glesAPI
+	case "":
+		options.APIs = uint32(0xFFFFFFFF)
+	default:
+		return fmt.Errorf("Unknown API %s", verb.API)
 	}
 
 	if !verb.Local.App.IsEmpty() {

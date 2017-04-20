@@ -55,6 +55,8 @@ type Options struct {
 	StartFrame uint32
 	// If non-zero, then only n frames will be captured.
 	FramesToCapture uint32
+	// A bitmask of the APIs to capture in a trace.
+	APIs uint32
 	// Combination of FlagXX bits.
 	Flags Flags
 	// APK is an apk to install before tracing

@@ -95,8 +95,8 @@ public:
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
     // the access to this encoder.
-    std::shared_ptr<gapii::PackEncoder> getEncoder() {
-        return is_suspended() ? mNullEncoder : mEncoder;
+    std::shared_ptr<gapii::PackEncoder> getEncoder(uint8_t api) {
+        return should_trace(api) ? mEncoder : mNullEncoder;
     }
 
     // Returns true if we should observe application pool.
@@ -116,6 +116,11 @@ public:
     bool is_suspended() const { return mIsSuspended; }
 
     void set_suspended(bool suspended) { mIsSuspended = suspended; }
+
+    bool should_trace(uint8_t api) {
+        return !is_suspended() && (mWatchedApis & (1 << api)) != 0;
+    }
+    void set_valid_apis(uint32_t apis) { mWatchedApis = apis; }
 protected:
     static const size_t kMaxExtras = 16; // Per atom
 
@@ -228,6 +233,11 @@ private:
 
     // True if we should not be currently tracing, false if we should be tracing.
     bool mIsSuspended;
+
+    // This is the list of all Apis that are considered for tracing. This is a
+    // bit set of apis where bit (1 << api) is set if a particular api
+    // should be traced.
+    uint32_t mWatchedApis;
 };
 
 // finds a key in the map and returns the value. If no value is present

@@ -42,7 +42,7 @@ class CallObserver {
 public:
     typedef memory_pb::Observation Observation;
 
-    CallObserver(SpyBase* spy_p);
+    CallObserver(SpyBase* spy_p, uint8_t api);
 
     ~CallObserver();
 
@@ -142,8 +142,10 @@ private:
     // pool and we are supposed to observe application pool.
     template <class T>
     bool shouldObserve(const Slice<T>& slice) const {
-        return mObserveApplicationPool && slice.isApplicationPool();
+        return isActive() && mObserveApplicationPool && slice.isApplicationPool();
     }
+
+    bool isActive() const;
 
     // Make a slice on a new Pool.
     template <typename T>
@@ -172,6 +174,9 @@ private:
 
     // Record GL error which was raised during this call.
     GLenum_Error mError;
+
+    // The current API that this call-observer is observing.
+    uint8_t mApi;
 };
 
 template <typename T>
