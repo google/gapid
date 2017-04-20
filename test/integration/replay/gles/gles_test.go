@@ -173,7 +173,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 	m := replay.New(ctx)
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	bind.GetRegistry(ctx).AddDevice(rootCtx, bind.Host(ctx))
+	bind.GetRegistry(ctx).AddDevice(ctx, bind.Host(ctx))
 
 	dev := r.DefaultDevice()
 	memoryLayout := dev.Instance().GetConfiguration().ABIs[0].MemoryLayout
