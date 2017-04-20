@@ -130,7 +130,7 @@ func Difference(a, b *Image2D) (float32, error) {
 	p := endian.Reader(bytes.NewReader(a.Data), device.LittleEndian)
 	q := endian.Reader(bytes.NewReader(b.Data), device.LittleEndian)
 	sqrErr := float32(0)
-	c := a.Width * a.Height
+	c := a.Width * a.Height * uint32(len(channels))
 	for i := uint32(0); i < c; i++ {
 		err := p.Float32() - q.Float32()
 		sqrErr += err * err
