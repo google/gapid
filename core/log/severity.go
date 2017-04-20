@@ -19,6 +19,7 @@ import "github.com/google/gapid/core/app/flags"
 // Severity defines the severity of a logging message.
 type Severity int32
 
+// The values must be identical to values in gapis/service/service.proto
 const (
 	// Verbose indicates extremely verbose level messages.
 	Verbose Severity = 0

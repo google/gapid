@@ -62,7 +62,7 @@ func newFindIssues(ctx context.Context, device *device.Instance) *findIssues {
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) onIssue(a atom.Atom, i atom.ID, s service.Severity, e error) {
-	if s == service.Severity_CriticalLevel && isIssueWhitelisted(a, e) {
+	if s == service.Severity_FatalLevel && isIssueWhitelisted(a, e) {
 		s = service.Severity_ErrorLevel
 	}
 	t.issues = append(t.issues, replay.Issue{Atom: i, Severity: s, Error: e})
@@ -118,7 +118,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			v := r.Uint32()
 			err = r.Error()
 			if err != nil {
-				t.onIssue(a, i, service.Severity_CriticalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
+				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
 				return err
 			}
 			replayDriversGlError := GLenum(v)
@@ -129,17 +129,17 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 						DriverError:   e.TraceDriversGlError,
 						ExpectedError: mutatorsGlError,
 					}
-					t.onIssue(a, i, service.Severity_CriticalLevel, err)
+					t.onIssue(a, i, service.Severity_FatalLevel, err)
 				}
 				// Check that the C++ and Go versions of the generated code precisely agree.
 				if e.InterceptorsGlError != mutatorsGlError {
-					t.onIssue(a, i, service.Severity_CriticalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
+					t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
 						e.InterceptorsGlError.ErrorString(), mutatorsGlError.ErrorString()))
 				}
 			}
 			// The compatibility layer should not produce errors but it can propagate or silence them.
 			if (replayDriversGlError != GLenum_GL_NO_ERROR) && (mutatorsGlError == GLenum_GL_NO_ERROR) {
-				t.onIssue(a, i, service.Severity_CriticalLevel, fmt.Errorf("%s in replay driver, but we expected %s",
+				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in replay driver, but we expected %s",
 					replayDriversGlError.ErrorString(), mutatorsGlError.ErrorString()))
 			}
 			return nil
@@ -267,7 +267,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 					logLevel := service.Severity_ErrorLevel
 					if pi := FindProgramInfo(a.Extras()); pi != nil && pi.LinkStatus == GLboolean_GL_TRUE {
 						// Increase severity if the program linked successfully during trace.
-						logLevel = service.Severity_CriticalLevel
+						logLevel = service.Severity_FatalLevel
 					}
 					t.onIssue(a, i, logLevel, fmt.Errorf("Program %d failed to link. Error:\n%v\n"+
 						"Vertex shader source:\n%sFragment shader source:\n%s", a.Program, ntbs(msg), vss, fss))
