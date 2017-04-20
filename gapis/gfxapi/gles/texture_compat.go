@@ -147,6 +147,9 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 		}
 
 		switch *internalformat {
+		case GLenum_GL_BGRA8_EXT: // Not supported in GL 3.2
+			// The GPU order of channels is transparent to us, so we can just use RGBA instead.
+			*internalformat = GLenum_GL_RGBA8
 		case GLenum_GL_RGB565: // Not supported in GL 3.2
 			*internalformat = GLenum_GL_RGB8
 		case GLenum_GL_RGB10_A2UI: // Not supported in GL 3.2
