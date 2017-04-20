@@ -107,6 +107,7 @@ const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 
 const int32_t  kSuspendIndefinitely = -1;
 
+const uint8_t kCoreAPI = 0;
 core::Mutex gMutex;  // Guards gSpy.
 std::unique_ptr<gapii::Spy> gSpy;
 
@@ -133,7 +134,7 @@ Spy* Spy::get() {
         if (!s->try_to_enter()) {
             GAPID_FATAL("Couldn't enter on init?!")
         }
-        CallObserver observer(s);
+        CallObserver observer(s, kCoreAPI);
         s->lock(&observer, "writeHeader");
         s->writeHeader();
         s->unlock();
@@ -180,13 +181,14 @@ Spy::Spy()
     } else {
         GAPID_WARNING("Failed to read connection header");
     }
-
+    set_valid_apis(header.mAPIs);
+    GAPID_ERROR("APIS %08x", header.mAPIs);
     GAPID_INFO("GAPII connection established. Settings:");
     GAPID_INFO("Observe framebuffer every %d frames", mObserveFrameFrequency);
     GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
     GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
 
-    CallObserver observer(this);
+    CallObserver observer(this, kCoreAPI);
 
     mEncoder = gapii::PackEncoder::create(conn);
 
