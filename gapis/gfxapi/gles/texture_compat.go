@@ -94,7 +94,7 @@ func (tc *textureCompat) getSwizzle(t *Texture, parameter GLenum) (orig, curr GL
 	return init, curr
 }
 
-func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, parameter GLenum, out transform.Writer) {
+func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, parameter GLenum, out transform.Writer, id atom.ID) {
 	target := t.Kind
 	orig, curr := tc.getSwizzle(t, parameter)
 	compat := orig
@@ -104,13 +104,13 @@ func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, par
 		}
 	}
 	if compat != curr {
-		out.MutateAndWrite(ctx, atom.NoID, NewGlTexParameteri(target, parameter, GLint(compat)))
+		out.MutateAndWrite(ctx, atom.DerivedID(id), NewGlTexParameteri(target, parameter, GLint(compat)))
 	}
 }
 
 // Common handler for all glTex* methods.
 // Arguments may be null if the given method does not use them.
-func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, componentType *GLenum, out transform.Writer) {
+func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, componentType *GLenum, out transform.Writer, id atom.ID) {
 	if tc.v.IsES {
 		return
 	}
@@ -140,10 +140,10 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 				// Remove the compat mapping and reset swizzles to the original values below.
 				delete(tc.compatSwizzle, t)
 			}
-			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_R, out)
-			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_G, out)
-			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_B, out)
-			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_A, out)
+			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_R, out, id)
+			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_G, out, id)
+			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_B, out, id)
+			tc.writeCompatSwizzle(tc.ctx, t, GLenum_GL_TEXTURE_SWIZZLE_A, out, id)
 		}
 
 		switch *internalformat {
@@ -181,7 +181,7 @@ func (tc *textureCompat) convertFormat(target GLenum, internalformat, format, co
 	}
 }
 
-func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transform.Writer) {
+func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transform.Writer, id atom.ID) {
 	if tc.v.IsES {
 		return
 	}
@@ -194,7 +194,7 @@ func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transfor
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
 			// Combine the original and compat swizzles and write out the commands to set it.
-			tc.writeCompatSwizzle(tc.ctx, t, parameter, out)
+			tc.writeCompatSwizzle(tc.ctx, t, parameter, out, id)
 		}
 	case GLenum_GL_TEXTURE_SWIZZLE_RGBA:
 		log.E(tc.ctx, "Unexpected GL_TEXTURE_SWIZZLE_RGBA")
@@ -205,14 +205,15 @@ func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transfor
 // the given glCompressedTexImage2D.
 func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
+	dID := atom.DerivedID(i)
 	c := GetContext(s)
 
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
 		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
+		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
+		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}
@@ -251,14 +252,15 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 // the given glCompressedTexSubImage2D.
 func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
+	dID := atom.DerivedID(i)
 	c := GetContext(s)
 
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
 		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
-		out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
+		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
+		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}

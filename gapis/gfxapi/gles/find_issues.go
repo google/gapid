@@ -99,6 +99,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	mutatorsGlError := t.lastGlError
 	out.MutateAndWrite(ctx, i, a)
 
+	dID := atom.DerivedID(i)
 	s := GetState(t.state)
 	c := s.getContext()
 	if c == nil {
@@ -106,7 +107,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	}
 
 	// Check the result of glGetError after every command.
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		ptr := b.AllocateTemporaryMemory(4)
 		b.Call(funcInfoGlGetError)
 		b.Store(ptr)
@@ -192,8 +193,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		tmp := atom.Must(atom.Alloc(ctx, t.state, buflen))
 
 		infoLog := make([]byte, 2048)
-		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -206,8 +207,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		}))
 
 		source := make([]byte, 2048)
-		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -219,8 +220,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			return nil
 		}))
 
-		out.MutateAndWrite(ctx, atom.NoID, NewGlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, NewGlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r pod.Reader, err error) error {
 				if err != nil {
@@ -242,9 +243,9 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	case *GlLinkProgram:
 		const buflen = 2048
 		tmp := atom.Must(atom.Alloc(ctx, t.state, 4+buflen))
-		out.MutateAndWrite(ctx, atom.NoID, NewGlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, atom.NoID, NewGlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
-		out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, NewGlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, NewGlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
+		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r pod.Reader, err error) error {
 				if err != nil {

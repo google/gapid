@@ -27,15 +27,17 @@ import (
 type tweaker struct {
 	ctx  context.Context // Needed so functions match gl signature
 	out  transform.Writer
+	dID  atom.ID // Derived ID to use for generated atoms. Can be NoID.
 	s    *gfxapi.State
 	c    *Context
 	undo []func()
 }
 
-func newTweaker(ctx context.Context, out transform.Writer) *tweaker {
+func newTweaker(ctx context.Context, out transform.Writer, id atom.ID) *tweaker {
 	s := out.State()
 	c := GetContext(s)
-	return &tweaker{ctx: ctx, out: out, s: s, c: c}
+	dID := atom.DerivedID(id)
+	return &tweaker{ctx: ctx, out: out, s: s, c: c, dID: dID}
 }
 
 // revert undoes all the changes made by the tweaker.
@@ -47,9 +49,9 @@ func (t *tweaker) revert() {
 }
 
 func (t *tweaker) doAndUndo(do atom.Atom, undo atom.Atom) {
-	t.out.MutateAndWrite(t.ctx, atom.NoID, do)
+	t.out.MutateAndWrite(t.ctx, t.dID, do)
 	t.undo = append(t.undo, func() {
-		t.out.MutateAndWrite(t.ctx, atom.NoID, undo)
+		t.out.MutateAndWrite(t.ctx, t.dID, undo)
 	})
 }
 
@@ -158,7 +160,7 @@ func (t *tweaker) makeVertexArray(enabledLocations ...AttributeLocation) {
 		vertexArrayID := t.glGenVertexArray()
 		t.glBindVertexArray(vertexArrayID)
 		for _, location := range enabledLocations {
-			t.out.MutateAndWrite(ctx, atom.NoID, NewGlEnableVertexAttribArray(location))
+			t.out.MutateAndWrite(ctx, t.dID, NewGlEnableVertexAttribArray(location))
 		}
 	} else {
 		// GLES 2.0 does not have Vertex Array Objects, but the state is fairly simple.
@@ -181,9 +183,9 @@ func (t *tweaker) makeVertexArray(enabledLocations ...AttributeLocation) {
 			origVertexAttrib := *(vao.VertexAttributeArrays[location])
 			origVertexBinding := *(vao.VertexBufferBindings[VertexBufferBindingIndex(location)])
 			t.undo = append(t.undo, func() {
-				t.out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origVertexBinding.Buffer))
-				t.out.MutateAndWrite(ctx, atom.NoID, NewGlVertexAttribPointer(location, origVertexAttrib.Size, origVertexAttrib.Type, origVertexAttrib.Normalized, origVertexAttrib.Stride, memory.Pointer(origVertexAttrib.Pointer)))
-				t.out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBufferID))
+				t.out.MutateAndWrite(ctx, t.dID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origVertexBinding.Buffer))
+				t.out.MutateAndWrite(ctx, t.dID, NewGlVertexAttribPointer(location, origVertexAttrib.Size, origVertexAttrib.Type, origVertexAttrib.Normalized, origVertexAttrib.Stride, memory.Pointer(origVertexAttrib.Pointer)))
+				t.out.MutateAndWrite(ctx, t.dID, NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBufferID))
 			})
 		}
 	}
@@ -248,12 +250,12 @@ func (t *tweaker) makeProgram(vertexShaderSource, fragmentShaderSource string) P
 	programID := t.glCreateProgram()
 	vertexShaderID := t.glCreateShader(GLenum_GL_VERTEX_SHADER)
 	t.glShaderSource(vertexShaderID, vertexShaderSource)
-	t.out.MutateAndWrite(t.ctx, atom.NoID, NewGlCompileShader(vertexShaderID))
+	t.out.MutateAndWrite(t.ctx, t.dID, NewGlCompileShader(vertexShaderID))
 	fragmentShaderID := t.glCreateShader(GLenum_GL_FRAGMENT_SHADER)
 	t.glShaderSource(fragmentShaderID, fragmentShaderSource)
-	t.out.MutateAndWrite(t.ctx, atom.NoID, NewGlCompileShader(fragmentShaderID))
-	t.out.MutateAndWrite(t.ctx, atom.NoID, NewGlAttachShader(programID, vertexShaderID))
-	t.out.MutateAndWrite(t.ctx, atom.NoID, NewGlAttachShader(programID, fragmentShaderID))
+	t.out.MutateAndWrite(t.ctx, t.dID, NewGlCompileShader(fragmentShaderID))
+	t.out.MutateAndWrite(t.ctx, t.dID, NewGlAttachShader(programID, vertexShaderID))
+	t.out.MutateAndWrite(t.ctx, t.dID, NewGlAttachShader(programID, fragmentShaderID))
 	return programID
 }
 
@@ -272,7 +274,7 @@ func (t *tweaker) glShaderSource(shaderID ShaderId, shaderSource string) {
 	tmpSrc := t.AllocData(shaderSource)
 	tmpSrcLen := t.AllocData(GLint(len(shaderSource)))
 	tmpPtrToSrc := t.AllocData(tmpSrc.Ptr())
-	t.out.MutateAndWrite(t.ctx, atom.NoID, NewGlShaderSource(shaderID, 1, tmpPtrToSrc.Ptr(), tmpSrcLen.Ptr()).
+	t.out.MutateAndWrite(t.ctx, t.dID, NewGlShaderSource(shaderID, 1, tmpPtrToSrc.Ptr(), tmpSrcLen.Ptr()).
 		AddRead(tmpPtrToSrc.Data()).
 		AddRead(tmpSrcLen.Data()).
 		AddRead(tmpSrc.Data()))
