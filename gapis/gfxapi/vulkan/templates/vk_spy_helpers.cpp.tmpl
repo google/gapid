@@ -353,13 +353,13 @@ void VulkanSpy::setSpecData(CallObserver* observer, std::shared_ptr<Specializati
     info->specializationData = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(pData), reinterpret_cast<uint8_t*>(pData) + numBytes);
 }
 
-std::shared_ptr<RecreateUpdateBufferData> VulkanSpy::createUpdateBufferData(
+std::shared_ptr<RecreateCmdUpdateBufferData> VulkanSpy::createUpdateBufferData(
     CallObserver* observer,
     VkBuffer        dstBuffer,
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
     void*     pData) {
-    auto ret_val = std::make_shared<RecreateUpdateBufferData>();
+    auto ret_val = std::make_shared<RecreateCmdUpdateBufferData>();
     ret_val->mdstBuffer = dstBuffer;
     ret_val->mdstOffset = dstOffset;
     ret_val->mdataSize = dataSize;

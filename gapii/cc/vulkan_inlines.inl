@@ -29,13 +29,13 @@ private:
 
 ////////// Command Buffer Commands
 template<>
-void inline CommandListRecreator<std::shared_ptr<RecreateUpdateBufferData>>::operator()(
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdUpdateBufferData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
-    const std::shared_ptr<RecreateUpdateBufferData>& t) {
+    const std::shared_ptr<RecreateCmdUpdateBufferData>& t) {
     if (!spy->Buffers.count(t->mdstBuffer)) {
         return;
     }
-    spy->RecreateUpdateBuffer(observer, commandBuf,
+    spy->RecreateCmdUpdateBuffer(observer, commandBuf,
         t->mdstBuffer, t->mdstOffset, t->mdataSize, t->bufferData.data());
 }
 

@@ -349,7 +349,7 @@ func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, 
 
 ////////////// Command Buffer Commands
 
-func (a *RecreateUpdateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdUpdateBuffer(a.CommandBuffer, a.DstBuffer, a.DstOffset, a.DataSize, memory.Pointer(a.PData))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)

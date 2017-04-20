@@ -73,7 +73,7 @@ void SpyOverride_RecreateBufferView(VkDevice, const VkBufferViewCreateInfo*, VkB
 void SpyOverride_RecreatePhysicalDeviceProperties(VkPhysicalDevice, uint32_t*, VkQueueFamilyProperties*, VkPhysicalDeviceMemoryProperties*) {}
 void SpyOverride_RecreateQueryPool(VkDevice, const VkQueryPoolCreateInfo*, uint32_t*, VkQueryPool*) {}
 
-void SpyOverride_RecreateUpdateBuffer(VkCommandBuffer, VkBuffer, VkDeviceSize, VkDeviceSize, const void*) {}
+void SpyOverride_RecreateCmdUpdateBuffer(VkCommandBuffer, VkBuffer, VkDeviceSize, VkDeviceSize, const void*) {}
 void SpyOverride_RecreateCmdPipelineBarrier(VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags,
                                             VkDependencyFlags, uint32_t, const VkMemoryBarrier*, uint32_t,
                                             const VkBufferMemoryBarrier*, uint32_t, const VkImageMemoryBarrier*) {}
