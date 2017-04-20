@@ -1,0 +1,84 @@
+goto :start
+Copyright (C) 2017 Google Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Windows Build Script.
+
+:start
+SET BUILD_ROOT=%cd%
+SET SRC=%cd%\github\src\github.com\google\gapid
+
+REM Install the Android SDK components and NDK.
+set ANDROID_SDK_HOME=%LOCALAPPDATA%\Android\Sdk
+echo y | %ANDROID_SDK_HOME%\tools\android.bat update sdk -u -a --filter build-tools-21.1.2,android-21
+wget -q https://dl.google.com/android/repository/android-ndk-r13b-windows-x86_64.zip
+unzip -q android-ndk-r13b-windows-x86_64.zip
+
+REM Get GO 1.8 - Works around the build not allowing 1.8.1.
+wget -q https://storage.googleapis.com/golang/go1.8.windows-amd64.zip
+unzip -q go1.8.windows-amd64.zip
+set GOROOT=%BUILD_ROOT%\go
+set PATH=%GOROOT%\bin;%PATH%
+
+REM Fix up the MSYS environment: remove gcc and add mingw's gcc
+c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm gcc"
+c:\tools\msys64\usr\bin\bash --login -c "pacman -S --noconfirm mingw-w64-x86_64-gcc"
+
+REM Setup the build config file.
+(
+  echo {
+  echo  "Flavor": "release",
+  echo  "OutRoot": "%cd%\out",
+  echo  "JavaHome": "%JAVA_HOME%",
+  echo  "AndroidSDKRoot": "%ANDROID_SDK_HOME%",
+  echo  "AndroidNDKRoot": "%cd%\android-ndk-r13b",
+  echo  "CMakePath": "c:\Program Files\Cmake\bin\cmake.exe",
+  echo  "NinjaPath": "c:\ProgramData\chocolatey\bin\ninja.exe",
+  echo  "PythonPath": "c:\Python35\python.exe",
+  echo  "MSYS2Path": "c:\tools\msys64"
+  echo }
+) > gapid-config
+type gapid-config
+sed -e s/\\/\\\\/g gapid-config > %SRC%\.gapid-config
+
+REM Fetch the submodules.
+cd %SRC%
+git submodule update --init
+
+REM Invoke the build. At this point, only ensure that the tests build, but don't
+REM execute the tests.
+echo %DATE% %TIME%
+call do.bat build --test build --buildnum %KOKORO_BUILD_NUMBER% --buildsha %KOKORO_GITHUB_COMMIT%
+if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
+echo %DATE% %TIME%
+cd %BUILD_ROOT%
+
+REM Build the release packages.
+mkdir out\dist\gapid
+cd out\dist
+awk -F= 'BEGIN {major=0; minor=0; micro=0}^
+         /Major/ {major=$2}^
+         /Minor/ {minor=$2}^
+         /Micro/ {micro=$2}^
+         END {print major"."minor"."micro}' ..\pkg\build.properties > version.txt
+set /p VERSION=<version.txt
+
+REM Combine package contents.
+xcopy /e ..\pkg\* gapid\
+copy ..\current\java\gapic-windows.jar gapid\lib\gapic.jar
+copy %SRC%\kokoro\windows\gapid.bat gapid\
+call %SRC%\kokoro\windows\copy_jre.bat %cd%\gapid\jre
+
+REM Package up the zip file.
+zip -r gapid-%VERSION%-windows.zip gapid
