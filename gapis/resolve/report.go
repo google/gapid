@@ -82,7 +82,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			if err := recover(); err != nil {
 				items = append(items, service.WrapReportItem(
 					&service.ReportItem{
-						Severity: service.Severity_CriticalLevel,
+						Severity: service.Severity_FatalLevel,
 						Command:  uint64(i),
 					}, messages.ErrCritical(fmt.Sprintf("%s", err))))
 			}
@@ -90,7 +90,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		if as := a.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, service.WrapReportItem(
 				&service.ReportItem{
-					Severity: service.Severity_CriticalLevel,
+					Severity: service.Severity_FatalLevel,
 					Command:  uint64(i),
 				}, messages.ErrTraceAssert(as.Reason)))
 		}

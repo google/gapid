@@ -39,25 +39,20 @@ enum WireframeMode {
 }
 
 // Severity defines the severity of a logging message.
-// The levels match the ones defined in rfc5424 for syslog.
-// They must be identical to the values in the logging package.
+// The values must be identical to values in core/log/severity.go
 enum Severity {
-  // EmergencyLevel indicates the system is unusable, no further data should be trusted.
-  EmergencyLevel = 0;
-  // AlertLevel indicates action must be taken immediately.
-  AlertLevel = 1;
-  // CriticalLevel indicates errors severe enough to terminate processing.
-  CriticalLevel = 2;
-  // ErrorLevel indicates non terminal failure conditions that may have an effect on results.
-  ErrorLevel = 3;
-  // WarningLevel indicates issues that might affect performance or compatibility, but could be ignored.
-  WarningLevel = 4;
-  // NoticeLevel indicates normal but significant conditions.
-  NoticeLevel = 5;
-  // InfoLevel indicates minor informational messages that should generally be ignored.
-  InfoLevel = 6;
-  // DebugLevel indicates verbose debug-level messages.
-  DebugLevel = 7;
+	// Verbose indicates extremely verbose level messages.
+	VerboseLevel = 0;
+	// Debug indicates debug-level messages.
+	DebugLevel = 1;
+	// Info indicates minor informational messages that should generally be ignored.
+	InfoLevel = 2;
+	// Warning indicates issues that might affect performance or compatibility, but could be ignored.
+	WarningLevel = 3;
+	// Error indicates non terminal failure conditions that may have an effect on results.
+	ErrorLevel = 4;
+	// Fatal indicates a fatal error and the process should be terminated.
+	FatalLevel = 5;
 }
 
 message ServerInfo {

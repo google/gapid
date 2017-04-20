@@ -292,9 +292,7 @@ public class ReportView extends Composite
         string.endLink();
         string.append(": ", string.structureStyle());
         switch (item.item.getSeverity()) {
-          case EmergencyLevel:
-          case AlertLevel:
-          case CriticalLevel:
+          case FatalLevel:
           case ErrorLevel:
             string.append(trimSeverity(item.item), string.errorStyle());
             break;
