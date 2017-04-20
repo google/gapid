@@ -439,7 +439,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     ctx.Objects.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
     ctx.SharedObjects.Buffers[0] = new!Buffer()
-    ctx.SharedObjects.Renderbuffers[0] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[0] = new!Renderbuffer(ID:0)
     ctx.Objects.TransformFeedbacks[0] = new!TransformFeedback()
     ctx.Objects.VertexArrays[0] = NewVertexArray(ctx)
     ctx.TextureUnits[GL_TEXTURE0] = new!TextureUnit()
@@ -454,26 +454,26 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     ctx.Objects.DefaultTextures.TextureCubeMapArray = new!Texture(Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
     ctx.Objects.DefaultTextures.TextureExternalOes = new!Texture(Kind: GL_TEXTURE_EXTERNAL_OES)
 
-    ctx.SharedObjects.Renderbuffers[color_id] = new!Renderbuffer()
-    ctx.SharedObjects.Renderbuffers[depth_id] = new!Renderbuffer()
-    ctx.SharedObjects.Renderbuffers[stencil_id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[color_id] = new!Renderbuffer(ID: color_id)
+    ctx.SharedObjects.Renderbuffers[depth_id] = new!Renderbuffer(ID: depth_id)
+    ctx.SharedObjects.Renderbuffers[stencil_id] = new!Renderbuffer(ID: stencil_id)
 
     backbuffer := ctx.Objects.Framebuffers[0]
     backbuffer.ColorAttachments[0] = FramebufferAttachment(
-      ObjectName:          as!GLuint(color_id),
-      ObjectType:          GL_RENDERBUFFER,
+      Type:                GL_RENDERBUFFER,
+      Renderbuffer:        ctx.SharedObjects.Renderbuffers[color_id],
       TextureCubeMapFace:  GL_NONE,
     )
 
     backbuffer.DepthAttachment = FramebufferAttachment(
-      ObjectName:          as!GLuint(depth_id),
-      ObjectType:          GL_RENDERBUFFER,
+      Type:                GL_RENDERBUFFER,
+      Renderbuffer:        ctx.SharedObjects.Renderbuffers[depth_id],
       TextureCubeMapFace:  GL_NONE,
     )
 
     backbuffer.StencilAttachment = FramebufferAttachment(
-      ObjectName:          as!GLuint(stencil_id),
-      ObjectType:          GL_RENDERBUFFER,
+      Type:                GL_RENDERBUFFER,
+      Renderbuffer:        ctx.SharedObjects.Renderbuffers[stencil_id],
       TextureCubeMapFace:  GL_NONE,
     )
 
@@ -507,9 +507,9 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState) {
   if (dynamicState != null) {
     backbuffer := ctx.Objects.Framebuffers[0]
-    color_id := as!RenderbufferId(backbuffer.ColorAttachments[0].ObjectName)
-    depth_id := as!RenderbufferId(backbuffer.DepthAttachment.ObjectName)
-    stencil_id := as!RenderbufferId(backbuffer.StencilAttachment.ObjectName)
+    color_id := backbuffer.ColorAttachments[0].Renderbuffer.ID
+    depth_id := backbuffer.DepthAttachment.Renderbuffer.ID
+    stencil_id := backbuffer.StencilAttachment.Renderbuffer.ID
 
     color_buffer := ctx.SharedObjects.Renderbuffers[color_id]
     color_buffer.Width = dynamicState.BackbufferWidth

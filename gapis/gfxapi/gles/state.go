@@ -58,17 +58,11 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		return 0, 0, 0, fmt.Errorf("Framebuffer attachment %v unsupported by gles", att)
 	}
 
-	if a.ObjectType == GLenum_GL_NONE {
+	switch a.Type {
+	case GLenum_GL_NONE:
 		return 0, 0, 0, fmt.Errorf("%s is not bound", att)
-	}
-
-	switch a.ObjectType {
 	case GLenum_GL_TEXTURE:
-		id := TextureId(a.ObjectName)
-		t, ok := c.SharedObjects.Textures[id]
-		if !ok {
-			return 0, 0, 0, fmt.Errorf("Invalid texture attachment %v", id)
-		}
+		t := a.Texture
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_2D:
 			l := t.Texture2D[a.TextureLevel]
@@ -81,13 +75,9 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 			return 0, 0, 0, fmt.Errorf("Unknown texture kind %v", t.Kind)
 		}
 	case GLenum_GL_RENDERBUFFER:
-		id := RenderbufferId(a.ObjectName)
-		r, ok := c.SharedObjects.Renderbuffers[id]
-		if !ok {
-			return 0, 0, 0, fmt.Errorf("Renderbuffer %v not found", id)
-		}
+		r := a.Renderbuffer
 		return uint32(r.Width), uint32(r.Height), r.InternalFormat, nil
 	default:
-		return 0, 0, 0, fmt.Errorf("Unknown framebuffer attachment type %T", a.ObjectType)
+		return 0, 0, 0, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type)
 	}
 }

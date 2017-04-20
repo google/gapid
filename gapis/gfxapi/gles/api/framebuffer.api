@@ -48,12 +48,13 @@ class Framebuffer {
 @internal
 class FramebufferAttachment {
   // Table 21.16: Framebuffer (state per attachment point)
-  GLenum    ObjectType         = GL_NONE
-  GLuint    ObjectName         = 0
-  GLint     TextureLevel       = 0
-  GLenum    TextureCubeMapFace = GL_NONE
-  GLint     TextureLayer       = 0
-  GLboolean Layered            = GL_FALSE
+  GLenum           Type = GL_NONE
+  ref!Texture      Texture
+  ref!Renderbuffer Renderbuffer
+  GLint            TextureLevel       = 0
+  GLenum           TextureCubeMapFace = GL_NONE
+  GLint            TextureLayer       = 0
+  GLboolean        Layered            = GL_FALSE
 /* TODO
   GLenum ColorEncoding
   GLenum ComponentType
@@ -69,6 +70,7 @@ class FramebufferAttachment {
 
 @internal
 class Renderbuffer {
+  RenderbufferId ID
   @unused u8[] Data
 
   // Table 21.17: Renderbuffer (state per renderbuffer object)
@@ -214,7 +216,7 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
     }
   }
   if !(renderbuffer in ctx.SharedObjects.Renderbuffers) {
-    ctx.SharedObjects.Renderbuffers[renderbuffer] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[renderbuffer] = new!Renderbuffer(ID: renderbuffer)
   }
 }
 
@@ -552,8 +554,8 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
 
   attachment := FramebufferAttachment()
   if (renderbuffer != 0) {
-    attachment.ObjectType = GL_RENDERBUFFER
-    attachment.ObjectName = as!GLuint(renderbuffer)
+    attachment.Type = GL_RENDERBUFFER
+    attachment.Renderbuffer = ctx.SharedObjects.Renderbuffers[renderbuffer]
   }
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
@@ -569,8 +571,8 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
     if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
-    attachment_info.ObjectType = GL_TEXTURE
-    attachment_info.ObjectName = as!GLuint(texture)
+    attachment_info.Type = GL_TEXTURE
+    attachment_info.Texture = ctx.SharedObjects.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.Layered = 0 // TODO
   }
@@ -631,8 +633,8 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
     }
     // TODO: Handle texture 0
     if ctx.SharedObjects.Textures[texture].Kind != kind { glErrorInvalidOperation() }
-    attachment.ObjectType = GL_TEXTURE
-    attachment.ObjectName = as!GLuint(texture)
+    attachment.Type = GL_TEXTURE
+    attachment.Texture = ctx.SharedObjects.Textures[texture]
     attachment.TextureLevel = level
     attachment.TextureCubeMapFace = switch (texture_target) {
       case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
@@ -658,8 +660,8 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
     if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
-    attachment_info.ObjectType = GL_TEXTURE
-    attachment_info.ObjectName = as!GLuint(texture)
+    attachment_info.Type = GL_TEXTURE
+    attachment_info.Texture = ctx.SharedObjects.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.TextureLayer = layer
   }
@@ -695,7 +697,7 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!RenderbufferId(?)
-    ctx.SharedObjects.Renderbuffers[id] = new!Renderbuffer()
+    ctx.SharedObjects.Renderbuffers[id] = new!Renderbuffer(ID: id)
     r[i] = id
   }
 }
@@ -755,14 +757,19 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
     }
   }
 
-  if (a.ObjectType == GL_NONE) &&
+  if (a.Type == GL_NONE) &&
       (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME) && (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) {
     glErrorInvalidOperation()
   }
   value[0] = switch (parameter) {
     // TODO: Several format-related cases are still missing.
-    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE:           as!GLint(a.ObjectType)
-    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME:           as!GLint(a.ObjectName)
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE:           as!GLint(a.Type)
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME:
+      switch a.Type {
+        case GL_NONE:         as!GLint(0)
+        case GL_TEXTURE:      as!GLint(a.Texture.ID)
+        case GL_RENDERBUFFER: as!GLint(a.Renderbuffer.ID)
+      }
     case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL:         as!GLint(a.TextureLevel)
     case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: as!GLint(a.TextureCubeMapFace)
     case GL_FRAMEBUFFER_ATTACHMENT_LAYERED:               as!GLint(a.Layered)
