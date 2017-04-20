@@ -528,16 +528,13 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
         return false;
     }
 
-    switch (attachment->second.mObjectType) {
+    switch (attachment->second.mType) {
         case GL_TEXTURE: {
-            auto t = ctx->mSharedObjects.mTextures.find(attachment->second.mObjectName);
-            if (t == ctx->mSharedObjects.mTextures.end()) {
-                return false;
-            }
-            switch (t->second->mKind) {
+            auto t = attachment->second.mTexture;
+            switch (t->mKind) {
                 case GLenum::GL_TEXTURE_2D: {
-                    auto l = t->second->mTexture2D.find(attachment->second.mTextureLevel);
-                    if (l == t->second->mTexture2D.end()) {
+                    auto l = t->mTexture2D.find(attachment->second.mTextureLevel);
+                    if (l == t->mTexture2D.end()) {
                         return false;
                     }
                     width = uint32_t(l->second.mWidth);
@@ -545,8 +542,8 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
                     return true;
                 }
                 case GLenum::GL_TEXTURE_CUBE_MAP: {
-                    auto l = t->second->mCubemap.find(attachment->second.mTextureLevel);
-                    if (l == t->second->mCubemap.end()) {
+                    auto l = t->mCubemap.find(attachment->second.mTextureLevel);
+                    if (l == t->mCubemap.end()) {
                         return false;
                     }
                     auto f = l->second.mFaces.find(attachment->second.mTextureCubeMapFace);
@@ -560,12 +557,9 @@ bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
             }
         }
         case GL_RENDERBUFFER: {
-            auto r = ctx->mSharedObjects.mRenderbuffers.find(attachment->second.mObjectName);
-            if (r == ctx->mSharedObjects.mRenderbuffers.end()) {
-                return false;
-            }
-            width = uint32_t(r->second->mWidth);
-            height = uint32_t(r->second->mHeight);
+            auto r = attachment->second.mRenderbuffer;
+            width = uint32_t(r->mWidth);
+            height = uint32_t(r->mHeight);
             return true;
         }
     }

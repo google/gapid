@@ -262,14 +262,14 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		if isEglSwapBuffers || isEglSwapBuffersWithDamageKHR {
 			// Get default renderbuffers
 			fb := c.Objects.Framebuffers[0]
-			colorId := RenderbufferId(fb.ColorAttachments[0].ObjectName)
-			depthId := RenderbufferId(fb.DepthAttachment.ObjectName)
-			stencilId := RenderbufferId(fb.StencilAttachment.ObjectName)
+			color := fb.ColorAttachments[0].Renderbuffer
+			depth := fb.DepthAttachment.Renderbuffer
+			stencil := fb.StencilAttachment.Renderbuffer
 			if !c.Info.PreserveBuffersOnSwap {
-				b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[colorId]})
+				b.write(g, renderbufferDataKey{color})
 			}
-			b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[depthId]})
-			b.write(g, renderbufferDataKey{c.SharedObjects.Renderbuffers[stencilId]})
+			b.write(g, renderbufferDataKey{depth})
+			b.write(g, renderbufferDataKey{stencil})
 		} else if a.AtomFlags().IsDrawCall() {
 			b.read(g, uniformGroupKey{c, c.BoundProgram})
 			b.read(g, vertexAttribGroupKey{c, c.BoundVertexArray})
@@ -390,8 +390,8 @@ func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 }
 
 func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment) (key stateKey) {
-	if att.ObjectType == GLenum_GL_RENDERBUFFER {
-		rb := c.SharedObjects.Renderbuffers[RenderbufferId(att.ObjectName)]
+	if att.Type == GLenum_GL_RENDERBUFFER {
+		rb := att.Renderbuffer
 		if rb != nil && rb.InternalFormat != GLenum_GL_NONE {
 			scissor := c.FragmentOperations.Scissor
 			fullBox := Rect{Width: rb.Width, Height: rb.Height}
@@ -402,8 +402,8 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 			}
 		}
 	}
-	if att.ObjectType == GLenum_GL_TEXTURE {
-		tex := c.SharedObjects.Textures[TextureId(att.ObjectName)]
+	if att.Type == GLenum_GL_TEXTURE {
+		tex := att.Texture
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
 			if tex.EGLImage != GLeglImageOES(memory.Nullptr) {

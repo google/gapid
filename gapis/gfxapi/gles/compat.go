@@ -225,24 +225,23 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		isEglImageDirty[fb] = false
 		// TODO: Depth and stencil
 		for name, att := range fb.ColorAttachments {
-			if att.ObjectType == GLenum_GL_TEXTURE {
-				if tex, ok := c.SharedObjects.Textures[TextureId(att.ObjectName)]; ok {
-					if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
-						t := newTweaker(ctx, out)
-						s := out.State()
-						t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
-						t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
-						t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
-						img := tex.Texture2D[0]
-						data, ok := eglImageData[tex.EGLImage]
-						if !ok {
-							data = atom.Must(atom.Alloc(ctx, s, img.Data.Count)).Ptr()
-							eglImageData[tex.EGLImage] = data
-						}
-						out.MutateAndWrite(ctx, i, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
-						out.MutateAndWrite(ctx, i, NewGlGetError(0))
-						t.revert()
+			if att.Type == GLenum_GL_TEXTURE {
+				tex := att.Texture
+				if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+					t := newTweaker(ctx, out)
+					s := out.State()
+					t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
+					t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
+					t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
+					img := tex.Texture2D[0]
+					data, ok := eglImageData[tex.EGLImage]
+					if !ok {
+						data = atom.Must(atom.Alloc(ctx, s, img.Data.Count)).Ptr()
+						eglImageData[tex.EGLImage] = data
 					}
+					out.MutateAndWrite(ctx, i, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
+					out.MutateAndWrite(ctx, i, NewGlGetError(0))
+					t.revert()
 				}
 			}
 		}
