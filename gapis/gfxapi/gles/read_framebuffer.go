@@ -85,7 +85,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			outH = int32(height)
 		)
 
-		dID := atom.DerivedID(id)
+		dID := id.Derived()
 		t := newTweaker(ctx, out, dID)
 
 		t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
@@ -139,7 +139,7 @@ func postColorData(ctx context.Context,
 	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
 	imgFmt := getImageFormatOrPanic(unsizedFormat, ty)
 
-	dID := atom.DerivedID(id)
+	dID := id.Derived()
 	t := newTweaker(ctx, out, dID)
 	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
 

@@ -99,7 +99,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	mutatorsGlError := t.lastGlError
 	out.MutateAndWrite(ctx, i, a)
 
-	dID := atom.DerivedID(i)
+	dID := i.Derived()
 	s := GetState(t.state)
 	c := s.getContext()
 	if c == nil {

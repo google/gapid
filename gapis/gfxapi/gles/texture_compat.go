@@ -104,7 +104,7 @@ func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, t *Texture, par
 		}
 	}
 	if compat != curr {
-		out.MutateAndWrite(ctx, atom.DerivedID(id), NewGlTexParameteri(target, parameter, GLint(compat)))
+		out.MutateAndWrite(ctx, id.Derived(), NewGlTexParameteri(target, parameter, GLint(compat)))
 	}
 }
 
@@ -205,7 +205,7 @@ func (tc *textureCompat) postTexParameter(target, parameter GLenum, out transfor
 // the given glCompressedTexImage2D.
 func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
-	dID := atom.DerivedID(i)
+	dID := i.Derived()
 	c := GetContext(s)
 
 	data := a.Data
@@ -252,7 +252,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 // the given glCompressedTexSubImage2D.
 func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
-	dID := atom.DerivedID(i)
+	dID := i.Derived()
 	c := GetContext(s)
 
 	data := a.Data

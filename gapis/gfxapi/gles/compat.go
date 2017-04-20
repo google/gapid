@@ -165,7 +165,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		s := out.State()
 		id := nextBufferID
 		tmp := atom.Must(atom.AllocData(ctx, s, id))
-		out.MutateAndWrite(ctx, atom.DerivedID(i), NewGlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
+		out.MutateAndWrite(ctx, i.Derived(), NewGlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextBufferID--
 		return id
 	}
@@ -228,7 +228,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			if att.Type == GLenum_GL_TEXTURE {
 				tex := att.Texture
 				if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
-					dID := atom.DerivedID(i)
+					dID := i.Derived()
 					t := newTweaker(ctx, out, dID)
 					s := out.State()
 					t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
@@ -250,7 +250,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 	var t transform.Transformer
 	t = transform.Transform("compat", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
-		dID := atom.DerivedID(i)
+		dID := i.Derived()
 		s := out.State()
 		switch a := a.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
@@ -1080,7 +1080,7 @@ func moveClientVBsToVAs(
 
 	// Apply the memory observations that were made by the draw call now.
 	// We need to do this as the glBufferData calls below will require the data.
-	dID := atom.DerivedID(i)
+	dID := i.Derived()
 	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 		return nil

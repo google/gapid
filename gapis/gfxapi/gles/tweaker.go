@@ -36,7 +36,7 @@ type tweaker struct {
 func newTweaker(ctx context.Context, out transform.Writer, id atom.ID) *tweaker {
 	s := out.State()
 	c := GetContext(s)
-	dID := atom.DerivedID(id)
+	dID := id.Derived()
 	return &tweaker{ctx: ctx, out: out, s: s, c: c, dID: dID}
 }
 

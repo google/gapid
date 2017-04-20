@@ -55,9 +55,9 @@ type ID uint64
 // NoID is used when you have to pass an ID, but don't have one to use.
 const NoID = ID(1<<63 - 1) // use max int64 for the benefit of java
 
-// DerivedID is used to annotate generated extra atoms.
-// They are used purely for debugging when printing logs.
-func DerivedID(id ID) ID {
+// Derived is used to create an ID which is used for generated extra atoms.
+// It is used purely for debugging (to print the related original atom ID).
+func (id ID) Derived() ID {
 	return id | derivedBit
 }
 

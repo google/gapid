@@ -76,7 +76,7 @@ func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, devi
 	// 2D vertices positions for a full screen 2D triangle strip.
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
-	dID := atom.DerivedID(id)
+	dID := id.Derived()
 	t := newTweaker(ctx, out, id)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.
