@@ -31,8 +31,12 @@ func layout(ctx context.Context) (out FileLayout) {
 		return resolvedLayout
 	}
 	defer func() { resolvedLayout = out }()
-	for _, base := range []file.Path{file.ExecutablePath(), file.Abs(".")} {
-		dir := base.Parent()
+	for _, dir := range []file.Path{
+		file.ExecutablePath().Parent(),
+		file.Abs("."),
+		// This is needed for running integration tests.
+		file.ExecutablePath().Parent().Parent().Join("bin"),
+	} {
 		log.D(ctx, "Looking for package in %v", dir)
 
 		// Check the regular package layout first:
