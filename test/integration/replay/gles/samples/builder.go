@@ -58,13 +58,12 @@ func (b *builder) data(ctx context.Context, v ...interface{}) atom.AllocResult {
 	return atom.Must(atom.AllocData(ctx, b.state, v...))
 }
 
-func (b *builder) newEglContext(width, height int, preserveBuffersOnSwap bool) (eglContext, eglSurface, eglDisplay memory.Pointer) {
+func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointer, preserveBuffersOnSwap bool) (eglContext, eglSurface, eglDisplay memory.Pointer) {
 	eglContext = b.p()
 	eglSurface = b.p()
 	eglDisplay = b.p()
 	eglConfig := b.p()
 
-	eglShareContext := memory.Nullptr
 	// TODO: We don't observe attribute lists properly. We should.
 	b.Add(
 		gles.NewEglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),

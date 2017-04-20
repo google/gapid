@@ -124,7 +124,7 @@ func init() {
 	cfg.DeviceScanDone = deviceScanDone
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	atoms, draw, swap := samples.DrawTexturedSquare(ctx)
+	atoms, draw, swap := samples.DrawTexturedSquare(ctx, false)
 	p, err := capture.ImportAtomList(ctx, "sample", atoms)
 	check(err)
 	buf := bytes.Buffer{}

@@ -404,7 +404,24 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 
 func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier) {
 	ctx := f.ctx
-	atoms, _, square := samples.DrawTexturedSquare(ctx)
+	atoms, _, square := samples.DrawTexturedSquare(ctx, false)
+
+	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
+		intent := replay.Intent{
+			Capture: cap,
+			Device:  path.NewDevice(dev.Instance().Id.ID()),
+		}
+		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
+
+		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", square, nil)
+	}
+
+	return storeCapture(ctx, atoms), verifyTrace
+}
+
+func generateDrawTexturedSquareCaptureWithSharedContext(f *Fixture) (*path.Capture, traceVerifier) {
+	ctx := f.ctx
+	atoms, _, square := samples.DrawTexturedSquare(ctx, true)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -579,6 +596,11 @@ func testTrace(t *testing.T, name string, tg traceGenerator) {
 
 func TestDrawTexturedSquare(t *testing.T) {
 	testTrace(t, "textured_square", generateDrawTexturedSquareCapture)
+}
+
+func TestDrawTexturedSquareWithSharedContext(t *testing.T) {
+	testTrace(t, "textured_square_with_shared_context",
+		generateDrawTexturedSquareCaptureWithSharedContext)
 }
 
 func TestDrawTriangle(t *testing.T) {

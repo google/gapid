@@ -19,11 +19,12 @@ import (
 
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi/gles"
+	"github.com/google/gapid/gapis/memory"
 )
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, swap atom.ID) {
+func DrawTexturedSquare(ctx context.Context, sharedContext bool) (atoms *atom.List, draw atom.ID, swap atom.ID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -54,7 +55,7 @@ func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, sw
 
 	b := newBuilder(ctx)
 	vs, fs, prog, pos := b.newShaderID(), b.newShaderID(), b.newProgramID(), gles.AttributeLocation(0)
-	_, eglSurface, eglDisplay := b.newEglContext(128, 128, false)
+	eglContext, eglSurface, eglDisplay := b.newEglContext(128, 128, memory.Nullptr, false)
 	texLoc := gles.UniformLocation(0)
 
 	textureNames := []gles.TextureId{1}
@@ -72,12 +73,9 @@ func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, sw
 	squareIndicesPtr := b.data(ctx, squareIndices)
 	squareVerticesPtr := b.data(ctx, squareVertices)
 
+	// Build the program resource
 	b.program(ctx, vs, fs, prog, textureVSSource, textureFSSource)
-	draw = b.Add(
-		gles.NewGlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		gles.NewGlClearColor(0.0, 1.0, 0.0, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
-
+	b.Add(
 		atom.WithExtras(
 			gles.NewGlLinkProgram(prog),
 			&gles.ProgramInfo{
@@ -91,14 +89,15 @@ func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, sw
 					},
 				},
 			}),
-		gles.NewGlUseProgram(prog),
-		gles.NewGlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
 		gles.NewGlGetUniformLocation(prog, "tex", texLoc),
-		gles.NewGlActiveTexture(gles.GLenum_GL_TEXTURE0),
+	)
+
+	// Build the texture resource
+	b.Add(
+		gles.NewGlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
 		gles.NewGlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
 		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
 		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		gles.NewGlUniform1i(texLoc, 0),
 		gles.NewGlTexImage2D(
 			gles.GLenum_GL_TEXTURE_2D,
 			0,
@@ -110,6 +109,22 @@ func DrawTexturedSquare(ctx context.Context) (atoms *atom.List, draw atom.ID, sw
 			gles.GLenum_GL_UNSIGNED_BYTE,
 			textureData.Ptr(),
 		).AddRead(textureData.Data()),
+	)
+
+	// Switch to new context which shares resources with the first one
+	if sharedContext {
+		eglContext, eglSurface, eglDisplay = b.newEglContext(128, 128, eglContext, false)
+	}
+
+	// Render square using the build program and texture
+	draw = b.Add(
+		gles.NewGlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		gles.NewGlClearColor(0.0, 1.0, 0.0, 1.0),
+		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+		gles.NewGlUseProgram(prog),
+		gles.NewGlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		gles.NewGlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		gles.NewGlUniform1i(texLoc, 0),
 		gles.NewGlGetAttribLocation(prog, "position", gles.GLint(pos)),
 		gles.NewGlEnableVertexAttribArray(pos),
 		gles.NewGlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
