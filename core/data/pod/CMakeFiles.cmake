@@ -20,6 +20,8 @@
 set(files
     doc.go
     pod.go
+    pod.pb.go
+    pod.proto
     reader.go
     writer.go
 )

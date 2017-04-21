@@ -14,8 +14,8 @@
 
 syntax = "proto3";
 
+import "core/data/pod/pod.proto";
 import "gapis/service/path/path.proto";
-import "gapis/service/pod/pod.proto";
 
 package stringtable;
 option java_package = "com.google.gapid.proto.stringtable";

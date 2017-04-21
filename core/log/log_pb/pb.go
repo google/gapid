@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/service/pod"
 )
 
 // From returns a new protobuf Message constructed from the log.Message.
