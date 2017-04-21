@@ -76,14 +76,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
-			if config.DebugDeadCodeElimination {
-				log.I(ctx, "Live atom: %v, %v", i, t.dependencyGraph.atoms[i])
-			}
 			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.atoms[i])
-		} else {
-			if config.DebugDeadCodeElimination {
-				log.I(ctx, "Dead atom: %v, %v", i, t.dependencyGraph.atoms[i])
-			}
 		}
 	}
 }
@@ -171,7 +164,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
 		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
 		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
-		log.W(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
+		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
 			100*numDead/num, numDead, deadMem/1024/1024, numDeadDraws,
 			100*numLive/num, numLive, liveMem/1024/1024, numLiveDraws)
 	}
