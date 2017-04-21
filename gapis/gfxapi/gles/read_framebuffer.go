@@ -62,7 +62,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 			return
 		}
 
-		postColorData(ctx, s, int32(width), int32(height), format, out, res)
+		postColorData(ctx, s, int32(width), int32(height), format, out, id, res)
 	})
 }
 
@@ -85,7 +85,8 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			outH = int32(height)
 		)
 
-		t := newTweaker(ctx, out)
+		dID := id.Derived()
+		t := newTweaker(ctx, out, dID)
 
 		t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
 
@@ -93,7 +94,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
 		if c.BoundDrawFramebuffer == 0 {
-			out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
@@ -105,7 +106,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, res)
 		} else {
 			t.glScissor(0, 0, GLsizei(inW), GLsizei(inH))
 			framebufferID := t.glGenFramebuffer()
@@ -113,14 +114,14 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			renderbufferID := t.glGenRenderbuffer()
 			t.glBindRenderbuffer(renderbufferID)
 
-			mutateAndWriteEach(ctx, out,
+			mutateAndWriteEach(ctx, out, dID,
 				NewGlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
 				NewGlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
 				NewGlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
 			)
 			t.glBindFramebuffer_Read(framebufferID)
 
-			postColorData(ctx, s, outW, outH, fmt, out, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, res)
 		}
 
 		t.revert()
@@ -132,17 +133,19 @@ func postColorData(ctx context.Context,
 	width, height int32,
 	sizedFormat GLenum,
 	out transform.Writer,
+	id atom.ID,
 	res replay.Result) {
 
 	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
 	imgFmt := getImageFormatOrPanic(unsizedFormat, ty)
 
-	t := newTweaker(ctx, out)
+	dID := id.Derived()
+	t := newTweaker(ctx, out, dID)
 	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height))
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		// TODO: We use Call() directly here because we are calling glReadPixels
 		// with depth formats which are not legal for GLES. Once we're replaying
 		// on-device again, we need to take a look at methods for reading the
@@ -179,9 +182,9 @@ func postColorData(ctx context.Context,
 	t.revert()
 }
 
-func mutateAndWriteEach(ctx context.Context, out transform.Writer, atoms ...atom.Atom) {
+func mutateAndWriteEach(ctx context.Context, out transform.Writer, id atom.ID, atoms ...atom.Atom) {
 	for _, a := range atoms {
-		out.MutateAndWrite(ctx, atom.NoID, a)
+		out.MutateAndWrite(ctx, id, a)
 	}
 }
 

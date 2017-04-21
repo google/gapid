@@ -37,18 +37,18 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 		}
 		if eglMakeCurrent, ok := a.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw] {
 			// Render the undefined pattern for new contexts.
-			drawUndefinedFramebuffer(ctx, a, device, s, c, out)
+			drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
 			seenSurfaces[eglMakeCurrent.Draw] = true
 		}
 		if a.AtomFlags().IsEndOfFrame() {
 			if c != nil && !c.Info.PreserveBuffersOnSwap {
-				drawUndefinedFramebuffer(ctx, a, device, s, c, out)
+				drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
 			}
 		}
 	})
 }
 
-func drawUndefinedFramebuffer(ctx context.Context, a atom.Atom, device *device.Instance, s *gfxapi.State, c *Context, out transform.Writer) error {
+func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, device *device.Instance, s *gfxapi.State, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 
@@ -76,7 +76,8 @@ func drawUndefinedFramebuffer(ctx context.Context, a atom.Atom, device *device.I
 	// 2D vertices positions for a full screen 2D triangle strip.
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
-	t := newTweaker(ctx, out)
+	dID := id.Derived()
+	t := newTweaker(ctx, out, id)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.
 	t.glDisable(GLenum_GL_BLEND)
@@ -88,19 +89,19 @@ func drawUndefinedFramebuffer(ctx context.Context, a atom.Atom, device *device.I
 
 	programID := t.makeProgram(vertexShaderSource, fragmentShaderSource)
 
-	out.MutateAndWrite(ctx, atom.NoID, NewGlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlLinkProgram(programID))
+	out.MutateAndWrite(ctx, dID, NewGlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
+	out.MutateAndWrite(ctx, dID, NewGlLinkProgram(programID))
 	t.glUseProgram(programID)
 
 	bufferID := t.glGenBuffer()
 	t.GlBindBuffer_ArrayBuffer(bufferID)
 
 	tmp := t.AllocData(positions)
-	out.MutateAndWrite(ctx, atom.NoID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
+	out.MutateAndWrite(ctx, dID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
 		AddRead(tmp.Data()))
 
-	out.MutateAndWrite(ctx, atom.NoID, NewGlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
-	out.MutateAndWrite(ctx, atom.NoID, NewGlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
+	out.MutateAndWrite(ctx, dID, NewGlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
+	out.MutateAndWrite(ctx, dID, NewGlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
 
 	t.revert()
 

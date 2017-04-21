@@ -35,7 +35,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 	return transform.Transform("Wireframe", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		if dc, ok := a.(drawCall); ok {
 			s := out.State()
-			t := newTweaker(ctx, out)
+			dID := i.Derived()
+			t := newTweaker(ctx, out, dID)
 			t.glEnable(GLenum_GL_LINE_SMOOTH)
 			t.glEnable(GLenum_GL_BLEND)
 			t.glBlendFunc(GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
@@ -59,9 +60,10 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 		if i == id {
 			if dc, ok := a.(drawCall); ok {
 				s := out.State()
-				out.MutateAndWrite(ctx, atom.NoID, dc)
+				out.MutateAndWrite(ctx, i, dc)
 
-				t := newTweaker(ctx, out)
+				dID := id.Derived()
+				t := newTweaker(ctx, out, dID)
 				t.glEnable(GLenum_GL_POLYGON_OFFSET_LINE)
 				t.glPolygonOffset(-1, -1)
 				t.glEnable(GLenum_GL_BLEND)
@@ -85,6 +87,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 
 func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
 	c := GetContext(s)
+	dID := i.Derived()
 
 	indices, drawMode, err := dc.getIndices(ctx, c, s)
 	if err != nil {
@@ -105,7 +108,7 @@ func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State,
 	// Unbind the index buffer
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(len(wireframeData))))
 	oldIndexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
-	out.MutateAndWrite(ctx, atom.NoID,
+	out.MutateAndWrite(ctx, dID,
 		NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).
 			AddRead(tmp.Range(), resID))
 
@@ -114,7 +117,7 @@ func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State,
 		drawMode, GLsizei(len(indices)), wireframeDataType, tmp.Ptr()))
 
 	// Rebind the old index buffer
-	out.MutateAndWrite(ctx, atom.NoID, NewGlBindBuffer(
+	out.MutateAndWrite(ctx, dID, NewGlBindBuffer(
 		GLenum_GL_ELEMENT_ARRAY_BUFFER, oldIndexBufferID))
 
 	return nil

@@ -208,6 +208,6 @@ func (w *adapter) MutateAndWrite(ctx context.Context, i atom.ID, a atom.Atom) {
 		w.builder.CommitAtom()
 	} else {
 		w.builder.RevertAtom(err)
-		log.W(ctx, "Failed to write atom %d (%T) for replay: %v", i, a, err)
+		log.W(ctx, "Failed to write atom %v (%T) for replay: %v", i, a, err)
 	}
 }
