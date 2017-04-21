@@ -50,6 +50,7 @@ type Functions struct {
 	basePath  string
 	apiFile   string
 	api       *semantic.API
+	cs        *ConstantSets
 	loader    func(filename string) ([]byte, error)
 }
 
