@@ -86,7 +86,11 @@ func (t *Types) AddMessage(msg proto.Message) (Type, bool) {
 // AddName adds a type by name.
 // It uses the proto type registry to look up the name.
 func (t *Types) AddName(name string) (Type, bool) {
-	typ := proto.MessageType(name).Elem()
+	typ := proto.MessageType(name)
+	if typ == nil {
+		return Type{}, false
+	}
+	typ = typ.Elem()
 	msg := reflect.New(typ).Interface().(proto.Message)
 	return t.add(msg, name, typ)
 }

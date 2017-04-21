@@ -35,7 +35,13 @@ type (
 		from  io.Reader
 		total int
 	}
+
+	// ErrUnknownType is the error returned by Reader.Unmarshal() when it
+	// encounters an unknown proto type.
+	ErrUnknownType struct{ TypeName string }
 )
+
+func (e ErrUnknownType) Error() string { return fmt.Sprintf("Unknown proto type '%s'", e.TypeName) }
 
 // NewReader builds a pack file reader that gets it's data from the supplied
 // stream.
@@ -96,7 +102,10 @@ func (r *Reader) readType() error {
 	if err = r.pb.Unmarshal(d); err != nil {
 		return err
 	}
-	t, _ := r.Types.AddName(name)
+	t, ok := r.Types.AddName(name)
+	if !ok {
+		return ErrUnknownType{name}
+	}
 	if t.Descriptor != nil {
 		// TODO: validate the descriptor matches
 	} else {
