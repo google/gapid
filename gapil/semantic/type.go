@@ -53,6 +53,16 @@ func (*Class) isType() {}
 
 func (t *Class) ASTNode() ast.Node { return t.AST }
 
+// FieldByName returns the field of t with the name n, or nil.
+func (t *Class) FieldByName(n string) *Field {
+	for _, f := range t.Fields {
+		if f.Name() == n {
+			return f
+		}
+	}
+	return nil
+}
+
 // Field represents a field entry in a class.
 type Field struct {
 	owned

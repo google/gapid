@@ -217,6 +217,25 @@ func (*Functions) IsNumericType(t interface{}) bool {
 	}
 }
 
+// UniqueEnumKeys returns the enum's list of EnumEntry with duplicate values
+// removed. To remove duplicates the entry with the shortest name is picked.
+func (*Functions) UniqueEnumKeys(e *semantic.Enum) ([]*semantic.EnumEntry, error) {
+	keys := map[uint32]*semantic.EnumEntry{}
+	for _, e := range e.Entries {
+		if got, found := keys[e.Value]; !found || len(got.Name()) > len(e.Name()) {
+			keys[e.Value] = e
+		}
+	}
+	out := make([]*semantic.EnumEntry, 0, len(keys))
+	for _, e := range e.Entries {
+		if got := keys[e.Value]; got == e {
+			out = append(out, e)
+			delete(keys, e.Value)
+		}
+	}
+	return out, nil
+}
+
 // Returns the base name of the type of v
 func baseType(v interface{}) reflect.Type {
 	ty := reflect.TypeOf(v)

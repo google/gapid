@@ -18,21 +18,8 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    api.go
-    constant_sets.go
-    format.go
-    functions.go
-    globals.go
-    list.go
-    literals.go
-    literals_test.go
-    names.go
-    strings.go
-    strings_examples_test.go
-    strings_test.go
-    template.go
-    types.go
+    constset.go
 )
 set(dirs
-
+    
 )
