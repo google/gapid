@@ -39,6 +39,7 @@ if(ANDROID_ABI)
         "-DLLVM_TARGETS_TO_BUILD:STRING=${LLVM_TARGET_ARCH}"
         "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
         "-DLLVM_TABLEGEN:PATH=${CMAKE_BINARY_DIR}/../../../bin/llvm/llvm-tblgen${CMAKE_HOST_EXECUTABLE_SUFFIX}"
+        "-DLLVM_CCACHE_BUILD:BOOL=ON"
     )
     add_cmake_target(llvm interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources}
@@ -51,6 +52,7 @@ else()
     add_cmake(llvm "${CMAKE_SOURCE_DIR}/third_party/llvm"
         "-DCMAKE_TOOLCHAIN_FILE:STRING=${CMAKE_CURRENT_BINARY_DIR}/toolchain.cmake"
         "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
+        "-DLLVM_CCACHE_BUILD:BOOL=ON"
     )
     add_cmake_target(llvm llvm-tblgen ${dst} "llvm-tblgen${CMAKE_HOST_EXECUTABLE_SUFFIX}"
         DEPENDS ${sources}
