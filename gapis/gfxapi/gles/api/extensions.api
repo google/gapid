@@ -634,6 +634,7 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     i := Image(
       Width:        as!GLsizei(info.Width),
       Height:       as!GLsizei(info.Height),
+      SizedFormat:  GL_RGB8,
       DataFormat:   GL_RGB,
       DataType:     GL_UNSIGNED_BYTE,
     )
