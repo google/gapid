@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(LLVM_CCACHE_BUILD "OFF")
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set(LLVM_CCACHE_BUILD "ON")
+endif()
+
 if(ANDROID_ABI)
     if (ANDROID_ABI STREQUAL "aarch64")
         set(LLVM_TARGET_ARCH "AArch64")
@@ -39,7 +45,7 @@ if(ANDROID_ABI)
         "-DLLVM_TARGETS_TO_BUILD:STRING=${LLVM_TARGET_ARCH}"
         "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
         "-DLLVM_TABLEGEN:PATH=${CMAKE_BINARY_DIR}/../../../bin/llvm/llvm-tblgen${CMAKE_HOST_EXECUTABLE_SUFFIX}"
-        "-DLLVM_CCACHE_BUILD:BOOL=ON"
+        "-DLLVM_CCACHE_BUILD:BOOL=${LLVM_CCACHE_BUILD}"
     )
     add_cmake_target(llvm interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources}
@@ -52,7 +58,7 @@ else()
     add_cmake(llvm "${CMAKE_SOURCE_DIR}/third_party/llvm"
         "-DCMAKE_TOOLCHAIN_FILE:STRING=${CMAKE_CURRENT_BINARY_DIR}/toolchain.cmake"
         "-DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}"
-        "-DLLVM_CCACHE_BUILD:BOOL=ON"
+        "-DLLVM_CCACHE_BUILD:BOOL=${LLVM_CCACHE_BUILD}"
     )
     add_cmake_target(llvm llvm-tblgen ${dst} "llvm-tblgen${CMAKE_HOST_EXECUTABLE_SUFFIX}"
         DEPENDS ${sources}
