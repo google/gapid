@@ -53,7 +53,7 @@ void registerWindowClass() {
 
 class GlesRendererImpl : public GlesRenderer {
 public:
-    GlesRendererImpl();
+    GlesRendererImpl(GlesRendererImpl* shared_context);
     virtual ~GlesRendererImpl() override;
 
     virtual Api* api() override;
@@ -78,15 +78,17 @@ private:
     HGLRC mRenderingContext;
     HDC mDeviceContext;
     HWND mWindow;
+    HGLRC mSharedContext;
 };
 
-GlesRendererImpl::GlesRendererImpl()
+GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mBound(false)
         , mNeedsResolve(true)
         , mQueriedExtensions(false)
         , mRenderingContext(nullptr)
         , mDeviceContext(0)
-        , mWindow(0) {
+        , mWindow(0) 
+        , mSharedContext(shared_context != nullptr ? shared_context->mRenderingContext : 0) {
 
     // Initialize with a default target.
     setBackbuffer(Backbuffer(
@@ -191,6 +193,10 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         GAPID_FATAL("Failed to create GL context. Error: %d", GetLastError());
     }
 
+    if (mSharedContext != nullptr) {
+        wglShareLists(mSharedContext, mRenderingContext);
+    }
+
     mBackbuffer = backbuffer;
     mNeedsResolve = true;
 
@@ -264,8 +270,8 @@ const char* GlesRendererImpl::version() {
 
 } // anonymous namespace
 
-GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
-    return new GlesRendererImpl();
+GlesRenderer* GlesRenderer::create(GlesRenderer* shared_context) {
+    return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(shared_context));
 }
 
 }  // namespace gapir
