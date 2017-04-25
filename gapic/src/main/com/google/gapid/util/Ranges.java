@@ -15,15 +15,7 @@
  */
 package com.google.gapid.util;
 
-import com.google.common.collect.Lists;
-import com.google.gapid.proto.service.Service.CommandRange;
-import com.google.gapid.proto.service.Service.CommandRangeOrBuilder;
 import com.google.gapid.proto.service.Service.MemoryRange;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * {@link CommandRange} utilities.
@@ -32,6 +24,7 @@ public class Ranges {
   private Ranges() {
   }
 
+  /*
   public static CommandRange command(long index) {
     return CommandRange.newBuilder()
         .setFirst(index)
@@ -45,6 +38,7 @@ public class Ranges {
         .setCount(count)
         .build();
   }
+  */
 
   public static MemoryRange memory(long base, long size) {
     return MemoryRange.newBuilder()
@@ -53,6 +47,7 @@ public class Ranges {
         .build();
   }
 
+  /*
   public static long first(CommandRangeOrBuilder range) {
     return range.getFirst();
   }
@@ -72,13 +67,17 @@ public class Ranges {
   public static boolean contains(CommandRangeOrBuilder range, long atomImdex) {
     return atomImdex >= first(range) && atomImdex <= last(range);
   }
+  */
 
   /** @return whether a completely contains b. */
+  /*
   public static boolean contains(CommandRangeOrBuilder a, CommandRangeOrBuilder b) {
     return first(a) <= first(b) && end(a) >= end(b);
   }
+  */
 
   /** @return whether a has any overlap with b */
+  /*
   public static boolean overlaps(CommandRangeOrBuilder a, CommandRangeOrBuilder b) {
     return first(a) < end(b) && first(b) < end(a);
   }
@@ -140,4 +139,5 @@ public class Ranges {
     long end = Math.min(end(range), end(foundRange));
     return commands(start, end - start);
   }
+  */
 }

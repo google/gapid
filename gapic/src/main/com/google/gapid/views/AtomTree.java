@@ -20,43 +20,32 @@ import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.vertCenter;
 import static com.google.gapid.util.Loadable.MessageType.Error;
-import static com.google.gapid.util.Ranges.count;
-import static com.google.gapid.util.Ranges.first;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
-import com.google.gapid.models.AtomHierarchies;
-import com.google.gapid.models.AtomHierarchies.AtomNode;
-import com.google.gapid.models.AtomHierarchies.FilteredGroup;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
-import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandGroup;
-import com.google.gapid.proto.service.Service.CommandRange;
+import com.google.gapid.proto.service.Service.Command;
+import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.service.atom.Atom;
-import com.google.gapid.service.atom.DynamicAtom;
-import com.google.gapid.service.snippets.CanFollow;
-import com.google.gapid.service.snippets.Pathway;
-import com.google.gapid.util.Events;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
-import com.google.gapid.util.Paths;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.Balloon;
-import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
@@ -68,6 +57,7 @@ import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
+import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
@@ -83,22 +73,21 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 /**
  * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
  */
 public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
-    ApiContext.Listener, AtomHierarchies.Listener, Thumbnails.Listener {
+    ApiContext.Listener, Thumbnails.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
   private static final int PREVIEW_HOVER_DELAY_MS = 500;
 
@@ -107,7 +96,6 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   private final TreeViewer viewer;
   private final ImageProvider imageProvider;
   private final SelectionHandler<Tree> selectionHandler;
-  private FilteredGroup root;
 
   public AtomTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -121,8 +109,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     Tree tree = loading.getContents();
     viewer = createTreeViewer(tree);
     imageProvider = new ImageProvider(models.thumbs, viewer, widgets.loading);
-    viewer.setContentProvider(new AtomContentProvider(viewer));
-    ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme, imageProvider);
+    viewer.setContentProvider(new AtomContentProvider(models.atoms, viewer));
+    ViewLabelProvider labelProvider = new ViewLabelProvider(
+        viewer, models.constants, widgets.theme, imageProvider);
     viewer.setLabelProvider(labelProvider);
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
@@ -131,31 +120,34 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     models.capture.addListener(this);
     models.atoms.addListener(this);
     models.contexts.addListener(this);
-    models.hierarchies.addListener(this);
     models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.atoms.removeListener(this);
       models.contexts.removeListener(this);
-      models.hierarchies.removeListener(this);
       models.thumbs.removeListener(this);
       imageProvider.reset();
     });
 
-    search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
+    //search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
 
     selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
       @Override
       protected void updateModel(Event e) {
         Object selection = (tree.getSelectionCount() > 0) ? tree.getSelection()[0].getData() : null;
-        if (selection instanceof FilteredGroup) {
-          models.atoms.selectAtoms(((FilteredGroup)selection).group.getRange(), false);
-        } else if (selection instanceof AtomNode) {
-          models.atoms.selectAtoms(((AtomNode)selection).index, 1, false);
+        if (selection instanceof AtomStream.Node) {
+          AtomStream.Node node = (AtomStream.Node)selection;
+          AtomIndex index = node.getIndex();
+          if (index == null) {
+            models.atoms.load(node, () -> models.atoms.selectAtoms(node.getIndex(), false));
+          } else {
+            models.atoms.selectAtoms(index, false);
+          }
         }
       }
     };
 
+    /*
     Menu popup = new Menu(tree);
     Widgets.createMenuItem(popup, "&Edit", SWT.MOD1 + 'E', e -> {
       TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
@@ -170,6 +162,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         e.doit = false;
       }
     });
+    */
 
     MouseAdapter mouseHandler = new MouseAdapter() {
       private Future<?> lastScheduledFuture = Futures.immediateFuture(null);
@@ -199,28 +192,29 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       @Override
       public void mouseDown(MouseEvent e) {
         Point location = new Point(e.x, e.y);
-        CanFollow follow = (CanFollow)labelProvider.getFollow(location);
+        Object follow = /*TODO(CanFollow)*/labelProvider.getFollow(location);
         if (follow != null) {
-          models.follower.follow(getFollowPath(tree.getItem(location), follow.getPath()));
+          //models.follower.follow(getFollowPath(tree.getItem(location), follow.getPath()));
         }
       }
 
       private void updateHover(int x, int y) {
         TreeItem item = tree.getItem(new Point(x, y));
-        if (item != null && (item.getData() instanceof FilteredGroup) &&
+        if (item != null && (item.getData() instanceof AtomStream.Node) &&
             item.getImage() != null && item.getImageBounds(0).contains(x, y)) {
           hover(item);
         } else {
           hover(null);
 
-          CanFollow follow = (CanFollow)labelProvider.getFollow(new Point(x, y));
+          Object follow = /*TODO(CanFollow)*/labelProvider.getFollow(new Point(x, y));
           setCursor((follow == null) ? null : getDisplay().getSystemCursor(SWT.CURSOR_HAND));
           if (follow != null) {
-            models.follower.prepareFollow(getFollowPath(item, follow.getPath()));
+            //models.follower.prepareFollow(getFollowPath(item, follow.getPath()));
           }
         }
       }
 
+      /*
       private Path.Any getFollowPath(TreeItem item, Pathway path) {
         AtomNode atom = (AtomNode)item.getData();
         String field = ((com.google.gapid.service.snippets.FieldPath)path).getName();
@@ -233,6 +227,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         LOG.log(Level.WARNING, "Field " + path + " not found in atom " + atom.atom);
         return null;
       }
+      */
 
       private void hover(TreeItem item) {
         if (item != lastHoveredItem) {
@@ -241,7 +236,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
           if (item != null) {
             lastScheduledFuture = Scheduler.EXECUTOR.schedule(() ->
               Widgets.scheduleIfNotDisposed(
-                  tree, () -> showBalloon(item, (FilteredGroup)item.getData())),
+                  tree, () -> showBalloon(item, (AtomStream.Node)item.getData())),
               PREVIEW_HOVER_DELAY_MS, TimeUnit.MILLISECONDS);
           }
           if (lastShownBalloon != null) {
@@ -250,13 +245,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         }
       }
 
-      private void showBalloon(TreeItem item, FilteredGroup group) {
+      private void showBalloon(TreeItem item, AtomStream.Node node) {
         if (lastShownBalloon != null) {
           lastShownBalloon.close();
         }
         Rectangle bounds = item.getImageBounds(0);
         lastShownBalloon = Balloon.createAndShow(tree, shell -> {
-          LoadableImageWidget.forImageData(shell, loadImage(group), widgets.loading)
+          LoadableImageWidget.forImageData(shell, loadImage(node), widgets.loading)
               .withImageEventListener(new LoadableImage.Listener() {
                 @Override
                 public void onLoaded(boolean success) {
@@ -269,8 +264,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         }, new Point(right(bounds) + 2, vertCenter(bounds) - THUMB_SIZE / 2));
       }
 
-      private ListenableFuture<ImageData> loadImage(FilteredGroup group) {
-        return noAlpha(models.thumbs.getThumbnail(group.getIndexOfLastLeaf(), THUMB_SIZE));
+      private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
+        return noAlpha(models.thumbs.getThumbnail(
+            node.getPath(Path.CommandTreeNode.newBuilder()).build(), THUMB_SIZE));
       }
     };
     tree.addMouseListener(mouseHandler);
@@ -278,6 +274,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     tree.addMouseWheelListener(mouseHandler);
     tree.getVerticalBar().addSelectionListener(mouseHandler);
 
+    /*
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
       if (object instanceof FilteredGroup) {
         Service.CommandGroup group = ((FilteredGroup)object).group;
@@ -289,8 +286,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
       return new String[] { String.valueOf(object) };
     });
+    */
   }
 
+  /*
   private void search(String text, boolean regex) {
     if (root != null && !text.isEmpty()) {
       FilteredGroup parent = root;
@@ -317,6 +316,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
     }
   }
+  */
 
   @Override
   public Control getControl() {
@@ -346,10 +346,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   @Override
-  public void onAtomsSelected(CommandRange range) {
-    FilteredGroup group = root;
+  public void onAtomsSelected(AtomIndex index) {
     selectionHandler.updateSelectionFromModel(
-        () -> (group == null) ? null : group.getTreePathTo(range),
+        () -> getTreePath(index.getNode()).get(),
         selection -> viewer.setSelection(new TreeSelection(selection), true));
   }
 
@@ -364,11 +363,6 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   @Override
-  public void onHierarchiesLoaded() {
-    updateTree(false);
-  }
-
-  @Override
   public void onThumbnailsChanged() {
     imageProvider.reset();
     viewer.refresh();
@@ -376,54 +370,77 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private void updateTree(boolean assumeLoading) {
     imageProvider.reset();
-    root = null;
 
-    if (assumeLoading || !models.atoms.isLoaded() || !models.contexts.isLoaded() ||
-        !models.hierarchies.isLoaded()) {
+    if (assumeLoading || !models.atoms.isLoaded()) {
       loading.startLoading();
       viewer.setInput(null);
       return;
     }
 
     loading.stopLoading();
-    root = models.hierarchies.getHierarchy(
-        models.atoms.getData(), models.contexts.getSelectedContext());
-    viewer.setInput(root);
+    viewer.setInput(models.atoms.getRoot());
     viewer.getTree().setSelection(viewer.getTree().getItem(0));
     viewer.getTree().showSelection();
 
+    /*
     if (models.atoms.getSelectedAtoms() != null) {
       onAtomsSelected(models.atoms.getSelectedAtoms());
     }
+    */
+  }
+
+  private ListenableFuture<TreePath> getTreePath(Path.CommandTreeNode path) {
+    return getTreePath(
+        models.atoms.getRoot(), Lists.newArrayList(), path.getIndexList().iterator());
+  }
+
+  private ListenableFuture<TreePath> getTreePath(
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
+    if (!indices.hasNext()) {
+      return Futures.immediateFuture(new TreePath(path.toArray()));
+    }
+    ListenableFuture<AtomStream.Node> load = models.atoms.load(node);
+    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
+      Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+  }
+
+  private ListenableFuture<TreePath> getTreePathForLoadedNode(
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
+    AtomStream.Node child = node.getChild(indices.next().intValue());
+    path.add(child);
+    return getTreePath(child, path, indices);
   }
 
   /**
    * Content provider for the command tree.
    */
   private static class AtomContentProvider implements ILazyTreeContentProvider {
+    private final AtomStream atoms;
     private final TreeViewer viewer;
+    private final Widgets.Refresher refresher;
 
-    public AtomContentProvider(TreeViewer viewer) {
+    public AtomContentProvider(AtomStream atoms, TreeViewer viewer) {
+      this.atoms = atoms;
       this.viewer = viewer;
+      this.refresher = Widgets.withAsyncRefresh(viewer);
     }
 
     @Override
     public void updateChildCount(Object element, int currentChildCount) {
-      FilteredGroup group = (FilteredGroup)element;
-      viewer.setChildCount(element, group.getChildCount());
+      viewer.setChildCount(element, ((AtomStream.Node)element).getChildCount());
     }
 
     @Override
     public void updateElement(Object parent, int index) {
-      FilteredGroup group = (FilteredGroup)parent;
-      Object child = group.getChild(index);
+      AtomStream.Node child = ((AtomStream.Node)parent).getChild(index);
+      atoms.load(child, refresher::refresh);
       viewer.replace(parent, index, child);
-      viewer.setHasChildren(child, child instanceof FilteredGroup);
+      viewer.setChildCount(child, child.getChildCount());
     }
 
     @Override
     public Object getParent(Object element) {
-      return null;
+      return ((AtomStream.Node)element).getParent();
     }
   }
 
@@ -437,7 +454,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     private final Thumbnails thumbs;
     private final TreeViewer viewer;
     private final LoadingIndicator loading;
-    private final Map<FilteredGroup, LoadableImage> images = Maps.newIdentityHashMap();
+    private final Map<AtomStream.Node, LoadableImage> images = Maps.newIdentityHashMap();
 
     public ImageProvider(Thumbnails thumbs, TreeViewer viewer, LoadingIndicator loading) {
       this.thumbs = thumbs;
@@ -445,26 +462,26 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       this.loading = loading;
     }
 
-    public void load(FilteredGroup group) {
+    public void load(AtomStream.Node group) {
       LoadableImage image = getLoadableImage(group);
       if (image != null) {
         image.load();
       }
     }
 
-    public void unload(FilteredGroup group) {
+    public void unload(AtomStream.Node group) {
       LoadableImage image = getLoadableImage(group);
       if (image != null) {
         image.unload();
       }
     }
 
-    public Image getImage(FilteredGroup group) {
+    public Image getImage(AtomStream.Node group) {
       LoadableImage image = getLoadableImage(group);
       return (image == null) ? null : image.getImage();
     }
 
-    private LoadableImage getLoadableImage(FilteredGroup group) {
+    private LoadableImage getLoadableImage(AtomStream.Node group) {
       LoadableImage image = images.get(group);
       if (image == null) {
         if (!shouldShowImage(group) || !thumbs.isReady()) {
@@ -483,17 +500,23 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       ifNotDisposed(viewer.getControl(), viewer::refresh);
     }
 
-    private static boolean shouldShowImage(FilteredGroup group) {
+    private static boolean shouldShowImage(AtomStream.Node node) {
+      /*
       Atom atom = group.getLastLeaf();
       return atom != null && (atom.isDrawCall() || atom.isEndOfFrame());
+      */
+      return node.getData() != null && !node.getData().getGroup().isEmpty();
     }
 
-    private ListenableFuture<ImageData> loadImage(FilteredGroup group) {
+    private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
+      return noAlpha(thumbs.getThumbnail(node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE));
+      /*
       long index = group.getIndexOfLastDrawCall();
       if (index < 0) {
         index = group.getIndexOfLastLeaf();
       }
       return noAlpha(thumbs.getThumbnail(index, PREVIEW_SIZE));
+      */
     }
 
     public void reset() {
@@ -509,15 +532,19 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
    */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider
       implements VisibilityTrackingTreeViewer.Listener {
+    private final ConstantSets constants;
     private final ImageProvider imageProvider;
 
-    public ViewLabelProvider(TreeViewer viewer, Theme theme, ImageProvider imageProvider) {
+    public ViewLabelProvider(
+        TreeViewer viewer, ConstantSets constants, Theme theme, ImageProvider imageProvider) {
       super(viewer, theme);
+      this.constants = constants;
       this.imageProvider = imageProvider;
     }
 
     @Override
     protected <S extends StylingString> S format(Object element, S string) {
+      /*
       if (element instanceof FilteredGroup) {
         CommandGroup group = ((FilteredGroup)element).group;
         string.append(first(group.getRange()) + ": ", string.defaultStyle());
@@ -530,35 +557,55 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         string.append(atom.index + ": ", string.defaultStyle());
         Formatter.format((DynamicAtom)atom.atom, string, string.identifierStyle());
       }
+      */
+      CommandTreeNode data = ((AtomStream.Node)element).getData();
+      if (data == null) {
+        string.append("Loading...", string.structureStyle());
+      } else {
+        if (data.getGroup().isEmpty() && data.hasCommand()) {
+          string.append(data.getCommand().getIndex(0) + ": ", string.defaultStyle());
+          Command cmd = ((AtomStream.Node)element).getCommand();
+          if (cmd == null) {
+            string.append("Loading...", string.structureStyle());
+          } else {
+            Formatter.format(cmd, constants::getConstants, string, string.identifierStyle());
+          }
+        } else {
+          string.append(data.getCommand().getIndex(0) + ": ", string.defaultStyle());
+          string.append(data.getGroup(), string.labelStyle());
+        }
+      }
       return string;
     }
 
     @Override
     protected Image getImage(Object element) {
       Image result = null;
-      if (element instanceof FilteredGroup) {
-        result = imageProvider.getImage((FilteredGroup)element);
+      if (element instanceof AtomStream.Node) {
+        result = imageProvider.getImage((AtomStream.Node)element);
       }
       return result;
     }
+
     @Override
     protected boolean isFollowable(Object element) {
-      return element instanceof AtomNode;
+      //return element instanceof AtomNode;
+      return false;
     }
 
     @Override
     public void onShow(TreeItem item) {
       Object element = item.getData();
-      if (element instanceof FilteredGroup) {
-        imageProvider.load((FilteredGroup)element);
+      if (element instanceof AtomStream.Node) {
+        imageProvider.load((AtomStream.Node)element);
       }
     }
 
     @Override
     public void onHide(TreeItem item) {
       Object element = item.getData();
-      if (element instanceof FilteredGroup) {
-        imageProvider.unload((FilteredGroup)element);
+      if (element instanceof AtomStream.Node) {
+        imageProvider.unload((AtomStream.Node)element);
       }
     }
   }

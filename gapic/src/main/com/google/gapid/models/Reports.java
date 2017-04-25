@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 /**
  * Model containing the report details of the current capture.
  */
-public class Reports extends CaptureDependentModel<Service.Report> {
+public class Reports extends CaptureDependentModel.ForValue<Service.Report> {
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
   private final Devices devices;

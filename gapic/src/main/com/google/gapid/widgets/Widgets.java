@@ -540,7 +540,7 @@ public class Widgets {
       if (!scheduled.getAndSet(true)) {
         viewer.getControl().getDisplay().timerExec(25, () -> {
           scheduled.set(false);
-          viewer.refresh();
+          ifNotDisposed(viewer.getControl(), viewer::refresh);
         });
       }
     });

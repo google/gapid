@@ -15,69 +15,9 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.util.Paths.command;
-import static com.google.gapid.widgets.Widgets.createCheckbox;
-import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createDropDown;
-import static com.google.gapid.widgets.Widgets.createDropDownViewer;
-import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createSpinner;
-import static com.google.gapid.widgets.Widgets.createTextbox;
-
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.gapid.models.Models;
-import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.RpcException;
-import com.google.gapid.rpclib.schema.Constant;
-import com.google.gapid.rpclib.schema.ConstantSet;
-import com.google.gapid.rpclib.schema.Dynamic;
-import com.google.gapid.rpclib.schema.Field;
-import com.google.gapid.rpclib.schema.Method;
-import com.google.gapid.rpclib.schema.Primitive;
-import com.google.gapid.rpclib.schema.Type;
 import com.google.gapid.server.Client;
-import com.google.gapid.service.atom.Atom;
-import com.google.gapid.service.snippets.Labels;
-import com.google.gapid.service.snippets.SnippetObject;
-import com.google.gapid.util.PrefixTree;
-import com.google.gapid.util.UiCallback;
-import com.google.gapid.views.Formatter;
 
-import org.eclipse.jface.dialogs.TitleAreaDialog;
-import org.eclipse.jface.fieldassist.ContentProposal;
-import org.eclipse.jface.fieldassist.ContentProposalAdapter;
-import org.eclipse.jface.fieldassist.IContentProposal;
-import org.eclipse.jface.fieldassist.IContentProposalProvider;
-import org.eclipse.jface.fieldassist.TextContentAdapter;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.window.Window;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Spinner;
-import org.eclipse.swt.widgets.Text;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -95,6 +35,7 @@ public class AtomEditor {
     this.models = models;
   }
 
+  /*
   public void showEditPopup(Shell parent, long index) {
     EditDialog dialog = new EditDialog(parent, models.atoms.getAtom(index));
     if (dialog.open() == Window.OK) {
@@ -131,10 +72,12 @@ public class AtomEditor {
       return Service.Value.getDefaultInstance();
     }
   }
+  */
 
   /**
    * The dialog containing the editors for a given command.
    */
+  /*
   private static class EditDialog extends TitleAreaDialog {
     private final Atom atom;
     private final List<Editor<?>> editors = Lists.newArrayList();
@@ -203,7 +146,7 @@ public class AtomEditor {
 
     /**
      * Base class for the different types of editors.
-     */
+     *
     private abstract static class Editor<C extends Control> {
       private static final int MAX_DROP_DOWN_SIZE = 1000;
 
@@ -281,7 +224,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for read-only values.
-     */
+     *
     private static class NoEditEditor extends Editor<Label> {
       public NoEditEditor(Composite parent, Type type, SnippetObject value) {
         super(-1, new Label(parent, SWT.NONE));
@@ -296,7 +239,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for enums using a drop down.
-     */
+     *
     private static class EnumEditor extends Editor<Combo> {
       private final ComboViewer viewer;
 
@@ -320,7 +263,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for enums using a free from text box with auto completion suggestions.
-     */
+     *
     private static class ConstantEditor extends Editor<Text> {
       private static final int MAX_PROPOSALS = 1000;
 
@@ -376,7 +319,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for flag/bitmask values.
-     */
+     *
     private static class FlagEditor extends Editor<Composite> {
       private final List<Constant> constants;
 
@@ -405,7 +348,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for boolean values.
-     */
+     *
     private static class BooleanEditor extends Editor<Button> {
       public BooleanEditor(Composite parent, boolean value, int fieldIndex) {
         super(fieldIndex, createCheckbox(parent, value));
@@ -419,7 +362,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for integer values.
-     */
+     *
     private static class IntEditor extends Editor<Spinner> {
       public IntEditor(Composite parent, int value, int min, int max, int fieldIndex) {
         super(fieldIndex, createSpinner(parent, value, min, max));
@@ -433,7 +376,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for long values.
-     */
+     *
     private static class LongEditor extends Editor<Text> {
       public LongEditor(Composite parent, BigInteger value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, String.valueOf(value)));
@@ -451,7 +394,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for floating point values.
-     */
+     *
     private static class FloatEditor extends Editor<Text> {
       public FloatEditor(Composite parent, double value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, String.valueOf(value)));
@@ -469,7 +412,7 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for string values.
-     */
+     *
     private static class StringEditor extends Editor<Text> {
       public StringEditor(Composite parent, String value, int fieldIndex) {
         super(fieldIndex, createTextbox(parent, value));
@@ -481,4 +424,5 @@ public class AtomEditor {
       }
     }
   }
+  */
 }

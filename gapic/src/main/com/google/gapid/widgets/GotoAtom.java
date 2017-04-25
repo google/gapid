@@ -15,13 +15,13 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 
 import com.google.gapid.models.AtomStream;
-import com.google.gapid.proto.service.Service.CommandRange;
+import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Messages;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -42,10 +42,13 @@ public class GotoAtom {
   private GotoAtom() {
   }
 
-  public static void showGotoAtomDialog(Shell shell, AtomStream atoms) {
+  public static void showGotoAtomDialog(Shell shell, Path.Capture capture, AtomStream atoms) {
     GotoDialog dialog = new GotoDialog(shell, atoms);
     if (dialog.open() == Window.OK) {
-      atoms.selectAtoms(dialog.value, 1, true);
+      atoms.selectAtoms(new AtomStream.AtomIndex(Path.Command.newBuilder()
+          .addIndex(dialog.value)
+          .setCapture(capture)
+          .build(), null), true);
     }
   }
 
@@ -72,9 +75,10 @@ public class GotoAtom {
     protected Control createCustomArea(Composite parent) {
       // Although the atom ID is a long, we currently only actually support the int range, as
       // the atoms are stored in an array. So, using an int spinner here is fine.
-      int max = (atoms.isLoaded()) ? atoms.getAtomCount() - 1 : 0;
-      CommandRange selection = atoms.getSelectedAtoms();
-      int current = (selection == null) ? 0 : (int)last(selection);
+      //TODO do not submit - int max = (atoms.isLoaded()) ? atoms.getAtomCount() - 1 : 0;
+      int max = Integer.MAX_VALUE;
+      AtomIndex selection = atoms.getSelectedAtoms();
+      int current = (selection == null) ? 0 : 0 /*TODO(int)last(selection)*/;
 
       Composite container = createComposite(parent, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));

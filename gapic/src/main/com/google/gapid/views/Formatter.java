@@ -15,48 +15,29 @@
  */
 package com.google.gapid.views;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
+import static java.util.function.Function.identity;
+
 import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
+import com.google.common.primitives.UnsignedLongs;
+import com.google.gapid.proto.core.pod.Pod;
+import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.memory.MemoryProtos.PoolNames;
-import com.google.gapid.rpclib.binary.BinaryObject;
-import com.google.gapid.rpclib.schema.AnyType;
-import com.google.gapid.rpclib.schema.Array;
-import com.google.gapid.rpclib.schema.Constant;
-import com.google.gapid.rpclib.schema.ConstantSet;
-import com.google.gapid.rpclib.schema.Dynamic;
-import com.google.gapid.rpclib.schema.Entity;
-import com.google.gapid.rpclib.schema.Field;
-import com.google.gapid.rpclib.schema.Interface;
-import com.google.gapid.rpclib.schema.Map;
-import com.google.gapid.rpclib.schema.Method;
-import com.google.gapid.rpclib.schema.Pointer;
-import com.google.gapid.rpclib.schema.Primitive;
-import com.google.gapid.rpclib.schema.Slice;
-import com.google.gapid.rpclib.schema.Struct;
-import com.google.gapid.rpclib.schema.Type;
-import com.google.gapid.service.atom.DynamicAtom;
-import com.google.gapid.service.memory.MemoryPointer;
-import com.google.gapid.service.memory.MemoryRange;
-import com.google.gapid.service.memory.MemorySliceInfo;
-import com.google.gapid.service.memory.MemorySliceMetadata;
-import com.google.gapid.service.snippets.CanFollow;
-import com.google.gapid.service.snippets.Labels;
-import com.google.gapid.service.snippets.SnippetObject;
+import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.util.Boxes;
 import com.google.gapid.util.IntRange;
+import com.google.gapid.util.Pods;
+import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.widgets.Theme;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.MessageOrBuilder;
 
 import org.eclipse.jface.viewers.StyledString;
 import org.eclipse.jface.viewers.StyledString.Styler;
 
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Formats varies values to {@link StylingString StylingStrings}.
@@ -65,164 +46,373 @@ public class Formatter {
   private Formatter() {
   }
 
+  /*
   public static String toString(SnippetObject value, Type type) {
     NoStyleStylingString string = new NoStyleStylingString();
     format(value, type, string, null);
     return string.toString();
   }
+   */
 
-  public static void format(SnippetObject value, Type type, StylingString string, Style style) {
-    if (type instanceof Primitive) {
-      format(value, (Primitive)type, string, style);
-    } else if (type instanceof Struct) {
-      format(value, (Struct)type, string, style);
-    } else if (type instanceof Pointer) {
-      format(value, (Pointer)type, string, style);
-    } else if (type instanceof Interface) {
-      format(value, (Interface)type, string, style);
-    } else if (type instanceof Array) {
-      format(value, (Array)type, string, style);
-    } else if (type instanceof Slice) {
-      format(value, (Slice)type, string, style);
-    } else if (type instanceof Map) {
-      format(value, (Map)type, string, style);
-    } else if (type instanceof AnyType) {
-      format(value, (AnyType)type, string, style);
+  public static void format(Service.Command atom,
+      Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
+      StylingString string, Style style) {
+    string.append(atom.getName(), string.labelStyle());
+    string.append("(", string.structureStyle());
+    boolean needComma = false;
+
+    for (int i = 0; i < atom.getParametersCount(); ++i) {
+      Service.Parameter field = atom.getParameters(i);
+      if (needComma) {
+        string.append(", ", string.structureStyle());
+      }
+      needComma = true;
+      //SnippetObject paramValue = SnippetObject.param(atom, i);
+      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
+      Object follow = null;
+      Style paramStyle = (follow == null) ? style : string.linkStyle();
+      string.startLink(follow);
+      string.append(field.getName(), paramStyle);
+      string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
+      format(field, constantResolver, string, paramStyle);
+      string.endLink();
+    }
+
+    string.append(")", string.structureStyle());
+    if (atom.hasResult()) {
+      string.append("->", string.structureStyle());
+      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
+      Object follow = null;
+      string.startLink(follow);
+      format(atom.getResult(), constantResolver, string,
+          (follow == null) ? style : string.linkStyle());
+      string.endLink();
+    }
+  }
+
+  private static void format(Service.Parameter param,
+      Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
+      StylingString string, Style style) {
+    Box.Value value = param.getValue();
+    if (value.getValCase() != Box.Value.ValCase.POD) {
+      format(value, new Boxes.Context(), string, style);
     } else {
+      format(value.getPod(), constantResolver.apply(param.getConstants()), string, style);
+    }
+  }
+
+  public static void format(
+      Pod.Value value, Service.ConstantSet constants, StylingString string, Style style) {
+    if (constants == null || !Pods.mayBeConstant(value)) {
+      format(value, string, style);
+    } else if (constants.getIsBitfield()) {
+      long bits = Pods.getConstant(value);
+      boolean first = true;
+      for (Service.Constant constant : constants.getConstantsList()) {
+        if ((bits & constant.getValue()) == constant.getValue()) {
+          if (!first) {
+            string.append(" | ", string.structureStyle());
+          }
+          string.append(constant.getName(), style);
+          first = false;
+          bits &= ~(constant.getValue());
+        }
+      }
+      if (bits != 0) {
+        // Uh-oh left over bits, probably an invalid value was passed by the app.
+        if (!first) {
+          string.append(" | ", string.structureStyle());
+        }
+        String hex = Long.toHexString(bits);
+        if ((hex.length() & 1) == 1) {
+          // Odd number of hex chars, add a leading 0.
+          string.append("0x0" + hex, style);
+        } else {
+          string.append("0x" + hex, style);
+        }
+      }
+    } else {
+      long search = Pods.getConstant(value);
+      for (Service.Constant constant : constants.getConstantsList()) {
+        if (search == constant.getValue()) {
+          string.append(constant.getName(), style);
+          return;
+        }
+      }
+      // Uh-oh value not found in constant set, probably an invalid value was passed by the app.
       format(value, string, style);
     }
   }
 
-  private static void format(Object value, StylingString string, Style style) {
-    if (value instanceof SnippetObject) {
-      format((SnippetObject)value, string, style);
-    } else if (value instanceof DynamicAtom) {
-      format((DynamicAtom)value, string, style);
-    } else if (value instanceof MemoryPointer) {
-      format((MemoryPointer)value, string, style);
-    } else if (value instanceof MemoryRange) {
-      format((MemoryRange)value, string, style);
-    } else {
-      string.append(String.valueOf(value), style);
+  private static void format(Box.Value value, Boxes.Context ctx, StylingString string, Style style) {
+    Integer id = value.getValueId();
+    switch (value.getValCase()) {
+      case BACK_REFERENCE:
+        // TODO: If ever encountered, consider recursing.
+        string.append("<ref:", string.structureStyle());
+        string.append(id.toString(), style);
+        string.append(">", string.structureStyle());
+        break;
+      case POD:
+        format(value.getPod(), string, style);
+        break;
+      case POINTER:
+        format(value.getPointer(), string, style);
+        break;
+      case REFERENCE:
+        format(value.getReference(), ctx, string, style);
+        break;
+      case STRUCT:
+        format(value.getStruct(), ctx, string, style);
+        break;
+      case MAP:
+        format(value.getMap(), ctx, string, style);
+        break;
+      default:
+        format(value, string, style);
     }
   }
 
+  private static void format(Pod.Value v, StylingString string, Style style) {
+    switch (v.getValCase()) {
+      case VAL_NOT_SET:
+        string.append("[null]", style); break;
+      case STRING:
+        string.append("\"", string.structureStyle());
+        string.append(v.getString(), style);
+        string.append("\"", string.structureStyle());
+        break;
+      case BOOL:
+        string.append(Boolean.toString(v.getBool()), style);
+        break;
+      case FLOAT64:
+        string.append(Double.toString(v.getFloat64()), style);
+        break;
+      case FLOAT32:
+        string.append(Float.toString(v.getFloat32()), style);
+        break;
+      case SINT:
+        string.append(Long.toString(v.getSint()), style);
+        break;
+      case SINT8:
+        string.append(Integer.toString(v.getSint8()), style);
+        break;
+      case SINT16:
+        string.append(Integer.toString(v.getSint16()), style);
+        break;
+      case SINT32:
+        string.append(Integer.toString(v.getSint32()), style);
+        break;
+      case SINT64:
+        string.append(Long.toString(v.getSint64()), style);
+        break;
+      case UINT:
+        string.append(Long.toString(v.getUint()), style);
+        break;
+      case UINT8:
+        string.append(Integer.toString(v.getUint8()), style);
+        break;
+      case UINT16:
+        string.append(Integer.toString(v.getUint16()), style);
+        break;
+      case UINT32:
+        string.append(uint32ToString(v.getUint32()), style);
+        break;
+      case UINT64:
+        string.append(uint64ToString(v.getUint64()), style);
+        break;
+      case STRING_ARRAY:
+        formatArray(v.getStringArray().getValList(), identity(), string, style);
+        break;
+      case BOOL_ARRAY:
+        formatArray(v.getBoolArray().getValList(), Object::toString, string, style);
+        break;
+      case FLOAT64_ARRAY:
+        formatArray(v.getFloat64Array().getValList(), Object::toString, string, style);
+        break;
+      case FLOAT32_ARRAY:
+        formatArray(v.getFloat32Array().getValList(), Object::toString, string, style);
+        break;
+      case SINT_ARRAY:
+        formatArray(v.getSintArray().getValList(), Object::toString, string, style);
+        break;
+      case SINT8_ARRAY:
+        formatArray(v.getSint8Array().getValList(), Object::toString, string, style);
+        break;
+      case SINT16_ARRAY:
+        formatArray(v.getSint16Array().getValList(), Object::toString, string, style);
+        break;
+      case SINT32_ARRAY:
+        formatArray(v.getSint32Array().getValList(), Object::toString, string, style);
+        break;
+      case SINT64_ARRAY:
+        formatArray(v.getSint64Array().getValList(), Object::toString, string, style);
+        break;
+      case UINT_ARRAY:
+        formatArray(v.getUintArray().getValList(), Object::toString, string, style);
+        break;
+      case UINT8_ARRAY:
+        formatArray(v.getUint8Array(), string, style);
+        break;
+      case UINT16_ARRAY:
+        formatArray(v.getUint16Array().getValList(), Object::toString, string, style);
+        break;
+      case UINT32_ARRAY:
+        formatArray(v.getUint32Array().getValList(), Formatter::uint32ToString, string, style);
+        break;
+      case UINT64_ARRAY:
+        formatArray(v.getUint64Array().getValList(), Formatter::uint64ToString, string, style);
+        break;
+      default:
+        format(v, string, style);
+    }
+  }
+
+  private static String uint32ToString(int val) {
+    return Long.toString(val & 0xFFFFFFFFL);
+  }
+
+  private static String uint64ToString(long val) {
+    return UnsignedLongs.toString(val);
+  }
+
+  private static String byteToString(byte b) {
+    String s = Integer.toHexString(b & 0xFF);
+    return (s.length() == 1) ? "0x0" + s : "0x" + s;
+  }
+
+  private static final int MAX_DISPLAY = 4;
+  private static <T> void formatArray(
+      List<T> list, Function<T, String> formatter, StylingString string, Style style) {
+    string.append("[", string.structureStyle());
+    if (!list.isEmpty()) {
+      string.append(formatter.apply(list.get(0)), style);
+      for (int i = 1; i < Math.min(MAX_DISPLAY, list.size()); i++) {
+        string.append(", ", string.structureStyle());
+        string.append(formatter.apply(list.get(i)), style);
+      }
+      if (list.size() > MAX_DISPLAY) {
+        string.append(", ...", string.structureStyle());
+      }
+    }
+    string.append("]", string.structureStyle());
+  }
+
+  private static void formatArray(ByteString bytes, StylingString string, Style style) {
+    string.append("[", string.structureStyle());
+    if (!bytes.isEmpty()) {
+      string.append(byteToString(bytes.byteAt(0)), style);
+      for (int i = 1; i < Math.min(MAX_DISPLAY, bytes.size()); i++) {
+        string.append(", ", string.structureStyle());
+        string.append(byteToString(bytes.byteAt(i)), style);
+      }
+      if (bytes.size() > MAX_DISPLAY) {
+        string.append(", ...", string.structureStyle());
+      }
+    }
+    string.append("]", string.structureStyle());
+  }
+
+  private static void format(Box.Pointer pointer, StylingString string, Style style) {
+    if (PoolNames.Application_VALUE != pointer.getPool()) {
+      if (pointer.getAddress() != 0) {
+        string.append(toPointerString(pointer.getAddress()) + " ", style);
+      }
+      string.append("Pool: ", style);
+      string.append("0x" + Long.toHexString(pointer.getPool()), style);
+    } else {
+      string.append(toPointerString(pointer.getAddress()), style);
+    }
+  }
+
+  private static String toPointerString(long pointer) {
+    String hex = "0000000" + Long.toHexString(pointer);
+    if (hex.length() > 15) {
+      return "0x" + hex.substring(hex.length() - 16, hex.length());
+    }
+    return "0x" + hex.substring(hex.length() - 8, hex.length());
+  }
+
+  private static void format(
+      Box.Reference ref, Boxes.Context ctx, StylingString string, Style style) {
+    switch (ref.getValCase()) {
+      case NULL:
+        ctx.unbox(ref.getNull());
+        string.append("NULL", style);
+        break;
+      case VALUE:
+        format(ref.getValue(), ctx, string, style);
+        break;
+      default:
+        format(ref, string, style);
+    }
+  }
+
+  private static void format(
+      Box.Struct struct, Boxes.Context ctx, StylingString string, Style style) {
+    Box.StructType type = Boxes.struct(ctx.unbox(struct.getType()));
+
+    string.append("{", string.structureStyle());
+    int count = Math.min(type.getFieldsCount(), struct.getFieldsCount());
+    for (int i = 0; i < count; i++) {
+      if (i > 0) {
+        string.append(", ", string.structureStyle());
+      }
+
+      ctx.unbox(type.getFields(i).getType()); // for back references
+
+      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
+      Object follow = null;
+      Style paramStyle = (follow == null) ? style : string.linkStyle();
+      string.startLink(follow);
+      string.append(type.getFields(i).getName(), paramStyle);
+      string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
+      format(struct.getFields(i), ctx, string, style);
+      string.endLink();
+    }
+    string.append("}", string.structureStyle());
+
+    for (int i = count; i < type.getFieldsCount(); i++) {
+      ctx.unbox(type.getFields(i).getType()); // for back references
+    }
+  }
+
+  private static void format(Box.Map map, Boxes.Context ctx, StylingString string, Style style) {
+    // TODO - from old serialization style: it looked like this was only ever used for empty maps?
+
+    Box.MapType type = Boxes.map(ctx.unbox(map.getType()));
+    ctx.unbox(type.getKeyType()); // for back references
+    ctx.unbox(type.getValueType()); // for back references
+
+    string.append("{", string.structureStyle());
+    for (int i = 0; i < map.getEntriesCount(); i++) {
+      if (i > 0) {
+        string.append(", ", string.structureStyle());
+      }
+
+      Box.MapEntry e = map.getEntries(i);
+      format(e.getKey(), ctx, string, style);
+      string.append("=", string.structureStyle());
+      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
+      Object follow = null;
+      string.startLink(follow);
+      format(e.getValue(), ctx, string, (follow == null) ? style : string.linkStyle());
+      string.endLink();
+    }
+    string.append("}", string.structureStyle());
+  }
+
+  private static void format(MessageOrBuilder proto, StylingString string, Style style) {
+    // This is the fallback, which if used means a bug.
+    string.append("!!BUG!!" + ProtoDebugTextFormat.shortDebugString(proto), style);
+  }
+
+  /*
   private static void format(SnippetObject obj, Primitive type, StylingString string, Style style) {
     if (tryConstantFormat(obj, type, string, style)) {
       // successfully formatted as a constant.
       return;
     }
-
-    Object value = obj.getObject();
-    // Note: casting to Number in case the value was boxed into a different Number type.
-    switch (type.getMethod().getValue()) {
-      case Method.BoolValue:
-        string.append(String.format("%b", (Boolean)value), style);
-        break;
-      case Method.StringValue:
-        string.appendWithEllipsis(String.valueOf(value), style);
-        break;
-      case Method.Float32Value:
-        string.append(String.format("%f", ((Number)value).floatValue()), style);
-        break;
-      case Method.Float64Value:
-        string.append(String.format("%f", ((Number)value).doubleValue()), style);
-        break;
-      default:
-        string.append(toJavaIntType(type.getMethod(), (Number)value).toString(), style);
-        break;
-    }
-  }
-
-  private static void format(SnippetObject value, @SuppressWarnings("unused") Struct type,
-      StylingString string, Style style) {
-    format(value, string, style);
-  }
-
-  private static void format(SnippetObject value, @SuppressWarnings("unused") Pointer type,
-      StylingString string, Style style) {
-    string.append("*", string.structureStyle());
-    format(value, string, style);
-  }
-
-  private static void format(SnippetObject value, @SuppressWarnings("unused") Interface type,
-      StylingString string, Style style) {
-    string.append("$", string.structureStyle());
-    format(value, string, style);
-  }
-
-  private static void format(SnippetObject obj, Array type, StylingString string, Style style) {
-    Object value = obj.getObject();
-    assert (value instanceof Object[]);
-    format(obj, (Object[])value, type.getValueType(), string, style);
-  }
-
-  private static void format(SnippetObject obj, Slice type, StylingString string, Style style) {
-    Object value = obj.getObject();
-    if (value instanceof Object[]) {
-      format(obj, (Object[])value, type.getValueType(), string, style);
-    } else if (value instanceof byte[]) {
-      format(obj, (byte[])value, type.getValueType(), string, style);
-    } else {
-      assert (false);
-    }
-  }
-
-  private static final int MAX_DISPLAY = 4;
-  private static void format(
-      SnippetObject obj, Object[] array, Type valueType, StylingString string, Style style) {
-    int count = Math.min(array.length, MAX_DISPLAY);
-    string.append("[", string.structureStyle());
-    for (int index = 0; index < count; ++index) {
-      if (index > 0) {
-        string.append(",", string.structureStyle());
-      }
-      format(obj.elem(array[index]), valueType, string, style);
-    }
-    if (count < array.length) {
-      string.append(", ...", string.structureStyle());
-    }
-    string.append("]", string.structureStyle());
-  }
-
-  private static void format(
-      SnippetObject obj, byte[] array, Type valueType, StylingString string, Style style) {
-    int count = Math.min(array.length, MAX_DISPLAY);
-    string.append("[", string.structureStyle());
-    for (int index = 0; index < count; ++index) {
-      if (index > 0) {
-        string.append(",", string.structureStyle());
-      }
-      format(obj.elem(array[index]), valueType, string, style);
-    }
-    if (count < array.length) {
-      string.append(", ...", string.structureStyle());
-    }
-    string.append("]", string.structureStyle());
-  }
-
-  private static void format(SnippetObject value, Map type, StylingString string, Style style) {
-    @SuppressWarnings("unchecked")
-    java.util.Map<Object, Object> map = (java.util.Map<Object, Object>)value.getObject();
-    Iterator<java.util.Map.Entry<Object, Object>> it = map.entrySet().iterator();
-
-    string.append("{", string.structureStyle());
-    // TODO - it looks like this is only ever used for empty maps?
-    while (it.hasNext()) {
-      java.util.Map.Entry<Object, Object> entry = it.next();
-      format(value.key(entry), type.getKeyType(), string, style);
-      string.append("=", string.structureStyle());
-      SnippetObject paramValue = value.elem(entry);
-      CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      string.startLink(follow);
-      format(
-          paramValue, type.getValueType(), string, (follow == null) ? style : string.linkStyle());
-      string.endLink();
-      if (it.hasNext()) {
-        string.append(", ", string.structureStyle());
-      }
-    }
-    string.append("}", string.structureStyle());
   }
 
   private static void format(SnippetObject value, @SuppressWarnings("unused") AnyType type,
@@ -249,23 +439,6 @@ public class Formatter {
       format((MemorySliceInfo)dynamic.getFieldValue(0), getSliceMetadata(dynamic), string, style);
       return;
     }
-
-    string.append("{", string.structureStyle());
-    for (int index = 0; index < dynamic.getFieldCount(); ++index) {
-      if (index > 0) {
-        string.append(", ", string.structureStyle());
-      }
-      Field field = dynamic.getFieldInfo(index);
-      SnippetObject paramValue = obj.field(dynamic, index);
-      CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Style paramStyle = (follow == null) ? style : string.linkStyle();
-      string.startLink(follow);
-      string.append(field.getName(), paramStyle);
-      string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
-      format(paramValue, field.getType(), string, style);
-      string.endLink();
-    }
-    string.append("}", string.structureStyle());
   }
 
   private static void format(MemorySliceInfo info, MemorySliceMetadata metaData,
@@ -287,66 +460,13 @@ public class Formatter {
     }
   }
 
-  private static void format(MemoryPointer pointer, StylingString string, Style style) {
-    if (PoolNames.Application_VALUE != pointer.getPool()) {
-      if (pointer.getAddress() != 0) {
-        string.append(toPointerString(pointer.getAddress()) + " ", style);
-      }
-      string.append("Pool: ", style);
-      string.append("0x" + Long.toHexString(pointer.getPool()), style);
-    } else {
-      string.append(toPointerString(pointer.getAddress()), style);
-    }
-  }
-
   private static void format(MemoryRange range, StylingString string, Style style) {
     string.append(Long.toString(range.getSize()), style);
     string.append(" bytes at ", string.structureStyle());
     string.append(toPointerString(range.getBase()), style);
   }
-
-  public static String toString(DynamicAtom atom) {
-    NoStyleStylingString string = new NoStyleStylingString();
-    format(atom, string, null);
-    return string.toString();
-  }
-
-  public static void format(DynamicAtom atom, StylingString string, Style style) {
-    string.append(atom.getName(), string.labelStyle());
-    string.append("(", string.structureStyle());
-    int resultIndex = atom.getResultIndex();
-    int extrasIndex = atom.getExtrasIndex();
-    boolean needComma = false;
-
-    for (int i = 0; i < atom.getFieldCount(); ++i) {
-      if (i == resultIndex || i == extrasIndex) continue;
-      Field field = atom.getFieldInfo(i);
-      if (needComma) {
-        string.append(", ", string.structureStyle());
-      }
-      needComma = true;
-      SnippetObject paramValue = SnippetObject.param(atom, i);
-      CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Style paramStyle = (follow == null) ? style : string.linkStyle();
-      string.startLink(follow);
-      string.append(field.getDeclared(), paramStyle);
-      string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
-      format(paramValue, field.getType(), string, paramStyle);
-      string.endLink();
-    }
-
-    string.append(")", string.structureStyle());
-    if (resultIndex >= 0) {
-      string.append("->", string.structureStyle());
-      SnippetObject paramValue = SnippetObject.param(atom, resultIndex);
-      Field field = atom.getFieldInfo(resultIndex);
-      CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      string.startLink(follow);
-      format(paramValue, field.getType(), string, (follow == null) ? style : string.linkStyle());
-      string.endLink();
-    }
-  }
-
+   */
+ /*
  private static String toPointerString(long pointer) {
     String hex = "0000000" + Long.toHexString(pointer);
     if (hex.length() > 15) {
@@ -358,7 +478,7 @@ public class Formatter {
   /**
    * Try to format a primitive value using it's constant name.
    * @return true if obj was formatted as a constant, false means format underlying value.
-   */
+   *
   private static boolean tryConstantFormat(
       SnippetObject obj, Primitive type, StylingString string, Style style) {
     Collection<Constant> value = findConstant(obj, type);
@@ -378,7 +498,7 @@ public class Formatter {
 
   /**
    * @return empty list if not a constant, single value for constants, more values, for bitfileds.
-   */
+   *
   public static Collection<Constant> findConstant(SnippetObject obj, Primitive type) {
     final ConstantSet constants = ConstantSet.lookup(type);
     if (constants == null || constants.getEntries().length == 0) {
@@ -486,31 +606,6 @@ public class Formatter {
     return shortest;
   }
 
-  private static Number toJavaIntType(Method type, Number value) {
-    switch (type.getValue()) {
-      case Method.Int8Value:
-        return value.byteValue();
-      case Method.Uint8Value:
-        return (short)(value.intValue() & 0xff);
-      case Method.Int16Value:
-        return value.shortValue();
-      case Method.Uint16Value:
-        return value.intValue() & 0xffff;
-      case Method.Int32Value:
-        return value.intValue();
-      case Method.Uint32Value:
-        return value.longValue() & 0xffffffffL;
-      case Method.Int64Value:
-        return value.longValue();
-      case Method.Uint64Value:
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(value.longValue());
-        return new BigInteger(1, buffer.array());
-      default:
-        throw new IllegalArgumentException("not int type: " + type);
-    }
-  }
-
   /**
    * Tries to convert a dynamic to a memory pointer if the schema representation is compatible.
    * There are several aliases for Memory.Pointer which are unique types, but we want to format
@@ -518,7 +613,7 @@ public class Formatter {
    *
    * @param dynamic object to attempt to convert to a memory pointer.
    * @return a memory pointer if the conversion is possible, otherwise null.
-   */
+   *
   private static MemoryPointer tryMemoryPointer(Dynamic dynamic) {
     Entity entity = dynamic.klass().entity();
     Field[] fields = entity.getFields();
@@ -548,6 +643,7 @@ public class Formatter {
     }
     return null;
   }
+   */
 
   /**
    * Tagging interface implemented by the various styles.
@@ -779,7 +875,7 @@ public class Formatter {
     }
 
     public static class IgnoringLinkableStyledString extends ThemedStylingString
-        implements LinkableStyledString {
+    implements LinkableStyledString {
       protected final StyledString string = new StyledString();
       private final boolean ignoreEllipsis;
 

@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 /**
  * Model containing the capture resources (textures, shaders, etc.) metadata.
  */
-public class Resources extends CaptureDependentModel<Service.Resources> {
+public class Resources extends CaptureDependentModel.ForValue<Service.Resources> {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);

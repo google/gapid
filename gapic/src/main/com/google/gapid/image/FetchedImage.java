@@ -251,7 +251,8 @@ public class FetchedImage implements MultiLevelImage {
           client.get(blob(imageInfo.getData())), new Function<Value, ArrayImageBuffer>() {
         @Override
         public ArrayImageBuffer apply(Value data) {
-          return convertImage(imageInfo, format, data.getPod().getUint8Array().toByteArray());
+          //TODO
+          return convertImage(imageInfo, format, data.getBox().getPod().getUint8Array().toByteArray());
         }
       });
     }
@@ -287,7 +288,8 @@ public class FetchedImage implements MultiLevelImage {
         public ArrayImageBuffer apply(List<Value> values) {
           byte[][] data = new byte[values.size()][];
           for (int i = 0; i < data.length; i++) {
-            data[i] = values.get(i).getPod().getUint8Array().toByteArray();
+            // TODO
+            data[i] = values.get(i).getBox().getPod().getUint8Array().toByteArray();
           }
           return convertImage(imageInfos, format, data);
         }

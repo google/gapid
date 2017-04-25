@@ -36,10 +36,10 @@ import com.google.gapid.glviewer.camera.CylindricalCameraModel;
 import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Strings;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
@@ -232,13 +232,13 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   @Override
-  public void onAtomsSelected(CommandRange range) {
+  public void onAtomsSelected(AtomIndex range) {
     updateModels(false);
   }
 
   private void updateModels(boolean assumeLoading) {
     if (!assumeLoading && models.atoms.isLoaded()) {
-      Path.Command drawPath = models.atoms.getLastSelectedDrawCall();
+      Path.Command drawPath = /*models.atoms.getLastSelectedDrawCall()*/null;
       if (drawPath == null) {
         loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
       } else {

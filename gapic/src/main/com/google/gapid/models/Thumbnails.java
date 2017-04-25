@@ -15,13 +15,11 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.Paths.command;
+import static com.google.gapid.util.Paths.thumbnail;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
-import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -39,25 +37,17 @@ public class Thumbnails {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   public static final int THUMB_SIZE = 192;
-
-  private static final Service.RenderSettings RENDER_SETTINGS = Service.RenderSettings.newBuilder()
-      .setMaxWidth(DPIUtil.autoScaleUp(THUMB_SIZE))
-      .setMaxHeight(DPIUtil.autoScaleUp(THUMB_SIZE))
-      .setWireframeMode(Service.WireframeMode.None)
-      .build();
-  private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
-      .setPreview(true)
-      .build();
+  private static final int THUMB_PIXELS = DPIUtil.autoScaleUp(THUMB_SIZE);
 
   private final Client client;
   private final Devices devices;
-  private final AtomStream atoms;
+  private final Capture capture;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
-  public Thumbnails(Client client, Devices devices, AtomStream atoms) {
+  public Thumbnails(Client client, Devices devices, Capture capture) {
     this.client = client;
     this.devices = devices;
-    this.atoms = atoms;
+    this.capture = capture;
 
     devices.addListener(new Devices.Listener() {
       @Override
@@ -74,11 +64,16 @@ public class Thumbnails {
   }
 
   public boolean isReady() {
-    return devices.hasReplayDevice() && atoms.isLoaded();
+    return devices.hasReplayDevice() && capture.isLoaded();
   }
 
-  public ListenableFuture<ImageData> getThumbnail(long atomId, int size) {
-    return Futures.transform(FetchedImage.loadLevel(FetchedImage.load(client, getPath(atomId)), 0),
+  public ListenableFuture<ImageData> getThumbnail(Path.Command command, int size) {
+    return Futures.transform(FetchedImage.loadThumbnail(client, thumbnail(command, THUMB_PIXELS)),
+        image -> processImage(image, size));
+  }
+
+  public ListenableFuture<ImageData> getThumbnail(Path.CommandTreeNode node, int size) {
+    return Futures.transform(FetchedImage.loadThumbnail(client, thumbnail(node, THUMB_PIXELS)),
         image -> processImage(image, size));
   }
 
@@ -91,12 +86,6 @@ public class Thumbnails {
     } else {
       return image;
     }
-  }
-
-  private ListenableFuture<Path.ImageInfo> getPath(long atomId) {
-    return client.getFramebufferAttachment(devices.getReplayDevice(),
-        command(atoms.getPath(), atomId), GfxAPI.FramebufferAttachment.Color0,
-        RENDER_SETTINGS, HINTS);
   }
 
   public void addListener(Listener listener) {

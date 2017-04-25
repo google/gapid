@@ -21,10 +21,6 @@ import static com.google.gapid.util.GeoUtils.left;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Ranges.commands;
-import static com.google.gapid.util.Ranges.end;
-import static com.google.gapid.util.Ranges.first;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
 import com.google.common.collect.Lists;
@@ -32,11 +28,12 @@ import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
-import com.google.gapid.proto.service.Service.CommandRange;
-import com.google.gapid.service.atom.AtomList;
+import com.google.gapid.models.Timeline;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.InfiniteScrolledComposite;
@@ -57,6 +54,7 @@ import org.eclipse.swt.widgets.Control;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -64,7 +62,7 @@ import java.util.function.Consumer;
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
 public class ThumbnailScrubber extends Composite
-    implements Tab, Capture.Listener, AtomStream.Listener, ApiContext.Listener {
+    implements Tab, Capture.Listener, AtomStream.Listener, ApiContext.Listener, Timeline.Listener {
   private final Models models;
   private final LoadablePanel<InfiniteScrolledComposite> loading;
   private final InfiniteScrolledComposite scroll;
@@ -78,7 +76,7 @@ public class ThumbnailScrubber extends Composite
 
     carousel = new Carousel(this, models.thumbs, widgets.loading, this::redrawScroll,
         this::resizeScroll, this::scrollTo);
-    loading = new LoadablePanel<>(this, widgets,
+    loading = new LoadablePanel<InfiniteScrolledComposite>(this, widgets,
         panel -> new InfiniteScrolledComposite(panel, SWT.H_SCROLL | SWT.V_SCROLL, carousel));
     scroll = loading.getContents();
 
@@ -91,12 +89,14 @@ public class ThumbnailScrubber extends Composite
     scroll.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
     models.contexts.addListener(this);
+    models.timeline.addListener(this);
+    models.atoms.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
       models.contexts.removeListener(this);
+      models.timeline.removeListener(this);
+      models.atoms.removeListener(this);
       carousel.dispose();
     });
   }
@@ -123,7 +123,7 @@ public class ThumbnailScrubber extends Composite
   @Override
   public void reinitialize() {
     onCaptureLoadingStart(false);
-    if (models.capture.isLoaded() && models.atoms.isLoaded()) {
+    if (models.capture.isLoaded()) {
       updateScrubber();
     }
   }
@@ -139,21 +139,9 @@ public class ThumbnailScrubber extends Composite
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
       carousel.setData(Collections.emptyList());
-    }
-  }
-
-  @Override
-  public void onAtomsLoaded() {
-    if (!models.atoms.isLoaded()) {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     } else {
       updateScrubber();
     }
-  }
-
-  @Override
-  public void onAtomsSelected(CommandRange range) {
-    carousel.selectFrame(range);
   }
 
   @Override
@@ -170,9 +158,25 @@ public class ThumbnailScrubber extends Composite
     updateScrubber();
   }
 
+  @Override
+  public void onTimeLineLoadingStart() {
+    updateScrubber();
+  }
+
+  @Override
+  public void onTimeLineLoaded() {
+    updateScrubber();
+  }
+
+  @Override
+  public void onAtomsSelected(AtomIndex range) {
+    carousel.selectFrame(range);
+  }
+
   private void updateScrubber() {
-    if (models.atoms.isLoaded() && models.contexts.isLoaded()) {
-      List<Data> datas = prepareData(models.atoms.getData(), models.contexts.getSelectedContext());
+    if (models.timeline.isLoaded()) {
+      loading.stopLoading();
+      List<Data> datas = prepareData(models.timeline.getEndOfFrames());
       if (datas.isEmpty()) {
         loading.showMessage(Info, Messages.NO_FRAMES_IN_CONTEXT);
       } else {
@@ -184,28 +188,16 @@ public class ThumbnailScrubber extends Composite
           carousel.selectFrame(models.atoms.getSelectedAtoms());
         }
       }
+    } else {
+      loading.startLoading();
     }
   }
 
-  private static List<Data> prepareData(AtomList atoms, FilteringContext context) {
+  private static List<Data> prepareData(Iterator<Service.Event> events) {
     List<Data> generatedList = new ArrayList<>();
     int frameCount = 0;
-    long frameStart = -1, drawCall = -1;
-    for (CommandRange contextRange : context.getRanges(atoms)) {
-      for (long index = first(contextRange); index < end(contextRange); index++) {
-        if (frameStart < 0) {
-          frameStart = index;
-        }
-        if (atoms.get(index).isDrawCall()) {
-          drawCall = index;
-        }
-        if (atoms.get(index).isEndOfFrame()) {
-          CommandRange frameRange = commands(frameStart, index - frameStart + 1);
-          Data frameData = new Data(frameRange, (drawCall < 0) ? index : drawCall, ++frameCount);
-          generatedList.add(frameData);
-          frameStart = drawCall = -1;
-        }
-      }
+    while (events.hasNext()) {
+      generatedList.add(new Data(new AtomIndex(events.next().getCommand(), null), ++frameCount));
     }
     return generatedList;
   }
@@ -214,15 +206,13 @@ public class ThumbnailScrubber extends Composite
    * Metadata about a frame in the scrubber.
    */
   private static class Data {
-    public final CommandRange range;
-    public final long previewAtomIndex;
+    public final AtomIndex range;
     public final int frame;
 
     public LoadableImage image;
 
-    public Data(CommandRange range, long previewAtomIndex, int frame) {
+    public Data(AtomIndex range, int frame) {
       this.range = range;
-      this.previewAtomIndex = previewAtomIndex;
       this.frame = frame;
     }
 
@@ -299,10 +289,9 @@ public class ThumbnailScrubber extends Composite
       return datas.get(frame);
     }
 
-    public void selectFrame(CommandRange range) {
-      long search = last(range);
-      int index = Collections.<Data>binarySearch(datas, null, (x, ignored) ->
-        last(x.range) < search ? -1 : first(x.range) > search ? 1 : 0);
+    public void selectFrame(AtomIndex range) {
+      int index = Collections.<Data>binarySearch(datas, null,
+          (x, ignored) -> x.range.compareTo(range));
       if (index >= 0) {
         selectAndScroll(index);
         repainter.repaint();
@@ -315,6 +304,7 @@ public class ThumbnailScrubber extends Composite
     }
 
     public void dispose() {
+      thumbs.removeListener(this);
       for (Data data : datas) {
         data.dispose();
       }
@@ -381,7 +371,8 @@ public class ThumbnailScrubber extends Composite
         Data data = datas.get(i);
         if (data.image == null && thumbs.isReady()) {
           data.image = LoadableImage.forImageData(parent,
-              noAlpha(thumbs.getThumbnail(data.previewAtomIndex, THUMB_SIZE)), loading, repainter);
+              noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)),
+              loading, repainter);
         }
       }
     }

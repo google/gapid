@@ -26,42 +26,45 @@ public class Models {
   public final Devices devices;
   public final AtomStream atoms;
   public final ApiContext contexts;
-  public final AtomHierarchies hierarchies;
+  public final Timeline timeline;
   public final Resources resources;
   public final ApiState state;
   public final Reports reports;
   public final Thumbnails thumbs;
+  public final ConstantSets constants;
 
   public Models(Settings settings, Follower follower, Capture capture, Devices devices,
-      AtomStream atoms, ApiContext contexts, AtomHierarchies hierarchies, Resources resources,
-      ApiState state, Reports reports, Thumbnails thumbs) {
+      AtomStream atoms, ApiContext contexts, Timeline timeline, Resources resources, ApiState state,
+      Reports reports, Thumbnails thumbs, ConstantSets constants) {
     this.settings = settings;
     this.follower = follower;
     this.capture = capture;
     this.devices = devices;
     this.atoms = atoms;
     this.contexts = contexts;
-    this.hierarchies = hierarchies;
+    this.timeline = timeline;
     this.resources = resources;
     this.state = state;
     this.reports = reports;
     this.thumbs = thumbs;
+    this.constants = constants;
   }
 
   public static Models create(Shell shell, Client client) {
     Settings settings = Settings.load();
+    ConstantSets constants = new ConstantSets(client);
     Follower follower = new Follower(shell, client);
     Capture capture = new Capture(shell, client, settings);
     Devices devices = new Devices(shell, client, capture);
     ApiContext contexts = new ApiContext(shell, client, capture);
-    AtomStream atoms = new AtomStream(shell, client, capture, contexts);
-    AtomHierarchies hierarchies = new AtomHierarchies(shell, client, capture);
+    Timeline timeline = new Timeline(shell, client, capture, contexts);
+    AtomStream atoms = new AtomStream(shell, client, capture, contexts, constants);
     Resources resources = new Resources(shell, client, capture);
     ApiState state = new ApiState(shell, client, follower, atoms);
     Reports reports = new Reports(shell, client, devices, capture);
-    Thumbnails thumbs = new Thumbnails(client, devices, atoms);
-    return new Models(settings, follower, capture, devices, atoms, contexts, hierarchies, resources,
-        state, reports, thumbs);
+    Thumbnails thumbs = new Thumbnails(client, devices, capture);
+    return new Models(settings, follower, capture, devices, atoms, contexts, timeline, resources,
+        state, reports, thumbs, constants);
   }
 
   public void dispose() {

@@ -29,10 +29,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.MacApplication;
@@ -102,6 +102,25 @@ public class MainWindow extends ApplicationWindow {
     setBlockOnOpen(true);
   }
 
+  /*
+  @Override
+  public int open() {
+    setBlockOnOpen(false);
+    super.open();
+    Shell shell = getShell();
+    Display display = shell.getDisplay();
+    while (!shell.isDisposed()) {
+      if (!display.readAndDispatch()) {
+        System.err.println("false");
+        display.sleep();
+      }
+      System.err.println("true");
+    }
+    if (!display.isDisposed()) display.update();
+    return 0;
+  }
+  */
+
   @Override
   protected void configureShell(Shell shell) {
     maw.init(shell);
@@ -138,8 +157,8 @@ public class MainWindow extends ApplicationWindow {
       }
 
       @Override
-      public void onAtomsSelected(CommandRange path) {
-        gotoMemory.setEnabled(path != null);
+      public void onAtomsSelected(AtomIndex selection) {
+        gotoMemory.setEnabled(selection != null);
       }
     });
     widgets().copypaste.addListener(new CopyPaste.Listener() {
@@ -291,7 +310,7 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createGotoMenu() {
     MenuManager manager = new MenuManager("&Goto");
-    gotoAtom = MenuItems.GotoAtom.create(() -> showGotoAtomDialog(getShell(), models().atoms));
+    gotoAtom = MenuItems.GotoAtom.create(() -> showGotoAtomDialog(getShell(), models().capture.getCapture(), models().atoms));
     gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models()));
 
     manager.add(gotoAtom);
