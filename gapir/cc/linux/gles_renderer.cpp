@@ -82,7 +82,7 @@ typedef GLXContext (*glXCreateContextAttribsARBProc)(Display *dpy, GLXFBConfig c
 
 class GlesRendererImpl : public GlesRenderer {
 public:
-    GlesRendererImpl(GlesRendererImpl* sharedContext);
+    GlesRendererImpl(GlesRendererImpl* shared_context);
     virtual ~GlesRendererImpl() override;
 
     virtual Api* api() override;
@@ -112,12 +112,12 @@ private:
     GLXFBConfig mFBConfig;
 };
 
-GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* sharedContext)
+GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mBound(false)
         , mNeedsResolve(false)
         , mDisplay(nullptr)
         , mContext(nullptr)
-        , mSharedContext(sharedContext != nullptr ? sharedContext->mContext : 0)
+        , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0)
         , mPbuffer(0) {
 
     mDisplay = XOpenDisplay(nullptr);
@@ -357,8 +357,8 @@ const char* GlesRendererImpl::version() {
 
 } // anonymous namespace
 
-GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
-    return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(sharedContext));
+GlesRenderer* GlesRenderer::create(GlesRenderer* shared_context) {
+    return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(shared_context));
 }
 
 }  // namespace gapir

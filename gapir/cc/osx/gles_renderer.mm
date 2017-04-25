@@ -36,7 +36,7 @@ namespace {
 
 class GlesRendererImpl : public GlesRenderer {
 public:
-    GlesRendererImpl();
+    GlesRendererImpl(GlesRendererImpl* shared_context);
     virtual ~GlesRendererImpl() override;
 
     virtual Api* api() override;
@@ -57,16 +57,18 @@ private:
     bool mQueriedExtensions;
     NSWindow* mWindow;
     NSOpenGLContext* mContext;
+    NSOpenGLContext* mSharedContext;
     bool mNeedsResolve;
     Gles mApi;
 };
 
-GlesRendererImpl::GlesRendererImpl()
+GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mBound(false)
         , mQueriedExtensions(false)
         , mWindow(nullptr)
         , mContext(nullptr)
-        , mNeedsResolve(true) {
+        , mNeedsResolve(true)
+        , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0) {
 
     // Initialize with a default target.
     setBackbuffer(Backbuffer(
@@ -155,7 +157,9 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         GAPID_FATAL("Unable to create NSOpenGLPixelFormat");
     }
 
-    mContext = [[NSOpenGLContext alloc] initWithFormat:format shareContext:nil];
+    mContext = [[NSOpenGLContext alloc]
+            initWithFormat:format
+            shareContext:mSharedContext];
     if (mContext == nullptr) {
         GAPID_FATAL("Unable to create NSOpenGLContext");
     }
@@ -228,8 +232,8 @@ const char* GlesRendererImpl::version() {
 
 } // anonymous namespace
 
-GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
-    return new GlesRendererImpl();
+GlesRenderer* GlesRenderer::create(GlesRenderer* shared_context) {
+    return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(shared_context));
 }
 
 }  // namespace gapir
