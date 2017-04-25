@@ -184,7 +184,6 @@ void GlesRendererImpl::bind() {
         int minor = 0;
         mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MAJOR_VERSION, &major);
         mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MINOR_VERSION, &minor);
-        GAPID_WARNING("Bound OpenGL %d.%d renderer", major, minor);
     }
 }
 
