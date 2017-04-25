@@ -996,6 +996,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
+		case *GlStartTilingQCOM, *GlEndTilingQCOM:
+			if !version.IsES {
+				// This extension is not applicable on desktop.
+				return
+			}
+
 		default:
 			if a.AtomFlags().IsDrawCall() && clientVAsBound(c, clientVAs) {
 				log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Atom: %v", a)
