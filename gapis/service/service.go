@@ -50,9 +50,13 @@ type Service interface {
 	// GetStringTable returns the requested string table.
 	GetStringTable(ctx context.Context, info *stringtable.Info) (*stringtable.StringTable, error)
 
-	// Import imports capture data emitted by the graphics spy, returning the new
-	// capture identifier.
+	// ImportCapture imports capture data emitted by the graphics spy, returning
+	// the new capture identifier.
 	ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error)
+
+	// ExportCapture returns a capture's data that can be consumed by
+	// ImportCapture or LoadCapture.
+	ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error)
 
 	// LoadCapture imports capture data from a local file, returning the new
 	// capture identifier.

@@ -195,6 +195,19 @@ func (c *client) ImportCapture(ctx context.Context, name string, data []byte) (*
 	return res.GetCapture(), nil
 }
 
+func (c *client) ExportCapture(ctx context.Context, p *path.Capture) ([]byte, error) {
+	res, err := c.client.ExportCapture(ctx, &service.ExportCaptureRequest{
+		Capture: p,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetData(), nil
+}
+
 func (c *client) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	res, err := c.client.LoadCapture(ctx, &service.LoadCaptureRequest{
 		Path: path,

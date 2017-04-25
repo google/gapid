@@ -207,6 +207,16 @@ message ImportCaptureResponse {
   }
 }
 
+message ExportCaptureRequest {
+  path.Capture capture = 1;
+}
+message ExportCaptureResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
 message LoadCaptureRequest {
   string path = 1;
 }
@@ -268,6 +278,7 @@ service Gapid {
   rpc GetAvailableStringTables(GetAvailableStringTablesRequest) returns (GetAvailableStringTablesResponse) {}
   rpc GetStringTable(GetStringTableRequest) returns (GetStringTableResponse) {}
   rpc ImportCapture(ImportCaptureRequest) returns (ImportCaptureResponse) {}
+  rpc ExportCapture(ExportCaptureRequest) returns (ExportCaptureResponse) {}
   rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {}
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
   rpc GetDevicesForReplay(GetDevicesForReplayRequest) returns (GetDevicesForReplayResponse) {}

@@ -99,6 +99,12 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
+  public ListenableFuture<Service.ExportCaptureResponse> exportCapture(
+      Service.ExportCaptureRequest request) {
+    return client.exportCapture(request);
+  }
+
+  @Override
   public ListenableFuture<Service.LoadCaptureResponse> loadCapture(
       Service.LoadCaptureRequest request) {
     return client.loadCapture(request);

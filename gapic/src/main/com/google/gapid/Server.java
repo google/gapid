@@ -192,6 +192,7 @@ public class Server {
     public static final String MESSAGE_TRACE_FILE_EMPTY = "Empty trace file ";
     public static final String MESSAGE_TRACE_FILE_BROKEN = "Invalid/Corrupted trace file ";
     public static final String MESSAGE_TRACE_FILE_LOAD_FAILED = "Failed to load trace file ";
+    public static final String MESSAGE_TRACE_FILE_SAVE_FAILED = "Failed to save trace file ";
     private final String userMessage;
 
     public GapisInitException(String userMessage, String debugMessage) {

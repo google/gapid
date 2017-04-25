@@ -21,6 +21,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
 import com.google.gapid.proto.service.Service.GetDevicesForReplayRequest;
@@ -140,6 +141,14 @@ public class Client {
     return Futures.transformAsync(
         client.loadCapture(LoadCaptureRequest.newBuilder().setPath(path).build()),
         in -> Futures.immediateFuture(throwIfError(in.getCapture(), in.getError()))
+    );
+  }
+
+  public ListenableFuture<byte[]> exportCapture(Path.Capture path) {
+    LOG.log(FINE, "RPC->exportCapture({0})", path);
+    return Futures.transformAsync(
+        client.exportCapture(ExportCaptureRequest.newBuilder().setCapture(path).build()),
+        in -> Futures.immediateFuture(throwIfError(in.getData().toByteArray(), in.getError()))
     );
   }
 

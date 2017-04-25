@@ -118,6 +118,14 @@ func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (
 	return capture.Import(ctx, name, bytes.NewReader(data))
 }
 
+func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error) {
+	b := bytes.Buffer{}
+	if err := capture.Export(ctx, c, &b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	name := filepath.Base(path)
 	in, err := os.Open(path)

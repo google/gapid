@@ -84,6 +84,17 @@ public class TracerDialog {
     }
   }
 
+  public static void showSaveTraceDialog(Shell shell, Models models) {
+    FileDialog dialog = new FileDialog(shell, SWT.SAVE);
+    dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
+    dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
+    dialog.setFilterPath(models.settings.lastOpenDir);
+    String result = dialog.open();
+    if (result != null) {
+      models.capture.saveCapture(new File(result));
+    }
+  }
+
   public static void showTracingDialog(Shell shell, Models models, Widgets widgets) {
     TraceInputDialog input = new TraceInputDialog(shell, models.settings, widgets);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {

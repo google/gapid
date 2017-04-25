@@ -17,6 +17,7 @@ package com.google.gapid.models;
 
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.proto.service.path.Path;
@@ -32,6 +33,7 @@ import com.google.gapid.util.UiErrorCallback;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -127,6 +129,57 @@ public class Capture {
         fireError(error);
       }
     });
+  }
+
+  public void saveCapture(File file) {
+    LOG.log(INFO, "Saving capture " + file + "...");
+    name = file.getName();
+
+    // TODO: refactor out duplicate code from loadCapture.
+    String canonicalPath;
+    try {
+      File canonicalFile = file.getCanonicalFile();
+      canonicalPath = canonicalFile.getAbsolutePath();
+      if (canonicalFile.getParentFile() != null) {
+        settings.lastOpenDir = canonicalFile.getParentFile().getAbsolutePath();
+      }
+    } catch (IOException e) {
+      if (file.getParentFile() != null) {
+        settings.lastOpenDir = file.getParentFile().getAbsolutePath();
+      }
+
+      fireError(new GapisInitException(
+          GapisInitException.MESSAGE_TRACE_FILE_SAVE_FAILED + file, "Saving trace failed", e));
+      return;
+    }
+
+    settings.addToRecent(canonicalPath);
+
+    Rpc.listen(client.exportCapture(path), rpcController,
+        new UiErrorCallback<byte[], Boolean, Exception>(shell, LOG) {
+          @Override
+          protected ResultOrError<Boolean, Exception> onRpcThread(Result<byte[]> result) throws RpcException, ExecutionException {
+            try {
+              byte[] data = result.get();
+              try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(data);
+              }
+              return success(true);
+            } catch (ExecutionException | RpcException | IOException e) {
+              return error(e);
+            }
+          }
+
+          @Override
+          protected void onUiThreadSuccess(Boolean unused) {
+            LOG.log(INFO, "Trace saved.");
+          }
+
+          @Override
+          protected void onUiThreadError(Exception error) {
+            LOG.log(WARNING, "Couldn't save trace", error);
+          }
+        });
   }
 
   protected void fireError(GapisInitException error) {
