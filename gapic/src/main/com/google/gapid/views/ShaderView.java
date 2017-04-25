@@ -18,7 +18,6 @@ package com.google.gapid.views;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
@@ -34,12 +33,12 @@ import com.google.common.collect.Lists;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Program;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Shader;
@@ -132,7 +131,7 @@ public class ShaderView extends Composite
           protected Path.Capture onRpcThread(Rpc.Result<Path.Any> result)
               throws RpcException, ExecutionException {
             // TODO this should probably be able to handle any path.
-            return result.get().getResourceData().getAfter().getCommands().getCapture();
+            return result.get().getResourceData().getAfter().getCapture();
           }
 
           @Override
@@ -235,7 +234,7 @@ public class ShaderView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(CommandRange path) {
+  public void onAtomsSelected(AtomIndex path) {
     updateLoading();
   }
 
@@ -381,19 +380,19 @@ public class ShaderView extends Composite
     }
 
     @Override
-    public void onAtomsSelected(CommandRange path) {
+    public void onAtomsSelected(AtomIndex path) {
       updateShaders();
     }
 
     private void updateShaders() {
       if (models.resources.isLoaded() && models.atoms.getSelectedAtoms() != null) {
         List<Data> newShaders = Lists.newArrayList();
-        CommandRange range = models.atoms.getSelectedAtoms();
+        AtomIndex range = models.atoms.getSelectedAtoms();
         boolean skippedAnyShaders = false;
         for (Service.ResourcesByType bundle : models.resources.getResources()) {
           if (bundle.getType() == type.type) {
             for (Service.Resource info : bundle.getResourcesList()) {
-              if (firstAccess(info) <= last(range)) {
+              if (firstAccess(info) <= range.getCommand().getIndex(0)) {
                 if (newShaders.isEmpty()) {
                   newShaders.add(new Data(null) {
                     @Override
@@ -512,7 +511,7 @@ public class ShaderView extends Composite
       Widgets.<Uniform>createTableColumn(table, "Format",
           uniform -> String.valueOf(uniform.getFormat()));
       Widgets.<Uniform>createTableColumn(table, "Value", uniform -> {
-        Pod.Value value = uniform.getValue();
+        Pod.Value value = uniform.getValue().getPod(); // TODO
         switch (uniform.getType()) {
           case Int32: return String.valueOf(value.getSint32Array().getValList());
           case Uint32: return String.valueOf(value.getUint32Array().getValList());
@@ -579,7 +578,7 @@ public class ShaderView extends Composite
     }
 
     public Path.Any getPath(AtomStream atoms) {
-      return resourceAfter(atoms.getPath(), atoms.getSelectedAtoms(), info.getId());
+      return resourceAfter(atoms.getSelectedAtoms(), info.getPath().getId());
     }
 
     @Override

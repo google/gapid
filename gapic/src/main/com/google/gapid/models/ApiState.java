@@ -16,28 +16,30 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.stateAfter;
-import static java.util.logging.Level.SEVERE;
 
-import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandRange;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.stringtable.Stringtable.Msg;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
-import com.google.gapid.rpclib.schema.Dynamic;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.PathStore;
+import com.google.gapid.util.Paths;
+import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.UiErrorCallback;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
@@ -51,8 +53,8 @@ public class ApiState {
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
   private final FutureController rpcController = new SingleInFlight();
   private final PathStore statePath = new PathStore();
-  private final PathStore selection = new PathStore();
-  private Dynamic state;
+  //private final PathStore selection = new PathStore();
+  private RootNode root;
 
   public ApiState(Shell shell, Client client, Follower follower, AtomStream atoms) {
     this.shell = shell;
@@ -60,40 +62,41 @@ public class ApiState {
 
     atoms.addListener(new AtomStream.Listener() {
       @Override
-      public void onAtomsSelected(CommandRange path) {
-        loadState(atoms.getPath(), path);
+      public void onAtomsSelected(AtomIndex index) {
+        loadState(index);
       }
     });
     follower.addListener(new Follower.Listener() {
       @Override
       public void onStateFollowed(Path.Any path) {
-        selectPath(path, true);
+        //selectPath(path, true);
       }
     });
   }
 
-  protected void loadState(Path.Any atomsPath, CommandRange range) {
-    if (statePath.updateIfNotNull(stateAfter(atomsPath, range))) {
+  protected void loadState(AtomIndex index) {
+    if (statePath.updateIfNotNull(stateAfter(index))) {
       // we are making a request for a new state, this means our current state is old and irrelevant
-      state = null;
+      root = null;
       listeners.fire().onStateLoadingStart();
-      Rpc.listen(client.get(statePath.getPath()), rpcController,
-          new UiErrorCallback<Service.Value, Dynamic, DataUnavailableException>(shell, LOG) {
+      Rpc.listen(Futures.transformAsync(client.get(statePath.getPath()),
+          tree -> Futures.transform(client.get(Paths.any(tree.getStateTree().getRoot())),
+              val -> new RootNode(
+                  tree.getStateTree().getRoot().getTree(), val.getStateTreeNode()))),
+          rpcController,
+          new UiErrorCallback<RootNode, RootNode, DataUnavailableException>(shell, LOG) {
         @Override
-        protected ResultOrError<Dynamic, DataUnavailableException> onRpcThread(
-            Rpc.Result<Service.Value> result) throws RpcException, ExecutionException {
+        protected ResultOrError<RootNode, DataUnavailableException> onRpcThread(
+            Rpc.Result<RootNode> result) throws RpcException, ExecutionException {
           try {
-            return success(Client.decode(result.get().getObject()));
+            return success(result.get());
           } catch (DataUnavailableException e) {
             return error(e);
-          } catch (IOException e) {
-            LOG.log(SEVERE, "Error decoding state", e);
-            return error(new DataUnavailableException(Msg.getDefaultInstance()));
           }
         }
 
         @Override
-        protected void onUiThreadSuccess(Dynamic result) {
+        protected void onUiThreadSuccess(RootNode result) {
           update(result);
         }
 
@@ -105,8 +108,8 @@ public class ApiState {
     }
   }
 
-  protected void update(Dynamic newState) {
-    state = newState;
+  protected void update(RootNode newRoot) {
+    root = newRoot;
     listeners.fire().onStateLoaded(null);
   }
 
@@ -114,13 +117,38 @@ public class ApiState {
     listeners.fire().onStateLoaded(error);
   }
 
-  public Path.Any getPath() {
-    return statePath.getPath();
+  public boolean isLoaded() {
+    return root != null;
   }
 
-  public Dynamic getState() {
-    return state;
+  public Node getRoot() {
+    return root;
   }
+
+  public ListenableFuture<Node> load(Node node) {
+    return node.load(() -> Futures.transform(
+        client.get(Paths.any(node.getPath(Path.StateTreeNode.newBuilder()))),
+        value -> new NodeData(value.getStateTreeNode())));
+  }
+
+  public void load(Node node, Runnable callback) {
+    ListenableFuture<Node> future = load(node);
+    if (future != null) {
+      Rpc.listen(future, new UiCallback<Node, Node>(shell, LOG) {
+        @Override
+        protected Node onRpcThread(Result<Node> result) throws RpcException, ExecutionException {
+          return result.get();
+        }
+
+        @Override
+        protected void onUiThread(Node result) {
+          callback.run();
+        }
+      });
+    }
+  }
+
+  /*
 
   public Path.Any getSelectedPath() {
     return selection.getPath();
@@ -131,6 +159,7 @@ public class ApiState {
       listeners.fire().onStateSelected(path);
     }
   }
+  */
 
   public void addListener(Listener listener) {
     listeners.addListener(listener);
@@ -138,6 +167,128 @@ public class ApiState {
 
   public void removeListener(Listener listener) {
     listeners.removeListener(listener);
+  }
+
+  public static class Node {
+    private final Node parent;
+    private final int index;
+    private Node[] children;
+    private StateTreeNode data;
+    private ListenableFuture<Node> loadFuture;
+
+    public Node(StateTreeNode data) {
+      this(null, 0);
+      this.data = data;
+      this.children = new Node[(int)data.getNumChildren()];
+    }
+
+    public Node(Node parent, int index) {
+      this.parent = parent;
+      this.index = index;
+    }
+
+    public Node getParent() {
+      return parent;
+    }
+
+    public int getChildCount() {
+      return (data == null) ? 0 : (int)data.getNumChildren();
+    }
+
+    public Node getChild(int child) {
+      Node node = children[child];
+      if (node == null) {
+        node = children[child] = new Node(this, child);
+      }
+      return node;
+    }
+
+    public StateTreeNode getData() {
+      return data;
+    }
+
+    public Path.StateTreeNode.Builder getPath(Path.StateTreeNode.Builder path) {
+      return parent.getPath(path).addIndex(index);
+    }
+
+    public ListenableFuture<Node> load(Supplier<ListenableFuture<NodeData>> loader) {
+      if (data != null) {
+        // Already loaded.
+        return null;
+      } else if (loadFuture != null) {
+        return loadFuture;
+      }
+
+      return loadFuture = Futures.transform(loader.get(), newData -> {
+        data = newData.data;
+        children = new Node[(int)data.getNumChildren()];
+        loadFuture = null; // Don't hang on to listeners.
+        return Node.this;
+      });
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (!(obj instanceof Node)) {
+        return false;
+      }
+      Node n = (Node)obj;
+      return index == n.index && parent.equals(n.parent);
+    }
+
+    @Override
+    public int hashCode() {
+      return parent.hashCode() * 31 + index;
+    }
+
+    @Override
+    public String toString() {
+      return index + (data == null ? "" : " " + data.getName());
+    }
+  }
+
+  private static class RootNode extends Node {
+    public final Path.ID tree;
+
+    public RootNode(Path.ID tree, StateTreeNode data) {
+      super(data);
+      this.tree = tree;
+    }
+
+    @Override
+    public Path.StateTreeNode.Builder getPath(Path.StateTreeNode.Builder path) {
+      return path.setTree(tree);
+    }
+
+    @Override
+    public String toString() {
+      return "Root";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (!(obj instanceof RootNode)) {
+        return false;
+      }
+      return tree.equals(((RootNode)obj).tree);
+    }
+
+    @Override
+    public int hashCode() {
+      return tree.hashCode();
+    }
+  }
+
+  private static class NodeData {
+    public final StateTreeNode data;
+
+    public NodeData(StateTreeNode data) {
+      this.data = data;
+    }
   }
 
   @SuppressWarnings("unused")

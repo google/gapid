@@ -15,50 +15,24 @@
  */
 package com.google.gapid.server;
 
-import static com.google.gapid.util.Scheduler.EXECUTOR;
-
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.FollowRequest;
-import com.google.gapid.proto.service.Service.FollowResponse;
-import com.google.gapid.proto.service.Service.GetRequest;
-import com.google.gapid.proto.service.Service.GetResponse;
+import com.google.gapid.util.FutureCache;
 
 /**
  * A caching {@link GapidClientGrpc}.
  */
 public class GapidClientCache extends GapidClientGrpc {
-  private final RpcCache<Service.GetRequest, Service.GetResponse> getCache;
-  private final RpcCache<Service.FollowRequest, Service.FollowResponse> followCache;
+  private final FutureCache<Service.GetRequest, Service.GetResponse> getCache;
+  private final FutureCache<Service.FollowRequest, Service.FollowResponse> followCache;
 
   public GapidClientCache(GapidGrpc.GapidFutureStub client) {
     super(client);
-    this.getCache = new RpcCache<Service.GetRequest, Service.GetResponse>() {
-      @Override
-      protected ListenableFuture<GetResponse> fetch(GetRequest key) {
-        return client.get(key);
-      }
-
-      @Override
-      protected boolean isSuccessful(GetResponse result) {
-        return result.getResCase() == Service.GetResponse.ResCase.VALUE;
-      }
-    };
-    this.followCache = new RpcCache<Service.FollowRequest, Service.FollowResponse>() {
-      @Override
-      protected ListenableFuture<FollowResponse> fetch(FollowRequest request) {
-        return client.follow(request);
-      }
-
-      @Override
-      protected boolean isSuccessful(FollowResponse result) {
-        return result.getResCase() == Service.FollowResponse.ResCase.PATH;
-      }
-    };
+    this.getCache = FutureCache.softCache(
+        client::get, result -> result.getResCase() == Service.GetResponse.ResCase.VALUE);
+    this.followCache = FutureCache.softCache(
+        client::follow, result -> result.getResCase() == Service.FollowResponse.ResCase.PATH);
   }
 
   @Override
@@ -69,32 +43,5 @@ public class GapidClientCache extends GapidClientGrpc {
   @Override
   public ListenableFuture<Service.FollowResponse> follow(Service.FollowRequest request) {
     return followCache.get(request);
-  }
-
-  private abstract static class RpcCache<K, V> {
-    private final Cache<K, V> cache = CacheBuilder.newBuilder().softValues().build();
-
-    public RpcCache() {
-    }
-
-    public ListenableFuture<V> get(final K request) {
-      // Look up the value in the cache using the executor.
-      ListenableFuture<V> cacheLookUp = EXECUTOR.submit(() -> cache.getIfPresent(request));
-      return Futures.transformAsync(cacheLookUp, fromCache -> {
-        if (fromCache != null) {
-          return Futures.immediateFuture(fromCache);
-        }
-        return Futures.transform(fetch(request), fromServer -> {
-          if (isSuccessful(fromServer)) {
-            cache.put(request, fromServer);
-          }
-          return fromServer;
-        });
-      });
-    }
-
-    protected abstract ListenableFuture<V> fetch(K request);
-
-    protected abstract boolean isSuccessful(V result);
   }
 }

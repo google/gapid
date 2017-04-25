@@ -15,26 +15,19 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.Ranges.commands;
-import static com.google.gapid.util.Ranges.first;
-import static com.google.gapid.util.Ranges.last;
 import static java.util.Arrays.stream;
 
-import com.google.gapid.proto.service.Service.CommandRange;
-import com.google.gapid.proto.service.Service.Context;
-import com.google.gapid.proto.service.Service.Value;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.path.Path.Contexts;
 import com.google.gapid.server.Client;
-import com.google.gapid.service.atom.AtomList;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
-import com.google.gapid.util.Paths;
-import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -42,7 +35,8 @@ import java.util.logging.Logger;
 /**
  * Model containing the different API contexts of a capture.
  */
-public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContext[]> {
+public class ApiContext
+    extends CaptureDependentModel<ApiContext.FilteringContext[], List<Service.Value>> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -63,23 +57,35 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
   @Override
   protected Path.Any getPath(Path.Capture capturePath) {
     return Path.Any.newBuilder()
-        .setContexts(Contexts.newBuilder()
+        .setContexts(Path.Contexts.newBuilder()
             .setCapture(capturePath))
         .build();
   }
 
   @Override
-  protected FilteringContext[] unbox(Value value) {
-    List<Context> contexts = value.getContexts().getListList();
+  protected ListenableFuture<List<Service.Value>> doLoad(Path.Any path) {
+    return Futures.transformAsync(client.get(path), val -> {
+      List<ListenableFuture<Service.Value>> contexts = Lists.newArrayList();
+      for (Path.Context ctx : val.getContexts().getListList()) {
+        contexts.add(client.get(Path.Any.newBuilder().setContext(ctx).build()));
+      }
+      return Futures.allAsList(contexts);
+    });
+  }
+
+  @Override
+  protected FilteringContext[] unbox(List<Service.Value> contexts) {
     if (contexts.isEmpty()) {
       return new FilteringContext[0];
     } else if (contexts.size() == 1) {
-      return new FilteringContext[] { FilteringContext.withoutFilter(contexts.get(0)) };
+      return new FilteringContext[] {
+          FilteringContext.withoutFilter(contexts.get(0).getContext())
+      };
     } else {
       FilteringContext[] result = new FilteringContext[contexts.size() + 1];
       result[0] = FilteringContext.ALL;
       for (int i = 0; i < contexts.size(); i++) {
-        result[i + 1] = new FilteringContext(contexts.get(i));
+        result[i + 1] = new FilteringContext(contexts.get(i).getContext());
       }
       return result;
     }
@@ -91,7 +97,7 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
       selectedContext = getData()[0];
     } else if (selectedContext != FilteringContext.ALL) {
       selectedContext = stream(getData())
-          .filter(c -> c.getId().equals(selectedContext.getId()))
+          .filter(c -> c.equals(selectedContext))
           .findFirst()
           .orElse(FilteringContext.ALL);
     }
@@ -113,6 +119,7 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
     }
   }
 
+  /*
   public void selectContextContaining(CommandRange atoms) {
     if (isLoaded() && !selectedContext.contains(last(atoms))) {
       for (FilteringContext context : getData()) {
@@ -125,6 +132,7 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
       selectContext(FilteringContext.ALL);
     }
   }
+  */
 
   public void addListener(Listener listener) {
     listeners.addListener(listener);
@@ -140,89 +148,57 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
   public static class FilteringContext {
     public static final FilteringContext ALL = new FilteringContext(null) {
       @Override
-      public Path.ID getId() {
-        return Paths.ZERO_ID;
+      public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
+        return path;
       }
 
       @Override
-      public List<CommandRange> getRanges(AtomList atoms) {
-        return Arrays.asList(CommandRange.newBuilder().setCount(atoms.getAtoms().length).build());
-      }
-
-      @Override
-      public boolean contains(CommandRange range) {
-        return true;
-      }
-
-      @Override
-      public boolean contains(long index) {
-        return true;
+      public Path.Events.Builder events(Path.Events.Builder path) {
+        return path;
       }
 
       @Override
       public String toString() {
         return "All contexts";
       }
+
+      @Override
+      public boolean equals(Object obj) {
+        return obj == ALL;
+      }
+
+      @Override
+      public int hashCode() {
+        return 0;
+      }
     };
 
-    private final Context context;
+    private final Service.Context context;
 
-    public FilteringContext(Context context) {
+    public FilteringContext(Service.Context context) {
       this.context = context;
     }
 
-    public static FilteringContext withoutFilter(Context context) {
+    public static FilteringContext withoutFilter(Service.Context context) {
       return new FilteringContext(context) {
         @Override
-        public List<CommandRange> getRanges(AtomList atoms) {
-          return ALL.getRanges(atoms);
+        public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
+          return path;
         }
 
         @Override
-        public boolean contains(CommandRange range) {
-          return true;
-        }
-
-        @Override
-        public boolean contains(long index) {
-          return true;
-        }
-
-        @Override
-        public CommandRange findClosest(CommandRange range) {
-          return range;
+        public Path.Events.Builder events(Path.Events.Builder path) {
+          return path;
         }
       };
     }
 
-    public Path.ID getId() {
-      return context.getId();
+    public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
+      return path.setContext(context.getPath().getId());
     }
 
-    public List<CommandRange> getRanges(@SuppressWarnings("unused") AtomList atoms) {
-      return context.getRangesList();
-    }
-
-    public boolean contains(CommandRange range) {
-      return Ranges.overlaps(context.getRangesList(), range);
-    }
-
-    public boolean contains(long index) {
-      return Ranges.contains(context.getRangesList(), index) >= 0;
-    }
-
-    public CommandRange findClosest(CommandRange range) {
-      int index = Ranges.contains(context.getRangesList(), last(range));
-      if (index >= 0) {
-        return commands(last(range), 1);
-      } else if (index == -1) {
-        // The given range ends before any of our commands.
-        return (context.getRangesCount() == 0) ? null : commands(first(context.getRanges(0)), 1);
-      } else {
-        // Return the end of the range just before the given range.
-        // ...] [i - 1] range [i] [...   (i = -index - 1)
-        return commands(last(context.getRanges((-index - 1) - 1)), 1);
-      }
+    public Path.Events.Builder events(Path.Events.Builder path) {
+      return path.setContext(context.getPath().getId());
     }
 
     @Override
@@ -234,15 +210,15 @@ public class ApiContext extends CaptureDependentModel<ApiContext.FilteringContex
     public boolean equals(Object obj) {
       if (this == obj) {
         return true;
-      } else if (!(obj instanceof FilteringContext)) {
+      } else if (!(obj instanceof FilteringContext) || obj == ALL) {
         return false;
       }
-      return Objects.equals(getId(), ((FilteringContext)obj).getId());
+      return Objects.equals(context.getPath(), ((FilteringContext)obj).context.getPath());
     }
 
     @Override
     public int hashCode() {
-      return getId().hashCode();
+      return context.getPath().hashCode();
     }
   }
 

@@ -33,6 +33,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
@@ -91,7 +92,7 @@ public class Main {
 
     private final Client client;
     private final String[] args;
-    private final MainWindow window;
+    private final ApplicationWindow window;
     private Models models;
     private Widgets widgets;
 

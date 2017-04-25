@@ -17,8 +17,6 @@ package com.google.gapid.views;
 
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Paths.command;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createSeparator;
@@ -30,11 +28,11 @@ import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLevelImage;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.Service.RenderSettings;
 import com.google.gapid.proto.service.Service.WireframeMode;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.FramebufferAttachment;
@@ -198,7 +196,7 @@ public class FramebufferView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(CommandRange range) {
+  public void onAtomsSelected(AtomIndex range) {
     updateBuffer();
   }
 
@@ -214,15 +212,14 @@ public class FramebufferView extends Composite
   }
 
   private void updateBuffer() {
-    CommandRange atomPath = models.atoms.getSelectedAtoms();
+    AtomIndex atomPath = models.atoms.getSelectedAtoms();
     if (atomPath == null) {
       loading.showMessage(Info, Messages.SELECT_ATOM);
     } else if (!models.devices.hasReplayDevice()) {
       loading.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
       loading.startLoading();
-      Rpc.listen(FetchedImage.load(client, getImageInfoPath(
-          command(models.atoms.getPath(), last(atomPath)))), rpcController,
+      Rpc.listen(FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())), rpcController,
           new UiErrorCallback<FetchedImage, MultiLevelImage, String>(this, LOG) {
         @Override
         protected ResultOrError<MultiLevelImage, String> onRpcThread(

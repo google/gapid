@@ -105,7 +105,7 @@ public class ReportView extends Composite
     viewer.getTree().addListener(SWT.MouseDown, e -> {
       Long atomId = (Long)labelProvider.getFollow(new Point(e.x, e.y));
       if (atomId != null) {
-        models.atoms.selectAtoms(atomId, 1, true);
+        //models.atoms.selectAtoms(atomId, 1, true);
       }
     });
     viewer.getTree().addListener(SWT.Selection, e -> {
@@ -183,10 +183,12 @@ public class ReportView extends Composite
     Service.Report.Builder result = report.toBuilder();
     for (int i = report.getGroupsCount() - 1; i >= 0; i--) {
       for (int item : report.getGroups(i).getItemsList()) {
+        /*
         if (!context.contains(report.getItems(item).getCommand())) {
           result.removeGroups(i);
           break;
         }
+        */
       }
     }
     return result.build();

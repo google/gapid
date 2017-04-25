@@ -17,7 +17,7 @@ package com.google.gapid.models;
 
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.util.Paths;
-import com.google.gapid.util.Pods;
+import com.google.gapid.util.ProtoDebugTextFormat;
 
 import java.util.Collections;
 import java.util.Map;
@@ -103,7 +103,7 @@ public class Strings {
   private static StringBuilder append(StringBuilder sb, Stringtable.Value value) {
     switch (value.getValueCase()) {
       case VALUE_NOT_SET: return sb.append("[null]");
-      case POD: return Pods.append(sb, value.getPod());
+      case BOX: return sb.append(ProtoDebugTextFormat.shortDebugString(value.getBox())); // TODO
       case PATH: return sb.append(Paths.toString(value.getPath()));
       default:
         throw new UnsupportedOperationException("Unsupported value type: " + value.getValueCase());

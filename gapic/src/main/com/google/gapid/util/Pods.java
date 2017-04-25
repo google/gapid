@@ -17,9 +17,6 @@ package com.google.gapid.util;
 
 import com.google.common.primitives.UnsignedLong;
 import com.google.gapid.proto.core.pod.Pod;
-import com.google.gapid.rpclib.schema.Method;
-import com.google.gapid.rpclib.schema.Primitive;
-import com.google.gapid.rpclib.schema.Type;
 
 /**
  * Plain-Old-Data utilities.
@@ -28,6 +25,7 @@ public class Pods {
   private Pods() {
   }
 
+  /*
   public static Pod.Value pod(Object o, Type type) {
     Pod.Value.Builder result = Pod.Value.newBuilder();
     if (o == null) {
@@ -88,6 +86,7 @@ public class Pods {
     }
     return result.build();
   }
+  */
 
   public static Pod.Value pod(String s) {
     return Pod.Value.newBuilder().setString(s).build();
@@ -109,6 +108,8 @@ public class Pods {
       case SINT64: return o.getSint64();
       case BOOL: return o.getBool();
       case STRING: return o.getString();
+      case UINT8_ARRAY:
+        return o.getUint8Array();
       case FLOAT32_ARRAY:
         Pod.Float32Array a = o.getFloat32Array();
         float[] result = new float[a.getValCount()];
@@ -116,7 +117,6 @@ public class Pods {
           result[i] = a.getVal(i);
         }
         return result;
-      case UINT8_ARRAY: return o.getUint8Array().toByteArray();
       default:
         // TODO handle other arrays
         throw new UnsupportedOperationException("Cannot unpod: " + o);
@@ -157,6 +157,41 @@ public class Pods {
       default:
         assert false;
         return sb.append(ProtoDebugTextFormat.shortDebugString(v));
+    }
+  }
+
+  public static boolean mayBeConstant(Pod.Value v) {
+    switch (v.getValCase()) {
+      case BOOL:
+      case SINT:
+      case SINT8:
+      case SINT16:
+      case SINT32:
+      case SINT64:
+      case UINT:
+      case UINT8:
+      case UINT16:
+      case UINT32:
+      case UINT64:
+        return true;
+      default: return false;
+    }
+  }
+
+  public static long getConstant(Pod.Value v) {
+    switch (v.getValCase()) {
+      case BOOL: return v.getBool() ? 1 : 0;
+      case SINT: return v.getSint();
+      case SINT8: return v.getSint8();
+      case SINT16: return v.getSint16();
+      case SINT32: return v.getSint32();
+      case SINT64: return v.getSint64();
+      case UINT: return v.getUint();
+      case UINT8: return v.getUint8();
+      case UINT16: return v.getUint16();
+      case UINT32: return v.getUint32() & 0xFFFFFFFFL;
+      case UINT64: return v.getUint64();
+      default: return 0;
     }
   }
 }

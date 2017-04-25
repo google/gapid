@@ -16,15 +16,16 @@
 package com.google.gapid.util;
 
 import static com.google.gapid.proto.service.path.Path.Any.PathCase.COMMANDS;
-import static com.google.gapid.util.Ranges.last;
 
 import com.google.gapid.image.Images;
+import com.google.gapid.models.ApiContext.FilteringContext;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.image.Image;
-import com.google.gapid.proto.service.Service.CommandRange;
+import com.google.gapid.proto.service.Service.MemoryRange;
+import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
-import com.google.gapid.service.memory.MemoryRange;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.TextFormat;
 
@@ -44,53 +45,102 @@ public class Paths {
     return TextFormat.shortDebugString(path);
   }
 
+  /*
   public static Path.Command command(Path.Any atomsPath, long index) {
     if (atomsPath == null || atomsPath.getPathCase() != COMMANDS) {
       return null;
     }
     return Path.Command.newBuilder()
-        .setCommands(atomsPath.getCommands())
-        .setIndex(index)
+        .setCapture(atomsPath.getCommands().getCapture())
+        .addIndex(index)
         .build();
   }
+  */
 
-  public static Path.Command command(Path.Any atomsPath, CommandRange range) {
-    if (atomsPath == null || range == null || atomsPath.getPathCase() != COMMANDS) {
+  public static Path.Command command(Path.Capture capture, long index) {
+    if (capture == null) {
       return null;
     }
     return Path.Command.newBuilder()
-        .setCommands(atomsPath.getCommands())
-        .setIndex(last(range))
+        .setCapture(capture)
+        .addIndex(index)
         .build();
   }
 
-  public static Path.Any stateAfter(Path.Any atomsPath, CommandRange range) {
-    if (atomsPath == null || range == null || atomsPath.getPathCase() != COMMANDS) {
+  public static Path.Any any(Path.Command command) {
+    return Path.Any.newBuilder().setCommand(command).build();
+  }
+
+  public static Path.Any any(Path.CommandTreeNode node) {
+    return Path.Any.newBuilder().setCommandTreeNode(node).build();
+  }
+
+  public static Path.Any any(Path.CommandTreeNode.Builder node) {
+    return Path.Any.newBuilder().setCommandTreeNode(node).build();
+  }
+
+  public static Path.Any any(Path.ConstantSet constants) {
+    return Path.Any.newBuilder().setConstantSet(constants).build();
+  }
+
+  public static Path.Any any(Path.StateTreeNode node) {
+    return Path.Any.newBuilder().setStateTreeNode(node).build();
+  }
+
+  public static Path.Any any(Path.StateTreeNode.Builder node) {
+    return Path.Any.newBuilder().setStateTreeNode(node).build();
+  }
+
+  public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
+    return Path.Any.newBuilder()
+        .setCommandTree(context.commandTree(Path.CommandTree.newBuilder())
+            .setCapture(capture))
+        .build();
+  }
+
+  public static Path.Any events(Path.Capture capture, FilteringContext context) {
+    return Path.Any.newBuilder()
+        .setEvents(context.events(Path.Events.newBuilder())
+            .setCommands(Path.Commands.newBuilder()
+                .setCapture(capture))
+            .setLastInFrame(true))
+        .build();
+  }
+
+  public static Path.Any commandTree(Path.ID tree, Path.Command command) {
+    return Path.Any.newBuilder()
+        .setCommandTreeNodeForCommand(Path.CommandTreeNodeForCommand.newBuilder()
+            .setTree(tree)
+            .setCommand(command))
+        .build();
+  }
+
+  public static Path.Any stateAfter(AtomIndex atom) {
+    if (atom == null) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setState(Path.State.newBuilder()
-            .setAfter(Path.Command.newBuilder()
-                .setCommands(atomsPath.getCommands())
-                .setIndex(last(range))))
+        .setStateTree(Path.StateTree.newBuilder()
+            .setAfter(atom.getCommand()))
         .build();
   }
 
+  /*
   public static Path.Any memoryAfter(
-      Path.Any atomsPath, CommandRange range, int pool, long address, long size) {
-    if (atomsPath == null || range == null || atomsPath.getPathCase() != COMMANDS) {
+      Path.Any atomsPath, AtomIndex atom, int pool, long address, long size) {
+    if (atomsPath == null || atom == null || atomsPath.getPathCase() != COMMANDS) {
       return null;
     }
     return Path.Any.newBuilder()
         .setMemory(Path.Memory.newBuilder()
-            .setAfter(Path.Command.newBuilder()
-                .setCommands(atomsPath.getCommands())
-                .setIndex(last(range)))
+            .setAfter(atom.toProto(Path.Command.newBuilder())
+                .setCapture(atomsPath.getCommands().getCapture()))
             .setPool(pool)
             .setAddress(address)
             .setSize(size))
         .build();
   }
+  */
 
   public static Path.Any memoryAfter(Path.Command after, int pool, long address, long size) {
     if (after == null) {
@@ -105,30 +155,26 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any memoryAfter(Path.Any atomsPath, long index, int pool, MemoryRange range) {
-    if (atomsPath == null || range == null || atomsPath.getPathCase() != COMMANDS) {
+  public static Path.Any memoryAfter(AtomIndex index, int pool, MemoryRange range) {
+    if (index == null || range == null) {
       return null;
     }
     return Path.Any.newBuilder()
         .setMemory(Path.Memory.newBuilder()
-            .setAfter(Path.Command.newBuilder()
-                .setCommands(atomsPath.getCommands())
-                .setIndex(index))
+            .setAfter(index.getCommand())
             .setPool(pool)
             .setAddress(range.getBase())
             .setSize(range.getSize()))
         .build();
   }
 
-  public static Path.Any resourceAfter(Path.Any atomsPath, CommandRange range, Path.ID id) {
-    if (atomsPath == null || range == null || id == null || atomsPath.getPathCase() != COMMANDS) {
+  public static Path.Any resourceAfter(AtomIndex atom, Path.ID id) {
+    if (atom == null || id == null) {
       return null;
     }
     return Path.Any.newBuilder()
         .setResourceData(Path.ResourceData.newBuilder()
-            .setAfter(Path.Command.newBuilder()
-                .setCommands(atomsPath.getCommands())
-                .setIndex(last(range)))
+            .setAfter(atom.getCommand())
             .setId(id))
         .build();
   }
@@ -152,8 +198,8 @@ public class Paths {
     return Path.Any.newBuilder()
         .setParameter(Path.Parameter.newBuilder()
             .setCommand(Path.Command.newBuilder()
-                .setCommands(atomsPath.getCommands())
-                .setIndex(index))
+                .setCapture(atomsPath.getCommand().getCapture())
+                .addIndex(index))
              .setName(field))
         .build();
   }
@@ -189,6 +235,24 @@ public class Paths {
   public static Path.Thumbnail thumbnail(Path.ResourceData resource, int size) {
     return Path.Thumbnail.newBuilder()
         .setResource(resource)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .build();
+  }
+
+  public static Path.Thumbnail thumbnail(Path.Command command, int size) {
+    return Path.Thumbnail.newBuilder()
+        .setCommand(command)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .build();
+  }
+
+  public static Path.Thumbnail thumbnail(Path.CommandTreeNode node, int size) {
+    return Path.Thumbnail.newBuilder()
+        .setCommandTreeNode(node)
         .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
         .setDesiredMaxHeight(size)
         .setDesiredMaxWidth(size)
@@ -296,7 +360,7 @@ public class Paths {
       private final Path.MapIndex.Builder mapIndex;
 
       public MapIndex(Path.MapIndex.Builder mapIndex, Pod.Value key) {
-        this.mapIndex = mapIndex.setPod(key);
+        this.mapIndex = mapIndex.setBox(Box.Value.newBuilder().setPod(key));
       }
 
       @Override

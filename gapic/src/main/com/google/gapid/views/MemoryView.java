@@ -18,8 +18,6 @@ package com.google.gapid.views;
 import static com.google.gapid.util.GeoUtils.top;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Paths.command;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.util.Ranges.memory;
 import static com.google.gapid.widgets.Widgets.createDropDown;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
@@ -36,12 +34,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.AtomStream.TypedObservation;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.Service.MemoryInfo;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
@@ -181,15 +179,15 @@ public class MemoryView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(CommandRange range) {
-    TypedObservation[] obs = models.atoms.getObservations(last(range));
+  public void onAtomsSelected(AtomIndex range) {
+    TypedObservation[] obs = models.atoms.getObservations(range);
     selections.setObservations(obs);
 
     if (obs.length > 0 && !uiState.isComplete()) {
       // If the memory view is not showing anything yet, show the first observation.
       setObservation(obs[0]);
     } else {
-      uiState.update(command(models.atoms.getPath(), range));
+      uiState.update(range.getCommand());
       update(getCurrentAddress());
     }
   }
@@ -207,7 +205,7 @@ public class MemoryView extends Composite
   }
 
   private void setObservation(TypedObservation obs) {
-    Path.Memory memoryPath = obs.getPath(models.atoms);
+    Path.Memory memoryPath = obs.getPath();
     uiState.update(memoryPath);
     update(memoryPath.getAddress());
   }

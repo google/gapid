@@ -21,7 +21,7 @@ import static java.util.logging.Level.SEVERE;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
-import com.google.gapid.proto.service.Service.Value;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
@@ -43,7 +43,7 @@ import java.util.logging.Logger;
  * Base class for models that depend on a capture. I.e. models that will trigger a load whenever
  * the capture changes and require a capture to be loaded.
  */
-abstract class CaptureDependentModel<T> {
+abstract class CaptureDependentModel<T, B> {
   private final Logger log;
   protected final Shell shell;
   protected final Client client;
@@ -78,9 +78,9 @@ abstract class CaptureDependentModel<T> {
   protected void load(Path.Any path) {
     if (pathStore.updateIfNotNull(path)) {
       Rpc.listen(doLoad(pathStore.getPath()), rpcController,
-          new UiErrorCallback<Value, T, Void>(shell, log) {
+          new UiErrorCallback<B, T, Void>(shell, log) {
         @Override
-        protected ResultOrError<T, Void> onRpcThread(Result<Value> result) {
+        protected ResultOrError<T, Void> onRpcThread(Result<B> result) {
           return processResult(result);
         }
 
@@ -97,11 +97,9 @@ abstract class CaptureDependentModel<T> {
     }
   }
 
-  protected ListenableFuture<Value> doLoad(Path.Any path) {
-    return client.get(path);
-  }
+  protected abstract ListenableFuture<B> doLoad(Path.Any path);
 
-  protected ResultOrError<T, Void> processResult(Result<Value> result) {
+  protected ResultOrError<T, Void> processResult(Result<B> result) {
     try {
       return success(unbox(result.get()));
     } catch (RpcException | ExecutionException | IOException e) {
@@ -112,7 +110,7 @@ abstract class CaptureDependentModel<T> {
     }
   }
 
-  protected abstract T unbox(Value value) throws IOException;
+  protected abstract T unbox(B value) throws IOException;
 
   /**
    * @param maintainState whether the model should attempt to maintain its state.
@@ -139,5 +137,16 @@ abstract class CaptureDependentModel<T> {
 
   public T getData() {
     return data;
+  }
+
+  public abstract static class ForValue<T> extends CaptureDependentModel<T, Service.Value> {
+    public ForValue(Logger log, Shell shell, Client client, Capture capture) {
+      super(log, shell, client, capture);
+    }
+
+    @Override
+    protected ListenableFuture<Service.Value> doLoad(Path.Any path) {
+      return client.get(path);
+    }
   }
 }

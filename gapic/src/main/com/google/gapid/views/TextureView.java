@@ -20,7 +20,6 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Paths.thumbnail;
-import static com.google.gapid.util.Ranges.last;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
@@ -28,6 +27,7 @@ import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
+import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -36,12 +36,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.AtomStream;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpclib.futures.FutureController;
@@ -51,7 +51,6 @@ import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
-import com.google.gapid.service.atom.AtomList;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.UiCallback;
@@ -87,7 +86,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.LongConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
@@ -110,8 +109,8 @@ public class TextureView extends Composite
     super(parent, SWT.NONE);
     this.client = client;
     this.models = models;
-    this.gotoAction =
-        new GotoAction(this, widgets.theme, a -> models.atoms.selectAtoms(a, 1, true));
+    this.gotoAction = new GotoAction(this, widgets.theme,
+        a -> models.atoms.selectAtoms(new AtomIndex(a, null), true));
 
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
@@ -208,7 +207,7 @@ public class TextureView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(CommandRange path) {
+  public void onAtomsSelected(AtomIndex path) {
     updateTextures(false);
   }
 
@@ -281,8 +280,12 @@ public class TextureView extends Composite
           loading.showMessage(Error, error);
         }
       });
-      gotoAction.setAtomIds(models.atoms.getData(), data.info.getAccessesList(),
-          data.path.getResourceData().getAfter().getIndex());
+      gotoAction.setAtomIds(data.info.getAccessesList().stream()
+          .map(id -> Path.Command.newBuilder()
+              .setCapture(models.capture.getCapture())
+              .addIndex(id)
+              .build())
+          .collect(toList()), data.path.getResourceData().getAfter());
     }
   }
 
@@ -297,12 +300,11 @@ public class TextureView extends Composite
       return;
     }
 
-    CommandRange range = models.atoms.getSelectedAtoms();
+    AtomIndex range = models.atoms.getSelectedAtoms();
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
-      if (firstAccess(info) <= last(range)) {
-        Data data =
-            new Data(resourceAfter(models.atoms.getPath(), range, info.getId()), info, typeLabel);
+      if (firstAccess(info) <= range.getCommand().getIndex(0)) {
+        Data data = new Data(resourceAfter(range, info.getPath().getId()), info, typeLabel);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
       }
@@ -454,12 +456,12 @@ public class TextureView extends Composite
    */
   private static class GotoAction {
     private final Theme theme;
-    private final LongConsumer listener;
+    private final Consumer<Path.Command> listener;
     private final Menu popupMenu;
     private ToolItem item;
-    private List<Long> atomIds = Collections.emptyList();
+    private List<Path.Command> atomIds = Collections.emptyList();
 
-    public GotoAction(Composite parent, Theme theme, LongConsumer listener) {
+    public GotoAction(Composite parent, Theme theme, Consumer<Path.Command> listener) {
       this.theme = theme;
       this.listener = listener;
       this.popupMenu = new Menu(parent);
@@ -480,26 +482,28 @@ public class TextureView extends Composite
 
     public void clear() {
       atomIds = Collections.emptyList();
-      update(null, -1);
+      update(null);
     }
 
-    public void setAtomIds(AtomList atoms, List<Long> ids, long selection) {
+    public void setAtomIds(List<Path.Command> ids, Path.Command selection) {
       atomIds = ids;
-      update(atoms, selection);
+      update(selection);
     }
 
-    private void update(AtomList atoms, long selection) {
+    private void update(Path.Command selection) {
       for (MenuItem child : popupMenu.getItems()) {
         child.dispose();
       }
 
       for (int i = 0; i < atomIds.size(); i++) {
-        long id = atomIds.get(i);
-        MenuItem child = Widgets.createMenuItem(popupMenu, id + ": " + atoms.get(id).getName(), 0,
+        Path.Command id = atomIds.get(i);
+        MenuItem child = Widgets.createMenuItem(popupMenu, "" + id.getIndex(0)/* + ": " + atoms.get(id).getName()*/, 0,
             e -> listener.accept(id));
+        /*
         if (id <= selection && (i == atomIds.size() - 1 || atomIds.get(i + 1) > selection)) {
           child.setImage(theme.arrow());
         }
+        */
       }
       item.setEnabled(!atomIds.isEmpty());
     }

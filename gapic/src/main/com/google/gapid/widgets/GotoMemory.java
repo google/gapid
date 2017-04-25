@@ -59,7 +59,7 @@ public class GotoMemory {
         return;
       }
       models.follower.gotoMemory(memoryAfter(
-          models.atoms.getPath(), models.atoms.getSelectedAtoms(), pool, address, 0).getMemory());
+          models.atoms.getSelectedAtoms().getCommand(), pool, address, 0).getMemory());
     }
   }
 
