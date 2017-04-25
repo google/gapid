@@ -109,6 +109,7 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 			"-d", e.mkdirCleanOrExit(javaOut).System(),
 			"@"+srcTxt.System(),
 			"-classpath", "@"+jarTxt.System(),
+			"-encoding", "UTF-8",
 			"-source", "1.8", "-target", "1.8")
 		e.copyOrExit(e.src.Join("res"), javaOut)
 
