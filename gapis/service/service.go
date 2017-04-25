@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
@@ -29,7 +30,6 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/gapis/service/pod"
 	"github.com/google/gapid/gapis/stringtable"
 
 	_ "github.com/google/gapid/framework/binary/any"

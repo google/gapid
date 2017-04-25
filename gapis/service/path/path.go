@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/service/pod"
 )
 
 // Node is the interface for types that represent a reference to a capture,

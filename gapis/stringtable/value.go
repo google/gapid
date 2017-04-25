@@ -17,8 +17,8 @@ package stringtable
 import (
 	"fmt"
 
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/gapis/service/pod"
 )
 
 // ToValue returns v boxed in a Value.

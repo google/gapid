@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/gapis/service/pod"
 )
 
 // IsResource returns true if this instance should be considered as a resource.

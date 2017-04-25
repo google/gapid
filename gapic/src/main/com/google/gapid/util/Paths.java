@@ -19,10 +19,10 @@ import static com.google.gapid.proto.service.path.Path.Any.PathCase.COMMANDS;
 import static com.google.gapid.util.Ranges.last;
 
 import com.google.gapid.image.Images;
+import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.pod.Pod;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.service.memory.MemoryRange;
 import com.google.protobuf.ByteString;

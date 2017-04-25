@@ -15,13 +15,13 @@
 syntax = "proto3";
 
 package pod;
-option java_package = "com.google.gapid.proto.service.pod";
+option java_package = "com.google.gapid.proto.core.pod";
 option java_outer_classname = "Pod";
 
 message Value {
   oneof val {
-    float float = 1;
-    double double = 2;
+    float float32 = 1;
+    double float64 = 2;
     uint64 uint = 3;
     sint64 sint = 4;
     uint32 uint8 = 5;
@@ -34,8 +34,8 @@ message Value {
     sint64 sint64 = 12;
     bool bool = 13;
     string string = 14;
-    FloatArray float_array = 15;
-    DoubleArray double_array = 16;
+    Float32Array float32_array = 15;
+    Float64Array float64_array = 16;
     Uint64Array uint_array = 17;
     Sint64Array sint_array = 18;
     bytes uint8_array = 19;
@@ -51,11 +51,43 @@ message Value {
   }
 }
 
-message FloatArray  { repeated float val = 1; }
-message DoubleArray { repeated double val = 1; }
+message Float32Array  { repeated float val = 1; }
+message Float64Array { repeated double val = 1; }
 message Uint32Array { repeated uint32 val = 1; }
 message Sint32Array { repeated sint32 val = 1; }
 message Uint64Array { repeated uint64 val = 1; }
 message Sint64Array { repeated sint64 val = 1; }
 message BoolArray   { repeated bool val = 1; }
 message StringArray { repeated string val = 1; }
+
+enum Type {
+  any = 0;
+  float32 = 1;
+  float64 = 2;
+  uint = 3;
+  sint = 4;
+  uint8 = 5;
+  sint8 = 6;
+  uint16 = 7;
+  sint16 = 8;
+  uint32 = 9;
+  sint32 = 10;
+  uint64 = 11;
+  sint64 = 12;
+  bool = 13;
+  string = 14;
+  float_array = 15;
+  double_array = 16;
+  uint_array = 17;
+  sint_array = 18;
+  uint8_array = 19;
+  sint8_array = 20;
+  uint16_array = 21;
+  sint16_array = 22;
+  uint32_array = 23;
+  sint32_array = 24;
+  uint64_array = 25;
+  sint64_array = 26;
+  bool_array = 27;
+  string_array = 28;
+}

@@ -37,6 +37,7 @@ import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CommandRange;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Program;
@@ -44,7 +45,6 @@ import com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Shader;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Uniform;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.pod.Pod;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
@@ -517,8 +517,8 @@ public class ShaderView extends Composite
           case Int32: return String.valueOf(value.getSint32Array().getValList());
           case Uint32: return String.valueOf(value.getUint32Array().getValList());
           case Bool: return String.valueOf(value.getBoolArray().getValList());
-          case Float: return String.valueOf(value.getFloatArray().getValList());
-          case Double: return String.valueOf(value.getDoubleArray().getValList());
+          case Float: return String.valueOf(value.getFloat32Array().getValList());
+          case Double: return String.valueOf(value.getFloat64Array().getValList());
           default: return ProtoDebugTextFormat.shortDebugString(value);
         }
       });

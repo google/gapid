@@ -16,7 +16,7 @@
 package com.google.gapid.util;
 
 import com.google.common.primitives.UnsignedLong;
-import com.google.gapid.proto.service.pod.Pod;
+import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.rpclib.schema.Method;
 import com.google.gapid.rpclib.schema.Primitive;
 import com.google.gapid.rpclib.schema.Type;
@@ -64,10 +64,10 @@ public class Pods {
             result.setUint64(n.longValue());
             break;
           case Method.Float32Value:
-            result.setFloat(n.floatValue());
+            result.setFloat32(n.floatValue());
             break;
           case Method.Float64Value:
-            result.setDouble(n.doubleValue());
+            result.setFloat64(n.doubleValue());
             break;
           case Method.StringValue:
             result.setString(n.toString());
@@ -95,8 +95,8 @@ public class Pods {
 
   public static Object unpod(Pod.Value o) {
     switch (o.getValCase()) {
-      case FLOAT: return o.getFloat();
-      case DOUBLE: return o.getDouble();
+      case FLOAT32: return o.getFloat32();
+      case FLOAT64: return o.getFloat64();
       case UINT: return UnsignedLong.fromLongBits(o.getUint());
       case SINT: return o.getSint();
       case UINT8: return o.getUint8();
@@ -109,8 +109,8 @@ public class Pods {
       case SINT64: return o.getSint64();
       case BOOL: return o.getBool();
       case STRING: return o.getString();
-      case FLOAT_ARRAY:
-        Pod.FloatArray a = o.getFloatArray();
+      case FLOAT32_ARRAY:
+        Pod.Float32Array a = o.getFloat32Array();
         float[] result = new float[a.getValCount()];
         for (int i = 0; i < result.length; i++) {
           result[i] = a.getVal(i);
@@ -127,8 +127,8 @@ public class Pods {
       case VAL_NOT_SET: return sb.append("[null]");
       case STRING: return sb.append(v.getString());
       case BOOL: return sb.append(v.getBool());
-      case DOUBLE: return sb.append(v.getDouble());
-      case FLOAT: return sb.append(v.getFloat());
+      case FLOAT64: return sb.append(v.getFloat64());
+      case FLOAT32: return sb.append(v.getFloat32());
       case SINT: return sb.append(v.getSint());
       case SINT8: return sb.append(v.getSint8());
       case SINT16: return sb.append(v.getSint16());
@@ -141,8 +141,8 @@ public class Pods {
       case UINT64: return sb.append(v.getUint64());
       case STRING_ARRAY: return sb.append(v.getStringArray().getValList());
       case BOOL_ARRAY: return sb.append(v.getBoolArray().getValList());
-      case DOUBLE_ARRAY: return sb.append(v.getDoubleArray().getValList());
-      case FLOAT_ARRAY: return sb.append(v.getFloatArray().getValList());
+      case FLOAT64_ARRAY: return sb.append(v.getFloat64Array().getValList());
+      case FLOAT32_ARRAY: return sb.append(v.getFloat32Array().getValList());
       case SINT_ARRAY: return sb.append(v.getSintArray().getValList());
       case SINT8_ARRAY: return sb.append(v.getSint8Array().getValList());
       case SINT16_ARRAY: return sb.append(v.getSint16Array().getValList());

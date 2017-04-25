@@ -14,8 +14,8 @@
 
 syntax = "proto3";
 
+import "core/data/pod/pod.proto";
 import "core/image/image.proto";
-import "gapis/service/pod/pod.proto";
 import "gapis/vertex/vertex.proto";
 
 package gfxapi;

@@ -15,7 +15,7 @@
 syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
-import "gapis/service/pod/pod.proto";
+import "core/data/pod/pod.proto";
 
 package log_pb;
 
