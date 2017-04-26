@@ -5296,7 +5296,7 @@ sub void doCmdBindPipeline(CmdBindPipeline args) {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
       CurrentComputePipeline = ComputePipelines[args.Pipeline]
     case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      CurrentGraphicsPipeline = GraphicsPipelines[args.Pipeline]
+      LastDrawInfo.GraphicsPipeline = GraphicsPipelines[args.Pipeline]
   }
 }
 
@@ -5590,7 +5590,7 @@ class CmdBindIndexBuffer {
 }
 
 sub void doCmdBindIndexBuffer(CmdBindIndexBuffer buffer) {
-  CurrentIndexBuffer = BoundIndexBuffer(buffer.IndexType,
+  LastDrawInfo.BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
     BoundBuffer(Buffers[buffer.Buffer], buffer.Offset, 0))
   Buffers[buffer.Buffer].LastBoundQueue = LastBoundQueue
 }
@@ -5631,7 +5631,7 @@ cmd void vkCmdBindIndexBuffer(
 
 sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
   for _ , k , v in bind.BoundBuffers {
-    CurrentBoundVertexBuffers[k] = v
+    LastDrawInfo.BoundVertexBuffers[k] = v
     v.Buffer.LastBoundQueue = LastBoundQueue
   }
 }
@@ -5734,9 +5734,9 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 }
 
 sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
-  for _, _, vertex_binding in CurrentGraphicsPipeline.VertexInputState.BindingDescriptions {
-    if vertex_binding.binding in CurrentBoundVertexBuffers {
-      bound_vertex_buffer := CurrentBoundVertexBuffers[vertex_binding.binding]
+  for _, _, vertex_binding in LastDrawInfo.GraphicsPipeline.VertexInputState.BindingDescriptions {
+    if vertex_binding.binding in LastDrawInfo.BoundVertexBuffers {
+      bound_vertex_buffer := LastDrawInfo.BoundVertexBuffers[vertex_binding.binding]
       backing_buf := bound_vertex_buffer.Buffer
       if ((backing_buf.Memory != null) && IsMemoryCoherent(backing_buf.Memory)) {
         start_vertex := switch vertex_binding.inputRate {
@@ -5780,6 +5780,9 @@ sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, 
 
 sub void doCmdDraw(CmdDraw draw) {
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
+  clearLastDrawInfoDrawCommandParameters()
+  LastDrawInfo.CommandParameters.Draw = new!CmdDraw(
+      draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
 }
 
 @override
@@ -5817,8 +5820,8 @@ cmd void vkCmdDraw(
 sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
-  indexBuffer := CurrentIndexBuffer.BoundBuffer.Buffer
-  indexSize := switch (CurrentIndexBuffer.Type) {
+  indexBuffer := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer
+  indexSize := switch (LastDrawInfo.BoundIndexBuffer.Type) {
     case VK_INDEX_TYPE_UINT16:
       as!VkDeviceSize(2)
     case VK_INDEX_TYPE_UINT32:
@@ -5826,12 +5829,16 @@ sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   }
 
   numBytes := as!VkDeviceSize(draw.IndexCount) * indexSize
-  startOffset := CurrentIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
+  startOffset := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
 
   // Read the data of the index buffer if the index buffer is backed with coherent memory.
   readCoherentMemoryInBuffer(indexBuffer, startOffset, numBytes)
   // Read the whole vertex buffer if a buffer is backed with coherent memory.
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
+  clearLastDrawInfoDrawCommandParameters()
+  LastDrawInfo.CommandParameters.DrawIndexed = new!CmdDrawIndexed(
+      draw.IndexCount, draw.InstanceCount, draw.FirstIndex, draw.VertexOffset,
+      draw.FirstInstance)
 }
 
 @override
@@ -5906,6 +5913,9 @@ sub void doCmdDrawIndirect(CmdDrawIndirect draw) {
     readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    clearLastDrawInfoDrawCommandParameters()
+    LastDrawInfo.CommandParameters.DrawIndirect = new!CmdDrawIndirect(
+        draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
   }
 }
 
@@ -5954,10 +5964,13 @@ sub void doCmdDrawIndexedIndirect(CmdDrawIndexedIndirect draw) {
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
     readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
     // Read through the whole index buffer if it uses coherent menory.
-    indexBuffer := CurrentIndexBuffer.BoundBuffer.Buffer
+    indexBuffer := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer
     readCoherentMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
     // Read through all the coherent memory vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    clearLastDrawInfoDrawCommandParameters()
+    LastDrawInfo.CommandParameters.DrawIndexedIndirect = new!CmdDrawIndexedIndirect(
+        draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
   }
 }
 
@@ -8241,11 +8254,16 @@ map!(VkSwapchainKHR, ref!SwapchainObject)                  Swapchains
 map!(VkDisplayModeKHR, ref!DisplayModeObject)              DisplayModes
 // Other state Tracking
 ref!QueueObject       LastBoundQueue
-BoundIndexBuffer      CurrentIndexBuffer
-// This is a map of binding number to buffer bound do that binding.
-map!(u32, BoundBuffer)     CurrentBoundVertexBuffers
-ref!GraphicsPipelineObject CurrentGraphicsPipeline
 ref!ComputePipelineObject  CurrentComputePipeline
+
+// This contains the draw command parameters. Only one of the draw data should be
+// valid at a time. Others should be null.
+@internal class DrawParameters {
+  ref!CmdDraw                Draw
+  ref!CmdDrawIndexed         DrawIndexed
+  ref!CmdDrawIndirect        DrawIndirect
+  ref!CmdDrawIndexedIndirect DrawIndexedIndirect
+}
 
 // This contains the information about a draw
 @internal class DrawInfo {
@@ -8254,6 +8272,15 @@ ref!ComputePipelineObject  CurrentComputePipeline
   map!(u32, ref!DescriptorSetObject)  DescriptorSets
   // The Last subpass number used in the draw
   u32                                 LastSubpass
+  // The graphics pipeline used for the draw
+  ref!GraphicsPipelineObject          GraphicsPipeline
+  // The vertex buffers used for the draw. This is a map of binding number to
+  // buffer bound do that binding.
+  map!(u32, BoundBuffer)              BoundVertexBuffers
+  // The index buffer used for the draw
+  ref!BoundIndexBuffer                BoundIndexBuffer
+  // The draw parameters used for the draw
+  DrawParameters                      CommandParameters
 }
 // Records the draw information of the last draw.
 DrawInfo LastDrawInfo
@@ -8263,6 +8290,14 @@ sub void clearLastDrawInfoDescriptorSets() {
   for i in (0 .. len(LastDrawInfo.DescriptorSets)) {
     LastDrawInfo.DescriptorSets[as!u32(i)] = null
   }
+}
+
+// Clear the draw command parameters in the last draw info
+sub void clearLastDrawInfoDrawCommandParameters() {
+  LastDrawInfo.CommandParameters.Draw = null
+  LastDrawInfo.CommandParameters.DrawIndexed = null
+  LastDrawInfo.CommandParameters.DrawIndirect = null
+  LastDrawInfo.CommandParameters.DrawIndexedIndirect = null
 }
 
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.
