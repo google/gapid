@@ -10,7 +10,6 @@
 
 # General patterns
 *.gfxtrace
-*.pb.go
 *ycm_extra_conf.py*
 *_binary.go
 *_binary_test.go
