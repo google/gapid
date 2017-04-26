@@ -32,10 +32,6 @@ set(files
     core_spy_1.cpp
     core_spy_2.cpp
     core_spy_3.cpp
-    core_spy_4.cpp
-    core_spy_5.cpp
-    core_spy_6.cpp
-    core_spy_7.cpp
     core_spy_subroutines_0.cpp
     core_spy_subroutines_1.cpp
     core_types.cpp
@@ -51,10 +47,6 @@ set(files
     gles_spy_1.cpp
     gles_spy_2.cpp
     gles_spy_3.cpp
-    gles_spy_4.cpp
-    gles_spy_5.cpp
-    gles_spy_6.cpp
-    gles_spy_7.cpp
     gles_spy_externs.cpp
     gles_spy_subroutines_0.cpp
     gles_spy_subroutines_1.cpp
@@ -89,10 +81,6 @@ set(files
     vulkan_spy_1.cpp
     vulkan_spy_2.cpp
     vulkan_spy_3.cpp
-    vulkan_spy_4.cpp
-    vulkan_spy_5.cpp
-    vulkan_spy_6.cpp
-    vulkan_spy_7.cpp
     vulkan_spy_helpers.cpp
     vulkan_spy_subroutines_0.cpp
     vulkan_spy_subroutines_1.cpp

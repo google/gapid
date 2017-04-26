@@ -31,7 +31,7 @@
 
 {{define "SpyCpp"}}
   {{AssertType $ "API"}}
-  {{range $i, $part := (Partition (AllCommands $) "CommandKey" 8)}}
+  {{range $i, $part := (Partition (AllCommands $) "CommandKey" 4)}}
      {{$filename := print (Global "API") "_spy_" $i ".cpp"}}
      {{$part | Macro "SpyCppPart" | Reflow 4 | Write $filename}}
   {{end}}
