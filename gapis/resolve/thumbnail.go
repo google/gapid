@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -26,7 +28,62 @@ import (
 
 // Thumbnail resolves and returns the thumbnail from the path p.
 func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+	switch parent := p.Parent().(type) {
+	case *path.CommandTreeNode:
+		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
+	case *path.ResourceData:
+		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
+	default:
+		return nil, fmt.Errorf("Unexpected Thumbnail parent %T", parent)
+	}
+}
+
+// CommandTreeNodeThumbnail resolves and returns the thumbnail for the resource at p.
+func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info2D, error) {
+	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	cmdTree := boxedCmdTree.(*commandTree)
+
+	i, group, err := cmdTree.index(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if group != nil {
+		i = group.Range.Last()
+	}
+
+	imageInfoPath, err := FramebufferAttachment(ctx,
+		nil, // device
+		cmdTree.path.Capture.Command(i),
+		gfxapi.FramebufferAttachment_Color0,
+		&service.RenderSettings{
+			MaxWidth:      w,
+			MaxHeight:     h,
+			WireframeMode: service.WireframeMode_None,
+		},
+		&service.UsageHints{
+			Preview: true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	boxedImageInfo, err := database.Resolve(ctx, imageInfoPath.Id.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	return boxedImageInfo.(*image.Info2D), nil
+}
+
+// ResourceDataThumbnail resolves and returns the thumbnail for the resource at p.
+func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.ResourceData) (*image.Info2D, error) {
+	obj, err := ResolveInternal(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +93,7 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 		return nil, fmt.Errorf("Type %T does not support thumbnailing", obj)
 	}
 
-	img, err := t.Thumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight)
+	img, err := t.Thumbnail(ctx, w, h)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +102,8 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData("")}
 	}
 
-	if p.DesiredFormat != nil {
+	if f != nil {
 		// Convert the image to the desired format.
-		f := p.DesiredFormat
 		if img.Format.Key() != f.Key() {
 			img, err = img.ConvertTo(ctx, f)
 			if err != nil {
@@ -58,11 +114,11 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 
 	// Image format supports resizing. See if the image should be.
 	scaleX, scaleY := float32(1), float32(1)
-	if p.DesiredMaxWidth > 0 && img.Width > p.DesiredMaxWidth {
-		scaleX = float32(p.DesiredMaxWidth) / float32(img.Width)
+	if w > 0 && img.Width > w {
+		scaleX = float32(w) / float32(img.Width)
 	}
-	if p.DesiredMaxHeight > 0 && img.Height > p.DesiredMaxHeight {
-		scaleY = float32(p.DesiredMaxHeight) / float32(img.Height)
+	if h > 0 && img.Height > h {
+		scaleY = float32(h) / float32(img.Height)
 	}
 	scale := scaleX // scale := min(scaleX, scaleY)
 	if scale > scaleY {

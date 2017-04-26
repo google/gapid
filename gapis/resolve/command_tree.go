@@ -43,6 +43,18 @@ type commandTree struct {
 	root atom.Group
 }
 
+func (t *commandTree) index(c *path.CommandTreeNode) (uint64, *atom.Group, error) {
+	group := &t.root
+	for _, idx := range c.Index {
+		var i uint64
+		i, group = group.Index(idx)
+		if group == nil {
+			return i, nil, nil
+		}
+	}
+	return 0, group, nil
+}
+
 // CommandTreeNode resolves the specified command tree node path.
 func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.CommandTreeNode, error) {
 	boxed, err := database.Resolve(ctx, c.Tree.ID())
@@ -52,24 +64,24 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	group := &cmdTree.root
-	for _, idx := range c.Index {
-		var i uint64
-		i, group = group.Index(idx)
-		if group == nil {
-			return &service.CommandTreeNode{
-				NumChildren: 0, // TODO: Subcommands
-				Data: &service.CommandTreeNode_Command{
-					Command: cmdTree.path.Capture.Command(i),
-				},
-			}, nil
-		}
+	i, group, err := cmdTree.index(c)
+	if err != nil {
+		return nil, err
+	}
+
+	if group != nil {
+		return &service.CommandTreeNode{
+			NumChildren: group.Count(),
+			Data: &service.CommandTreeNode_Group{
+				Group: group.Name,
+			},
+		}, nil
 	}
 
 	return &service.CommandTreeNode{
-		NumChildren: group.Count(),
-		Data: &service.CommandTreeNode_Group{
-			Group: group.Name,
+		NumChildren: 0, // TODO: Subcommands
+		Data: &service.CommandTreeNode_Command{
+			Command: cmdTree.path.Capture.Command(i),
 		},
 	}, nil
 }

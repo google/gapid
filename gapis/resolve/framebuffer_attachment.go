@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
@@ -38,6 +39,14 @@ func FramebufferAttachment(
 	settings *service.RenderSettings,
 	hints *service.UsageHints,
 ) (*path.ImageInfo, error) {
+	if device == nil {
+		d := bind.GetRegistry(ctx).DefaultDevice()
+		if d == nil {
+			return nil, fmt.Errorf("No replay devices found")
+		}
+		device = path.NewDevice(d.Instance().Id.ID())
+	}
+
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
 		device,
 		after,
