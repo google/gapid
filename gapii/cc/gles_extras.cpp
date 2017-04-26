@@ -30,8 +30,6 @@ namespace gapii {
 // getProgramInfo returns a ProgramInfo, populated with the details of all the
 // attributes and uniforms exposed by program.
 std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer, ProgramId program) {
-    using namespace gles_pb;
-
     // Allocate temporary buffer large enough to hold any of the returned strings.
     int32_t infoLogLength = 0;
     mImports.glGetProgramiv(program, GLenum::GL_INFO_LOG_LENGTH, &infoLogLength);

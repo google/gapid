@@ -32,12 +32,8 @@
   #define {{$guard}}
 ¶
   #include "gapii/cc/slice.h"
-  #include "gapii/cc/to_proto.h"
 ¶
-  #include "core/cc/scratch_allocator.h"
   #include "core/cc/static_array.h"
-¶
-  #include "gapis/gfxapi/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
 ¶
   #include <memory>
   #include <string>
@@ -46,6 +42,18 @@
 ¶
   #include <stdint.h>
   #include <string.h>
+¶
+  // Forward declarations
+  namespace google {«
+  namespace protobuf {«
+  class Message;
+  »}
+  »}
+  namespace {{Global "API"}}_pb {«
+  {{range $c := $.Classes}}
+    {{if GetAnnotation $c "serialize"}} class {{$c.Name}}; {{end}}
+  {{end}}
+  »}
 ¶
   namespace gapii {«
   class CallObserver;
@@ -63,6 +71,12 @@
     {{Template "DeclareType" $c}}
   {{end}}
 ¶
+  namespace cmd {«
+    {{range $c := AllCommands $}}
+      {{Template "DeclareCommand" $c}}
+    {{end}}
+¶
+  »} // namespace cmd
 
   »} // namespace gapii
 ¶
@@ -125,36 +139,19 @@
     {{end}}
 
     {{if len $.Fields}}
-      inline {{$name}}()»»
-        {{$a := ForEach $.Fields "DeclareDefaultInitializer" | JoinWith "\n, "}}
-        {{if $a}}: {{$a}}{{end}}
-        ««§•{}
-
-      inline {{$name}}(§»
+      {{$name}}();
+      {{$name}}(§»
         {{range $i, $f := $.Fields}}
           {{if $i}}, §{{end}}
           {{if (IsStaticArray (TypeOf $f))}}const §{{end}}
           {{Template "C++.Type" $f}} {{$f.Name}}§
         {{end}}
-        «)»»
-        {{$a := ForEach $.Fields "DeclareCopyInitializer" | JoinWith "\n, "}}
-        {{if $a}}: {{$a}}{{end}}
-        ««§•{}
+        «);
     {{end}}
 
     {{if $serializable}}
-¶
-      inline ProtoType* toProto() const {
-        auto out = new ProtoType();
-        toProto(out);
-        return out;
-      }
-¶
-      inline void toProto(ProtoType* out) const {
-        {{range $f := $.Fields}}
-          {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "m" "Name" $f.Name "Type" $f}}
-        {{end}}
-      }
+      ::google::protobuf::Message* toProto() const;
+      void toProto(ProtoType* out) const;
     {{end}}
 ¶
     {{range $f := $.Fields}}
@@ -178,30 +175,6 @@
       std::vector<uint8_t> pushConstantData;
     {{end}}
   };
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a default initializer for the field.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareDefaultInitializer"}}
-  {{if IsNil $.Default}}
-    m{{$.Name}}({{Macro "C++.Null" (TypeOf $)}})
-  {{else}}
-    m{{$.Name}}({{Macro "C++.Read" $.Default}})
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a copy initializer if the element is not a static array.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareCopyInitializer"}}
-  m{{$.Name}}({{$.Name}})
 {{end}}
 
 
@@ -293,4 +266,24 @@
   {{Template "DeclareType" $.ValueType}}
 
   typedef std::unordered_map<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareCommand"}}
+  {{AssertType $ "Function"}}
+  {{$name := $.Name}}
+  {{if not (GetAnnotation $ "pfn")}}
+    ¶
+    struct {{$name}} {
+      ::google::protobuf::Message* toProto() const;
+      ¶
+      {{range $p := $.FullParameters}}
+        {{Template "C++.Type" $p}} {{$p.Name}};
+      {{end}}
+    };
+  {{end}}
 {{end}}

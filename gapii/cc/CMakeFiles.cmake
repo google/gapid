@@ -38,6 +38,7 @@ set(files
     core_spy_7.cpp
     core_spy_subroutines_0.cpp
     core_spy_subroutines_1.cpp
+    core_types.cpp
     core_types.h
     gles_context.cpp
     gles_exports.cpp
@@ -57,6 +58,7 @@ set(files
     gles_spy_externs.cpp
     gles_spy_subroutines_0.cpp
     gles_spy_subroutines_1.cpp
+    gles_types.cpp
     gles_types.h
     pack_encoder.h
     pack_encoder.cpp
@@ -94,6 +96,7 @@ set(files
     vulkan_spy_helpers.cpp
     vulkan_spy_subroutines_0.cpp
     vulkan_spy_subroutines_1.cpp
+    vulkan_types.cpp
     vulkan_types.h
 )
 set(dirs
