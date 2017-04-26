@@ -29,6 +29,7 @@
 #include "core/cc/log.h"
 #include "core/cc/target.h"
 
+#include "gapis/gfxapi/gles/gles_pb/api.pb.h"
 #include "gapis/gfxapi/gles/gles_pb/extras.pb.h"
 
 #include <cstdlib>

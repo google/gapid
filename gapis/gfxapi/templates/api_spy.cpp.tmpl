@@ -237,11 +237,12 @@
       }
       mExpectedNextCommandStartCounterValue = counter_at_end + 1;
 ¶
-      auto cmd = new {{Global "API"}}_pb::{{.Name}}();
-      {{range $f := $.FullParameters}}
-        {{Template "C++.SetProtoField" "Proto" "cmd->" "Prefix" "" "Name" $f.Name "Type" $f}}
+      auto c = cmd::{{.Name}}{§
+      {{range $i, $p := $.FullParameters}}
+        {{if $i}}, {{end}}{{$p.Name}}§
       {{end}}
-      observer->encodeAndDeleteCommand(cmd);
+      };
+      observer->encodeAndDeleteCommand(c.toProto());
 
       {{if GetAnnotation $ "DrawCall"}}onPostDrawCall();{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}

@@ -41,12 +41,8 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t bin
         observer->read(binary, binary_size);
         observer->invoke();
 
-        auto cmd = new gles_pb::glProgramBinary();
-        cmd->set_program(program);
-        cmd->set_binaryformat(binary_format);
-        toProtoPointer(cmd->mutable_binary(), binary);
-        cmd->set_length(binary_size);
-        observer->encodeAndDeleteCommand(cmd);
+        auto c = cmd::glProgramBinary{program, binary_format, binary, binary_size};
+        observer->encodeAndDeleteCommand(c.toProto());
     } else {
         GlesSpy::glProgramBinary(observer, program, binary_format, binary, binary_size);
     }
@@ -62,12 +58,8 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t 
         observer->read(binary, binary_size);
         observer->invoke();
 
-        auto cmd = new gles_pb::glProgramBinaryOES();
-        cmd->set_program(program);
-        cmd->set_binary_format(binary_format);
-        toProtoPointer(cmd->mutable_binary(), binary);
-        cmd->set_binary_size(binary_size);
-        observer->encodeAndDeleteCommand(cmd);
+        auto c = cmd::glProgramBinaryOES{program, binary_format, binary, binary_size};
+        observer->encodeAndDeleteCommand(c.toProto());
     } else {
         GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary, binary_size);
     }
@@ -84,13 +76,8 @@ void Spy::glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shader
 
         observer->invoke();
 
-        auto cmd = new gles_pb::glShaderBinary();
-        cmd->set_count(count);
-        toProtoPointer(cmd->mutable_shaders(), shaders);
-        cmd->set_binary_format(binary_format);
-        toProtoPointer(cmd->mutable_binary(), binary);
-        cmd->set_binary_size(binary_size);
-        observer->encodeAndDeleteCommand(cmd);
+        auto c = cmd::glShaderBinary{count, shaders, binary_format, binary, binary_size};
+        observer->encodeAndDeleteCommand(c.toProto());
     } else {
         GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary, binary_size);
     }
@@ -104,10 +91,8 @@ void Spy::glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* value
         observer->invoke();
         observer->write(slice(values, 0, 1));
 
-        auto cmd = new gles_pb::glGetInteger64v();
-        cmd->set_param(param);
-        toProtoPointer(cmd->mutable_values(), values);
-        observer->encodeAndDeleteCommand(cmd);
+        auto c = cmd::glGetInteger64v{param, values};
+        observer->encodeAndDeleteCommand(c.toProto());
     } else {
         GlesSpy::glGetInteger64v(observer, param, values);
     }
@@ -121,10 +106,8 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
         observer->invoke();
         observer->write(slice(values, 0, 1));
 
-        auto cmd = new gles_pb::glGetIntegerv();
-        cmd->set_param(param);
-        toProtoPointer(cmd->mutable_values(), values);
-        observer->encodeAndDeleteCommand(cmd);
+        auto c = cmd::glGetIntegerv{param, values};
+        observer->encodeAndDeleteCommand(c.toProto());
     } else {
         GlesSpy::glGetIntegerv(observer, param, values);
     }
