@@ -55,6 +55,17 @@ func (t *commandTree) index(c *path.CommandTreeNode) (uint64, *atom.Group, error
 	return 0, group, nil
 }
 
+func (t *commandTree) indices(atomIdx uint64) ([]uint64, error) {
+	out := []uint64{}
+	group := &t.root
+	for group != nil {
+		i := group.IndexOf(atomIdx)
+		_, group = group.Index(i)
+		out = append(out, i)
+	}
+	return out, nil
+}
+
 // CommandTreeNode resolves the specified command tree node path.
 func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.CommandTreeNode, error) {
 	boxed, err := database.Resolve(ctx, c.Tree.ID())
@@ -80,6 +91,32 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 	return &service.CommandTreeNode{
 		NumChildren: 0, // TODO: Subcommands
 		Command:     cmdTree.path.Capture.Command(i),
+	}, nil
+}
+
+// CommandTreeNodeForCommand returns the path to the CommandTreeNode that
+// represents the specified command.
+func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCommand) (*path.CommandTreeNode, error) {
+	boxed, err := database.Resolve(ctx, p.Tree.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	cmdTree := boxed.(*commandTree)
+
+	atomIdx := p.Command.Index[0]
+	if len(p.Command.Index) > 1 {
+		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	}
+
+	indices, err := cmdTree.indices(atomIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &path.CommandTreeNode{
+		Tree:  p.Tree,
+		Index: indices,
 	}, nil
 }
 

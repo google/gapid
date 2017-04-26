@@ -54,63 +54,65 @@ func printIndices(index []uint64) string {
 	return strings.Join(parts, ".")
 }
 
-func (n *API) Path() *Any             { return &Any{&Any_Api{n}} }
-func (n *ArrayIndex) Path() *Any      { return &Any{&Any_ArrayIndex{n}} }
-func (n *As) Path() *Any              { return &Any{&Any_As{n}} }
-func (n *Blob) Path() *Any            { return &Any{&Any_Blob{n}} }
-func (n *Capture) Path() *Any         { return &Any{&Any_Capture{n}} }
-func (n *ConstantSet) Path() *Any     { return &Any{&Any_ConstantSet{n}} }
-func (n *Command) Path() *Any         { return &Any{&Any_Command{n}} }
-func (n *Commands) Path() *Any        { return &Any{&Any_Commands{n}} }
-func (n *CommandTree) Path() *Any     { return &Any{&Any_CommandTree{n}} }
-func (n *CommandTreeNode) Path() *Any { return &Any{&Any_CommandTreeNode{n}} }
-func (n *Context) Path() *Any         { return &Any{&Any_Context{n}} }
-func (n *Contexts) Path() *Any        { return &Any{&Any_Contexts{n}} }
-func (n *Device) Path() *Any          { return &Any{&Any_Device{n}} }
-func (n *Events) Path() *Any          { return &Any{&Any_Events{n}} }
-func (n *Field) Path() *Any           { return &Any{&Any_Field{n}} }
-func (n *ImageInfo) Path() *Any       { return &Any{&Any_ImageInfo{n}} }
-func (n *MapIndex) Path() *Any        { return &Any{&Any_MapIndex{n}} }
-func (n *Memory) Path() *Any          { return &Any{&Any_Memory{n}} }
-func (n *Mesh) Path() *Any            { return &Any{&Any_Mesh{n}} }
-func (n *Parameter) Path() *Any       { return &Any{&Any_Parameter{n}} }
-func (n *Report) Path() *Any          { return &Any{&Any_Report{n}} }
-func (n *ResourceData) Path() *Any    { return &Any{&Any_ResourceData{n}} }
-func (n *Resources) Path() *Any       { return &Any{&Any_Resources{n}} }
-func (n *Slice) Path() *Any           { return &Any{&Any_Slice{n}} }
-func (n *State) Path() *Any           { return &Any{&Any_State{n}} }
-func (n *StateTree) Path() *Any       { return &Any{&Any_StateTree{n}} }
-func (n *StateTreeNode) Path() *Any   { return &Any{&Any_StateTreeNode{n}} }
-func (n *Thumbnail) Path() *Any       { return &Any{&Any_Thumbnail{n}} }
+func (n *API) Path() *Any                       { return &Any{&Any_Api{n}} }
+func (n *ArrayIndex) Path() *Any                { return &Any{&Any_ArrayIndex{n}} }
+func (n *As) Path() *Any                        { return &Any{&Any_As{n}} }
+func (n *Blob) Path() *Any                      { return &Any{&Any_Blob{n}} }
+func (n *Capture) Path() *Any                   { return &Any{&Any_Capture{n}} }
+func (n *ConstantSet) Path() *Any               { return &Any{&Any_ConstantSet{n}} }
+func (n *Command) Path() *Any                   { return &Any{&Any_Command{n}} }
+func (n *Commands) Path() *Any                  { return &Any{&Any_Commands{n}} }
+func (n *CommandTree) Path() *Any               { return &Any{&Any_CommandTree{n}} }
+func (n *CommandTreeNode) Path() *Any           { return &Any{&Any_CommandTreeNode{n}} }
+func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{&Any_CommandTreeNodeForCommand{n}} }
+func (n *Context) Path() *Any                   { return &Any{&Any_Context{n}} }
+func (n *Contexts) Path() *Any                  { return &Any{&Any_Contexts{n}} }
+func (n *Device) Path() *Any                    { return &Any{&Any_Device{n}} }
+func (n *Events) Path() *Any                    { return &Any{&Any_Events{n}} }
+func (n *Field) Path() *Any                     { return &Any{&Any_Field{n}} }
+func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}} }
+func (n *MapIndex) Path() *Any                  { return &Any{&Any_MapIndex{n}} }
+func (n *Memory) Path() *Any                    { return &Any{&Any_Memory{n}} }
+func (n *Mesh) Path() *Any                      { return &Any{&Any_Mesh{n}} }
+func (n *Parameter) Path() *Any                 { return &Any{&Any_Parameter{n}} }
+func (n *Report) Path() *Any                    { return &Any{&Any_Report{n}} }
+func (n *ResourceData) Path() *Any              { return &Any{&Any_ResourceData{n}} }
+func (n *Resources) Path() *Any                 { return &Any{&Any_Resources{n}} }
+func (n *Slice) Path() *Any                     { return &Any{&Any_Slice{n}} }
+func (n *State) Path() *Any                     { return &Any{&Any_State{n}} }
+func (n *StateTree) Path() *Any                 { return &Any{&Any_StateTree{n}} }
+func (n *StateTreeNode) Path() *Any             { return &Any{&Any_StateTreeNode{n}} }
+func (n *Thumbnail) Path() *Any                 { return &Any{&Any_Thumbnail{n}} }
 
-func (n API) Parent() Node             { return nil }
-func (n ArrayIndex) Parent() Node      { return oneOfNode(n.Array) }
-func (n As) Parent() Node              { return oneOfNode(n.From) }
-func (n Blob) Parent() Node            { return nil }
-func (n Capture) Parent() Node         { return nil }
-func (n ConstantSet) Parent() Node     { return n.Api }
-func (n Command) Parent() Node         { return n.Capture }
-func (n Commands) Parent() Node        { return n.Capture }
-func (n CommandTree) Parent() Node     { return n.Capture }
-func (n CommandTreeNode) Parent() Node { return nil }
-func (n Context) Parent() Node         { return n.Capture }
-func (n Contexts) Parent() Node        { return n.Capture }
-func (n Device) Parent() Node          { return nil }
-func (n Events) Parent() Node          { return n.Commands }
-func (n Field) Parent() Node           { return oneOfNode(n.Struct) }
-func (n ImageInfo) Parent() Node       { return nil }
-func (n MapIndex) Parent() Node        { return oneOfNode(n.Map) }
-func (n Memory) Parent() Node          { return n.After }
-func (n Mesh) Parent() Node            { return oneOfNode(n.Object) }
-func (n Parameter) Parent() Node       { return n.Command }
-func (n Report) Parent() Node          { return n.Capture }
-func (n ResourceData) Parent() Node    { return n.After }
-func (n Resources) Parent() Node       { return n.Capture }
-func (n Slice) Parent() Node           { return oneOfNode(n.Array) }
-func (n State) Parent() Node           { return n.After }
-func (n StateTree) Parent() Node       { return n.After }
-func (n StateTreeNode) Parent() Node   { return nil }
-func (n Thumbnail) Parent() Node       { return oneOfNode(n.Object) }
+func (n API) Parent() Node                       { return nil }
+func (n ArrayIndex) Parent() Node                { return oneOfNode(n.Array) }
+func (n As) Parent() Node                        { return oneOfNode(n.From) }
+func (n Blob) Parent() Node                      { return nil }
+func (n Capture) Parent() Node                   { return nil }
+func (n ConstantSet) Parent() Node               { return n.Api }
+func (n Command) Parent() Node                   { return n.Capture }
+func (n Commands) Parent() Node                  { return n.Capture }
+func (n CommandTree) Parent() Node               { return n.Capture }
+func (n CommandTreeNode) Parent() Node           { return nil }
+func (n CommandTreeNodeForCommand) Parent() Node { return n.Command }
+func (n Context) Parent() Node                   { return n.Capture }
+func (n Contexts) Parent() Node                  { return n.Capture }
+func (n Device) Parent() Node                    { return nil }
+func (n Events) Parent() Node                    { return n.Commands }
+func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
+func (n ImageInfo) Parent() Node                 { return nil }
+func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
+func (n Memory) Parent() Node                    { return n.After }
+func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
+func (n Parameter) Parent() Node                 { return n.Command }
+func (n Report) Parent() Node                    { return n.Capture }
+func (n ResourceData) Parent() Node              { return n.After }
+func (n Resources) Parent() Node                 { return n.Capture }
+func (n Slice) Parent() Node                     { return oneOfNode(n.Array) }
+func (n State) Parent() Node                     { return n.After }
+func (n StateTree) Parent() Node                 { return n.After }
+func (n StateTreeNode) Parent() Node             { return nil }
+func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
 
 func (n ArrayIndex) Text() string { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
 func (n API) Text() string        { return fmt.Sprintf("api<%v>", n.Id) }
@@ -129,6 +131,9 @@ func (n Commands) Text() string {
 func (n CommandTree) Text() string { return fmt.Sprintf("%v.command-tree") }
 func (n CommandTreeNode) Text() string {
 	return fmt.Sprintf("command-tree<%v>[%v]", n.Tree, printIndices(n.Index))
+}
+func (n CommandTreeNodeForCommand) Text() string {
+	return fmt.Sprintf("%v.command-tree-node<%v>", n.Command.Text(), n.Tree)
 }
 func (n Context) Text() string   { return fmt.Sprintf("%v.[%x]", n.Parent().Text(), n.Id) }
 func (n Contexts) Text() string  { return fmt.Sprintf("%v.contexts", n.Parent().Text()) }

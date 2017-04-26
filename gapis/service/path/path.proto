@@ -14,7 +14,6 @@
 
 syntax = "proto3";
 
-import "core/data/pod/pod.proto";
 import "core/image/image.proto";
 import "gapis/service/box/box.proto";
 import "gapis/vertex/vertex.proto";
@@ -35,25 +34,26 @@ message Any {
     Commands commands = 7;
     CommandTree command_tree = 8;
     CommandTreeNode command_tree_node = 9;
-    ConstantSet constant_set = 10;
-    Context context = 11;
-    Contexts contexts = 12;
-    Device device = 13;
-    Events events = 14;
-    Field field = 15;
-    ImageInfo image_info = 16;
-    MapIndex map_index = 17;
-    Memory memory = 18;
-    Mesh mesh = 19;
-    Parameter parameter = 20;
-    Report report = 21;
-    ResourceData resource_data = 22;
-    Resources resources = 23;
-    Slice slice = 24;
-    State state = 25;
-    StateTree state_tree = 26;
-    StateTreeNode state_tree_node = 27;
-    Thumbnail thumbnail = 28;
+    CommandTreeNodeForCommand command_tree_node_for_command = 10;
+    ConstantSet constant_set = 11;
+    Context context = 12;
+    Contexts contexts = 13;
+    Device device = 14;
+    Events events = 15;
+    Field field = 16;
+    ImageInfo image_info = 17;
+    MapIndex map_index = 18;
+    Memory memory = 19;
+    Mesh mesh = 20;
+    Parameter parameter = 21;
+    Report report = 22;
+    ResourceData resource_data = 23;
+    Resources resources = 24;
+    Slice slice = 25;
+    State state = 26;
+    StateTree state_tree = 27;
+    StateTreeNode state_tree_node = 28;
+    Thumbnail thumbnail = 29;
   }
 }
 
@@ -216,6 +216,18 @@ message CommandTreeNode {
     ID tree = 1;
     // Descending child index starting from the root CommandTreeNode.
     repeated uint64 index = 2;
+}
+
+
+// CommandTreeNodeForCommand is a path to a command tree node, resolved from a
+// Command path and a CommandTree identifier. It is used to locate the
+// CommandTreeNode for a given command.
+// Resolves to a service.CommandTreeNode.
+message CommandTreeNodeForCommand {
+    // Unique identifier of the command tree.
+    ID tree = 1;
+    // The command path.
+    Command command = 2;
 }
 
 // ImageInfo is a path that refers to a image.Info2D.

@@ -130,6 +130,14 @@ func (n *CommandTreeNode) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *CommandTreeNodeForCommand) Validate() error {
+	return anyErr(
+		checkNotNilAndValidate(n, n.Command, "command"),
+		checkIsValid(n, n.Tree, "tree"),
+	)
+}
+
+// Validate checks the path is valid.
 func (n *ConstantSet) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, n.Api, "api"),
