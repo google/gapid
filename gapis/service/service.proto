@@ -565,13 +565,15 @@ message CommandTree {
 message CommandTreeNode {
   // Number of child nodes.
   uint64 num_children = 1;
-  // The data this node represents.
-  oneof data {
-    // Used when the tree node represents a group of sub-nodes.
-    string group = 2;
-    // Used when the tree node represents a command or sub-command.
-    path.Command command = 3;
-  }
+
+  // Group name if this node represents a group of commands.
+  string group = 2;
+
+  // If this node represents a single command, then this is the path to that
+  // command.
+  // If this node represents a group of commands, then then this is the path
+  // to the last command inside that group.
+  path.Command command = 3;
 }
 
 // Command describes a single intercepted command or sub-command.

@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/client"
@@ -76,15 +75,11 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if len(p.Index) > 0 {
 			fmt.Fprintf(os.Stdout, strings.Repeat("│   ", len(p.Index)-1)+"├── ")
 		}
-		switch d := protoutil.OneOf(n.Data).(type) {
-		case *path.Command:
-			if err := getAndPrintCommand(ctx, client, d); err != nil {
-				return err
-			}
-		case string:
-			fmt.Fprintln(os.Stdout, d)
+		if n.Group != "" {
+			fmt.Fprintln(os.Stdout, n.Group)
+			return nil
 		}
-		return nil
+		return getAndPrintCommand(ctx, client, n.Command)
 	})
 }
 
