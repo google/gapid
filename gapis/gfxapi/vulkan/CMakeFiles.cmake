@@ -22,6 +22,8 @@ set(files
     buffer_command.go
     convert.go
     custom_replay.go
+    dead_code_elimination.go
+    dependency_graph.go
     doc.go
     enum.go
     externs.go
@@ -29,6 +31,7 @@ set(files
     mutate.go
     read_framebuffer.go
     replay.go
+    resolvables.proto
     resources.go
     snippets_embed.go
     state.go
