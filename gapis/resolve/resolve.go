@@ -228,6 +228,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return CommandTree(ctx, p)
 	case *path.CommandTreeNode:
 		return CommandTreeNode(ctx, p)
+	case *path.CommandTreeNodeForCommand:
+		return CommandTreeNodeForCommand(ctx, p)
 	case *path.ConstantSet:
 		return ConstantSet(ctx, p)
 	case *path.Context:
