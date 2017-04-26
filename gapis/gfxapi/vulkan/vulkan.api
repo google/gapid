@@ -2766,6 +2766,7 @@ cmd void vkGetDeviceQueue(
   pQueue[0] = id
 }
 
+@DrawCall
 @threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 cmd VkResult vkQueueSubmit(

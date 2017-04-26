@@ -812,7 +812,7 @@
 
     type {{$name}} struct {
       binary.Generate `§
-        {{if $isDrawCall}}implements:"gles.drawCall" {{end}}§
+      {{if $isDrawCall}}implements:"{{Global "API"}}.drawCall" {{end}}§
         display:"{{$.Command | CommandName}}"`
       extras atom.Extras
       {{range $p := $.Command.FullParameters}}

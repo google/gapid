@@ -15,10 +15,12 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 func getStateObject(s *gfxapi.State) *State {
@@ -58,4 +60,13 @@ func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.F
 		}
 		return w, h, format, err
 	}
+}
+
+// Mesh implements the gfxapi.MeshProvider interface
+func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, error) {
+	switch dc := o.(type) {
+	case *VkQueueSubmit:
+		return drawCallMesh(ctx, dc, p)
+	}
+	return nil, fmt.Errorf("Cannot get the mesh data from %v", o)
 }

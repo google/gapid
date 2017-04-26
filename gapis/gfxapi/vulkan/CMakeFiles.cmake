@@ -25,12 +25,15 @@ set(files
     dead_code_elimination.go
     dependency_graph.go
     doc.go
+    drawCall.go
+    draw_call_mesh.go
     enum.go
     externs.go
     find_issues.go
     mutate.go
     read_framebuffer.go
     replay.go
+    resolvables.pb.go
     resolvables.proto
     resources.go
     snippets_embed.go

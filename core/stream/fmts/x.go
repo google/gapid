@@ -12,136 +12,106 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package fmts contains a number of standard stream formats.
+
 package fmts
 
 import "github.com/google/gapid/core/stream"
 
 var (
-	XYZ_S8 = &stream.Format{
+	X_U8 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_X,
+		}},
+	}
+
+	X_S8 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S8,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_S8_NORM = &stream.Format{
+	X_U8_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U8,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_X,
+		}},
+	}
+
+	X_S8_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S8,
 			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.S8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_S16 = &stream.Format{
+	X_U16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_X,
+		}},
+	}
+
+	X_S16 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S16,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.S16,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.S16,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_S16_NORM = &stream.Format{
+	X_U16_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U16,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_X,
+		}},
+	}
+
+	X_S16_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S16,
 			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.S16,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.S16,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_U32 = &stream.Format{
+	X_F16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_X,
+		}},
+	}
+
+	X_U32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U32,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.U32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.U32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_S32 = &stream.Format{
+	X_S32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.S32,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.S32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.S32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 
-	XYZ_F32 = &stream.Format{
+	X_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.F32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.F32,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
-		}},
-	}
-
-	XYZ_F64 = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.F64,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_X,
-		}, {
-			DataType: &stream.F64,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Y,
-		}, {
-			DataType: &stream.F64,
-			Sampling: stream.Linear,
-			Channel:  stream.Channel_Z,
 		}},
 	}
 )
