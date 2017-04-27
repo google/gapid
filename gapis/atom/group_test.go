@@ -17,6 +17,8 @@ package atom
 import (
 	"reflect"
 	"testing"
+
+	"github.com/google/gapid/core/fault"
 )
 
 func check(t *testing.T, name string, expected, got uint64) {
@@ -82,9 +84,9 @@ func TestGroupCount(t *testing.T) {
 func TestGroupIndex(t *testing.T) {
 	root := buildTestGroup()
 	for _, test := range []struct {
-		index                 uint64
-		expectedBaseAtomIndex uint64
-		expectedSubGroup      *Group
+		index             uint64
+		expectedAtomIndex uint64
+		expectedSubGroup  *Group
 	}{
 		{0, 0, nil},
 		{1, 1, nil},
@@ -106,9 +108,9 @@ func TestGroupIndex(t *testing.T) {
 		{402, 699, nil},
 	} {
 		gotBaseAtomIndex, gotSubGroup := root.Index(test.index)
-		if test.expectedBaseAtomIndex != gotBaseAtomIndex {
+		if test.expectedAtomIndex != gotBaseAtomIndex {
 			t.Errorf("base atom id was not as expected for index %d.\nExpected: %d\nGot:      %d",
-				test.index, test.expectedBaseAtomIndex, gotBaseAtomIndex)
+				test.index, test.expectedAtomIndex, gotBaseAtomIndex)
 		}
 		if test.expectedSubGroup != gotSubGroup {
 			t.Errorf("sub group was not as expected for index %d.\nExpected: %+v\nGot:      %+v",
@@ -360,5 +362,281 @@ func TestGroupAddMixed(t *testing.T) {
 	if !reflect.DeepEqual(expected, root) {
 		t.Errorf("built group was not as expected.\nExpected: %+v\nGot:      %+v",
 			expected, root)
+	}
+}
+
+type childIdxAtomIdxGroup struct {
+	childIdx uint64
+	atomIdx  uint64
+	group    *Group
+}
+
+const stop = fault.Const("stop")
+
+func TestIterateForwards(t *testing.T) {
+	root := buildTestGroup()
+	for ti, test := range []struct {
+		from     uint64
+		count    int
+		expected []childIdxAtomIdxGroup
+	}{
+		{0, 3, []childIdxAtomIdxGroup{
+			{0, 0, nil},
+			{1, 1, nil},
+			{2, 2, nil},
+		}},
+		{98, 5, []childIdxAtomIdxGroup{
+			{98, 98, nil},
+			{99, 99, nil},
+			{100, 100, &root.SubGroups[0]},
+			{101, 200, nil},
+			{102, 201, nil},
+		}},
+		{199, 5, []childIdxAtomIdxGroup{
+			{199, 298, nil},
+			{200, 299, nil},
+			{201, 300, &root.SubGroups[1]},
+			{202, 400, nil},
+			{203, 401, nil},
+		}},
+		{300, 5, []childIdxAtomIdxGroup{
+			{300, 498, nil},
+			{301, 499, nil},
+			{302, 500, &root.SubGroups[2]},
+			{303, 600, nil},
+			{304, 601, nil},
+		}},
+		{9700, 3, []childIdxAtomIdxGroup{
+			{9700, 9997, nil},
+			{9701, 9998, nil},
+			{9702, 9999, nil},
+			{0xdead, 0xdead, nil}, // Not reached
+		}},
+	} {
+		i := 0
+		err := root.IterateForwards(test.from, func(childIdx, atomIdx uint64, group *Group) error {
+			got, expected := childIdxAtomIdxGroup{childIdx, atomIdx, group}, test.expected[i]
+			if got != expected {
+				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
+					i, expected, got)
+			}
+			i++
+			if i == test.count {
+				return stop
+			}
+			return nil
+		})
+		if err != stop {
+			t.Errorf("Traverse returned %v (%d callbacks) for test %d.", err, i, ti)
+		}
+	}
+}
+
+func TestIterateBackwards(t *testing.T) {
+	root := buildTestGroup()
+	for ti, test := range []struct {
+		from     uint64
+		count    int
+		expected []childIdxAtomIdxGroup
+	}{
+		{2, 3, []childIdxAtomIdxGroup{
+			{2, 2, nil},
+			{1, 1, nil},
+			{0, 0, nil},
+			{0xdead, 0xdead, nil}, // Not reached
+		}},
+		{102, 5, []childIdxAtomIdxGroup{
+			{102, 201, nil},
+			{101, 200, nil},
+			{100, 100, &root.SubGroups[0]},
+			{99, 99, nil},
+			{98, 98, nil},
+		}},
+		{203, 5, []childIdxAtomIdxGroup{
+			{203, 401, nil},
+			{202, 400, nil},
+			{201, 300, &root.SubGroups[1]},
+			{200, 299, nil},
+			{199, 298, nil},
+		}},
+		{304, 5, []childIdxAtomIdxGroup{
+			{304, 601, nil},
+			{303, 600, nil},
+			{302, 500, &root.SubGroups[2]},
+			{301, 499, nil},
+			{300, 498, nil},
+		}},
+		{9702, 3, []childIdxAtomIdxGroup{
+			{9702, 9999, nil},
+			{9701, 9998, nil},
+			{9700, 9997, nil},
+		}},
+	} {
+		i := 0
+		err := root.IterateBackwards(test.from, func(childIdx, atomIdx uint64, group *Group) error {
+			got, expected := childIdxAtomIdxGroup{childIdx, atomIdx, group}, test.expected[i]
+			if got != expected {
+				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
+					i, expected, got)
+			}
+			i++
+			if i == test.count {
+				return stop
+			}
+			return nil
+		})
+		if err != stop {
+			t.Errorf("Traverse returned %v (%d callbacks) for test %d.", err, i, ti)
+		}
+	}
+}
+
+type indicesAtomIdxGroup struct {
+	indices []uint64
+	atomIdx uint64
+	group   *Group
+}
+
+func TestTraverseForwards(t *testing.T) {
+	I := func(v ...uint64) []uint64 { return v }
+	root := buildTestGroup()
+	for ti, test := range []struct {
+		from     []uint64
+		expected []indicesAtomIdxGroup
+	}{
+		{I(), []indicesAtomIdxGroup{
+			{I(0), 0, nil},
+			{I(1), 1, nil},
+			{I(2), 2, nil},
+		}},
+		{I(98), []indicesAtomIdxGroup{
+			{I(98), 98, nil},
+			{I(99), 99, nil},
+			{I(100), 100, &root.SubGroups[0]},
+			{I(100, 0), 100, nil},
+			{I(100, 1), 101, nil},
+			{I(100, 2), 102, nil},
+		}},
+		{I(199), []indicesAtomIdxGroup{
+			{I(199), 298, nil},
+			{I(200), 299, nil},
+			{I(201), 300, &root.SubGroups[1]},
+			{I(201, 0), 300, nil},
+			{I(201, 1), 301, nil},
+		}},
+		{I(201, 39), []indicesAtomIdxGroup{
+			{I(201, 39), 339, nil},
+			{I(201, 40), 340, &root.SubGroups[1].SubGroups[0]},
+			{I(201, 40, 0), 340, nil},
+			{I(201, 40, 1), 341, nil},
+		}},
+		{I(201, 40, 18), []indicesAtomIdxGroup{
+			{I(201, 40, 18), 358, nil},
+			{I(201, 40, 19), 359, nil},
+			{I(201, 41), 360, nil},
+			{I(201, 42), 361, nil},
+		}},
+		{I(300), []indicesAtomIdxGroup{
+			{I(300), 498, nil},
+			{I(301), 499, nil},
+			{I(302), 500, &root.SubGroups[2]},
+			{I(302, 0), 500, nil},
+			{I(302, 1), 501, nil},
+			{I(302, 2), 502, nil},
+		}},
+		{I(9700), []indicesAtomIdxGroup{
+			{I(9700), 9997, nil},
+			{I(9701), 9998, nil},
+			{I(9702), 9999, nil},
+		}},
+	} {
+		i := 0
+		err := root.Traverse(false, test.from, func(indices []uint64, atomIdx uint64, group *Group) error {
+			got, expected := indicesAtomIdxGroup{indices, atomIdx, group}, test.expected[i]
+			if !reflect.DeepEqual(got, expected) {
+				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
+					i, expected, got)
+			}
+			i++
+			if i == len(test.expected) {
+				return stop
+			}
+			return nil
+		})
+		if err != stop {
+			t.Errorf("Traverse returned %v (%d callbacks) for test %d.", err, i, ti)
+		}
+	}
+}
+
+func TestTraverseBackwards(t *testing.T) {
+	I := func(v ...uint64) []uint64 { return v }
+	root := buildTestGroup()
+	for ti, test := range []struct {
+		from     []uint64
+		expected []indicesAtomIdxGroup
+	}{
+		{I(), []indicesAtomIdxGroup{
+			{I(9702), 9999, nil},
+			{I(9701), 9998, nil},
+			{I(9700), 9997, nil},
+		}},
+		{I(100, 2), []indicesAtomIdxGroup{
+			{I(100, 2), 102, nil},
+			{I(100, 1), 101, nil},
+			{I(100, 0), 100, nil},
+			{I(100), 100, &root.SubGroups[0]},
+			{I(99), 99, nil},
+			{I(98), 98, nil},
+		}},
+		{I(201, 1), []indicesAtomIdxGroup{
+			{I(201, 1), 301, nil},
+			{I(201, 0), 300, nil},
+			{I(201), 300, &root.SubGroups[1]},
+			{I(200), 299, nil},
+			{I(199), 298, nil},
+		}},
+		{I(201, 40, 1), []indicesAtomIdxGroup{
+			{I(201, 40, 1), 341, nil},
+			{I(201, 40, 0), 340, nil},
+			{I(201, 40), 340, &root.SubGroups[1].SubGroups[0]},
+			{I(201, 39), 339, nil},
+		}},
+		{I(201, 42), []indicesAtomIdxGroup{
+			{I(201, 42), 361, nil},
+			{I(201, 41), 360, nil},
+			{I(201, 40, 19), 359, nil},
+			{I(201, 40, 18), 358, nil},
+		}},
+		{I(302, 2), []indicesAtomIdxGroup{
+			{I(302, 2), 502, nil},
+			{I(302, 1), 501, nil},
+			{I(302, 0), 500, nil},
+			{I(302), 500, &root.SubGroups[2]},
+			{I(301), 499, nil},
+			{I(300), 498, nil},
+		}},
+		{I(9702), []indicesAtomIdxGroup{
+			{I(9702), 9999, nil},
+			{I(9701), 9998, nil},
+			{I(9700), 9997, nil},
+		}},
+	} {
+		i := 0
+		err := root.Traverse(true, test.from, func(indices []uint64, atomIdx uint64, group *Group) error {
+			got, expected := indicesAtomIdxGroup{indices, atomIdx, group}, test.expected[i]
+			if !reflect.DeepEqual(got, expected) {
+				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
+					i, expected, got)
+			}
+			i++
+			if i == len(test.expected) {
+				return stop
+			}
+			return nil
+		})
+		if err != stop {
+			t.Errorf("Traverse returned %v (%d callbacks) for test %d.", err, i, ti)
+		}
 	}
 }

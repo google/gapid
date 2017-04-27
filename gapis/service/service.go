@@ -112,7 +112,13 @@ type Service interface {
 	// GetLogStream calls the handler with each log record raised until the
 	// context is cancelled.
 	GetLogStream(context.Context, log.Handler) error
+
+	// Find performs a search using req, streaming the results to h.
+	Find(ctx context.Context, req *FindRequest, h FindHandler) error
 }
+
+// FindHandler is the handler of found items using Service.Find.
+type FindHandler func(*FindResponse) error
 
 // NewError attempts to box and return err into an Error.
 // If err cannot be boxed into an Error then nil is returned.

@@ -223,3 +223,8 @@ func (s *grpcServer) GetLogStream(req *service.GetLogStreamRequest, server servi
 	h := log.NewHandler(func(m *log.Message) { server.Send(log_pb.From(m)) }, nil)
 	return s.handler.GetLogStream(s.bindCtx(ctx), h)
 }
+
+func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindServer) error {
+	ctx := server.Context()
+	return s.handler.Find(s.bindCtx(ctx), req, server.Send)
+}

@@ -47,7 +47,7 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 
 	cmdTree := boxedCmdTree.(*commandTree)
 
-	i, group, err := cmdTree.index(p)
+	i, group, err := cmdTree.index(p.Index)
 	if err != nil {
 		return nil, err
 	}

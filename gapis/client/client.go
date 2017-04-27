@@ -267,3 +267,12 @@ func (c *client) GetLogStream(ctx context.Context, handler log.Handler) error {
 	}
 	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }
+
+func (c *client) Find(ctx context.Context, req *service.FindRequest, handler service.FindHandler) error {
+	stream, err := c.client.Find(ctx, req)
+	if err != nil {
+		return err
+	}
+	h := func(ctx context.Context, m *service.FindResponse) error { return handler(m) }
+	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
+}

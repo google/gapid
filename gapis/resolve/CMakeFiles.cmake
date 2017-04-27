@@ -27,6 +27,7 @@ set(files
     doc.go
     errors.go
     events.go
+    find.go
     follow.go
     framebuffer_attachment.go
     framebuffer_attachment_data.go
