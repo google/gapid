@@ -31,7 +31,12 @@ import (
 
 // ErrParameterNotFound is the error returned by SetParameter when the atom
 // does not have the named parameter.
-const ErrParameterNotFound = fault.Const("Parameter not found")
+const (
+	ErrParameterNotFound = fault.Const("Parameter not found")
+	paramTag             = "param"
+	resultTag            = "result"
+	constsetTag          = "constset"
+)
 
 // ToService returns the service command representing atom a.
 func ToService(a Atom) (*service.Command, error) {
@@ -48,19 +53,27 @@ func ToService(a Atom) (*service.Command, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		v, t := v.Field(i), t.Field(i)
-		if name, ok := t.Tag.Lookup("param"); ok {
+		if name, ok := t.Tag.Lookup(paramTag); ok {
 			param := &service.Parameter{
 				Name:  name,
 				Value: box.NewValue(v.Interface()),
 			}
 
-			if cs, ok := t.Tag.Lookup("constset"); ok {
+			if cs, ok := t.Tag.Lookup(constsetTag); ok {
 				if idx, _ := strconv.Atoi(cs); idx > 0 {
 					param.Constants = out.Api.ConstantSet(idx)
 				}
 			}
 
 			out.Parameters = append(out.Parameters, param)
+		}
+		if _, ok := t.Tag.Lookup(resultTag); ok {
+			out.Result = &service.Parameter{Value: box.NewValue(v.Interface())}
+			if cs, ok := t.Tag.Lookup(constsetTag); ok {
+				if idx, _ := strconv.Atoi(cs); idx > 0 {
+					out.Result.Constants = out.Api.ConstantSet(idx)
+				}
+			}
 		}
 	}
 
@@ -85,8 +98,17 @@ func ToAtom(c *service.Command) (Atom, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup("param"); ok {
+		if n, ok := t.Tag.Lookup(paramTag); ok {
 			p := c.FindParameter(n)
+			if p == nil {
+				continue
+			}
+			if err := p.Value.AssignTo(f.Addr().Interface()); err != nil {
+				return nil, err
+			}
+		}
+		if _, ok := t.Tag.Lookup(resultTag); ok {
+			p := c.Result
 			if p == nil {
 				continue
 			}
@@ -108,7 +130,7 @@ func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup("param"); ok {
+		if n, ok := t.Tag.Lookup(paramTag); ok {
 			if name == n {
 				return f.Interface(), nil
 			}
@@ -126,7 +148,7 @@ func SetParameter(ctx context.Context, a Atom, name string, val interface{}) err
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup("param"); ok {
+		if n, ok := t.Tag.Lookup(paramTag); ok {
 			if name == n {
 				return deep.Copy(f.Addr().Interface(), val)
 			}
