@@ -84,12 +84,16 @@ func Connect(ctx context.Context, cfg Config) (Client, *schema.Message, error) {
 
 	var err error
 	if cfg.Port == 0 || len(cfg.Args) > 0 {
-		cfg.Args = append(cfg.Args, "--log-level", logLevel(ctx).String())
+		cfg.Args = append(cfg.Args,
+			"--log-level", logLevel(ctx).String(),
+			"--log-style", log.Brief.String(),
+		)
 		if cfg.Token != auth.NoAuth {
 			cfg.Args = append(cfg.Args, "--gapis-auth-token", string(cfg.Token))
 		}
 		cfg.Port, err = process.Start(ctx, cfg.Path.System(), process.StartOptions{
-			Args: cfg.Args,
+			Args:    cfg.Args,
+			Verbose: true,
 		})
 		if err != nil {
 			return nil, nil, err

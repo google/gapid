@@ -19,7 +19,7 @@ import "sync"
 // Broadcaster forwards all messages to all supplied handlers.
 // Broadcaster implements the Handler interface.
 type Broadcaster struct {
-	m sync.Mutex
+	m sync.RWMutex
 	l []Handler
 }
 
@@ -44,11 +44,18 @@ func (b *Broadcaster) Listen(h Handler) (unlisten func()) {
 
 // Handle broadcasts the page to all the listening handlers.
 func (b *Broadcaster) Handle(m *Message) {
-	b.m.Lock()
-	defer b.m.Unlock()
+	b.m.RLock()
+	defer b.m.RUnlock()
 	for _, h := range b.l {
 		h.Handle(m)
 	}
+}
+
+// Count returns the number of registered handlers.
+func (b *Broadcaster) Count() int {
+	b.m.RLock()
+	defer b.m.RUnlock()
+	return len(b.l)
 }
 
 // Close calls Close on all the listening handlers and removes them from the
