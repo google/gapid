@@ -42,7 +42,7 @@ func (h handler) Close() {
 // NewHandler returns a Handler that calls handle for each message and close
 // when the handler is closed. close can be nil.
 func NewHandler(handle func(*Message), close func()) Handler {
-	return handler{handle, close}
+	return &handler{handle, close}
 }
 
 type handlerKeyTy string
