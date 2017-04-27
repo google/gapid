@@ -29,6 +29,18 @@ var (
 		}},
 	}
 
+	DS_NU16S8 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U16,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Depth,
+		}, {
+			DataType: &stream.S8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Stencil,
+		}},
+	}
+
 	DS_NU24U8 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U24,
@@ -36,6 +48,18 @@ var (
 			Channel:  stream.Channel_Depth,
 		}, {
 			DataType: &stream.U8,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Stencil,
+		}},
+	}
+
+	DS_NU24S8 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U24,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Depth,
+		}, {
+			DataType: &stream.S8,
 			Sampling: stream.Linear,
 			Channel:  stream.Channel_Stencil,
 		}},

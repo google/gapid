@@ -40,4 +40,18 @@ var (
 			Channel:  stream.Channel_Depth,
 		}},
 	}
+
+	ЖD_U8U24_NORM = &stream.Format{
+		// According to Vulkan Spec, the first 8 bit is not used,
+		// the following 24 bits are used for depth.
+		Components: []*stream.Component{{
+			DataType: &stream.U8,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Undefined,
+		}, {
+			DataType: &stream.U24,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Depth,
+		}},
+	}
 )

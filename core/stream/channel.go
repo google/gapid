@@ -53,6 +53,8 @@ func (c Channel) Format(w fmt.State, r rune) {
 		fmt.Fprint(w, "Y")
 	case Channel_Z:
 		fmt.Fprint(w, "Z")
+	case Channel_Undefined:
+		fmt.Fprint(w, "Ж")
 	default:
 		fmt.Fprint(w, "?")
 	}

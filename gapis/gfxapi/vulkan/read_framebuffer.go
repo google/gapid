@@ -129,21 +129,28 @@ func postImageData(ctx context.Context,
 	reqHeight uint32,
 	out transform.Writer,
 	res replay.Result) {
-	attachmentImageFormat, err := getImageFormatFromVulkanFormat(vkFormat)
-	if err != nil {
+
+	// This is the format used for building the final image resource and
+	// calculating the data size for the final resource. Note that the staging
+	// image is not created with this format.
+	var formatOfImgRes *image.Format = nil
+	var err error = nil
+	if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+		formatOfImgRes, err = getImageFormatFromVulkanFormat(vkFormat)
+	} else if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
+		// When depth image is requested, the format, which is used for
+		// resolving/bliting/copying attachment image data to the mapped buffer
+		// might be different with the format used in image resource. This is
+		// because we need to strip the stencil data if the source attachment image
+		// contains both depth and stencil data.
+		formatOfImgRes, err = getDepthImageFormatFromVulkanFormat(vkFormat)
+	} else {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 		return
 	}
-	// When depth image is requested, the format, which is used for resolving/bliting/copying attachment image data
-	// to the mapped buffer might be different with the format used in image resource. This is because we need to
-	// strip the stencil data if the source attachment image contains both depth and stencil data.
-	formatOfImgRes := attachmentImageFormat
-	if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
-		formatOfImgRes, err = getDepthImageFormatFromVulkanFormat(vkFormat)
-		if err != nil {
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
-			return
-		}
+	if err != nil {
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+		return
 	}
 
 	queue := imageObject.LastBoundQueue
@@ -831,6 +838,11 @@ func postImageData(ctx context.Context,
 	if imageObject.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		blitSrcImage = resolveImageId
 	}
+	// If the src image is a depth/stencil image, the filter must be NEAREST
+	filter := VkFilter_VK_FILTER_LINEAR
+	if aspectMask != VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+		filter = VkFilter_VK_FILTER_NEAREST
+	}
 	writeEach(ctx, out,
 		NewVkCmdBlitImage(
 			commandBufferId,
@@ -840,7 +852,7 @@ func postImageData(ctx context.Context,
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
 			imageBlitData.Ptr(),
-			VkFilter_VK_FILTER_LINEAR,
+			filter,
 		).AddRead(imageBlitData.Data()),
 	)
 

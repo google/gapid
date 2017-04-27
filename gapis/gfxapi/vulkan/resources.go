@@ -432,6 +432,18 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
 		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_SRGB_BLOCK"), nil
+	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.DS_F32U8), nil
+	case VkFormat_VK_FORMAT_D32_SFLOAT:
+		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT", fmts.D_F32), nil
+	case VkFormat_VK_FORMAT_D16_UNORM:
+		return image.NewUncompressed("VK_FORMAT_D16_UNORM", fmts.D_U16_NORM), nil
+	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		return image.NewUncompressed("VK_FORMAT_D16_UNORM_S8_UINT", fmts.DS_NU16S8), nil
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
+		return image.NewUncompressed("VK_FORMAT_X8_D24_UNORM_PACK32", fmts.ЖD_U8U24_NORM), nil
+	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.DS_NU24S8), nil
 	default:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	}
