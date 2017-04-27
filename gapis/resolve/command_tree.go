@@ -43,9 +43,9 @@ type commandTree struct {
 	root atom.Group
 }
 
-func (t *commandTree) index(c *path.CommandTreeNode) (uint64, *atom.Group, error) {
+func (t *commandTree) index(indices []uint64) (uint64, *atom.Group, error) {
 	group := &t.root
-	for _, idx := range c.Index {
+	for _, idx := range indices {
 		var i uint64
 		i, group = group.Index(idx)
 		if group == nil {
@@ -75,7 +75,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	i, group, err := cmdTree.index(c)
+	i, group, err := cmdTree.index(c.Index)
 	if err != nil {
 		return nil, err
 	}

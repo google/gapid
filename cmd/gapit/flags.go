@@ -124,7 +124,8 @@ type (
 	CommandsFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
-		Raw   bool `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Raw   bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Name  string `help:"Filter to commands and groups with the specified name."`
 	}
 	StateFlags struct {
 		Gapis GapisFlags

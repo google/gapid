@@ -71,6 +71,28 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	tree := boxedTree.(*service.CommandTree)
 
+	if verb.Name != "" {
+		req := &service.FindRequest{
+			From:    &service.FindRequest_CommandTreeNode{CommandTreeNode: tree.Root},
+			Text:    verb.Name,
+			IsRegex: false, // TODO: Flag for this?
+		}
+		client.Find(ctx, req, func(r *service.FindResponse) error {
+			p := r.GetCommandTreeNode()
+			boxedNode, err := client.Get(ctx, p.Path())
+			if err != nil {
+				return err
+			}
+			n := boxedNode.(*service.CommandTreeNode)
+			if n.Group != "" {
+				fmt.Fprintln(os.Stdout, n.Group)
+				return nil
+			}
+			return getAndPrintCommand(ctx, client, n.Command)
+		})
+		return nil
+	}
+
 	return traverseCommandTree(ctx, client, tree.Root, func(p *path.CommandTreeNode, n *service.CommandTreeNode) error {
 		if len(p.Index) > 0 {
 			fmt.Fprintf(os.Stdout, strings.Repeat("│   ", len(p.Index)-1)+"├── ")
@@ -81,6 +103,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		return getAndPrintCommand(ctx, client, n.Command)
 	})
+
 }
 
 func traverseCommandTree(

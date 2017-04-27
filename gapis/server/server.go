@@ -258,6 +258,21 @@ func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 	return resolve.Follow(ctx, p)
 }
 
+func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
+	handler = log.Channel(handler, 64)
+	unregister := s.logBroadcaster.Listen(handler)
+	defer func() {
+		unregister()
+		handler.Close()
+	}()
+	<-task.ShouldStop(ctx)
+	return task.StopReason(ctx)
+}
+
+func (s *server) Find(ctx context.Context, req *service.FindRequest, handler service.FindHandler) error {
+	return resolve.Find(ctx, req, handler)
+}
+
 func (s *server) BeginCPUProfile(ctx context.Context) error {
 	s.profile.Reset()
 	return pprof.StartCPUProfile(&s.profile)
@@ -282,15 +297,4 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 		return []byte{}, err
 	}
 	return b.Bytes(), nil
-}
-
-func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
-	handler = log.Channel(handler, 64)
-	unregister := s.logBroadcaster.Listen(handler)
-	defer func() {
-		unregister()
-		handler.Close()
-	}()
-	<-task.ShouldStop(ctx)
-	return task.StopReason(ctx)
 }

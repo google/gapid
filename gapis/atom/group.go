@@ -89,38 +89,108 @@ func (g Group) Count() uint64 {
 }
 
 // Index returns the item at the specified index. If the item refers directly
-// to an atom index then the atom index is returned in baseAtomIndex and
-// subgroup is assigned nil.
-// If the item is a sub-group then baseAtomIndex is returned as the lowest atom
+// to an atom index then the atom index is returned in atomIndex and subgroup
+// is assigned nil.
+// If the item is a sub-group then atomIndex is returned as the lowest atom
 // identifier found in the sub-group and subgroup is assigned the sub-group
 // pointer.
-func (g Group) Index(index uint64) (baseAtomIndex uint64, subgroup *Group) {
-	base := g.Range.First()
+func (g Group) Index(index uint64) (atomIndex uint64, subgroup *Group) {
+	base := g.Range.Start // base atom index
 	for i := range g.SubGroups {
 		sg := &g.SubGroups[i]
-		if base+index < sg.Range.First() {
+		if base+index < sg.Range.Start {
 			break
 		}
-		index -= uint64(sg.Range.First() - base)
+		index -= uint64(sg.Range.Start - base)
 		if index == 0 {
-			return sg.Range.First(), sg
+			return sg.Range.Start, sg
 		}
 		index--
-		base = sg.Range.Last() + 1
+		base = sg.Range.End
 	}
 	return base + index, nil
+}
+
+// IterateForwards calls cb with each contained atom index or group starting
+// with the item at index. If cb returns an error then traversal is stopped and
+// the error is returned.
+func (g *Group) IterateForwards(index uint64, cb func(childIdx, atomIndex uint64, subgroup *Group) error) error {
+	childIndex := uint64(0)
+	visit := func(atomIndex uint64, subgroup *Group) error {
+		idx := childIndex
+		childIndex++
+		if idx < index {
+			return nil
+		}
+		return cb(idx, atomIndex, subgroup)
+	}
+
+	base := g.Range.Start // base atom index
+	for i := range g.SubGroups {
+		sg := &g.SubGroups[i]
+		for i, e := base, sg.Range.Start; i < e; i++ {
+			if err := visit(i, nil); err != nil {
+				return err
+			}
+		}
+		if err := visit(sg.Range.Start, sg); err != nil {
+			return err
+		}
+		base = sg.Range.End
+	}
+	for i, e := base, g.Range.End; i < e; i++ {
+		if err := visit(i, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IterateBackwards calls cb with each contained atom index or group starting
+// with the item at index. If cb returns an error then traversal is stopped and
+// the error is returned.
+func (g *Group) IterateBackwards(index uint64, cb func(childIdx, atomIndex uint64, subgroup *Group) error) error {
+	childIndex := g.Count() - 1
+	visit := func(atomIndex uint64, subgroup *Group) error {
+		idx := childIndex
+		childIndex--
+		if idx > index {
+			return nil
+		}
+		return cb(idx, atomIndex, subgroup)
+	}
+
+	base := g.Range.End // base atom index
+	for i := range g.SubGroups {
+		sg := &g.SubGroups[len(g.SubGroups)-i-1]
+		for i, e := base, sg.Range.End; i > e; i-- {
+			if err := visit(i-1, nil); err != nil {
+				return err
+			}
+		}
+		if err := visit(sg.Range.Start, sg); err != nil {
+			return err
+		}
+		base = sg.Range.Start
+	}
+	for i, e := base, g.Range.Start; i > e; i-- {
+		if err := visit(i-1, nil); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // IndexOf returns the item index that atomIndex refers directly to, or contains the
 // given atom index.
 func (g Group) IndexOf(atomIndex uint64) uint64 {
 	index := uint64(0)
-	base := g.Range.First()
+	base := g.Range.Start
 	for _, sg := range g.SubGroups {
-		if atomIndex < sg.Range.First() {
+		if atomIndex < sg.Range.Start {
 			break
 		}
-		index += uint64(sg.Range.First() - base)
+		index += uint64(sg.Range.Start - base)
 		base = sg.Range.Last() + 1
 		if atomIndex <= sg.Range.Last() {
 			return index
@@ -150,4 +220,107 @@ func (g *Group) Insert(atomIndex uint64, count int) {
 		g.SubGroups[i] = sg
 		i++
 	}
+}
+
+// TraverseCallback is the function that's called for each traversed item in a
+// group.
+type TraverseCallback func(indices []uint64, atomIdx uint64, group *Group) error
+
+// Traverse traverses the atom group starting with the specified index,
+// calling cb for each encountered node.
+func (g *Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) error {
+	t := groupTraverser{backwards: backwards, cb: cb}
+
+	indices := start
+	groups := make([]*Group, 1, len(indices)+1)
+	groups[0] = g
+	for i := range indices {
+		_, g := groups[i].Index(indices[i])
+		if g == nil {
+			break
+		}
+		groups = append(groups, g)
+	}
+
+	// Examples of groups / indices:
+	//
+	// groups[0]       | groups[0]       | groups[0]       |  groups[0]
+	//      indices[0] |      indices[0] |      indices[0] |
+	// groups[1]       | groups[1]       |                 |
+	//      indices[1] |      indices[1] |                 |
+	// groups[2]       | -               |                 |
+	//      indices[2] |      indices[2] |                 |
+	// groups[3]       | -               |                 |
+
+	for i := len(groups) - 1; i >= 0; i-- {
+		g := groups[i]
+		t.indices = indices[:i]
+		var err error
+		switch {
+		case i >= len(indices):
+			// Group doesn't have an index specifiying a child to search from.
+			// Search the entire group.
+			if backwards {
+				err = g.IterateBackwards(g.Count()-1, t.visit)
+			} else {
+				err = g.IterateForwards(0, t.visit)
+			}
+		case i == len(groups)-1:
+			// Group is the deepest.
+			// Search from index that passes through this group.
+			if backwards {
+				if err := g.IterateBackwards(indices[i], t.visit); err != nil {
+					return err
+				}
+				err = cb(t.indices, g.Range.Start, g)
+			} else {
+				err = g.IterateForwards(indices[i], t.visit)
+			}
+		default:
+			// Group is not the deepest.
+			// Search after / before the index that passes through this group.
+			if backwards {
+				err = g.IterateBackwards(indices[i]-1, t.visit)
+			} else {
+				err = g.IterateForwards(indices[i]+1, t.visit)
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type groupTraverser struct {
+	backwards bool
+	cb        func([]uint64, uint64, *Group) error
+	indices   []uint64
+}
+
+func (s *groupTraverser) visit(childIdx, atomIdx uint64, g *Group) error {
+	if !s.backwards {
+		if err := s.cb(append(s.indices, childIdx), atomIdx, g); err != nil {
+			return err
+		}
+	}
+	if g != nil {
+		s.indices = append(s.indices, childIdx)
+		var err error
+		if s.backwards {
+			err = g.IterateBackwards(g.Count()-1, s.visit)
+		} else {
+			err = g.IterateForwards(0, s.visit)
+		}
+		s.indices = s.indices[:len(s.indices)-1]
+		if err != nil {
+			return err
+		}
+	}
+	if s.backwards {
+		if err := s.cb(append(s.indices, childIdx), atomIdx, g); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -267,6 +267,29 @@ message GetFramebufferAttachmentResponse {
 
 message GetLogStreamRequest {}
 
+message FindRequest {
+  // If true then searching will begin at from and move backwards.
+  bool backwards = 1;
+  // Maximum number of results to return. 0 means unlimited.
+  uint32 max_items = 2;
+  // The searching point.
+  oneof from {
+    path.CommandTreeNode command_tree_node = 5;
+    path.StateTreeNode state_tree_node = 6;
+  }
+  // The text to search for.
+  string text = 3;
+  // If true then text should be treated as a regular expression.
+  bool is_regex = 4;
+}
+
+message FindResponse {
+  oneof result {
+    path.CommandTreeNode command_tree_node = 1;
+    path.StateTreeNode state_tree_node = 2;
+  }
+}
+
 // Gapid is the RPC service to the GAPIS server.
 service Gapid {
   // GetServerInfo returns information about the running server.
@@ -327,6 +350,9 @@ service Gapid {
   // GetLogStream calls the handler with each log record raised until the
   // context is cancelled.
   rpc GetLogStream(GetLogStreamRequest) returns (stream log_pb.Message) {}
+
+  // Find searches for data, streaming the results.
+  rpc Find(FindRequest) returns (stream FindResponse) {}
 
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.
