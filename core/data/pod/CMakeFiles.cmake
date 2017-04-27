@@ -22,9 +22,6 @@ set(files
     pod.go
     pod.pb.go
     pod.proto
-    reader.go
-    writer.go
 )
 set(dirs
-    test
 )

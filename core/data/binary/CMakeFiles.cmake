@@ -20,6 +20,9 @@
 set(files
     bitstream.go
     bitstream_test.go
+    reader.go
+    writer.go
 )
 set(dirs
+    test
 )

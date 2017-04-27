@@ -26,7 +26,8 @@
     "context"
     "fmt"
 
-    "github.com/google/gapid/core/data/pod"
+    "github.com/google/gapid/core/data/binary"
+    "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/gapis/capture"
@@ -128,11 +129,11 @@
 
     {{$out := print "(*(*" $to ")(a))"}}
 
-    func (a *{{$.Name}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+    func (a *{{$.Name}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
       {{Template "Go.Encode" "Name" $out "Type" $.To "ErrHandler" "panic(e.Error())"}}
     }
 
-    func (a *{{$.Name}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+    func (a *{{$.Name}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
       {{Template "Go.Decode" "Name" $out "Type" $.To "ErrHandler" "panic(d.Error())"}}
     }
   {{end}}
@@ -154,13 +155,13 @@
     Elements [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
   }
 
-  func (a *{{$ty}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+  func (a *{{$ty}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
     for _, v := range a.Elements {
       {{Template "Go.Encode" "Name" "v" "Type" $.ValueType "ErrHandler" "panic(e.Error())"}}
     }
   }
 
-  func (a *{{$ty}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+  func (a *{{$ty}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
     for i := range a.Elements {
       {{Template "Go.Decode" "Name" "a.Elements[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
     }
@@ -208,12 +209,12 @@
     return {{$ptr_ty}}{ Address: addr, Pool: memory.ApplicationPool }
   }
 
-  func (p {{$ptr_ty}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+  func (p {{$ptr_ty}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
       e.Uint64(p.Address);
       e.Uint32(uint32(p.Pool));
   }
 
-  func (p *{{$ptr_ty}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+  func (p *{{$ptr_ty}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
       p.Address = d.Uint64();
       p.Pool = memory.PoolID(d.Uint32());
   }
@@ -338,7 +339,7 @@
           extra_reads := required_alignment - (offset % required_alignment)
           offset += extra_reads
           for i := uint64(0); i < extra_reads; i++ {
-            if pod.ReadUint(d, 8); d.Error() != nil {
+            if binary.ReadUint(d, 8); d.Error() != nil {
               panic(d.Error())
             }
             base += value.ObservedPointer(1)
@@ -346,7 +347,7 @@
       }
       {{if IsPointer ($f.Type | Underlying)}}
           offset += {{Template "Go.SizeOf" (TypeOf $f)}}
-          i := pod.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
+          i := binary.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
           v := New{{Macro "Go.Type" $f}}(i).value(ϟb, ϟa, ϟs)
           ϟb.Push(v)
           ϟb.Store(base)
@@ -476,12 +477,12 @@
   }
 
   // Decoder returns a memory decoder for the slice.
-  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) pod.Reader {
+  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) binary.Reader {
     return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.SliceInfo.Pool].Slice(s.Range(ϟs.MemoryLayout)))
   }
 
   // Encoder returns a memory encoder for the slice.
-  func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) pod.Writer {
+  func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) binary.Writer {
     return ϟs.MemoryEncoder(ϟs.Memory[s.SliceInfo.Pool], s.Range(ϟs.MemoryLayout))
   }
 
@@ -507,7 +508,7 @@
       for i := range res {
         {{if $el_is_ptr}}
           if s.SliceInfo.Pool == memory.ApplicationPool {
-            ptr := pod.ReadUint(d, ϟl.GetPointer().GetSize()*8)
+            ptr := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
             if d.Error() != nil {
               panic(d.Error())
             }
@@ -537,7 +538,7 @@
       for i := uint64(0); i < count; i++ {
         {{if $el_is_ptr}}
           if s.SliceInfo.Pool == memory.ApplicationPool {
-            if pod.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].Address); e.Error() != nil {
+            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].Address); e.Error() != nil {
               panic(e.Error())
             }
           } else {
@@ -603,7 +604,7 @@
         d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.SliceInfo.Base / uint64(ϟl.GetPointer().GetSize()))
         for i := uint64(0); i < s.SliceInfo.Count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          i := pod.ReadUint(d, ϟl.GetPointer().GetSize()*8)
+          i := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
           ptr := New{{$el_ty}}(i).value(ϟb, ϟa, ϟs)
           ϟb.StorePointer(dst, ptr)
           dst++
@@ -967,13 +968,13 @@
         return alignment
       }
 
-      func (c {{$.Name}}) Encode(ϟs *gfxapi.State, e pod.Writer) {
+      func (c {{$.Name}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
         {{range $v := $.Fields}}
           {{Template "Go.Encode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(e.Error())"}}
         {{end}}
       }
 
-      func (c *{{$.Name}}) Decode(ϟs *gfxapi.State, d pod.Reader) {
+      func (c *{{$.Name}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
         {{range $v := $.Fields}}
           {{Template "Go.Decode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(d.Error())"}}
         {{end}}
@@ -982,16 +983,16 @@
       // {{$.Name}}DecodeRaw decodes a structure as it would have been stored
       // in memory by the traced application. This means native-width pointers
       // and aligned member variables.
-      func {{$.Name}}DecodeRaw(ϟl *device.MemoryLayout, d pod.Reader, o *{{$.Name}}) {
+      func {{$.Name}}DecodeRaw(ϟl *device.MemoryLayout, d binary.Reader, o *{{$.Name}}) {
         offset := uint64(0)
         _ = offset // Silence warnings for objects with no fields
         {{range $v := $.Fields}}
           {
             newOffset, _ := u64.AlignToNextAndReturnLargestAlignment(offset, {{Template "Go.AlignmentOf" (TypeOf $v)}}, 0)
-            offset = offset + pod.ConsumeBytes(d, newOffset - offset) + {{Template "Go.SizeOf" (TypeOf $v)}}
+            offset = offset + binary.ConsumeBytes(d, newOffset - offset) + {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if ϟv := pod.ReadUint(d, ϟl.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}(memory.Pointer{Address: ϟv, Pool: memory.ApplicationPool}) } else { panic(d.Error()) }
+            if ϟv := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}(memory.Pointer{Address: ϟv, Pool: memory.ApplicationPool}) } else { panic(d.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}DecodeRaw(ϟl, d, &o.{{Title $v.Name}})
@@ -1000,7 +1001,7 @@
           {{end}}
         {{end}}
       }
-      func {{$.Name}}EncodeRaw(ϟl *device.MemoryLayout, e pod.Writer, o *{{$.Name}}) {
+      func {{$.Name}}EncodeRaw(ϟl *device.MemoryLayout, e binary.Writer, o *{{$.Name}}) {
         offset := uint64(0)
         _ = offset // Silence warnings for objects with no fields
         {{range $v := $.Fields}}
@@ -1010,7 +1011,7 @@
               extra_writes := required_alignment - (offset % required_alignment)
               offset += extra_writes
               for i := uint64(0); i < extra_writes; i++ {
-                if pod.WriteUint(e, 8, 0); e.Error() != nil {
+                if binary.WriteUint(e, 8, 0); e.Error() != nil {
                   panic(e.Error())
                 }
               }
@@ -1018,7 +1019,7 @@
             offset += {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if pod.WriteUint(e, ϟl.GetPointer().GetSize()*8, o.{{Title $v.Name}}.Address); e.Error() != nil { panic(e.Error()) }
+            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, o.{{Title $v.Name}}.Address); e.Error() != nil { panic(e.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}EncodeRaw(ϟl, e, &o.{{Title $v.Name}})

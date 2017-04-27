@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/pkg/errors"
@@ -107,7 +107,7 @@ func decodeXmlTree(r io.Reader) (*xmlTree, error) {
 	return tree, nil
 }
 
-func decodeChunk(r pod.Reader, x *xmlTree) (chunk, error) {
+func decodeChunk(r binary.Reader, x *xmlTree) (chunk, error) {
 	ty := r.Uint16()
 	if err := r.Error(); err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func decodeChunk(r pod.Reader, x *xmlTree) (chunk, error) {
 	return c, err
 }
 
-func decodeLength(r pod.Reader) uint32 {
+func decodeLength(r binary.Reader) uint32 {
 	length := uint32(r.Uint16())
 	if length&0x8000 != 0 {
 		panic("UNTESTED CODE")
@@ -159,7 +159,7 @@ func decodeLength(r pod.Reader) uint32 {
 	return length
 }
 
-func encodeLength(w pod.Writer, length uint32) {
+func encodeLength(w binary.Writer, length uint32) {
 	if length >= 0x8000 {
 		panic("TODO: UNSUPPORTED")
 	}
@@ -168,7 +168,7 @@ func encodeLength(w pod.Writer, length uint32) {
 
 // encodeChunk takes functions that output chunk-specific header and data to a writer, and then uses them to
 // compute header and chunk sizes, as well as writing the whole chunk to a byte array, which is then returned.
-func encodeChunk(chunkType uint16, headerf func(w pod.Writer), dataf func(w pod.Writer)) []byte {
+func encodeChunk(chunkType uint16, headerf func(w binary.Writer), dataf func(w binary.Writer)) []byte {
 	var headerBuffer bytes.Buffer
 	headerf(endian.Writer(&headerBuffer, device.LittleEndian))
 	headerBytes := headerBuffer.Bytes()

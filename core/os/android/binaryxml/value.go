@@ -17,14 +17,14 @@ package binaryxml
 import (
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 )
 
 const valueSize = 8
 
 type typedValue interface {
 	fmt.Stringer
-	encode(w pod.Writer)
+	encode(w binary.Writer)
 }
 
 type valIntDec int32
@@ -59,7 +59,7 @@ func (v valNull) String() string {
 }
 
 // https://android.googlesource.com/platform/frameworks/base/+/master/libs/androidfw/ResourceTypes.cpp
-func encodeDimension(w pod.Writer, f float32, unit uint8) {
+func encodeDimension(w binary.Writer, f float32, unit uint8) {
 	neg := f < 0
 	if neg {
 		f = -f
@@ -92,51 +92,51 @@ func encodeDimension(w pod.Writer, f float32, unit uint8) {
 	w.Uint32(e)
 }
 
-func (v valIntDec) encode(w pod.Writer) {
+func (v valIntDec) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeIntDec)
 	w.Int32(int32(v))
 }
-func (v valIntHex) encode(w pod.Writer) {
+func (v valIntHex) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeIntHex)
 	w.Uint32(uint32(v))
 }
-func (v valReference) encode(w pod.Writer) {
+func (v valReference) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeReference)
 	w.Uint32(uint32(v))
 }
-func (v valStringID) encode(w pod.Writer) {
+func (v valStringID) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeString)
 	w.Uint32(stringPoolRef(v).stringPoolIndex())
 }
-func (v valFloat) encode(w pod.Writer) {
+func (v valFloat) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeFloat)
 	w.Float32(float32(v))
 }
-func (v valFloatPx) encode(w pod.Writer) {
+func (v valFloatPx) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 0)
 }
-func (v valFloatDp) encode(w pod.Writer) {
+func (v valFloatDp) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 1)
 }
-func (v valFloatSp) encode(w pod.Writer) {
+func (v valFloatSp) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 2)
 }
-func (v valFloatPt) encode(w pod.Writer) {
+func (v valFloatPt) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 3)
 }
-func (v valFloatIn) encode(w pod.Writer) {
+func (v valFloatIn) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 4)
 }
-func (v valFloatMm) encode(w pod.Writer) {
+func (v valFloatMm) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeDimension)
 	encodeDimension(w, float32(v), 5)
 }
-func (v valIntBoolean) encode(w pod.Writer) {
+func (v valIntBoolean) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeIntBoolean)
 	if bool(v) {
 		w.Uint32(0xFFFFFFFF)
@@ -144,18 +144,18 @@ func (v valIntBoolean) encode(w pod.Writer) {
 		w.Uint32(0)
 	}
 }
-func (v valNull) encode(w pod.Writer) {
+func (v valNull) encode(w binary.Writer) {
 	writeTypedValueHeader(w, typeNull)
 	w.Uint32(uint32(v))
 }
 
-func writeTypedValueHeader(w pod.Writer, ty valueType) {
+func writeTypedValueHeader(w binary.Writer, ty valueType) {
 	w.Uint16(8)
 	w.Uint8(0)
 	w.Uint8(uint8(ty))
 }
 
-func decodeDimension(r pod.Reader) (typedValue, error) {
+func decodeDimension(r binary.Reader) (typedValue, error) {
 	radixes := []float32{1.0 / (1 << 8),
 		1.0 / (1 << 15),
 		1.0 / (1 << 23),
@@ -180,7 +180,7 @@ func decodeDimension(r pod.Reader) (typedValue, error) {
 	}
 }
 
-func decodeValue(r pod.Reader, xml *xmlTree) (typedValue, error) {
+func decodeValue(r binary.Reader, xml *xmlTree) (typedValue, error) {
 	size := r.Uint16()
 	if size != valueSize {
 		return nil, fmt.Errorf("Value size was not as expected. Got %d, expected %d",

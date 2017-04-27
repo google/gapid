@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -94,9 +94,9 @@ func (c *xmlTree) decode(header, data []byte) error {
 }
 
 func (c *xmlTree) encode() []byte {
-	return encodeChunk(resXMLType, func(w pod.Writer) {
+	return encodeChunk(resXMLType, func(w binary.Writer) {
 		// No custom header.
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		w.Data(c.strings.encode())
 		w.Data(c.resourceMap.encode())
 		for _, chunk := range c.chunks {
@@ -113,13 +113,13 @@ func (c *xmlTree) toXmlString() string {
 	})
 }
 
-func (c *xmlTree) decodeString(r pod.Reader) stringPoolRef {
+func (c *xmlTree) decodeString(r binary.Reader) stringPoolRef {
 	idx := r.Uint32()
 	if idx != missingString {
 		return stringPoolRef{c.strings, idx}
-	} else {
-		return stringPoolRef{nil, idx}
 	}
+	return stringPoolRef{nil, idx}
+
 }
 
 // ensureAttributeMapsToResource finds a name mapping to the given resource id.

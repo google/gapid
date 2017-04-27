@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package endian implements pod.Reader and pod.Writer for writing .
+// Package endian implements binary.Reader and binary.Writer for reading /
+// writing simple primivite types from a binary source.
 //
 // Boolean values are encoded as single bytes, where 0 represents false and non-
 // zero represents true.

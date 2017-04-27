@@ -21,8 +21,8 @@ import (
 
 	"sort"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -100,10 +100,10 @@ func (c *xmlStartElement) xml(ctx *xmlContext) string {
 }
 
 func (c *xmlStartElement) encode() []byte {
-	return encodeChunk(resXMLStartElementType, func(w pod.Writer) {
+	return encodeChunk(resXMLStartElementType, func(w binary.Writer) {
 		w.Uint32(c.lineNumber)
 		c.comment.encode(w)
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		c.namespace.encode(w)
 		c.name.encode(w)
 		w.Uint16(20)                        // attributeStart

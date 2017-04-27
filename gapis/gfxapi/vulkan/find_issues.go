@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -51,7 +51,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xe11de11d)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r pod.Reader, err error) error {
+		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) error {
 			if err != nil {
 				t.res = nil
 				return err

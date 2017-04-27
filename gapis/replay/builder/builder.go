@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -56,7 +56,7 @@ type ResponseDecoder func(r io.Reader, err error)
 // returning. If err is nil, then d is the Decoder to the postback data. If d is nil,
 // then a previous postback failed to decode before decoding could begin for this
 // postback and err holds the error.
-type Postback func(d pod.Reader, err error) error
+type Postback func(d binary.Reader, err error) error
 
 // Builder is used to build the Payload to send to the replay virtual machine.
 // The builder has a number of methods for mutating the virtual machine stack,
@@ -580,7 +580,7 @@ func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder,
 
 	// TODO: check that each Postback consumes its expected number of bytes.
 	responseDecoder := func(r io.Reader, err error) {
-		var d pod.Reader
+		var d binary.Reader
 		if r != nil {
 			d = endian.Reader(r, byteOrder)
 		}
@@ -619,7 +619,7 @@ func (b *Builder) assertResourceSizesAreAsExpected(ctx context.Context) {
 	}
 }
 
-func (b *Builder) layoutVolatileMemory(ctx context.Context, w pod.Writer) *volatileMemoryLayout {
+func (b *Builder) layoutVolatileMemory(ctx context.Context, w binary.Writer) *volatileMemoryLayout {
 	// Volatile memory layout:
 	//
 	//  low ┌──────────────────┐

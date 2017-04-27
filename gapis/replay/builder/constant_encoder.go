@@ -18,15 +18,15 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/replay/value"
 )
 
 type constantEncoder struct {
-	writer      pod.Writer
+	writer      binary.Writer
 	buffer      *bytes.Buffer
 	constantMap map[id.ID]uint64
 	data        []byte

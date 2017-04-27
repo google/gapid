@@ -17,8 +17,8 @@ package binaryxml
 import (
 	"bytes"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -58,10 +58,10 @@ func (c *xmlEndNamespace) updateContext(ctx *xmlContext) {
 }
 
 func (c *xmlEndNamespace) encode() []byte {
-	return encodeChunk(resXMLEndNamespaceType, func(w pod.Writer) {
+	return encodeChunk(resXMLEndNamespaceType, func(w binary.Writer) {
 		w.Uint32(c.lineNumber)
 		c.comment.encode(w)
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		c.namespacePrefix.encode(w)
 		c.namespaceURI.encode(w)
 	})

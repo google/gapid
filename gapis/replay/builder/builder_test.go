@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -212,7 +212,7 @@ func TestRevertPostbackAtom(t *testing.T) {
 	ctx := log.Testing(t)
 	const expectedErr = fault.Const("Oh noes!")
 	postbackErr := error(nil)
-	postback := Postback(func(r pod.Reader, err error) error {
+	postback := Postback(func(r binary.Reader, err error) error {
 		assert.For(ctx, "Postback reader").That(r).IsNil()
 		postbackErr = err
 		return nil

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"unicode/utf16"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -37,7 +37,7 @@ func (r stringPoolRef) isValid() bool {
 	return r.idx != missingString && r.sp != nil
 }
 
-func (r stringPoolRef) encode(w pod.Writer) {
+func (r stringPoolRef) encode(w binary.Writer) {
 	w.Uint32(r.stringPoolIndex())
 }
 
@@ -131,14 +131,14 @@ func (c *stringPool) encode() []byte {
 		panic("TODO: implement style encoding support.")
 	}
 
-	return encodeChunk(resStringPoolType, func(w pod.Writer) {
+	return encodeChunk(resStringPoolType, func(w binary.Writer) {
 		totalHeaderLength := 8 + 5*4 // 8 for the basic header + the five uint32s below
 		w.Uint32(uint32(len(c.strings)))
 		w.Uint32(uint32(len(c.styles)))
 		w.Uint32(c.flags)
 		w.Uint32(uint32(totalHeaderLength + len(c.strings)*4)) // strings start after header and indices
 		w.Uint32(0)                                            // stylesStart
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		encodedStrings := make([][]byte, len(c.strings))
 		for i, str := range c.strings {
 			encodedStrings[i] = utf16EncodeStringPoolEntry(str)

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
 )
 
@@ -40,8 +40,8 @@ type BadType struct {
 
 type Simple int8
 
-func (s *Simple) ReadSimple(r pod.Reader) { *s = Simple(r.Uint8()) }
-func (s Simple) WriteSimple(w pod.Writer) { w.Uint8(byte(s)) }
+func (s *Simple) ReadSimple(r binary.Reader) { *s = Simple(r.Uint8()) }
+func (s Simple) WriteSimple(w binary.Writer) { w.Uint8(byte(s)) }
 
 type Error string
 

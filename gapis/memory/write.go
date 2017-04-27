@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
 )
@@ -67,13 +67,13 @@ func getAlignment(memoryLayout *device.MemoryLayout, v interface{}) (uint64, err
 // If v is an array or slice, then each of the elements will be written,
 // sequentially. Zeros are used as for paddings. On success, returns
 // the number of bytes written and nil, Otherwise, returns 0 and an error.
-func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint64, error) {
+func Write(w binary.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint64, error) {
 	// <type>ᵖ types are aliases to Pointer. And alias types are different from
 	// the underlying type in Go. We cannot directly use type assertion/switch
 	// here to test whether v is essentially of Pointer type.
 	if pt := reflect.TypeOf(Pointer{}); reflect.TypeOf(v).ConvertibleTo(pt) {
 		v = reflect.ValueOf(v).Convert(pt).Interface()
-		pod.WriteUint(w, memoryLayout.GetPointer().GetSize()*8, v.(Pointer).Address)
+		binary.WriteUint(w, memoryLayout.GetPointer().GetSize()*8, v.(Pointer).Address)
 		return uint64(memoryLayout.GetPointer().GetSize()), w.Error()
 	}
 
@@ -89,19 +89,19 @@ func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint
 		return 8, nil
 
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		pod.WriteInt(w, int32(t.Bits()), r.Int())
+		binary.WriteInt(w, int32(t.Bits()), r.Int())
 		return uint64(t.Bits() / 8), nil
 
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		pod.WriteUint(w, int32(t.Bits()), r.Uint())
+		binary.WriteUint(w, int32(t.Bits()), r.Uint())
 		return uint64(t.Bits() / 8), nil
 
 	case reflect.Int:
-		pod.WriteInt(w, memoryLayout.GetInteger().GetSize()*8, r.Int())
+		binary.WriteInt(w, memoryLayout.GetInteger().GetSize()*8, r.Int())
 		return uint64(memoryLayout.GetInteger().GetSize()), nil
 
 	case reflect.Uint:
-		pod.WriteUint(w, memoryLayout.GetInteger().GetSize()*8, r.Uint())
+		binary.WriteUint(w, memoryLayout.GetInteger().GetSize()*8, r.Uint())
 		return uint64(memoryLayout.GetInteger().GetSize()), nil
 
 	case reflect.Array, reflect.Slice:
@@ -113,7 +113,7 @@ func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint
 				return 0, err
 			}
 			newSize := u64.AlignUp(size, alignment)
-			pod.WriteBytes(w, 0, int32(newSize-size))
+			binary.WriteBytes(w, 0, int32(newSize-size))
 			size = newSize
 			s, err := Write(w, memoryLayout, element)
 
@@ -133,7 +133,7 @@ func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint
 				return 0, err
 			}
 			newSize := u64.AlignUp(size, alignment)
-			pod.WriteBytes(w, 0, int32(newSize-size))
+			binary.WriteBytes(w, 0, int32(newSize-size))
 			size = newSize
 			s, err := Write(w, memoryLayout, field)
 			if err != nil {

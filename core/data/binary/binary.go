@@ -12,4 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pod
+package binary
+
+// Readable is the interface to things that readable as Plain Old Data.
+type Readable interface {
+	// ReadSimple is invoked by a Reader to read the POD.
+	ReadSimple(Reader)
+}
+
+// Writable is the interface to things that are writable as Plain Old Data.
+type Writable interface {
+	// WriteSimple is invoked by a Writer to write the POD.
+	WriteSimple(Writer)
+}
