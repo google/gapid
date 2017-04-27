@@ -845,7 +845,7 @@
       extras atom.Extras
       {{range $p := $.Command.FullParameters}}
         {{$cs := ConstantSetIndex $p}}
-        {{$p | GoPublicName}} {{Template "Go.Type" $p}} `param:"true"{{if ge $cs 0}} constset:"{{$cs}}"{{end}}`
+        {{$p | GoPublicName}} {{Template "Go.Type" $p}} `param:"{{$p.Name}}"{{if ge $cs 0}} constset:"{{$cs}}"{{end}}`
       {{end}}
     }
 

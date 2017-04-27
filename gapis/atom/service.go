@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
-
 	"strconv"
 
 	"github.com/google/gapid/core/data/deep"
@@ -50,9 +48,9 @@ func ToService(a Atom) (*service.Command, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		v, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup("param"); ok {
+		if name, ok := t.Tag.Lookup("param"); ok {
 			param := &service.Parameter{
-				Name:  strings.ToLower(t.Name),
+				Name:  name,
 				Value: box.NewValue(v.Interface()),
 			}
 
@@ -87,9 +85,8 @@ func ToAtom(c *service.Command) (Atom, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup("param"); ok {
-			name := strings.ToLower(t.Name)
-			p := c.FindParameter(name)
+		if n, ok := t.Tag.Lookup("param"); ok {
+			p := c.FindParameter(n)
 			if p == nil {
 				continue
 			}
@@ -104,7 +101,6 @@ func ToAtom(c *service.Command) (Atom, error) {
 
 // Parameter returns the parameter value with the specified name.
 func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
-	name = strings.ToLower(name)
 	v := reflect.ValueOf(a)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
@@ -112,8 +108,8 @@ func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup("param"); ok {
-			if name == strings.ToLower(t.Name) {
+		if n, ok := t.Tag.Lookup("param"); ok {
+			if name == n {
 				return f.Interface(), nil
 			}
 		}
@@ -123,7 +119,6 @@ func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
 
 // SetParameter sets the parameter with the specified name with val.
 func SetParameter(ctx context.Context, a Atom, name string, val interface{}) error {
-	name = strings.ToLower(name)
 	v := reflect.ValueOf(a)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
@@ -131,8 +126,8 @@ func SetParameter(ctx context.Context, a Atom, name string, val interface{}) err
 	t := v.Type()
 	for i, count := 0, t.NumField(); i < count; i++ {
 		f, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup("param"); ok {
-			if name == strings.ToLower(t.Name) {
+		if n, ok := t.Tag.Lookup("param"); ok {
+			if name == n {
 				return deep.Copy(f.Addr().Interface(), val)
 			}
 		}

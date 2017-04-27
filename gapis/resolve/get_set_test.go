@@ -60,11 +60,11 @@ type (
 	testAPI struct{}
 
 	testAtom struct {
-		Str  string            `param:"true"`
-		Sli  []bool            `param:"true"`
-		Ptr  *testStruct       `param:"true"`
-		Map  stringːstring     `param:"true"`
-		PMap intːtestStructPtr `param:"true"`
+		Str  string            `param:"Str"`
+		Sli  []bool            `param:"Sli"`
+		Ptr  *testStruct       `param:"Ptr"`
+		Map  stringːstring     `param:"Map"`
+		PMap intːtestStructPtr `param:"PMap"`
 	}
 )
 
@@ -91,11 +91,11 @@ var (
 		Name: "testAtom",
 		Api:  &path.API{Id: path.NewID(id.ID(testAPIID))},
 		Parameters: []*service.Parameter{
-			{Name: "str", Value: box.NewValue(atomA.Str)},
-			{Name: "sli", Value: box.NewValue(atomA.Sli)},
-			{Name: "ptr", Value: box.NewValue(atomA.Ptr)},
-			{Name: "map", Value: box.NewValue(atomA.Map)},
-			{Name: "pmap", Value: box.NewValue(atomA.PMap)},
+			{Name: "Str", Value: box.NewValue(atomA.Str)},
+			{Name: "Sli", Value: box.NewValue(atomA.Sli)},
+			{Name: "Ptr", Value: box.NewValue(atomA.Ptr)},
+			{Name: "Map", Value: box.NewValue(atomA.Map)},
+			{Name: "PMap", Value: box.NewValue(atomA.PMap)},
 		},
 	}
 
@@ -103,11 +103,11 @@ var (
 		Name: "testAtom",
 		Api:  &path.API{Id: path.NewID(id.ID(testAPIID))},
 		Parameters: []*service.Parameter{
-			{Name: "str", Value: box.NewValue(atomB.Str)},
-			{Name: "sli", Value: box.NewValue(atomB.Sli)},
-			{Name: "ptr", Value: box.NewValue(atomB.Ptr)},
-			{Name: "map", Value: box.NewValue(atomB.Map)},
-			{Name: "pmap", Value: box.NewValue(atomB.PMap)},
+			{Name: "Str", Value: box.NewValue(atomB.Str)},
+			{Name: "Sli", Value: box.NewValue(atomB.Sli)},
+			{Name: "Ptr", Value: box.NewValue(atomB.Ptr)},
+			{Name: "Map", Value: box.NewValue(atomB.Map)},
+			{Name: "PMap", Value: box.NewValue(atomB.PMap)},
 		},
 	}
 )
