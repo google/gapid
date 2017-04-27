@@ -88,12 +88,13 @@ message Value {
     Event event = 9;
     Events events = 10;
     MemoryInfo memory_info = 11;
-    Report report = 12;
-    Resources resources = 13;
-    StateTree state_tree = 14;
-    StateTreeNode state_tree_node = 15;
-    Thread thread = 16;
-    Threads threads = 17;
+    path.Any path = 12;
+    Report report = 13;
+    Resources resources = 14;
+    StateTree state_tree = 15;
+    StateTreeNode state_tree_node = 16;
+    Thread thread = 17;
+    Threads threads = 18;
 
     device.Instance device = 20;
 

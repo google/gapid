@@ -168,6 +168,10 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_Events{v}}
 	case *MemoryInfo:
 		return &Value{&Value_MemoryInfo{v}}
+	case *path.Any:
+		return &Value{&Value_Path{v}}
+	case path.Node:
+		return &Value{&Value_Path{v.Path()}}
 	case *Report:
 		return &Value{&Value_Report{v}}
 	case *Resources:
