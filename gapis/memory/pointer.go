@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/memory/memory_pb"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 // Nullptr is a zero-address pointer in the application pool.
@@ -60,14 +59,6 @@ func (p Pointer) String() string {
 		return fmt.Sprintf("0x%.8x@%d", p.Address, p.Pool)
 	}
 	return fmt.Sprintf("0x%.16x@%d", p.Address, p.Pool)
-}
-
-// Link return the path to the memory pointed-to by p.
-func (p Pointer) Link(ctx context.Context, n path.Node) (path.Node, error) {
-	if cmd := path.FindCommand(n); cmd != nil {
-		return cmd.MemoryAfter(uint32(p.Pool), p.Address, 0), nil
-	}
-	return nil, nil
 }
 
 func (p Pointer) ToProto() *memory_pb.Pointer {

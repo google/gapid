@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/gapis/memory"
 )
 
 // NewValue attempts to box and return v into a Value.
@@ -58,6 +59,7 @@ func (v *Value) AssignTo(p interface{}) error {
 
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
+	tyMemoryPointer  = reflect.TypeOf(memory.Pointer{})
 	noValue          = reflect.Value{}
 )
 
@@ -82,6 +84,12 @@ func (b *boxer) val(v reflect.Value) *Value {
 			return &Value{0, &Value_Reference{&Reference{&Reference_Null{}}}}
 		}
 		return b.val(v.Elem())
+	}
+
+	switch {
+	case t.ConvertibleTo(tyMemoryPointer):
+		p := v.Convert(tyMemoryPointer).Interface().(memory.Pointer)
+		return &Value{0, &Value_Pointer{&Pointer{p.Address, uint32(p.Pool)}}}
 	}
 
 	id, ok := b.values[v]
@@ -139,6 +147,11 @@ func (b *boxer) ty(t reflect.Type) *Type {
 		return &Type{0, &Type_Any{true}}
 	}
 
+	switch {
+	case t.ConvertibleTo(tyMemoryPointer):
+		return &Type{0, &Type_Pointer{true}}
+	}
+
 	id, ok := b.types[t]
 	if ok {
 		return &Type{id, &Type_BackReference{true}}
@@ -189,6 +202,9 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 			return reflect.ValueOf(v)
 		}
 		panic(fmt.Errorf("Unsupported POD Value %+v", v))
+	case *Value_Pointer:
+		p := memory.Pointer{Address: v.Pointer.Address, Pool: memory.PoolID(v.Pointer.Pool)}
+		return reflect.ValueOf(p)
 	}
 
 	if v.GetBackReference() {
@@ -247,6 +263,9 @@ func (b *unboxer) ty(t *Type) (out reflect.Type) {
 
 	case *Type_Any:
 		return tyEmptyInterface
+
+	case *Type_Pointer:
+		return tyMemoryPointer
 	}
 
 	id := t.TypeId
