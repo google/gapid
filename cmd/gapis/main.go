@@ -57,9 +57,19 @@ func main() {
 // called.
 var features = []string{}
 
+// addFallbackLogHandler adds a handler to b that calls to fallback when nothing
+// else is listening.
+func addFallbackLogHandler(b *log.Broadcaster, fallback log.Handler) {
+	b.Listen(log.NewHandler(func(m *log.Message) {
+		if b.Count() == 1 {
+			fallback.Handle(m)
+		}
+	}, fallback.Close))
+}
+
 func run(ctx context.Context) error {
-	// Insert a log.Broadcaster between the context and it's current handler.
-	logBroadcaster := log.Broadcast(log.GetHandler(ctx))
+	logBroadcaster := log.Broadcast()
+	addFallbackLogHandler(logBroadcaster, log.GetHandler(ctx))
 	ctx = log.PutHandler(ctx, logBroadcaster)
 
 	r := bind.NewRegistry()

@@ -19,7 +19,7 @@ import "context"
 // Testing returns a default context with a TestHandler installed.
 func Testing(t delegate) context.Context {
 	ctx := context.Background()
-	return PutHandler(ctx, TestHandler(t, Normal))
+	return PutHandler(ctx, TestHandler(t, Detailed))
 }
 
 // TestHandler is a Writer that uses the style to write records to t's using the

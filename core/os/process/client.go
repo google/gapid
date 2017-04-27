@@ -74,6 +74,9 @@ type StartOptions struct {
 
 	// Standard error pipe for the new process.
 	Stderr io.Writer
+
+	// Should all stderr and and stdout also be logged to the logger?
+	Verbose bool
 }
 
 // Start runs the application with the given path and options, waits for
@@ -89,11 +92,14 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 	}
 
 	go func() {
-		errChan <- shell.
+		cmd := shell.
 			Command(name, opts.Args...).
 			Env(opts.Env).
-			Capture(stdout, opts.Stderr).
-			Run(ctx)
+			Capture(stdout, opts.Stderr)
+		if opts.Verbose {
+			cmd = cmd.Verbose()
+		}
+		errChan <- cmd.Run(ctx)
 	}()
 
 	select {

@@ -16,7 +16,6 @@ package log_pb
 
 import (
 	"fmt"
-
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"

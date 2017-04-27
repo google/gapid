@@ -18,10 +18,10 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    log.go
     log.pb.go
     log.proto
-    pb.go
 )
 set(dirs
-    
+
 )
