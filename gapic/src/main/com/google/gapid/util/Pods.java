@@ -116,6 +116,7 @@ public class Pods {
           result[i] = a.getVal(i);
         }
         return result;
+      case UINT8_ARRAY: return o.getUint8Array().toByteArray();
       default:
         // TODO handle other arrays
         throw new UnsupportedOperationException("Cannot unpod: " + o);
