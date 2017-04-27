@@ -827,6 +827,30 @@
   }
 {{end}}
 
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a the tags for the given command parameter.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandParameterTags"}}
+  {{AssertType $ "Parameter"}}
+
+  {{$cs := ConstantSetIndex $}}
+
+  `§
+  {{if $.IsReturn}}
+    result:"true"§
+  {{else}}
+    param:"{{$.Name}}"§
+  {{end}}
+  {{if ge $cs 0}}§
+    •constset:"{{$cs}}"§
+  {{end}}§
+  `
+{{end}}
+
+
 {{/*
 -------------------------------------------------------------------------------
   Emits a type declaration and implementation for the specified command.
@@ -844,8 +868,7 @@
     type {{$name}} struct {
       extras atom.Extras
       {{range $p := $.Command.FullParameters}}
-        {{$cs := ConstantSetIndex $p}}
-        {{$p | GoPublicName}} {{Template "Go.Type" $p}} `param:"{{$p.Name}}"{{if ge $cs 0}} constset:"{{$cs}}"{{end}}`
+        {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
       {{end}}
     }
 

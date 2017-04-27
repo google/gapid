@@ -611,10 +611,12 @@ message Command {
   path.API api = 2;
   // The list of function parameters.
   repeated Parameter parameters = 3;
+  // The function return value 'parameter'.
+  Parameter result = 4;
   // The thread associated with this comand. May be nil.
-  path.Thread thread = 4;
+  path.Thread thread = 5;
   // The context associated with this comand. May be nil.
-  path.Context context = 5;
+  path.Context context = 6;
 }
 
 // Parameter is a parameter of a command.

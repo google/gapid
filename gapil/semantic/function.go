@@ -63,6 +63,9 @@ func (p *Parameter) ExpressionType() Type { return p.Type }
 // IsThis returns true if this parameter is the This parameter of it's function.
 func (p *Parameter) IsThis() bool { return p == p.Function.This }
 
+// IsReturn returns true if this parameter is the Return parameter of it's function.
+func (p *Parameter) IsReturn() bool { return p == p.Function.Return }
+
 // Observed represents the final observed value of an output parameter.
 // It is never produced directly from the ast, but is inserted when inferring
 // the value of an unknown from observed outputs.

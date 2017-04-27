@@ -154,7 +154,19 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 		}
 		params[i] = fmt.Sprintf("%v: %v", p.Name, v)
 	}
-	fmt.Fprintf(os.Stdout, "%v %v(%v)\n", indices, c.Name, strings.Join(params, ", "))
+	fmt.Fprintf(os.Stdout, "%v %v(%v)", indices, c.Name, strings.Join(params, ", "))
+	if c.Result != nil {
+		v := c.Result.Value.Get()
+		if c.Result.Constants != nil {
+			constants, err := getConstantSet(ctx, client, c.Result.Constants)
+			if err != nil {
+				return log.Err(ctx, err, "Couldn't fetch constant set")
+			}
+			v = constants.Sprint(v)
+		}
+		fmt.Fprintf(os.Stdout, " → %v", v)
+	}
+	fmt.Fprintln(os.Stdout, "")
 	return nil
 }
 
