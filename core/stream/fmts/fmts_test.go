@@ -60,7 +60,7 @@ func TestFormatNames(t *testing.T) {
 		"BGRA_N_sRGBU8N_sRGBU8N_sRGBU8NU8": fmts.BGRA_N_sRGBU8N_sRGBU8N_sRGBU8NU8,
 		"D_F32":                            fmts.D_F32,
 		"D_U16_NORM":                       fmts.D_U16_NORM,
-		"D_X8U24_NORM":                     fmts.D_X8U24_NORM,
+		"ЖD_U8U24_NORM":                    fmts.ЖD_U8U24_NORM,
 		"DS_F32U8":                         fmts.DS_F32U8,
 		"DS_NU16U8":                        fmts.DS_NU16U8,
 		"DS_NU16S8":                        fmts.DS_NU16S8,

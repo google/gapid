@@ -41,7 +41,7 @@ var (
 		}},
 	}
 
-	D_X8U24_NORM = &stream.Format{
+	ЖD_U8U24_NORM = &stream.Format{
 		// According to Vulkan Spec, the first 8 bit is not used,
 		// the following 24 bits are used for depth.
 		Components: []*stream.Component{{
