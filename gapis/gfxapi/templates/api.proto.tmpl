@@ -21,6 +21,8 @@
 {{define "api.proto"}}
   {{template "Proto.GeneratedHeader" (Global "OutputDir")}}
 
+  option optimize_for = CODE_SIZE;
+
   {{range $c := AllCommands $}}
     {{Template "CommandEntry" $c}}
   {{end}}
