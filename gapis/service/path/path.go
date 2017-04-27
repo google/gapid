@@ -460,3 +460,11 @@ func (n *MapIndex) KeyValue() interface{} {
 		panic(fmt.Errorf("Unsupport MapIndex key type %T", k))
 	}
 }
+
+// As requests the ImageInfo converted to the specified format.
+func (n *ImageInfo) As(f *image.Format) *As {
+	return &As{
+		To:   &As_ImageFormat{f},
+		From: &As_ImageInfo{n},
+	}
+}

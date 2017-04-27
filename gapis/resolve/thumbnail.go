@@ -73,9 +73,11 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 		return nil, err
 	}
 
-	boxedImageInfo, err := database.Resolve(ctx, imageInfoPath.Id.ID())
-	if err != nil {
-		return nil, err
+	var boxedImageInfo interface{}
+	if f != nil {
+		boxedImageInfo, err = Get(ctx, imageInfoPath.As(f).Path())
+	} else {
+		boxedImageInfo, err = Get(ctx, imageInfoPath.Path())
 	}
 
 	return boxedImageInfo.(*image.Info2D), nil
