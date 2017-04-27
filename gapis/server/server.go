@@ -319,8 +319,12 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 }
 
 func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
+	handler = log.Channel(handler, 64)
 	unregister := s.logBroadcaster.Listen(handler)
-	defer unregister()
+	defer func() {
+		unregister()
+		handler.Close()
+	}()
 	<-task.ShouldStop(ctx)
 	return task.StopReason(ctx)
 }
