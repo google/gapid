@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -74,6 +75,12 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
 		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(attachment)
 		if err != nil {
+			log.W(ctx, "Failed to read framebuffer after atom %v: %v", id, err)
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+			return
+		}
+		if fmt == 0 {
+			log.W(ctx, "Failed to read framebuffer after atom %v: no image format", id)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
@@ -178,6 +185,8 @@ func postColorData(ctx context.Context,
 		return nil
 	}))
 	tmp.Free()
+
+	out.MutateAndWrite(ctx, dID, NewGlGetError(0)) // Check for errors.
 
 	t.revert()
 }
