@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -23,7 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/framework/binary/schema"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -40,8 +41,8 @@ func init() {
 	})
 }
 
-func dumpMemory(ctx context.Context, client service.Service, stdout io.Writer, capture *path.Capture, o atom.Observation, i int) error {
-	memoryPath := capture.Commands().Index(uint64(i)).MemoryAfter(0, o.Range.Base, o.Range.Size)
+func dumpMemory(ctx context.Context, client service.Service, stdout io.Writer, cp *path.Capture, o atom.Observation, i int) error {
+	memoryPath := cp.Commands().Index(uint64(i)).MemoryAfter(0, o.Range.Base, o.Range.Size)
 	memory, err := client.Get(ctx, memoryPath.Path())
 	if err != nil {
 		return fmt.Errorf("Failed to acquire the capture's memory: %v", err)
@@ -58,49 +59,49 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	filepath, err := filepath.Abs(flags.Arg(0))
+	ctx = log.V{"filepath": filepath}.Bind(ctx)
 	if err != nil {
-		return fmt.Errorf("Could not find capture file '%s': %v", flags.Arg(0), err)
+		return log.Err(ctx, err, "Could not find capture file")
 	}
 
 	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to the GAPIS server: %v", err)
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	defer client.Close()
 
 	schemaMsg, err := client.GetSchema(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to load the schema: %v", err)
+		return log.Err(ctx, err, "Failed to load the schema")
 	}
 
-	capture, err := client.LoadCapture(ctx, filepath)
+	cp, err := client.LoadCapture(ctx, filepath)
 	if err != nil {
-		return fmt.Errorf("Failed to load the capture file '%v': %v", filepath, err)
+		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	boxedAtoms, err := client.Get(ctx, capture.Commands().Path())
+	boxedCapture, err := client.Get(ctx, cp.Path())
 	if err != nil {
-		return fmt.Errorf("Failed to acquire the capture's atoms: %v", err)
+		return log.Err(ctx, err, "Failed to load the capture")
+	}
+	c := boxedCapture.(*service.Capture)
+
+	boxedAtoms, err := client.Get(ctx, cp.Commands().Path())
+	if err != nil {
+		return log.Err(ctx, err, "Failed to acquire the capture's atoms")
 	}
 	atoms := boxedAtoms.(*atom.List).Atoms
 
 	stdout := os.Stdout
 
+	dev, err := json.MarshalIndent(c.Device, "", "  ")
+	if err != nil {
+		return log.Err(ctx, err, "Failed to marshal capture device to JSON")
+	}
+	fmt.Fprintf(stdout, "%s\n", string(dev))
+
 	if verb.ShowDeviceInfo {
-		for _, a := range atoms {
-			if da, ok := a.(*atom.Dynamic); ok {
-				if da.Class().Schema().Name() == "Architecture" {
-					for _, ex := range da.Extras().All() {
-						if obj, ok := ex.(*schema.Object); ok {
-							if obj.Type.Name() == "DeviceInfo" {
-								fmt.Println(obj.String())
-							}
-						}
-					}
-				}
-			}
-		}
-		return nil
+		return nil // That's all that was requested
 	}
 
 	for i, a := range atoms {
@@ -116,12 +117,12 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}
 			if verb.Observations && extras.Observations() != nil {
 				for _, e := range extras.Observations().Reads {
-					if err := dumpMemory(ctx, client, stdout, capture, e, i); err != nil {
+					if err := dumpMemory(ctx, client, stdout, cp, e, i); err != nil {
 						return err
 					}
 				}
 				for _, e := range extras.Observations().Writes {
-					if err := dumpMemory(ctx, client, stdout, capture, e, i); err != nil {
+					if err := dumpMemory(ctx, client, stdout, cp, e, i); err != nil {
 						return err
 					}
 				}

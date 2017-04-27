@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef GAPII_ANDROID_INTERCEPTOR
+#define GAPII_ANDROID_INTERCEPTOR
 
 // -----------------------------------------------------------------------------
 // extern "C" interface designed for users who dlopen the interceptor-lib
@@ -41,3 +42,5 @@ bool InterceptSymbol(void *interceptor, const char *symbol_name,
                      void *error_callback_baton = nullptr);
 
 } // extern "C"
+
+#endif  // GAPII_ANDROID_INTERCEPTOR

@@ -49,15 +49,15 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{})
+	h := &capture.Header{Abi: device.AndroidARMv7a}
+	a := h.Abi.MemoryLayout
+	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{}, h)
 	if err != nil {
 		panic(err)
 	}
 
 	ctx = capture.Put(ctx, capturePath)
 	ctx = gles.PutUnusedIDMap(ctx)
-
-	a := device.Little32
 
 	dev := &device.Instance{Configuration: &device.Configuration{
 		Drivers: &device.Drivers{
@@ -137,15 +137,15 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{})
+	h := &capture.Header{Abi: device.AndroidARMv7a}
+	a := h.Abi.MemoryLayout
+	capturePath, err := capture.ImportAtomList(ctx, "test", &atom.List{}, h)
 	if err != nil {
 		panic(err)
 	}
 
 	ctx = capture.Put(ctx, capturePath)
 	ctx = gles.PutUnusedIDMap(ctx)
-
-	a := device.Little32
 
 	dev := &device.Instance{Configuration: &device.Configuration{
 		Drivers: &device.Drivers{

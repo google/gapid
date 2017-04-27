@@ -17,38 +17,13 @@ package core
 import (
 	"context"
 
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-var _ atom.Atom = &Architecture{}
-
-func (a *Architecture) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	bo := device.BigEndian
-	if a.LittleEndian {
-		bo = device.LittleEndian
-	}
-
-	U64Alignment := int32(8)
-
-	for _, e := range *a.Extras() {
-		if align, ok := e.(*atom.FieldAlignments); ok {
-			U64Alignment = int32(align.U64Alignment)
-		}
-	}
-	s.MemoryLayout = &device.MemoryLayout{
-		PointerAlignment: int32(a.PointerAlignment),
-		PointerSize:      int32(a.PointerSize),
-		IntegerSize:      int32(a.IntegerSize),
-		SizeSize:         int32(a.PointerSize), // TODO: use the correct size for size_t here.
-		U64Alignment:     U64Alignment,
-		Endian:           bo,
-	}
-	return nil
-}
+var _ atom.Atom = &SwitchThread{}
 
 func (a *SwitchThread) Mutate(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
 	err := a.mutate(ctx, gs, nil)

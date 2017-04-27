@@ -33,13 +33,20 @@ func TestConstantEncoderCache(t *testing.T) {
 
 func TestConstantEncoderAlignment(t *testing.T) {
 	ctx := assert.Context(t)
+
 	c := newConstantEncoder(&device.MemoryLayout{
-		PointerAlignment: 8,
-		PointerSize:      4,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           device.LittleEndian,
+		Endian:  device.LittleEndian,
+		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 8},
+		Integer: &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &device.DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &device.DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &device.DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &device.DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	})
 
 	c.writeValues(value.U32(0x1234))

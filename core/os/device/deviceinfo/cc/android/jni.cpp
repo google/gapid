@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-#include "platform_data.h"
-
 #include "../instance.h"
+
+#include <jni.h>
 
 extern "C" {
 
 jbyteArray Java_com_google_android_gapid_DeviceInfoService_getDeviceInfo(JNIEnv* env) {
-    AndroidPlatformData platform_data;
-    platform_data.env = env;
-    auto device_instance = get_device_instance(&platform_data);
+    auto device_instance = get_device_instance(env);
     auto out = env->NewByteArray(device_instance.size);
     auto data = reinterpret_cast<jbyte*>(device_instance.data);
     env->SetByteArrayRegion(out, 0, device_instance.size, data);

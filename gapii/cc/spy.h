@@ -31,6 +31,9 @@ public:
     // get lazily constructs and returns the singleton instance to the spy.
     static Spy* get();
 
+    // writeHeader encodes the capture header to the encoder.
+    void writeHeader();
+
     // resolve the imported functions. Call if the functions change due to
     // external factors.
     void resolveImports();
@@ -79,11 +82,6 @@ private:
     // framebuffer's color buffer dimensions, returning true on success or
     // false if the dimensions could not be retrieved.
     bool getFramebufferAttachmentSize(uint32_t& width, uint32_t& height);
-
-    // getDeviceProperties retrieves properties about the device, for example
-    // by running getprop on Android device and parsing the output. The method
-    // returns a map of properties to values.
-    std::unordered_map<std::string, std::string> getDeviceProperties();
 
     std::shared_ptr<gapii::PackEncoder> mEncoder;
     std::unordered_map<std::string, void*> mSymbols;

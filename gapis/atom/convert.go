@@ -163,9 +163,6 @@ func internalConverter(from atom_pb.Atom) interface{} {
 	case *atom_pb.FramebufferObservation:
 		to := FramebufferObservationFrom(from)
 		return &to
-	case *atom_pb.FieldAlignments:
-		to := FieldAlignmentsFrom(from)
-		return &to
 	case *memory_pb.Observation:
 		return ObservationFrom(from)
 	case *memory_pb.Pointer:

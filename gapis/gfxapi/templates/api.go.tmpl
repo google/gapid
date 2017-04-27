@@ -208,7 +208,7 @@
   func (p {{$ptr_ty}}) ElementSize(ϟs *gfxapi.State) uint64 {
     {{if $el_is_ptr}}
       if p.Pool == memory.ApplicationPool {
-        return uint64(ϟs.MemoryLayout.GetPointerSize())
+        return uint64(ϟs.MemoryLayout.GetPointer().GetSize())
       } else {
         return 12
       }
@@ -269,7 +269,7 @@
     func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
       if p.Address != 0 {
         {{if $el_is_ptr}}
-          return value.PointerIndex(p.Address / uint64(ϟs.MemoryLayout.GetPointerSize()))
+          return value.PointerIndex(p.Address / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
         {{else}}
           return value.ObservedPointer(p.Address)
         {{end}}
@@ -332,11 +332,11 @@
       }
       {{if IsPointer ($f.Type | Underlying)}}
           offset += {{Template "Go.SizeOf" (TypeOf $f)}}
-          i := pod.ReadUint(d, ϟs.MemoryLayout.GetPointerSize()*8)
+          i := pod.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
           v := New{{Macro "Go.Type" $f}}(i).value(ϟb, ϟa, ϟs)
           ϟb.Push(v)
           ϟb.Store(base)
-          base += value.ObservedPointer(ϟs.MemoryLayout.GetPointerSize())
+          base += value.ObservedPointer(ϟs.MemoryLayout.GetPointer().GetSize())
       {{else if IsClass ($f.Type | Underlying)}}
           {{Template "ReadStructFieldsWithRemapping" $f.Type}}
       {{else}}
@@ -421,7 +421,7 @@
   func (s {{$slice_ty}}) ElementSize(ϟs *gfxapi.State) uint64 {
     {{if $el_is_ptr}}
       if s.Pool == memory.ApplicationPool {
-        return uint64(ϟs.MemoryLayout.GetPointerSize())
+        return uint64(ϟs.MemoryLayout.GetPointer().GetSize())
       } else {
         return 12
       }
@@ -477,7 +477,7 @@
       for i := range res {
         {{if $el_is_ptr}}
           if s.Pool == memory.ApplicationPool {
-            ptr := pod.ReadUint(d, ϟs.MemoryLayout.GetPointerSize()*8)
+            ptr := pod.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
             if d.Error() != nil {
               panic(d.Error())
             }
@@ -507,7 +507,7 @@
       for i := uint64(0); i < count; i++ {
         {{if $el_is_ptr}}
           if s.Pool == memory.ApplicationPool {
-            if pod.WriteUint(e, ϟs.MemoryLayout.GetPointerSize()*8, src[i].Address); e.Error() != nil {
+            if pod.WriteUint(e, ϟs.MemoryLayout.GetPointer().GetSize()*8, src[i].Address); e.Error() != nil {
               panic(e.Error())
             }
           } else {
@@ -569,10 +569,10 @@
              To handle this, we store pointers in a separate table and refer to
              these using pointer indices.
         */}}
-        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.Base / uint64(ϟs.MemoryLayout.GetPointerSize()))
+        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.Base / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
         for i := uint64(0); i < s.Count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          i := pod.ReadUint(d, ϟs.MemoryLayout.GetPointerSize()*8)
+          i := pod.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
           ptr := New{{$el_ty}}(i).value(ϟb, ϟa, ϟs)
           ϟb.StorePointer(dst, ptr)
           dst++
@@ -926,7 +926,7 @@
             offset = offset + pod.ConsumeBytes(d, newOffset - offset) + {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if ϟv := pod.ReadUint(d, ϟs.MemoryLayout.GetPointerSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}(memory.Pointer{Address: ϟv, Pool: memory.ApplicationPool}) } else { panic(d.Error()) }
+            if ϟv := pod.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}(memory.Pointer{Address: ϟv, Pool: memory.ApplicationPool}) } else { panic(d.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}DecodeRaw(ϟs, d, &o.{{Title $v.Name}})
@@ -953,7 +953,7 @@
             offset += {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if pod.WriteUint(e, ϟs.MemoryLayout.GetPointerSize()*8, o.{{Title $v.Name}}.Address); e.Error() != nil { panic(e.Error()) }
+            if pod.WriteUint(e, ϟs.MemoryLayout.GetPointer().GetSize()*8, o.{{Title $v.Name}}.Address); e.Error() != nil { panic(e.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}EncodeRaw(ϟs, e, &o.{{Title $v.Name}})

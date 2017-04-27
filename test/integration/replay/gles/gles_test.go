@@ -124,8 +124,13 @@ func storeAtoms(ctx context.Context, a *atom.List) id.ID {
 
 // storeCapture encodes and writes the atom list to the database, returning an
 // identifier to the newly constructed and stored Capture.
-func storeCapture(ctx context.Context, a *atom.List) *path.Capture {
-	out, err := capture.ImportAtomList(ctx, "test-capture", a)
+func (f *Fixture) storeCapture(ctx context.Context, a *atom.List) *path.Capture {
+	dev := f.device.Instance()
+	h := &capture.Header{
+		Device: dev,
+		Abi:    dev.Configuration.ABIs[0],
+	}
+	out, err := capture.ImportAtomList(ctx, "test-capture", a, h)
 	assert.With(ctx).ThatError(err).Succeeded()
 	return out
 }
@@ -177,9 +182,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 
 	dev := r.DefaultDevice()
 	memoryLayout := dev.Instance().GetConfiguration().ABIs[0].MemoryLayout
-
-	s := gfxapi.NewStateWithEmptyAllocator()
-	s.MemoryLayout = memoryLayout
+	s := gfxapi.NewStateWithEmptyAllocator(memoryLayout)
 
 	return ctx, &Fixture{
 		ctx:          ctx,
@@ -335,7 +338,7 @@ func TestClear(t *testing.T) {
 
 	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx)
 
-	capture := storeCapture(ctx, atoms)
+	capture := f.storeCapture(ctx, atoms)
 
 	intent := replay.Intent{
 		Capture: capture,
@@ -399,7 +402,7 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 			modFourCounter = (modFourCounter + 1) % 4
 		}
 	}
-	return storeCapture(f.ctx, atom.NewList(merged...))
+	return f.storeCapture(f.ctx, atom.NewList(merged...))
 }
 
 func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier) {
@@ -416,7 +419,7 @@ func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier
 		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", square, nil)
 	}
 
-	return storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
 func generateDrawTexturedSquareCaptureWithSharedContext(f *Fixture) (*path.Capture, traceVerifier) {
@@ -433,7 +436,7 @@ func generateDrawTexturedSquareCaptureWithSharedContext(f *Fixture) (*path.Captu
 		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", square, nil)
 	}
 
-	return storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
 func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
@@ -443,8 +446,7 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 	atoms, _, eglSurface := initContext(f, 128, 128, false)
 	texLoc := gles.UniformLocation(0)
 
-	s := gfxapi.NewStateWithEmptyAllocator()
-	s.MemoryLayout = f.memoryLayout
+	s := gfxapi.NewStateWithEmptyAllocator(f.memoryLayout)
 
 	textureNames := []gles.TextureId{1}
 	textureNamesR := atom.Must(atom.AllocData(ctx, f.s, textureNames))
@@ -507,7 +509,7 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 		}, nil)
 	}
 
-	return storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
 func generateDrawTriangleCapture(f *Fixture) (*path.Capture, traceVerifier) {
@@ -584,7 +586,7 @@ func generateDrawTriangleCaptureEx(f *Fixture, br, bg, bb, fr, fg, fb gles.GLflo
 		done.Wait()
 	}
 
-	return storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
 func testTrace(t *testing.T, name string, tg traceGenerator) {
@@ -662,7 +664,7 @@ func TestResizeRenderer(t *testing.T) {
 		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 		gles.NewGlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
-	capture := storeCapture(ctx, atoms)
+	capture := f.storeCapture(ctx, atoms)
 	intent := replay.Intent{
 		Capture: capture,
 		Device:  path.NewDevice(f.device.Instance().Id.ID()),
@@ -688,7 +690,7 @@ func TestPreserveBuffersOnSwap(t *testing.T) {
 	swapC := atoms.Add(gles.NewEglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
 
 	intent := replay.Intent{
-		Capture: storeCapture(ctx, atoms),
+		Capture: f.storeCapture(ctx, atoms),
 		Device:  path.NewDevice(f.device.Instance().Id.ID()),
 	}
 
@@ -724,7 +726,7 @@ func TestIssues(t *testing.T) {
 		atoms, _, _ := initContext(f, 64, 64, true)
 		atoms.Add(test.atoms...)
 		intent := replay.Intent{
-			Capture: storeCapture(ctx, atoms),
+			Capture: f.storeCapture(ctx, atoms),
 			Device:  path.NewDevice(f.device.Instance().Id.ID()),
 		}
 		done.Add(1)
