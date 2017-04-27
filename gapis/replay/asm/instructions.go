@@ -17,7 +17,7 @@ package asm
 import (
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/replay/opcode"
 	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/value"
@@ -52,10 +52,10 @@ const (
 // all pointers to their final, resolved addresses using the PointerResolver r.
 // An instruction can produce zero, one or many opcodes.
 type Instruction interface {
-	Encode(r value.PointerResolver, w pod.Writer) error
+	Encode(r value.PointerResolver, w binary.Writer) error
 }
 
-func encodePush(t protocol.Type, v uint64, w pod.Writer) error {
+func encodePush(t protocol.Type, v uint64, w binary.Writer) error {
 	switch t {
 	case protocol.Type_Float:
 		push := opcode.PushI{DataType: t, Value: uint32(v >> 23)}
@@ -156,7 +156,7 @@ func encodePush(t protocol.Type, v uint64, w pod.Writer) error {
 // Nop is a no-operation Instruction. Instructions of this type do nothing.
 type Nop struct{}
 
-func (Nop) Encode(r value.PointerResolver, w pod.Writer) error {
+func (Nop) Encode(r value.PointerResolver, w binary.Writer) error {
 	return nil
 }
 
@@ -170,7 +170,7 @@ type Call struct {
 	FunctionID uint16 // The function id registered with the VM to invoke.
 }
 
-func (a Call) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Call) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Call{
 		PushReturn: a.PushReturn,
 		ApiIndex:   a.ApiIndex,
@@ -183,7 +183,7 @@ type Push struct {
 	Value value.Value // The value to push on to the VM stack.
 }
 
-func (a Push) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Push) Encode(r value.PointerResolver, w binary.Writer) error {
 	if ty, val, onStack := a.Value.Get(r); onStack {
 		return nil
 	} else {
@@ -197,7 +197,7 @@ type Pop struct {
 	Count uint32 // Number of values to discard from the top of the VM stack.
 }
 
-func (a Pop) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Pop) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Pop{Count: a.Count}.Encode(w)
 }
 
@@ -208,7 +208,7 @@ type Copy struct {
 	Count uint64 // Number of bytes to copy.
 }
 
-func (a Copy) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Copy) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Copy{Count: uint32(a.Count)}.Encode(w)
 }
 
@@ -218,7 +218,7 @@ type Clone struct {
 	Index int
 }
 
-func (a Clone) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Clone) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Clone{Index: uint32(a.Index)}.Encode(w)
 }
 
@@ -229,7 +229,7 @@ type Load struct {
 	Source   value.Pointer
 }
 
-func (a Load) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Load) Encode(r value.PointerResolver, w binary.Writer) error {
 	ty, addr, onStack := a.Source.Get(r)
 	if !onStack {
 		switch ty {
@@ -257,7 +257,7 @@ type Store struct {
 	Destination value.Pointer
 }
 
-func (a Store) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Store) Encode(r value.PointerResolver, w binary.Writer) error {
 	ty, addr, onStack := a.Destination.Get(r)
 	if !onStack {
 		if addr&^mask26 == 0 {
@@ -280,7 +280,7 @@ type Strcpy struct {
 	MaxCount uint64
 }
 
-func (a Strcpy) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Strcpy) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Strcpy{
 		MaxSize: uint32(a.MaxCount),
 	}.Encode(w)
@@ -293,7 +293,7 @@ type Resource struct {
 	Destination value.Pointer
 }
 
-func (a Resource) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Resource) Encode(r value.PointerResolver, w binary.Writer) error {
 	ty, val, onStack := a.Destination.Get(r)
 	if !onStack {
 		if err := encodePush(ty, val, w); err != nil {
@@ -311,7 +311,7 @@ type Post struct {
 	Size   uint64
 }
 
-func (a Post) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Post) Encode(r value.PointerResolver, w binary.Writer) error {
 	ty, val, onStack := a.Source.Get(r)
 	if !onStack {
 		if err := encodePush(ty, val, w); err != nil {
@@ -330,7 +330,7 @@ type Add struct {
 	Count uint32
 }
 
-func (a Add) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Add) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Add{Count: a.Count}.Encode(w)
 }
 
@@ -339,6 +339,6 @@ type Label struct {
 	Value uint32
 }
 
-func (a Label) Encode(r value.PointerResolver, w pod.Writer) error {
+func (a Label) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Label{Value: a.Value}.Encode(w)
 }

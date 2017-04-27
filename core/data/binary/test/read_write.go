@@ -21,7 +21,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
 )
 
@@ -31,7 +31,7 @@ type ReadWriteTests struct {
 	Data   []byte
 }
 
-type Factory func(io.Reader, io.Writer) (pod.Reader, pod.Writer)
+type Factory func(io.Reader, io.Writer) (binary.Reader, binary.Writer)
 
 func ReadWrite(ctx context.Context, tests []ReadWriteTests, factory Factory) {
 	for _, e := range tests {

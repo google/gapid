@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
@@ -162,7 +162,7 @@ func postColorData(ctx context.Context,
 		NewGlReadPixels(0, 0, GLsizei(width), GLsizei(height), unsizedFormat, ty, tmp.Ptr()).
 			Call(ctx, s, b)
 
-		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r pod.Reader, err error) error {
+		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r binary.Reader, err error) error {
 			var data []byte
 			if err == nil {
 				data = make([]byte, imageSize)

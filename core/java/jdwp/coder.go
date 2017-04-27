@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 )
 
 // debug adds panic handlers to encode() and decode() so that incorrectly
@@ -33,7 +33,7 @@ func unbox(v reflect.Value) reflect.Value {
 }
 
 // encode writes the value v to w, using the JDWP encoding scheme.
-func (c *Connection) encode(w pod.Writer, v reflect.Value) error {
+func (c *Connection) encode(w binary.Writer, v reflect.Value) error {
 	if debug {
 		defer func() {
 			if r := recover(); r != nil {
@@ -92,16 +92,16 @@ func (c *Connection) encode(w pod.Writer, v reflect.Value) error {
 
 	switch o := o.(type) {
 	case ReferenceTypeID, ClassID, InterfaceID, ArrayTypeID:
-		pod.WriteUint(w, c.idSizes.ReferenceTypeIDSize*8, unbox(v).Uint())
+		binary.WriteUint(w, c.idSizes.ReferenceTypeIDSize*8, unbox(v).Uint())
 
 	case MethodID:
-		pod.WriteUint(w, c.idSizes.MethodIDSize*8, unbox(v).Uint())
+		binary.WriteUint(w, c.idSizes.MethodIDSize*8, unbox(v).Uint())
 
 	case FieldID:
-		pod.WriteUint(w, c.idSizes.FieldIDSize*8, unbox(v).Uint())
+		binary.WriteUint(w, c.idSizes.FieldIDSize*8, unbox(v).Uint())
 
 	case ObjectID, ThreadID, ThreadGroupID, StringID, ClassLoaderID, ClassObjectID, ArrayID:
-		pod.WriteUint(w, c.idSizes.ObjectIDSize*8, unbox(v).Uint())
+		binary.WriteUint(w, c.idSizes.ObjectIDSize*8, unbox(v).Uint())
 
 	case []byte: // Optimisation
 		w.Uint32(uint32(len(o)))
@@ -148,7 +148,7 @@ func (c *Connection) encode(w pod.Writer, v reflect.Value) error {
 }
 
 // decode reads the value v from r, using the JDWP encoding scheme.
-func (c *Connection) decode(r pod.Reader, v reflect.Value) error {
+func (c *Connection) decode(r binary.Reader, v reflect.Value) error {
 	if debug {
 		defer func() {
 			if r := recover(); r != nil {
@@ -218,16 +218,16 @@ func (c *Connection) decode(r pod.Reader, v reflect.Value) error {
 	o := v.Interface()
 	switch o := o.(type) {
 	case ReferenceTypeID, ClassID, InterfaceID, ArrayTypeID:
-		v.Set(reflect.ValueOf(pod.ReadUint(r, c.idSizes.ReferenceTypeIDSize*8)).Convert(t))
+		v.Set(reflect.ValueOf(binary.ReadUint(r, c.idSizes.ReferenceTypeIDSize*8)).Convert(t))
 
 	case MethodID:
-		v.Set(reflect.ValueOf(pod.ReadUint(r, c.idSizes.MethodIDSize*8)).Convert(t))
+		v.Set(reflect.ValueOf(binary.ReadUint(r, c.idSizes.MethodIDSize*8)).Convert(t))
 
 	case FieldID:
-		v.Set(reflect.ValueOf(pod.ReadUint(r, c.idSizes.FieldIDSize*8)).Convert(t))
+		v.Set(reflect.ValueOf(binary.ReadUint(r, c.idSizes.FieldIDSize*8)).Convert(t))
 
 	case ObjectID, ThreadID, ThreadGroupID, StringID, ClassLoaderID, ClassObjectID, ArrayID:
-		v.Set(reflect.ValueOf(pod.ReadUint(r, c.idSizes.ObjectIDSize*8)).Convert(t))
+		v.Set(reflect.ValueOf(binary.ReadUint(r, c.idSizes.ObjectIDSize*8)).Convert(t))
 
 	case EventModifier:
 		panic("Cannot decode EventModifiers")

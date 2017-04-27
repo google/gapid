@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 )
@@ -57,7 +57,7 @@ func (a *GlDrawElements) getIndices(
 	indexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
 	size := uint64(a.IndicesCount) * indexSize
 
-	var decoder pod.Reader
+	var decoder binary.Reader
 	if indexBufferID == 0 {
 		// Get the index buffer data from pointer
 		decoder = a.Indices.Slice(0, size, s.MemoryLayout).Decoder(ctx, s)
@@ -76,7 +76,7 @@ func (a *GlDrawElements) getIndices(
 }
 
 // decodeIndices assumes little endian encoding
-func decodeIndices(r pod.Reader, indicesType GLenum) ([]uint32, error) {
+func decodeIndices(r binary.Reader, indicesType GLenum) ([]uint32, error) {
 	var indices []uint32
 	switch indicesType {
 	case GLenum_GL_UNSIGNED_BYTE:

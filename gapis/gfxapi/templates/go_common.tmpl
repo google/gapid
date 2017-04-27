@@ -206,9 +206,9 @@
   {{else if IsU64         $.Type}}if ϟv := d.Uint64();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsS64         $.Type}}if ϟv := d.Int64();   d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsString      $.Type}}if ϟv := d.String();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsInt         $.Type}}if ϟv := pod.ReadInt(d,  {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsUint        $.Type}}if ϟv := pod.ReadUint(d, {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsSize        $.Type}}if ϟv := pod.ReadUint(d, {{$size_size}}); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{else if IsInt         $.Type}}if ϟv := binary.ReadInt(d,  {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{else if IsUint        $.Type}}if ϟv := binary.ReadUint(d, {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{else if IsSize        $.Type}}if ϟv := binary.ReadUint(d, {{$size_size}}); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsSlice       $.Type}}
   {{else if IsReference   $.Type}}
   {{else if IsVoid        $.Type}}
@@ -252,9 +252,9 @@
   {{else if IsU64         $ty}}if e.Uint64(uint64({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsS64         $ty}}if e.Int64(int64({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsString      $ty}}if e.String(string({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsInt         $ty}}if pod.WriteInt(e,  {{$int_size}},   int64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsUint        $ty}}if pod.WriteUint(e, {{$int_size}},  uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsSize        $ty}}if pod.WriteUint(e, {{$size_size}}, uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsInt         $ty}}if binary.WriteInt(e,  {{$int_size}},   int64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsUint        $ty}}if binary.WriteUint(e, {{$int_size}},  uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsSize        $ty}}if binary.WriteUint(e, {{$size_size}}, uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsSlice       $ty}}
   {{else if IsReference   $ty}}
   {{else if IsVoid        $ty}}

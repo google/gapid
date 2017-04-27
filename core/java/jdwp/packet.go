@@ -17,7 +17,7 @@ package jdwp
 import (
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 )
 
 type cmdID uint8
@@ -55,7 +55,7 @@ type cmdPacket struct {
 //   data   []byte       N bytes
 // }
 
-func (p cmdPacket) write(w pod.Writer) error {
+func (p cmdPacket) write(w binary.Writer) error {
 	w.Uint32(11 + uint32(len(p.data)))
 	w.Uint32(uint32(p.id))
 	w.Uint8(uint8(p.flags))

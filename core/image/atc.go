@@ -144,7 +144,7 @@ func init() {
 			blockWidth := sint.Max(width/4, 1)
 			blockHeight := sint.Max(height/4, 1)
 
-			bs := bitstream.BitStream{Data: src}
+			bs := binary.BitStream{Data: src}
 
 			a := [16]uint8{
 				0, 0, 0, 0,
@@ -203,7 +203,7 @@ func init() {
 			blockWidth := sint.Max(width/4, 1)
 			blockHeight := sint.Max(height/4, 1)
 
-			bs := bitstream.BitStream{Data: src}
+			bs := binary.BitStream{Data: src}
 
 			t := [8]uint8{}
 

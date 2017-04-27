@@ -18,9 +18,9 @@ import (
 	"io"
 	"testing"
 
+	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/data/binary/test"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
-	"github.com/google/gapid/core/data/pod/test"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
@@ -121,7 +121,7 @@ var testData = []test.ReadWriteTests{
 		}},
 }
 
-func factory(r io.Reader, w io.Writer) (pod.Reader, pod.Writer) {
+func factory(r io.Reader, w io.Writer) (binary.Reader, binary.Writer) {
 	return endian.Reader(r, device.LittleEndian), endian.Writer(w, device.LittleEndian)
 }
 

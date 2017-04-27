@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -47,8 +47,8 @@ type eventsID uint64
 // Connection represents a JDWP connection.
 type Connection struct {
 	in           io.Reader
-	r            pod.Reader
-	w            pod.Writer
+	r            binary.Reader
+	w            binary.Writer
 	flush        func() error
 	idSizes      IDSizes
 	nextPacketID packetID

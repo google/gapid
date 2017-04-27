@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
@@ -951,7 +951,7 @@ func postImageData(ctx context.Context,
 	// Add post atom
 	writeEach(ctx, out,
 		replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r pod.Reader, err error) error {
+			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {
 				var data []byte
 				if err == nil {
 					data = make([]byte, bufferSize)

@@ -17,7 +17,7 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/replay/protocol"
 )
 
@@ -98,7 +98,7 @@ type Call struct {
 	FunctionID uint16 // The function identifier to call.
 }
 
-func (c Call) Encode(w pod.Writer) error {
+func (c Call) Encode(w binary.Writer) error {
 	apiFunction := packApiIndexFunctionID(c.ApiIndex, c.FunctionID)
 	w.Uint32(packCX(protocol.OpCall, setBit(apiFunction, 24, c.PushReturn)))
 	return w.Error()
@@ -110,7 +110,7 @@ type PushI struct {
 	Value    uint32        // The value to push packed into the low 20 bits.
 }
 
-func (c PushI) Encode(w pod.Writer) error {
+func (c PushI) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpPushI, uint32(c.DataType), c.Value))
 	return w.Error()
 }
@@ -121,7 +121,7 @@ type LoadC struct {
 	Address  uint32        // The pointer to the value in constant address-space.
 }
 
-func (c LoadC) Encode(w pod.Writer) error {
+func (c LoadC) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpLoadC, uint32(c.DataType), c.Address))
 	return w.Error()
 }
@@ -132,7 +132,7 @@ type LoadV struct {
 	Address  uint32        // The pointer to the value in volatile address-space.
 }
 
-func (c LoadV) Encode(w pod.Writer) error {
+func (c LoadV) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpLoadV, uint32(c.DataType), c.Address))
 	return w.Error()
 }
@@ -142,7 +142,7 @@ type Load struct {
 	DataType protocol.Type // The value types to load.
 }
 
-func (c Load) Encode(w pod.Writer) error {
+func (c Load) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpLoad, uint32(c.DataType), 0))
 	return w.Error()
 }
@@ -152,7 +152,7 @@ type Pop struct {
 	Count uint32 // Number of elements to pop from the top of the stack.
 }
 
-func (c Pop) Encode(w pod.Writer) error {
+func (c Pop) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpPop, c.Count))
 	return w.Error()
 }
@@ -162,7 +162,7 @@ type StoreV struct {
 	Address uint32 // Pointer in volatile address-space.
 }
 
-func (c StoreV) Encode(w pod.Writer) error {
+func (c StoreV) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpStoreV, c.Address))
 	return w.Error()
 }
@@ -170,7 +170,7 @@ func (c StoreV) Encode(w pod.Writer) error {
 // Store represents the STORE virtual machine opcode.
 type Store struct{}
 
-func (c Store) Encode(w pod.Writer) error {
+func (c Store) Encode(w binary.Writer) error {
 	w.Uint32(packC(protocol.OpStore))
 	return w.Error()
 }
@@ -180,7 +180,7 @@ type Resource struct {
 	ID uint32 // The index of the resource identifier.
 }
 
-func (c Resource) Encode(w pod.Writer) error {
+func (c Resource) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpResource, c.ID))
 	return w.Error()
 }
@@ -188,7 +188,7 @@ func (c Resource) Encode(w pod.Writer) error {
 // Post represents the POST virtual machine opcode.
 type Post struct{}
 
-func (c Post) Encode(w pod.Writer) error {
+func (c Post) Encode(w binary.Writer) error {
 	w.Uint32(packC(protocol.OpPost))
 	return w.Error()
 }
@@ -198,7 +198,7 @@ type Copy struct {
 	Count uint32 // Number of bytes to copy.
 }
 
-func (c Copy) Encode(w pod.Writer) error {
+func (c Copy) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpCopy, c.Count))
 	return w.Error()
 }
@@ -208,7 +208,7 @@ type Clone struct {
 	Index uint32 // Index of element from top of stack to clone.
 }
 
-func (c Clone) Encode(w pod.Writer) error {
+func (c Clone) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpClone, c.Index))
 	return w.Error()
 }
@@ -218,7 +218,7 @@ type Strcpy struct {
 	MaxSize uint32 // Maximum size in bytes to copy.
 }
 
-func (c Strcpy) Encode(w pod.Writer) error {
+func (c Strcpy) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpStrcpy, c.MaxSize))
 	return w.Error()
 }
@@ -228,7 +228,7 @@ type Extend struct {
 	Value uint32 // 26 bit value to extend the top of the stack by.
 }
 
-func (c Extend) Encode(w pod.Writer) error {
+func (c Extend) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpExtend, c.Value))
 	return w.Error()
 }
@@ -238,7 +238,7 @@ type Add struct {
 	Count uint32 // Number of top value stack elements to pop and sum.
 }
 
-func (c Add) Encode(w pod.Writer) error {
+func (c Add) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpAdd, c.Count))
 	return w.Error()
 }
@@ -248,13 +248,13 @@ type Label struct {
 	Value uint32 // 26 bit label name.
 }
 
-func (c Label) Encode(w pod.Writer) error {
+func (c Label) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpLabel, c.Value))
 	return w.Error()
 }
 
 // Decode returns the opcode decoded from decoder d.
-func Decode(r pod.Reader) (interface{}, error) {
+func Decode(r binary.Reader) (interface{}, error) {
 	i := r.Uint32()
 	if r.Error() != nil {
 		return nil, r.Error()

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 )
 
 type xmlAttributeList []xmlAttribute
@@ -74,7 +74,7 @@ func (a xmlAttribute) xml(ctx *xmlContext) string {
 
 const xmlAttributeSize = 20
 
-func (a *xmlAttribute) decode(r pod.Reader, root *xmlTree) error {
+func (a *xmlAttribute) decode(r binary.Reader, root *xmlTree) error {
 	a.namespace = root.decodeString(r)
 	a.name = root.decodeString(r)
 	a.rawValue = root.decodeString(r)
@@ -83,7 +83,7 @@ func (a *xmlAttribute) decode(r pod.Reader, root *xmlTree) error {
 	return err
 }
 
-func (a *xmlAttribute) encode(w pod.Writer) {
+func (a *xmlAttribute) encode(w binary.Writer) {
 	a.namespace.encode(w)
 	a.name.encode(w)
 	a.rawValue.encode(w)

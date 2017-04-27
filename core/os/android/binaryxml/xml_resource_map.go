@@ -17,8 +17,8 @@ package binaryxml
 import (
 	"bytes"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -28,9 +28,9 @@ type xmlResourceMap struct {
 }
 
 func (c *xmlResourceMap) encode() []byte {
-	return encodeChunk(resXMLResourceMapType, func(w pod.Writer) {
+	return encodeChunk(resXMLResourceMapType, func(w binary.Writer) {
 		// No custom header.
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		for _, id := range c.ids {
 			w.Uint32(id)
 		}

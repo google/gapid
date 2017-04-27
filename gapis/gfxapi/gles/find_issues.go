@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
@@ -111,7 +111,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		ptr := b.AllocateTemporaryMemory(4)
 		b.Call(funcInfoGlGetError)
 		b.Store(ptr)
-		b.Post(ptr, 4, builder.Postback(func(r pod.Reader, err error) error {
+		b.Post(ptr, 4, builder.Postback(func(r binary.Reader, err error) error {
 			if err != nil {
 				return err
 			}
@@ -196,7 +196,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		out.MutateAndWrite(ctx, dID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
 				if err != nil {
 					return err
 				}
@@ -210,7 +210,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		out.MutateAndWrite(ctx, dID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r pod.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
 				if err != nil {
 					return err
 				}
@@ -223,7 +223,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		out.MutateAndWrite(ctx, dID, NewGlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r pod.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) error {
 				if err != nil {
 					return err
 				}
@@ -247,7 +247,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		out.MutateAndWrite(ctx, dID, NewGlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r pod.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) error {
 				if err != nil {
 					return err
 				}
@@ -295,7 +295,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xbeefcace)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r pod.Reader, err error) error {
+		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) error {
 			if err != nil {
 				t.res = nil
 				return err

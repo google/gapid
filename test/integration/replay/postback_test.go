@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
@@ -77,7 +77,7 @@ func TestPostbackString(t *testing.T) {
 
 	doReplay(t, func(b *builder.Builder) {
 		ptr := b.String(expected)
-		b.Post(ptr, uint64(len(expected)), func(r pod.Reader, err error) error {
+		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) error {
 			defer close(done)
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
@@ -107,7 +107,7 @@ func TestMultiPostback(t *testing.T) {
 		ptr := b.AllocateTemporaryMemory(8)
 		b.Push(value.Bool(false))
 		b.Store(ptr)
-		b.Post(ptr, 1, func(r pod.Reader, err error) error {
+		b.Post(ptr, 1, func(r binary.Reader, err error) error {
 			expected := false
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
@@ -127,7 +127,7 @@ func TestMultiPostback(t *testing.T) {
 
 		b.Push(value.Bool(true))
 		b.Store(ptr)
-		b.Post(ptr, 1, func(r pod.Reader, err error) error {
+		b.Post(ptr, 1, func(r binary.Reader, err error) error {
 			expected := true
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
@@ -147,7 +147,7 @@ func TestMultiPostback(t *testing.T) {
 
 		b.Push(value.F64(123.456))
 		b.Store(ptr)
-		b.Post(ptr, 8, func(r pod.Reader, err error) error {
+		b.Post(ptr, 8, func(r binary.Reader, err error) error {
 			expected := float64(123.456)
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)

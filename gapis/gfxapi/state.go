@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/memory"
@@ -100,13 +100,13 @@ func (s State) String() string {
 
 // MemoryDecoder returns an endian reader that uses the byte-order of the
 // capture device to decode from d.
-func (s State) MemoryDecoder(ctx context.Context, d memory.Data) pod.Reader {
+func (s State) MemoryDecoder(ctx context.Context, d memory.Data) binary.Reader {
 	return endian.Reader(d.NewReader(ctx), s.MemoryLayout.GetEndian())
 }
 
 // MemoryEncoder returns an endian reader that uses the byte-order of the
 // capture device to encode to the pool p, for the range rng.
-func (s State) MemoryEncoder(p *memory.Pool, rng memory.Range) pod.Writer {
+func (s State) MemoryEncoder(p *memory.Pool, rng memory.Range) binary.Writer {
 	bw := memory.Writer(p, rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }

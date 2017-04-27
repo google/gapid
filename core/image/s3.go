@@ -17,35 +17,35 @@ package image
 import (
 	"bytes"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
 )
 
 func init() {
 	RegisterConverter(S3_DXT1_RGB, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r pod.Reader, dst []pixel) {
+		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
 			decodeDXT1(r, dst, func(p *pixel) {
 				p.setToBlackRGB()
 			})
 		})
 	})
 	RegisterConverter(S3_DXT1_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r pod.Reader, dst []pixel) {
+		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
 			decodeDXT1(r, dst, func(p *pixel) {
 				p.setToBlackRGBA()
 			})
 		})
 	})
 	RegisterConverter(S3_DXT3_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r pod.Reader, dst []pixel) {
+		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
 			decodeAlphaDXT3(r, dst)
 			decodeColorDXT3_5(r, dst)
 		})
 	})
 	RegisterConverter(S3_DXT5_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r pod.Reader, dst []pixel) {
+		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
 			decodeAlphaDXT5(r, dst)
 			decodeColorDXT3_5(r, dst)
 		})
@@ -80,7 +80,7 @@ func (p *pixel) setToMix3(c0, c1 pixel) {
 	p.b = (2*c0.b + c1.b) / 3
 }
 
-func decode(src []byte, width, height int, decoder func(r pod.Reader, dst []pixel)) ([]byte, error) {
+func decode(src []byte, width, height int, decoder func(r binary.Reader, dst []pixel)) ([]byte, error) {
 	dst := make([]byte, width*height*4)
 	block := make([]pixel, 16)
 	r := endian.Reader(bytes.NewReader(src), device.LittleEndian)
@@ -102,7 +102,7 @@ func expand565(c int) pixel {
 	}
 }
 
-func decodeDXT1(r pod.Reader, dst []pixel, black func(p *pixel)) {
+func decodeDXT1(r binary.Reader, dst []pixel, black func(p *pixel)) {
 	c0, c1, codes := r.Uint16(), r.Uint16(), r.Uint32()
 	p0, p1 := expand565(int(c0)), expand565(int(c1))
 	for i := 0; i < 16; i++ {
@@ -129,7 +129,7 @@ func decodeDXT1(r pod.Reader, dst []pixel, black func(p *pixel)) {
 	}
 }
 
-func decodeColorDXT3_5(r pod.Reader, dst []pixel) {
+func decodeColorDXT3_5(r binary.Reader, dst []pixel) {
 	c0, c1, codes := r.Uint16(), r.Uint16(), r.Uint32()
 	p0, p1 := expand565(int(c0)), expand565(int(c1))
 	for i := 0; i < 16; i++ {
@@ -147,7 +147,7 @@ func decodeColorDXT3_5(r pod.Reader, dst []pixel) {
 	}
 }
 
-func decodeAlphaDXT3(r pod.Reader, dst []pixel) {
+func decodeAlphaDXT3(r binary.Reader, dst []pixel) {
 	a := r.Uint64()
 	for i := 0; i < 16; i++ {
 		dst[i].a = int(a&0xf) * 0x11
@@ -155,7 +155,7 @@ func decodeAlphaDXT3(r pod.Reader, dst []pixel) {
 	}
 }
 
-func decodeAlphaDXT5(r pod.Reader, dst []pixel) {
+func decodeAlphaDXT5(r binary.Reader, dst []pixel) {
 	a0, a1, codes := int(r.Uint8()), int(r.Uint8()), uint64(r.Uint16())|(uint64(r.Uint32())<<16)
 
 	if a0 > a1 {

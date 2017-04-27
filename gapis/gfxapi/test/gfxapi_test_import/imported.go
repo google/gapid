@@ -15,7 +15,7 @@
 package gfxapi_test_import
 
 import (
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -35,15 +35,15 @@ func ImportedAlignment(l *device.MemoryLayout) uint64 {
 	return uint64(4)
 }
 
-func ImportedDecodeRaw(l *device.MemoryLayout, d pod.Reader, o *Imported) {
+func ImportedDecodeRaw(l *device.MemoryLayout, d binary.Reader, o *Imported) {
 	o.Value = d.Uint32()
 }
 
-func ImportedEncodeRaw(l *device.MemoryLayout, e pod.Writer, o *Imported) {
+func ImportedEncodeRaw(l *device.MemoryLayout, e binary.Writer, o *Imported) {
 	e.Uint32(o.Value)
 }
 
-func (Imported) Encode(ϟs *gfxapi.State, e pod.Writer)                                 {}
-func (Imported) Decode(ϟs *gfxapi.State, e pod.Reader)                                 {}
+func (Imported) Encode(ϟs *gfxapi.State, e binary.Writer)                              {}
+func (Imported) Decode(ϟs *gfxapi.State, e binary.Reader)                              {}
 func (Imported) Init()                                                                 {}
 func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Value { return nil }

@@ -15,50 +15,50 @@
 package endian
 
 import (
-	"encoding/binary"
+	eb "encoding/binary"
 	"fmt"
 	"io"
 	"math"
 
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/math/f16"
 	"github.com/google/gapid/core/os/device"
 )
 
-func byteOrder(endian device.Endian) binary.ByteOrder {
+func byteOrder(endian device.Endian) eb.ByteOrder {
 	switch endian {
 	case device.LittleEndian:
-		return binary.LittleEndian
+		return eb.LittleEndian
 	case device.BigEndian:
-		return binary.BigEndian
+		return eb.BigEndian
 	default:
-		return binary.LittleEndian
+		return eb.LittleEndian
 	}
 }
 
-// Reader creates a pod.Reader that reads from the provided io.Reader, with the
-// specified byte order.
-func Reader(r io.Reader, endian device.Endian) pod.Reader {
+// Reader creates a binary.Reader that reads from the provided io.Reader, with
+// the specified byte order.
+func Reader(r io.Reader, endian device.Endian) binary.Reader {
 	return &reader{reader: r, byteOrder: byteOrder(endian)}
 }
 
-// Writer creates a pod.Writer that writes to the supplied stream, with the
+// Writer creates a binary.Writer that writes to the supplied stream, with the
 // specified byte order.
-func Writer(w io.Writer, endian device.Endian) pod.Writer {
+func Writer(w io.Writer, endian device.Endian) binary.Writer {
 	return &writer{writer: w, byteOrder: byteOrder(endian)}
 }
 
 type reader struct {
 	reader    io.Reader
 	tmp       [8]byte
-	byteOrder binary.ByteOrder
+	byteOrder eb.ByteOrder
 	err       error
 }
 
 type writer struct {
 	writer    io.Writer
 	tmp       [8]byte
-	byteOrder binary.ByteOrder
+	byteOrder eb.ByteOrder
 	err       error
 }
 
@@ -275,11 +275,11 @@ func (w *writer) String(v string) {
 	w.Uint8(0)
 }
 
-func (r *reader) Simple(o pod.Readable) {
+func (r *reader) Simple(o binary.Readable) {
 	o.ReadSimple(r)
 }
 
-func (w *writer) Simple(o pod.Writable) {
+func (w *writer) Simple(o binary.Writable) {
 	o.WriteSimple(w)
 }
 

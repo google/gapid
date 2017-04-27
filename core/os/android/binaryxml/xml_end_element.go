@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -65,10 +65,10 @@ func (c *xmlEndElement) updateContext(ctx *xmlContext) {
 }
 
 func (c *xmlEndElement) encode() []byte {
-	return encodeChunk(resXMLEndElementType, func(w pod.Writer) {
+	return encodeChunk(resXMLEndElementType, func(w binary.Writer) {
 		w.Uint32(c.lineNumber)
 		c.comment.encode(w)
-	}, func(w pod.Writer) {
+	}, func(w binary.Writer) {
 		c.namespace.encode(w)
 		c.name.encode(w)
 	})
