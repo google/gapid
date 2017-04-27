@@ -29,10 +29,16 @@ message Value {
     // value with the same id.
     bool back_reference = 2;
     pod.Value pod = 3;
-    Reference reference = 4;
-    Struct struct = 5;
-    Map map = 6;
+    Pointer pointer = 4;
+    Reference reference = 5;
+    Struct struct = 6;
+    Map map = 7;
   }
+}
+
+message Pointer {
+  uint64 address = 1;
+  uint32 pool = 2;
 }
 
 message Reference {
@@ -51,10 +57,11 @@ message Type {
     // type with the same id.
     bool back_reference = 2;
     pod.Type pod = 3;
-    Type reference = 4;
-    StructType struct = 5;
-    MapType map = 6;
-    bool any = 7;
+    bool pointer = 4;
+    Type reference = 5;
+    StructType struct = 6;
+    MapType map = 7;
+    bool any = 8;
   }
 }
 
