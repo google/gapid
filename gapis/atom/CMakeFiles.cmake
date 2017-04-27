@@ -37,6 +37,7 @@ set(files
     range.go
     range_list.go
     resource.go
+    service.go
     writer.go
 )
 set(dirs
