@@ -38,7 +38,6 @@ set(files
     instance_test.go
     linux.go
     linux_test.go
-    memory_layout_test.go
     osx.go
     osx_test.go
 )

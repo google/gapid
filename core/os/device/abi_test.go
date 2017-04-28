@@ -31,7 +31,7 @@ var abiTestData = []struct {
 	intSize     int32
 	endian      device.Endian
 }{
-	{device.UnknownABI, "unknown", 0, 0, 0, 0, device.LittleEndian},
+	{device.UnknownABI, "unknown", 0, 0, 0, 0, device.UnknownEndian},
 	{device.AndroidARMv7a, "armeabi-v7a", 32, 4, 4, 4, device.LittleEndian},
 	{device.AndroidARMv7aHard, "armeabi-v7a-hard", 32, 4, 4, 4, device.LittleEndian},
 	{device.AndroidARM64v8a, "arm64-v8a", 64, 8, 8, 8, device.LittleEndian},
@@ -50,10 +50,10 @@ func TestABI(t *testing.T) {
 		// Should the ABI even include the OS?
 		// assert.For(ctx, "ABIByName").That(abi).Equals(test.abi)
 		assert.For("%s ABI.Architecture.Bitness", name).That(abi.Architecture.Bitness()).Equals(test.width)
-		assert.For("%s ABI.MemoryLayout.PointerAlignment", name).That(abi.MemoryLayout.PointerAlignment).Equals(test.align)
-		assert.For("%s ABI.MemoryLayout.PointerSize", name).That(abi.MemoryLayout.PointerSize).Equals(test.pointerSize)
-		assert.For("%s ABI.MemoryLayout.IntegerSize", name).That(abi.MemoryLayout.IntegerSize).Equals(test.intSize)
-		assert.For("%s ABI.MemoryLayout.Endian", name).That(abi.MemoryLayout.Endian).Equals(test.endian)
+		assert.For("%s ABI.MemoryLayout.PointerAlignment", name).That(abi.GetMemoryLayout().GetPointer().GetAlignment()).Equals(test.align)
+		assert.For("%s ABI.MemoryLayout.PointerSize", name).That(abi.GetMemoryLayout().GetPointer().GetSize()).Equals(test.pointerSize)
+		assert.For("%s ABI.MemoryLayout.IntegerSize", name).That(abi.GetMemoryLayout().GetInteger().GetSize()).Equals(test.intSize)
+		assert.For("%s ABI.MemoryLayout.Endian", name).That(abi.GetMemoryLayout().GetEndian()).Equals(test.endian)
 	}
 }
 

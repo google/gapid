@@ -25,7 +25,9 @@ void* getGlesProcAddress(const char *name, bool bypassLocal) {
     typedef void* (*GPAPROC)(const char *name);
 
     if (bypassLocal) {
-        static DlLoader libgl("libGL.so");
+        // Why .1 ?
+        // See: https://bugs.launchpad.net/ubuntu/+source/python-qt4/+bug/941826
+        static DlLoader libgl("libGL.so.1");
         if (GPAPROC gpa = reinterpret_cast<GPAPROC>(libgl.lookup("glXGetProcAddress"))) {
             if (void* proc = gpa(name)) {
                 GAPID_VERBOSE("GetGlesProcAddress(%s, %d) -> 0x%x (via libGL glXGetProcAddress)", name, bypassLocal, proc);

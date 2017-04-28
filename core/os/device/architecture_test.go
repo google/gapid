@@ -26,18 +26,15 @@ var architectureTestData = []struct {
 	architecture device.Architecture
 	name         string
 	bitness      int
-	align        int32
-	pointerSize  int32
-	intSize      int32
 	endian       device.Endian
 }{
-	{device.UnknownArchitecture, "unknown", 0, 0, 0, 0, device.LittleEndian},
-	{device.ARMv7a, "ARMv7a", 32, 4, 4, 4, device.LittleEndian},
-	{device.ARMv8a, "ARMv8a", 64, 8, 8, 8, device.LittleEndian},
-	{device.X86, "X86", 32, 4, 4, 4, device.LittleEndian},
-	{device.X86_64, "X86_64", 64, 8, 8, 8, device.LittleEndian},
-	{device.MIPS, "MIPS", 32, 4, 4, 4, device.LittleEndian},
-	{device.MIPS64, "MIPS64", 64, 8, 8, 8, device.LittleEndian},
+	{device.UnknownArchitecture, "unknown", 0, device.LittleEndian},
+	{device.ARMv7a, "ARMv7a", 32, device.LittleEndian},
+	{device.ARMv8a, "ARMv8a", 64, device.LittleEndian},
+	{device.X86, "X86", 32, device.LittleEndian},
+	{device.X86_64, "X86_64", 64, device.LittleEndian},
+	{device.MIPS, "MIPS", 32, device.LittleEndian},
+	{device.MIPS64, "MIPS64", 64, device.LittleEndian},
 }
 
 func TestArchitecture(t *testing.T) {
@@ -45,13 +42,8 @@ func TestArchitecture(t *testing.T) {
 	for _, test := range architectureTestData {
 		ctx := log.Enter(ctx, test.name)
 		a := test.architecture
-		m := a.MemoryLayout()
 		ctx = log.V{"Architecture": a}.Bind(ctx)
 		assert.For(ctx, "Architecture.Bitness()").That(a.Bitness()).Equals(test.bitness)
-		assert.For(ctx, "Architecture.MemoryLayout().PointerAlignment").That(m.GetPointerAlignment()).Equals(test.align)
-		assert.For(ctx, "Architecture.MemoryLayout().PointerSize").That(m.GetPointerSize()).Equals(test.pointerSize)
-		assert.For(ctx, "Architecture.MemoryLayout().IntegerSize").That(m.GetIntegerSize()).Equals(test.intSize)
-		assert.For(ctx, "Architecture.MemoryLayout().Endian").That(m.GetEndian()).Equals(test.endian)
 	}
 }
 

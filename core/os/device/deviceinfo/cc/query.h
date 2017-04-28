@@ -21,6 +21,13 @@
 
 namespace query {
 
+// getDeviceInstance returns the device::Instance proto message for the
+// current device. It must be freed with delete.
+device::Instance* getDeviceInstance(void* platform_data);
+
+// The functions below are used by getDeviceInstance(), and are implemented
+// in the target-dependent sub-directories.
+
 bool createContext(void* platform_data);
 const char* contextError();
 void destroyContext();
@@ -29,6 +36,8 @@ void destroyContext();
 
 int numABIs();
 void abi(int idx, device::ABI* abi);
+device::ABI* currentABI();
+device::MemoryLayout* currentMemoryLayout();
 
 const char* hardwareName();
 

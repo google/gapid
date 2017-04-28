@@ -25,7 +25,7 @@ import (
 
 func getAlignment(memoryLayout *device.MemoryLayout, v interface{}) (uint64, error) {
 	if pt := reflect.TypeOf(Pointer{}); reflect.TypeOf(v).ConvertibleTo(pt) {
-		return uint64(memoryLayout.GetPointerAlignment()), nil
+		return uint64(memoryLayout.GetPointer().GetAlignment()), nil
 	}
 	t := reflect.TypeOf(v)
 	switch t.Kind() {
@@ -38,9 +38,9 @@ func getAlignment(memoryLayout *device.MemoryLayout, v interface{}) (uint64, err
 	case reflect.Float64:
 		return 8, nil
 	case reflect.Int64, reflect.Uint64:
-		return uint64(memoryLayout.GetU64Alignment()), nil
+		return uint64(memoryLayout.GetI64().GetAlignment()), nil
 	case reflect.Int, reflect.Uint:
-		return uint64(memoryLayout.GetIntegerSize()), nil
+		return uint64(memoryLayout.GetInteger().GetSize()), nil
 	case reflect.Array, reflect.Slice:
 		return getAlignment(memoryLayout, reflect.ValueOf(v).Index(0).Interface())
 	case reflect.String:
@@ -73,8 +73,8 @@ func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint
 	// here to test whether v is essentially of Pointer type.
 	if pt := reflect.TypeOf(Pointer{}); reflect.TypeOf(v).ConvertibleTo(pt) {
 		v = reflect.ValueOf(v).Convert(pt).Interface()
-		pod.WriteUint(w, memoryLayout.GetPointerSize()*8, v.(Pointer).Address)
-		return uint64(memoryLayout.GetPointerSize()), w.Error()
+		pod.WriteUint(w, memoryLayout.GetPointer().GetSize()*8, v.(Pointer).Address)
+		return uint64(memoryLayout.GetPointer().GetSize()), w.Error()
 	}
 
 	r := reflect.ValueOf(v)
@@ -97,12 +97,12 @@ func Write(w pod.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint
 		return uint64(t.Bits() / 8), nil
 
 	case reflect.Int:
-		pod.WriteInt(w, memoryLayout.GetIntegerSize()*8, r.Int())
-		return uint64(memoryLayout.GetIntegerSize()), nil
+		pod.WriteInt(w, memoryLayout.GetInteger().GetSize()*8, r.Int())
+		return uint64(memoryLayout.GetInteger().GetSize()), nil
 
 	case reflect.Uint:
-		pod.WriteUint(w, memoryLayout.GetIntegerSize()*8, r.Uint())
-		return uint64(memoryLayout.GetIntegerSize()), nil
+		pod.WriteUint(w, memoryLayout.GetInteger().GetSize()*8, r.Uint())
+		return uint64(memoryLayout.GetInteger().GetSize()), nil
 
 	case reflect.Array, reflect.Slice:
 		size := uint64(0)

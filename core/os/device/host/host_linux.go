@@ -16,5 +16,5 @@
 
 package host
 
-// #cgo LDFLAGS: -lGL -lX11
+// #cgo LDFLAGS: -lGL -lX11 -ldl
 import "C"

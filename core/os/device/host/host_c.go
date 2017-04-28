@@ -14,7 +14,7 @@
 
 package host
 
-// #cgo LDFLAGS: -ldeviceinfo -lprotobuf -lprotobuf_lite -lstdc++ -lpthread -lm -lcityhash
+// #cgo LDFLAGS: -ldeviceinfo -lcc-core -lprotobuf -lprotobuf_lite -lstdc++ -lpthread -lm -lcityhash
 // #include "core/os/device/deviceinfo/cc/instance.h"
 import "C"
 

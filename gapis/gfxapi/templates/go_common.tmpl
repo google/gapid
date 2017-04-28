@@ -155,7 +155,7 @@
   {{AssertType $.ErrHandler "string" "nil"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
+{{else if IsStaticArray $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
   {{else if IsMap         $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
   {{else if IsPointer     $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
   {{else if IsClass       $.Type}}if d.Simple(&{{$.Name}}); d.Error() != nil { {{$.ErrHandler}} }
@@ -189,8 +189,8 @@
   {{AssertType $.Cast       "Type"   "nil"}}
 
   {{$v         := Macro "Go.DecodePOD_cast" $.Cast}}
-  {{$int_size  := "ϟs.MemoryLayout.GetIntegerSize()*8"}}
-  {{$size_size := "ϟs.MemoryLayout.GetSizeSize()*8"}}
+  {{$int_size  := "ϟs.MemoryLayout.GetInteger().GetSize()*8"}}
+  {{$size_size := "ϟs.MemoryLayout.GetSize().GetSize()*8"}}
 
   {{     if IsEnum        $.Type}}if ϟv := d.Uint32();  d.Error() == nil { {{$.Name}} = {{$.Type.Name}}(ϟv) } else { {{$.ErrHandler}} }
   {{else if IsBool        $.Type}}if ϟv := d.Bool();    d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
@@ -208,7 +208,7 @@
   {{else if IsString      $.Type}}if ϟv := d.String();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsInt         $.Type}}if ϟv := pod.ReadInt(d,  {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsUint        $.Type}}if ϟv := pod.ReadUint(d, {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsSize        $.Type}}if ϟv := pod.ReadUint(d, {{$size_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{else if IsSize        $.Type}}if ϟv := pod.ReadUint(d, {{$size_size}}); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
   {{else if IsVoid        $.Type}}
   {{else}}{{Error "macro Go.DecodePOD '%v' called with unsupported type: %v" $.Name $.Type.Name}}
   {{end}}
@@ -228,8 +228,8 @@
   {{AssertType $.ErrHandler "string" "nil"}}
 
   {{$ty        := $.Type | Underlying}}
-  {{$int_size  := "ϟs.MemoryLayout.GetIntegerSize()*8"}}
-  {{$size_size := "ϟs.MemoryLayout.GetSizeSize()*8"}}
+  {{$int_size  := "ϟs.MemoryLayout.GetInteger().GetSize()*8"}}
+  {{$size_size := "ϟs.MemoryLayout.GetSize().GetSize()*8"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
   {{else if IsStaticArray $ty}}if e.Simple(&{{$.Name}});          e.Error() != nil { {{$.ErrHandler}} }
@@ -282,11 +282,11 @@
   {{else if IsU64         $}}uint64(8)
   {{else if IsS64         $}}uint64(8)
   {{else if IsEnum        $}}uint64(4)
-  {{else if IsString      $}}uint64(ϟs.MemoryLayout.GetPointerSize())
-  {{else if IsPointer     $}}uint64(ϟs.MemoryLayout.GetPointerSize())
-  {{else if IsInt         $}}uint64(ϟs.MemoryLayout.GetIntegerSize())
-  {{else if IsUint        $}}uint64(ϟs.MemoryLayout.GetIntegerSize())
-  {{else if IsSize        $}}uint64(ϟs.MemoryLayout.GetSizeSize())
+  {{else if IsString      $}}uint64(ϟs.MemoryLayout.GetPointer().GetSize())
+  {{else if IsPointer     $}}uint64(ϟs.MemoryLayout.GetPointer().GetSize())
+  {{else if IsInt         $}}uint64(ϟs.MemoryLayout.GetInteger().GetSize())
+  {{else if IsUint        $}}uint64(ϟs.MemoryLayout.GetInteger().GetSize())
+  {{else if IsSize        $}}uint64(ϟs.MemoryLayout.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
   {{else if IsClass       $}}{{Macro "Go.PackagePrefix" $}}{{$.Name}}Size(ϟs)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
@@ -313,14 +313,14 @@
   {{else if IsU32         $}}uint64(4)
   {{else if IsS32         $}}uint64(4)
   {{else if IsF64         $}}uint64(8)
-  {{else if IsU64         $}}uint64(ϟs.MemoryLayout.GetU64Alignment())
-  {{else if IsS64         $}}uint64(ϟs.MemoryLayout.GetU64Alignment())
+  {{else if IsU64         $}}uint64(ϟs.MemoryLayout.GetI64().GetAlignment())
+  {{else if IsS64         $}}uint64(ϟs.MemoryLayout.GetI64().GetAlignment())
   {{else if IsEnum        $}}uint64(4)
-  {{else if IsString      $}}uint64(ϟs.MemoryLayout.GetPointerSize())
-  {{else if IsPointer     $}}uint64(ϟs.MemoryLayout.GetPointerSize())
-  {{else if IsInt         $}}uint64(ϟs.MemoryLayout.GetIntegerSize())
-  {{else if IsUint        $}}uint64(ϟs.MemoryLayout.GetIntegerSize())
-  {{else if IsSize        $}}uint64(ϟs.MemoryLayout.GetSizeSize())
+  {{else if IsString      $}}uint64(ϟs.MemoryLayout.GetPointer().GetSize())
+  {{else if IsPointer     $}}uint64(ϟs.MemoryLayout.GetPointer().GetSize())
+  {{else if IsInt         $}}uint64(ϟs.MemoryLayout.GetInteger().GetSize())
+  {{else if IsUint        $}}uint64(ϟs.MemoryLayout.GetInteger().GetSize())
+  {{else if IsSize        $}}uint64(ϟs.MemoryLayout.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.AlignmentOf" $.ValueType}}
   {{else if IsClass       $}}{{Macro "Go.PackagePrefix" $}}{{$.Name}}Alignment(ϟs)
   {{else                   }}{{Error "macro Go.AlignmentOf called with unsupported type: %v" $}}
@@ -376,7 +376,7 @@
   {{else if IsBool        $}}protocol.Type_Bool
   {{else if IsInt         $}}protocol.Type_Int64
   {{else if IsUint        $}}protocol.Type_Uint64
-  {{else if IsSize        $}}protocol.SizeType(ϟs.MemoryLayout.GetPointerSize())
+  {{else if IsSize        $}}protocol.SizeType(ϟs.MemoryLayout.GetPointer().GetSize())
   {{else if IsS8          $}}protocol.Type_Int8
   {{else if IsU8          $}}protocol.Type_Uint8
   {{else if IsS16         $}}protocol.Type_Int16

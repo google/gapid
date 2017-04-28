@@ -98,7 +98,7 @@ func TestSliceCasts(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := gfxapi.NewStateWithEmptyAllocator()
 	newLayout := s.MemoryLayout.Clone()
-	newLayout.IntegerSize = 6 // non-multiple of u16
+	newLayout.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = newLayout
 	NewCmdSliceCasts(p(0x1234), 10).Mutate(ctx, s, nil)
 

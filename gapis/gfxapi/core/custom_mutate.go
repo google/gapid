@@ -40,12 +40,18 @@ func (a *Architecture) Mutate(ctx context.Context, s *gfxapi.State, b *builder.B
 		}
 	}
 	s.MemoryLayout = &device.MemoryLayout{
-		PointerAlignment: int32(a.PointerAlignment),
-		PointerSize:      int32(a.PointerSize),
-		IntegerSize:      int32(a.IntegerSize),
-		SizeSize:         int32(a.PointerSize), // TODO: use the correct size for size_t here.
-		U64Alignment:     U64Alignment,
-		Endian:           bo,
+		Pointer: &device.DataTypeLayout{Size: int32(a.PointerAlignment), Alignment: int32(a.PointerAlignment)},
+		Integer: &device.DataTypeLayout{Size: int32(a.IntegerSize), Alignment: int32(a.IntegerSize)},
+		Size:    &device.DataTypeLayout{Size: int32(a.PointerAlignment), Alignment: int32(a.PointerAlignment)},
+		Char:    &device.DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &device.DataTypeLayout{Size: 8, Alignment: U64Alignment},
+		I32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &device.DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &device.DataTypeLayout{Size: 8, Alignment: U64Alignment},
+		F32:     &device.DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
+		Endian:  bo,
 	}
 	return nil
 }

@@ -54,18 +54,38 @@ enum OSKind {
 
 // MemoryLayout holds information about how memory is fundamentally laid out for a device.
 message MemoryLayout {
-    // PointerAlignment is the alignment in bytes of a pointer type.
-    int32 PointerAlignment = 1;
-    // PointerSize is the size in bytes of a pointer type.
-    int32 PointerSize = 2;
-    // IntegerSize is the size in bytes of a int or unsigned int.
-    int32 IntegerSize = 3;
-    // SizeSize is the size in bytes of a size_t.
-    int32 SizeSize = 4;
-    // U64Alignment is the alignment of 64-bit values in a struct.
-    int32 U64Alignment = 6;
     // Endian is the natural byte ordering of the memory layout.
-    Endian Endian = 5;
+    Endian Endian = 1;
+    // Layout for a pointer type (void*, T*).
+    DataTypeLayout Pointer = 2;
+    // Layout for a int type (int, unsigned int).
+    DataTypeLayout Integer = 3;
+    // Layout for a size type (size_t).
+    DataTypeLayout Size = 4;
+    // Layout for a char type.
+    DataTypeLayout Char = 5;
+    // Layout for a 64 bit integer.
+    DataTypeLayout I64 = 6;
+    // Layout for a 32 bit integer.
+    DataTypeLayout I32 = 7;
+    // Layout for a 16-bit integer.
+    DataTypeLayout I16 = 8;
+    // Layout for an 8-bit integer.
+    DataTypeLayout I8 = 9;
+    // Layout for an 64-bit float.
+    DataTypeLayout F64 = 10;
+    // Layout for an 32-bit float.
+    DataTypeLayout F32 = 11;
+    // Layout for an 16-bit float.
+    DataTypeLayout F16 = 12;
+}
+
+// DataTypeLayout holds information about the size and alignment of a data type.
+message DataTypeLayout {
+    // The size of the datatype in bytes.
+    int32 size = 1;
+    // The alignment of the datatype in bytes when used as a field of a struct.
+    int32 alignment = 2;
 }
 
 // ABI represents an application binary interface specification.

@@ -40,7 +40,7 @@ func newConstantEncoder(memoryLayout *device.MemoryLayout) *constantEncoder {
 		writer:      writer,
 		buffer:      buffer,
 		constantMap: make(map[id.ID]uint64),
-		alignment:   uint64(memoryLayout.GetPointerAlignment()),
+		alignment:   uint64(memoryLayout.GetPointer().GetAlignment()),
 	}
 }
 
