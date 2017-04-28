@@ -18,21 +18,8 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    box.go
-    control.go
-    decoder.go
-    doc.go
-    encoder.go
-    entity.go
-    object.go
-    object_example_test.go
-    roundtrip_test.go
+    bitstream.go
+    bitstream_test.go
 )
 set(dirs
-    any
-    cyclic
-    registry
-    schema
-    test
-    vle
 )
