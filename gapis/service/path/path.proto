@@ -342,6 +342,7 @@ message Thumbnail {
 
     oneof object {
         ResourceData resource = 4;
-        CommandTreeNode command_tree_node = 5;
+        Command command = 5;
+        CommandTreeNode command_tree_node = 6;
     }
 }

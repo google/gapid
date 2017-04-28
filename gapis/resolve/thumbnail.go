@@ -29,6 +29,8 @@ import (
 // Thumbnail resolves and returns the thumbnail from the path p.
 func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 	switch parent := p.Parent().(type) {
+	case *path.Command:
+		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
 	case *path.CommandTreeNode:
 		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
 	case *path.ResourceData:
@@ -38,27 +40,11 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 	}
 }
 
-// CommandTreeNodeThumbnail resolves and returns the thumbnail for the resource at p.
-func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info2D, error) {
-	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	cmdTree := boxedCmdTree.(*commandTree)
-
-	i, group, err := cmdTree.index(p.Index)
-	if err != nil {
-		return nil, err
-	}
-
-	if group != nil {
-		i = group.Range.Last()
-	}
-
+// CommandThumbnail resolves and returns the thumbnail for the framebuffer at p.
+func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.Command) (*image.Info2D, error) {
 	imageInfoPath, err := FramebufferAttachment(ctx,
 		nil, // device
-		cmdTree.path.Capture.Command(i),
+		p,
 		gfxapi.FramebufferAttachment_Color0,
 		&service.RenderSettings{
 			MaxWidth:      w,
@@ -81,6 +67,27 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 	}
 
 	return boxedImageInfo.(*image.Info2D), nil
+}
+
+// CommandTreeNodeThumbnail resolves and returns the thumbnail for the framebuffer at p.
+func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info2D, error) {
+	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	cmdTree := boxedCmdTree.(*commandTree)
+
+	i, group, err := cmdTree.index(p.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	if group != nil {
+		i = group.Range.Last()
+	}
+
+	return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(i))
 }
 
 // ResourceDataThumbnail resolves and returns the thumbnail for the resource at p.
