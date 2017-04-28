@@ -282,7 +282,10 @@
       ::google::protobuf::Message* toProto() const;
       ¶
       {{range $p := $.FullParameters}}
-        {{Template "C++.Type" $p}} {{$p.Name}};
+        {{$ty := TypeOf $p | Underlying}}
+        {{if IsString $ty}}const char* {{$p.Name}};
+        {{else           }}{{Template "C++.Type" $p}} {{$p.Name}};
+        {{end            }}
       {{end}}
     };
   {{end}}
