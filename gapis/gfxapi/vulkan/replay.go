@@ -45,7 +45,7 @@ var (
 // an inability for the trace to be replayed on the given device.
 func (a api) GetReplayPriority(ctx context.Context, i *device.Instance, l *device.MemoryLayout) uint32 {
 	for _, abi := range i.GetConfiguration().GetABIs() {
-		if *abi.GetMemoryLayout() == *l {
+		if abi.GetMemoryLayout().SameAs(l) {
 			return 1
 		}
 	}

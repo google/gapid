@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-#include "platform_data.h"
+#include "egl_lite.h"
 #include "jni_helpers.h"
 
 #include "../query.h"
 
+#include "core/cc/log.h"
+#include "core/cc/get_gles_proc_address.h"
+
 #include <cstring>
 
 #include <android/log.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <jni.h>
 
 #define LOG_ERR(...) \
     __android_log_print(ANDROID_LOG_ERROR, "GAPID", __VA_ARGS__);
@@ -34,6 +36,79 @@
 typedef int GLint;
 typedef unsigned int GLuint;
 typedef uint8_t GLubyte;
+
+namespace {
+
+device::DataTypeLayout* new_dt_layout(int size, int alignment) {
+    auto out = new device::DataTypeLayout();
+    out->set_size(size);
+    out->set_alignment(alignment);
+    return out;
+}
+
+void abiByName(const std::string name, device::ABI* abi) {
+    abi->set_name(name);
+    abi->set_os(device::Android);
+
+    if (name == "armeabi" || name == "armeabi-v7a") {
+        // http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+        // 4 DATA TYPES AND ALIGNMENT
+        auto memory_layout = new device::MemoryLayout();
+        memory_layout->set_allocated_pointer(new_dt_layout(4, 4));
+        memory_layout->set_allocated_integer(new_dt_layout(4, 4));
+        memory_layout->set_allocated_size(new_dt_layout(4, 4));
+        memory_layout->set_allocated_char_(new_dt_layout(1, 1));
+        memory_layout->set_allocated_i64(new_dt_layout(8, 8));
+        memory_layout->set_allocated_i32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_i16(new_dt_layout(2, 2));
+        memory_layout->set_allocated_i8(new_dt_layout(1, 1));
+        memory_layout->set_allocated_f64(new_dt_layout(8, 8));
+        memory_layout->set_allocated_f32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_f16(new_dt_layout(2, 2));
+        memory_layout->set_endian(device::LittleEndian);
+        abi->set_allocated_memorylayout(memory_layout);
+        abi->set_architecture(device::ARMv7a);
+    } else if (name == "arm64-v8a") {
+        // http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
+        // 4 DATA TYPES AND ALIGNMENT
+        auto memory_layout = new device::MemoryLayout();
+        memory_layout->set_allocated_pointer(new_dt_layout(8, 8));
+        memory_layout->set_allocated_integer(new_dt_layout(8, 8));
+        memory_layout->set_allocated_size(new_dt_layout(8, 8));
+        memory_layout->set_allocated_char_(new_dt_layout(1, 1));
+        memory_layout->set_allocated_i64(new_dt_layout(8, 8));
+        memory_layout->set_allocated_i32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_i16(new_dt_layout(2, 2));
+        memory_layout->set_allocated_i8(new_dt_layout(1, 1));
+        memory_layout->set_allocated_f64(new_dt_layout(8, 8));
+        memory_layout->set_allocated_f32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_f16(new_dt_layout(2, 2));
+        memory_layout->set_endian(device::LittleEndian);
+        abi->set_allocated_memorylayout(memory_layout);
+        abi->set_architecture(device::ARMv8a);
+    } if (name == "x86") {
+        // https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86
+        auto memory_layout = new device::MemoryLayout();
+        memory_layout->set_allocated_pointer(new_dt_layout(4, 4));
+        memory_layout->set_allocated_integer(new_dt_layout(4, 4));
+        memory_layout->set_allocated_size(new_dt_layout(4, 4));
+        memory_layout->set_allocated_char_(new_dt_layout(1, 1));
+        memory_layout->set_allocated_i64(new_dt_layout(8, 4));
+        memory_layout->set_allocated_i32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_i16(new_dt_layout(2, 2));
+        memory_layout->set_allocated_i8(new_dt_layout(1, 1));
+        memory_layout->set_allocated_f64(new_dt_layout(8, 4));
+        memory_layout->set_allocated_f32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_f16(new_dt_layout(2, 2));
+        memory_layout->set_endian(device::LittleEndian);
+        abi->set_allocated_memorylayout(memory_layout);
+        abi->set_architecture(device::X86);
+    } else {
+        LOG_WARN("Unrecognised ABI: %s", name.c_str());
+    }
+}
+
+}  // anonymous namespace
 
 namespace query {
 
@@ -56,8 +131,17 @@ struct Context {
 };
 
 static Context gContext;
+static int gContextRefCount = 0;
 
 void destroyContext() {
+    if (--gContextRefCount > 0) {
+        return;
+    }
+
+    auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(core::GetGlesProcAddress("eglDestroyContext", false));
+    auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(core::GetGlesProcAddress("eglDestroySurface", false));
+    auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(core::GetGlesProcAddress("eglTerminate", false));
+
     if (gContext.mContext) {
         eglDestroyContext(gContext.mDisplay, gContext.mContext);
         gContext.mContext = 0;
@@ -73,18 +157,37 @@ void destroyContext() {
 }
 
 bool createContext(void* platform_data) {
+    if (gContextRefCount++ > 0) {
+        return true;
+    }
+
     gContext.mDisplay = nullptr;
     gContext.mSurface = nullptr;
     gContext.mContext = nullptr;
     gContext.mNumCores = 0;
+
+    if (platform_data == nullptr) {
+        snprintf(gContext.mError, sizeof(gContext.mError),
+                "platform_data was nullptr");
+        return false;
+    }
+
+    auto eglGetError = reinterpret_cast<PFNEGLGETERROR>(core::GetGlesProcAddress("eglGetError", true));
+    auto eglInitialize = reinterpret_cast<PFNEGLINITIALIZE>(core::GetGlesProcAddress("eglInitialize", true));
+    auto eglBindAPI = reinterpret_cast<PFNEGLBINDAPI>(core::GetGlesProcAddress("eglBindAPI", true));
+    auto eglChooseConfig = reinterpret_cast<PFNEGLCHOOSECONFIG>(core::GetGlesProcAddress("eglChooseConfig", true));
+    auto eglCreateContext = reinterpret_cast<PFNEGLCREATECONTEXT>(core::GetGlesProcAddress("eglCreateContext", true));
+    auto eglCreatePbufferSurface = reinterpret_cast<PFNEGLCREATEPBUFFERSURFACE>(core::GetGlesProcAddress("eglCreatePbufferSurface", true));
+    auto eglMakeCurrent = reinterpret_cast<PFNEGLMAKECURRENT>(core::GetGlesProcAddress("eglMakeCurrent", true));
+    auto eglGetDisplay = reinterpret_cast<PFNEGLGETDISPLAY>(core::GetGlesProcAddress("eglGetDisplay", true));
 
 #define CHECK(x) \
     x; \
     { \
         EGLint error = eglGetError(); \
         if (error != EGL_SUCCESS) { \
-		    snprintf(gContext.mError, sizeof(gContext.mError), \
-				     "EGL error: 0x%x when executing:\n   " #x, error); \
+            snprintf(gContext.mError, sizeof(gContext.mError), \
+                     "EGL error: 0x%x when executing:\n   " #x, error); \
             destroyContext(); \
             return false; \
         } \
@@ -146,15 +249,16 @@ bool createContext(void* platform_data) {
         return false; \
     }
 
-    auto data = reinterpret_cast<AndroidPlatformData*>(platform_data);
-    Class build(data->env, "android/os/Build");
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(platform_data);
+
+    Class build(env, "android/os/Build");
     CHECK(build.get_field("SUPPORTED_ABIS", gContext.mSupportedABIs));
     CHECK(build.get_field("HOST", gContext.mHost));
     CHECK(build.get_field("SERIAL", gContext.mSerial));
     CHECK(build.get_field("HARDWARE", gContext.mHardware));
     CHECK(build.get_field("DISPLAY", gContext.mOSBuild));
 
-    Class version(data->env, "android/os/Build$VERSION");
+    Class version(env, "android/os/Build$VERSION");
     CHECK(version.get_field("RELEASE", gContext.mOSName));
     CHECK(version.get_field("SDK_INT", gContext.mOSVersion));
 
@@ -166,6 +270,8 @@ bool createContext(void* platform_data) {
             gContext.mCpuArchitecture = device::ARMv7a;
         } else if (primaryABI == "arm64-v8a") {
             gContext.mCpuArchitecture = device::ARMv8a;
+        } else if (primaryABI == "x86") {
+            gContext.mCpuArchitecture = device::X86;
         } else {
             LOG_WARN("Unrecognised ABI: %s", primaryABI.c_str());
         }
@@ -265,39 +371,27 @@ bool createContext(void* platform_data) {
 }
 
 const char* contextError() {
-	return gContext.mError;
+    return gContext.mError;
 }
 
 int numABIs() { return gContext.mSupportedABIs.size(); }
 
-void abi(int idx, device::ABI* abi) {
-    auto name = gContext.mSupportedABIs[idx];
-    abi->set_name(name);
-    abi->set_os(device::Android);
+device::ABI* currentABI() {
+    device::ABI* out = new device::ABI();
+#if defined(__arm__)
+    abiByName("armeabi", out);
+#elif defined(__aarch64__)
+    abiByName("arm64-v8a", out);
+#elif defined(__i686__)
+    abiByName("x86", out);
+#else
+#   error "Unknown ABI"
+#endif
+    return out;
+}
 
-    if (name == "armeabi" || name == "armeabi-v7a") {
-        auto memory_layout = new device::MemoryLayout();
-        memory_layout->set_pointeralignment(4);
-        memory_layout->set_pointersize(4);
-        memory_layout->set_integersize(4);
-        memory_layout->set_sizesize(4);
-        memory_layout->set_u64alignment(8);
-        memory_layout->set_endian(device::LittleEndian);
-        abi->set_allocated_memorylayout(memory_layout);
-        abi->set_architecture(device::ARMv7a);
-    } else if (name == "arm64-v8a") {
-        auto memory_layout = new device::MemoryLayout();
-        memory_layout->set_pointeralignment(8);
-        memory_layout->set_pointersize(8);
-        memory_layout->set_integersize(8);
-        memory_layout->set_sizesize(8);
-        memory_layout->set_u64alignment(8);
-        memory_layout->set_endian(device::LittleEndian);
-        abi->set_allocated_memorylayout(memory_layout);
-        abi->set_architecture(device::ARMv8a);
-    } else {
-        LOG_WARN("Unrecognised ABI: %s", name.c_str());
-    }
+void abi(int idx, device::ABI* abi) {
+    return abiByName(gContext.mSupportedABIs[idx], abi);
 }
 
 int cpuNumCores() { return gContext.mNumCores; }

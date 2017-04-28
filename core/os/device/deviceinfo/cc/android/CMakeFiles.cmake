@@ -18,11 +18,11 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    jni.cpp
     jni_helpers.h
+    jni.cpp
     platform_data.h
     query.cpp
 )
 set(dirs
-    
+
 )

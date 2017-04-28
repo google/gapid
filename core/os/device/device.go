@@ -14,6 +14,12 @@
 
 package device
 
+import (
+	"reflect"
+
+	"github.com/golang/protobuf/proto"
+)
+
 const (
 	UnknownArchitecture = Architecture_UnknownArchitecture
 	ARMv7a              = Architecture_ARMv7a
@@ -40,38 +46,72 @@ const (
 
 var (
 	Little32 = &MemoryLayout{
-		PointerAlignment: 4,
-		PointerSize:      4,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           LittleEndian,
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
+	}
+	Little64 = &MemoryLayout{
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Integer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Size:    &DataTypeLayout{Size: 8, Alignment: 8},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
 	}
 	Big32 = &MemoryLayout{
-		PointerAlignment: 4,
-		PointerSize:      4,
-		IntegerSize:      4,
-		SizeSize:         4,
-		U64Alignment:     8,
-		Endian:           BigEndian,
+		Endian:  BigEndian,
+		Pointer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 4},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
 	}
 	Big64 = &MemoryLayout{
-		PointerAlignment: 8,
-		PointerSize:      8,
-		IntegerSize:      4,
-		SizeSize:         8,
-		U64Alignment:     8,
-		Endian:           BigEndian,
+		Endian:  BigEndian,
+		Pointer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Integer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Size:    &DataTypeLayout{Size: 8, Alignment: 8},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
 	}
 )
 
 // Clone returns a new MemoryLayout copied from m.
 func (m *MemoryLayout) Clone() *MemoryLayout {
-	c := *m
-	return &c
+	var out MemoryLayout
+	bytes, _ := proto.Marshal(m)
+	proto.Unmarshal(bytes, &out)
+	return &out
 }
 
 // SameAs returns true if the MemoryLayouts are equal.
 func (m *MemoryLayout) SameAs(o *MemoryLayout) bool {
-	return *m == *o
+	return reflect.DeepEqual(m, o)
 }

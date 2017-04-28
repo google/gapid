@@ -22,6 +22,7 @@ set(files
     gl.cpp
     instance.cpp
     instance.h
+    query.cpp
     query.h
 )
 set(dirs

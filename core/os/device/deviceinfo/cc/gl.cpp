@@ -15,60 +15,59 @@
  */
 
 #include "query.h"
+#include "gl_lite.h"
 
-#include "core/cc/target.h"
-
-#if TARGET_OS == GAPID_OS_OSX
-#   import <OpenGL/gl3.h>
-#   define HAS_MAJOR_VERSION_3 1
-#elif TARGET_OS == GAPID_OS_ANDROID
-#   include <GLES2/gl2.h>
-#   define HAS_MAJOR_VERSION_3 0
-#elif TARGET_OS == GAPID_OS_LINUX
-#   define GL_GLEXT_PROTOTYPES 1
-#   include <GL/gl.h>
-#   include <GL/glext.h>
-#   define HAS_MAJOR_VERSION_3 1
-#elif TARGET_OS == GAPID_OS_WINDOWS
-#   define WINGDIAPI
-#   define APIENTRY
-#   include <GL/gl.h>
-#endif
+#include "core/cc/assert.h"
+#include "core/cc/log.h"
+#include "core/cc/get_gles_proc_address.h"
 
 #include <sstream>
 
 namespace query {
+
+const char* safe_string(void* x) {
+    return (x != nullptr) ? reinterpret_cast<const char*>(x) : "";
+}
+
 
 void glDriver(device::OpenGLDriver* driver) {
     GLint major_version = 2;
     GLint minor_version = 0;
     GLint uniformbufferalignment = 1;
 
-#if HAS_MAJOR_VERSION_3
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
+    auto glGetIntegerv = reinterpret_cast<PFNGLGETINTEGERV>(core::GetGlesProcAddress("glGetIntegerv", true));
+    auto glGetError = reinterpret_cast<PFNGLGETERROR>(core::GetGlesProcAddress("glGetError", true));
+    auto glGetString = reinterpret_cast<PFNGLGETSTRING>(core::GetGlesProcAddress("glGetString", true));
+    auto glGetStringi = reinterpret_cast<PFNGLGETSTRINGI>(core::GetGlesProcAddress("glGetStringi", true));
 
-    glGetError();  // Clear error state.
-    glGetIntegerv(GL_MAJOR_VERSION, &major_version);
-    glGetIntegerv(GL_MINOR_VERSION, &minor_version);
-    if (glGetError() != GL_NO_ERROR) {
-      // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
-      // so if the commands returned error we assume it is GLES 2.0.
-      major_version = 2;
-      minor_version = 0;
+    GAPID_ASSERT(glGetError != nullptr);
+    GAPID_ASSERT(glGetString != nullptr);
+
+    if (glGetIntegerv != nullptr) {
+        glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
+
+        glGetError();  // Clear error state.
+        glGetIntegerv(GL_MAJOR_VERSION, &major_version);
+        glGetIntegerv(GL_MINOR_VERSION, &minor_version);
+        if (glGetError() != GL_NO_ERROR) {
+            // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
+            // so if the commands returned error we assume it is GLES 2.0.
+            major_version = 2;
+            minor_version = 0;
+        }
     }
 
-    if (major_version > 3) {
-        int32_t c;
+    if (major_version >= 3) {
+        GAPID_ASSERT(glGetIntegerv != nullptr);
+        GAPID_ASSERT(glGetStringi != nullptr);
+
+        int32_t c = 0;
         glGetIntegerv(GL_NUM_EXTENSIONS, &c);
         for (int32_t i = 0; i < c; i++) {
-            if (glGetError() == GL_NO_ERROR) {
-                driver->add_extensions(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
-            }
+            driver->add_extensions(safe_string(glGetStringi(GL_EXTENSIONS, i)));
         }
-    } else
-#endif  // HAS_MAJOR_VERSION_3
-    {
-        std::string extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
+    } else {
+        std::string extensions = safe_string(glGetString(GL_EXTENSIONS));
         if (glGetError() == GL_NO_ERROR) {
             std::istringstream iss(extensions);
             std::string extension;
@@ -78,9 +77,9 @@ void glDriver(device::OpenGLDriver* driver) {
         }
     }
 
-    driver->set_renderer((const char*)(glGetString(GL_RENDERER)));
-    driver->set_vendor((const char*)(glGetString(GL_VENDOR)));
-    driver->set_version((const char*)(glGetString(GL_VERSION)));
+    driver->set_renderer(safe_string(glGetString(GL_RENDERER)));
+    driver->set_vendor(safe_string(glGetString(GL_VENDOR)));
+    driver->set_version(safe_string(glGetString(GL_VERSION)));
     driver->set_uniformbufferalignment(uniformbufferalignment);
 }
 
