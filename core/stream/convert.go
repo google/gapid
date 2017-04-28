@@ -19,10 +19,10 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/math/f16"
 	"github.com/google/gapid/core/math/f32"
 	"github.com/google/gapid/core/math/f64"
-	"github.com/google/gapid/framework/binary"
 )
 
 type buf struct {
