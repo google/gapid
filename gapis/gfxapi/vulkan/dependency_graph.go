@@ -336,6 +336,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	getOverlappedBindingsForImage := func(image VkImage) []*vulkanDeviceMemoryBinding {
 		if !GetState(s).Images.Contains(image) {
 			log.E(ctx, "Error Image: %v: does not exist in state", image)
+			return []*vulkanDeviceMemoryBinding{}
 		}
 		imageObj := GetState(s).Images.Get(image)
 		if imageObj.IsSwapchainImage {
@@ -355,6 +356,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	getOverlappedBindingsForBuffer := func(buffer VkBuffer) []*vulkanDeviceMemoryBinding {
 		if !GetState(s).Buffers.Contains(buffer) {
 			log.E(ctx, "Error Buffer: %v: does not exist in state", buffer)
+			return []*vulkanDeviceMemoryBinding{}
 		}
 		bufferObj := GetState(s).Buffers.Get(buffer)
 		if bufferObj.Memory != nil {
