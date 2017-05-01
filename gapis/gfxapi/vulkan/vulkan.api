@@ -2766,6 +2766,9 @@ cmd void vkGetDeviceQueue(
   pQueue[0] = id
 }
 
+// TODO: Not all vkQueueSubmit calls submit vkCmdDrawXXX commands. Need better
+// a way so that only those recorded with draw commands will be labelled as
+// draw call.
 @DrawCall
 @threadSafety("app")
 @indirect("VkQueue", "VkDevice")
