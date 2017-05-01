@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(LLVM_CCACHE_BUILD "OFF")
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    set(LLVM_CCACHE_BUILD "ON")
+set(LLVM_CCACHE_BUILD OFF)
+if(NOT CMAKE_HOST_WIN32)
+    find_program(CCACHE_FOUND ccache)
+    if(CCACHE_FOUND)
+        set(LLVM_CCACHE_BUILD ON)
+    endif()
 endif()
 
 if(ANDROID_ABI)
