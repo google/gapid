@@ -215,7 +215,7 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 			// TODO(qining): This is an error, should emit error message here
 			continue
 		}
-		name := fmt.Sprintf("binding:%v,location:%v", binding.Binding, attribute.Location)
+		name := fmt.Sprintf("binding=%v, location=%v", binding.Binding, attribute.Location)
 		vb.Streams = append(vb.Streams,
 			&vertex.Stream{
 				Name:     name,
