@@ -87,7 +87,6 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 			log.W(ctx, "err is not NIL!")
 			return nil, err
 		}
-		guessSemantics(vb)
 
 	} else if p := lastDrawInfo.CommandParameters.DrawIndexed; p != nil {
 		// Last draw call is vkCmdDrawIndexed
@@ -118,7 +117,6 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 		if err != nil {
 			return nil, err
 		}
-		guessSemantics(vb)
 
 	} else if p := lastDrawInfo.CommandParameters.DrawIndirect; p != nil {
 		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndirect not implemented")
@@ -215,6 +213,8 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 			// TODO(qining): This is an error, should emit error message here
 			continue
 		}
+		// TODO: We can disassemble the shader to pull out the debug name if the
+		// shader has debug info.
 		name := fmt.Sprintf("binding=%v, location=%v", binding.Binding, attribute.Location)
 		vb.Streams = append(vb.Streams,
 			&vertex.Stream{
@@ -224,6 +224,7 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 				Semantic: &vertex.Semantic{},
 			})
 	}
+	guessSemantics(vb)
 	return vb, nil
 }
 
@@ -386,6 +387,8 @@ func translateVertexFormat(vkFormat VkFormat) (*stream.Format, error) {
 }
 
 func guessSemantics(vb *vertex.Buffer) {
+	// TODO: We may disassemble the shader to pull out the debug name to help
+	// this semantics guessing, if the shader has debug info.
 	numOfElementsToSemanticTypes := map[uint32][]vertex.Semantic_Type{
 		4: {vertex.Semantic_Position,
 			vertex.Semantic_Normal,
