@@ -50,7 +50,6 @@ public class Server {
   private static final Logger LOG = Logger.getLogger(Server.class.getName());
 
   private static final int FETCH_INFO_TIMEOUT_MS = 3000;
-  private static final int FETCH_SCHEMA_TIMEOUT_MS = 3000;
   private static final int FETCH_STRING_TABLE_TIMEOUT_MS = 3000;
 
   public static final Flag<String> gapis = Flags.value(
