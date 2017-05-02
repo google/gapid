@@ -257,6 +257,26 @@ var (
 		}},
 	}
 
+	XYZW_F16 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_X,
+		}, {
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Y,
+		}, {
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Z,
+		}, {
+			DataType: &stream.F16,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_W,
+		}},
+	}
+
 	XYZW_F32 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.F32,
