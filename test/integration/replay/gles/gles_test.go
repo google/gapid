@@ -616,7 +616,7 @@ func TestMultiContextCapture(t *testing.T) {
 
 	contexts, err := resolve.Contexts(ctx, capture.Contexts())
 	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(len(contexts)).Equals(3)
+	assert.With(ctx).That(len(contexts.List)).Equals(3)
 }
 
 func TestTraceWithIssues(t *testing.T) {
