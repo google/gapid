@@ -50,15 +50,18 @@ public class ApiState {
 
   private final Shell shell;
   private final Client client;
+  private final ConstantSets constants;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
   private final FutureController rpcController = new SingleInFlight();
   private final PathStore statePath = new PathStore();
   //private final PathStore selection = new PathStore();
   private RootNode root;
 
-  public ApiState(Shell shell, Client client, Follower follower, AtomStream atoms) {
+  public ApiState(
+      Shell shell, Client client, Follower follower, AtomStream atoms, ConstantSets constants) {
     this.shell = shell;
     this.client = client;
+    this.constants = constants;
 
     atoms.addListener(new AtomStream.Listener() {
       @Override
@@ -126,9 +129,10 @@ public class ApiState {
   }
 
   public ListenableFuture<Node> load(Node node) {
-    return node.load(() -> Futures.transform(
+    return node.load(() -> Futures.transformAsync(
         client.get(Paths.any(node.getPath(Path.StateTreeNode.newBuilder()))),
-        value -> new NodeData(value.getStateTreeNode())));
+        value -> Futures.transform(constants.loadConstants(value.getStateTreeNode()),
+            ignore -> new NodeData(value.getStateTreeNode()))));
   }
 
   public void load(Node node, Runnable callback) {

@@ -27,14 +27,14 @@ import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
-import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.server.Client.DataUnavailableException;
-import com.google.gapid.util.Boxes;
 import com.google.gapid.util.Messages;
 import com.google.gapid.views.Formatter.StylingString;
+import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.MeasuringViewLabelProvider;
+import com.google.gapid.widgets.TextViewer;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
@@ -45,8 +45,11 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -60,7 +63,6 @@ public class StateView extends Composite
   private final LoadablePanel<Tree> loading;
   private final TreeViewer viewer;
   //private final SelectionHandler<Tree> selectionHandler;
-  private ApiState.Node root;
 
   public StateView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -112,50 +114,51 @@ public class StateView extends Composite
       }
     });
 
-    /*
     Menu popup = new Menu(tree);
     Widgets.createMenuItem(popup, "&View Text", SWT.MOD1 + 'T', e -> {
       TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
-      if (item != null && (item.getData() instanceof Element)) {
-        Element element = (Element)item.getData();
+      if (item != null && (item.getData() instanceof ApiState.Node)) {
+        StateTreeNode data = ((ApiState.Node)item.getData()).getData();
 
-        String text = Formatter.toString(element.value.value, element.value.type);
-        String title = Formatter.toString(element.key.value, element.key.type) + ":";
+        if (data == null) {
+          // Data not loaded yet, this shouldn't happen (see MenuDetect handler). Ignore.
+          LOG.log(Level.WARNING, "Impossible popup requested and ignored.");
+          return;
+        } else if (!data.hasPreview()) {
+          // No value at this node, this shouldn't happen, either. Ignore.
+          LOG.log(Level.WARNING, "Value-less popup requested and ignored: {0}", data);
+          return;
+        }
 
-        TextViewer.showViewTextPopup(getShell(), title, text);
+        String text = Formatter.toString(
+            data.getPreview(), models.constants.getConstants(data.getConstants()));
+        TextViewer.showViewTextPopup(getShell(), data.getName() + ":", text);
       }
     });
     tree.setMenu(popup);
     tree.addListener(SWT.MenuDetect, e -> {
-      TreeItem item = tree.getItem(tree.toControl(e.x, e.y));
-      if (item == null || !(item.getData() instanceof Element) ||
-          !((Element)item.getData()).requiresPopup()) {
+      if (!canShowPopup(tree.getItem(tree.toControl(e.x, e.y)))) {
         e.doit = false;
       }
     });
-    */
 
-    /*
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
-      if (object instanceof Element) {
-        Element node = (Element)object;
-        String key = "";
-        if (node.key.type != null) {
-          key = Formatter.toString(node.key.value, node.key.type);
-        } else {
-          key = String.valueOf(node.key.value.getObject());
+      if (object instanceof ApiState.Node) {
+        StateTreeNode node = ((ApiState.Node)object).getData();
+        if (node == null) {
+          // Copy before loaded. Not ideal, but this is unlikely.
+          return new String[] { "Loading..." };
+        } else if (!node.hasPreview()) {
+          return new String[] { node.getName() };
         }
 
-        if (!node.isLeaf() || node.value == null || node.value.value == null ||
-            node.value.value.getObject() == null) {
-          return new String[] { key };
-        }
-
-        return new String[] { key, Formatter.toString(node.value.value, node.value.type) };
+        String text = Formatter.toString(
+            node.getPreview(), models.constants.getConstants(node.getConstants()));
+        return new String[] { node.getName(), text };
       }
+
       return new String[] { String.valueOf(object) };
     });
-    */
   }
 
   @Override
@@ -286,111 +289,25 @@ public class StateView extends Composite
       return Paths.PathBuilder.INVALID_BUILDER;
     }
   }
-  */
 
-  /**
-   * A single element in the state tree consisting of a name (such as GL_DEPTH_TEST) and its current
-   * value (e.g. GL_TRUE or GL_FLASE).
-   *
   private static class Element {
-    public final TypedValue key;
-    public final TypedValue value;
-    public final boolean isMapKey;
-    private final Element[] children;
-
-    public Element(TypedValue key, TypedValue value) {
-      this(key, value, false);
-    }
-
-    public Element(TypedValue key, TypedValue value, boolean isMapKey) {
-      this.key = key;
-      this.value = value;
-      this.isMapKey = isMapKey;
-      this.children = new Element[getChildCount(value)];
-    }
-
-    private static int getChildCount(TypedValue value) {
-      Object underlying = value.value.getObject();
-      if (value.value.getObject() instanceof Dynamic) {
-        Dynamic d = (Dynamic)value.value.getObject();
-        // Don't create child Nodes for MemorySliceInfo, as they are shown simply as inline values.
-        return isMemorySliceInfo(d) ? 0 : d.getFieldCount();
-      } else if (value.type instanceof Map) {
-        return ((java.util.Map<?, ?>)underlying).size();
-      } else if (underlying instanceof Object[]) {
-        return ((Object[])underlying).length;
-      } else if (underlying instanceof byte[]) {
-        return ((byte[])underlying).length;
-      } else {
-        return 0;
-      }
-    }
-
-    private static boolean isMemorySliceInfo(Dynamic d) {
+     private static boolean isMemorySliceInfo(Dynamic d) {
       return d.getFieldCount() == 1 && d.getFieldValue(0) instanceof MemorySliceInfo;
-    }
-
-    public int getChildCount() {
-      return children.length;
-    }
-
-    public boolean isLeaf() {
-      return children.length == 0;
     }
 
     public CanFollow canFollow() {
       return CanFollow.fromSnippets(value.value.getSnippets());
     }
-
-    public boolean requiresPopup() {
-      return value.type instanceof Primitive &&
-          ((Primitive)value.type).getMethod() == Method.String;
-    }
-
-    public Element getChild(int index) {
-      if (children[index] == null) {
-        Object underlying = value.value.getObject();
-        if (value.value.getObject() instanceof Dynamic) {
-          Field field = ((Dynamic)underlying).getFieldInfo(index);
-          SnippetObject fieldObj = value.value.field((Dynamic)underlying, index);
-          children[index] = new Element(
-              new TypedValue(null, SnippetObject.symbol(field.getDeclared())),
-              new TypedValue(field.getType(), fieldObj));
-        } else if (value.type instanceof Map) {
-          java.util.Map.Entry<?, ?> entry =
-              Iterables.get(((java.util.Map<?, ?>)underlying).entrySet(), index);
-          Map map = (Map)value.type;
-          Type keyType = map.getKeyType(), valueType = map.getValueType();
-          children[index] = new Element(new TypedValue(keyType, value.value.key(entry)),
-              new TypedValue(valueType, value.value.elem(entry)), true);
-        } else if (underlying instanceof Object[]) {
-          Type valueType = (value.type instanceof Slice) ?
-              ((Slice)value.type).getValueType() : ((Array)value.type).getValueType();
-          children[index] = new Element(new TypedValue(null, value.value.elem(index)),
-              new TypedValue(valueType, value.value.elem(((Object[])underlying)[index])));
-        } else if (underlying instanceof byte[]) {
-          Type valueType = (value.type instanceof Slice) ?
-              ((Slice)value.type).getValueType() : ((Array)value.type).getValueType();
-          children[index] = new Element(new TypedValue(null, value.value.elem(index)),
-              new TypedValue(valueType, value.value.elem(((byte[])underlying)[index])));
-        } else {
-          return null;
-        }
-      }
-      return children[index];
-    }
-
-    public Element findChild(Object searchKey) {
-      for (int i = 0; i < getChildCount(); i++) {
-        Element child = getChild(i);
-        if (child != null && Objects.equals(searchKey, child.key.value)) {
-          return child;
-        }
-      }
-      return null;
-    }
   }
   */
+
+  private static boolean canShowPopup(TreeItem item) {
+    if (item == null || !(item.getData() instanceof ApiState.Node)) {
+      return false;
+    }
+    StateTreeNode data = ((ApiState.Node)item.getData()).getData();
+    return data != null && data.hasPreview();
+  }
 
   /**
    * Content provider for the state tree.
@@ -416,7 +333,13 @@ public class StateView extends Composite
       ApiState.Node child = ((ApiState.Node)parent).getChild(index);
       state.load(child, refresher::refresh);
       viewer.replace(parent, index, child);
-      viewer.setChildCount(child, child.getChildCount());
+      if (child.getChildCount() > 100) {
+        // For nodes with lots of children, only allocate the children, once the node
+        // is actually expanded.
+        viewer.setHasChildren(child, true);
+      } else {
+        viewer.setChildCount(child, child.getChildCount());
+      }
     }
 
     @Override
@@ -438,27 +361,6 @@ public class StateView extends Composite
 
     @Override
     protected <S extends StylingString> S format(Object element, S string) {
-      /*
-      if (element.key.type != null) {
-        Formatter.format(element.key.value, element.key.type, string, string.defaultStyle());
-      } else {
-        string.append(String.valueOf(element.key.value.getObject()), string.defaultStyle());
-      }
-      if (element.isLeaf()
-          /*TODO || (!expanded && node.canBeRenderedAsLeaf())) &&
-                node.value != null && node.value.value != null) {
-        string.append(": ", string.structureStyle());
-        if (element.value.value.getObject() != null) {
-          CanFollow follow = element.canFollow();
-          Style style = (follow != null) ? string.linkStyle() : string.defaultStyle();
-          string.startLink(follow);
-          Formatter.format(element.value.value, element.value.type, string, style);
-          string.endLink();
-        } else {
-          string.append("null", string.defaultStyle());
-        }
-      }
-      */
       StateTreeNode data = ((ApiState.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
@@ -466,8 +368,8 @@ public class StateView extends Composite
         string.append(data.getName(), string.defaultStyle());
         if (data.hasPreview()) {
          string.append(": ", string.structureStyle());
-         Service.ConstantSet constantSet = constants.getConstants(data.getConstants());
-         Formatter.format(data.getPreview(), constantSet, string, string.defaultStyle());
+         Formatter.format(data.getPreview(), constants.getConstants(data.getConstants()),
+             string, string.defaultStyle());
         }
       }
       return string;
