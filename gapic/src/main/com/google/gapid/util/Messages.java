@@ -29,7 +29,6 @@ public interface Messages {
   public static final String SELECT_PROGRAM = "Select a program.";
   public static final String NO_IMAGE_DATA = "No image data available at this point in the trace.";
   public static final String NO_TEXTURES = "No textures have been created by this point.";
-  public static final String MESSAGE_NO_REPLAY_DEVICE = "No replay targets available.";
   public static final String VIEW_DETAILS = "View Details";
   public static final String LICENSES = "Licenses";
   public static final String ABOUT_WINDOW_TITLE = "About...";
@@ -50,5 +49,5 @@ public interface Messages {
   public static final String SELECT_ACTIVITY = "Select Activity";
   public static final String WELCOME_WINDOW_TITLE = "Welcome";
   public static final String WELCOME_TITLE = WINDOW_TITLE;
-  public static final String NO_REPLAY_DEVICE = "No replace device available for this capture.";
+  public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
 }
