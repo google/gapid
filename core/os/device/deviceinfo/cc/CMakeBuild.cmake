@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(GAPII_TARGET)
+    return()
+endif()
+
 glob_all_dirs()
 
 glob(sources

@@ -76,6 +76,14 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
 endforeach()
 
+if(GAPII_PROJECT)
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${GAPII_PROJECT}")
+    add_cmake_target(${GAPII_PROJECT} gapii ${dst} "libgapii.so"
+        DEPENDEES cc-core
+        DEPENDS ${sources} cc-memory-tracker
+    )
+endif()
+
 if(NOT DISABLED_CXX)
     add_library(gapii SHARED ${sources})
     target_link_libraries(gapii cc-memory-tracker deviceinfo-static protobuf)
@@ -94,6 +102,8 @@ if(NOT DISABLED_CXX)
 
         set_target_properties(gapii PROPERTIES
           LINK_FLAGS "-Wl,--version-script,${CMAKE_CURRENT_SOURCE_DIR}/gapii.exports")
+    elseif(GAPII_TARGET)
+
     else()
         find_package(GL REQUIRED)
         target_link_libraries(gapii GL::Lib)
