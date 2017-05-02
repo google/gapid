@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static java.util.function.Function.identity;
 
 import com.google.common.collect.Lists;
+import com.google.common.primitives.UnsignedInts;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
@@ -98,14 +99,20 @@ public class Formatter {
 
   public static void format(
           Box.Value value, Service.ConstantSet constants, StylingString string, Style style) {
-    if (value.getValCase() != Box.Value.ValCase.POD) {
-      format(value, new Boxes.Context(), string, style);
-    } else {
+    if (value.getValCase() == Box.Value.ValCase.POD) {
       format(value.getPod(), constants, string, style);
+    } else {
+      format(value, new Boxes.Context(), string, style);
     }
   }
 
-  public static void format(
+  public static String toString(Box.Value value, Service.ConstantSet constants) {
+    NoStyleStylingString string = new NoStyleStylingString();
+    format(value, constants, string, null);
+    return string.toString();
+  }
+
+  private static void format(
       Pod.Value value, Service.ConstantSet constants, StylingString string, Style style) {
     if (constants == null || !Pods.mayBeConstant(value)) {
       format(value, string, style);
@@ -146,12 +153,6 @@ public class Formatter {
       // Uh-oh value not found in constant set, probably an invalid value was passed by the app.
       format(value, string, style);
     }
-  }
-
-  public static String toString(Pod.Value value, Service.ConstantSet constants) {
-    NoStyleStylingString string = new NoStyleStylingString();
-    format(value, constants, string, null);
-    return string.toString();
   }
 
   private static void format(Box.Value value, Boxes.Context ctx, StylingString string, Style style) {
@@ -282,7 +283,7 @@ public class Formatter {
   }
 
   private static String uint32ToString(int val) {
-    return Long.toString(val & 0xFFFFFFFFL);
+    return UnsignedInts.toString(val);
   }
 
   private static String uint64ToString(long val) {
@@ -326,36 +327,32 @@ public class Formatter {
     string.append("]", string.structureStyle());
   }
 
-  public static void format(Box.Pointer pointer, StylingString string, Style style) {
-    string.append("*", string.structureStyle());
+  private static void format(Box.Pointer pointer, StylingString string, Style style) {
     if (PoolNames.Application_VALUE != pointer.getPool()) {
+      string.append("*", string.structureStyle());
       if (pointer.getAddress() != 0) {
         string.append(toPointerString(pointer.getAddress()) + " ", style);
       }
       string.append("Pool: ", style);
-      string.append("0x" + Long.toHexString(pointer.getPool()), style);
+      string.append(uint32ToString(pointer.getPool()), style);
+    } else if (pointer.getAddress() == 0) {
+      string.append("(nil)", string.structureStyle());
     } else {
+      string.append("*", string.structureStyle());
       string.append(toPointerString(pointer.getAddress()), style);
     }
   }
 
-  public static String toString(Box.Pointer pointer) {
-    StringBuilder result = new StringBuilder().append("*");
-    if (PoolNames.Application_VALUE != pointer.getPool()) {
-      if (pointer.getAddress() != 0) {
-        result.append(toPointerString(pointer.getAddress()));
-      }
-      result.append("Pool: 0x");
-      result.append(Long.toHexString(pointer.getPool()));
-    } else {
-      result.append(toPointerString(pointer.getAddress()));
+  private static void format(Box.Slice slice, StylingString string, Style style) {
+    if (slice.getCount() == 0 && slice.getBase().getAddress() == 0) {
+      string.append("(nil)", string.structureStyle());
+      return;
     }
-    return result.toString();
-  }
 
-  public static void format(Box.Slice slice, StylingString string, Style style) {
     if (slice.getType() != Pod.Type.any && slice.getType() != Pod.Type.UNRECOGNIZED) {
       string.append(slice.getType().name(), style);
+    } else {
+      string.append("uint8", style);
     }
     string.append("[", string.structureStyle());
     string.append(String.valueOf(slice.getCount()), style);
@@ -367,12 +364,6 @@ public class Formatter {
       format(slice.getBase(), string, style);
       string.append(")", string.structureStyle());
     }
-  }
-
-  public static String toString(Box.Slice slice) {
-    NoStyleStylingString string = new NoStyleStylingString();
-    format(slice, string, null);
-    return string.toString();
   }
 
   private static String toPointerString(long pointer) {

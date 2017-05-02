@@ -46,6 +46,7 @@ import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.Balloon;
+import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
@@ -274,19 +275,33 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     tree.addMouseWheelListener(mouseHandler);
     tree.getVerticalBar().addSelectionListener(mouseHandler);
 
-    /*
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
-      if (object instanceof FilteredGroup) {
-        Service.CommandGroup group = ((FilteredGroup)object).group;
-        CommandRange range = group.getRange();
-        return new String[] { group.getName(), "(" + first(range) + " - " + last(range) + ")" };
-      } else if (object instanceof AtomNode) {
-        AtomNode node = (AtomNode)object;
-        return new String[] { node.index + ":", Formatter.toString((DynamicAtom)node.atom) };
+      if (object instanceof AtomStream.Node) {
+        AtomStream.Node node = (AtomStream.Node)object;
+        CommandTreeNode data = node.getData();
+        if (data == null) {
+          // Copy before loaded. Not ideal, but this is unlikely.
+          return new String[] { "Loading..." };
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (data.getGroup().isEmpty() && data.hasCommands()) {
+          result.append(data.getCommands().getTo(0)).append(": ");
+          Command cmd = node.getCommand();
+          if (cmd == null) {
+            // Copy before loaded. Not ideal, but this is unlikely.
+            result.append("Loading...");
+          } else {
+            result.append(Formatter.toString(cmd, models.constants::getConstants));
+          }
+        } else {
+          result.append(data.getCommands().getFrom(0)).append(": ")
+              .append(data.getGroup()); // TODO add counts
+        }
+        return new String[] { result.toString() };
       }
       return new String[] { String.valueOf(object) };
     });
-    */
   }
 
   /*

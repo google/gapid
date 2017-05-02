@@ -49,6 +49,13 @@ public class ConstantSets {
     return Futures.allAsList(sets);
   }
 
+  public ListenableFuture<Service.ConstantSet> loadConstants(Service.StateTreeNode node) {
+    if (!node.hasConstants()) {
+      return Futures.immediateFuture(null);
+    }
+    return loadConstants(node.getConstants());
+  }
+
   public Service.ConstantSet getConstants(Path.ConstantSet path) {
     return cache.getIfPresent(path);
   }
