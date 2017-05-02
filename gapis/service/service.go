@@ -150,6 +150,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{}
 	case *Capture:
 		return &Value{&Value_Capture{v}}
+	case *Context:
+		return &Value{&Value_Context{v}}
 	case *Contexts:
 		return &Value{&Value_Contexts{v}}
 	case *Command:
