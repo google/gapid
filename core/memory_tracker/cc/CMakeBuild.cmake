@@ -41,7 +41,7 @@ if(NOT DISABLED_CXX)
 
   # TODO(qining): Add Windows support
 
-  if(NOT ANDROID AND NOT WIN32)
+  if(NOT ANDROID AND NOT WIN32 AND NOT GAPII_TARGET)
     add_executable(cc-memory-tracker-tests ${test_sourcs})
     find_package(PThread REQUIRED)
     use_gtest(cc-memory-tracker-tests)

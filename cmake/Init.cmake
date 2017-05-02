@@ -65,7 +65,12 @@ else()
 endif()
 
 # Toolchain target selection
-include("Toolchain/AndroidABI")
+if(GAPII_TARGET)
+    set(CMAKE_SYSTEM_NAME ${GAPII_TARGET})
+else()
+    include("Toolchain/AndroidABI")
+endif()
+
 if(ANDROID_ABI)
     set(ToolchainTarget "Android")
 elseif(CMAKE_SYSTEM_NAME)

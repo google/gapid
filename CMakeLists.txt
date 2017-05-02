@@ -51,6 +51,12 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake(${abi} ${CMAKE_SOURCE_DIR} "-DANDROID_ABI:STRING=${abi}")
 endforeach()
 
+if(ARMLINUX_GAPII)
+    set(GAPII_TOOLCHAIN "ArmLinux")
+    string(TOLOWER "${GAPII_TOOLCHAIN}" GAPII_PROJECT)
+    add_cmake(${GAPII_PROJECT} ${CMAKE_SOURCE_DIR} "-DGAPII_TARGET:STRING=${GAPII_TOOLCHAIN}")
+endif()
+
 # Third party libraries
 include(third_party/cityhash.cmake)
 include(third_party/khronos.cmake)
@@ -62,12 +68,14 @@ build_subdirectory(cmd)
 
 build_subdirectory(core)
 build_subdirectory(gapii)
+if(NOT GAPII_TARGET)
 build_subdirectory(gapil)
 build_subdirectory(gapir)
 build_subdirectory(gapis)
 build_subdirectory(gapidapk)
 build_subdirectory(test)
 build_subdirectory(tools)
+endif()
 
 scan_for_protos()
 

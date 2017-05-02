@@ -80,6 +80,9 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 		args = append(args, "-DMSYS2_PATH="+cfg.MSYS2Path.Slash())
 		env.AddPathStart("PATH", cfg.MSYS2Path.Join("mingw64/bin").System()) // Required to pick up DLLs
 	}
+	if cfg.ArmLinuxGapii {
+		args = append(args, "-DARMLINUX_GAPII=1")
+	}
 	switch options.Test {
 	case RunTests:
 	case BuildTests:

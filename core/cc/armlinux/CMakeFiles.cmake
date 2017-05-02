@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(sources "${CMAKE_CURRENT_SOURCE_DIR}/cc/main.cpp")
+# Generated globbing source file
+# This file will be automatically regenerated if deleted, do not edit by hand.
+# If you add a new file to the directory, just delete this file, run any cmake
+# build and the file will be recreated, check in the new version.
 
-if(NOT DISABLED_CXX)
-    if(ANDROID)
-        get_filename_component(glue "${ANDROID_NDK_ROOT}/sources/android/native_app_glue" ABSOLUTE)
-        add_library(gapir SHARED ${sources} "${glue}/android_native_app_glue.c")
-        target_include_directories(gapir PRIVATE "${glue}")
-    elseif(NOT GAPII_TARGET)
-        add_executable(gapir ${sources})
-        install(TARGETS gapir DESTINATION ${TARGET_INSTALL_PATH})
-    endif()
-    if(NOT GAPII_TARGET)
-        target_link_libraries(gapir gapir_static)
-    endif()
-endif()
+set(files
+    get_gles_proc_address.cpp
+    get_vulkan_proc_address.cpp
+    thread.cpp
+    
+)
+set(dirs
+    
+)

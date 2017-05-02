@@ -63,6 +63,7 @@ type Config struct {
 	NinjaPath      file.Path `desc:"Path to ninja executable"`
 	PythonPath     file.Path `desc:"Path to python executable"`
 	MSYS2Path      file.Path `desc:"Path to msys2 root" os:"windows"`
+	ArmLinuxGapii  bool      `desc:"Build additional gapii for armlinux"`
 }
 
 func defaults() Config {

@@ -30,6 +30,14 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
 endforeach()
 
+if(GAPII_PROJECT)
+    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${GAPII_PROJECT}")
+    add_cmake_target(${GAPII_PROJECT} VkLayer_VirtualSwapchain ${dst} "libVkLayer_VirtualSwapchain.so"
+        DEPENDS ${sources}
+        DEPENDEES gapii
+    )
+endif()
+
 if(NOT DISABLED_CXX)
     add_library(VkLayer_VirtualSwapchain SHARED ${sources})
     target_compile_options(VkLayer_VirtualSwapchain PRIVATE -fno-exceptions -fno-rtti)
@@ -46,7 +54,7 @@ if(NOT DISABLED_CXX)
         target_link_libraries(VkLayer_VirtualSwapchain STL::Lib NDK::Lib)
     endif()
 
-    if(NOT ANDROID)
+    if(NOT ANDROID AND NOT GAPII_TARGET)
         add_custom_command(TARGET VkLayer_VirtualSwapchain POST_BUILD
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 ${CMAKE_CURRENT_SOURCE_DIR}/VirtualSwapchainLayer.json

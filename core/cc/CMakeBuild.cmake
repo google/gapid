@@ -14,11 +14,20 @@
 
 glob_all_dirs()
 
+
 glob(sources
     PATH . gl ${PlatformSourcePath}
     INCLUDE ".cpp$"
     EXCLUDE "_test.cpp$"
 )
+
+if(GAPII_TARGET)
+glob(sources
+    PATH . gl posix armlinux
+    INCLUDE ".cpp$"
+    EXCLUDE "_test.cpp$"
+)
+endif()
 
 glob(test_sources
     PATH .
@@ -28,6 +37,11 @@ glob(test_sources
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     add_cmake_step(${abi} cc-core DEPENDS ${sources} ${android_files})
 endforeach()
+
+if(GAPII_PROJECT)
+    add_cmake_step(${GAPII_PROJECT} cc-core DEPENDS ${sources})
+endif()
+
 
 if(NOT DISABLED_CXX)
     add_library(cc-core ${sources})
@@ -44,8 +58,12 @@ if(NOT DISABLED_CXX)
         find_package(DLOpen REQUIRED)
         find_package(PThread REQUIRED)
         find_package(RT REQUIRED)
-        find_package(X11 REQUIRED)
-        target_link_libraries(cc-core DLOpen::Lib PThread::Lib RT::Lib X11::Lib)
+        if(GAPII_TARGET)
+            target_link_libraries(cc-core DLOpen::Lib PThread::Lib RT::Lib)
+        else()
+            find_package(X11 REQUIRED)
+            target_link_libraries(cc-core DLOpen::Lib PThread::Lib RT::Lib X11::Lib)
+        endif()
     endif()
 
     if(WIN32)
@@ -53,7 +71,7 @@ if(NOT DISABLED_CXX)
         target_link_libraries(cc-core Winsock::Lib)
     endif()
 
-    if(NOT ANDROID)
+    if(NOT ANDROID AND NOT GAPII_TARGET)
         add_executable(cc-core-tests ${test_sources})
         use_gtest(cc-core-tests)
         target_link_libraries(cc-core-tests cc-core)
