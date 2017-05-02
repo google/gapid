@@ -486,7 +486,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                   VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                   nullptr,
                   info.mSize,
-                  index
+                  host_buffer_memory_index
               };
 
               device_functions.vkAllocateMemory(
@@ -753,7 +753,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                     nullptr,
                     buffer_memory_requirements.msize,
-                    index
+                    host_buffer_memory_index
                 };
 
                 uint32_t res = device_functions.vkAllocateMemory(
