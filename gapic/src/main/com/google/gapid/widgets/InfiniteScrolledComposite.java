@@ -197,8 +197,8 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
           updateLocation.accept(-pos.intValue());
         } else if (pos.compareTo(max.subtract(bigMid)) >= 0) {
           // Going to the bottom.
-          offset = max.subtract(bigMid);
-          int selection = pos.subtract(offset).min(bigMid).intValue() + mid;
+          offset = max.subtract(bigMid).subtract(bigMid);
+          int selection = pos.min(max).subtract(offset).intValue();
           bar.setSelection(selection);
           updateLocation.accept(-selection);
         } else {
