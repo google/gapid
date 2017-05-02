@@ -25,6 +25,12 @@ message ContextListResolvable {
 	path.Capture capture = 1;
 }
 
+message InternalContext {
+	string id = 1;
+	path.API api = 2;
+	string name = 3;
+}
+
 message CommandTreeResolvable {
 	path.CommandTree path = 1;
 }

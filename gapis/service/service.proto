@@ -575,12 +575,10 @@ message Resource {
 
 // Context represents a single rendering context in the capture.
 message Context {
-  // The context's path.
-  path.Context path = 1;
   // The context name.
-  string name = 2;
+  string name = 1;
   // The API that this context belongs to.
-  path.API api = 3;
+  path.API api = 2;
 }
 
 // CommandTree represents a command tree hierarchy.

@@ -31,30 +31,28 @@ import (
 )
 
 // Contexts resolves the list of contexts belonging to a capture.
-func Contexts(ctx context.Context, p *path.Contexts) ([]*service.Context, error) {
+func Contexts(ctx context.Context, p *path.Contexts) (*service.Contexts, error) {
 	obj, err := database.Build(ctx, &ContextListResolvable{p.Capture})
 	if err != nil {
 		return nil, err
 	}
-	return obj.([]*service.Context), nil
+	return obj.(*service.Contexts), nil
 }
 
 // Context resolves the single context.
 func Context(ctx context.Context, p *path.Context) (*service.Context, error) {
-	contexts, err := Contexts(ctx, p.Capture.Contexts())
+	boxed, err := database.Resolve(ctx, p.Id.ID())
 	if err != nil {
-		return nil, err
-	}
-	id := p.Id.ID()
-	for _, c := range contexts {
-		if c.Path.Id.ID() == id {
-			return c, nil
+		return nil, &service.ErrInvalidPath{
+			Reason: messages.ErrContextDoesNotExist(p.Id),
+			Path:   p.Path(),
 		}
 	}
-	return nil, &service.ErrInvalidPath{
-		Reason: messages.ErrContextDoesNotExist(p.Id),
-		Path:   p.Path(),
-	}
+	c := boxed.(*InternalContext)
+	return &service.Context{
+		Name: c.Name,
+		Api:  c.Api,
+	}, nil
 }
 
 // Resolve implements the database.Resolver interface.
@@ -67,7 +65,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	seen := map[gfxapi.ContextID]int{}
-	contexts := []*service.Context{}
+	contexts := []*path.Context{}
 
 	var currentAtomIndex int
 	var currentAtom atom.Atom
@@ -97,14 +95,18 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			if !ok {
 				idx = len(contexts)
 				seen[ctxID] = idx
-				contexts = append(contexts, &service.Context{
-					Path: r.Capture.Context(path.NewID(id.ID(ctxID))),
-					Name: context.Name(),
+				id, err := database.Store(ctx, &InternalContext{
+					Id:   string(ctxID[:]),
 					Api:  &path.API{Id: path.NewID(id.ID(api.ID()))},
+					Name: context.Name(),
 				})
+				if err != nil {
+					return nil, err
+				}
+				contexts = append(contexts, r.Capture.Context(path.NewID(id)))
 			}
 		}
 	}
 
-	return contexts, nil
+	return &service.Contexts{List: contexts}, nil
 }
