@@ -36,7 +36,7 @@ import java.util.logging.Logger;
  * Model containing the different API contexts of a capture.
  */
 public class ApiContext
-    extends CaptureDependentModel<ApiContext.FilteringContext[], List<Service.Value>> {
+    extends CaptureDependentModel<ApiContext.FilteringContext[], List<ApiContext.IdAndContext>> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -63,29 +63,28 @@ public class ApiContext
   }
 
   @Override
-  protected ListenableFuture<List<Service.Value>> doLoad(Path.Any path) {
+  protected ListenableFuture<List<IdAndContext>> doLoad(Path.Any path) {
     return Futures.transformAsync(client.get(path), val -> {
-      List<ListenableFuture<Service.Value>> contexts = Lists.newArrayList();
+      List<ListenableFuture<ApiContext.IdAndContext>> contexts = Lists.newArrayList();
       for (Path.Context ctx : val.getContexts().getListList()) {
-        contexts.add(client.get(Path.Any.newBuilder().setContext(ctx).build()));
+        contexts.add(Futures.transform(client.get(Path.Any.newBuilder().setContext(ctx).build()),
+            value -> new IdAndContext(ctx, value.getContext())));
       }
       return Futures.allAsList(contexts);
     });
   }
 
   @Override
-  protected FilteringContext[] unbox(List<Service.Value> contexts) {
+  protected FilteringContext[] unbox(List<IdAndContext> contexts) {
     if (contexts.isEmpty()) {
       return new FilteringContext[0];
     } else if (contexts.size() == 1) {
-      return new FilteringContext[] {
-          FilteringContext.withoutFilter(contexts.get(0).getContext())
-      };
+      return new FilteringContext[] { FilteringContext.withoutFilter(contexts.get(0)) };
     } else {
       FilteringContext[] result = new FilteringContext[contexts.size() + 1];
       result[0] = FilteringContext.ALL;
       for (int i = 0; i < contexts.size(); i++) {
-        result[i + 1] = new FilteringContext(contexts.get(i).getContext());
+        result[i + 1] = new FilteringContext(contexts.get(i));
       }
       return result;
     }
@@ -143,10 +142,11 @@ public class ApiContext
   }
 
   /**
-   * A {@link Context} wrapper to allow filtering of commands.
+   * A {@link com.google.gapid.proto.service.Service.Context} wrapper to allow filtering of the
+   * command tree.
    */
   public static class FilteringContext {
-    public static final FilteringContext ALL = new FilteringContext(null) {
+    public static final FilteringContext ALL = new FilteringContext(null, null) {
       @Override
       public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
         return path;
@@ -173,14 +173,20 @@ public class ApiContext
       }
     };
 
+    private final Path.ID id;
     private final Service.Context context;
 
-    public FilteringContext(Service.Context context) {
+    public FilteringContext(IdAndContext context) {
+      this(context.id, context.context);
+    }
+
+    protected FilteringContext(Path.ID id, Service.Context context) {
+      this.id = id;
       this.context = context;
     }
 
-    public static FilteringContext withoutFilter(Service.Context context) {
-      return new FilteringContext(context) {
+    public static FilteringContext withoutFilter(IdAndContext context) {
+      return new FilteringContext(context.id, context.context) {
         @Override
         public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
           return path;
@@ -194,11 +200,11 @@ public class ApiContext
     }
 
     public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
-      return path.setContext(context.getPath().getId());
+      return path.setContext(id);
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {
-      return path.setContext(context.getPath().getId());
+      return path.setContext(id);
     }
 
     @Override
@@ -210,15 +216,15 @@ public class ApiContext
     public boolean equals(Object obj) {
       if (this == obj) {
         return true;
-      } else if (!(obj instanceof FilteringContext) || obj == ALL) {
+      } else if (obj == ALL || !(obj instanceof FilteringContext)) {
         return false;
       }
-      return Objects.equals(context.getPath(), ((FilteringContext)obj).context.getPath());
+      return Objects.equals(id, ((FilteringContext)obj).id);
     }
 
     @Override
     public int hashCode() {
-      return context.getPath().hashCode();
+      return id.hashCode();
     }
   }
 
@@ -233,5 +239,15 @@ public class ApiContext
      * Event indicating that the currently selected context has changed.
      */
     public default void onContextSelected(FilteringContext context) { /* empty */ }
+  }
+
+  protected static class IdAndContext {
+    public final Path.ID id;
+    public final Service.Context context;
+
+    public IdAndContext(Path.Context path, Service.Context context) {
+      this.id = path.getId();
+      this.context = context;
+    }
   }
 }

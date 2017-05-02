@@ -29,8 +29,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 
-import java.util.Arrays;
-
 /**
  * Dropdown that allows the user to select which API context to filter the commands by.
  */
