@@ -42,7 +42,7 @@ func env(cfg Config) *shell.Env {
 		path = append(path, system32.System(), windows.System())
 	} else {
 		added := map[file.Path]bool{}
-		for _, name := range []string{"sh", "uname", "sed", "clang", "gcc", "node"} {
+		for _, name := range []string{"sh", "uname", "sed", "clang", "gcc", "node", "adb"} {
 			exe, err := file.FindExecutable(name)
 			if err != nil {
 				continue
