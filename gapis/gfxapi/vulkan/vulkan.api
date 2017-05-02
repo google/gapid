@@ -7370,6 +7370,17 @@ cmd void vkCmdEndRenderPass(
 }
 
 @internal
+class CmdExecuteCommands {
+  map!(u32, VkCommandBuffer) CommandBuffers
+}
+
+sub void doCmdExecuteCommands(CmdExecuteCommands cmds) {
+  for i in (0 .. len(cmds.CommandBuffers)) {
+    execCommands(cmds.CommandBuffers[as!u32(i)])
+  }
+}
+
+@internal
 class RecreateCmdExecuteCommandsData {
   map!(u32, VkCommandBuffer) CommandBuffers
 }
@@ -7394,7 +7405,11 @@ cmd void vkCmdExecuteCommands(
   for i in (0 .. commandBufferCount) {
     recreate_data.CommandBuffers[as!u32(i)] = cmd_buffers[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+  cmdExecuteCommands := CmdExecuteCommands()
+  for i in (0 .. commandBufferCount) {
+    cmdExecuteCommands.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+  }
+  addCmd(commandBuffer, recreate_data, cmdExecuteCommands, doCmdExecuteCommands)
 }
 
 // ----------------------------------------------------------------------------
