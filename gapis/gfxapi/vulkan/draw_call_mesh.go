@@ -95,9 +95,6 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 			return nil, fmt.Errorf("Cannot found last used index buffer")
 		}
 		indices := getIndicesData(ctx, s, lastDrawInfo.BoundIndexBuffer, p.IndexCount, p.FirstIndex, p.VertexOffset)
-		ib = &gfxapi.IndexBuffer{
-			Indices: []uint32(indices),
-		}
 
 		// Calculate the vertex count and the first vertex
 		maxIndex := uint32(0)
@@ -111,11 +108,21 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 			}
 		}
 		vertexCount := maxIndex - minIndex + 1
-
 		// Get the current bound vertex buffers
 		vb, err = getVertexBuffers(ctx, s, vertexCount, minIndex)
 		if err != nil {
 			return nil, err
+		}
+
+		// Shift indices, as we only extract the vertex data from minIndex to
+		// maxIndex, we need to minus the minimum index value make the new indices
+		// value valid for the extracted vertices value.
+		shiftedIndices := make([]uint32, len(indices))
+		for i, index := range indices {
+			shiftedIndices[i] = index - minIndex
+		}
+		ib = &gfxapi.IndexBuffer{
+			Indices: []uint32(shiftedIndices),
 		}
 
 	} else if p := lastDrawInfo.CommandParameters.DrawIndirect; p != nil {
