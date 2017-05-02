@@ -204,7 +204,7 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 			// TODO: Check if device is a LAD, and if so filter by supportsLAD.
 			ctx := log.V{
 				"api":    fmt.Sprintf("%T", api),
-				"device": instance,
+				"device": instance.Name,
 			}.Bind(ctx)
 			priority := api.GetReplayPriority(ctx, instance, state.MemoryLayout)
 			p = p * priority
