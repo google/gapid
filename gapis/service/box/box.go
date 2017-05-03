@@ -391,5 +391,4 @@ func (s slice) Base() uint64                            { return s.base }
 func (s slice) Count() uint64                           { return s.count }
 func (s slice) Pool() memory.PoolID                     { return s.pool }
 func (s slice) ElementSize(*device.MemoryLayout) uint64 { return 1 }
-func (s slice) ElementTypeName() string                 { return "kill me" }
 func (s slice) Range(*device.MemoryLayout) memory.Range { return memory.Range{} }
