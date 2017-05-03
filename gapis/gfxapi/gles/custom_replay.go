@@ -118,14 +118,14 @@ func (i QueryId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap boo
 
 func (i GLsync) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
-	if ctx != nil && i.Address != 0 {
+	if ctx != nil && !i.IsNullptr() {
 		key, remap = objectKey{&ctx.SharedObjects.SyncObjects, i}, true
 	}
 	return
 }
 
 func (i GLsync) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	return value.AbsolutePointer(i.Address)
+	return value.AbsolutePointer(i.addr)
 }
 
 func (i SamplerId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
@@ -170,38 +170,38 @@ func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, r
 func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
 	c := GetContext(s)
 	if c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer != 0 {
-		return value.AbsolutePointer(i.Address)
+		return value.AbsolutePointer(i.addr)
 	} else {
-		return value.ObservedPointer(i.Address)
+		return value.ObservedPointer(i.addr)
 	}
 }
 
 func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
 	if GetContext(s).BoundBuffers.ArrayBuffer != 0 {
-		return value.AbsolutePointer(i.Address)
+		return value.AbsolutePointer(i.addr)
 	} else {
-		return value.ObservedPointer(i.Address)
+		return value.ObservedPointer(i.addr)
 	}
 }
 
 func (i TexturePointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	if i.Address == 0 || GetContext(s).BoundBuffers.PixelUnpackBuffer != 0 {
-		return value.AbsolutePointer(i.Address)
+	if i.addr == 0 || GetContext(s).BoundBuffers.PixelUnpackBuffer != 0 {
+		return value.AbsolutePointer(i.addr)
 	} else {
-		return value.ObservedPointer(i.Address)
+		return value.ObservedPointer(i.addr)
 	}
 }
 
 func (i BufferDataPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	if i.Address == 0 {
-		return value.AbsolutePointer(i.Address)
+	if i.addr == 0 {
+		return value.AbsolutePointer(i.addr)
 	} else {
-		return value.ObservedPointer(i.Address)
+		return value.ObservedPointer(i.addr)
 	}
 }
 
 func (i GLeglImageOES) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	return value.AbsolutePointer(i.Address)
+	return value.AbsolutePointer(i.addr)
 }
 
 func OnSwitchThread(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
@@ -229,7 +229,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Context.Address == 0 {
+	if ω.Context.addr == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
@@ -281,7 +281,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Hglrc.Address == 0 {
+	if ω.Hglrc.addr == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Hglrc].Identifier)
@@ -302,7 +302,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *gfxapi.State, b *
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Ctx.Address == 0 {
+	if ω.Ctx.addr == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx].Identifier)
@@ -332,7 +332,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b 
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Ctx.Address == 0 {
+	if ω.Ctx.addr == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Ctx].Identifier)

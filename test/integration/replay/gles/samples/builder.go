@@ -52,7 +52,7 @@ func (b *builder) p() memory.Pointer {
 	if err != nil {
 		panic(err)
 	}
-	return memory.Pointer{Address: base, Pool: memory.ApplicationPool}
+	return memory.BytePtr(base, memory.ApplicationPool)
 }
 
 func (b *builder) data(ctx context.Context, v ...interface{}) atom.AllocResult {

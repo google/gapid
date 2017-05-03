@@ -188,7 +188,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		if boundTexture, err := subGetBoundTextureOrErrorInvalidEnum(ctx, a, nil, s, GetState(s), nil, target); err != nil {
 			log.W(ctx, "Can not get bound texture for: %v", a)
 		} else {
-			if boundTexture.EGLImage != GLeglImageOES(memory.Nullptr) {
+			if !boundTexture.EGLImage.IsNullptr() {
 				origUnpackAlignment := c.PixelStorage.UnpackAlignment
 				img := boundTexture.Texture2D[0]
 				data := eglImageData[boundTexture.EGLImage]
@@ -218,7 +218,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		for name, att := range fb.ColorAttachments {
 			if att.Type == GLenum_GL_TEXTURE {
 				tex := att.Texture
-				if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+				if !tex.EGLImage.IsNullptr() {
 					dID := i.Derived()
 					t := newTweaker(ctx, out, dID)
 					s := out.State()
@@ -558,7 +558,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					}
 
 					glDrawElements := *a
-					glDrawElements.Indices.Address = 0
+					glDrawElements.Indices.addr = 0
 					out.MutateAndWrite(ctx, i, &glDrawElements)
 					return
 
@@ -569,7 +569,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// pooled buffer.
 					data := c.SharedObjects.Buffers[ib].Data
 					indexSize := DataTypeSize(a.IndicesType)
-					start := min(a.Indices.Address, data.count)                            // Clamp
+					start := min(a.Indices.addr, data.count)                               // Clamp
 					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
 					limits := e.calcIndexLimits(data.Slice(start, end, s.MemoryLayout), indexSize)
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
@@ -1067,8 +1067,10 @@ func moveClientVBsToVAs(
 				if stride == 0 {
 					stride = size
 				}
-				base := memory.Pointer(a.Data) // Always start from the 0'th vertex to simplify logic.
-				rng := base.Range(uint64(int(first+count-1)*stride + size))
+				rng := memory.Range{
+					Base: a.Data.addr, // Always start from the 0'th vertex to simplify logic.
+					Size: uint64(int(first+count-1)*stride + size),
+				}
 				interval.Merge(&rngs, rng.Span(), true)
 			}
 		}
@@ -1094,7 +1096,7 @@ func moveClientVBsToVAs(
 
 	// Fill the array-buffers with the observed memory data.
 	for i, rng := range rngs {
-		base := memory.Pointer{Address: rng.First, Pool: memory.ApplicationPool}
+		base := memory.BytePtr(rng.First, memory.ApplicationPool)
 		size := GLsizeiptr(rng.Count)
 		t.GlBindBuffer_ArrayBuffer(ids[i])
 		out.MutateAndWrite(ctx, dID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
@@ -1106,9 +1108,9 @@ func moveClientVBsToVAs(
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if a, ok := clientVAs[arr]; ok {
 				a := *a // Copy
-				i := interval.IndexOf(&rngs, a.Data.Address)
+				i := interval.IndexOf(&rngs, a.Data.addr)
 				t.GlBindBuffer_ArrayBuffer(ids[i])
-				a.Data = NewVertexPointer(a.Data.Address - rngs[i].First) // Offset
+				a.Data = VertexPointer{a.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
 				out.MutateAndWrite(ctx, dID, &a)
 			}
 		}

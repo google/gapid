@@ -60,14 +60,14 @@ func (v *Value) AssignTo(p interface{}) error {
 
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
-	tyMemoryPointer  = reflect.TypeOf(memory.Pointer{})
+	tyMemoryPointer  = reflect.TypeOf((*memory.Pointer)(nil)).Elem()
 	tyMemorySlice    = reflect.TypeOf((*memory.Slice)(nil)).Elem()
 	noValue          = reflect.Value{}
 )
 
 // IsMemoryPointer returns true if t is a (or is an alias of a) memory.Pointer.
 func IsMemoryPointer(t reflect.Type) bool {
-	return t.ConvertibleTo(tyMemoryPointer)
+	return t.Implements(tyMemoryPointer)
 }
 
 // IsMemorySlice returns true if t implements memory.Slice.
@@ -78,7 +78,7 @@ func IsMemorySlice(t reflect.Type) bool {
 // AsMemoryPointer returns v cast to a memory.Pointer. IsMemoryPointer must
 // return true for the type of v.
 func AsMemoryPointer(v reflect.Value) memory.Pointer {
-	return v.Convert(tyMemoryPointer).Interface().(memory.Pointer)
+	return v.Interface().(memory.Pointer)
 }
 
 // AsMemorySlice returns v cast to a memory.Slice. IsMemorySlice must
@@ -102,18 +102,11 @@ func (b *boxer) val(v reflect.Value) *Value {
 	}
 
 	t := v.Type()
-	switch t.Kind() {
-	case reflect.Interface:
-		if v.IsNil() {
-			return &Value{0, &Value_Reference{&Reference{&Reference_Null{}}}}
-		}
-		return b.val(v.Elem())
-	}
 
 	switch {
 	case IsMemoryPointer(t):
 		p := AsMemoryPointer(v)
-		return &Value{0, &Value_Pointer{&Pointer{p.Address, uint32(p.Pool)}}}
+		return &Value{0, &Value_Pointer{&Pointer{p.Address(), uint32(p.Pool())}}}
 	case IsMemorySlice(t):
 		s := v.Interface().(memory.Slice)
 		return &Value{0, &Value_Slice{&Slice{
@@ -122,6 +115,14 @@ func (b *boxer) val(v reflect.Value) *Value {
 			Count: s.Count(),
 			Root:  s.Root(),
 		}}}
+	}
+
+	switch t.Kind() {
+	case reflect.Interface:
+		if v.IsNil() {
+			return &Value{0, &Value_Reference{&Reference{&Reference_Null{}}}}
+		}
+		return b.val(v.Elem())
 	}
 
 	id, ok := b.values[v]
@@ -237,7 +238,7 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		}
 		panic(fmt.Errorf("Unsupported POD Value %+v", v))
 	case *Value_Pointer:
-		p := memory.Pointer{Address: v.Pointer.Address, Pool: memory.PoolID(v.Pointer.Pool)}
+		p := memory.BytePtr(v.Pointer.Address, memory.PoolID(v.Pointer.Pool))
 		return reflect.ValueOf(p)
 	case *Value_Slice:
 		p := NewSlice(

@@ -652,7 +652,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	result := a.Result
 	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
 
-	createInfo.PCode = U32ᶜᵖ(code.Ptr())
+	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = uint64(len(codeSlice)) * 4
 	// TODO(qining): The following is a hack to work around memory.Write().
 	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
@@ -699,7 +699,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	pShaderModule := memory.Pointer(a.PShaderModule)
 	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
 
-	createInfo.PCode = U32ᶜᵖ(code.Ptr())
+	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = uint64(len(codeSlice)) * 4
 	// TODO(qining): The following is a hack to work around memory.Write().
 	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but

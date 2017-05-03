@@ -250,7 +250,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		// Build new attachments data, new create info and new atom
 		newAttachments := atom.Must(atom.AllocData(ctx, s, attachments))
-		info.PAttachments = VkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
+		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
 		newInfo := atom.Must(atom.AllocData(ctx, s, info))
 		newAtom := NewVkCreateRenderPass(createRenderPass.Device,
 			newInfo.Ptr(),
@@ -291,7 +291,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		// Build new attachments data, new create info and new atom
 		newAttachments := atom.Must(atom.AllocData(ctx, s, attachments))
-		info.PAttachments = VkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
+		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
 		newInfo := atom.Must(atom.AllocData(ctx, s, info))
 		newAtom := NewRecreateRenderPass(recreateRenderPass.Device,
 			newInfo.Ptr(),

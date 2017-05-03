@@ -14,36 +14,51 @@
 
 package memory
 
-import (
-	"context"
-	"fmt"
-
-	"github.com/google/gapid/core/data/protoconv"
-	"github.com/google/gapid/gapis/memory/memory_pb"
-)
-
 // Nullptr is a zero-address pointer in the application pool.
-var Nullptr = Pointer{Pool: ApplicationPool}
+var Nullptr = BytePtr(0, ApplicationPool)
 
 // Values smaller than this are not legal addresses.
 const lowMem = uint64(1) << 16
 const bits32 = uint64(1) << 32
 
 // Pointer is the type representing a memory pointer.
-type Pointer struct {
-	Address uint64 // The memory address.
-	Pool    PoolID // The memory pool.
+type Pointer interface {
+	// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
+	IsNullptr() bool
+
+	// Address returns the pointer's memory address.
+	Address() uint64
+
+	// Pool returns the memory pool.
+	Pool() PoolID
+
+	// Offset returns the pointer offset by n bytes.
+	Offset(n uint64) Pointer
 }
+
+// BytePtr returns a pointer to bytes.
+func BytePtr(addr uint64, pool PoolID) Pointer { return ptr{addr, pool} }
+
+// ptr is a pointer to a basic type.
+type ptr struct {
+	addr uint64
+	pool PoolID
+}
+
+// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
+func (p ptr) IsNullptr() bool { return p.addr == 0 && p.pool == ApplicationPool }
+
+// Address returns the pointer's memory address.
+func (p ptr) Address() uint64 { return p.addr }
+
+// Pool returns the memory pool.
+func (p ptr) Pool() PoolID { return p.pool }
 
 // Offset returns the pointer offset by n bytes.
-func (p Pointer) Offset(n uint64) Pointer {
-	return Pointer{Address: p.Address + n, Pool: p.Pool}
-}
+func (p ptr) Offset(n uint64) Pointer { return ptr{p.addr + n, p.pool} }
 
-// Range returns a Range of size s with the base of this pointer.
-func (p Pointer) Range(s uint64) Range {
-	return Range{Base: p.Address, Size: s}
-}
+/*
+// TODO: Pointer string utility.
 
 func (p Pointer) String() string {
 	if p.Pool == PoolID(0) {
@@ -60,28 +75,4 @@ func (p Pointer) String() string {
 	}
 	return fmt.Sprintf("0x%.16x@%d", p.Address, p.Pool)
 }
-
-func (p Pointer) ToProto() *memory_pb.Pointer {
-	return &memory_pb.Pointer{
-		Address: p.Address,
-		Pool:    uint32(p.Pool),
-	}
-}
-
-func PointerFrom(from *memory_pb.Pointer) Pointer {
-	return Pointer{
-		Address: from.Address,
-		Pool:    PoolID(from.Pool),
-	}
-}
-
-func init() {
-	protoconv.Register(
-		func(ctx context.Context, a Pointer) (*memory_pb.Pointer, error) {
-			return a.ToProto(), nil
-		},
-		func(ctx context.Context, a *memory_pb.Pointer) (Pointer, error) {
-			return PointerFrom(a), nil
-		},
-	)
-}
+*/

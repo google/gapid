@@ -67,7 +67,7 @@ func (a *GlDrawElements) getIndices(
 		if indexBuffer == nil {
 			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
 		}
-		offset := uint64(a.Indices.Address)
+		offset := a.Indices.addr
 		decoder = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Decoder(ctx, s)
 	}
 

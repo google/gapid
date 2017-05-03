@@ -120,8 +120,8 @@ func TestDeadAtomRemoval(t *testing.T) {
 		},
 	}
 
-	ctxHandle1 := memory.Pointer{Pool: memory.ApplicationPool, Address: 1}
-	ctxHandle2 := memory.Pointer{Pool: memory.ApplicationPool, Address: 2}
+	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)
+	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
 	prologue := []atom.Atom{
 		NewEglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1),
 		atom.WithExtras(

@@ -268,8 +268,8 @@ func TestBoxMemoryType(t *testing.T) {
 
 func TestBoxUnboxMemory(t *testing.T) {
 	val := Memory{
-		P: memory.Pointer{Address: 1234, Pool: memory.PoolID(555)},
-		S: box.NewSlice(1234, 1256, 42, memory.PoolID(333)),
+		P: memory.BytePtr(1234, 555),
+		S: box.NewSlice(1234, 1256, 42, 333),
 	}
 	boxed := box.NewValue(val)
 	var unboxed Memory
