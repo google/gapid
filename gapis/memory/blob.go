@@ -51,7 +51,7 @@ func (r *blob) Size() uint64 {
 	return uint64(len(r.data))
 }
 
-func (r *blob) Slice(rng Range) Slice {
+func (r *blob) Slice(rng Range) Data {
 	return Blob(r.data[rng.First() : rng.Last()+1])
 }
 
@@ -68,12 +68,12 @@ func (r *blob) NewReader(ctx context.Context) io.Reader {
 }
 
 // Blob returns a read-only Slice that wraps data.
-func Blob(data []byte) Slice {
+func Blob(data []byte) Data {
 	return &blob{data: data}
 }
 
-// Data returns a read-only Slice that contains the encoding of data.
-func Data(layout *device.MemoryLayout, data ...interface{}) Slice {
+// NewData returns a read-only Slice that contains the encoding of data.
+func NewData(layout *device.MemoryLayout, data ...interface{}) Data {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, layout.GetEndian())
 	for _, d := range data {
