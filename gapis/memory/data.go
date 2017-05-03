@@ -21,9 +21,9 @@ import (
 	"github.com/google/gapid/core/data/id"
 )
 
-// Slice is the interface for a data source that can be resolved to a byte slice
-// with Get, or 'sliced' to a subset of the data source.
-type Slice interface {
+// Data is the interface for a data source that can be resolved to a byte
+// slice with Get, or 'sliced' to a subset of the data source.
+type Data interface {
 	// Get writes the bytes representing the slice to out, starting at offset
 	// bytes. This is equivalent to: copy(out, data[offset:]).
 	Get(ctx context.Context, offset uint64, out []byte) error
@@ -39,12 +39,12 @@ type Slice interface {
 	// Size returns the number of bytes that would be returned by calling Get.
 	Size() uint64
 
-	// Slice returns a new Slice referencing a subset range of the data.
+	// Slice returns a new Data referencing a subset range of the data.
 	// The range r is relative to the base of the Slice. For example a slice of
 	// [0, 4] would return a Slice referencing the first 5 bytes of this Slice.
 	// Attempting to slice outside the range of this Slice will result in a
 	// panic.
-	Slice(r Range) Slice
+	Slice(r Range) Data
 
 	// ValidRanges returns the list of slice-relative memory ranges that contain
 	// valid (non-zero) data that can be read with Get.
