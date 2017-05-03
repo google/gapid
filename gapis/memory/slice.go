@@ -36,10 +36,6 @@ type Slice interface {
 	// ElementSize returns the size in bytes of a single element in the slice.
 	ElementSize(*device.MemoryLayout) uint64
 
-	// ElementTypeName returns the name of the element type.
-	// TODO: Legacy. Kill.
-	ElementTypeName() string
-
 	// Range returns the memory range this slice represents in the underlying pool.
 	Range(*device.MemoryLayout) Range
 }

@@ -459,11 +459,6 @@
     {{end}}
   }
 
-  // ElementTypeName returns the name of the type of element in {{$slice_ty}}.
-  func (s {{$slice_ty}}) ElementTypeName() string {
-    return "{{Replace "ᵖ" "*" (Replace "ᶜ" "" $el_ty)}}"
-  }
-
   // Range returns the memory range this slice represents in the underlying pool.
   func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) memory.Range {
     return memory.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
