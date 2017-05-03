@@ -99,7 +99,8 @@ func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect
 		seen[s] = d
 		return reflectCopy(d.Elem(), s.Elem(), path, seen)
 	default:
-		d.Set(s)
+		v := s.Convert(d.Type())
+		d.Set(v)
 		return nil
 	}
 }
