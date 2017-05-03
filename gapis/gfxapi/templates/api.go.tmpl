@@ -262,7 +262,7 @@
     if start > end {
       panic(fmt.Errorf("Slice start (%d) is greater than the end (%d)", start, end))
     }
-    return {{$slice_ty}}{SliceInfo: memory.SliceInfo{Root: p.Address, Base: p.Address + start * p.ElementSize(ϟl), Count: end-start, Pool: p.Pool}}
+    return {{$slice_ty}}{root: p.Address, base: p.Address + start * p.ElementSize(ϟl), count: end-start, pool: p.Pool}
   }
 
   // Check interface conformance
@@ -311,7 +311,7 @@
     // any pointer fields.
     ϟb.Write(s.Range(ϟs.MemoryLayout), s.ResourceID(ϟctx, ϟs))
     d := s.Decoder(ϟctx, ϟs)
-    base := value.ObservedPointer(s.SliceInfo.Base)
+    base := value.ObservedPointer(s.base)
     // If there are no members, then lets not have Go complain
     // about unused variables.
     _ = d
@@ -319,7 +319,7 @@
     offset := uint64(0)
     _ = offset // Silence warnings for objects with no fields
   {{end}}
-  for i := uint64(0); i < s.SliceInfo.Count; i++ {
+  for i := uint64(0); i < s.count; i++ {
     {{Template "ReadStructFieldsWithRemapping" $}}
   }
 {{end}}
@@ -395,7 +395,10 @@
 
   // {{$slice_ty}} is a slice of {{$el_ty}}.
   type {{$slice_ty}} struct {
-    memory.SliceInfo
+    root  uint64        // Original pointer this slice derives from.
+    base  uint64        // Address of first element.
+    count uint64        // Number of elements in the slice.
+    pool  memory.PoolID // The pool identifier.
   }
 
   {{if $el_is_char}}
@@ -407,7 +410,7 @@
       id := ϟs.NextPoolID
       ϟs.Memory[id] = pool
       ϟs.NextPoolID++
-      return {{$slice_ty}}{ SliceInfo: memory.SliceInfo{ Count: uint64(len(str)), Pool: id } }
+      return {{$slice_ty}}{ count: uint64(len(str)), pool: id }
     }
   {{end}}
 
@@ -416,37 +419,37 @@
     id := ϟs.NextPoolID
     ϟs.Memory[id] = &memory.Pool{}
     ϟs.NextPoolID++
-    return {{$slice_ty}}{ SliceInfo: memory.SliceInfo{ Count: count, Pool: id } }
+    return {{$slice_ty}}{ count: count, pool: id }
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
   func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
     pool := &memory.Pool{}
-    pool.Write(0, ϟs.Memory[s.SliceInfo.Pool].Slice(s.Range(ϟs.MemoryLayout)))
+    pool.Write(0, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
     id := ϟs.NextPoolID
     ϟs.Memory[id] = pool
     ϟs.NextPoolID++
-    dst := {{$slice_ty}}{ SliceInfo: memory.SliceInfo{ Count: s.SliceInfo.Count, Pool: id } }
+    dst := {{$slice_ty}}{ count: s.count, pool: id }
     return dst
   }
 
 	// Root returns the original pointer this slice derives from.
-	func (s {{$slice_ty}}) Root() uint64 { return s.SliceInfo.Root }
+	func (s {{$slice_ty}}) Root() uint64 { return s.root }
 
 	// Base returns the address of first element.
-	func (s {{$slice_ty}}) Base() uint64 { return s.SliceInfo.Base }
+	func (s {{$slice_ty}}) Base() uint64 { return s.base }
 
 	// Count returns the number of elements in the slice.
-	func (s {{$slice_ty}}) Count() uint64 { return s.SliceInfo.Count }
+	func (s {{$slice_ty}}) Count() uint64 { return s.count }
 
 	// Pool returns the the pool identifier.
-	func (s {{$slice_ty}}) Pool() memory.PoolID { return s.SliceInfo.Pool }
+	func (s {{$slice_ty}}) Pool() memory.PoolID { return s.pool }
 
   // ElementSize returns the size in bytes of an element that {{$slice_ty}} points to.
   func (s {{$slice_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
     {{if $el_is_ptr}}
-      if s.SliceInfo.Pool == memory.ApplicationPool {
+      if s.pool == memory.ApplicationPool {
         return uint64(ϟl.GetPointer().GetSize())
       } else {
         return 12
@@ -463,13 +466,13 @@
 
   // Range returns the memory range this slice represents in the underlying pool.
   func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) memory.Range {
-    return memory.Range{Base: s.SliceInfo.Base, Size: s.SliceInfo.Count * s.ElementSize(ϟl) }
+    return memory.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
   }
 
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
   func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟs *gfxapi.State) id.ID {
-    id, err := ϟs.Memory[s.SliceInfo.Pool].Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
+    id, err := ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
     if err != nil {
       panic(err)
     }
@@ -478,12 +481,12 @@
 
   // Decoder returns a memory decoder for the slice.
   func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) binary.Reader {
-    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.SliceInfo.Pool].Slice(s.Range(ϟs.MemoryLayout)))
+    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
   }
 
   // Encoder returns a memory encoder for the slice.
   func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) binary.Writer {
-    return ϟs.MemoryEncoder(ϟs.Memory[s.SliceInfo.Pool], s.Range(ϟs.MemoryLayout))
+    return ϟs.MemoryEncoder(ϟs.Memory[s.pool], s.Range(ϟs.MemoryLayout))
   }
 
   {{if not $el_is_void}}
@@ -491,23 +494,23 @@
     // The returned slice length will be calculated so that the returned slice is
     // no longer (in bytes) than s.
     func As{{$slice_ty}}(s memory.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
-      out := {{$slice_ty}}{ SliceInfo: memory.SliceInfo{
-        Root: s.Root(),
-        Base: s.Base(),
-        Pool: s.Pool(),
-      }}
-      out.SliceInfo.Count = (s.Count() * s.ElementSize(ϟl)) / out.ElementSize(ϟl)
+      out := {{$slice_ty}}{
+        root: s.Root(),
+        base: s.Base(),
+        pool: s.Pool(),
+      }
+      out.count = (s.Count() * s.ElementSize(ϟl)) / out.ElementSize(ϟl)
       return out
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) []{{$el_ty}} {
-      d, res, ϟl := s.Decoder(ϟctx, ϟs), make([]{{$el_ty}}, s.SliceInfo.Count), ϟs.MemoryLayout
+      d, res, ϟl := s.Decoder(ϟctx, ϟs), make([]{{$el_ty}}, s.count), ϟs.MemoryLayout
       _ = ϟl
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       for i := range res {
         {{if $el_is_ptr}}
-          if s.SliceInfo.Pool == memory.ApplicationPool {
+          if s.pool == memory.ApplicationPool {
             ptr := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
             if d.Error() != nil {
               panic(d.Error())
@@ -515,7 +518,7 @@
             res[i] = New{{$el_ty}}(ptr)
           } else {
         {{else if $el_is_class}}
-          if s.SliceInfo.Pool == memory.ApplicationPool {
+          if s.pool == memory.ApplicationPool {
             {{$el_ty}}DecodeRaw(ϟl, d, &res[i])
             if d.Error() != nil {
               panic(d.Error())
@@ -530,20 +533,20 @@
     }
 
     // Write copies elements from src to this slice. The number of elements copied is returned
-    // which is the minimum of s.SliceInfo.Count and len(src).
+    // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
-      count, ϟl := min(s.SliceInfo.Count, uint64(len(src))), ϟs.MemoryLayout
+      count, ϟl := min(s.count, uint64(len(src))), ϟs.MemoryLayout
       s = s.Slice(0, count, ϟl)
       e := s.Encoder(ϟs)
       for i := uint64(0); i < count; i++ {
         {{if $el_is_ptr}}
-          if s.SliceInfo.Pool == memory.ApplicationPool {
+          if s.pool == memory.ApplicationPool {
             if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].Address); e.Error() != nil {
               panic(e.Error())
             }
           } else {
         {{else if $el_is_class}}
-          if s.SliceInfo.Pool == memory.ApplicationPool {
+          if s.pool == memory.ApplicationPool {
             {{$el_ty}}EncodeRaw(ϟl, e, &src[i])
             if e.Error() != nil {
               panic(e.Error())
@@ -562,15 +565,15 @@
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
     func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
-      count := min(dst.SliceInfo.Count, src.SliceInfo.Count)
+      count := min(dst.count, src.count)
       dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
     {{if $el_is_ptr}}
-      if (dst.SliceInfo.Pool == memory.ApplicationPool) != (src.SliceInfo.Pool == memory.ApplicationPool) {
+      if (dst.pool == memory.ApplicationPool) != (src.pool == memory.ApplicationPool) {
         dst.Write(ϟctx, src.Read(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟa, ϟs, ϟb)
-      ϟs.Memory[dst.SliceInfo.Pool].Write(dst.SliceInfo.Base, ϟs.Memory[src.SliceInfo.Pool].Slice(src.Range(ϟs.MemoryLayout)))
+      ϟs.Memory[dst.pool].Write(dst.base, ϟs.Memory[src.pool].Slice(src.Range(ϟs.MemoryLayout)))
       dst.OnWrite(ϟctx, ϟa, ϟs, ϟb)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
@@ -591,18 +594,18 @@
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
-    if f := ϟs.Memory[s.SliceInfo.Pool].OnRead; f != nil {
+    if f := ϟs.Memory[s.pool].OnRead; f != nil {
       f(s.Range(ϟl))
     }
-    if ϟb != nil && s.SliceInfo.Pool == memory.ApplicationPool {
+    if ϟb != nil && s.pool == memory.ApplicationPool {
       {{if IsPointer ($s.To | Underlying)}}
         {{/* Pointers need remapping to replay addresses.
              Pointer sizes may vary between capture and replay.
              To handle this, we store pointers in a separate table and refer to
              these using pointer indices.
         */}}
-        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.SliceInfo.Base / uint64(ϟl.GetPointer().GetSize()))
-        for i := uint64(0); i < s.SliceInfo.Count; i++ {
+        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
+        for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
           i := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
           ptr := New{{$el_ty}}(i).value(ϟb, ϟa, ϟs)
@@ -616,8 +619,8 @@
         s.ReserveMemory(ϟctx, ϟa, ϟs, ϟb)
         {{if (GetAnnotation $s.To "replay_remap")}}
           {{/* Element type has explicitly stated it needs custom remapping */}}
-          ptr, step, d := value.ObservedPointer(s.SliceInfo.Base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
-          for i := uint64(0); i < s.SliceInfo.Count; i++ {
+          ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
+          for i := uint64(0); i < s.count; i++ {
             var v {{$el_ty}}
             {{Template "Go.Decode" "Name" "v" "Type" $s.To "ErrHandler" "panic(d.Error())"}}
             if key, remap := v.remap(ϟa, ϟs); remap {
@@ -639,16 +642,16 @@
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
-    if f := ϟs.Memory[s.SliceInfo.Pool].OnWrite; f != nil {
+    if f := ϟs.Memory[s.pool].OnWrite; f != nil {
       f(s.Range(ϟl))
     }
-    if ϟb != nil && s.SliceInfo.Pool == memory.ApplicationPool {
-      ϟb.ReserveMemory(memory.Range{Base: s.SliceInfo.Root, Size: uint64(s.Range(ϟl).End() - s.SliceInfo.Root)})
+    if ϟb != nil && s.pool == memory.ApplicationPool {
+      ϟb.ReserveMemory(memory.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
       {{if (GetAnnotation $s.To "replay_remap")}}
         {{/* Element type has explicitly stated it needs custom remapping */}}
         size := s.ElementSize(ϟl)
-        ptr, step, d := value.ObservedPointer(s.SliceInfo.Base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
-        for i := uint64(0); i < s.SliceInfo.Count; i++ {
+        ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
+        for i := uint64(0); i < s.count; i++ {
           var v {{$el_ty}}
           {{Template "Go.Decode" "Name" "v" "Type" $s.To "ErrHandler" "panic(d.Error())"}}
           if key, remap := v.remap(ϟa, ϟs); remap {
@@ -668,16 +671,16 @@
   }
 
   func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
-    if ϟb != nil && s.SliceInfo.Pool == memory.ApplicationPool {
+    if ϟb != nil && s.pool == memory.ApplicationPool {
       rng := s.Range(ϟs.MemoryLayout)
-      ϟb.ReserveMemory(memory.Range{Base: s.SliceInfo.Root, Size: uint64(rng.End() - s.SliceInfo.Root)})
+      ϟb.ReserveMemory(memory.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
     }
     return s
   }
 
   // Index returns a {{$ptr_ty}} to the i'th element in this {{$slice_ty}}.
   func (s {{$slice_ty}}) Index(i uint64, ϟl *device.MemoryLayout) {{$ptr_ty}} {
-    return {{$ptr_ty}}{ Address: s.SliceInfo.Base + i * s.ElementSize(ϟl), Pool: s.SliceInfo.Pool }
+    return {{$ptr_ty}}{ Address: s.base + i * s.ElementSize(ϟl), Pool: s.pool }
   }
 
   // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
@@ -685,18 +688,15 @@
     if start > end {
       panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", s, start, end))
     }
-    if end > s.SliceInfo.Count {
+    if end > s.count {
       panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
     }
-    return {{$slice_ty}}{SliceInfo: memory.SliceInfo{Root: s.SliceInfo.Root, Base: s.SliceInfo.Base + start * s.ElementSize(ϟl), Count: end-start, Pool: s.SliceInfo.Pool}}
+    return {{$slice_ty}}{root: s.root, base: s.base + start * s.ElementSize(ϟl), count: end-start, pool: s.pool}
   }
-
-  // Info returns the memory.SliceInfo for this slice.
-  func (s {{$slice_ty}}) Info() memory.SliceInfo { return s.SliceInfo }
 
   // String returns a string description of the {{$slice_ty}} slice.
   func (s {{$slice_ty}}) String() string {
-    return fmt.Sprintf("{{$el_ty}}(%v@%v)[%d]", s.SliceInfo.Base, s.SliceInfo.Pool, s.SliceInfo.Count)
+    return fmt.Sprintf("{{$el_ty}}(%v@%v)[%d]", s.base, s.pool, s.count)
   }
 
   // Check interface conformance
@@ -712,7 +712,7 @@
         return nil, err
       }
       ϟs := c.NewState()
-      return cmd.MemoryAfter(uint32(s.SliceInfo.Pool), s.SliceInfo.Base, s.SliceInfo.Count * s.ElementSize(ϟs.MemoryLayout)), nil
+      return cmd.MemoryAfter(uint32(s.pool), s.base, s.count * s.ElementSize(ϟs.MemoryLayout)), nil
     }
     return nil, nil
   }

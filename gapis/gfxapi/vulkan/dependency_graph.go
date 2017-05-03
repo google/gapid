@@ -1506,7 +1506,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 // |b| according to the descriptor type.
 func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g *DependencyGraph, ctx context.Context, a atom.Atom, s *gfxapi.State) error {
 	l := s.MemoryLayout
-	writeCount := writes.Info().Count
+	writeCount := writes.count
 	for i := uint64(0); i < writeCount; i++ {
 		write := writes.Index(uint64(i), l).Read(ctx, a, s, nil)
 		if write.DescriptorCount > 0 {
@@ -1519,7 +1519,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 				imageInfos := write.PImageInfo.Slice(0, uint64(write.DescriptorCount), l)
-				for j := uint64(0); j < imageInfos.Info().Count; j++ {
+				for j := uint64(0); j < imageInfos.count; j++ {
 					imageInfo := imageInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					sampler := imageInfo.Sampler
 					imageView := imageInfo.ImageView
@@ -1531,7 +1531,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 				bufferInfos := write.PBufferInfo.Slice(0, uint64(write.DescriptorCount), l)
-				for j := uint64(0); j < bufferInfos.Info().Count; j++ {
+				for j := uint64(0); j < bufferInfos.count; j++ {
 					bufferInfo := bufferInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					buffer := bufferInfo.Buffer
 					b.read(g, vulkanStateKey(buffer))
@@ -1539,7 +1539,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 			case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 				bufferViews := write.PTexelBufferView.Slice(0, uint64(write.DescriptorCount), l)
-				for j := uint64(0); j < bufferViews.Info().Count; j++ {
+				for j := uint64(0); j < bufferViews.count; j++ {
 					bufferView := bufferViews.Index(uint64(j), l).Read(ctx, a, s, nil)
 					b.read(g, vulkanStateKey(bufferView))
 				}

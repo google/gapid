@@ -268,7 +268,7 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 	out := make([]byte, compactOutputSize)
 
 	fullSize := uint64(vertexCount-1)*stride + perVertexSize
-	if uint64(attribute.Offset) >= vertexSlice.SliceInfo.Count {
+	if uint64(attribute.Offset) >= vertexSlice.count {
 		// First vertex sits beyond the end of the buffer.
 		// Instead of erroring just return a 0-initialized buffer so other
 		// streams can be visualized. The report should display an error to
