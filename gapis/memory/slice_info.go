@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/memory/memory_pb"
@@ -32,6 +33,10 @@ type SliceInfo struct {
 // SliceMetadata is the meta information about a slice.
 type SliceMetadata struct {
 	ElementTypeName string // The name of the type that elements of the slice have.
+}
+
+func (s SliceInfo) String() string {
+	return fmt.Sprintf("[%d](%s)", s.Count, Pointer{s.Base, s.Pool})
 }
 
 func (s SliceInfo) ToProto() *memory_pb.Slice {

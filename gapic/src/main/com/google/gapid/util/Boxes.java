@@ -185,6 +185,8 @@ public class Boxes {
           return putValue(id, Pods.unpod(value.getPod()));
         case POINTER:
           return putValue(id, value.getPointer());
+        case SLICE:
+          return putValue(id, value.getSlice());
         case REFERENCE:
           return putValue(id, unbox(value.getReference()));
         case STRUCT:

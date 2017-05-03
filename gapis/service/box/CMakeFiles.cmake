@@ -21,6 +21,7 @@ set(files
     box.go
     box.pb.go
     box.proto
+    box_test.go
     doc.go
 )
 set(dirs

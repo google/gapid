@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/box"
 )
 
@@ -42,6 +43,11 @@ type Cyclic struct {
 	S *Cyclic
 }
 
+type Memory struct {
+	P memory.Pointer
+	S memory.Slice
+}
+
 func TestBoxSimpleTypes(t *testing.T) {
 	ty := box.NewType(reflect.TypeOf(StructA{}))
 	got, _ := json.MarshalIndent(ty, "", "  ")
@@ -53,7 +59,7 @@ func TestBoxSimpleTypes(t *testing.T) {
         {
           "type": {
             "Ty": {
-              "Basic": 13
+              "Pod": 13
             }
           },
           "name": "Bool"
@@ -61,7 +67,7 @@ func TestBoxSimpleTypes(t *testing.T) {
         {
           "type": {
             "Ty": {
-              "Basic": 4
+              "Pod": 4
             }
           },
           "name": "Int"
@@ -69,7 +75,7 @@ func TestBoxSimpleTypes(t *testing.T) {
         {
           "type": {
             "Ty": {
-              "Basic": 1
+              "Pod": 1
             }
           },
           "name": "Float"
@@ -81,12 +87,12 @@ func TestBoxSimpleTypes(t *testing.T) {
               "Map": {
                 "key_type": {
                   "Ty": {
-                    "Basic": 14
+                    "Pod": 14
                   }
                 },
                 "value_type": {
                   "Ty": {
-                    "Basic": 4
+                    "Pod": 4
                   }
                 }
               }
@@ -97,7 +103,7 @@ func TestBoxSimpleTypes(t *testing.T) {
         {
           "type": {
             "Ty": {
-              "Basic": 19
+              "Pod": 19
             }
           },
           "name": "Slice"
@@ -112,9 +118,9 @@ func TestBoxSimpleTypes(t *testing.T) {
                     "type": {
                       "type_id": 4,
                       "Ty": {
-                        "Pointer": {
+                        "Reference": {
                           "Ty": {
-                            "Basic": 10
+                            "Pod": 10
                           }
                         }
                       }
@@ -185,7 +191,7 @@ func TestBoxCyclicType(t *testing.T) {
         {
           "type": {
             "Ty": {
-              "Basic": 4
+              "Pod": 4
             }
           },
           "name": "I"
@@ -194,7 +200,7 @@ func TestBoxCyclicType(t *testing.T) {
           "type": {
             "type_id": 2,
             "Ty": {
-              "Pointer": {
+              "Reference": {
                 "type_id": 1,
                 "Ty": {
                   "BackReference": true
@@ -223,6 +229,50 @@ func TestBoxUnboxCyclic(t *testing.T) {
 	}
 	boxed := box.NewValue(val)
 	var unboxed Cyclic
+	err := boxed.AssignTo(&unboxed)
+	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
+		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	}
+}
+
+func TestBoxMemoryType(t *testing.T) {
+	ty := box.NewType(reflect.TypeOf(Memory{}))
+	got, _ := json.MarshalIndent(ty, "", "  ")
+	expect := `{
+  "type_id": 1,
+  "Ty": {
+    "Struct": {
+      "fields": [
+        {
+          "type": {
+            "Ty": {
+              "Pointer": true
+            }
+          },
+          "name": "P"
+        },
+        {
+          "type": {
+            "Ty": {
+              "Slice": true
+            }
+          },
+          "name": "S"
+        }
+      ]
+    }
+  }
+}`
+	assert.To(t).For("NewType(Struct)").ThatString(got).Equals(expect)
+}
+
+func TestBoxUnboxMemory(t *testing.T) {
+	val := Memory{
+		P: memory.Pointer{Address: 1234, Pool: memory.PoolID(555)},
+		S: box.NewSlice(1234, 1256, 42, memory.PoolID(333)),
+	}
+	boxed := box.NewValue(val)
+	var unboxed Memory
 	err := boxed.AssignTo(&unboxed)
 	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
 		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)

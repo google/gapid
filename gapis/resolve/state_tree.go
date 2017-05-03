@@ -22,10 +22,13 @@ import (
 	"strconv"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -41,9 +44,10 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 }
 
 type stateTree struct {
-	state interface{}
-	path  *path.State
-	api   *path.API
+	state    *gfxapi.State
+	apiState interface{}
+	path     *path.State
+	api      *path.API
 }
 
 func deref(v reflect.Value) reflect.Value {
@@ -88,7 +92,7 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 	stateTree := boxed.(*stateTree)
 
 	name, pth, consts := "root", path.Node(stateTree.path), (*path.ConstantSet)(nil)
-	v := deref(reflect.ValueOf(stateTree.state))
+	v := deref(reflect.ValueOf(stateTree.apiState))
 
 	numChildren := uint64(v.Type().NumField())
 
@@ -99,53 +103,112 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 			return nil, errPathOOB(idx64, "Index", 0, numChildren-1, at)
 		}
 
-		switch v.Kind() {
-		case reflect.Struct:
-			t := v.Type()
-			if cs, ok := t.Field(idx).Tag.Lookup("constset"); ok {
-				if idx, _ := strconv.Atoi(cs); idx > 0 {
-					consts = stateTree.api.ConstantSet(idx)
-				}
-			}
-			name = t.Field(idx).Name
-			pth = path.NewField(name, pth)
-			v = deref(v.Field(idx))
-		case reflect.Slice, reflect.Array:
+		t := v.Type()
+		switch {
+		case box.IsMemorySlice(t):
 			name = fmt.Sprint(idx)
 			pth = path.NewArrayIndex(idx64, pth)
-			v = deref(v.Index(idx))
-		case reflect.Map:
-			key := sortMapKeys(v)[idx]
-			name = fmt.Sprint(key.Interface())
-			pth = path.NewMapIndex(key.Interface(), pth)
-			v = deref(v.MapIndex(key))
+			// TODO: Use proper interfaces to kill the nasty reflection.
+			ptr := v.MethodByName("Index").Call([]reflect.Value{
+				reflect.ValueOf(idx64),
+				reflect.ValueOf(stateTree.state.MemoryLayout),
+			})[0]
+			v = ptr.MethodByName("Read").Call([]reflect.Value{
+				reflect.ValueOf(ctx),
+				reflect.Zero(reflect.TypeOf((*atom.Atom)(nil)).Elem()),
+				reflect.ValueOf(stateTree.state),
+				reflect.Zero(reflect.TypeOf((*builder.Builder)(nil))),
+			})[0]
 		default:
-			return nil, fmt.Errorf("Cannot index type %v (%v)", v.Type(), v.Kind())
+			switch v.Kind() {
+			case reflect.Struct:
+				if cs, ok := t.Field(idx).Tag.Lookup("constset"); ok {
+					if idx, _ := strconv.Atoi(cs); idx > 0 {
+						consts = stateTree.api.ConstantSet(idx)
+					}
+				}
+				name = t.Field(idx).Name
+				pth = path.NewField(name, pth)
+				v = deref(v.Field(idx))
+			case reflect.Slice, reflect.Array:
+				name = fmt.Sprint(idx)
+				pth = path.NewArrayIndex(idx64, pth)
+				v = deref(v.Index(idx))
+			case reflect.Map:
+				key := sortMapKeys(v)[idx]
+				name = fmt.Sprint(key.Interface())
+				pth = path.NewMapIndex(key.Interface(), pth)
+				v = deref(v.MapIndex(key))
+			default:
+				return nil, fmt.Errorf("Cannot index type %v (%v)", v.Type(), v.Kind())
+			}
 		}
 
-		switch v.Kind() {
-		case reflect.Struct:
-			numChildren = uint64(v.NumField())
-		case reflect.Slice, reflect.Array, reflect.Map:
-			numChildren = uint64(v.Len())
+		t = v.Type()
+		switch {
+		case box.IsMemorySlice(t):
+			numChildren = box.AsMemorySlice(v).Count()
 		default:
-			numChildren = 0
+			switch v.Kind() {
+			case reflect.Struct:
+				numChildren = uint64(v.NumField())
+			case reflect.Slice, reflect.Array, reflect.Map:
+				numChildren = uint64(v.Len())
+			default:
+				numChildren = 0
+			}
 		}
 	}
 
+	preview, previewIsValue := stateValuePreview(v)
+
 	return &service.StateTreeNode{
-		NumChildren: numChildren,
-		Name:        name,
-		Path:        pth.Path(),
-		Value:       pod.NewValue(v.Interface()),
-		Constants:   consts,
+		NumChildren:    numChildren,
+		Name:           name,
+		Path:           pth.Path(),
+		Preview:        preview,
+		PreviewIsValue: previewIsValue,
+		Constants:      consts,
 	}, nil
+}
+
+func stateValuePreview(v reflect.Value) (*box.Value, bool) {
+	t := v.Type()
+	switch {
+	case box.IsMemoryPointer(t), box.IsMemorySlice(t):
+		return box.NewValue(v.Interface()), true
+	}
+
+	switch v.Kind() {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return box.NewValue(v.Interface()), true
+	case reflect.Array, reflect.Slice:
+		const maxLen = 4
+		if v.Len() > maxLen {
+			return box.NewValue(v.Slice(0, maxLen).Interface()), false
+		}
+		return box.NewValue(v.Interface()), true
+	case reflect.String:
+		const maxLen = 256
+		runes := []rune(v.Interface().(string))
+		if len(runes) > maxLen {
+			return box.NewValue(runes[:maxLen]), false
+		}
+		return box.NewValue(v.Interface()), true
+	case reflect.Interface, reflect.Ptr:
+		return stateValuePreview(v.Elem())
+	default:
+		return nil, false
+	}
 }
 
 // Resolve builds and returns a *StateTree for the path.StateTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	state, err := APIState(ctx, r.Path)
+	state, err := GlobalState(ctx, r.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +221,7 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	api := c.Atoms[atomIdx].API()
+	apiState := state.APIs[api]
 	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
-	return &stateTree{state, r.Path, apiPath}, nil
+	return &stateTree{state, apiState, r.Path, apiPath}, nil
 }
