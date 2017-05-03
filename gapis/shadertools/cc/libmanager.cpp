@@ -308,7 +308,7 @@ spirv_binary_t* assembleToBinary(const char* text) {
   std::vector<uint32_t> words;
   spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_0);
   const auto result = tools.Assemble(disassembly, &words);
-  if (result != SPV_SUCCESS) {
+  if (!result) {
     return nullptr;
   }
   binary->words_num = words.size();

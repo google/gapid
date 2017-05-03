@@ -621,6 +621,9 @@ func (shader *ShaderModuleObject) SetResourceData(ctx context.Context, at *path.
 		if a, ok := list.Atoms[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil
+		} else if a, ok := list.Atoms[i].(*RecreateShaderModule); ok {
+			edits(uint64(i), a.Replace(ctx, data))
+			return nil
 		}
 	}
 	return fmt.Errorf("No atom to set data in")
@@ -658,6 +661,53 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	VkShaderModuleCreateInfoEncodeRaw(state, writer, &createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewVkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
+
+	// Carry all non-observation extras through.
+	for _, e := range a.Extras().All() {
+		if _, ok := e.(*atom.Observations); !ok {
+			newAtom.Extras().Add(e)
+		}
+	}
+
+	// Add observations
+	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
+
+	for _, w := range a.Extras().Observations().Writes {
+		newAtom.AddWrite(w.Range, w.ID)
+	}
+	return newAtom
+}
+
+func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
+	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
+	state := capture.NewState(ctx)
+	a.Mutate(ctx, state, nil)
+
+	shader := data.(*gfxapi.Shader)
+	codeSlice := shadertools.AssembleSpirvText(shader.Source)
+	if codeSlice == nil {
+		return nil
+	}
+
+	code := atom.Must(atom.AllocData(ctx, state, codeSlice))
+	device := a.Device
+	pShaderModule := memory.Pointer(a.PShaderModule)
+	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
+
+	createInfo.PCode = U32ᶜᵖ(code.Ptr())
+	createInfo.CodeSize = uint64(len(codeSlice)) * 4
+	// TODO(qining): The following is a hack to work around memory.Write().
+	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
+	// 'uint64' is used for now, and memory.Write() will always treat is as
+	// a 8-byte type and causing padding issues so that won't encode the struct
+	// correctly.
+	// Possible solution: define another type 'size' and handle it correctly in
+	// memory.Write().
+	buf := &bytes.Buffer{}
+	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
+	VkShaderModuleCreateInfoEncodeRaw(state, writer, &createInfo)
+	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
+	newAtom := NewRecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
 	for _, e := range a.Extras().All() {
