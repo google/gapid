@@ -24,10 +24,10 @@ import (
 	"github.com/google/gapid/gapis/database"
 )
 
-// Resource returns a Slice that wraps a resource stored in the database.
+// Resource returns a Data that wraps a resource stored in the database.
 // resID is the identifier of the data and size is the size in bytes of the
 // data.
-func Resource(resID id.ID, size uint64) Slice {
+func Resource(resID id.ID, size uint64) Data {
 	return resource{resID, size}
 }
 
@@ -66,7 +66,7 @@ func (r resource) Size() uint64 {
 	return r.size
 }
 
-func (r resource) Slice(rng Range) Slice {
+func (r resource) Slice(rng Range) Data {
 	return newResourceSlice(r, rng)
 }
 
@@ -86,7 +86,7 @@ func (r resource) NewReader(ctx context.Context) io.Reader {
 	return bytes.NewReader(data)
 }
 
-func newResourceSlice(src resource, rng Range) Slice {
+func newResourceSlice(src resource, rng Range) Data {
 	if uint64(rng.Last()) > src.Size() {
 		panic(fmt.Errorf("Slice range %v out of bounds %v", rng, Range{Base: 0, Size: src.Size()}))
 	}
@@ -123,7 +123,7 @@ func (s resourceSlice) Size() uint64 {
 	return s.rng.Size
 }
 
-func (s resourceSlice) Slice(rng Range) Slice {
+func (s resourceSlice) Slice(rng Range) Data {
 	return newResourceSlice(s.src, Range{Base: s.rng.Base + rng.Base, Size: rng.Size})
 }
 

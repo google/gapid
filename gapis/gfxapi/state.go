@@ -88,27 +88,28 @@ func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.Memo
 	}
 }
 
-func (st State) String() string {
-	mem := make([]string, 0, len(st.Memory))
-	for i, p := range st.Memory {
+func (s State) String() string {
+	mem := make([]string, 0, len(s.Memory))
+	for i, p := range s.Memory {
 		mem = append(mem, fmt.Sprintf("    %d: %v", i, strings.Replace(p.String(), "\n", "\n      ", -1)))
 	}
-	apis := make([]string, 0, len(st.APIs))
-	for a, s := range st.APIs {
+	apis := make([]string, 0, len(s.APIs))
+	for a, s := range s.APIs {
 		apis = append(apis, fmt.Sprintf("    %v: %v", a, s))
 	}
 	return fmt.Sprintf("State{\n  %v\n  Memory:\n%v\n  APIs:\n%v\n}",
-		st.MemoryLayout, strings.Join(mem, "\n"), strings.Join(apis, "\n"))
+		s.MemoryLayout, strings.Join(mem, "\n"), strings.Join(apis, "\n"))
 }
 
-// MemoryDecoder returns an endian reader that uses the byte-order of the capture device to decode from the slice s.
-func (st State) MemoryDecoder(ctx context.Context, s memory.Slice) pod.Reader {
-	return endian.Reader(s.NewReader(ctx), st.MemoryLayout.GetEndian())
+// MemoryDecoder returns an endian reader that uses the byte-order of the
+// capture device to decode from d.
+func (s State) MemoryDecoder(ctx context.Context, d memory.Data) pod.Reader {
+	return endian.Reader(d.NewReader(ctx), s.MemoryLayout.GetEndian())
 }
 
-// MemoryEncoder returns an endian reader that uses the byte-order of the capture device to encode to the pool p,
-// for the range rng.
-func (st State) MemoryEncoder(p *memory.Pool, rng memory.Range) pod.Writer {
+// MemoryEncoder returns an endian reader that uses the byte-order of the
+// capture device to encode to the pool p, for the range rng.
+func (s State) MemoryEncoder(p *memory.Pool, rng memory.Range) pod.Writer {
 	bw := memory.Writer(p, rng)
-	return endian.Writer(bw, st.MemoryLayout.GetEndian())
+	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }

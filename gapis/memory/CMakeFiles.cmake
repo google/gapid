@@ -21,6 +21,7 @@ set(files
     allocator.go
     allocator_test.go
     blob.go
+    data.go
     doc.go
     id.go
     memory.pb.go
@@ -33,7 +34,6 @@ set(files
     range.go
     range_list.go
     resource.go
-    slice.go
     slice_info.go
     subslice.go
     write.go

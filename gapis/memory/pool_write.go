@@ -18,7 +18,7 @@ import "github.com/google/gapid/core/math/interval"
 
 type poolWrite struct {
 	dst Range
-	src Slice
+	src Data
 }
 
 // Span returns the Range as a U64Span.

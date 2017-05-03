@@ -35,7 +35,7 @@ import (
 
 type write struct {
 	at  memory.Pointer
-	src memory.Slice
+	src memory.Data
 }
 
 type expected struct {
