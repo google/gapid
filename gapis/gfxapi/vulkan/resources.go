@@ -626,7 +626,7 @@ func (shader *ShaderModuleObject) SetResourceData(
 		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil
-		} else if a, ok := list.Atoms[i].(*RecreateShaderModule); ok {
+		} else if a, ok := c.Atoms[i].(*RecreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil
 		}
@@ -710,7 +710,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	VkShaderModuleCreateInfoEncodeRaw(state, writer, &createInfo)
+	VkShaderModuleCreateInfoEncodeRaw(state.MemoryLayout, writer, &createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewRecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
