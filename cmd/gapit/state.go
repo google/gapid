@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -84,11 +83,7 @@ func (verb *stateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	tree := boxedTree.(*service.StateTree)
 
-	return traverseStateTree(ctx, client, tree.Root, func(p *path.StateTreeNode, n *service.StateTreeNode) error {
-		tree := ""
-		if len(p.Index) > 0 {
-			tree = strings.Repeat("│   ", len(p.Index)-1) + "├──"
-		}
+	return traverseStateTree(ctx, client, tree.Root, func(n *service.StateTreeNode, prefix string) error {
 		name := n.Name + ":"
 		if n.Value != nil {
 			v := n.Value.Get()
@@ -99,19 +94,21 @@ func (verb *stateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				}
 				v = constants.Sprint(v)
 			}
-			fmt.Fprintln(os.Stdout, tree, name, v)
+			fmt.Fprintln(os.Stdout, prefix, name, v)
 		} else {
-			fmt.Fprintln(os.Stdout, tree, name)
+			fmt.Fprintln(os.Stdout, prefix, name)
 		}
 		return nil
-	})
+	}, "", true)
 }
 
 func traverseStateTree(
 	ctx context.Context,
 	c client.Client,
 	p *path.StateTreeNode,
-	f func(p *path.StateTreeNode, n *service.StateTreeNode) error) error {
+	f func(n *service.StateTreeNode, prefix string) error,
+	prefix string,
+	last bool) error {
 
 	if task.Stopped(ctx) {
 		return task.StopReason(ctx)
@@ -124,10 +121,26 @@ func traverseStateTree(
 
 	n := boxedNode.(*service.StateTreeNode)
 
-	f(p, n)
+	curPrefix := prefix
+	if len(p.Index) > 0 {
+		if last {
+			curPrefix += "└──"
+		} else {
+			curPrefix += "├──"
+		}
+	}
 
+	if err := f(n, curPrefix); err != nil {
+		return err
+	}
+
+	if last {
+		prefix += "    "
+	} else {
+		prefix += "│   "
+	}
 	for i := uint64(0); i < n.NumChildren; i++ {
-		err := traverseStateTree(ctx, c, p.Child(i), f)
+		err := traverseStateTree(ctx, c, p.Child(i), f, prefix, i == n.NumChildren-1)
 		if err != nil {
 			return err
 		}
