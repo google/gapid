@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/memory"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/stringtable"
@@ -35,13 +36,13 @@ type externs struct {
 	b   *rb.Builder
 }
 
-func (e externs) mapMemory(slice slice) {
+func (e externs) mapMemory(slice memory.Slice) {
 	ctx := e.ctx
 	if b := e.b; b != nil {
 		switch e.a.(type) {
 		case *GlMapBufferRange, *GlMapBufferRangeEXT, *GlMapBufferOES, *GlMapBuffer:
 			// Base address is on the stack.
-			b.MapMemory(slice.Range(e.s))
+			b.MapMemory(slice.Range(e.s.MemoryLayout))
 
 		default:
 			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
@@ -49,9 +50,9 @@ func (e externs) mapMemory(slice slice) {
 	}
 }
 
-func (e externs) unmapMemory(slice slice) {
+func (e externs) unmapMemory(slice memory.Slice) {
 	if b := e.b; b != nil {
-		b.UnmapMemory(slice.Range(e.s))
+		b.UnmapMemory(slice.Range(e.s.MemoryLayout))
 	}
 }
 
@@ -69,7 +70,7 @@ func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra 
 
 func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
 	id := data.ResourceID(e.ctx, e.s)
-	count := int(data.Count) / int(indexSize)
+	count := int(data.SliceInfo.Count) / int(indexSize)
 	littleEndian := e.s.MemoryLayout.GetEndian() == device.LittleEndian
 	limits, err := resolve.IndexLimits(e.ctx, id, count, indexSize, littleEndian)
 	if err != nil {

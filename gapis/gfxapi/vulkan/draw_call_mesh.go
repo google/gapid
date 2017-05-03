@@ -158,11 +158,11 @@ func getIndicesData(ctx context.Context, s *gfxapi.State, boundIndexBuffer *Boun
 		start := offset + uint64(firstIndex)*sizeOfIndex
 		size := uint64(indexCount) * sizeOfIndex
 		end := start + size
-		indicesSlice := backingMem.Data.Slice(start, end, s)
+		indicesSlice := backingMem.Data.Slice(start, end, s.MemoryLayout)
 		for i := uint64(0); (i < size) && (i+sizeOfIndex-1 < size); i += sizeOfIndex {
 			index := int32(0)
 			for j := uint64(0); j < sizeOfIndex; j++ {
-				oneByte := int32(indicesSlice.Index(i+j, s).Read(ctx, nil, s, nil))
+				oneByte := int32(indicesSlice.Index(i+j, s.MemoryLayout).Read(ctx, nil, s, nil))
 				index += oneByte << (8 * j)
 			}
 			index += vertexOffset
@@ -254,7 +254,7 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 	backingMemoryData := boundVertexBuffer.Buffer.Memory.Data
 	sliceOffset := uint64(boundVertexBuffer.Offset + boundVertexBuffer.Buffer.MemoryOffset)
 	sliceSize := uint64(boundVertexBuffer.Range)
-	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize, s)
+	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize, s.MemoryLayout)
 
 	formatElementAndTexelBlockSize, err :=
 		subGetElementAndTexelBlockSize(ctx, nil, nil, s, nil, nil, attribute.Format)
@@ -268,7 +268,7 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 	out := make([]byte, compactOutputSize)
 
 	fullSize := uint64(vertexCount-1)*stride + perVertexSize
-	if uint64(attribute.Offset) >= vertexSlice.Count {
+	if uint64(attribute.Offset) >= vertexSlice.SliceInfo.Count {
 		// First vertex sits beyond the end of the buffer.
 		// Instead of erroring just return a 0-initialized buffer so other
 		// streams can be visualized. The report should display an error to
@@ -277,7 +277,7 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 		return out, nil
 	}
 	offset := uint64(attribute.Offset) + (uint64(firstVertex) * stride)
-	data := vertexSlice.Slice(offset, offset+fullSize, s).Read(ctx, nil, s, nil)
+	data := vertexSlice.Slice(offset, offset+fullSize, s.MemoryLayout).Read(ctx, nil, s, nil)
 	if stride > perVertexSize {
 		// There are gaps between vertices.
 		for i := uint64(0); i < uint64(vertexCount); i++ {

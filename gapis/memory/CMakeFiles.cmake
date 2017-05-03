@@ -34,6 +34,7 @@ set(files
     range.go
     range_list.go
     resource.go
+    slice.go
     slice_info.go
     subslice.go
     write.go

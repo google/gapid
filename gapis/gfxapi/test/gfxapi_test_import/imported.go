@@ -16,9 +16,9 @@ package gfxapi_test_import
 
 import (
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/framework/binary"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 )
@@ -28,21 +28,23 @@ type Imported struct {
 	Value uint32
 }
 
-func ImportedSize(ϟs *gfxapi.State) uint64 {
+func ImportedSize(l *device.MemoryLayout) uint64 {
 	return uint64(4)
 }
 
-func ImportedAlignment(ϟs *gfxapi.State) uint64 {
+func ImportedAlignment(l *device.MemoryLayout) uint64 {
 	return uint64(4)
 }
 
-func ImportedDecodeRaw(ϟs *gfxapi.State, d pod.Reader, o *Imported) {
+func ImportedDecodeRaw(l *device.MemoryLayout, d pod.Reader, o *Imported) {
 	o.Value = d.Uint32()
 }
 
-func ImportedEncodeRaw(ϟs *gfxapi.State, e pod.Writer, o *Imported) {
+func ImportedEncodeRaw(l *device.MemoryLayout, e pod.Writer, o *Imported) {
 	e.Uint32(o.Value)
 }
 
-func (Imported) Init()                                                                 {}
-func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Value { return nil }
+func (Imported) Init() {}
+func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, l *device.MemoryLayout) value.Value {
+	return nil
+}

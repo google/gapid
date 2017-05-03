@@ -52,7 +52,7 @@ func TestMake(t *testing.T) {
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
 	NewCmdMake(10).Mutate(ctx, s, nil)
-	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count).Equals(uint64(10))
+	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count()).Equals(uint64(10))
 	assert.For(ctx, "final NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(2))
 }
 
@@ -98,13 +98,13 @@ func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
-	newLayout := s.MemoryLayout.Clone()
-	newLayout.Integer.Size = 6 // non-multiple of u16
-	s.MemoryLayout = newLayout
+	l := s.MemoryLayout.Clone()
+	l.Integer.Size = 6 // non-multiple of u16
+	s.MemoryLayout = l
 	NewCmdSliceCasts(p(0x1234), 10).Mutate(ctx, s, nil)
 
-	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(NewU8ᵖ(0x1234).Slice(0, 20, s))
-	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(NewU16ᵖ(0x1234).Slice(0, 10, s))
-	assert.For(ctx, "U16[] -> U32[]").That(GetState(s).U32s).Equals(NewU32ᵖ(0x1234).Slice(0, 5, s))
-	assert.For(ctx, "U16[] -> int[]").That(GetState(s).Ints).Equals(NewIntᵖ(0x1234).Slice(0, 3, s))
+	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(NewU8ᵖ(0x1234).Slice(0, 20, l))
+	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(NewU16ᵖ(0x1234).Slice(0, 10, l))
+	assert.For(ctx, "U16[] -> U32[]").That(GetState(s).U32s).Equals(NewU32ᵖ(0x1234).Slice(0, 5, l))
+	assert.For(ctx, "U16[] -> int[]").That(GetState(s).Ints).Equals(NewIntᵖ(0x1234).Slice(0, 3, l))
 }

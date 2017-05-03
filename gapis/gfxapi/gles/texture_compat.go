@@ -214,7 +214,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
-		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
+		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s.MemoryLayout))
 		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {
@@ -222,7 +222,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 	}
 
 	src := image.Info2D{
-		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s).ResourceID(ctx, s)),
+		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
 		Format: getImageFormatOrPanic(a.Format, 0),
@@ -261,7 +261,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 	data := a.Data
 	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
 		base := a.Data.Address
-		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s))
+		data = TexturePointer(c.SharedObjects.Buffers[pb].Data.Index(base, s.MemoryLayout))
 		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
 	} else {
@@ -269,7 +269,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 	}
 
 	src := image.Info2D{
-		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s).ResourceID(ctx, s)),
+		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
 		Format: getImageFormatOrPanic(a.Format, 0),

@@ -658,7 +658,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	VkShaderModuleCreateInfoEncodeRaw(state, writer, &createInfo)
+	VkShaderModuleCreateInfoEncodeRaw(state.MemoryLayout, writer, &createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewVkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
