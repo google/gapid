@@ -97,7 +97,8 @@
       ϟb *builder.Builder, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
-
+    ϟl := ϟs.MemoryLayout
+    _ = ϟl
     {{Global "CurrentFunction" $}}
     {{Template "Block" $.Block}}
   }
@@ -145,8 +146,9 @@
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
       ϟc := GetState(ϟs)
+      ϟl := ϟs.MemoryLayout
       ϟo := ϟa.Extras().Observations()
-      _ = ϟc
+      _, _ = ϟc, ϟl
 
       {{Global "CurrentFunction" $}}
 
@@ -162,6 +164,9 @@
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟs.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
       func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *gfxapi.State, ϟb *builder.Builder) {
+        ϟl := ϟs.MemoryLayout
+        _ = ϟl
+
         {{/* Push all the parameters on the stack */}}
         {{range $p := $.CallParameters}}
           {{$type := TypeOf $p}}
@@ -564,7 +569,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}, ϟs).Write(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}, ϟl).Write(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
 {{end}}
 
 
@@ -595,8 +600,8 @@
         {{/* Apply the fenced-copy read */}}
         {{/* TODO: Unlike Slice.Copy, this does not optimise for non-pointer copies. */}}
         ϟdst, ϟsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
-        ϟcount := min(ϟdst.Count, ϟsrc.Count)
-        ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount, ϟs), ϟsrc.Slice(0, ϟcount, ϟs)
+        ϟcount := min(ϟdst.Count(), ϟsrc.Count())
+        ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount, ϟl), ϟsrc.Slice(0, ϟcount, ϟl)
         ϟsrcElems := ϟsrc.Read(ϟctx, ϟa, ϟs, ϟb)
       {{end}}
 

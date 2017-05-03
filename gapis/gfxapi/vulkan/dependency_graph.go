@@ -304,6 +304,7 @@ func (b *AtomBehaviour) write(g *DependencyGraph, state stateKey) {
 // Note this function is called on a new graphics state
 func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
 	b := AtomBehaviour{}
+	l := s.MemoryLayout
 
 	// Helper function for debug info logging when debug info dumpping is turned on
 	debug := func(fmt string, args ...interface{}) {
@@ -651,11 +652,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addModify(&b, g, g.getOrCreateDeviceMemory(memory))
 
 	case *VkFlushMappedMemoryRanges:
-		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), s)
+		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), l)
 		// TODO: Link the contiguous ranges into one so that we don't miss
 		// potential overwrites
 		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
-			mappedRange := ranges.Index(i, s).Read(ctx, a, s, nil)
+			mappedRange := ranges.Index(i, l).Read(ctx, a, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
 			size := uint64(mappedRange.Size)
@@ -681,10 +682,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkInvalidateMappedMemoryRanges:
-		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), s)
+		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), l)
 		// TODO: Link the contiguous ranges
 		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
-			mappedRange := ranges.Index(i, s).Read(ctx, a, s, nil)
+			mappedRange := ranges.Index(i, l).Read(ctx, a, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
 			size := uint64(mappedRange.Size)
@@ -724,7 +725,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		// handle descriptor writes
 		writeCount := a.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), s)
+			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return AtomBehaviour{Aborted: true}
@@ -733,9 +734,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		// handle descriptor copies
 		copyCount := a.DescriptorCopyCount
 		if copyCount > 0 {
-			copies := a.PDescriptorCopies.Slice(0, uint64(copyCount), s)
+			copies := a.PDescriptorCopies.Slice(0, uint64(copyCount), l)
 			for i := uint32(0); i < copyCount; i++ {
-				copy := copies.Index(uint64(i), s).Read(ctx, a, s, nil)
+				copy := copies.Index(uint64(i), l).Read(ctx, a, s, nil)
 				srcDescriptor := copy.SrcSet
 				dstDescriptor := copy.DstSet
 				addRead(&b, g, vulkanStateKey(srcDescriptor))
@@ -747,7 +748,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		// handle descriptor writes
 		writeCount := a.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), s)
+			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return AtomBehaviour{Aborted: true}
@@ -760,9 +761,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		// process the attachments
 		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		attachmentCount := createInfo.AttachmentCount
-		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), s)
+		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), l)
 		for i := uint32(0); i < attachmentCount; i++ {
-			attachedViews := attachments.Index(uint64(i), s).Read(ctx, a, s, nil)
+			attachedViews := attachments.Index(uint64(i), l).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(attachedViews))
 		}
 
@@ -772,9 +773,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		// process the attachments
 		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		attachmentCount := createInfo.AttachmentCount
-		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), s)
+		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), l)
 		for i := uint32(0); i < attachmentCount; i++ {
-			attachedViews := attachments.Index(uint64(i), s).Read(ctx, a, s, nil)
+			attachedViews := attachments.Index(uint64(i), l).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(attachedViews))
 		}
 
@@ -786,31 +787,31 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkCreateGraphicsPipelines:
 		pipelineCount := uint64(a.CreateInfoCount)
-		createInfos := a.PCreateInfos.Slice(0, pipelineCount, s)
-		pipelines := a.PPipelines.Slice(0, pipelineCount, s)
+		createInfos := a.PCreateInfos.Slice(0, pipelineCount, l)
+		pipelines := a.PPipelines.Slice(0, pipelineCount, l)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shaders
-			stageCount := uint64(createInfos.Index(i, s).Read(ctx, a, s, nil).StageCount)
-			shaderStages := createInfos.Index(i, s).Read(ctx, a, s, nil).PStages.Slice(0, stageCount, s)
+			stageCount := uint64(createInfos.Index(i, l).Read(ctx, a, s, nil).StageCount)
+			shaderStages := createInfos.Index(i, l).Read(ctx, a, s, nil).PStages.Slice(0, stageCount, l)
 			for j := uint64(0); j < stageCount; j++ {
-				shaderStage := shaderStages.Index(j, s).Read(ctx, a, s, nil)
+				shaderStage := shaderStages.Index(j, l).Read(ctx, a, s, nil)
 				module := shaderStage.Module
 				addRead(&b, g, vulkanStateKey(module))
 			}
 			// read renderpass
-			renderPass := createInfos.Index(i, s).Read(ctx, a, s, nil).RenderPass
+			renderPass := createInfos.Index(i, l).Read(ctx, a, s, nil).RenderPass
 			addRead(&b, g, vulkanStateKey(renderPass))
 			// Create pipeline
-			pipeline := pipelines.Index(i, s).Read(ctx, a, s, nil)
+			pipeline := pipelines.Index(i, l).Read(ctx, a, s, nil)
 			addWrite(&b, g, vulkanStateKey(pipeline))
 		}
 
 	case *RecreateGraphicsPipeline:
 		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
 		stageCount := uint64(createInfo.StageCount)
-		shaderStages := createInfo.PStages.Slice(0, stageCount, s)
+		shaderStages := createInfo.PStages.Slice(0, stageCount, l)
 		for i := uint64(0); i < stageCount; i++ {
-			shaderStage := shaderStages.Index(i, s).Read(ctx, a, s, nil)
+			shaderStage := shaderStages.Index(i, l).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(shaderStage.Module))
 		}
 		addRead(&b, g, vulkanStateKey(createInfo.RenderPass))
@@ -818,15 +819,15 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkCreateComputePipelines:
 		pipelineCount := uint64(a.CreateInfoCount)
-		createInfos := a.PCreateInfos.Slice(0, pipelineCount, s)
-		pipelines := a.PPipelines.Slice(0, pipelineCount, s)
+		createInfos := a.PCreateInfos.Slice(0, pipelineCount, l)
+		pipelines := a.PPipelines.Slice(0, pipelineCount, l)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shader
-			shaderStage := createInfos.Index(i, s).Read(ctx, a, s, nil).Stage
+			shaderStage := createInfos.Index(i, l).Read(ctx, a, s, nil).Stage
 			module := shaderStage.Module
 			addRead(&b, g, vulkanStateKey(module))
 			// Create pipeline
-			pipeline := pipelines.Index(i, s).Read(ctx, a, s, nil)
+			pipeline := pipelines.Index(i, l).Read(ctx, a, s, nil)
 			addWrite(&b, g, vulkanStateKey(pipeline))
 		}
 
@@ -1024,9 +1025,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkCmdBindVertexBuffers:
 		count := a.BindingCount
-		buffers := a.PBuffers.Slice(0, uint64(count), s)
+		buffers := a.PBuffers.Slice(0, uint64(count), l)
 		for i := uint64(0); i < uint64(count); i++ {
-			buffer := buffers.Index(i, s).Read(ctx, a, s, nil)
+			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
 			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
@@ -1039,9 +1040,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *RecreateCmdBindVertexBuffers:
 		count := a.BindingCount
-		buffers := a.PBuffers.Slice(0, uint64(count), s)
+		buffers := a.PBuffers.Slice(0, uint64(count), l)
 		for i := uint64(0); i < uint64(count); i++ {
-			buffer := buffers.Index(i, s).Read(ctx, a, s, nil)
+			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
 			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
@@ -1265,9 +1266,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkCmdBindDescriptorSets:
 		descriptorSetCount := a.DescriptorSetCount
-		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
+		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
 		for i := uint32(0); i < descriptorSetCount; i++ {
-			descriptorSet := descriptorSets.Index(uint64(i), s).Read(ctx, a, s, nil)
+			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			if GetState(s).DescriptorSets.Contains(descriptorSet) {
 				for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
@@ -1316,9 +1317,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *RecreateCmdBindDescriptorSets:
 		descriptorSetCount := a.DescriptorSetCount
-		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), s)
+		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
 		for i := uint32(0); i < descriptorSetCount; i++ {
-			descriptorSet := descriptorSets.Index(uint64(i), s).Read(ctx, a, s, nil)
+			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, a, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			if GetState(s).DescriptorSets.Contains(descriptorSet) {
 				for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
@@ -1438,9 +1439,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
 	case *VkCmdExecuteCommands:
-		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), s)
+		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
 		for i := uint32(0); i < a.CommandBufferCount; i++ {
-			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), s).Read(ctx, a, s, nil)
+			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
 			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
 			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
@@ -1451,9 +1452,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *RecreateCmdExecuteCommands:
-		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), s)
+		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
 		for i := uint32(0); i < a.CommandBufferCount; i++ {
-			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), s).Read(ctx, a, s, nil)
+			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
 			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
 			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
@@ -1472,13 +1473,13 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 		// handle command buffers
 		submitCount := a.SubmitCount
-		submits := a.PSubmits.Slice(0, uint64(submitCount), s)
+		submits := a.PSubmits.Slice(0, uint64(submitCount), l)
 		for i := uint32(0); i < submitCount; i++ {
-			submit := submits.Index(uint64(i), s).Read(ctx, a, s, nil)
+			submit := submits.Index(uint64(i), l).Read(ctx, a, s, nil)
 			commandBufferCount := submit.CommandBufferCount
-			commandBuffers := submit.PCommandBuffers.Slice(0, uint64(commandBufferCount), s)
+			commandBuffers := submit.PCommandBuffers.Slice(0, uint64(commandBufferCount), l)
 			for j := uint32(0); j < submit.CommandBufferCount; j++ {
-				vkCmdBuf := commandBuffers.Index(uint64(j), s).Read(ctx, a, s, nil)
+				vkCmdBuf := commandBuffers.Index(uint64(j), l).Read(ctx, a, s, nil)
 				cb := g.getOrCreateCommandBuffer(vkCmdBuf)
 				// All the commands that are submitted will not be dropped.
 				addRead(&b, g, cb)
@@ -1507,9 +1508,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 // Traverse through the given VkWriteDescriptorSet slice, add behaviors to
 // |b| according to the descriptor type.
 func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g *DependencyGraph, ctx context.Context, a atom.Atom, s *gfxapi.State) error {
+	l := s.MemoryLayout
 	writeCount := writes.Info().Count
 	for i := uint64(0); i < writeCount; i++ {
-		write := writes.Index(uint64(i), s).Read(ctx, a, s, nil)
+		write := writes.Index(uint64(i), l).Read(ctx, a, s, nil)
 		if write.DescriptorCount > 0 {
 			// handle the target descriptor set
 			b.modify(g, vulkanStateKey(write.DstSet))
@@ -1519,9 +1521,9 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-				imageInfos := write.PImageInfo.Slice(0, uint64(write.DescriptorCount), s)
+				imageInfos := write.PImageInfo.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < imageInfos.Info().Count; j++ {
-					imageInfo := imageInfos.Index(uint64(j), s).Read(ctx, a, s, nil)
+					imageInfo := imageInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					sampler := imageInfo.Sampler
 					imageView := imageInfo.ImageView
 					b.read(g, vulkanStateKey(sampler))
@@ -1531,17 +1533,17 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-				bufferInfos := write.PBufferInfo.Slice(0, uint64(write.DescriptorCount), s)
+				bufferInfos := write.PBufferInfo.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < bufferInfos.Info().Count; j++ {
-					bufferInfo := bufferInfos.Index(uint64(j), s).Read(ctx, a, s, nil)
+					bufferInfo := bufferInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					buffer := bufferInfo.Buffer
 					b.read(g, vulkanStateKey(buffer))
 				}
 			case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-				bufferViews := write.PTexelBufferView.Slice(0, uint64(write.DescriptorCount), s)
+				bufferViews := write.PTexelBufferView.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < bufferViews.Info().Count; j++ {
-					bufferView := bufferViews.Index(uint64(j), s).Read(ctx, a, s, nil)
+					bufferView := bufferViews.Index(uint64(j), l).Read(ctx, a, s, nil)
 					b.read(g, vulkanStateKey(bufferView))
 				}
 			default:

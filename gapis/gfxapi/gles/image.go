@@ -19,11 +19,12 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/stream"
+	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // getSizedFormatFromTuple returns sized format from unsized format and component type.
 func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
-	sf, _ := subGetSizedFormatFromTuple(nil, nil, nil, nil, nil, nil, unsizedFormat, ty)
+	sf, _ := subGetSizedFormatFromTuple(nil, nil, nil, &gfxapi.State{}, nil, nil, unsizedFormat, ty)
 	if sf == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown unsized format: %v, %v", unsizedFormat, ty))
 	}
@@ -32,7 +33,7 @@ func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 
 // getUnsizedFormatAndType returns unsized format and component type from sized format.
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
-	info, _ := subGetSizedFormatInfo(nil, nil, nil, nil, nil, nil, sizedFormat)
+	info, _ := subGetSizedFormatInfo(nil, nil, nil, &gfxapi.State{}, nil, nil, sizedFormat)
 	if info.SizedFormat == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
 	}
@@ -88,7 +89,7 @@ var glChannelToStreamChannel = map[GLenum]stream.Channel{
 
 // getUncompressedStreamFormat returns the decoding format which can be used to read single pixel.
 func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Format, err error) {
-	info, _ := subGetUnsizedFormatInfo(nil, nil, nil, nil, nil, nil, unsizedFormat)
+	info, _ := subGetUnsizedFormatInfo(nil, nil, nil, &gfxapi.State{}, nil, nil, unsizedFormat)
 	if info.Count == 0 {
 		return nil, fmt.Errorf("Unknown unsized format: %v", unsizedFormat)
 	}

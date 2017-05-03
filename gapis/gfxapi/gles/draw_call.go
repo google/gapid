@@ -60,7 +60,7 @@ func (a *GlDrawElements) getIndices(
 	var decoder pod.Reader
 	if indexBufferID == 0 {
 		// Get the index buffer data from pointer
-		decoder = a.Indices.Slice(0, size, s).Decoder(ctx, s)
+		decoder = a.Indices.Slice(0, size, s.MemoryLayout).Decoder(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
 		indexBuffer := c.SharedObjects.Buffers[indexBufferID]
@@ -68,7 +68,7 @@ func (a *GlDrawElements) getIndices(
 			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
 		}
 		offset := uint64(a.Indices.Address)
-		decoder = indexBuffer.Data.Slice(offset, offset+size, s).Decoder(ctx, s)
+		decoder = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Decoder(ctx, s)
 	}
 
 	indices, err := decodeIndices(decoder, a.IndicesType)

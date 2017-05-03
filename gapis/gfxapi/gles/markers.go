@@ -25,7 +25,7 @@ import (
 func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
@@ -34,7 +34,7 @@ func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State)
 func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
@@ -43,7 +43,7 @@ func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.Stat
 func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
@@ -52,7 +52,7 @@ func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) str
 func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }

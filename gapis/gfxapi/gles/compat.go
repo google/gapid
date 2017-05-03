@@ -237,7 +237,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					img := tex.Texture2D[0]
 					data, ok := eglImageData[tex.EGLImage]
 					if !ok {
-						data = atom.Must(atom.Alloc(ctx, s, img.Data.Count)).Ptr()
+						data = atom.Must(atom.Alloc(ctx, s, img.Data.SliceInfo.Count)).Ptr()
 						eglImageData[tex.EGLImage] = data
 					}
 					out.MutateAndWrite(ctx, dID, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
@@ -555,7 +555,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						// application pool.
 						a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 						indexSize := DataTypeSize(a.IndicesType)
-						data := U8ᵖ(a.Indices).Slice(0, uint64(indexSize*int(a.IndicesCount)), s)
+						data := U8ᵖ(a.Indices).Slice(0, uint64(indexSize*int(a.IndicesCount)), s.MemoryLayout)
 						limits := e.calcIndexLimits(data, indexSize)
 						moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 					}
@@ -572,9 +572,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// pooled buffer.
 					data := c.SharedObjects.Buffers[ib].Data
 					indexSize := DataTypeSize(a.IndicesType)
-					start := min(a.Indices.Address, data.Count)                            // Clamp
-					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.Count) // Clamp
-					limits := e.calcIndexLimits(data.Slice(start, end, s), indexSize)
+					start := min(a.Indices.Address, data.SliceInfo.Count)                            // Clamp
+					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.SliceInfo.Count) // Clamp
+					limits := e.calcIndexLimits(data.Slice(start, end, s.MemoryLayout), indexSize)
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}
 			}

@@ -96,6 +96,7 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 
 func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	s := out.State()
+	l := s.MemoryLayout
 	a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	if image, ok := a.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
@@ -234,7 +235,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		pInfo := createRenderPass.PCreateInfo
 		info := pInfo.Read(ctx, createRenderPass, s, nil)
 		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), s).Read(ctx, createRenderPass, s, nil)
+		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).Read(ctx, createRenderPass, s, nil)
 		changed := false
 		for i := range attachments {
 			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
@@ -275,7 +276,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		pInfo := recreateRenderPass.PCreateInfo
 		info := pInfo.Read(ctx, recreateRenderPass, s, nil)
 		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), s).Read(ctx, recreateRenderPass, s, nil)
+		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).Read(ctx, recreateRenderPass, s, nil)
 		changed := false
 		for i := range attachments {
 			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
