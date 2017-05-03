@@ -46,14 +46,6 @@ public class Formatter {
   private Formatter() {
   }
 
-  /*
-  public static String toString(SnippetObject value, Type type) {
-    NoStyleStylingString string = new NoStyleStylingString();
-    format(value, type, string, null);
-    return string.toString();
-  }
-   */
-
   public static void format(Service.Command atom,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       StylingString string, Style style) {
@@ -90,14 +82,26 @@ public class Formatter {
     }
   }
 
+  public static String toString(Service.Command atom,
+      Function<Path.ConstantSet, Service.ConstantSet> constantResolver) {
+    NoStyleStylingString string = new NoStyleStylingString();
+    format(atom, constantResolver, string, null);
+    return string.toString();
+  }
+
   private static void format(Service.Parameter param,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       StylingString string, Style style) {
     Box.Value value = param.getValue();
+    format(value, constantResolver.apply(param.getConstants()), string, style);
+  }
+
+  public static void format(
+          Box.Value value, Service.ConstantSet constants, StylingString string, Style style) {
     if (value.getValCase() != Box.Value.ValCase.POD) {
       format(value, new Boxes.Context(), string, style);
     } else {
-      format(value.getPod(), constantResolver.apply(param.getConstants()), string, style);
+      format(value.getPod(), constants, string, style);
     }
   }
 
@@ -144,6 +148,12 @@ public class Formatter {
     }
   }
 
+  public static String toString(Pod.Value value, Service.ConstantSet constants) {
+    NoStyleStylingString string = new NoStyleStylingString();
+    format(value, constants, string, null);
+    return string.toString();
+  }
+
   private static void format(Box.Value value, Boxes.Context ctx, StylingString string, Style style) {
     Integer id = value.getValueId();
     switch (value.getValCase()) {
@@ -158,6 +168,9 @@ public class Formatter {
         break;
       case POINTER:
         format(value.getPointer(), string, style);
+        break;
+      case SLICE:
+        format(value.getSlice(), string, style);
         break;
       case REFERENCE:
         format(value.getReference(), ctx, string, style);
@@ -313,7 +326,8 @@ public class Formatter {
     string.append("]", string.structureStyle());
   }
 
-  private static void format(Box.Pointer pointer, StylingString string, Style style) {
+  public static void format(Box.Pointer pointer, StylingString string, Style style) {
+    string.append("*", string.structureStyle());
     if (PoolNames.Application_VALUE != pointer.getPool()) {
       if (pointer.getAddress() != 0) {
         string.append(toPointerString(pointer.getAddress()) + " ", style);
@@ -323,6 +337,42 @@ public class Formatter {
     } else {
       string.append(toPointerString(pointer.getAddress()), style);
     }
+  }
+
+  public static String toString(Box.Pointer pointer) {
+    StringBuilder result = new StringBuilder().append("*");
+    if (PoolNames.Application_VALUE != pointer.getPool()) {
+      if (pointer.getAddress() != 0) {
+        result.append(toPointerString(pointer.getAddress()));
+      }
+      result.append("Pool: 0x");
+      result.append(Long.toHexString(pointer.getPool()));
+    } else {
+      result.append(toPointerString(pointer.getAddress()));
+    }
+    return result.toString();
+  }
+
+  public static void format(Box.Slice slice, StylingString string, Style style) {
+    if (slice.getType() != Pod.Type.any && slice.getType() != Pod.Type.UNRECOGNIZED) {
+      string.append(slice.getType().name(), style);
+    }
+    string.append("[", string.structureStyle());
+    string.append(String.valueOf(slice.getCount()), style);
+    string.append("]", string.structureStyle());
+
+    if (slice.getBase().getPool() != PoolNames.Application_VALUE ||
+        slice.getBase().getAddress() != 0) {
+      string.append(" (", string.structureStyle());
+      format(slice.getBase(), string, style);
+      string.append(")", string.structureStyle());
+    }
+  }
+
+  public static String toString(Box.Slice slice) {
+    NoStyleStylingString string = new NoStyleStylingString();
+    format(slice, string, null);
+    return string.toString();
   }
 
   private static String toPointerString(long pointer) {
@@ -408,39 +458,6 @@ public class Formatter {
   }
 
   /*
-  private static void format(SnippetObject obj, Primitive type, StylingString string, Style style) {
-    if (tryConstantFormat(obj, type, string, style)) {
-      // successfully formatted as a constant.
-      return;
-    }
-  }
-
-  private static void format(SnippetObject value, @SuppressWarnings("unused") AnyType type,
-      StylingString string, Style style) {
-    format(value, string, style);
-  }
-
-  private static void format(SnippetObject obj, StylingString string, Style style) {
-    if (obj.getObject() instanceof Dynamic) {
-      format(obj, (Dynamic)obj.getObject(), string, style);
-      return;
-    }
-    format(obj.getObject(), string, style);
-  }
-
-  private static void format(SnippetObject obj, Dynamic dynamic, StylingString string, Style style) {
-    MemoryPointer mp = tryMemoryPointer(dynamic);
-    if (mp != null) {
-      format(mp, string, style);
-      return;
-    }
-
-    if (dynamic.getFieldCount() == 1 && dynamic.getFieldValue(0) instanceof MemorySliceInfo) {
-      format((MemorySliceInfo)dynamic.getFieldValue(0), getSliceMetadata(dynamic), string, style);
-      return;
-    }
-  }
-
   private static void format(MemorySliceInfo info, MemorySliceMetadata metaData,
       StylingString string, Style style) {
     if (metaData != null) {
@@ -464,184 +481,6 @@ public class Formatter {
     string.append(Long.toString(range.getSize()), style);
     string.append(" bytes at ", string.structureStyle());
     string.append(toPointerString(range.getBase()), style);
-  }
-   */
- /*
- private static String toPointerString(long pointer) {
-    String hex = "0000000" + Long.toHexString(pointer);
-    if (hex.length() > 15) {
-      return "0x" + hex.substring(hex.length() - 16, hex.length());
-    }
-    return "0x" + hex.substring(hex.length() - 8, hex.length());
-  }
-
-  /**
-   * Try to format a primitive value using it's constant name.
-   * @return true if obj was formatted as a constant, false means format underlying value.
-   *
-  private static boolean tryConstantFormat(
-      SnippetObject obj, Primitive type, StylingString string, Style style) {
-    Collection<Constant> value = findConstant(obj, type);
-    if (!value.isEmpty()) {
-      boolean first = true;
-      for (Constant constant : value) {
-        if (!first) {
-          string.append(" | ", style);
-        }
-        first = false;
-        string.append(constant.getName(), string.identifierStyle());
-      }
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * @return empty list if not a constant, single value for constants, more values, for bitfileds.
-   *
-  public static Collection<Constant> findConstant(SnippetObject obj, Primitive type) {
-    final ConstantSet constants = ConstantSet.lookup(type);
-    if (constants == null || constants.getEntries().length == 0) {
-      return Collections.emptyList();
-    }
-
-    // first, try and find exact match
-    List<Constant> byValue = constants.getByValue(obj.getObject());
-    if (byValue != null && byValue.size() != 0) {
-      if (byValue.size() == 1) {
-        // perfect, we have just 1 match
-        return byValue;
-      }
-      // try and find the best match
-      Labels labels = Labels.fromSnippets(obj.getSnippets());
-      Constant result = disambiguate(byValue, labels);
-      return result == null ? Collections.emptyList() : ImmutableList.of(result);
-    }
-
-    // we can not find any exact match,
-    // but for a number, maybe we can find a combination of constants that match (bit flags)
-    Object value = obj.getObject();
-    if (!(value instanceof Number) || value instanceof Double || value instanceof Float) {
-      return Collections.emptyList();
-    }
-
-    long valueNumber = ((Number)value).longValue();
-    long leftToFind = valueNumber;
-    Multimap<Number, Constant> resultMap = ArrayListMultimap.create();
-
-    for (Constant constant : constants.getEntries()) {
-      long constantValue = ((Number)constant.getValue()).longValue();
-      if (Long.bitCount(constantValue) == 1 && (valueNumber & constantValue) != 0) {
-        resultMap.put(constantValue, constant);
-        leftToFind &= ~constantValue; // remove bit
-      }
-    }
-
-    // we did not find enough flags to cover this constant
-    if (leftToFind != 0) {
-      return Collections.emptyList();
-    }
-
-    // we found exactly 1 of each constant to cover the whole value
-    if (resultMap.keySet().size() == resultMap.size()) {
-      return resultMap.values();
-    }
-
-    // we have more than 1 matching constant per flag to we need to disambiguate
-    Labels labels = Labels.fromSnippets(obj.getSnippets());
-    for (Number key : resultMap.keySet()) {
-      Collection<Constant> flagConstants = resultMap.get(key);
-      if (flagConstants.size() == 1) {
-        // perfect, we only have 1 value for this
-        continue;
-      }
-
-      Constant con = disambiguate(flagConstants, labels);
-      if (con != null) {
-        // we have several values, but we found 1 to use
-        resultMap.replaceValues(key, ImmutableList.of(con));
-      } else {
-        // we have several values and we don't know what one to use
-        return Collections.emptyList();
-      }
-    }
-    // assert all constants are disambiguated now
-    assert resultMap.keySet().size() == resultMap.size();
-    return resultMap.values();
-  }
-
-  private static Constant disambiguate(Collection<Constant> constants, Labels labels) {
-    Collection<Constant> preferred;
-    if (labels != null) {
-      // There are label snippets, use them to disambiguate.
-      preferred = labels.preferred(constants);
-      if (preferred.size() == 1) {
-        return Iterators.get(preferred.iterator(), 0);
-      } else if (preferred.size() == 0) {
-        // No matches, continue with the unfiltered constants.
-        preferred = constants;
-      }
-    } else {
-      preferred = constants;
-    }
-    // labels wasn't enough, try the heuristic.
-    // Using an ambiguity threshold of 8. This side steps the most egregious misinterpretations.
-    if (preferred.size() < 8) {
-      return pickShortestName(preferred);
-    }
-    // Nothing worked we will show a numeric value.
-    return null;
-  }
-
-  private static Constant pickShortestName(Collection<Constant> constants) {
-    int len = Integer.MAX_VALUE;
-    Constant shortest = null;
-    for (Constant constant : constants) {
-      int l = constant.getName().length();
-      if (l < len) {
-        len = l;
-        shortest = constant;
-      }
-    }
-    return shortest;
-  }
-
-  /**
-   * Tries to convert a dynamic to a memory pointer if the schema representation is compatible.
-   * There are several aliases for Memory.Pointer which are unique types, but we want to format
-   * them as pointers.
-   *
-   * @param dynamic object to attempt to convert to a memory pointer.
-   * @return a memory pointer if the conversion is possible, otherwise null.
-   *
-  private static MemoryPointer tryMemoryPointer(Dynamic dynamic) {
-    Entity entity = dynamic.klass().entity();
-    Field[] fields = entity.getFields();
-    MemoryPointer mp = new MemoryPointer();
-    Field[] mpFields = mp.klass().entity().getFields();
-    if (mpFields.length != fields.length) {
-      return null;
-    }
-    for (int i = 0; i < fields.length; ++i) {
-      if (!fields[i].equals(mpFields[i])) {
-        return null;
-      }
-    }
-    long address = ((Long)dynamic.getFieldValue(0)).longValue();
-    int poolId = ((Number)dynamic.getFieldValue(1)).intValue();
-    mp.setAddress(address);
-    mp.setPool(poolId);
-    return mp;
-  }
-
-  private static MemorySliceMetadata getSliceMetadata(Dynamic dynamic) {
-    BinaryObject[] metaData = dynamic.type().getMetadata();
-    for (BinaryObject md : metaData) {
-      if (md instanceof MemorySliceMetadata) {
-        return (MemorySliceMetadata)md;
-      }
-    }
-    return null;
   }
    */
 

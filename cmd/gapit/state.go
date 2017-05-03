@@ -85,8 +85,8 @@ func (verb *stateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	return traverseStateTree(ctx, client, tree.Root, func(n *service.StateTreeNode, prefix string) error {
 		name := n.Name + ":"
-		if n.Value != nil {
-			v := n.Value.Get()
+		if n.Preview != nil {
+			v := n.Preview.Get()
 			if n.Constants != nil {
 				constants, err := getConstantSet(ctx, client, n.Constants)
 				if err != nil {

@@ -30,15 +30,23 @@ message Value {
     bool back_reference = 2;
     pod.Value pod = 3;
     Pointer pointer = 4;
-    Reference reference = 5;
-    Struct struct = 6;
-    Map map = 7;
+    Slice slice = 5;
+    Reference reference = 6;
+    Struct struct = 7;
+    Map map = 8;
   }
 }
 
 message Pointer {
   uint64 address = 1;
   uint32 pool = 2;
+}
+
+message Slice {
+  pod.Type type = 1;
+  Pointer base = 2;
+  uint64 count = 3;
+  uint64 root = 4;
 }
 
 message Reference {
@@ -58,10 +66,11 @@ message Type {
     bool back_reference = 2;
     pod.Type pod = 3;
     bool pointer = 4;
-    Type reference = 5;
-    StructType struct = 6;
-    MapType map = 7;
-    bool any = 8;
+    bool slice = 5;
+    Type reference = 6;
+    StructType struct = 7;
+    MapType map = 8;
+    bool any = 9;
   }
 }
 

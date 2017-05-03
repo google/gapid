@@ -14,7 +14,6 @@
 
 syntax = "proto3";
 
-import "core/data/pod/pod.proto";
 import "core/image/image.proto";
 import "core/log/log_pb/log.proto";
 import "core/os/device/device.proto";
@@ -673,8 +672,15 @@ message StateTreeNode {
   string name = 2;
   // The path to the value.
   path.Any path = 3;
-  // The value of the field. Nil if a group.
-  pod.Value value = 4;
+  // The 'preview' value of the field.
+  // For simple POD types, this may be the actual value, in which case
+  // preview_is_value will be true.
+  // For more complex types, this may be a string representation of the value.
+  // Long arrays may be truncated.
+  box.Value preview = 4;
+  // If true then preview is the complete data of the node. In this situation
+  // preview is equal to calling Get() on the path.
+  bool preview_is_value = 5;
   // The possible alternative named values for the field.
-  path.ConstantSet constants = 5;
+  path.ConstantSet constants = 6;
 }

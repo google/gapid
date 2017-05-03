@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -60,8 +61,31 @@ func (v *Value) AssignTo(p interface{}) error {
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
 	tyMemoryPointer  = reflect.TypeOf(memory.Pointer{})
+	tyMemorySlice    = reflect.TypeOf((*memory.Slice)(nil)).Elem()
 	noValue          = reflect.Value{}
 )
+
+// IsMemoryPointer returns true if t is a (or is an alias of a) memory.Pointer.
+func IsMemoryPointer(t reflect.Type) bool {
+	return t.ConvertibleTo(tyMemoryPointer)
+}
+
+// IsMemorySlice returns true if t implements memory.Slice.
+func IsMemorySlice(t reflect.Type) bool {
+	return t.Implements(tyMemorySlice)
+}
+
+// AsMemoryPointer returns v cast to a memory.Pointer. IsMemoryPointer must
+// return true for the type of v.
+func AsMemoryPointer(v reflect.Value) memory.Pointer {
+	return v.Convert(tyMemoryPointer).Interface().(memory.Pointer)
+}
+
+// AsMemorySlice returns v cast to a memory.Slice. IsMemorySlice must
+// return true for the type of v.
+func AsMemorySlice(v reflect.Value) memory.Slice {
+	return v.Interface().(memory.Slice)
+}
 
 type boxer struct {
 	values map[reflect.Value]uint32
@@ -87,9 +111,17 @@ func (b *boxer) val(v reflect.Value) *Value {
 	}
 
 	switch {
-	case t.ConvertibleTo(tyMemoryPointer):
-		p := v.Convert(tyMemoryPointer).Interface().(memory.Pointer)
+	case IsMemoryPointer(t):
+		p := AsMemoryPointer(v)
 		return &Value{0, &Value_Pointer{&Pointer{p.Address, uint32(p.Pool)}}}
+	case IsMemorySlice(t):
+		s := v.Interface().(memory.Slice)
+		return &Value{0, &Value_Slice{&Slice{
+			// TODO Type:
+			Base:  &Pointer{s.Base(), uint32(s.Pool())},
+			Count: s.Count(),
+			Root:  s.Root(),
+		}}}
 	}
 
 	id, ok := b.values[v]
@@ -142,14 +174,16 @@ func (b *boxer) ty(t reflect.Type) *Type {
 		return &Type{0, &Type_Pod{podTy}}
 	}
 
+	switch {
+	case IsMemoryPointer(t):
+		return &Type{0, &Type_Pointer{true}}
+	case IsMemorySlice(t):
+		return &Type{0, &Type_Slice{true}}
+	}
+
 	switch t.Kind() {
 	case reflect.Interface:
 		return &Type{0, &Type_Any{true}}
-	}
-
-	switch {
-	case t.ConvertibleTo(tyMemoryPointer):
-		return &Type{0, &Type_Pointer{true}}
 	}
 
 	id, ok := b.types[t]
@@ -204,6 +238,14 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		panic(fmt.Errorf("Unsupported POD Value %+v", v))
 	case *Value_Pointer:
 		p := memory.Pointer{Address: v.Pointer.Address, Pool: memory.PoolID(v.Pointer.Pool)}
+		return reflect.ValueOf(p)
+	case *Value_Slice:
+		p := NewSlice(
+			v.Slice.Root,
+			v.Slice.Base.Address,
+			v.Slice.Count,
+			memory.PoolID(v.Slice.Base.Pool),
+		)
 		return reflect.ValueOf(p)
 	}
 
@@ -266,6 +308,9 @@ func (b *unboxer) ty(t *Type) (out reflect.Type) {
 
 	case *Type_Pointer:
 		return tyMemoryPointer
+
+	case *Type_Slice:
+		return tyMemorySlice
 	}
 
 	id := t.TypeId
@@ -327,3 +372,24 @@ func (m mapSorter) Swap(i, j int) {
 	m.keys[i], m.keys[j] = m.keys[j], m.keys[i]
 	m.entries[i], m.entries[j] = m.entries[j], m.entries[i]
 }
+
+// NewSlice returns a new memory.Slice implementation.
+func NewSlice(root, base, count uint64, pool memory.PoolID) memory.Slice {
+	return slice{root, base, count, pool}
+}
+
+// slice is an implementation of the memory.Slice interface.
+type slice struct {
+	root  uint64
+	base  uint64
+	count uint64
+	pool  memory.PoolID
+}
+
+func (s slice) Root() uint64                            { return s.root }
+func (s slice) Base() uint64                            { return s.base }
+func (s slice) Count() uint64                           { return s.count }
+func (s slice) Pool() memory.PoolID                     { return s.pool }
+func (s slice) ElementSize(*device.MemoryLayout) uint64 { return 1 }
+func (s slice) ElementTypeName() string                 { return "kill me" }
+func (s slice) Range(*device.MemoryLayout) memory.Range { return memory.Range{} }

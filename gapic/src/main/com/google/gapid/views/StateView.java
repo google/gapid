@@ -27,8 +27,10 @@ import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.server.Client.DataUnavailableException;
+import com.google.gapid.util.Boxes;
 import com.google.gapid.util.Messages;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.LoadablePanel;
@@ -462,10 +464,10 @@ public class StateView extends Composite
         string.append("Loading...", string.structureStyle());
       } else {
         string.append(data.getName(), string.defaultStyle());
-        if (data.hasValue()) {
+        if (data.hasPreview()) {
          string.append(": ", string.structureStyle());
-         Formatter.format(data.getValue(), constants.getConstants(data.getConstants()), string,
-             string.defaultStyle());
+         Service.ConstantSet constantSet = constants.getConstants(data.getConstants());
+         Formatter.format(data.getPreview(), constantSet, string, string.defaultStyle());
         }
       }
       return string;
