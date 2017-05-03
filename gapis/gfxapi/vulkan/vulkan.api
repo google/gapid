@@ -5510,7 +5510,6 @@ sub void doCmdBindDescriptorSets(CmdBindDescriptorSets bind) {
       readCoherentMemoryInBuffer(v.Buffer, v.Offset, v.Range)
     }
   }
-  clearLastDrawInfoDescriptorSets()
   for _, binding, set in bind.DescriptorSets {
       LastDrawInfo.DescriptorSets[binding] = set
   }
