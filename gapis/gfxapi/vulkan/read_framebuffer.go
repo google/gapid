@@ -193,7 +193,7 @@ func postImageData(ctx context.Context,
 	fenceId := VkFence(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Fences[VkFence(x)]; return ok }))
 	fenceCreateInfo := VkFenceCreateInfo{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		Flags: VkFenceCreateFlags(0),
 	}
 	fenceCreateData := MustAllocData(ctx, s, fenceCreateInfo)
@@ -220,7 +220,7 @@ func postImageData(ctx context.Context,
 	bufferMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]; return ok }))
 	bufferMemoryAllocInfo := VkMemoryAllocateInfo{
 		SType:           VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-		PNext:           NewVoidᶜᵖ(0),
+		PNext:           NewVoidᶜᵖ(memory.Nullptr),
 		AllocationSize:  VkDeviceSize(bufferSize),
 		MemoryTypeIndex: bufferMemoryTypeIndex,
 	}
@@ -228,13 +228,13 @@ func postImageData(ctx context.Context,
 	bufferMemoryData := MustAllocData(ctx, s, bufferMemoryId)
 	bufferCreateInfo := VkBufferCreateInfo{
 		SType:                 VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		PNext:                 NewVoidᶜᵖ(0),
+		PNext:                 NewVoidᶜᵖ(memory.Nullptr),
 		Flags:                 VkBufferCreateFlags(0),
 		Size:                  VkDeviceSize(bufferSize),
 		Usage:                 VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT),
 		SharingMode:           VkSharingMode_VK_SHARING_MODE_EXCLUSIVE,
 		QueueFamilyIndexCount: 0,
-		PQueueFamilyIndices:   NewU32ᶜᵖ(0),
+		PQueueFamilyIndices:   NewU32ᶜᵖ(memory.Nullptr),
 	}
 	bufferCreateInfoData := MustAllocData(ctx, s, bufferCreateInfo)
 	bufferData := MustAllocData(ctx, s, bufferId)
@@ -243,7 +243,7 @@ func postImageData(ctx context.Context,
 	stagingImageId := VkImage(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Images[VkImage(x)]; return ok }))
 	stagingImageCreateInfo := VkImageCreateInfo{
 		SType:     VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		PNext:     NewVoidᶜᵖ(0),
+		PNext:     NewVoidᶜᵖ(memory.Nullptr),
 		Flags:     VkImageCreateFlags(0),
 		ImageType: VkImageType_VK_IMAGE_TYPE_2D,
 		Format:    vkFormat,
@@ -260,7 +260,7 @@ func postImageData(ctx context.Context,
 			VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT),
 		SharingMode:           VkSharingMode_VK_SHARING_MODE_EXCLUSIVE,
 		QueueFamilyIndexCount: 0,
-		PQueueFamilyIndices:   NewU32ᶜᵖ(0),
+		PQueueFamilyIndices:   NewU32ᶜᵖ(memory.Nullptr),
 		InitialLayout:         VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 	}
 	stagingImageCreateInfoData := MustAllocData(ctx, s, stagingImageCreateInfo)
@@ -276,7 +276,7 @@ func postImageData(ctx context.Context,
 	resolveImageId := VkImage(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Images[VkImage(x)]; return ok }))
 	resolveImageCreateInfo := VkImageCreateInfo{
 		SType:     VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		PNext:     NewVoidᶜᵖ(0),
+		PNext:     NewVoidᶜᵖ(memory.Nullptr),
 		Flags:     VkImageCreateFlags(0),
 		ImageType: VkImageType_VK_IMAGE_TYPE_2D,
 		Format:    vkFormat,
@@ -293,7 +293,7 @@ func postImageData(ctx context.Context,
 			VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT),
 		SharingMode:           VkSharingMode_VK_SHARING_MODE_EXCLUSIVE,
 		QueueFamilyIndexCount: 0,
-		PQueueFamilyIndices:   NewU32ᶜᵖ(0),
+		PQueueFamilyIndices:   NewU32ᶜᵖ(memory.Nullptr),
 		InitialLayout:         VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 	}
 	resolveImageCreateInfoData := MustAllocData(ctx, s, resolveImageCreateInfo)
@@ -309,7 +309,7 @@ func postImageData(ctx context.Context,
 	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).CommandPools[VkCommandPool(x)]; return ok }))
 	commandPoolCreateInfo := VkCommandPoolCreateInfo{
 		SType:            VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		PNext:            NewVoidᶜᵖ(0),
+		PNext:            NewVoidᶜᵖ(memory.Nullptr),
 		Flags:            VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT),
 		QueueFamilyIndex: queue.Family,
 	}
@@ -317,7 +317,7 @@ func postImageData(ctx context.Context,
 	commandPoolData := MustAllocData(ctx, s, commandPoolId)
 	commandBufferAllocateInfo := VkCommandBufferAllocateInfo{
 		SType:              VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		PNext:              NewVoidᶜᵖ(0),
+		PNext:              NewVoidᶜᵖ(memory.Nullptr),
 		CommandPool:        commandPoolId,
 		Level:              VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		CommandBufferCount: 1,
@@ -329,9 +329,9 @@ func postImageData(ctx context.Context,
 	// Data and info for Vulkan commands in command buffers
 	beginCommandBufferInfo := VkCommandBufferBeginInfo{
 		SType:            VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		PNext:            NewVoidᶜᵖ(0),
+		PNext:            NewVoidᶜᵖ(memory.Nullptr),
 		Flags:            VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
-		PInheritanceInfo: NewVkCommandBufferInheritanceInfoᶜᵖ(0),
+		PInheritanceInfo: NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
 	}
 	beginCommandBufferInfoData := MustAllocData(ctx, s, beginCommandBufferInfo)
 
@@ -353,20 +353,20 @@ func postImageData(ctx context.Context,
 	commandBuffers := MustAllocData(ctx, s, commandBufferId)
 	submitInfo := VkSubmitInfo{
 		SType:                VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		PNext:                NewVoidᶜᵖ(0),
+		PNext:                NewVoidᶜᵖ(memory.Nullptr),
 		WaitSemaphoreCount:   0,
-		PWaitSemaphores:      NewVkSemaphoreᶜᵖ(0),
-		PWaitDstStageMask:    NewVkPipelineStageFlagsᶜᵖ(0),
+		PWaitSemaphores:      NewVkSemaphoreᶜᵖ(memory.Nullptr),
+		PWaitDstStageMask:    NewVkPipelineStageFlagsᶜᵖ(memory.Nullptr),
 		CommandBufferCount:   1,
-		PCommandBuffers:      NewVkCommandBufferᶜᵖ(commandBuffers.Address()),
+		PCommandBuffers:      NewVkCommandBufferᶜᵖ(commandBuffers.Ptr()),
 		SignalSemaphoreCount: 0,
-		PSignalSemaphores:    NewVkSemaphoreᶜᵖ(0),
+		PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
 	}
 	submitInfoData := MustAllocData(ctx, s, submitInfo)
 
 	mappedMemoryRange := VkMappedMemoryRange{
 		SType:  VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-		PNext:  NewVoidᶜᵖ(0),
+		PNext:  NewVoidᶜᵖ(memory.Nullptr),
 		Memory: bufferMemoryId,
 		Offset: VkDeviceSize(0),
 		Size:   VkDeviceSize(0xFFFFFFFFFFFFFFFF),
@@ -376,12 +376,12 @@ func postImageData(ctx context.Context,
 	if err != nil {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Device Memory -> Host mapping failed")})
 	}
-	mappedPointer := MustAllocData(ctx, s, NewVoidᶜᵖ(at))
+	mappedPointer := MustAllocData(ctx, s, Voidᶜᵖ{at, memory.ApplicationPool})
 
 	// Barrier data for layout transitions of staging image
 	stagingImageToDstBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
 				VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
@@ -406,7 +406,7 @@ func postImageData(ctx context.Context,
 
 	stagingImageToSrcBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT,
 		),
@@ -430,7 +430,7 @@ func postImageData(ctx context.Context,
 	// multi-sampled.
 	resolveImageToDstBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
 				VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
@@ -455,7 +455,7 @@ func postImageData(ctx context.Context,
 
 	resolveImageToSrcBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT,
 		),
@@ -478,7 +478,7 @@ func postImageData(ctx context.Context,
 	// Barrier data for layout transitions of attachment image
 	attachmentImageToSrcBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
 				VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
@@ -504,7 +504,7 @@ func postImageData(ctx context.Context,
 
 	attachmentImageResetLayoutBarrier := VkImageMemoryBarrier{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		PNext: NewVoidᶜᵖ(0),
+		PNext: NewVoidᶜᵖ(memory.Nullptr),
 		SrcAccessMask: VkAccessFlags(
 			VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT,
 		),
@@ -612,7 +612,7 @@ func postImageData(ctx context.Context,
 		NewVkCreateImage(
 			vkDevice,
 			stagingImageCreateInfoData.Ptr(),
-			memory.Pointer{},
+			memory.Nullptr,
 			stagingImageData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
@@ -644,7 +644,7 @@ func postImageData(ctx context.Context,
 		NewVkCreateBuffer(
 			vkDevice,
 			bufferCreateInfoData.Ptr(),
-			memory.Pointer{},
+			memory.Nullptr,
 			bufferData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
@@ -655,7 +655,7 @@ func postImageData(ctx context.Context,
 		NewVkAllocateMemory(
 			vkDevice,
 			bufferMemoryAllocateInfoData.Ptr(),
-			memory.Pointer{},
+			memory.Nullptr,
 			bufferMemoryData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
@@ -679,7 +679,7 @@ func postImageData(ctx context.Context,
 			NewVkCreateImage(
 				vkDevice,
 				resolveImageCreateInfoData.Ptr(),
-				memory.Pointer{},
+				memory.Nullptr,
 				resolveImageData.Ptr(),
 				VkResult_VK_SUCCESS,
 			).AddRead(
@@ -713,7 +713,7 @@ func postImageData(ctx context.Context,
 		NewVkCreateCommandPool(
 			vkDevice,
 			commandPoolCreateInfoData.Ptr(),
-			memory.Pointer{},
+			memory.Nullptr,
 			commandPoolData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
@@ -738,7 +738,7 @@ func postImageData(ctx context.Context,
 		NewVkCreateFence(
 			vkDevice,
 			fenceCreateData.Ptr(),
-			memory.Pointer{},
+			memory.Nullptr,
 			fenceData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
@@ -763,9 +763,9 @@ func postImageData(ctx context.Context,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkDependencyFlags(0),
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			1,
 			attachmentImageToSrcBarrierData.Ptr(),
 		).AddRead(
@@ -777,9 +777,9 @@ func postImageData(ctx context.Context,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkDependencyFlags(0),
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			1,
 			stagingImageToDstBarrierData.Ptr(),
 		).AddRead(
@@ -798,9 +798,9 @@ func postImageData(ctx context.Context,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 				VkDependencyFlags(0),
 				0,
-				memory.Pointer{},
+				memory.Nullptr,
 				0,
-				memory.Pointer{},
+				memory.Nullptr,
 				1,
 				resolveImageToDstBarrierData.Ptr(),
 			).AddRead(
@@ -821,9 +821,9 @@ func postImageData(ctx context.Context,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 				VkDependencyFlags(0),
 				0,
-				memory.Pointer{},
+				memory.Nullptr,
 				0,
-				memory.Pointer{},
+				memory.Nullptr,
 				1,
 				resolveImageToSrcBarrierData.Ptr(),
 			).AddRead(
@@ -865,9 +865,9 @@ func postImageData(ctx context.Context,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkDependencyFlags(0),
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			1,
 			stagingImageToSrcBarrierData.Ptr(),
 		).AddRead(
@@ -879,9 +879,9 @@ func postImageData(ctx context.Context,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkDependencyFlags(0),
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			0,
-			memory.Pointer{},
+			memory.Nullptr,
 			1,
 			attachmentImageResetLayoutBarrierData.Ptr(),
 		).AddRead(
@@ -992,15 +992,15 @@ func postImageData(ctx context.Context,
 	// Free the device resources used for reading framebuffer
 	writeEach(ctx, out,
 		NewVkUnmapMemory(vkDevice, bufferMemoryId),
-		NewVkDestroyBuffer(vkDevice, bufferId, memory.Pointer{}),
-		NewVkDestroyCommandPool(vkDevice, commandPoolId, memory.Pointer{}),
-		NewVkDestroyImage(vkDevice, stagingImageId, memory.Pointer{}),
-		NewVkFreeMemory(vkDevice, stagingImageMemoryId, memory.Pointer{}),
-		NewVkFreeMemory(vkDevice, bufferMemoryId, memory.Pointer{}))
+		NewVkDestroyBuffer(vkDevice, bufferId, memory.Nullptr),
+		NewVkDestroyCommandPool(vkDevice, commandPoolId, memory.Nullptr),
+		NewVkDestroyImage(vkDevice, stagingImageId, memory.Nullptr),
+		NewVkFreeMemory(vkDevice, stagingImageMemoryId, memory.Nullptr),
+		NewVkFreeMemory(vkDevice, bufferMemoryId, memory.Nullptr))
 	if imageObject.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		writeEach(ctx, out,
-			NewVkDestroyImage(vkDevice, resolveImageId, memory.Pointer{}),
-			NewVkFreeMemory(vkDevice, resolveImageMemoryId, memory.Pointer{}))
+			NewVkDestroyImage(vkDevice, resolveImageId, memory.Nullptr),
+			NewVkFreeMemory(vkDevice, resolveImageMemoryId, memory.Nullptr))
 	}
-	writeEach(ctx, out, NewVkDestroyFence(vkDevice, fenceId, memory.Pointer{}))
+	writeEach(ctx, out, NewVkDestroyFence(vkDevice, fenceId, memory.Nullptr))
 }

@@ -56,7 +56,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	s.MemoryLayout = ca
 
 	for _, w := range test.writes {
-		s.Memory[memory.ApplicationPool].Write(w.at.Address, w.src)
+		s.Memory[memory.ApplicationPool].Write(w.at.Address(), w.src)
 	}
 
 	for i, a := range test.atoms {
@@ -1194,11 +1194,11 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 	a := device.Little32
 	aRng, aID := atom.Data(
 		ctx, a, p(0x100000),
-		PointerStruct{F2: 0x23, F1: 0x01, Pointer: NewU32ᵖ(0x200000)})
+		PointerStruct{F2: 0x23, F1: 0x01, Pointer: U32ᵖ{0x200000, 0}})
 	bRng, bID := atom.Data(ctx, a, p(0x200000), uint32(0x45))
 	cRng, cID := atom.Data(
 		ctx, a, p(0x300000),
-		PointerStruct{F2: 0x89, F1: 0x67, Pointer: NewU32ᵖ(0x200000)})
+		PointerStruct{F2: 0x89, F1: 0x67, Pointer: U32ᵖ{0x200000, 0}})
 
 	test{
 		atoms: []atom.Atom{
@@ -1278,13 +1278,13 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	a := device.Little32
 	nestedRng, nestedID := atom.Data(
 		ctx, a, p(0x100000),
-		NestedStruct{RS: NewRemappedStructᵖ(0x200000), PS: NewPointerStructᵖ(0x300000)})
+		NestedStruct{RS: RemappedStructᵖ{0x200000, 0}, PS: PointerStructᵖ{0x300000, 0}})
 	rsRng, rsID := atom.Data(
 		ctx, a, p(0x200000),
 		RemappedStruct{F1: 0x01, Handle: 0x23, F3: 0x45})
 	psRng, psID := atom.Data(
 		ctx, a, p(0x300000),
-		PointerStruct{F1: 0x67, F2: 0x89, Pointer: NewU32ᵖ(0x400000)})
+		PointerStruct{F1: 0x67, F2: 0x89, Pointer: U32ᵖ{0x400000, 0}})
 	pRng, pID := atom.Data(ctx, a, p(0x400000), uint32(0xab))
 
 	test{
@@ -1400,7 +1400,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	})
 
 	ssRng, ssID := atom.Data(ctx, a, p(0x500000),
-		StringStruct{Count: 5, Strings: NewCharᵖᵖ(0x400000)})
+		StringStruct{Count: 5, Strings: Charᵖᵖ{0x400000, 0}})
 
 	test{
 		atoms: []atom.Atom{

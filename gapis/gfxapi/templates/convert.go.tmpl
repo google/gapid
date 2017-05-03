@@ -145,7 +145,7 @@
   {{$name := $.Field.Name | GoPublicName}}
   {{$proto := $.Field.Name | ProtoGoName}}
   {{$type := TypeOf $.Field}}
-  {{$truetype := TrueTypeOf $.Field}}
+  {{$truetype := $type | Underlying}}
   {{if IsStaticArray $truetype}}
     to.{{$proto}} = make([]{{Macro "Convert.StorageType" $truetype.ValueType}}, {{$truetype.Size}})¶
     for ϟi := 0; ϟi < {{$type.Size}}; ϟi++ {»¶
@@ -176,7 +176,7 @@
   {{$name := $.Field.Name | GoPublicName}}
   {{$proto := $.Field.Name | ProtoGoName}}
   {{$type := TypeOf $.Field}}
-  {{$truetype := TrueTypeOf $.Field}}
+  {{$truetype := Underlying $type}}
   {{if IsStaticArray $truetype}}
     for ϟi := 0; ϟi < {{$truetype.Size}}; ϟi++ {»¶
       ϟv := from.{{$proto}}[ϟi]¶
@@ -266,10 +266,15 @@
 {{define "Convert.ToProto"}}
     {{$source := Macro "Convert.LiveType" $.Type}}
     {{$target := Macro "Convert.StorageType" $.Type}}
-    {{$truetype := TrueTypeOf $.Type}}
+    {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{$.Value}}.ToProto()
-    {{else if IsPointer $truetype}}(memory.Pointer)({{$.Value}}).ToProto()
-    {{else if IsSlice $truetype}}{{$.Value}}.ToProto()
+    {{else if IsPointer $truetype}}&{{$target}}{Address: {{$.Value}}.addr, Pool: uint32({{$.Value}}.pool)}
+    {{else if IsSlice $truetype}}&{{$target}}{»¶
+      Root: {{$.Value}}.root,¶
+      Base: {{$.Value}}.base,¶
+      Count: {{$.Value}}.count,¶
+      Pool: uint32({{$.Value}}.pool),¶
+    «}
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}
@@ -283,15 +288,15 @@
 {{define "Convert.FromProto"}}
     {{$source := Macro "Convert.StorageType" $.Type}}
     {{$target := Macro "Convert.LiveType" $.Type}}
-    {{$truetype := TrueTypeOf $.Type}}
+    {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{$.Type.Name}}From({{$.Value}})
-    {{else if IsPointer $truetype}}({{$target}})(memory.PointerFrom({{$.Value}}))
-    {{else if IsSlice $truetype}}{{$target}}{
-      root:  {{$.Value}}.Root,
-      base:  {{$.Value}}.Base,
-      count: {{$.Value}}.Count,
-      pool:  memory.PoolID({{$.Value}}.Pool),
-    }
+    {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
+    {{else if IsSlice $truetype}}{{$target}}{»¶
+      root:  {{$.Value}}.Root,¶
+      base:  {{$.Value}}.Base,¶
+      count: {{$.Value}}.Count,¶
+      pool:  memory.PoolID({{$.Value}}.Pool),¶
+    «}
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}

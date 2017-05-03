@@ -24,7 +24,7 @@ import (
 )
 
 func getAlignment(memoryLayout *device.MemoryLayout, v interface{}) (uint64, error) {
-	if pt := reflect.TypeOf(Pointer{}); reflect.TypeOf(v).ConvertibleTo(pt) {
+	if _, ok := v.(Pointer); ok {
 		return uint64(memoryLayout.GetPointer().GetAlignment()), nil
 	}
 	t := reflect.TypeOf(v)
@@ -68,13 +68,10 @@ func getAlignment(memoryLayout *device.MemoryLayout, v interface{}) (uint64, err
 // sequentially. Zeros are used as for paddings. On success, returns
 // the number of bytes written and nil, Otherwise, returns 0 and an error.
 func Write(w binary.Writer, memoryLayout *device.MemoryLayout, v interface{}) (uint64, error) {
-	// <type>ᵖ types are aliases to Pointer. And alias types are different from
-	// the underlying type in Go. We cannot directly use type assertion/switch
-	// here to test whether v is essentially of Pointer type.
-	if pt := reflect.TypeOf(Pointer{}); reflect.TypeOf(v).ConvertibleTo(pt) {
-		v = reflect.ValueOf(v).Convert(pt).Interface()
-		binary.WriteUint(w, memoryLayout.GetPointer().GetSize()*8, v.(Pointer).Address)
-		return uint64(memoryLayout.GetPointer().GetSize()), w.Error()
+	if v, ok := v.(Pointer); ok {
+		s := memoryLayout.GetPointer().GetSize()
+		binary.WriteUint(w, s*8, v.Address())
+		return uint64(s), w.Error()
 	}
 
 	r := reflect.ValueOf(v)

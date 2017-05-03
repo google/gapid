@@ -39,7 +39,7 @@ var (
 )
 
 func p(addr uint64) memory.Pointer {
-	return memory.Pointer{Address: addr, Pool: memory.ApplicationPool}
+	return memory.BytePtr(addr, memory.ApplicationPool)
 }
 
 type glShaderSourceCompatTest glslCompatTest
@@ -76,7 +76,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	}
 
 	mw := &test.MockAtomWriter{S: capture.NewState(ctx)}
-	ctxHandle := memory.Pointer{Pool: memory.ApplicationPool, Address: 1}
+	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 
 	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
@@ -161,7 +161,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &test.MockAtomWriter{S: capture.NewState(ctx)}
-	ctxHandle := memory.Pointer{Pool: memory.ApplicationPool, Address: 1}
+	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []atom.Atom{
@@ -189,7 +189,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 			vao := ctx.Objects.VertexArrays[ctx.BoundVertexArray]
 			array := vao.VertexAttributeArrays[0]
 			binding := vao.VertexBufferBindings[array.Binding]
-			if binding.Buffer != 0 && array.Pointer.Address == 0 {
+			if binding.Buffer != 0 && array.Pointer.Address() == 0 {
 				return // Success
 			} else {
 				t.Error("glDrawElements does not source vertex data from buffer.")

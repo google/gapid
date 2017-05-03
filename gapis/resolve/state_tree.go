@@ -146,6 +146,8 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 
 		t = v.Type()
 		switch {
+		case box.IsMemoryPointer(t):
+			numChildren = 0
 		case box.IsMemorySlice(t):
 			numChildren = box.AsMemorySlice(v).Count()
 		default:

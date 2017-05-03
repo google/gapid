@@ -28,7 +28,7 @@ func TestWriteOn32bitArch(t *testing.T) {
 		uint8(0x12), int8(0x12),
 		uint16(0x1234), int16(0x1234),
 		uint32(0x12345678), int32(0x12345678),
-		Pointer{Address: 0x87654321},
+		BytePtr(0x87654321, 0),
 		[]uint8{0x10, 0x20, 0x30},
 		"hello",
 	}
@@ -61,7 +61,7 @@ func TestWriteStructOn32bitArch(t *testing.T) {
 		Y Pointer
 		Z int16
 		W uint64
-	}{0x12, Pointer{Address: 0xdeadbeef}, 0x3456, 0x8888888899999999}
+	}{0x12, BytePtr(0xdeadbeef, 0), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, arch.GetEndian())
@@ -89,9 +89,9 @@ func TestWriteOn64bitArch(t *testing.T) {
 		uint8(0x12), int8(0x12),
 		uint16(0x1234), int16(0x1234),
 		uint32(0x12345678), int32(0x12345678),
-		Pointer{Address: 0x87654321},
+		BytePtr(0x87654321, 0),
 		[]uint8{0x10, 0x20, 0x30},
-		Pointer{Address: 0x1234567890abcdef},
+		BytePtr(0x1234567890abcdef, 0),
 		"hello",
 		uint64(0xfedcba0987654321), // Mock size_t type
 	}
@@ -128,7 +128,7 @@ func TestWriteStructOn64bitArch(t *testing.T) {
 		Y Pointer
 		Z int16
 		W uint64
-	}{0x12, Pointer{Address: 0xbeefdeaddeadbeef}, 0x3456, 0x8888888899999999}
+	}{0x12, BytePtr(0xbeefdeaddeadbeef, 0), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, arch.GetEndian())

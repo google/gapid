@@ -39,7 +39,7 @@ func Data(ctx context.Context, a *device.MemoryLayout, at memory.Pointer, v ...i
 	if err != nil {
 		panic(err)
 	}
-	return at.Range(uint64(len(buf.Bytes()))), id
+	return memory.Range{Base: at.Address(), Size: uint64(len(buf.Bytes()))}, id
 }
 
 // AllocResult represents the result of allocating a range using
@@ -69,17 +69,17 @@ func (r AllocResult) Range() memory.Range {
 
 // Ptr returns the beginning of the range as an application pool pointer.
 func (r AllocResult) Ptr() memory.Pointer {
-	return memory.Pointer{Address: r.rng.Base, Pool: memory.ApplicationPool}
+	return memory.BytePtr(r.rng.Base, memory.ApplicationPool)
 }
 
 // Offset returns a pointer n bytes to the right of the associated range.
 func (r AllocResult) Offset(n uint64) memory.Pointer {
-	return r.Ptr().Offset(n)
+	return memory.BytePtr(r.rng.Base+n, memory.ApplicationPool)
 }
 
 // Address returns the beginning of the range.
 func (r AllocResult) Address() uint64 {
-	return r.Ptr().Address
+	return r.rng.Base
 }
 
 // AllocData encodes and stores the value v to the database d, allocates a

@@ -166,15 +166,6 @@ func (*Functions) TypeOf(v interface{}) (semantic.Type, error) {
 	}
 }
 
-// TrueTypeOf returns the resolved semantic type of an expression node, dropping all pseudonyms
-func (f *Functions) TrueTypeOf(v interface{}) (semantic.Type, error) {
-	t, err := f.TypeOf(v)
-	if err != nil {
-		return t, err
-	}
-	return f.Underlying(t), nil
-}
-
 // Returns true if v is one of the primitive numeric value types.
 func (*Functions) IsNumericValue(v interface{}) bool {
 	switch v.(type) {

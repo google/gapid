@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/memory"
 )
 
 var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
@@ -381,7 +380,7 @@ func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
-	if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+	if !tex.EGLImage.IsNullptr() {
 		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
 	} else {
 		return textureDataKey{tex, tex.ID}, textureSizeKey{tex, tex.ID}
@@ -405,7 +404,7 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 		tex := att.Texture
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
-			if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+			if !tex.EGLImage.IsNullptr() {
 				key = eglImageDataKey{tex.EGLImage}
 			} else {
 				key = textureDataKey{tex, tex.ID}
@@ -422,7 +421,7 @@ func getAttachmentSize(g *DependencyGraph, c *Context, att FramebufferAttachment
 	if att.Type == GLenum_GL_TEXTURE {
 		tex := att.Texture
 		if tex != nil {
-			if tex.EGLImage != GLeglImageOES(memory.Nullptr) {
+			if !tex.EGLImage.IsNullptr() {
 				key = eglImageSizeKey{tex.EGLImage}
 			} else {
 				key = textureSizeKey{tex, tex.ID}

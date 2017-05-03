@@ -686,7 +686,7 @@
   {{$src    := Macro "Go.Read" $.Object}}
 
   {{/* T* -> number */}}{{if and (IsPointer $src_ty) (IsNumericType $dst_ty)}}
-    {{Template "Go.Type" $.Type}}({{$src}}.Address)
+    {{Template "Go.Type" $.Type}}({{$src}}.addr)
   {{/* A[] -> B[] */}}{{else if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
     As{{Template "Go.Type" $.Type}}({{$src}}, ϟl)
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}

@@ -195,6 +195,8 @@
   {{$el_is_char := IsChar    ($p.To | Underlying | Unpack) }}
   {{$el_is_ptr  := IsPointer ($p.To | Underlying | Unpack) }}
 
+  var _ = memory.Pointer({{$ptr_ty}}{})
+
   // {{$ptr_ty}} is a pointer to a {{$el_ty}} element.
   {{if $el_is_ptr}}
   // Note: Pointers are stored differently between the application pool and internal pools.
@@ -202,27 +204,42 @@
   //  * Internal pools store pointers as an 64-bit unsigned address and a 32-bit unsigned
   //    pool identifier.
   {{end}}
-  type {{$ptr_ty}} memory.Pointer
-
-  // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
-  func New{{$ptr_ty}}(addr uint64) {{$ptr_ty}} {
-    return {{$ptr_ty}}{ Address: addr, Pool: memory.ApplicationPool }
+  type {{$ptr_ty}} struct {
+    addr uint64
+    pool memory.PoolID
   }
 
+  // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
+  func New{{$ptr_ty}}(p memory.Pointer) {{$ptr_ty}} {
+    return {{$ptr_ty}}{ p.Address(), p.Pool() }
+  }
+
+	// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
+	func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == memory.ApplicationPool }
+
+	// Address returns the pointer's memory address.
+	func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
+
+	// Pool returns the memory pool.
+	func (p {{$ptr_ty}}) Pool() memory.PoolID { return p.pool }
+
+	// Offset returns the pointer offset by n bytes.
+	func (p {{$ptr_ty}}) Offset(n uint64) memory.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
+
   func (p {{$ptr_ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-      e.Uint64(p.Address);
-      e.Uint32(uint32(p.Pool));
+      e.Uint64(p.addr);
+      e.Uint32(uint32(p.pool));
   }
 
   func (p *{{$ptr_ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-      p.Address = d.Uint64();
-      p.Pool = memory.PoolID(d.Uint32());
+      p.addr = d.Uint64();
+      p.pool = memory.PoolID(d.Uint32());
   }
 
   // ElementSize returns the size in bytes of an element that {{$ptr_ty}} points to.
   func (p {{$ptr_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
     {{if $el_is_ptr}}
-      if p.Pool == memory.ApplicationPool {
+      if p.pool == memory.ApplicationPool {
         return uint64(ϟl.GetPointer().GetSize())
       } else {
         return 12
@@ -247,7 +264,7 @@
   {{if $el_is_char}}
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
     func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *gfxapi.State) Charˢ {
-      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.Pool].At(p.Address))
+      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.pool].At(p.addr))
       for {
         i++
         if b := d.Uint8(); b == 0 {
@@ -262,7 +279,7 @@
     if start > end {
       panic(fmt.Errorf("Slice start (%d) is greater than the end (%d)", start, end))
     }
-    return {{$slice_ty}}{root: p.Address, base: p.Address + start * p.ElementSize(ϟl), count: end-start, pool: p.Pool}
+    return {{$slice_ty}}{root: p.addr, base: p.addr + start * p.ElementSize(ϟl), count: end-start, pool: p.pool}
   }
 
   // Check interface conformance
@@ -275,18 +292,18 @@
   // of the value of the instance after the atom has executed.
   func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
-      return cmd.MemoryAfter(uint32(p.Pool), p.Address, 0), nil
+      return cmd.MemoryAfter(uint32(p.pool), p.addr, 0), nil
     }
     return nil, nil
   }
 
   {{if not (GetAnnotation $ "replay_custom_value")}}
     func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
-      if p.Address != 0 {
+      if p.addr != 0 {
         {{if $el_is_ptr}}
-          return value.PointerIndex(p.Address / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
+          return value.PointerIndex(p.addr / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
         {{else}}
-          return value.ObservedPointer(p.Address)
+          return value.ObservedPointer(p.addr)
         {{end}}
       } else {
         return value.AbsolutePointer(0)
@@ -348,7 +365,7 @@
       {{if IsPointer ($f.Type | Underlying)}}
           offset += {{Template "Go.SizeOf" (TypeOf $f)}}
           i := binary.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
-          v := New{{Macro "Go.Type" $f}}(i).value(ϟb, ϟa, ϟs)
+          v := {{Macro "Go.Type" $f}}{i, memory.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.Push(v)
           ϟb.Store(base)
           base += value.ObservedPointer(ϟs.MemoryLayout.GetPointer().GetSize())
@@ -510,7 +527,7 @@
             if d.Error() != nil {
               panic(d.Error())
             }
-            res[i] = New{{$el_ty}}(ptr)
+            res[i] = {{$el_ty}}{ptr, memory.ApplicationPool}
           } else {
         {{else if $el_is_class}}
           if s.pool == memory.ApplicationPool {
@@ -536,7 +553,7 @@
       for i := uint64(0); i < count; i++ {
         {{if $el_is_ptr}}
           if s.pool == memory.ApplicationPool {
-            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].Address); e.Error() != nil {
+            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].addr); e.Error() != nil {
               panic(e.Error())
             }
           } else {
@@ -603,7 +620,7 @@
         for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
           i := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
-          ptr := New{{$el_ty}}(i).value(ϟb, ϟa, ϟs)
+          ptr := {{$el_ty}}{i, memory.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.StorePointer(dst, ptr)
           dst++
         }
@@ -675,7 +692,7 @@
 
   // Index returns a {{$ptr_ty}} to the i'th element in this {{$slice_ty}}.
   func (s {{$slice_ty}}) Index(i uint64, ϟl *device.MemoryLayout) {{$ptr_ty}} {
-    return {{$ptr_ty}}{ Address: s.base + i * s.ElementSize(ϟl), Pool: s.pool }
+    return {{$ptr_ty}}{ s.base + i * s.ElementSize(ϟl), s.pool }
   }
 
   // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
@@ -987,7 +1004,7 @@
             offset = offset + binary.ConsumeBytes(d, newOffset - offset) + {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if ϟv := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}(memory.Pointer{Address: ϟv, Pool: memory.ApplicationPool}) } else { panic(d.Error()) }
+            if ϟv := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}{ϟv, memory.ApplicationPool} } else { panic(d.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}DecodeRaw(ϟl, d, &o.{{Title $v.Name}})
@@ -1014,7 +1031,7 @@
             offset += {{Template "Go.SizeOf" (TypeOf $v)}}
           }
           {{if IsPointer $v.Type}}
-            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, o.{{Title $v.Name}}.Address); e.Error() != nil { panic(e.Error()) }
+            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, o.{{Title $v.Name}}.addr); e.Error() != nil { panic(e.Error()) }
           {{else if IsClass $v.Type}}
             {{$el_ty := Macro "Go.Type"   $v.Type}}
             {{$el_ty}}EncodeRaw(ϟl, e, &o.{{Title $v.Name}})
@@ -1316,7 +1333,7 @@
         return &{{$name}} {§
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
-              {{$p | GoPublicName}}: {{Template "Go.Type" $p}}({{Title $p.Name}}),§
+              {{$p | GoPublicName}}: {{Template "Go.Type" $p}}{ {{Title $p.Name}}.Address(), 0 },§
             {{else}}
               {{$p | GoPublicName}}: {{Title $p.Name}},§
             {{end}}
