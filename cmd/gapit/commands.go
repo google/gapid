@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -93,16 +92,14 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	return traverseCommandTree(ctx, client, tree.Root, func(p *path.CommandTreeNode, n *service.CommandTreeNode) error {
-		if len(p.Index) > 0 {
-			fmt.Fprintf(os.Stdout, strings.Repeat("│   ", len(p.Index)-1)+"├── ")
-		}
+	return traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+		fmt.Fprintf(os.Stdout, prefix)
 		if n.Group != "" {
 			fmt.Fprintln(os.Stdout, n.Group)
 			return nil
 		}
 		return getAndPrintCommand(ctx, client, n.Command)
-	})
+	}, "", true)
 
 }
 
@@ -110,7 +107,9 @@ func traverseCommandTree(
 	ctx context.Context,
 	c client.Client,
 	p *path.CommandTreeNode,
-	f func(p *path.CommandTreeNode, n *service.CommandTreeNode) error) error {
+	f func(n *service.CommandTreeNode, prefix string) error,
+	prefix string,
+	last bool) error {
 
 	if task.Stopped(ctx) {
 		return task.StopReason(ctx)
@@ -123,12 +122,27 @@ func traverseCommandTree(
 
 	n := boxedNode.(*service.CommandTreeNode)
 
-	if err := f(p, n); err != nil {
+	curPrefix := prefix
+	if len(p.Index) > 0 {
+		if (last) {
+			curPrefix += "└──"
+		} else {
+			curPrefix += "├──"
+		}
+	}
+
+	if err := f(n, curPrefix); err != nil {
 		return err
 	}
 
+	if last {
+		prefix += "    "
+	} else {
+		prefix += "│   "
+	}
 	for i := uint64(0); i < n.NumChildren; i++ {
-		if err := traverseCommandTree(ctx, c, p.Child(i), f); err != nil {
+		err := traverseCommandTree(ctx, c, p.Child(i), f, prefix, i == n.NumChildren - 1)
+		if err != nil {
 			return err
 		}
 	}
