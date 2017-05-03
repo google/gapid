@@ -190,7 +190,7 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     public RGBAFloatImageBuffer(int width, int height, byte[] data) {
       super(width, height, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
-      this.info = FloatPixelInfo.compute(buffer);
+      this.info = FloatPixelInfo.compute(buffer, true);
     }
 
     @Override
@@ -307,7 +307,7 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     public LuminanceFloatImageBuffer(int width, int height, byte[] data) {
       super(width, height, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
-      this.info = FloatPixelInfo.compute(buffer);
+      this.info = FloatPixelInfo.compute(buffer, false);
     }
 
     @Override
@@ -367,16 +367,31 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
       this.max = max;
     }
 
-    public static PixelInfo compute(FloatBuffer buffer) {
+    public static PixelInfo compute(FloatBuffer buffer, boolean isRGBA) {
       if (!buffer.hasRemaining()) {
         return PixelInfo.NULL_INFO;
       }
 
       float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
-      for (int i = 0; i < buffer.remaining(); i++) {
-        float value = buffer.get(i);
-        min = Math.min(min, value);
-        max = Math.max(max, value);
+      if (isRGBA) {
+        for (int i = 0, end = buffer.remaining() - 3; i <= end; ) {
+          float value = buffer.get(i++);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          value = buffer.get(i++);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          value = buffer.get(i++);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          i++; // skip alpha
+        }
+      } else {
+        for (int i = 0; i < buffer.remaining(); i++) {
+          float value = buffer.get(i);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+        }
       }
       return new FloatPixelInfo(min, max);
     }
