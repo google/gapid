@@ -94,7 +94,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 		var slice U8ˢ
 		if vbb.Buffer == 0 {
 			// upper bound doesn't really matter here, so long as it's big.
-			slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s))
+			slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s.MemoryLayout))
 		} else {
 			slice = c.SharedObjects.Buffers[vbb.Buffer].Data
 		}
@@ -156,7 +156,7 @@ func vertexStreamData(
 	out := make([]byte, compactSize)
 
 	base := uint64(vaa.RelativeOffset) + uint64(vbb.Offset)
-	if base >= slice.Count {
+	if base >= slice.SliceInfo.Count {
 		// First vertex sits beyond the end of the buffer.
 		// Instead of erroring just return a 0-initialized buffer so other
 		// streams can be visualized. The report should display an error to
@@ -166,8 +166,8 @@ func vertexStreamData(
 	}
 
 	// Only read as much data as we actually have.
-	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.Count)
-	data := slice.Slice(base, base+size, s).Read(ctx, nil, s, nil)
+	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.SliceInfo.Count)
+	data := slice.Slice(base, base+size, s.MemoryLayout).Read(ctx, nil, s, nil)
 	if gap > 0 {
 		// Adjust vectorCount to the number of complete vectors found in data.
 		vectorCount := sint.Min((gap+len(data))/vectorStride, vectorCount)

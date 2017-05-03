@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/memory"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
 )
@@ -37,8 +38,9 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	if (info) == (VkPipelineDynamicStateCreateInfoᶜᵖ{}) {
 		return false
 	}
-	dynamic_state_info := info.Slice(uint64(0), uint64(1), e.s).Index(uint64(0), e.s).Read(e.ctx, e.a, e.s, e.b)
-	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), e.s).Read(e.ctx, e.a, e.s, e.b)
+	l := e.s.MemoryLayout
+	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(e.ctx, e.a, e.s, e.b)
+	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).Read(e.ctx, e.a, e.s, e.b)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -47,13 +49,13 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	return false
 }
 
-func (e externs) mapMemory(value Voidᵖᵖ, slice slice) {
+func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 	ctx := e.ctx
 	if b := e.b; b != nil {
 		switch e.a.(type) {
 		case *VkMapMemory:
 			b.Load(protocol.Type_AbsolutePointer, value.value(e.b, e.a, e.s))
-			b.MapMemory(slice.Range(e.s))
+			b.MapMemory(slice.Range(e.s.MemoryLayout))
 		default:
 			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
 		}
@@ -103,14 +105,15 @@ func (e externs) addWords(module VkShaderModule, numBytes interface{}, data inte
 func (e externs) setSpecData(module *SpecializationInfo, numBytes interface{}, data interface{}) {
 }
 
-func (e externs) unmapMemory(slice slice) {
+func (e externs) unmapMemory(slice memory.Slice) {
 	if b := e.b; b != nil {
-		b.UnmapMemory(slice.Range(e.s))
+		b.UnmapMemory(slice.Range(e.s.MemoryLayout))
 	}
 }
 
 func (e externs) trackMappedCoherentMemory(start uint64, size uint64) {}
 func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size uint64) {
+	l := e.s.MemoryLayout
 	memory := GetState(e.s).DeviceMemories.Get(memory_handle)
 	mapped_offset := uint64(memory.MappedOffset)
 	dstStart := mapped_offset + offset_in_mapped
@@ -129,8 +132,8 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 		if srcStart+copySize > srcEnd {
 			copySize = srcEnd - srcStart
 		}
-		memory.Data.Slice(dstStart, dstStart+copySize, e.s).Copy(
-			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, e.s), e.a, e.s, e.b)
+		memory.Data.Slice(dstStart, dstStart+copySize, l).Copy(
+			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, l), e.a, e.s, e.b)
 		srcStart += copySize
 		dstStart += copySize
 	}
@@ -138,10 +141,11 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 func (e externs) untrackMappedCoherentMemory(start uint64, size uint64) {}
 
 func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
+	l := e.s.MemoryLayout
 	counter := uint32(0)
 	for (pNext) != (Voidᶜᵖ{}) {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), e.s).Index(uint64(1), e.s).Read(e.ctx, e.a, e.s, e.b)
+		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).Read(e.ctx, e.a, e.s, e.b)
 	}
 	return counter
 }
