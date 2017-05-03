@@ -286,7 +286,12 @@
     {{$truetype := TrueTypeOf $.Type}}
     {{if IsClass $truetype}}{{$.Type.Name}}From({{$.Value}})
     {{else if IsPointer $truetype}}({{$target}})(memory.PointerFrom({{$.Value}}))
-    {{else if IsSlice $truetype}}{{$target}}{SliceInfo:memory.SliceInfoFrom({{$.Value}})}
+    {{else if IsSlice $truetype}}{{$target}}{
+      root:  {{$.Value}}.Root,
+      base:  {{$.Value}}.Base,
+      count: {{$.Value}}.Count,
+      pool:  memory.PoolID({{$.Value}}.Pool),
+    }
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}

@@ -70,7 +70,7 @@ func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra 
 
 func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
 	id := data.ResourceID(e.ctx, e.s)
-	count := int(data.SliceInfo.Count) / int(indexSize)
+	count := int(data.count) / int(indexSize)
 	littleEndian := e.s.MemoryLayout.GetEndian() == device.LittleEndian
 	limits, err := resolve.IndexLimits(e.ctx, id, count, indexSize, littleEndian)
 	if err != nil {

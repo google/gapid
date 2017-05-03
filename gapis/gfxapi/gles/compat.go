@@ -228,7 +228,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					img := tex.Texture2D[0]
 					data, ok := eglImageData[tex.EGLImage]
 					if !ok {
-						data = atom.Must(atom.Alloc(ctx, s, img.Data.SliceInfo.Count)).Ptr()
+						data = atom.Must(atom.Alloc(ctx, s, img.Data.count)).Ptr()
 						eglImageData[tex.EGLImage] = data
 					}
 					out.MutateAndWrite(ctx, dID, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
@@ -569,8 +569,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// pooled buffer.
 					data := c.SharedObjects.Buffers[ib].Data
 					indexSize := DataTypeSize(a.IndicesType)
-					start := min(a.Indices.Address, data.SliceInfo.Count)                            // Clamp
-					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.SliceInfo.Count) // Clamp
+					start := min(a.Indices.Address, data.count)                            // Clamp
+					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
 					limits := e.calcIndexLimits(data.Slice(start, end, s.MemoryLayout), indexSize)
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}

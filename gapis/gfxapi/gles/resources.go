@@ -72,7 +72,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 	case GLenum_GL_TEXTURE_2D:
 		levels := make([]*image.Info2D, len(t.Texture2D))
 		for i, level := range t.Texture2D {
-			if level.Data.SliceInfo.Count == 0 {
+			if level.Data.count == 0 {
 				// TODO: Make other results available
 				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
@@ -90,7 +90,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 		for i, level := range t.Cubemap {
 			levels[i] = &gfxapi.CubemapLevel{}
 			for j, face := range level.Faces {
-				if face.Data.SliceInfo.Count == 0 {
+				if face.Data.count == 0 {
 					// TODO: Make other results available
 					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 				}
@@ -439,31 +439,31 @@ func uniformValue(ctx context.Context, s *gfxapi.State, kind gfxapi.UniformType,
 
 	switch kind {
 	case gfxapi.UniformType_Int32:
-		a := make([]int32, data.SliceInfo.Count/4)
+		a := make([]int32, data.count/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Int32()
 		}
 		return a
 	case gfxapi.UniformType_Uint32:
-		a := make([]uint32, data.SliceInfo.Count/4)
+		a := make([]uint32, data.count/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Uint32()
 		}
 		return a
 	case gfxapi.UniformType_Bool:
-		a := make([]bool, data.SliceInfo.Count/4)
+		a := make([]bool, data.count/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Int32() != 0
 		}
 		return a
 	case gfxapi.UniformType_Float:
-		a := make([]float32, data.SliceInfo.Count/4)
+		a := make([]float32, data.count/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Float32()
 		}
 		return a
 	case gfxapi.UniformType_Double:
-		a := make([]float64, data.SliceInfo.Count/8)
+		a := make([]float64, data.count/8)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Float64()
 		}
