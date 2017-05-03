@@ -43,7 +43,7 @@ func ImportedEncodeRaw(l *device.MemoryLayout, e binary.Writer, o *Imported) {
 	e.Uint32(o.Value)
 }
 
-func (Imported) Encode(ϟs *gfxapi.State, e binary.Writer)                              {}
-func (Imported) Decode(ϟs *gfxapi.State, e binary.Reader)                              {}
+func (Imported) Encode(*device.MemoryLayout, binary.Writer)                            {}
+func (Imported) Decode(*device.MemoryLayout, binary.Reader)                            {}
 func (Imported) Init()                                                                 {}
 func (Imported) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Value { return nil }

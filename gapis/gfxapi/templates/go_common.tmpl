@@ -155,16 +155,16 @@
   {{AssertType $.ErrHandler "string" "nil"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $.Type}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsStaticArray $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsMap         $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsPointer     $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsClass       $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
   {{else if IsPseudonym   $.Type}}
     {{$ty := $.Type.To | Unpack}}
-    {{     if IsStaticArray $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsMap         $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsPointer     $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsClass       $ty}}if {{$.Name}}.Decode(ϟs, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{     if IsStaticArray $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsMap         $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsPointer     $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+    {{else if IsClass       $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
     {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
     {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
     {{end}}
@@ -234,10 +234,10 @@
   {{$size_size := "ϟl.GetSize().GetSize()*8"}}
 
   {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟs, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
+  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsEnum        $ty}}if e.Uint32(uint32({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsBool        $ty}}if e.Bool(bool({{$.Name}}));       e.Error() != nil { {{$.ErrHandler}} }
   {{else if IsChar        $ty}}if e.Uint8(uint8({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }

@@ -129,11 +129,11 @@
 
     {{$out := print "(*(*" $to ")(a))"}}
 
-    func (a *{{$.Name}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
+    func (a *{{$.Name}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
       {{Template "Go.Encode" "Name" $out "Type" $.To "ErrHandler" "panic(e.Error())"}}
     }
 
-    func (a *{{$.Name}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
+    func (a *{{$.Name}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
       {{Template "Go.Decode" "Name" $out "Type" $.To "ErrHandler" "panic(d.Error())"}}
     }
   {{end}}
@@ -155,13 +155,13 @@
     Elements [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
   }
 
-  func (a *{{$ty}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
+  func (a *{{$ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
     for _, v := range a.Elements {
       {{Template "Go.Encode" "Name" "v" "Type" $.ValueType "ErrHandler" "panic(e.Error())"}}
     }
   }
 
-  func (a *{{$ty}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
+  func (a *{{$ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
     for i := range a.Elements {
       {{Template "Go.Decode" "Name" "a.Elements[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
     }
@@ -209,12 +209,12 @@
     return {{$ptr_ty}}{ Address: addr, Pool: memory.ApplicationPool }
   }
 
-  func (p {{$ptr_ty}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
+  func (p {{$ptr_ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
       e.Uint64(p.Address);
       e.Uint32(uint32(p.Pool));
   }
 
-  func (p *{{$ptr_ty}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
+  func (p *{{$ptr_ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
       p.Address = d.Uint64();
       p.Pool = memory.PoolID(d.Uint32());
   }
@@ -968,13 +968,13 @@
         return alignment
       }
 
-      func (c {{$.Name}}) Encode(ϟs *gfxapi.State, e binary.Writer) {
+      func (c {{$.Name}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
         {{range $v := $.Fields}}
           {{Template "Go.Encode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(e.Error())"}}
         {{end}}
       }
 
-      func (c *{{$.Name}}) Decode(ϟs *gfxapi.State, d binary.Reader) {
+      func (c *{{$.Name}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
         {{range $v := $.Fields}}
           {{Template "Go.Decode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(d.Error())"}}
         {{end}}
