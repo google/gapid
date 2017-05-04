@@ -159,7 +159,8 @@ public class Paths {
     }
     return Path.Any.newBuilder()
         .setStateTree(Path.StateTree.newBuilder()
-            .setAfter(atom.getCommand()))
+            .setAfter(atom.getCommand())
+            .setArrayGroupSize(2000))
         .build();
   }
 

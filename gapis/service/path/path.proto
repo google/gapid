@@ -349,6 +349,12 @@ message State {
 // Resolves to a service.StateTree.
 message StateTree {
     Command after = 1;
+    // If positive, expanded arrays/slices with more elements than this limit
+    // will be restructured to have up to two extra levels of tree nodes, each
+    // with at most this many children. If the array has more elements than this
+    // number cubed, the array root node will contain more than this many child
+    // nodes.
+    int32 array_group_size = 2;
 }
 
 // StateTreeNode is a path to a state tree node.

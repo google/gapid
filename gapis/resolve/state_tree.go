@@ -34,7 +34,7 @@ import (
 
 // StateTree resolves the specified state tree path.
 func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, error) {
-	id, err := database.Store(ctx, &StateTreeResolvable{c.After.StateAfter()})
+	id, err := database.Store(ctx, &StateTreeResolvable{c.After.StateAfter(), c.ArrayGroupSize})
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +44,40 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 }
 
 type stateTree struct {
-	state    *gfxapi.State
-	apiState interface{}
-	path     *path.State
-	api      *path.API
+	state      *gfxapi.State
+	apiState   interface{}
+	path       *path.State
+	api        *path.API
+	groupLimit uint64
+}
+
+func (t stateTree) needsSubgrouping(size uint64) bool {
+	return t.groupLimit > 0 && size > t.groupLimit
+}
+
+func (t stateTree) limit(numChildren uint64) uint64 {
+	if t.groupLimit > 0 && numChildren > t.groupLimit {
+		numChildren = (numChildren + t.groupLimit - 1) / t.groupLimit
+		if numChildren > t.groupLimit {
+			numChildren = (numChildren + t.groupLimit - 1) / t.groupLimit
+		}
+	}
+	return numChildren
+}
+
+func (t stateTree) subrange(size, idx uint64) (i, j uint64, name string) {
+	if size > t.groupLimit*t.groupLimit {
+		i = idx * t.groupLimit * t.groupLimit
+		j = i + t.groupLimit*t.groupLimit
+	} else {
+		i = idx * t.groupLimit
+		j = i + t.groupLimit
+	}
+	if j > size {
+		j = size
+	}
+	name = fmt.Sprintf("[%d - %d]", i, j-1)
+	return
 }
 
 func deref(v reflect.Value) reflect.Value {
@@ -95,6 +125,7 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 	v := deref(reflect.ValueOf(stateTree.apiState))
 
 	numChildren := uint64(v.Type().NumField())
+	syntheticOffset := uint64(0)
 
 	for i, idx64 := range c.Index {
 		idx := int(idx64)
@@ -106,19 +137,32 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		t := v.Type()
 		switch {
 		case box.IsMemorySlice(t):
-			name = fmt.Sprint(idx)
-			pth = path.NewArrayIndex(idx64, pth)
-			// TODO: Use proper interfaces to kill the nasty reflection.
-			ptr := v.MethodByName("Index").Call([]reflect.Value{
-				reflect.ValueOf(idx64),
-				reflect.ValueOf(stateTree.state.MemoryLayout),
-			})[0]
-			v = ptr.MethodByName("Read").Call([]reflect.Value{
-				reflect.ValueOf(ctx),
-				reflect.Zero(reflect.TypeOf((*atom.Atom)(nil)).Elem()),
-				reflect.ValueOf(stateTree.state),
-				reflect.Zero(reflect.TypeOf((*builder.Builder)(nil))),
-			})[0]
+			if size := box.AsMemorySlice(v).Count(); stateTree.needsSubgrouping(size) {
+				i, j, n := stateTree.subrange(size, idx64)
+				name = n
+				// TODO: Use proper interfaces to kill the nasty reflection.
+				v = v.MethodByName("Slice").Call([]reflect.Value{
+					reflect.ValueOf(i),
+					reflect.ValueOf(j),
+					reflect.ValueOf(stateTree.state.MemoryLayout),
+				})[0]
+				syntheticOffset += i
+			} else {
+				name = fmt.Sprint(syntheticOffset + idx64)
+				pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
+				// TODO: Use proper interfaces to kill the nasty reflection.
+				ptr := v.MethodByName("Index").Call([]reflect.Value{
+					reflect.ValueOf(idx64),
+					reflect.ValueOf(stateTree.state.MemoryLayout),
+				})[0]
+				v = ptr.MethodByName("Read").Call([]reflect.Value{
+					reflect.ValueOf(ctx),
+					reflect.Zero(reflect.TypeOf((*atom.Atom)(nil)).Elem()),
+					reflect.ValueOf(stateTree.state),
+					reflect.Zero(reflect.TypeOf((*builder.Builder)(nil))),
+				})[0]
+				syntheticOffset = 0
+			}
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
@@ -131,9 +175,17 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 				pth = path.NewField(name, pth)
 				v = deref(v.Field(idx))
 			case reflect.Slice, reflect.Array:
-				name = fmt.Sprint(idx)
-				pth = path.NewArrayIndex(idx64, pth)
-				v = deref(v.Index(idx))
+				if size := uint64(v.Len()); stateTree.needsSubgrouping(size) {
+					i, j, n := stateTree.subrange(size, idx64)
+					name = n
+					v = v.Slice(int(i), int(j))
+					syntheticOffset += i
+				} else {
+					name = fmt.Sprint(syntheticOffset + idx64)
+					pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
+					v = deref(v.Index(idx))
+					syntheticOffset = 0
+				}
 			case reflect.Map:
 				key := sortMapKeys(v)[idx]
 				name = fmt.Sprint(key.Interface())
@@ -149,12 +201,14 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		case box.IsMemoryPointer(t):
 			numChildren = 0
 		case box.IsMemorySlice(t):
-			numChildren = box.AsMemorySlice(v).Count()
+			numChildren = stateTree.limit(box.AsMemorySlice(v).Count())
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
 				numChildren = uint64(v.NumField())
-			case reflect.Slice, reflect.Array, reflect.Map:
+			case reflect.Slice, reflect.Array:
+				numChildren = stateTree.limit(uint64(v.Len()))
+			case reflect.Map:
 				numChildren = uint64(v.Len())
 			default:
 				numChildren = 0
@@ -225,5 +279,5 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	api := c.Atoms[atomIdx].API()
 	apiState := state.APIs[api]
 	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
-	return &stateTree{state, apiState, r.Path, apiPath}, nil
+	return &stateTree{state, apiState, r.Path, apiPath, uint64(r.ArrayGroupSize)}, nil
 }
