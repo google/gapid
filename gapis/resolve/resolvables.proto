@@ -109,6 +109,7 @@ message APIStateResolvable {
 
 message StateTreeResolvable {
 	path.State path = 1;
+	int32 array_group_size = 2;
 }
 
 message SetResolvable {
