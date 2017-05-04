@@ -263,6 +263,7 @@ message Mesh {
     MeshOptions options = 1;
     oneof object {
         Command command = 2;
+        CommandTreeNode command_tree_node = 3;
     }
 }
 

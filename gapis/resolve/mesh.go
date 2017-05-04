@@ -29,18 +29,39 @@ func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ao, ok := obj.(gfxapi.APIObject); ok {
-		if api := ao.API(); api != nil {
-			if m, ok := api.(gfxapi.MeshProvider); ok {
-				mesh, err := m.Mesh(ctx, obj, p)
-				switch {
-				case err != nil:
-					return nil, err
-				case mesh != nil:
-					return mesh, nil
-				}
+	mesh, err := meshFor(ctx, obj, p)
+	switch {
+	case err != nil:
+		return nil, err
+	case mesh != nil:
+		return mesh, nil
+	default:
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
+	}
+}
+
+func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, error) {
+	switch o := o.(type) {
+	case gfxapi.APIObject:
+		if api := o.API(); api != nil {
+			if mp, ok := api.(gfxapi.MeshProvider); ok {
+				return mp.Mesh(ctx, o, p)
+			}
+		}
+
+	case *service.CommandTreeNode:
+		all, err := Atoms(ctx, o.Commands.Capture)
+		if err != nil {
+			return nil, err
+		}
+		s, e := o.Commands.From[0], o.Commands.To[0] // TODO: Subcommands
+		for i := e; int64(i) >= int64(s); i-- {
+			p := o.Commands.Capture.Command(i).Mesh(p.Options.Faceted)
+			if mesh, err := meshFor(ctx, all.Atoms[i], p); mesh != nil || err != nil {
+				return mesh, err
 			}
 		}
 	}
-	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
+
+	return nil, nil
 }
