@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
+import static java.util.Collections.emptyList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -267,7 +268,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
             Uninterruptibles.getUninterruptibly(originalFuture);
           } catch (ExecutionException e) {
             if (e.getCause() instanceof DataUnavailableException) {
-              return error(e.getCause().getMessage());
+              // TODO: don't assume that it's because of not selecting a draw call.
+              return success(emptyList());
             } else {
               throw e;
             }
@@ -338,6 +340,11 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   protected void update(List<Model> modelList) {
+    if (modelList.isEmpty()) {
+      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+      return;
+    }
+
     originalModel = modelList.get(0);
     facetedModel = modelList.get(1);
     loading.stopLoading();

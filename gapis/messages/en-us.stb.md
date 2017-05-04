@@ -123,6 +123,10 @@ The context {{id:u64}} was created before tracing begun. Context state is not kn
 
 {{valname}} was greater than or equal to {{limitname}}. {{valname}}: {{val:s64}}, {{limitname}}: {{limit:s64}}
 
+# ERR_NOT_A_DRAW_CALL
+
+The requested command range does not contain any draw calls.
+
 # TAG_ATOM_NAME
 
 {{atom}}
