@@ -211,6 +211,9 @@
 
   // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
   func New{{$ptr_ty}}(p memory.Pointer) {{$ptr_ty}} {
+    if p == nil {
+      return {{$ptr_ty}}{  0, memory.ApplicationPool }
+    }
     return {{$ptr_ty}}{ p.Address(), p.Pool() }
   }
 
@@ -1333,7 +1336,7 @@
         return &{{$name}} {§
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
-              {{$p | GoPublicName}}: {{Template "Go.Type" $p}}{ {{Title $p.Name}}.Address(), 0 },§
+              {{$p | GoPublicName}}: New{{Template "Go.Type" $p}}({{Title $p.Name}}),§
             {{else}}
               {{$p | GoPublicName}}: {{Title $p.Name}},§
             {{end}}
