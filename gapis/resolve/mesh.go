@@ -61,7 +61,8 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, er
 				return mesh, err
 			}
 		}
-	}
 
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNotADrawCall()}
+	}
 	return nil, nil
 }
