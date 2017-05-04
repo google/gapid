@@ -67,6 +67,20 @@ public class Paths {
         .build();
   }
 
+  public static Path.Command firstCommand(Path.Commands commands) {
+    return Path.Command.newBuilder()
+        .setCapture(commands.getCapture())
+        .addAllIndex(commands.getFromList())
+        .build();
+  }
+
+  public static Path.Command lastCommand(Path.Commands commands) {
+    return Path.Command.newBuilder()
+        .setCapture(commands.getCapture())
+        .addAllIndex(commands.getToList())
+        .build();
+  }
+
   public static Path.Any any(Path.Command command) {
     return Path.Any.newBuilder().setCommand(command).build();
   }

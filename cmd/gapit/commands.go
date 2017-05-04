@@ -87,7 +87,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				fmt.Fprintln(os.Stdout, n.Group)
 				return nil
 			}
-			return getAndPrintCommand(ctx, client, n.Command)
+			return getAndPrintCommand(ctx, client, n.Commands.First())
 		})
 		return nil
 	}
@@ -98,9 +98,8 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			fmt.Fprintln(os.Stdout, n.Group)
 			return nil
 		}
-		return getAndPrintCommand(ctx, client, n.Command)
+		return getAndPrintCommand(ctx, client, n.Commands.First())
 	}, "", true)
-
 }
 
 func traverseCommandTree(
@@ -124,7 +123,7 @@ func traverseCommandTree(
 
 	curPrefix := prefix
 	if len(p.Index) > 0 {
-		if (last) {
+		if last {
 			curPrefix += "└──"
 		} else {
 			curPrefix += "├──"
@@ -141,7 +140,7 @@ func traverseCommandTree(
 		prefix += "│   "
 	}
 	for i := uint64(0); i < n.NumChildren; i++ {
-		err := traverseCommandTree(ctx, c, p.Child(i), f, prefix, i == n.NumChildren - 1)
+		err := traverseCommandTree(ctx, c, p.Child(i), f, prefix, i == n.NumChildren-1)
 		if err != nil {
 			return err
 		}

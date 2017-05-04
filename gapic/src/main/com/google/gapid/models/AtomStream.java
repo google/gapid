@@ -17,6 +17,7 @@ package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
+import static com.google.gapid.util.Paths.lastCommand;
 
 import com.google.common.base.Objects;
 import com.google.common.util.concurrent.Futures;
@@ -117,8 +118,8 @@ public class AtomStream implements ApiContext.Listener {
     return node.load(() -> Futures.transformAsync(
         client.get(any(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
           CommandTreeNode data = v1.getCommandTreeNode();
-          if (data.getGroup().isEmpty() && data.hasCommand()) {
-            return Futures.transformAsync(client.get(any(data.getCommand())), v2 -> {
+          if (data.getGroup().isEmpty() && data.hasCommands()) {
+            return Futures.transformAsync(client.get(any(lastCommand(data.getCommands()))), v2 -> {
               Service.Command cmd = v2.getCommand();
               return Futures.transform(constants.loadConstants(cmd),
                   ignore -> new NodeData(data, v2.getCommand()));
@@ -468,7 +469,7 @@ public class AtomStream implements ApiContext.Listener {
     }
 
     public AtomIndex getIndex() {
-      return (data == null) ? null : new AtomIndex(data.getCommand(),
+      return (data == null) ? null : new AtomIndex(lastCommand(data.getCommands()),
           getPath(Path.CommandTreeNode.newBuilder()).build());
     }
 
@@ -507,7 +508,7 @@ public class AtomStream implements ApiContext.Listener {
 
     @Override
     public String toString() {
-      return index + (data == null ? "" : " " + data.getGroup() + data.getCommand().getIndexList());
+      return index + (data == null ? "" : " " + data.getGroup() + data.getCommands().getToList());
     }
   }
 

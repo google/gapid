@@ -83,14 +83,14 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 	if group != nil {
 		return &service.CommandTreeNode{
 			NumChildren: group.Count(),
-			Command:     cmdTree.path.Capture.Command(group.Range.Last()),
+			Commands:    cmdTree.path.Capture.CommandRange(group.Range.First(), group.Range.Last()),
 			Group:       group.Name,
 		}, nil
 	}
 
 	return &service.CommandTreeNode{
 		NumChildren: 0, // TODO: Subcommands
-		Command:     cmdTree.path.Capture.Command(i),
+		Commands:    cmdTree.path.Capture.CommandRange(i, i),
 	}, nil
 }
 
