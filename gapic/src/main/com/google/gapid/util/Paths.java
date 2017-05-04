@@ -194,15 +194,14 @@ public class Paths {
   }
 
   public static Path.Any meshAfter(
-      Path.Command after, Path.MeshOptions options, Vertex.BufferFormat format) {
+      AtomIndex atom, Path.MeshOptions options, Vertex.BufferFormat format) {
     return Path.Any.newBuilder()
         .setAs(Path.As.newBuilder()
             .setVertexBufferFormat(format)
             .setMesh(Path.Mesh.newBuilder()
-                .setCommand(after)
-                .setOptions(options)
-            )
-        ).build();
+                .setCommandTreeNode(atom.getNode())
+                .setOptions(options)))
+        .build();
   }
 
   public static Path.Any atomField(Path.Any atomsPath, long index, String field) {
