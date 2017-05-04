@@ -5496,6 +5496,25 @@ cmd void vkCmdSetStencilReference(
     u32                reference) {
 }
 
+@internal
+class CmdBindDescriptorSets {
+  // map from binding to set
+  map!(u32, ref!DescriptorSetObject) DescriptorSets
+  map!(u32, BoundBuffer)             BoundBuffers
+}
+
+sub void doCmdBindDescriptorSets(CmdBindDescriptorSets bind) {
+  for _ , _ , v in bind.BoundBuffers {
+    if (v.Buffer != null) {
+      v.Buffer.LastBoundQueue = LastBoundQueue
+      readCoherentMemoryInBuffer(v.Buffer, v.Offset, v.Range)
+    }
+  }
+  for _, binding, set in bind.DescriptorSets {
+      LastDrawInfo.DescriptorSets[binding] = set
+  }
+}
+
 @override
 @custom
 @no_replay
@@ -5544,16 +5563,14 @@ cmd void vkCmdBindDescriptorSets(
     recreate_info.DynamicOffsets[i] = dynamic_offsets[i]
   }
 
-  bind_buffer := CmdBindBuffer()
+  bind_buffer_and_descriptor_sets := CmdBindDescriptorSets()
   dynamic_offset_index := MutableU32(0)
-
-  clearLastDrawInfoDescriptorSets()
 
   for i in (0 .. descriptorSetCount) {
     recreate_info.DescriptorSets[i] = sets[i]
     if sets[i] in DescriptorSets {
       set := DescriptorSets[sets[i]]
-      LastDrawInfo.DescriptorSets[firstSet + i] = set
+      bind_buffer_and_descriptor_sets.DescriptorSets[firstSet + i] = set
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the BoundBuffers in order of the binding number.
@@ -5578,14 +5595,28 @@ cmd void vkCmdBindDescriptorSets(
             default:
               dynamic_offset_index.Val
           }
-          bind_buffer.BoundBuffers[len(bind_buffer.BoundBuffers)] = BoundBuffer(
+          bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
               Buffers[bufferBinding.Buffer], binding_offset, bufferBinding.Range)
         }
       }
     }
   }
-  addCmd(commandBuffer, recreate_info, bind_buffer, doCmdBindBuffers)
+  addCmd(commandBuffer, recreate_info, bind_buffer_and_descriptor_sets, doCmdBindDescriptorSets)
 }
+
+@internal
+class BoundBuffer {
+  ref!BufferObject Buffer
+  VkDeviceSize     Offset
+  VkDeviceSize     Range
+}
+
+@internal
+class BoundIndexBuffer {
+  VkIndexType Type
+  BoundBuffer BoundBuffer
+}
+
 
 class CmdBindIndexBuffer {
     VkBuffer        Buffer,
@@ -5631,6 +5662,11 @@ cmd void vkCmdBindIndexBuffer(
       IndexType:indexType),
     CmdBindIndexBuffer(Buffer: buffer, Offset: offset, IndexType: indexType),
     doCmdBindIndexBuffer)
+}
+
+@internal
+class CmdBindBuffer {
+  map!(u32, BoundBuffer) BoundBuffers
 }
 
 sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
@@ -5683,27 +5719,6 @@ cmd void vkCmdBindVertexBuffers(
       Buffers[buffers[i]].Info.Size - offsets[i])
   }
   addCmd(commandBuffer, recreate_data, bindBuffer, doCmdBindVertexBuffers)
-}
-
-@internal
-class BoundBuffer {
-  ref!BufferObject Buffer
-  VkDeviceSize     Offset
-  VkDeviceSize     Range
-}
-
-@internal
-class CmdBindBuffer {
-  map!(u32, BoundBuffer) BoundBuffers
-}
-
-sub void doCmdBindBuffers(CmdBindBuffer bind) {
-  for _ , _ , v in bind.BoundBuffers {
-    if (v.Buffer != null) {
-      v.Buffer.LastBoundQueue = LastBoundQueue
-      readCoherentMemoryInBuffer(v.Buffer, v.Offset, v.Range)
-    }
-  }
 }
 
 sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
@@ -8217,13 +8232,6 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 /////////////////////////////
 // Internal State Tracking //
 /////////////////////////////
-
-//tateObject State
-
-@internal class BoundIndexBuffer {
-  VkIndexType Type
-  BoundBuffer BoundBuffer
-}
 
 // Dispatchable objects.
 map!(VkInstance, ref!InstanceObject)             Instances
