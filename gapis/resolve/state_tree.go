@@ -197,7 +197,7 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 		const maxLen = 256
 		runes := []rune(v.Interface().(string))
 		if len(runes) > maxLen {
-			return box.NewValue(runes[:maxLen]), false
+			return box.NewValue(string(append(runes[:maxLen-1], '…'))), false
 		}
 		return box.NewValue(v.Interface()), true
 	case reflect.Interface, reflect.Ptr:
