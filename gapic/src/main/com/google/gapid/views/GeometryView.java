@@ -238,23 +238,23 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
   private void updateModels(boolean assumeLoading) {
     if (!assumeLoading && models.atoms.isLoaded()) {
-      Path.Command drawPath = /*models.atoms.getLastSelectedDrawCall()*/null;
-      if (drawPath == null) {
+      AtomIndex atom = models.atoms.getSelectedAtoms();
+      if (atom == null) {
         loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
       } else {
-        fetchMeshes(drawPath);
+        fetchMeshes(atom);
       }
     } else {
       loading.showMessage(Info, Messages.LOADING_CAPTURE);
     }
   }
 
-  private void fetchMeshes(Path.Command path) {
+  private void fetchMeshes(AtomIndex atom) {
     loading.startLoading();
     ListenableFuture<Model> originalFuture = fetchModel(
-        meshAfter(path, Path.MeshOptions.getDefaultInstance(), POS_NORM_XYZ_F32));
+        meshAfter(atom, Path.MeshOptions.getDefaultInstance(), POS_NORM_XYZ_F32));
     ListenableFuture<Model> facetedFuture = fetchModel(meshAfter(
-        path, Path.MeshOptions.newBuilder().setFaceted(true).build(), POS_NORM_XYZ_F32));
+        atom, Path.MeshOptions.newBuilder().setFaceted(true).build(), POS_NORM_XYZ_F32));
     Rpc.listen(Futures.successfulAsList(originalFuture, facetedFuture), rpcController,
         new UiErrorCallback<List<Model>, List<Model>, String>(this, LOG) {
       @Override
