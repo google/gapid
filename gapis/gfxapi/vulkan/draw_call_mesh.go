@@ -208,21 +208,23 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 		if err != nil {
 			return nil, err
 		}
-		translatedFormat, err := translateVertexFormat(attribute.Format)
-		if err != nil {
-			// TODO(qining): This is an error, should emit error message here
-			continue
+		if vertexData != nil {
+			translatedFormat, err := translateVertexFormat(attribute.Format)
+			if err != nil {
+				// TODO(qining): This is an error, should emit error message here
+				continue
+			}
+			// TODO: We can disassemble the shader to pull out the debug name if the
+			// shader has debug info.
+			name := fmt.Sprintf("binding=%v, location=%v", binding.Binding, attribute.Location)
+			vb.Streams = append(vb.Streams,
+				&vertex.Stream{
+					Name:     name,
+					Data:     vertexData,
+					Format:   translatedFormat,
+					Semantic: &vertex.Semantic{},
+				})
 		}
-		// TODO: We can disassemble the shader to pull out the debug name if the
-		// shader has debug info.
-		name := fmt.Sprintf("binding=%v, location=%v", binding.Binding, attribute.Location)
-		vb.Streams = append(vb.Streams,
-			&vertex.Stream{
-				Name:     name,
-				Data:     vertexData,
-				Format:   translatedFormat,
-				Semantic: &vertex.Semantic{},
-			})
 	}
 	guessSemantics(vb)
 	return vb, nil
@@ -236,7 +238,10 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 		return nil, fmt.Errorf("Number of vertices must be greater than 0.")
 	}
 	if binding.InputRate == VkVertexInputRate_VK_VERTEX_INPUT_RATE_INSTANCE {
-		return nil, fmt.Errorf("Instanced draw calls not currently supported.")
+		// Instanced draws are not supported, but the first instance's geometry
+		// might be still useful. So we ignore any bindings with a instance rate,
+		// but do not report an error.
+		return nil, nil
 	}
 
 	backingMemoryData := boundVertexBuffer.Buffer.Memory.Data
