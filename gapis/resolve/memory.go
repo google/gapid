@@ -34,7 +34,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
-	list, err := NAtoms(ctx, p.After.Capture.Commands(), atomIdx+1)
+	list, err := NAtoms(ctx, p.After.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}

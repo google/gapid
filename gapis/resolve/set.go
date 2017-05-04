@@ -74,7 +74,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 		}
 
-		oldList, err := NAtoms(ctx, p.After.Capture.Commands(), atomIdx+1)
+		oldList, err := NAtoms(ctx, p.After.Capture, atomIdx+1)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +106,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		// Resolve the command list
-		oldList, err := NAtoms(ctx, p.Capture.Commands(), atomIdx+1)
+		oldList, err := NAtoms(ctx, p.Capture, atomIdx+1)
 		if err != nil {
 			return nil, err
 		}

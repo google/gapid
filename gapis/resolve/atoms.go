@@ -26,8 +26,8 @@ import (
 )
 
 // Atoms resolves and returns the atom list from the path p.
-func Atoms(ctx context.Context, p *path.Commands) (*atom.List, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
+func Atoms(ctx context.Context, p *path.Capture) (*atom.List, error) {
+	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -36,13 +36,13 @@ func Atoms(ctx context.Context, p *path.Commands) (*atom.List, error) {
 
 // NAtoms resolves and returns the atom list from the path p, ensuring
 // that the number of commands is at least N.
-func NAtoms(ctx context.Context, p *path.Commands, n uint64) (*atom.List, error) {
+func NAtoms(ctx context.Context, p *path.Capture, n uint64) (*atom.List, error) {
 	list, err := Atoms(ctx, p)
 	if err != nil {
 		return nil, err
 	}
 	if count := uint64(len(list.Atoms)); n > count {
-		return nil, errPathOOB(n-1, "Index", 0, count-1, p.Capture.Command(n-1))
+		return nil, errPathOOB(n-1, "Index", 0, count-1, p.Command(n-1))
 	}
 	return list, nil
 }
@@ -53,7 +53,7 @@ func Atom(ctx context.Context, p *path.Command) (atom.Atom, error) {
 	if len(p.Index) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
-	list, err := NAtoms(ctx, p.Capture.Commands(), atomIdx+1)
+	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}

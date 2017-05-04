@@ -53,7 +53,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if len(r.Path.After.Index) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
-	list, err := NAtoms(ctx, r.Path.After.Capture.Commands(), atomIdx+1)
+	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if len(r.Path.After.Index) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
-	list, err := NAtoms(ctx, r.Path.After.Capture.Commands(), atomIdx+1)
+	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}

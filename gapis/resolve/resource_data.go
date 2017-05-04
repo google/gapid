@@ -51,7 +51,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
-	list, err := NAtoms(ctx, p.Capture.Commands(), atomIdx+1)
+	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
