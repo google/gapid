@@ -428,6 +428,16 @@ func (n *Command) StateTreeAfter() *StateTree {
 	return &StateTree{After: n}
 }
 
+// First returns the path to the first command.
+func (n *Commands) First() *Command {
+	return &Command{Capture: n.Capture, Index: n.From}
+}
+
+// Last returns the path to the last command.
+func (n *Commands) Last() *Command {
+	return &Command{Capture: n.Capture, Index: n.To}
+}
+
 // Child returns the path to the i'th child of the StateTreeNode.
 func (n *StateTreeNode) Child(i uint64) *StateTreeNode {
 	newIndex := make([]uint64, len(n.Index)+1)

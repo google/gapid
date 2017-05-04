@@ -589,15 +589,10 @@ message CommandTree {
 message CommandTreeNode {
   // Number of child nodes.
   uint64 num_children = 1;
-
   // Group name if this node represents a group of commands.
   string group = 2;
-
-  // If this node represents a single command, then this is the path to that
-  // command.
-  // If this node represents a group of commands, then then this is the path
-  // to the last command inside that group.
-  path.Command command = 3;
+  // Path to the command range represented by this node.
+  path.Commands commands = 3;
 }
 
 // Command describes a single intercepted command or sub-command.

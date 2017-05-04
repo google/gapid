@@ -562,8 +562,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       if (data == null) {
         string.append("Loading...", string.structureStyle());
       } else {
-        if (data.getGroup().isEmpty() && data.hasCommand()) {
-          string.append(data.getCommand().getIndex(0) + ": ", string.defaultStyle());
+        if (data.getGroup().isEmpty() && data.hasCommands()) {
+          string.append(data.getCommands().getTo(0) + ": ", string.defaultStyle());
           Command cmd = ((AtomStream.Node)element).getCommand();
           if (cmd == null) {
             string.append("Loading...", string.structureStyle());
@@ -571,7 +571,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             Formatter.format(cmd, constants::getConstants, string, string.identifierStyle());
           }
         } else {
-          string.append(data.getCommand().getIndex(0) + ": ", string.defaultStyle());
+          string.append(data.getCommands().getTo(0) + ": ", string.defaultStyle());
           string.append(data.getGroup(), string.labelStyle());
         }
       }
