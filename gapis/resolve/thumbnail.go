@@ -65,6 +65,9 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path
 	} else {
 		boxedImageInfo, err = Get(ctx, imageInfoPath.Path())
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	return boxedImageInfo.(*image.Info2D), nil
 }
