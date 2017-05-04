@@ -70,6 +70,9 @@ public class Flags {
           result.add(args[j]);
         }
         break;
+      } else if (OS.isMac && args[i].startsWith("-psn_")) {
+        // Ignore the process number auto-flag.
+        continue;
       }
 
       Matcher m = FLAG_PATTERN.matcher(args[i]);
