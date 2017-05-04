@@ -1647,54 +1647,91 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             &pool.mVulkanHandle);
     }
 
-    // Recreate and begin command buffers
-    for (auto& commandBuffer: CommandBuffers) {
-        auto& cmdBuff = *commandBuffer.second;
-        VkCommandBufferAllocateInfo allocate_info {
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            nullptr,
-            cmdBuff.mPool,
-            cmdBuff.mLevel,
-            1
-        };
-        VkCommandBufferBeginInfo begin_info {
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            nullptr,
-            0,
-            nullptr
-        };
-        VkCommandBufferInheritanceInfo inheritance_info {
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            nullptr,
-            0, 0, 0, 0, 0, 0
-        };
-        if (cmdBuff.mBeginInfo) {
-            begin_info.mflags = cmdBuff.mBeginInfo->mFlags;
-            if (cmdBuff.mBeginInfo->mInherited) {
-                inheritance_info.mrenderPass = cmdBuff.mBeginInfo->mInheritedRenderPass;
-                inheritance_info.msubpass = cmdBuff.mBeginInfo->mInheritedSubpass;
-                inheritance_info.mframebuffer = cmdBuff.mBeginInfo->mInheritedFramebuffer;
-                inheritance_info.mocclusionQueryEnable = cmdBuff.mBeginInfo->mInheritedOcclusionQuery;
-                inheritance_info.mqueryFlags = cmdBuff.mBeginInfo->mInheritedQueryFlags;
-                inheritance_info.mpipelineStatistics = cmdBuff.mBeginInfo->mInheritedPipelineStatsFlags;
-                begin_info.mpInheritanceInfo = &inheritance_info;
-            }
+    // Helper function to recreate and begin a given command buffer object.
+    auto recreate_and_begin_cmd_buf = [this](
+        CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+      VkCommandBufferAllocateInfo allocate_info{
+          VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+          nullptr, cmdBuff->mPool, cmdBuff->mLevel, 1};
+      VkCommandBufferBeginInfo begin_info{
+          VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, nullptr,
+          0, nullptr};
+      VkCommandBufferInheritanceInfo inheritance_info{
+          VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+          nullptr,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0};
+      if (cmdBuff->mBeginInfo) {
+        begin_info.mflags = cmdBuff->mBeginInfo->mFlags;
+        if (cmdBuff->mBeginInfo->mInherited) {
+          inheritance_info.mrenderPass =
+              cmdBuff->mBeginInfo->mInheritedRenderPass;
+          inheritance_info.msubpass = cmdBuff->mBeginInfo->mInheritedSubpass;
+          inheritance_info.mframebuffer =
+              cmdBuff->mBeginInfo->mInheritedFramebuffer;
+          inheritance_info.mocclusionQueryEnable =
+              cmdBuff->mBeginInfo->mInheritedOcclusionQuery;
+          inheritance_info.mqueryFlags =
+              cmdBuff->mBeginInfo->mInheritedQueryFlags;
+          inheritance_info.mpipelineStatistics =
+              cmdBuff->mBeginInfo->mInheritedPipelineStatsFlags;
+          begin_info.mpInheritanceInfo = &inheritance_info;
         }
-        RecreateAndBeginCommandBuffer(observer, cmdBuff.mDevice,
-                &allocate_info, cmdBuff.mBeginInfo? &begin_info: nullptr, &cmdBuff.mVulkanHandle);
+      }
+      RecreateAndBeginCommandBuffer(observer, cmdBuff->mDevice, &allocate_info,
+                                    cmdBuff->mBeginInfo ? &begin_info : nullptr,
+                                    &cmdBuff->mVulkanHandle);
+    };
+
+    // Helper function to fill and end a given command buffer object.
+    auto fill_and_end_cmd_buf = [this](
+        CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+      for (auto& recreate : cmdBuff->recreateCommands) {
+        recreate(observer);
+      }
+      if (cmdBuff->mRecording == RecordingState::COMPLETED) {
+        RecreateEndCommandBuffer(observer, cmdBuff->mVulkanHandle);
+      }
+    };
+
+    // Recreate and begin all the secondary command buffers
+    for (auto& commandBuffer : CommandBuffers) {
+      auto cmdBuff = commandBuffer.second;
+      if (cmdBuff->mLevel ==
+          VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+        recreate_and_begin_cmd_buf(observer, cmdBuff);
+      }
     }
 
-    // Re-record commands and end for the command buffers
-    for (auto& commandBuffer: CommandBuffers) {
-        auto& cmdBuff = *commandBuffer.second;
+    // Re-record commands and end for all the secondary command buffers
+    for (auto& commandBuffer : CommandBuffers) {
+      auto cmdBuff = commandBuffer.second;
+      if (cmdBuff->mLevel ==
+          VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+        fill_and_end_cmd_buf(observer, cmdBuff);
+      }
+    }
 
-        for (auto& recreate: cmdBuff.recreateCommands) {
-            recreate(observer);
-        }
+    // Recreate and begin primary command buffers
+    for (auto& commandBuffer : CommandBuffers) {
+      auto cmdBuff = commandBuffer.second;
+      if (cmdBuff->mLevel ==
+          VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+        recreate_and_begin_cmd_buf(observer, cmdBuff);
+      }
+    }
 
-        if (cmdBuff.mRecording == RecordingState::COMPLETED) {
-            RecreateEndCommandBuffer(observer, cmdBuff.mVulkanHandle);
-        }
+    // Re-record commands and end for all the primary command buffers
+    for (auto& commandBuffer : CommandBuffers) {
+      auto cmdBuff = commandBuffer.second;
+      if (cmdBuff->mLevel ==
+          VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+        fill_and_end_cmd_buf(observer, cmdBuff);
+      }
     }
 }
 }
