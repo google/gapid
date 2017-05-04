@@ -26,7 +26,7 @@ import (
 )
 
 // Memory resolves and returns the memory from the path p.
-func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
+func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	ctx = capture.Put(ctx, path.FindCapture(p))
 
 	atomIdx := p.After.Index[0]
@@ -65,14 +65,17 @@ func Memory(ctx context.Context, p *path.Memory) (*service.MemoryInfo, error) {
 	list.Atoms[atomIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
 
 	slice := pool.Slice(r)
-	data := make([]byte, slice.Size())
-	if err := slice.Get(ctx, 0, data); err != nil {
-		return nil, err
-	}
-
 	observed := slice.ValidRanges()
 
-	return &service.MemoryInfo{
+	var data []byte
+	if !p.ExcludeData {
+		data = make([]byte, slice.Size())
+		if err := slice.Get(ctx, 0, data); err != nil {
+			return nil, err
+		}
+	}
+
+	return &service.Memory{
 		Data:     data,
 		Reads:    service.NewMemoryRanges(reads),
 		Writes:   service.NewMemoryRanges(writes),

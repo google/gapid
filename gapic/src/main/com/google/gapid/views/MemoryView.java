@@ -40,7 +40,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.MemoryInfo;
+import com.google.gapid.proto.service.Service.Memory;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.BigPoint;
@@ -372,7 +372,7 @@ public class MemoryView extends Composite
       final int curPool = pool;
       PagedMemoryDataModel.MemoryFetcher fetcher = (address, count) ->
           Futures.transform(client.get(Paths.memoryAfter(curAtomPath, curPool, address, count)),
-              value -> value.getMemoryInfo());
+              value -> value.getMemory());
 
 
       return new PagedMemoryDataModel(fetcher, offset, lastAddress);
@@ -690,7 +690,7 @@ public class MemoryView extends Composite
     private final long address;
     private final long lastAddress;
 
-    private final Map<Long, SoftReference<ListenableFuture<MemoryInfo>>> cache = Maps.newHashMap();
+    private final Map<Long, SoftReference<ListenableFuture<Memory>>> cache = Maps.newHashMap();
 
     public PagedMemoryDataModel(MemoryFetcher fetcher, long address, long lastAddress) {
       this.fetcher = fetcher;
@@ -743,7 +743,7 @@ public class MemoryView extends Composite
     }
 
     private ListenableFuture<MemorySegment> getPage(long page, int offset, int length) {
-      ListenableFuture<Service.MemoryInfo> mem = getFromCache(page);
+      ListenableFuture<Service.Memory> mem = getFromCache(page);
       if (mem == null) {
         long base = address + getOffsetForPage(page);
         mem = fetcher.get(base, (int)UnsignedLongs.min(lastAddress - base, PAGE_SIZE - 1) + 1);
@@ -752,10 +752,10 @@ public class MemoryView extends Composite
       return Futures.transform(mem, memory -> new MemorySegment(memory).subSegment(offset, length));
     }
 
-    private ListenableFuture<Service.MemoryInfo> getFromCache(long page) {
-      ListenableFuture<Service.MemoryInfo> result = null;
+    private ListenableFuture<Service.Memory> getFromCache(long page) {
+      ListenableFuture<Service.Memory> result = null;
       synchronized (cache) {
-        SoftReference<ListenableFuture<MemoryInfo>> reference = cache.get(page);
+        SoftReference<ListenableFuture<Memory>> reference = cache.get(page);
         if (reference != null) {
           result = reference.get();
           if (result == null) {
@@ -766,9 +766,9 @@ public class MemoryView extends Composite
       return result;
     }
 
-    private void addToCache(long page, ListenableFuture<MemoryInfo> data) {
+    private void addToCache(long page, ListenableFuture<Memory> data) {
       synchronized (cache) {
-        cache.put(page, new SoftReference<ListenableFuture<MemoryInfo>>(data));
+        cache.put(page, new SoftReference<ListenableFuture<Memory>>(data));
       }
     }
 
@@ -778,7 +778,7 @@ public class MemoryView extends Composite
     }
 
     public interface MemoryFetcher {
-      ListenableFuture<MemoryInfo> get(long address, long count);
+      ListenableFuture<Memory> get(long address, long count);
     }
   }
 
@@ -1354,7 +1354,7 @@ public class MemoryView extends Composite
       this.writes = writes;
     }
 
-    public MemorySegment(MemoryInfo info) {
+    public MemorySegment(Memory info) {
       data = info.getData().toByteArray();
       offset = 0;
       known = computeKnown(info);
@@ -1448,7 +1448,7 @@ public class MemoryView extends Composite
       return (getInt(off) & 0xFFFFFFFFL) | ((long)getInt(off + 4) << 32);
     }
 
-    private static BitSet computeKnown(MemoryInfo data) {
+    private static BitSet computeKnown(Memory data) {
       BitSet known = new BitSet(data.getData().size());
       for (Service.MemoryRange rng : data.getObservedList()) {
         known.set((int)rng.getBase(), (int)rng.getBase() + (int)rng.getSize());

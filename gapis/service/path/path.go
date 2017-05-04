@@ -317,11 +317,6 @@ func NewSlice(s, e uint64, n Node) *Slice {
 	return out
 }
 
-// NewMemory returns a new Memory path node.
-func NewMemory(address, size uint64, pool uint32, after *Command) *Memory {
-	return &Memory{address, size, pool, after}
-}
-
 // ConstantSet returns a path to the API's i'th ConstantSet.
 func (n *API) ConstantSet(i int) *ConstantSet {
 	return &ConstantSet{
@@ -395,12 +390,7 @@ func (n *Capture) Resource(id *ID) *Resource {
 
 // MemoryAfter returns the path node to the memory after this command.
 func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
-	return &Memory{
-		Address: addr,
-		Pool:    pool,
-		Size:    size,
-		After:   n,
-	}
+	return &Memory{addr, size, pool, n, false}
 }
 
 func (n *Command) ResourceAfter(id *ID) *ResourceData {
