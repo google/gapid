@@ -86,7 +86,7 @@ message Value {
     ConstantSet constant_set = 8;
     Event event = 9;
     Events events = 10;
-    MemoryInfo memory_info = 11;
+    Memory memory = 11;
     path.Any path = 12;
     Report report = 13;
     Resources resources = 14;
@@ -493,24 +493,17 @@ message ReportGroup {
   repeated MsgRef tags = 3;
 }
 
-// MemoryInfo describes the state of a range of memory at a specific point in
+// Memory describes the state of a range of memory at a specific point in
 // the command stream.
-message MemoryInfo {
+message Memory {
   // The memory values for the span.
   bytes data = 1;
-  // Structure describes the layout of the memory.
-  MemoryStructure structure = 2;
   // The data-relative ranges that were read-from at the specified command.
-  repeated MemoryRange reads = 3;
+  repeated MemoryRange reads = 2;
   // The data-relative ranges that were written-to at the specified command.
-  repeated MemoryRange writes = 4;
+  repeated MemoryRange writes = 3;
   // The data-relative ranges that have been observed.
-  repeated MemoryRange observed = 5;
-}
-
-// MemoryStructure describes the structure of the of memory.
-message MemoryStructure {
-  // TODO
+  repeated MemoryRange observed = 4;
 }
 
 // MemoryRange represents a contiguous range of memory.

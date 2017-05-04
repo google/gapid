@@ -251,11 +251,19 @@ message MapIndex {
 }
 
 // Memory is a path to a region of memory.
+// Resolves to a service.Memory.
 message Memory {
+    // Base address of the region of memory.
     uint64 address = 1;
+    // Size in bytes of the region of memory.
     uint64 size = 2;
+    // The pool identifier.
     uint32 pool = 3;
+    // The memory follows this command.
     Command after = 4;
+    // If true then the actual memory bytes will be missing from in the
+    // service.Memory. Useful for discovering memory ranges touched.
+    bool exclude_data = 5;
 }
 
 // Mesh is a path to a mesh representation of an object.
