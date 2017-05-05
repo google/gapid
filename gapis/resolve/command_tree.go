@@ -43,27 +43,32 @@ type commandTree struct {
 	root atom.Group
 }
 
-func (t *commandTree) index(indices []uint64) (uint64, *atom.Group, error) {
-	group := &t.root
+func (t *commandTree) index(indices []uint64) atom.GroupOrID {
+	group := t.root
 	for _, idx := range indices {
-		var i uint64
-		i, group = group.Index(idx)
-		if group == nil {
-			return i, nil, nil
+		switch item := group.Index(idx).(type) {
+		case atom.Group:
+			group = item
+		default:
+			return item
 		}
 	}
-	return 0, group, nil
+	return group
 }
 
-func (t *commandTree) indices(atomIdx uint64) ([]uint64, error) {
+func (t *commandTree) indices(id atom.ID) []uint64 {
 	out := []uint64{}
-	group := &t.root
-	for group != nil {
-		i := group.IndexOf(atomIdx)
-		_, group = group.Index(i)
-		out = append(out, i)
+	group := t.root
+	for {
+		i := group.IndexOf(id)
+		switch item := group.Index(i).(type) {
+		case atom.Group:
+			out = append(out, i)
+			group = item
+		default:
+			return out
+		}
 	}
-	return out, nil
 }
 
 // CommandTreeNode resolves the specified command tree node path.
@@ -75,23 +80,21 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	i, group, err := cmdTree.index(c.Index)
-	if err != nil {
-		return nil, err
-	}
-
-	if group != nil {
+	switch item := cmdTree.index(c.Index).(type) {
+	case atom.ID:
 		return &service.CommandTreeNode{
-			NumChildren: group.Count(),
-			Commands:    cmdTree.path.Capture.CommandRange(group.Range.First(), group.Range.Last()),
-			Group:       group.Name,
+			NumChildren: 0, // TODO: Subcommands
+			Commands:    cmdTree.path.Capture.CommandRange(uint64(item), uint64(item)),
 		}, nil
+	case atom.Group:
+		return &service.CommandTreeNode{
+			NumChildren: item.Count(),
+			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
+			Group:       item.Name,
+		}, nil
+	default:
+		panic(fmt.Errorf("Unexpected type: %T", item))
 	}
-
-	return &service.CommandTreeNode{
-		NumChildren: 0, // TODO: Subcommands
-		Commands:    cmdTree.path.Capture.CommandRange(i, i),
-	}, nil
 }
 
 // CommandTreeNodeForCommand returns the path to the CommandTreeNode that
@@ -109,47 +112,42 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
-	indices, err := cmdTree.indices(atomIdx)
-	if err != nil {
-		return nil, err
-	}
-
 	return &path.CommandTreeNode{
 		Tree:  p.Tree,
-		Index: indices,
+		Index: cmdTree.indices(atom.ID(atomIdx)),
 	}, nil
 }
 
 type group struct {
-	start uint64
-	end   uint64
+	start atom.ID
+	end   atom.ID
 	name  string
 }
 
 type grouper interface {
-	process(ctx context.Context, i uint64, a atom.Atom, s *gfxapi.State)
+	process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State)
 	flush(count uint64)
 	groups() []group
 }
 
 type runGrouper struct {
 	f       func(a atom.Atom, s *gfxapi.State) (value interface{}, name string)
-	start   uint64
+	start   atom.ID
 	current interface{}
 	name    string
 	out     []group
 }
 
-func (g *runGrouper) process(ctx context.Context, i uint64, a atom.Atom, s *gfxapi.State) {
+func (g *runGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
 	val, name := g.f(a, s)
 	if val != g.current && g.current != nil {
-		g.out = append(g.out, group{g.start, i, g.name})
+		g.out = append(g.out, group{g.start, id, g.name})
 	}
-	g.start, g.current, g.name = i, val, name
+	g.start, g.current, g.name = id, val, name
 }
 
 func (g *runGrouper) flush(count uint64) {
-	g.out = append(g.out, group{g.start, count, g.name})
+	g.out = append(g.out, group{g.start, atom.ID(count), g.name})
 }
 
 func (g *runGrouper) groups() []group { return g.out }
@@ -160,34 +158,34 @@ type markerGrouper struct {
 	out   []group
 }
 
-func (g *markerGrouper) push(ctx context.Context, i uint64, a atom.Atom, s *gfxapi.State) {
+func (g *markerGrouper) push(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
 	if l, ok := a.(atom.Labeled); ok {
-		g.stack = append(g.stack, group{start: i, name: l.Label(ctx, s)})
+		g.stack = append(g.stack, group{start: id, name: l.Label(ctx, s)})
 	} else {
-		g.stack = append(g.stack, group{start: i, name: fmt.Sprintf("Marker %d", g.count)})
+		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("Marker %d", g.count)})
 		g.count++
 	}
 }
 
-func (g *markerGrouper) pop(i uint64) {
+func (g *markerGrouper) pop(id atom.ID) {
 	m := g.stack[len(g.stack)-1]
-	m.end = i + 1 // +1 to include pop marker
+	m.end = id + 1 // +1 to include pop marker
 	g.out = append(g.out, m)
 	g.stack = g.stack[:len(g.stack)-1]
 }
 
-func (g *markerGrouper) process(ctx context.Context, i uint64, a atom.Atom, s *gfxapi.State) {
+func (g *markerGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
 	if a.AtomFlags().IsPushUserMarker() {
-		g.push(ctx, i, a, s)
+		g.push(ctx, id, a, s)
 	}
 	if a.AtomFlags().IsPopUserMarker() && len(g.stack) > 0 {
-		g.pop(i)
+		g.pop(id)
 	}
 }
 
 func (g *markerGrouper) flush(count uint64) {
 	for len(g.stack) > 0 {
-		g.pop(count)
+		g.pop(atom.ID(count))
 	}
 }
 
@@ -203,7 +201,21 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	// TODO: Filtering.
+	filters := []func(a atom.Atom, s *gfxapi.State) bool{}
+
+	if r.Path.Context.IsValid() {
+		ctxID := gfxapi.ContextID(r.Path.Context.ID())
+		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
+			if api := a.API(); api != nil {
+				if ctx := api.Context(s); ctx != nil {
+					return ctx.ID() == ctxID
+				}
+			}
+			return false
+		})
+	}
+
+	// TODO: Thread filter.
 
 	groupers := []grouper{}
 
@@ -225,10 +237,16 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
+nextAtom:
 	for i, a := range c.Atoms {
 		a.Mutate(ctx, s, nil)
+		for _, f := range filters {
+			if !f(a, s) {
+				continue nextAtom
+			}
+		}
 		for _, g := range groupers {
-			g.process(ctx, uint64(i), a, s)
+			g.process(ctx, atom.ID(i), a, s)
 		}
 	}
 	for _, g := range groupers {
@@ -240,23 +258,25 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		path: r.Path,
 		root: atom.Group{
 			Name:  "root",
-			Range: atom.Range{End: uint64(len(c.Atoms))},
+			Range: atom.Range{End: atom.ID(len(c.Atoms))},
 		},
 	}
 	for _, g := range groupers {
 		for _, l := range g.groups() {
-			out.root.SubGroups.Add(l.start, l.end, l.name)
+			out.root.AddGroup(l.start, l.end, l.name)
 		}
 	}
 
-	addDrawAndFrameEvents(ctx, out)
+	addDrawAndFrameEvents(ctx, r.Path, out)
 
 	return out, nil
 }
 
-func addDrawAndFrameEvents(ctx context.Context, t *commandTree) error {
+func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree) error {
 	events, err := Events(ctx, &path.Events{
 		Commands:     t.path.Capture.Commands(),
+		Context:      p.Context,
+		Thread:       p.Thread,
 		DrawCalls:    true,
 		FirstInFrame: true,
 		LastInFrame:  true,
@@ -265,16 +285,16 @@ func addDrawAndFrameEvents(ctx context.Context, t *commandTree) error {
 		return log.Errf(ctx, err, "Couldn't get events")
 	}
 
-	drawCount, drawStart := 0, uint64(0)
-	frameCount, frameStart := 0, uint64(0)
+	drawCount, drawStart := 0, atom.ID(0)
+	frameCount, frameStart := 0, atom.ID(0)
 
 	for _, e := range events.List {
-		i := e.Command.Index[0]
+		i := atom.ID(e.Command.Index[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
-			err := t.root.SubGroups.Add(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount))
+			err := t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount))
 			if err != nil {
-				log.W(ctx, "Draw SubGroups.Add errored: %v", err)
+				log.W(ctx, "Draw AddGroup errored: %v", err)
 			}
 
 			drawCount++
@@ -284,9 +304,9 @@ func addDrawAndFrameEvents(ctx context.Context, t *commandTree) error {
 			drawCount, drawStart, frameStart = 0, i, i
 
 		case service.EventKind_LastInFrame:
-			err := t.root.SubGroups.Add(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount))
+			err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount))
 			if err != nil {
-				log.W(ctx, "Frame SubGroups.Add errored: %v", err)
+				log.W(ctx, "Frame AddGroup errored: %v", err)
 			}
 			frameCount++
 		}

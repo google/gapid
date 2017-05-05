@@ -15,132 +15,187 @@
 package atom
 
 import (
+	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/math/sint"
 )
 
-// Group represents a named, contiguous span of atoms with support for sparse
-// sub-groups. Groups are ideal for expressing nested hierarchies of atoms.
+// Group represents a named group of atoms with support for sparse sub-groups
+// and sub-atom-ranges.
+// Groups are ideal for expressing nested hierarchies of atoms.
 //
 // Groups have the concept of items. An item is either an immediate sub-group,
-// or an atom index that is within this group's span but outside of any
+// or an atom range that is within this group's span but outside of any
 // sub-group.
-//
-// For example a Group spanning the atom index range [0 - 9] with two
-// sub-groups spanning [2 - 4] and [7 - 8] would have the following tree of
-// items:
-//
-//  Group
-//    │
-//    ├─── Item[0] ─── Atom[0]
-//    │
-//    ├─── Item[1] ─── Atom[1]
-//    │
-//    ├─── Item[2] ─── Sub-group 0
-//    │                   │
-//    │                   ├─── Item[0] ─── Atom[2]
-//    │                   │
-//    │                   ├─── Item[1] ─── Atom[3]
-//    │                   │
-//    │                   └─── Item[2] ─── Atom[4]
-//    │
-//    ├─── Item[3] ─── Atom[5]
-//    │
-//    ├─── Item[4] ─── Atom[6]
-//    │
-//    ├─── Item[5] ─── Sub-group 1
-//    │                   │
-//    │                   ├─── Item[0] ─── Atom[7]
-//    │                   │
-//    │                   └─── Item[1] ─── Atom[8]
-//    │
-//    └─── Item[6] ─── Atom[9]
-//
 type Group struct {
-	Name      string    // Name of this group.
-	Range     Range     // The range of atoms this group (and sub-groups) represents.
-	SubGroups GroupList // All sub-groups of this group.
+	Name  string // Name of this group.
+	Range Range  // The range of atoms this group (and items) represents.
+	Spans Spans  // All sub-groups and sub-ranges of this group.
 }
 
-func (g Group) info(depth int) string {
-	str := fmt.Sprintf("%s%s %s",
-		strings.Repeat("  ", depth), g.Range.String(), g.Name)
-	if len(g.SubGroups) > 0 {
-		str += "\n" + g.SubGroups.info(depth+1)
+// Spans is a list of Span elements. Functions in this package expect the
+// list to be in ascending atom index order, and maintain that order on
+// mutation.
+type Spans []Span
+
+// IndexOf returns the index of the group that contains the atom index or
+// -1 if not found.
+func (l *Spans) IndexOf(atomIndex uint64) int {
+	return interval.IndexOf(l, atomIndex)
+}
+
+// Length returns the number of groups in the list.
+func (l Spans) Length() int {
+	return len(l)
+}
+
+// GetSpan returns the atom index span for the group at index in the list.
+func (l Spans) GetSpan(index int) interval.U64Span {
+	return l[index].Bounds().Span()
+}
+
+// Span is a child of a Group. It is implemented by Group and Range.
+type Span interface {
+	// Bounds returns the absolute range of atom indices for the span.
+	Bounds() Range
+
+	// itemCount returns the number of items this span represents to its parent.
+	// For a Range, this is the interval length.
+	// For a Group, this is always 1.
+	itemCount() uint64
+
+	// item returns the i'th sub-item for this span.
+	// For a Range, this is the i'th ID in the interval.
+	// For a Group, this is always the group itself.
+	item(i uint64) GroupOrID
+
+	// itemIndex returns the item sub-index for the given ID.
+	// For a Range, this is i minus the first ID in the interval.
+	// For a Group, this is always 0.
+	itemIndex(i ID) uint64
+}
+
+// GroupOrID is a dummy interface exclusively implemented by Group and ID.
+type GroupOrID interface {
+	isGroupOrID()
+}
+
+func (Group) isGroupOrID() {}
+func (ID) isGroupOrID()    {}
+
+func (r Range) Bounds() Range           { return r }
+func (r Range) itemCount() uint64       { return r.Length() }
+func (r Range) item(i uint64) GroupOrID { return r.Start + ID(i) }
+func (r Range) itemIndex(i ID) uint64   { return uint64(i - r.Start) }
+
+func (g Group) Bounds() Range         { return g.Range }
+func (g Group) itemCount() uint64     { return 1 }
+func (g Group) item(uint64) GroupOrID { return g }
+func (g Group) itemIndex(i ID) uint64 { return 0 }
+
+// Format writes a string representing the group's name, range and sub-groups.
+func (g Group) Format(f fmt.State, r rune) {
+	align := 12
+	pad := strings.Repeat(" ", sint.Max(align+2, 0))
+
+	buf := bytes.Buffer{}
+	buf.WriteString("Group '")
+	buf.WriteString(g.Name)
+	buf.WriteString("' ")
+	buf.WriteString(g.Range.String())
+
+	if f.Flag('+') && r == 'v' {
+		idx := uint64(0)
+		for i, span := range g.Spans {
+			var idxSpan string
+			itemCount := span.itemCount()
+			if itemCount <= 1 {
+				idxSpan = fmt.Sprintf("[%d]", idx)
+			} else {
+				idxSpan = fmt.Sprintf("[%d..%d]", idx, idx+itemCount-1)
+			}
+			idx += itemCount
+
+			nl := "\n"
+			if i < len(g.Spans)-1 {
+				buf.WriteString("\n ├─ ")
+				nl += " │ " + pad
+			} else {
+				buf.WriteString("\n └─ ")
+				nl += "   " + pad
+			}
+			buf.WriteString(idxSpan)
+			buf.WriteRune(' ')
+			buf.WriteString(strings.Repeat("─", sint.Max(align-len(idxSpan), 0)))
+			buf.WriteRune(' ')
+			switch span.(type) {
+			case Range:
+				buf.WriteString("Atoms ")
+			}
+			buf.WriteString(strings.Replace(fmt.Sprintf("%+v", span), "\n", nl, -1))
+		}
 	}
-	return str
-}
 
-// String returns a string representing the group's name, range and sub-groups.
-func (g Group) String() string {
-	return g.info(0)
+	f.Write(buf.Bytes())
 }
 
 // Count returns the number of immediate items this group contains.
 func (g Group) Count() uint64 {
-	count := g.Range.Length()
-	for _, sg := range g.SubGroups {
-		count -= sg.Range.Length()
-		count++ // For the group itself
+	var count uint64
+	for _, s := range g.Spans {
+		count += s.itemCount()
 	}
 	return count
 }
 
-// Index returns the item at the specified index. If the item refers directly
-// to an atom index then the atom index is returned in atomIndex and subgroup
-// is assigned nil.
-// If the item is a sub-group then atomIndex is returned as the lowest atom
-// identifier found in the sub-group and subgroup is assigned the sub-group
-// pointer.
-func (g Group) Index(index uint64) (atomIndex uint64, subgroup *Group) {
-	base := g.Range.Start // base atom index
-	for i := range g.SubGroups {
-		sg := &g.SubGroups[i]
-		if base+index < sg.Range.Start {
-			break
+// Index returns the item at the specified index.
+func (g Group) Index(index uint64) GroupOrID {
+	for _, s := range g.Spans {
+		c := s.itemCount()
+		if index < c {
+			return s.item(index)
 		}
-		index -= uint64(sg.Range.Start - base)
-		if index == 0 {
-			return sg.Range.Start, sg
-		}
-		index--
-		base = sg.Range.End
+		index -= c
 	}
-	return base + index, nil
+	return nil // Out of range.
+}
+
+// IndexOf returns the item index that id refers directly to, or contains id.
+func (g Group) IndexOf(id ID) uint64 {
+	idx := uint64(0)
+	for _, s := range g.Spans {
+		if s.Bounds().Contains(id) {
+			return idx + s.itemIndex(id)
+		}
+		idx += s.itemCount()
+	}
+	return 0
 }
 
 // IterateForwards calls cb with each contained atom index or group starting
 // with the item at index. If cb returns an error then traversal is stopped and
 // the error is returned.
-func (g *Group) IterateForwards(index uint64, cb func(childIdx, atomIndex uint64, subgroup *Group) error) error {
+func (g Group) IterateForwards(index uint64, cb func(childIdx uint64, item GroupOrID) error) error {
 	childIndex := uint64(0)
-	visit := func(atomIndex uint64, subgroup *Group) error {
+	visit := func(item GroupOrID) error {
 		idx := childIndex
 		childIndex++
 		if idx < index {
 			return nil
 		}
-		return cb(idx, atomIndex, subgroup)
+		return cb(idx, item)
 	}
 
-	base := g.Range.Start // base atom index
-	for i := range g.SubGroups {
-		sg := &g.SubGroups[i]
-		for i, e := base, sg.Range.Start; i < e; i++ {
-			if err := visit(i, nil); err != nil {
+	for _, s := range g.Spans {
+		for i, c := uint64(0), s.itemCount(); i < c; i++ {
+			if err := visit(s.item(i)); err != nil {
 				return err
 			}
-		}
-		if err := visit(sg.Range.Start, sg); err != nil {
-			return err
-		}
-		base = sg.Range.End
-	}
-	for i, e := base, g.Range.End; i < e; i++ {
-		if err := visit(i, nil); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -149,94 +204,134 @@ func (g *Group) IterateForwards(index uint64, cb func(childIdx, atomIndex uint64
 // IterateBackwards calls cb with each contained atom index or group starting
 // with the item at index. If cb returns an error then traversal is stopped and
 // the error is returned.
-func (g *Group) IterateBackwards(index uint64, cb func(childIdx, atomIndex uint64, subgroup *Group) error) error {
+func (g Group) IterateBackwards(index uint64, cb func(childIdx uint64, item GroupOrID) error) error {
 	childIndex := g.Count() - 1
-	visit := func(atomIndex uint64, subgroup *Group) error {
+	visit := func(item GroupOrID) error {
 		idx := childIndex
 		childIndex--
 		if idx > index {
 			return nil
 		}
-		return cb(idx, atomIndex, subgroup)
+		return cb(idx, item)
 	}
 
-	base := g.Range.End // base atom index
-	for i := range g.SubGroups {
-		sg := &g.SubGroups[len(g.SubGroups)-i-1]
-		for i, e := base, sg.Range.End; i > e; i-- {
-			if err := visit(i-1, nil); err != nil {
+	for i := range g.Spans {
+		s := g.Spans[len(g.Spans)-i-1]
+		for i, c := uint64(0), s.itemCount(); i < c; i++ {
+			if err := visit(s.item(c - i - 1)); err != nil {
 				return err
 			}
-		}
-		if err := visit(sg.Range.Start, sg); err != nil {
-			return err
-		}
-		base = sg.Range.Start
-	}
-	for i, e := base, g.Range.Start; i > e; i-- {
-		if err := visit(i-1, nil); err != nil {
-			return err
 		}
 	}
 	return nil
 }
 
-// IndexOf returns the item index that atomIndex refers directly to, or contains the
-// given atom index.
-func (g Group) IndexOf(atomIndex uint64) uint64 {
-	index := uint64(0)
-	base := g.Range.Start
-	for _, sg := range g.SubGroups {
-		if atomIndex < sg.Range.Start {
-			break
+// AddGroup inserts a new sub-group with the specified range and name.
+//
+// If the new group does not overlap any existing groups in the list then it is
+// inserted into the list, keeping ascending atom-identifier order.
+// If the new group sits completely within an existing group then this new group
+// will be added to the existing group's sub-groups.
+// If the new group completely wraps one or more existing groups in the list
+// then these existing groups are added as sub-groups to the new group and then
+// the new group is added to the list, keeping ascending atom-identifier order.
+// If the new group partially overlaps any existing group then the function will
+// return an error.
+//
+// *** Warning ***
+// All groups must be added before atoms.
+// Attemping to call this function after atoms have been added may result in
+// panics!
+func (g *Group) AddGroup(start, end ID, name string) error {
+	r := Range{Start: start, End: end}
+	s, c := interval.Intersect(&g.Spans, r.Span())
+	if c == 0 {
+		// No overlaps, clean insertion
+		i := sort.Search(len(g.Spans), func(i int) bool {
+			return g.Spans[i].Bounds().Start > start
+		})
+		slice.InsertBefore(&g.Spans, i, Group{Name: name, Range: r})
+	} else {
+		// At least one overlap
+		first := g.Spans[s].(Group)
+		last := g.Spans[s+c-1].(Group)
+		sIn, eIn := first.Bounds().Contains(start), last.Bounds().Contains(end-1)
+		switch {
+		case c == 1 && sIn && eIn:
+			// New group fits entirely within an existing group. Add as subgroup.
+			first.AddGroup(start, end, name)
+			g.Spans[s] = first
+		case sIn && start != first.Range.Start:
+			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
+		case eIn && end != last.Range.End:
+			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
+		default:
+			// New group completely wraps one or more existing groups. Add the
+			// existing group(s) as subgroups to the new group, and add to the list.
+			n := Group{Name: name, Range: r, Spans: make(Spans, c)}
+			copy(n.Spans, g.Spans[s:s+c])
+			slice.Replace(&g.Spans, s, c, n)
 		}
-		index += uint64(sg.Range.Start - base)
-		base = sg.Range.Last() + 1
-		if atomIndex <= sg.Range.Last() {
-			return index
-		}
-		index++
 	}
-	return index + (atomIndex - base)
+	return nil
 }
 
-// Insert adjusts the spans of this group and all subgroups for an insertion
-// of count elements at atomIndex.
-func (g *Group) Insert(atomIndex uint64, count int) {
-	s, e := g.Range.Range()
-	if s >= atomIndex {
-		s += uint64(count)
+func (g *Group) AddAtoms(pred func(id ID) bool) error {
+	rng := g.Range
+	spans := make(Spans, 0, len(g.Spans))
+
+	scan := func(to ID) {
+		for id := rng.Start; id < to; id++ {
+			rng.End = id + 1
+			if !pred(id) {
+				if rng.Start != id {
+					spans = append(spans, rng)
+				}
+				rng.Start = rng.End
+			}
+		}
+		if rng.Start != to {
+			rng.End = to
+			spans = append(spans, rng)
+			rng.Start = rng.End
+		}
 	}
-	if e > atomIndex {
-		e += uint64(count)
+
+	for _, s := range g.Spans {
+		switch s := s.(type) {
+		case Group:
+			scan(s.Bounds().Start)
+			s.AddAtoms(pred)
+			rng.Start = s.Bounds().End
+			spans = append(spans, s)
+		}
 	}
-	g.Range = Range{Start: s, End: e}
-	i := interval.Search(&g.SubGroups, func(test interval.U64Span) bool {
-		return atomIndex < test.End
-	})
-	for i < len(g.SubGroups) {
-		sg := g.SubGroups[i]
-		sg.Insert(atomIndex, count)
-		g.SubGroups[i] = sg
-		i++
-	}
+	scan(g.Range.End)
+
+	g.Spans = spans
+
+	return nil
 }
 
 // TraverseCallback is the function that's called for each traversed item in a
 // group.
-type TraverseCallback func(indices []uint64, atomIdx uint64, group *Group) error
+type TraverseCallback func(indices []uint64, item GroupOrID) error
 
 // Traverse traverses the atom group starting with the specified index,
 // calling cb for each encountered node.
-func (g *Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) error {
+func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) error {
 	t := groupTraverser{backwards: backwards, cb: cb}
 
-	indices := start
-	groups := make([]*Group, 1, len(indices)+1)
+	// Make a copy of start as traversal alters the slice.
+	indices := make([]uint64, len(start))
+	copy(indices, start)
+
+	groups := make([]Group, 1, len(indices)+1)
 	groups[0] = g
 	for i := range indices {
-		_, g := groups[i].Index(indices[i])
-		if g == nil {
+		item := groups[i].Index(indices[i])
+		g, ok := item.(Group)
+		if !ok {
 			break
 		}
 		groups = append(groups, g)
@@ -272,7 +367,7 @@ func (g *Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) er
 				if err := g.IterateBackwards(indices[i], t.visit); err != nil {
 					return err
 				}
-				err = cb(t.indices, g.Range.Start, g)
+				err = cb(t.indices, g)
 			} else {
 				err = g.IterateForwards(indices[i], t.visit)
 			}
@@ -294,17 +389,17 @@ func (g *Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) er
 
 type groupTraverser struct {
 	backwards bool
-	cb        func([]uint64, uint64, *Group) error
+	cb        TraverseCallback
 	indices   []uint64
 }
 
-func (s *groupTraverser) visit(childIdx, atomIdx uint64, g *Group) error {
+func (s *groupTraverser) visit(childIdx uint64, item GroupOrID) error {
 	if !s.backwards {
-		if err := s.cb(append(s.indices, childIdx), atomIdx, g); err != nil {
+		if err := s.cb(append(s.indices, childIdx), item); err != nil {
 			return err
 		}
 	}
-	if g != nil {
+	if g, ok := item.(Group); ok {
 		s.indices = append(s.indices, childIdx)
 		var err error
 		if s.backwards {
@@ -318,7 +413,7 @@ func (s *groupTraverser) visit(childIdx, atomIdx uint64, g *Group) error {
 		}
 	}
 	if s.backwards {
-		if err := s.cb(append(s.indices, childIdx), atomIdx, g); err != nil {
+		if err := s.cb(append(s.indices, childIdx), item); err != nil {
 			return err
 		}
 	}

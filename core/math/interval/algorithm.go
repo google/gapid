@@ -94,7 +94,7 @@ func (s *intersection) intersect(l List, span U64Span, expand bool) {
 }
 
 // merges a new span into a list, returning the index of the span
-func merge(l List, span U64Span, joinAdj bool) int {
+func merge(l MutableList, span U64Span, joinAdj bool) int {
 	s := intersection{}
 	s.intersect(l, span, joinAdj)
 	adjust(l, s.lowIndex, 1-s.overlap)
@@ -111,7 +111,7 @@ func merge(l List, span U64Span, joinAdj bool) int {
 // cut slices a hole matching the specified span from a list.
 // If add is true, it puts a new span in that space
 // It is used to implement both Remove and Replace
-func cut(l List, span U64Span, add bool) (int, U64Span) {
+func cut(l MutableList, span U64Span, add bool) (int, U64Span) {
 	s := intersection{}
 	s.intersect(l, span, false)
 	if s.overlap == 0 {
@@ -148,7 +148,7 @@ func cut(l List, span U64Span, add bool) (int, U64Span) {
 
 // adjust implements list size adjustment logic, given a delta in size, and an
 // index to adjust at
-func adjust(l List, at, delta int) {
+func adjust(l MutableList, at, delta int) {
 	if delta == 0 {
 		return
 	}

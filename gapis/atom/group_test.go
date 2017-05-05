@@ -15,10 +15,13 @@
 package atom
 
 import (
-	"reflect"
 	"testing"
 
+	"fmt"
+
+	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/log"
 )
 
 func check(t *testing.T, name string, expected, got uint64) {
@@ -27,103 +30,98 @@ func check(t *testing.T, name string, expected, got uint64) {
 	}
 }
 
-// Root-group
-//   │
-//   ├─ [0..99] ───── Atoms[0..99]
-//   │
-//   ├─ [100] ─────── Sub-group 0
-//   │                  │
-//   │                  └─ [0..99] ── Atoms[100..199]
-//   │
-//   ├─ [101..200] ── Atoms[200..299]
-//   │
-//   ├─ [201] ─────── Sub-group 1
-//   │                  │
-//   │                  ├─ [0..39] ── Atoms[300..339]
-//   │                  │
-//   │                  ├─ [40] ───── Sub-group 0
-//   │                  │               │
-//   │                  │               └─ [0..19] Atoms[340..359]
-//   │                  │
-//   │                  └─ [41..81] ─ Atoms[360..399]
-//   │
-//   ├─ [202..301] ── Atoms[400..499]
-//   │
-//   ├─ [302] ─────── Sub-group 2
-//   │                  │
-//   │                  └─ [0..100) ─ Atoms[500..599]
-//   │
-//   └─ [303..9702] ─ Atoms[600..9999]
-//
+var tree = `Group 'root' [0..1099]
+ ├─ [0..99] ───── Atoms [0..99]
+ ├─ [100] ─────── Group 'Sub-group 0' [100..199]
+ │                └─ [0..99] ───── Atoms [100..199]
+ ├─ [101..200] ── Atoms [200..299]
+ ├─ [201] ─────── Group 'Sub-group 1' [300..399]
+ │                ├─ [0..9] ────── Atoms [310..319]
+ │                ├─ [10] ──────── Group 'Sub-group 1.0' [340..359]
+ │                │                └─ [0] ───────── Atoms [350..350]
+ │                └─ [11..20] ──── Atoms [370..379]
+ ├─ [202..301] ── Atoms [400..499]
+ ├─ [302] ─────── Group 'Sub-group 2' [500..599]
+ │                └─ [0..99] ───── Atoms [500..599]
+ └─ [303..702] ── Atoms [600..999]`
+
 func buildTestGroup() Group {
 	return Group{
-		Range: Range{Start: 0, End: 10000},
-		SubGroups: GroupList{
-			Group{Range: Range{Start: 100, End: 200}},
-			Group{
-				Range: Range{Start: 300, End: 400},
-				SubGroups: GroupList{
-					Group{Range: Range{Start: 340, End: 360}},
-				},
-			},
-			Group{Range: Range{Start: 500, End: 600}},
+		"root", Range{0, 1100}, Spans{
+			Range{0, 100},
+			Group{"Sub-group 0", Range{100, 200}, Spans{
+				Range{100, 200},
+			}},
+			Range{200, 300},
+			Group{"Sub-group 1", Range{300, 400}, Spans{
+				Range{310, 320},
+				Group{"Sub-group 1.0", Range{340, 360}, Spans{
+					Range{350, 351},
+				}},
+				Range{370, 380},
+			}},
+			Range{400, 500},
+			Group{"Sub-group 2", Range{500, 600}, Spans{
+				Range{500, 600},
+			}},
+			Range{600, 1000},
 		},
 	}
+}
+
+func TestGroupFormat(t *testing.T) {
+	ctx := log.Testing(t)
+	root := buildTestGroup()
+	assert.For(ctx, "string").ThatString("\n" + fmt.Sprintf("%+v", root)).Equals("\n" + tree)
 }
 
 func TestGroupCount(t *testing.T) {
 	root := buildTestGroup()
 
-	check(t, "root count", 10000-300+3, root.Count())
-	check(t, "sub group 0 count", 100, root.SubGroups[0].Count())
-	check(t, "sub group 1 count", 40+1+40, root.SubGroups[1].Count())
-	check(t, "sub group 1's sub group count", 20, root.SubGroups[1].SubGroups[0].Count())
-	check(t, "sub group 2 count", 100, root.SubGroups[2].Count())
+	check(t, "root count", 703, root.Count())
+	check(t, "sub group 0 count", 100, root.Spans[1].(Group).Count())
+	check(t, "sub group 1 count", 21, root.Spans[3].(Group).Count())
+	check(t, "sub group 1.0 count", 1, root.Spans[3].(Group).Spans[1].(Group).Count())
+	check(t, "sub group 2 count", 100, root.Spans[5].(Group).Count())
 }
 
 func TestGroupIndex(t *testing.T) {
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for _, test := range []struct {
-		index             uint64
-		expectedAtomIndex uint64
-		expectedSubGroup  *Group
+		index    uint64
+		expected GroupOrID
 	}{
-		{0, 0, nil},
-		{1, 1, nil},
-		{50, 50, nil},
-		{100, 100, &root.SubGroups[0]},
-		{101, 200, nil},
-		{102, 201, nil},
-		{151, 250, nil},
-		{200, 299, nil},
-		{201, 300, &root.SubGroups[1]},
-		{202, 400, nil},
-		{203, 401, nil},
-		{252, 450, nil},
-		{301, 499, nil},
-		{302, 500, &root.SubGroups[2]},
-		{303, 600, nil},
-		{304, 601, nil},
-		{353, 650, nil},
-		{402, 699, nil},
+		{0, ID(0)},
+		{1, ID(1)},
+		{50, ID(50)},
+		{100, root.Spans[1].(Group)},
+		{101, ID(200)},
+		{102, ID(201)},
+		{151, ID(250)},
+		{200, ID(299)},
+		{201, root.Spans[3].(Group)},
+		{202, ID(400)},
+		{203, ID(401)},
+		{252, ID(450)},
+		{301, ID(499)},
+		{302, root.Spans[5].(Group)},
+		{303, ID(600)},
+		{304, ID(601)},
+		{353, ID(650)},
+		{402, ID(699)},
 	} {
-		gotBaseAtomIndex, gotSubGroup := root.Index(test.index)
-		if test.expectedAtomIndex != gotBaseAtomIndex {
-			t.Errorf("base atom id was not as expected for index %d.\nExpected: %d\nGot:      %d",
-				test.index, test.expectedAtomIndex, gotBaseAtomIndex)
-		}
-		if test.expectedSubGroup != gotSubGroup {
-			t.Errorf("sub group was not as expected for index %d.\nExpected: %+v\nGot:      %+v",
-				test.index, test.expectedSubGroup, gotSubGroup)
-		}
+		got := root.Index(test.index)
+		assert.For(ctx, "root.Index(%v)", test.index).That(got).DeepEquals(test.expected)
 	}
 }
 
 func TestGroupIndexOf(t *testing.T) {
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for _, test := range []struct {
-		atomIndex uint64
-		expected  uint64
+		id       ID
+		expected uint64
 	}{
 		{0, 0},
 		{1, 1},
@@ -153,49 +151,47 @@ func TestGroupIndexOf(t *testing.T) {
 		{650, 353},
 		{699, 402},
 	} {
-		got := root.IndexOf(test.atomIndex)
-		if test.expected != got {
-			t.Errorf("IndexOf(%d) returned unexpected atom index.\nExpected: %+v\nGot:      %+v",
-				test.atomIndex, test.expected, got)
-		}
+		got := root.IndexOf(test.id)
+		assert.For(ctx, "root.IndexOf(%v)", test.id).That(got).Equals(test.expected)
 	}
 }
 
-func TestGroupAddTopDown(t *testing.T) {
-	root := Group{}
-	root.Range = Range{Start: 0, End: 1000}
+func TestAddGroupTopDown(t *testing.T) {
+	ctx := log.Testing(t)
+	got := Group{}
+	got.Range = Range{0, 1000}
 
-	root.SubGroups.Add(0, 1000, "R")
+	got.AddGroup(0, 1000, "R")
 
-	root.SubGroups.Add(100, 200, "A0")
-	root.SubGroups.Add(300, 400, "B0")
-	root.SubGroups.Add(500, 600, "C0")
+	got.AddGroup(100, 200, "A0")
+	got.AddGroup(300, 400, "B0")
+	got.AddGroup(500, 600, "C0")
 
-	root.SubGroups.Add(120, 180, "A1")
-	root.SubGroups.Add(310, 390, "B1")
-	root.SubGroups.Add(500, 600, "C1")
+	got.AddGroup(120, 180, "A1")
+	got.AddGroup(310, 390, "B1")
+	got.AddGroup(500, 600, "C1")
 
-	root.SubGroups.Add(140, 160, "A2")
-	root.SubGroups.Add(320, 380, "B2")
-	root.SubGroups.Add(500, 600, "C2")
+	got.AddGroup(140, 160, "A2")
+	got.AddGroup(320, 380, "B2")
+	got.AddGroup(500, 600, "C2")
 
 	expected := Group{
-		Range: Range{Start: 0, End: 1000},
-		SubGroups: GroupList{
+		Range: Range{0, 1000},
+		Spans: Spans{
 			Group{
-				Range: Range{Start: 0, End: 1000},
+				Range: Range{0, 1000},
 				Name:  "R",
-				SubGroups: GroupList{
+				Spans: Spans{
 					Group{
-						Range: Range{Start: 100, End: 200},
+						Range: Range{100, 200},
 						Name:  "A0",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 120, End: 180},
+								Range: Range{120, 180},
 								Name:  "A1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 140, End: 160},
+										Range: Range{140, 160},
 										Name:  "A2",
 									},
 								},
@@ -203,15 +199,15 @@ func TestGroupAddTopDown(t *testing.T) {
 						},
 					},
 					Group{
-						Range: Range{Start: 300, End: 400},
+						Range: Range{300, 400},
 						Name:  "B0",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 310, End: 390},
+								Range: Range{310, 390},
 								Name:  "B1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 320, End: 380},
+										Range: Range{320, 380},
 										Name:  "B2",
 									},
 								},
@@ -219,15 +215,15 @@ func TestGroupAddTopDown(t *testing.T) {
 						},
 					},
 					Group{
-						Range: Range{Start: 500, End: 600},
+						Range: Range{500, 600},
 						Name:  "C0",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 500, End: 600},
+								Range: Range{500, 600},
 								Name:  "C1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 500, End: 600},
+										Range: Range{500, 600},
 										Name:  "C2",
 									},
 								},
@@ -239,47 +235,45 @@ func TestGroupAddTopDown(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(expected, root) {
-		t.Errorf("built group was not as expected.\nExpected: %+v\nGot:      %+v",
-			expected, root)
-	}
+	assert.With(ctx).That(got).DeepEquals(expected)
 }
 
-func TestGroupAddBottomUp(t *testing.T) {
-	root := Group{}
-	root.Range = Range{Start: 0, End: 1000}
+func TestAddGroupBottomUp(t *testing.T) {
+	ctx := log.Testing(t)
+	got := Group{}
+	got.Range = Range{0, 1000}
 
-	root.SubGroups.Add(140, 160, "A2")
-	root.SubGroups.Add(320, 380, "B2")
-	root.SubGroups.Add(500, 600, "C2")
+	got.AddGroup(140, 160, "A2")
+	got.AddGroup(320, 380, "B2")
+	got.AddGroup(500, 600, "C2")
 
-	root.SubGroups.Add(120, 180, "A1")
-	root.SubGroups.Add(310, 390, "B1")
-	root.SubGroups.Add(500, 600, "C1")
+	got.AddGroup(120, 180, "A1")
+	got.AddGroup(310, 390, "B1")
+	got.AddGroup(500, 600, "C1")
 
-	root.SubGroups.Add(100, 200, "A0")
-	root.SubGroups.Add(300, 400, "B0")
-	root.SubGroups.Add(500, 600, "C0")
+	got.AddGroup(100, 200, "A0")
+	got.AddGroup(300, 400, "B0")
+	got.AddGroup(500, 600, "C0")
 
-	root.SubGroups.Add(0, 1000, "R")
+	got.AddGroup(0, 1000, "R")
 
 	expected := Group{
-		Range: Range{Start: 0, End: 1000},
-		SubGroups: GroupList{
+		Range: Range{0, 1000},
+		Spans: Spans{
 			Group{
-				Range: Range{Start: 0, End: 1000},
+				Range: Range{0, 1000},
 				Name:  "R",
-				SubGroups: GroupList{
+				Spans: Spans{
 					Group{
-						Range: Range{Start: 100, End: 200},
+						Range: Range{100, 200},
 						Name:  "A0",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 120, End: 180},
+								Range: Range{120, 180},
 								Name:  "A1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 140, End: 160},
+										Range: Range{140, 160},
 										Name:  "A2",
 									},
 								},
@@ -287,15 +281,15 @@ func TestGroupAddBottomUp(t *testing.T) {
 						},
 					},
 					Group{
-						Range: Range{Start: 300, End: 400},
+						Range: Range{300, 400},
 						Name:  "B0",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 310, End: 390},
+								Range: Range{310, 390},
 								Name:  "B1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 320, End: 380},
+										Range: Range{320, 380},
 										Name:  "B2",
 									},
 								},
@@ -303,15 +297,15 @@ func TestGroupAddBottomUp(t *testing.T) {
 						},
 					},
 					Group{
-						Range: Range{Start: 500, End: 600},
+						Range: Range{500, 600},
 						Name:  "C2",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 500, End: 600},
+								Range: Range{500, 600},
 								Name:  "C1",
-								SubGroups: GroupList{
+								Spans: Spans{
 									Group{
-										Range: Range{Start: 500, End: 600},
+										Range: Range{500, 600},
 										Name:  "C0",
 									},
 								},
@@ -323,33 +317,31 @@ func TestGroupAddBottomUp(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(expected, root) {
-		t.Errorf("built group was not as expected.\nExpected: %+v\nGot:      %+v",
-			expected, root)
-	}
+	assert.With(ctx).That(got).DeepEquals(expected)
 }
 
-func TestGroupAddMixed(t *testing.T) {
-	root := Group{}
-	root.Range = Range{Start: 0, End: 1000}
+func TestAddGroupMixed(t *testing.T) {
+	ctx := log.Testing(t)
+	got := Group{}
+	got.Range = Range{0, 1000}
 
-	root.SubGroups.Add(100, 500, "A")
-	root.SubGroups.Add(400, 500, "C")
-	root.SubGroups.Add(200, 500, "B")
+	got.AddGroup(100, 500, "A")
+	got.AddGroup(400, 500, "C")
+	got.AddGroup(200, 500, "B")
 
 	expected := Group{
-		Range: Range{Start: 0, End: 1000},
-		SubGroups: GroupList{
+		Range: Range{0, 1000},
+		Spans: Spans{
 			Group{
-				Range: Range{Start: 100, End: 500},
+				Range: Range{100, 500},
 				Name:  "A",
-				SubGroups: GroupList{
+				Spans: Spans{
 					Group{
-						Range: Range{Start: 200, End: 500},
+						Range: Range{200, 500},
 						Name:  "B",
-						SubGroups: GroupList{
+						Spans: Spans{
 							Group{
-								Range: Range{Start: 400, End: 500},
+								Range: Range{400, 500},
 								Name:  "C",
 							},
 						},
@@ -359,67 +351,126 @@ func TestGroupAddMixed(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(expected, root) {
-		t.Errorf("built group was not as expected.\nExpected: %+v\nGot:      %+v",
-			expected, root)
-	}
+	assert.With(ctx).That(got).DeepEquals(expected)
 }
 
-type childIdxAtomIdxGroup struct {
-	childIdx uint64
-	atomIdx  uint64
-	group    *Group
+func TestAddAtomsFill(t *testing.T) {
+	ctx := log.Testing(t)
+	got := buildTestGroup()
+
+	got.AddAtoms(func(ID) bool { return true })
+
+	expected := Group{
+		"root", Range{0, 1100}, Spans{
+			Range{0, 100},
+			Group{"Sub-group 0", Range{100, 200}, Spans{
+				Range{100, 200},
+			}},
+			Range{200, 300},
+			Group{"Sub-group 1", Range{300, 400}, Spans{
+				Range{300, 340},
+				Group{"Sub-group 1.0", Range{340, 360}, Spans{
+					Range{340, 360},
+				}},
+				Range{360, 400},
+			}},
+			Range{400, 500},
+			Group{"Sub-group 2", Range{500, 600}, Spans{
+				Range{500, 600},
+			}},
+			Range{600, 1100},
+		},
+	}
+
+	assert.With(ctx).That(got).DeepEquals(expected)
+}
+
+func TestAddAtomsSparse(t *testing.T) {
+	ctx := log.Testing(t)
+	got := buildTestGroup()
+
+	got.AddAtoms(func(id ID) bool { return (id/50)&1 == 0 })
+
+	expected := Group{
+		"root", Range{0, 1100}, Spans{
+			Range{0, 51},
+			Group{"Sub-group 0", Range{100, 200}, Spans{
+				Range{100, 151},
+			}},
+			Range{200, 251},
+			Group{"Sub-group 1", Range{300, 400}, Spans{
+				Range{300, 340},
+				Group{"Sub-group 1.0", Range{340, 360}, Spans{
+					Range{340, 351},
+				}},
+			}},
+			Range{400, 451},
+			Group{"Sub-group 2", Range{500, 600}, Spans{
+				Range{500, 551},
+			}},
+			Range{600, 651},
+			Range{700, 751},
+			Range{800, 851},
+			Range{900, 951},
+			Range{1000, 1051},
+		},
+	}
+
+	assert.With(ctx).That(got).DeepEquals(expected)
+}
+
+type idxAndGroupOrID struct {
+	idx  uint64
+	item GroupOrID
 }
 
 const stop = fault.Const("stop")
 
 func TestIterateForwards(t *testing.T) {
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for ti, test := range []struct {
 		from     uint64
 		count    int
-		expected []childIdxAtomIdxGroup
+		expected []idxAndGroupOrID
 	}{
-		{0, 3, []childIdxAtomIdxGroup{
-			{0, 0, nil},
-			{1, 1, nil},
-			{2, 2, nil},
+		{0, 3, []idxAndGroupOrID{
+			{0, ID(0)},
+			{1, ID(1)},
+			{2, ID(2)},
 		}},
-		{98, 5, []childIdxAtomIdxGroup{
-			{98, 98, nil},
-			{99, 99, nil},
-			{100, 100, &root.SubGroups[0]},
-			{101, 200, nil},
-			{102, 201, nil},
+		{98, 5, []idxAndGroupOrID{
+			{98, ID(98)},
+			{99, ID(99)},
+			{100, root.Spans[1].(Group)},
+			{101, ID(200)},
+			{102, ID(201)},
 		}},
-		{199, 5, []childIdxAtomIdxGroup{
-			{199, 298, nil},
-			{200, 299, nil},
-			{201, 300, &root.SubGroups[1]},
-			{202, 400, nil},
-			{203, 401, nil},
+		{199, 5, []idxAndGroupOrID{
+			{199, ID(298)},
+			{200, ID(299)},
+			{201, root.Spans[3].(Group)},
+			{202, ID(400)},
+			{203, ID(401)},
 		}},
-		{300, 5, []childIdxAtomIdxGroup{
-			{300, 498, nil},
-			{301, 499, nil},
-			{302, 500, &root.SubGroups[2]},
-			{303, 600, nil},
-			{304, 601, nil},
+		{300, 5, []idxAndGroupOrID{
+			{300, ID(498)},
+			{301, ID(499)},
+			{302, root.Spans[5].(Group)},
+			{303, ID(600)},
+			{304, ID(601)},
 		}},
-		{9700, 3, []childIdxAtomIdxGroup{
-			{9700, 9997, nil},
-			{9701, 9998, nil},
-			{9702, 9999, nil},
-			{0xdead, 0xdead, nil}, // Not reached
+		{700, 3, []idxAndGroupOrID{
+			{700, ID(997)},
+			{701, ID(998)},
+			{702, ID(999)},
+			{0xdead, nil}, // Not reached
 		}},
 	} {
 		i := 0
-		err := root.IterateForwards(test.from, func(childIdx, atomIdx uint64, group *Group) error {
-			got, expected := childIdxAtomIdxGroup{childIdx, atomIdx, group}, test.expected[i]
-			if got != expected {
-				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
-					i, expected, got)
-			}
+		err := root.IterateForwards(test.from, func(childIdx uint64, item GroupOrID) error {
+			got, expected := idxAndGroupOrID{childIdx, item}, test.expected[i]
+			assert.For(ctx, "root.IterateForwards(%v) callback %v", test.from, i).That(got).DeepEquals(expected)
 			i++
 			if i == test.count {
 				return stop
@@ -433,52 +484,50 @@ func TestIterateForwards(t *testing.T) {
 }
 
 func TestIterateBackwards(t *testing.T) {
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for ti, test := range []struct {
 		from     uint64
 		count    int
-		expected []childIdxAtomIdxGroup
+		expected []idxAndGroupOrID
 	}{
-		{2, 3, []childIdxAtomIdxGroup{
-			{2, 2, nil},
-			{1, 1, nil},
-			{0, 0, nil},
-			{0xdead, 0xdead, nil}, // Not reached
+		{2, 3, []idxAndGroupOrID{
+			{2, ID(2)},
+			{1, ID(1)},
+			{0, ID(0)},
+			{0xdead, nil}, // Not reached
 		}},
-		{102, 5, []childIdxAtomIdxGroup{
-			{102, 201, nil},
-			{101, 200, nil},
-			{100, 100, &root.SubGroups[0]},
-			{99, 99, nil},
-			{98, 98, nil},
+		{102, 5, []idxAndGroupOrID{
+			{102, ID(201)},
+			{101, ID(200)},
+			{100, root.Spans[1].(Group)},
+			{99, ID(99)},
+			{98, ID(98)},
 		}},
-		{203, 5, []childIdxAtomIdxGroup{
-			{203, 401, nil},
-			{202, 400, nil},
-			{201, 300, &root.SubGroups[1]},
-			{200, 299, nil},
-			{199, 298, nil},
+		{203, 5, []idxAndGroupOrID{
+			{203, ID(401)},
+			{202, ID(400)},
+			{201, root.Spans[3].(Group)},
+			{200, ID(299)},
+			{199, ID(298)},
 		}},
-		{304, 5, []childIdxAtomIdxGroup{
-			{304, 601, nil},
-			{303, 600, nil},
-			{302, 500, &root.SubGroups[2]},
-			{301, 499, nil},
-			{300, 498, nil},
+		{304, 5, []idxAndGroupOrID{
+			{304, ID(601)},
+			{303, ID(600)},
+			{302, root.Spans[5].(Group)},
+			{301, ID(499)},
+			{300, ID(498)},
 		}},
-		{9702, 3, []childIdxAtomIdxGroup{
-			{9702, 9999, nil},
-			{9701, 9998, nil},
-			{9700, 9997, nil},
+		{702, 3, []idxAndGroupOrID{
+			{702, ID(999)},
+			{701, ID(998)},
+			{700, ID(997)},
 		}},
 	} {
 		i := 0
-		err := root.IterateBackwards(test.from, func(childIdx, atomIdx uint64, group *Group) error {
-			got, expected := childIdxAtomIdxGroup{childIdx, atomIdx, group}, test.expected[i]
-			if got != expected {
-				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
-					i, expected, got)
-			}
+		err := root.IterateBackwards(test.from, func(childIdx uint64, item GroupOrID) error {
+			got, expected := idxAndGroupOrID{childIdx, item}, test.expected[i]
+			assert.For(ctx, "root.IterateBackwards(%v) callback %v", test.from, i).That(got).DeepEquals(expected)
 			i++
 			if i == test.count {
 				return stop
@@ -491,72 +540,66 @@ func TestIterateBackwards(t *testing.T) {
 	}
 }
 
-type indicesAtomIdxGroup struct {
-	indices []uint64
-	atomIdx uint64
-	group   *Group
+type indicesAndGroupOrID struct {
+	Indices []uint64
+	Item    GroupOrID
 }
 
+func I(v ...uint64) []uint64 { return v }
+
 func TestTraverseForwards(t *testing.T) {
-	I := func(v ...uint64) []uint64 { return v }
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for ti, test := range []struct {
 		from     []uint64
-		expected []indicesAtomIdxGroup
+		expected []indicesAndGroupOrID
 	}{
-		{I(), []indicesAtomIdxGroup{
-			{I(0), 0, nil},
-			{I(1), 1, nil},
-			{I(2), 2, nil},
+		{I(), []indicesAndGroupOrID{
+			{I(0), ID(0)},
+			{I(1), ID(1)},
+			{I(2), ID(2)},
 		}},
-		{I(98), []indicesAtomIdxGroup{
-			{I(98), 98, nil},
-			{I(99), 99, nil},
-			{I(100), 100, &root.SubGroups[0]},
-			{I(100, 0), 100, nil},
-			{I(100, 1), 101, nil},
-			{I(100, 2), 102, nil},
+		{I(98), []indicesAndGroupOrID{
+			{I(98), ID(98)},
+			{I(99), ID(99)},
+			{I(100), root.Spans[1].(Group)},
+			{I(100, 0), ID(100)},
+			{I(100, 1), ID(101)},
+			{I(100, 2), ID(102)},
 		}},
-		{I(199), []indicesAtomIdxGroup{
-			{I(199), 298, nil},
-			{I(200), 299, nil},
-			{I(201), 300, &root.SubGroups[1]},
-			{I(201, 0), 300, nil},
-			{I(201, 1), 301, nil},
+		{I(199), []indicesAndGroupOrID{
+			{I(199), ID(298)},
+			{I(200), ID(299)},
+			{I(201), root.Spans[3].(Group)},
+			{I(201, 0), ID(310)},
+			{I(201, 1), ID(311)},
 		}},
-		{I(201, 39), []indicesAtomIdxGroup{
-			{I(201, 39), 339, nil},
-			{I(201, 40), 340, &root.SubGroups[1].SubGroups[0]},
-			{I(201, 40, 0), 340, nil},
-			{I(201, 40, 1), 341, nil},
+		{I(201, 8), []indicesAndGroupOrID{
+			{I(201, 8), ID(318)},
+			{I(201, 9), ID(319)},
+			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
+			{I(201, 10, 0), ID(350)},
+			{I(201, 11), ID(370)},
+			{I(201, 12), ID(371)},
 		}},
-		{I(201, 40, 18), []indicesAtomIdxGroup{
-			{I(201, 40, 18), 358, nil},
-			{I(201, 40, 19), 359, nil},
-			{I(201, 41), 360, nil},
-			{I(201, 42), 361, nil},
+		{I(300), []indicesAndGroupOrID{
+			{I(300), ID(498)},
+			{I(301), ID(499)},
+			{I(302), root.Spans[5].(Group)},
+			{I(302, 0), ID(500)},
+			{I(302, 1), ID(501)},
+			{I(302, 2), ID(502)},
 		}},
-		{I(300), []indicesAtomIdxGroup{
-			{I(300), 498, nil},
-			{I(301), 499, nil},
-			{I(302), 500, &root.SubGroups[2]},
-			{I(302, 0), 500, nil},
-			{I(302, 1), 501, nil},
-			{I(302, 2), 502, nil},
-		}},
-		{I(9700), []indicesAtomIdxGroup{
-			{I(9700), 9997, nil},
-			{I(9701), 9998, nil},
-			{I(9702), 9999, nil},
+		{I(700), []indicesAndGroupOrID{
+			{I(700), ID(997)},
+			{I(701), ID(998)},
+			{I(702), ID(999)},
 		}},
 	} {
 		i := 0
-		err := root.Traverse(false, test.from, func(indices []uint64, atomIdx uint64, group *Group) error {
-			got, expected := indicesAtomIdxGroup{indices, atomIdx, group}, test.expected[i]
-			if !reflect.DeepEqual(got, expected) {
-				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
-					i, expected, got)
-			}
+		err := root.Traverse(false, test.from, func(indices []uint64, item GroupOrID) error {
+			got, expected := indicesAndGroupOrID{indices, item}, test.expected[i]
+			assert.For(ctx, "root.Traverse(false, %v) callback %v", test.from, i).That(got).DeepEquals(expected)
 			i++
 			if i == len(test.expected) {
 				return stop
@@ -570,65 +613,58 @@ func TestTraverseForwards(t *testing.T) {
 }
 
 func TestTraverseBackwards(t *testing.T) {
-	I := func(v ...uint64) []uint64 { return v }
+	ctx := log.Testing(t)
 	root := buildTestGroup()
 	for ti, test := range []struct {
 		from     []uint64
-		expected []indicesAtomIdxGroup
+		expected []indicesAndGroupOrID
 	}{
-		{I(), []indicesAtomIdxGroup{
-			{I(9702), 9999, nil},
-			{I(9701), 9998, nil},
-			{I(9700), 9997, nil},
+		{I(), []indicesAndGroupOrID{
+			{I(702), ID(999)},
+			{I(701), ID(998)},
+			{I(700), ID(997)},
 		}},
-		{I(100, 2), []indicesAtomIdxGroup{
-			{I(100, 2), 102, nil},
-			{I(100, 1), 101, nil},
-			{I(100, 0), 100, nil},
-			{I(100), 100, &root.SubGroups[0]},
-			{I(99), 99, nil},
-			{I(98), 98, nil},
+		{I(100, 2), []indicesAndGroupOrID{
+			{I(100, 2), ID(102)},
+			{I(100, 1), ID(101)},
+			{I(100, 0), ID(100)},
+			{I(100), root.Spans[1].(Group)},
+			{I(99), ID(99)},
+			{I(98), ID(98)},
 		}},
-		{I(201, 1), []indicesAtomIdxGroup{
-			{I(201, 1), 301, nil},
-			{I(201, 0), 300, nil},
-			{I(201), 300, &root.SubGroups[1]},
-			{I(200), 299, nil},
-			{I(199), 298, nil},
+		{I(201, 1), []indicesAndGroupOrID{
+			{I(201, 1), ID(311)},
+			{I(201, 0), ID(310)},
+			{I(201), root.Spans[3].(Group)},
+			{I(200), ID(299)},
+			{I(199), ID(298)},
 		}},
-		{I(201, 40, 1), []indicesAtomIdxGroup{
-			{I(201, 40, 1), 341, nil},
-			{I(201, 40, 0), 340, nil},
-			{I(201, 40), 340, &root.SubGroups[1].SubGroups[0]},
-			{I(201, 39), 339, nil},
+		{I(201, 12), []indicesAndGroupOrID{
+			{I(201, 12), ID(371)},
+			{I(201, 11), ID(370)},
+			{I(201, 10, 0), ID(350)},
+			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
+			{I(201, 9), ID(319)},
+			{I(201, 8), ID(318)},
 		}},
-		{I(201, 42), []indicesAtomIdxGroup{
-			{I(201, 42), 361, nil},
-			{I(201, 41), 360, nil},
-			{I(201, 40, 19), 359, nil},
-			{I(201, 40, 18), 358, nil},
+		{I(302, 2), []indicesAndGroupOrID{
+			{I(302, 2), ID(502)},
+			{I(302, 1), ID(501)},
+			{I(302, 0), ID(500)},
+			{I(302), root.Spans[5].(Group)},
+			{I(301), ID(499)},
+			{I(300), ID(498)},
 		}},
-		{I(302, 2), []indicesAtomIdxGroup{
-			{I(302, 2), 502, nil},
-			{I(302, 1), 501, nil},
-			{I(302, 0), 500, nil},
-			{I(302), 500, &root.SubGroups[2]},
-			{I(301), 499, nil},
-			{I(300), 498, nil},
-		}},
-		{I(9702), []indicesAtomIdxGroup{
-			{I(9702), 9999, nil},
-			{I(9701), 9998, nil},
-			{I(9700), 9997, nil},
+		{I(702), []indicesAndGroupOrID{
+			{I(702), ID(999)},
+			{I(701), ID(998)},
+			{I(700), ID(997)},
 		}},
 	} {
 		i := 0
-		err := root.Traverse(true, test.from, func(indices []uint64, atomIdx uint64, group *Group) error {
-			got, expected := indicesAtomIdxGroup{indices, atomIdx, group}, test.expected[i]
-			if !reflect.DeepEqual(got, expected) {
-				t.Errorf("callback was not as expected for index %d.\nExpected: %d\nGot:      %d",
-					i, expected, got)
-			}
+		err := root.Traverse(true, test.from, func(indices []uint64, item GroupOrID) error {
+			got, expected := indicesAndGroupOrID{indices, item}, test.expected[i]
+			assert.For(ctx, "root.Traverse(true, %v) callback %v", test.from, i).That(got).DeepEquals(expected)
 			i++
 			if i == len(test.expected) {
 				return stop
