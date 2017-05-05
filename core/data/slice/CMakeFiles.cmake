@@ -18,19 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    api.go
-    expression.go
-    function.go
-    interface_test.go
-    internal.go
-    invalid.go
-    logical_order.go
-    node.go
-    statement.go
-    symbols.go
-    type.go
-    visit.go
+    slice_test.go
+    slice.go
 )
 set(dirs
-    printer
+
 )

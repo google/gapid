@@ -15,6 +15,7 @@
 package semantic
 
 import "github.com/google/gapid/gapil/ast"
+import "github.com/google/gapid/core/data/slice"
 
 // Statement is the interface implemented by all statement types.
 type Statement interface {
@@ -29,45 +30,22 @@ func (Statements) isNode() {}
 
 // Replace replaces count statements starting from first with s.
 func (l *Statements) Replace(first, count int, s ...Statement) {
-	newLen := len(*l) - count + len(s)
-	var n Statements
-	// ensure the slice is big enough to hold all the new data.
-	if cap(*l) < newLen {
-		// l isn't big enough to hold the new elements.
-		// Create a new buffer, with room to grow.
-		n = make(Statements, newLen, newLen*2)
-		copy(n, (*l)[:first])
-	} else {
-		n = (*l)[:newLen] // Extend the slice length.
-	}
-	// move the part after the insertion to the right by len(s).
-	copy(n[first+len(s):], (*l)[first+count:])
-	// copy in s.
-	copy(n[first:], s)
-	*l = n
+	slice.Replace(l, first, count, s)
 }
 
 // Remove removes all occurances of s from the list of statements.
 func (l *Statements) Remove(s Statement) {
-	out := (*l)[:0]
-	for _, n := range *l {
-		if n != s {
-			out = append(out, n)
-		}
-	}
-	*l = out
+	slice.Remove(l, s)
 }
 
 // InsertBefore inserts the statement s before the i'th statement.
 func (l *Statements) InsertBefore(s Statement, i int) {
-	*l = append(*l, nil) // grow by one
-	copy((*l)[i+1:], (*l)[i:])
-	(*l)[i] = s
+	slice.InsertBefore(l, i, s)
 }
 
 // Append adds the statement s at the end of the list.
 func (l *Statements) Append(s Statement) {
-	*l = append(*l, s)
+	slice.Append(l, s)
 }
 
 // Last returns the last statement in the list.
