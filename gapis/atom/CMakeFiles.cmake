@@ -27,7 +27,6 @@ set(files
     flags.go
     framebuffer_observation.go
     group.go
-    group_list.go
     group_test.go
     id_set.go
     labeled.go

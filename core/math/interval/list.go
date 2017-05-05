@@ -21,6 +21,11 @@ type List interface {
 	Length() int
 	// GetSpan returns the span for the element at index in the list
 	GetSpan(index int) U64Span
+}
+
+// MutableList is a mutable form of a List.
+type MutableList interface {
+	List
 	// SetSpan sets the span for the element at index in the list
 	SetSpan(index int, span U64Span)
 	// New creates a new element at the specifed index with the specified span
@@ -59,13 +64,13 @@ func IndexOf(l List, value uint64) int {
 //   ╭       ╮       ╭       ╮   ╭                ╮
 //   │0  1  2│ merge │3  4  5│ = │0  1  2  3  4  5│
 //   ╰       ╯       ╰       ╯   ╰                ╯
-func Merge(l List, span U64Span, joinAdj bool) int {
+func Merge(l MutableList, span U64Span, joinAdj bool) int {
 	return merge(l, span, joinAdj)
 }
 
 // Replace cuts the span out of any existing intervals, and then adds a new interval,
 // and returns its index.
-func Replace(l List, span U64Span) int {
+func Replace(l MutableList, span U64Span) int {
 	index, newSpan := cut(l, span, true)
 	l.New(index, newSpan)
 	return index
@@ -73,7 +78,7 @@ func Replace(l List, span U64Span) int {
 
 // Remove strips the specified span from the list, cutting it out of any
 // overlapping intervals
-func Remove(l List, span U64Span) {
+func Remove(l MutableList, span U64Span) {
 	cut(l, span, false)
 }
 

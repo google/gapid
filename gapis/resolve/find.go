@@ -17,7 +17,6 @@ package resolve
 import (
 	"context"
 	"fmt"
-
 	"regexp"
 	"strings"
 
@@ -64,12 +63,13 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 
 		const stop = fault.Const("stop")
 		count := uint32(0)
-		cb := func(indices []uint64, atomIdx uint64, group *atom.Group) error {
+		cb := func(indices []uint64, item atom.GroupOrID) error {
 			var text string
-			if group != nil {
-				text = group.Name
-			} else {
-				text = fmt.Sprint(c.Atoms[atomIdx])
+			switch item := item.(type) {
+			case atom.Group:
+				text = item.Name
+			case atom.ID:
+				text = fmt.Sprint(c.Atoms[item])
 			}
 			if !pred(text) {
 				return nil

@@ -30,7 +30,7 @@ func (l RangeList) SetSpan(index int, span interval.U64Span) { l[index].SetSpan(
 
 // New creates a new element at the specifed index with the specified span
 func (l *RangeList) New(index int, span interval.U64Span) {
-	(*l)[index] = Range{Start: span.Start, End: span.End}
+	(*l)[index] = Range{ID(span.Start), ID(span.End)}
 }
 
 // Copy copies count ranges within the list.

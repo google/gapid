@@ -22,29 +22,29 @@ import (
 
 // Range describes an interval of atoms in a stream.
 type Range struct {
-	Start uint64 // The first atom within the range.
-	End   uint64 // One past the last atom within the range.
+	Start ID // The first atom within the range.
+	End   ID // One past the last atom within the range.
 }
 
 // String returns a string representing the range.
 func (i Range) String() string {
-	return fmt.Sprintf("[%.6d-%.6d]", i.Start, i.End-1)
+	return fmt.Sprintf("[%d..%d]", i.Start, i.End-1)
 }
 
 // Contains returns true if atomIndex is within the range, otherwise false.
-func (i Range) Contains(atomIndex uint64) bool {
-	return atomIndex >= i.Start && atomIndex < i.End
+func (i Range) Contains(id ID) bool {
+	return id >= i.Start && id < i.End
 }
 
-// Clamp returns the nearest index in the range to atomIndex.
-func (i Range) Clamp(atomIndex uint64) uint64 {
-	if atomIndex < i.Start {
+// Clamp returns the nearest index in the range to id.
+func (i Range) Clamp(id ID) ID {
+	if id < i.Start {
 		return i.Start
 	}
-	if atomIndex >= i.End {
+	if id >= i.End {
 		return i.End - 1
 	}
-	return atomIndex
+	return id
 }
 
 // Length returns the number of atoms in the range.
@@ -53,17 +53,17 @@ func (i Range) Length() uint64 {
 }
 
 // Range returns the start and end of the range.
-func (i Range) Range() (start, end uint64) {
+func (i Range) Range() (start, end ID) {
 	return i.Start, i.End
 }
 
 // First returns the first atom index within the range.
-func (i Range) First() uint64 {
+func (i Range) First() ID {
 	return i.Start
 }
 
 // Last returns the last atom index within the range.
-func (i Range) Last() uint64 {
+func (i Range) Last() ID {
 	return i.End - 1
 }
 
@@ -74,6 +74,6 @@ func (i Range) Span() interval.U64Span {
 
 // SetSpan sets the start and end range using a U64Span.
 func (i *Range) SetSpan(span interval.U64Span) {
-	i.Start = span.Start
-	i.End = span.End
+	i.Start = ID(span.Start)
+	i.End = ID(span.End)
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
@@ -81,16 +82,14 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 
 	cmdTree := boxedCmdTree.(*commandTree)
 
-	i, group, err := cmdTree.index(p.Index)
-	if err != nil {
-		return nil, err
+	switch item := cmdTree.index(p.Index).(type) {
+	case atom.Group:
+		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Range.Last())))
+	case atom.ID:
+		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item)))
+	default:
+		panic(fmt.Errorf("Unexpected type: %T", item))
 	}
-
-	if group != nil {
-		i = group.Range.Last()
-	}
-
-	return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(i))
 }
 
 // ResourceDataThumbnail resolves and returns the thumbnail for the resource at p.
