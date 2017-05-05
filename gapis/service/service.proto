@@ -341,12 +341,14 @@ message Capture {
   string name = 1;
   // Information about the device used to create the capture.
   device.Instance device = 2;
+  // Information about the abi used by the traced process.
+  device.ABI abi = 3;
   // The path to the stream of commands in this capture.
-  path.Commands commands = 3;
+  path.Commands commands = 4;
   // List of graphics APIs used by this capture.
-  repeated path.API apis = 4;
+  repeated path.API apis = 5;
   // List of all the memory observations made by the application.
-  repeated MemoryRange observations = 5;
+  repeated MemoryRange observations = 6;
 }
 
 // Report describes all warnings and errors found by a capture.

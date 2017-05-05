@@ -84,6 +84,7 @@ func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture
 	return &service.Capture{
 		Name:         c.Name,
 		Device:       c.Header.Device,
+		Abi:          c.Header.Abi,
 		Commands:     p.Commands(),
 		Apis:         apis,
 		Observations: observations,
