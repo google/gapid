@@ -190,7 +190,7 @@ func (f *Functions) Include(templates ...string) error {
 			t = filepath.Join(dir, t)
 		}
 		if f.templates.Lookup(t) == nil {
-			log.I(f.ctx, "Reading %v", t)
+			log.D(f.ctx, "Reading %v", t)
 			InputDep(t)
 			tmplData, err := f.loader(t)
 			if err != nil {
@@ -200,7 +200,7 @@ func (f *Functions) Include(templates ...string) error {
 			if err != nil {
 				return fmt.Errorf("%s: %s\n", t, err)
 			}
-			log.I(f.ctx, "Executing %v", tmpl.Name())
+			log.D(f.ctx, "Executing %v", tmpl.Name())
 			var buf bytes.Buffer
 			if err = f.execute(tmpl, &buf, f.api); err != nil {
 				return fmt.Errorf("%s: %s\n", tmpl.Name(), err)
@@ -214,7 +214,7 @@ func (f *Functions) Include(templates ...string) error {
 // The filename is relative to the output directory.
 func (f *Functions) Write(fileName string, value string) (string, error) {
 	outputPath := filepath.Join(f.basePath, fileName)
-	log.I(f.ctx, "Writing output to %v", outputPath)
+	log.D(f.ctx, "Writing output to %v", outputPath)
 	outputDep(outputPath)
 
 	return "", ioutil.WriteFile(outputPath, []byte(value), 0666)

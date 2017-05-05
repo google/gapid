@@ -72,7 +72,7 @@ func doTemplate(ctx context.Context, flags flag.FlagSet) error {
 		build.Default.GOPATH = filepath.FromSlash(gopath)
 	}
 	mainTemplate := args[1]
-	log.I(ctx, "Reading %v", apiName)
+	log.D(ctx, "Reading %v", apiName)
 	processor := gapil.NewProcessor()
 	if len(searchPath) > 0 {
 		processor.Loader = gapil.NewSearchLoader(searchPath)
@@ -112,7 +112,7 @@ func writeDeps(ctx context.Context) error {
 	if len(deps) == 0 {
 		return nil
 	}
-	log.I(ctx, "Writing deps %v", deps)
+	log.D(ctx, "Writing deps %v", deps)
 	file, err := os.Create(deps)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func writeCMake(ctx context.Context) error {
 	if len(cmake) == 0 {
 		return nil
 	}
-	log.I(ctx, "Writing cmake %v", cmake)
+	log.D(ctx, "Writing cmake %v", cmake)
 	file, err := os.Create(cmake)
 	if err != nil {
 		return err
