@@ -253,7 +253,7 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 	case *path.Parameter:
 		return Parameter(ctx, p)
 	case *path.Report:
-		return Report(ctx, p.Capture, p.Device)
+		return Report(ctx, p)
 	case *path.ResourceData:
 		return ResourceData(ctx, p)
 	case *path.Resources:

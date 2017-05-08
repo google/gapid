@@ -331,8 +331,8 @@ func (n *Capture) Resources() *Resources {
 }
 
 // Report returns the path node to the capture's report.
-func (n *Capture) Report(d *Device) *Report {
-	return &Report{Capture: n, Device: d}
+func (n *Capture) Report(d *Device, f *CommandFilter) *Report {
+	return &Report{Capture: n, Device: d, Filter: f}
 }
 
 // Contexts returns the path node to the capture's contexts.

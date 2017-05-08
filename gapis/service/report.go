@@ -17,7 +17,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"sort"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/stringtable"
@@ -80,11 +79,6 @@ func (b *ReportBuilder) Add(ctx context.Context, element *ReportItemRaw) {
 	} else {
 		log.E(ctx, "Error %v during adding an item to a report", err)
 	}
-}
-
-// SortReport sorts report.
-func (b *ReportBuilder) SortReport() {
-	sort.Stable(reportSorter(b.report.Items))
 }
 
 // Build performs final processing and returns report.
@@ -180,17 +174,3 @@ func (b *ReportBuilder) processGroups() error {
 	}
 	return nil
 }
-
-// Used for sorting report items
-type reportSorter []*ReportItem
-
-func (s reportSorter) Len() int           { return len(s) }
-func (s reportSorter) Less(i, j int) bool { return s[i].Command < s[j].Command }
-func (s reportSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-// uint32Slice attaches the methods of sort.Interface to []uint32, sorting in increasing order.
-type uint32Slice []uint32
-
-func (s uint32Slice) Len() int           { return len(s) }
-func (s uint32Slice) Less(i, j int) bool { return s[i] < s[j] }
-func (s uint32Slice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

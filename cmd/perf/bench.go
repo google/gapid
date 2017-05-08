@@ -134,7 +134,7 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 				return s.get("Resources", s.capture.Resources(), &(s.resourceBundles))
 			},
 			func() error {
-				return s.get("Report", s.capture.Report(nil), &(s.report))
+				return s.get("Report", s.capture.Report(nil, nil), &(s.report))
 			},
 			func() error {
 				return s.get("Contexts", s.capture.Contexts(), &(s.contexts))

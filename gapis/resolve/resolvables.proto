@@ -79,8 +79,7 @@ message IndexLimitsResolvable {
 }
 
 message ReportResolvable {
-	path.Capture capture = 1;
-	path.Device device = 2;
+	path.Report path = 1;
 }
 
 message ResourcesResolvable {

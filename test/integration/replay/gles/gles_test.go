@@ -233,7 +233,7 @@ func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 		defer done.Done()
 	}
 
-	report, err := resolve.Report(ctx, intent.Capture, intent.Device)
+	report, err := resolve.Report(ctx, intent.Capture.Report(intent.Device, nil))
 	assert.With(ctx).ThatError(err).Succeeded()
 
 	got := []string{}
