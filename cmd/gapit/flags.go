@@ -115,13 +115,13 @@ type (
 		Atom  int `help:"atom to dump the resources after"`
 	}
 	DumpFlags struct {
-		Gapis            GapisFlags
-		Gapir            GapirFlags
-		Extras           bool `help:"if true then extras are also dumped."`
-		Observations     bool `help:"if true then the bytes of every observation are also dumped."`
-		Raw              bool `help:"if true then the value of constants, instead of their names, will be dumped."`
-		ShowDeviceInfo   bool `help:"if true then show originating device information."`
-		ShowTraceABIInfo bool `help:"if true then show information of the ABI used for the trace."`
+		Gapis          GapisFlags
+		Gapir          GapirFlags
+		Extras         bool `help:"if true then extras are also dumped."`
+		Observations   bool `help:"if true then the bytes of every observation are also dumped."`
+		Raw            bool `help:"if true then the value of constants, instead of their names, will be dumped."`
+		ShowDeviceInfo bool `help:"if true then show originating device information."`
+		ShowABIInfo    bool `help:"if true then show information of the ABI used for the trace."`
 	}
 	TraceFlags struct {
 		Gapii GapiiFlags
