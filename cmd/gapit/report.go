@@ -81,13 +81,18 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
+	filter, err := verb.commandFilter(ctx, client, capturePath)
+	if err != nil {
+		return log.Err(ctx, err, "Failed to build the CommandFilter")
+	}
+
 	boxedCommands, err := client.Get(ctx, capturePath.Commands().Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's atoms")
 	}
 	commands := boxedCommands.(*service.Commands).List
 
-	boxedReport, err := client.Get(ctx, capturePath.Report(device).Path())
+	boxedReport, err := client.Get(ctx, capturePath.Report(device, filter).Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's report")
 	}

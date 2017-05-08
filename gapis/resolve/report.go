@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
@@ -30,9 +29,9 @@ import (
 	"github.com/google/gapid/gapis/stringtable"
 )
 
-// Report resolves the report for the given capture and optional device.
-func Report(ctx context.Context, c *path.Capture, d *path.Device) (*service.Report, error) {
-	obj, err := database.Build(ctx, &ReportResolvable{c, d})
+// Report resolves the report for the given path.
+func Report(ctx context.Context, p *path.Report) (*service.Report, error) {
+	obj, err := database.Build(ctx, &ReportResolvable{p})
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +40,14 @@ func Report(ctx context.Context, c *path.Capture, d *path.Device) (*service.Repo
 
 // Resolve implements the database.Resolver interface.
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Capture)
+	ctx = capture.Put(ctx, r.Path.Capture)
 
 	c, err := capture.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +73,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		items[i].Tags = append(items[i].Tags, t)
 	}
 
-	mutate := func(i int, a atom.Atom) {
+	process := func(i int, a atom.Atom) {
 		defer func() {
 			if err := recover(); err != nil {
 				items = append(items, service.WrapReportItem(
@@ -79,6 +83,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 					}, messages.ErrCritical(fmt.Sprintf("%s", err))))
 			}
 		}()
+
 		if as := a.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, service.WrapReportItem(
 				&service.ReportItem{
@@ -86,7 +91,10 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 					Command:  uint64(i),
 				}, messages.ErrTraceAssert(as.Reason)))
 		}
+
+		currentAtom = uint64(i)
 		err := a.Mutate(ctx, state, nil /* no builder, just mutate */)
+
 		if len(items) == 0 {
 			var m *stringtable.Msg
 			if err != nil && !atom.IsAbortedError(err) {
@@ -103,27 +111,14 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			}
 		}
 	}
-	// Gather report items from the state mutator, and collect together all the
-	// APIs in use.
-	apis := map[gfxapi.API]struct{}{}
-	for i, a := range c.Atoms {
-		if api := a.API(); api != nil {
-			apis[api] = struct{}{}
-		}
-		currentAtom = uint64(i)
-		mutate(i, a)
-		for _, item := range items {
-			item.Tags = append(item.Tags, getAtomNameTag(a))
-			builder.Add(ctx, item)
-		}
-		items, lastError = items[:0], nil
-	}
 
-	if r.Device != nil {
+	issues := map[atom.ID][]replay.Issue{}
+
+	if r.Path.Device != nil {
 		// Request is for a replay report too.
 		intent := replay.Intent{
-			Capture: r.Capture,
-			Device:  r.Device,
+			Capture: r.Path.Capture,
+			Device:  r.Path.Device,
 		}
 
 		mgr := replay.GetManager(ctx)
@@ -131,28 +126,41 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		// Capture can use multiple APIs.
 		// Iterate the APIs in use looking for those that support the
 		// QueryIssues interface. Call QueryIssues for each of these APIs.
-		for api := range apis {
+		for _, api := range c.APIs {
 			if qi, ok := api.(replay.QueryIssues); ok {
-				issues, err := qi.QueryIssues(ctx, intent, mgr)
+				apiIssues, err := qi.QueryIssues(ctx, intent, mgr)
 				if err != nil {
 					return nil, err
 				}
-				for _, issue := range issues {
-					item := service.WrapReportItem(
-						&service.ReportItem{
-							Severity: issue.Severity,
-							Command:  uint64(issue.Atom),
-						}, messages.ErrReplayDriver(issue.Error.Error()))
-					if int(issue.Atom) < len(c.Atoms) {
-						item.Tags = append(item.Tags, getAtomNameTag(c.Atoms[issue.Atom]))
-					}
-					builder.Add(ctx, item)
+				for _, issue := range apiIssues {
+					issues[issue.Atom] = append(issues[issue.Atom], issue)
 				}
 			}
 		}
+	}
 
-		// Items are now all out of order. Sort them.
-		builder.SortReport()
+	// Gather report items from the state mutator, and collect together all the
+	// APIs in use.
+	for i, a := range c.Atoms {
+		process(i, a)
+		if filter(a, state) {
+			for _, item := range items {
+				item.Tags = append(item.Tags, getAtomNameTag(a))
+				builder.Add(ctx, item)
+			}
+			for _, issue := range issues[atom.ID(i)] {
+				item := service.WrapReportItem(
+					&service.ReportItem{
+						Severity: issue.Severity,
+						Command:  uint64(issue.Atom),
+					}, messages.ErrReplayDriver(issue.Error.Error()))
+				if int(issue.Atom) < len(c.Atoms) {
+					item.Tags = append(item.Tags, getAtomNameTag(c.Atoms[issue.Atom]))
+				}
+				builder.Add(ctx, item)
+			}
+		}
+		items, lastError = items[:0], nil
 	}
 
 	return builder.Build(), nil

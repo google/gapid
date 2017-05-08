@@ -95,6 +95,7 @@ type (
 		Gapis GapisFlags
 		Gapir GapirFlags
 		Out   string `help:"output report path"`
+		CommandFilterFlags
 	}
 	VideoFlags struct {
 		Gapis GapisFlags
