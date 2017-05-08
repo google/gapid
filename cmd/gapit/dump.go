@@ -94,13 +94,23 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	stdout := os.Stdout
 
-	dev, err := json.MarshalIndent(c.Device, "", "  ")
-	if err != nil {
-		return log.Err(ctx, err, "Failed to marshal capture device to JSON")
-	}
-	fmt.Fprintf(stdout, "%s\n", string(dev))
-
 	if verb.ShowDeviceInfo {
+		dev, err := json.MarshalIndent(c.Device, "", "  ")
+		if err != nil {
+			return log.Err(ctx, err, "Failed to marshal capture device to JSON")
+		}
+		fmt.Fprintf(stdout, "Device Information:\n%s\n", string(dev))
+	}
+
+	if verb.ShowTraceABIInfo {
+		abi, err := json.MarshalIndent(c.Abi, "", "  ")
+		if err != nil {
+			return log.Err(ctx, err, "Failed to marshal capture abi to JSON")
+		}
+		fmt.Fprintf(stdout, "Trace ABI Information:\n%s\n", string(abi))
+	}
+
+	if verb.ShowDeviceInfo || verb.ShowTraceABIInfo {
 		return nil // That's all that was requested
 	}
 
