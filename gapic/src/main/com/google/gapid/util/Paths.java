@@ -17,6 +17,7 @@ package com.google.gapid.util;
 
 import static com.google.gapid.proto.service.path.Path.Any.PathCase.COMMANDS;
 
+import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -226,6 +227,20 @@ public class Paths {
             .setPool(pool)
             .setAddress(range.getBase())
             .setSize(range.getSize()))
+        .build();
+  }
+
+  public static Path.Any observationsAfter(AtomIndex index, int pool) {
+    if (index == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setMemory(Path.Memory.newBuilder()
+            .setAfter(index.getCommand())
+            .setPool(pool)
+            .setAddress(0)
+            .setSize(UnsignedLongs.MAX_VALUE)
+            .setExcludeData(true))
         .build();
   }
 
