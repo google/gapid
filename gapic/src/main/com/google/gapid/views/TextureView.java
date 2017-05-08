@@ -27,7 +27,6 @@ import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
-import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -493,7 +492,7 @@ public class TextureView extends Composite
 
       for (int i = 0; i < atomIds.size(); i++) {
         Path.Command id = atomIds.get(i);
-        MenuItem child = Widgets.createMenuItem(popupMenu, "" + id.getIndex(0)/* + ": " + atoms.get(id).getName()*/, 0,
+        MenuItem child = Widgets.createMenuItem(popupMenu, Formatter.atomIndex(id)/* + ": " + atoms.get(id).getName()*/, 0,
             e -> listener.accept(id));
         /*
         if (id <= selection && (i == atomIds.size() - 1 || atomIds.get(i + 1) > selection)) {

@@ -516,22 +516,11 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     private static boolean shouldShowImage(AtomStream.Node node) {
-      /*
-      Atom atom = group.getLastLeaf();
-      return atom != null && (atom.isDrawCall() || atom.isEndOfFrame());
-      */
       return node.getData() != null && !node.getData().getGroup().isEmpty();
     }
 
     private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
       return noAlpha(thumbs.getThumbnail(node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE));
-      /*
-      long index = group.getIndexOfLastDrawCall();
-      if (index < 0) {
-        index = group.getIndexOfLastLeaf();
-      }
-      return noAlpha(thumbs.getThumbnail(index, PREVIEW_SIZE));
-      */
     }
 
     public void reset() {
@@ -559,26 +548,12 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     protected <S extends StylingString> S format(Object element, S string) {
-      /*
-      if (element instanceof FilteredGroup) {
-        CommandGroup group = ((FilteredGroup)element).group;
-        string.append(first(group.getRange()) + ": ", string.defaultStyle());
-        string.append(group.getName(), string.labelStyle());
-        long count = count(group.getRange());
-        string.append(
-            " (" + count + " Command" + (count != 1 ? "s" : "") + ")", string.structureStyle());
-      } else if (element instanceof AtomNode) {
-        AtomNode atom = (AtomNode)element;
-        string.append(atom.index + ": ", string.defaultStyle());
-        Formatter.format((DynamicAtom)atom.atom, string, string.identifierStyle());
-      }
-      */
       CommandTreeNode data = ((AtomStream.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
       } else {
         if (data.getGroup().isEmpty() && data.hasCommands()) {
-          string.append(data.getCommands().getTo(0) + ": ", string.defaultStyle());
+          string.append(Formatter.lastIndex(data.getCommands()) + ": ", string.defaultStyle());
           Command cmd = ((AtomStream.Node)element).getCommand();
           if (cmd == null) {
             string.append("Loading...", string.structureStyle());
@@ -586,7 +561,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             Formatter.format(cmd, constants::getConstants, string, string.identifierStyle());
           }
         } else {
-          string.append(data.getCommands().getFrom(0) + ": ", string.defaultStyle());
+          string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
           string.append(data.getGroup(), string.labelStyle());
         }
       }
