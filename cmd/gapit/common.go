@@ -29,6 +29,18 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
+	filter := &path.CommandFilter{}
+	if f.Context >= 0 {
+		contexts, err := client.Get(ctx, p.Contexts().Path())
+		if err != nil {
+			return nil, log.Err(ctx, err, "Failed to load the contexts")
+		}
+		filter.Context = contexts.(*service.Contexts).List[f.Context].Id
+	}
+	return filter, nil
+}
+
 func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
 	args := strings.Fields(gapisFlags.Args)
 	if gapirFlags.Args != "" {

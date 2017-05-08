@@ -208,14 +208,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	filters := filters{}
-	if f := p.Filter; f != nil {
-		// TODO: Thread filter.
-		if f.Context.IsValid() {
-			if err := filters.addContextFilter(ctx, p.Capture.Context(f.Context)); err != nil {
-				return nil, err
-			}
-		}
+	filter, err := buildFilter(ctx, p.Capture, p.Filter)
+	if err != nil {
+		return nil, err
 	}
 
 	groupers := []grouper{}
@@ -255,7 +250,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	s := c.NewState()
 	for i, a := range c.Atoms {
 		a.Mutate(ctx, s, nil)
-		if filters.pass(a, s) {
+		if filter(a, s) {
 			for _, g := range groupers {
 				g.process(ctx, atom.ID(i), a, s)
 			}
@@ -289,7 +284,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	out.root.AddAtoms(func(i atom.ID) bool {
 		a := c.Atoms[i]
 		a.Mutate(ctx, s, nil)
-		return filters.pass(a, s)
+		return filter(a, s)
 	})
 
 	return out, nil
