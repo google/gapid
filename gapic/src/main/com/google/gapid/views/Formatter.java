@@ -448,34 +448,33 @@ public class Formatter {
     string.append("!!BUG!!" + ProtoDebugTextFormat.shortDebugString(proto), style);
   }
 
-  /*
-  private static void format(MemorySliceInfo info, MemorySliceMetadata metaData,
-      StylingString string, Style style) {
-    if (metaData != null) {
-      string.append(metaData.getElementTypeName(), style);
-    }
-    string.append("[", string.structureStyle());
-    string.append(String.valueOf(info.getCount()), style);
-    string.append("]", string.structureStyle());
+  public static String atomIndex(Path.Command cmd) {
+    return atomIndex(cmd.getIndexList());
+  }
 
-    if (info.getPool() != PoolNames.Application_VALUE || info.getBase() != 0) {
-      string.append(" (", string.structureStyle());
-      MemoryPointer pointer = new MemoryPointer();
-      pointer.setAddress(info.getBase());
-      pointer.setPool(info.getPool());
-      format(pointer, string, style);
-      string.append(")", string.structureStyle());
+  public static String firstIndex(Path.Commands cmd) {
+    return atomIndex(cmd.getFromList());
+  }
+
+  public static String lastIndex(Path.Commands cmd) {
+    return atomIndex(cmd.getToList());
+  }
+
+  private static String atomIndex(List<Long> cmd) {
+    switch (cmd.size()) {
+      case 0: return "";
+      case 1: return Long.toString(cmd.get(0));
+      default:
+        StringBuilder sb = new StringBuilder();
+        sb.append(cmd.get(0));
+        for (int i = 1; i < cmd.size(); i++) {
+          sb.append('.').append(cmd.get(i));
+        }
+        return sb.toString();
     }
   }
 
-  private static void format(MemoryRange range, StylingString string, Style style) {
-    string.append(Long.toString(range.getSize()), style);
-    string.append(" bytes at ", string.structureStyle());
-    string.append(toPointerString(range.getBase()), style);
-  }
-   */
-
-  /**
+   /**
    * Tagging interface implemented by the various styles.
    */
   public static interface Style {

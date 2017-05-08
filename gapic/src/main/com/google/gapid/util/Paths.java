@@ -83,46 +83,26 @@ public class Paths {
   }
 
   /**
-   * Compares a and b, retuning -1 if a comes before b, 1 if b comes before a and 0 if they
+   * Compares a and b, returning -1 if a comes before b, 1 if b comes before a and 0 if they
    * are equal.
    */
   public static int compare(Path.Command a, Path.Command b) {
-    if (a == null && b == null) {
-      return 0;
-    }
     if (a == null) {
-      return -1;
-    }
-    if (b == null) {
+      return (b == null) ? 0 : -1;
+    } else if (b == null) {
       return 1;
     }
-    if (!a.getCapture().equals(b.getCapture())) {
-      int hashA = a.hashCode();
-      int hashB = b.hashCode();
-      if (hashA < hashB) {
-        return -1;
-      }
-      if (hashA > hashB) {
+
+    for (int i = 0; i < a.getIndexCount(); i++) {
+      if (i >= b.getIndexCount()) {
         return 1;
       }
-      return 0;
-    }
-    int depth = Math.min(a.getIndexCount(), b.getIndexCount());
-    for (int i = 0; i < depth; i++) {
-      if (a.getIndex(i) < b.getIndex(i)) {
-        return -1;
-      }
-      if (a.getIndex(i) > b.getIndex(i)) {
-        return 1;
+      int r = Long.compare(a.getIndex(i), b.getIndex(i));
+      if (r != 0) {
+        return r;
       }
     }
-    if (a.getIndexCount() > b.getIndexCount()) {
-      return 1;
-    }
-    if (a.getIndexCount() < b.getIndexCount()) {
-      return -1;
-    }
-    return 0;
+    return (a.getIndexCount() == b.getIndexCount()) ? 0 : -1;
   }
 
   public static Path.Any any(Path.Command command) {

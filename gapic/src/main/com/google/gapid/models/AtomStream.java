@@ -411,16 +411,7 @@ public class AtomStream implements ApiContext.Listener {
 
     @Override
     public int compareTo(AtomIndex o) {
-      for (int i = 0; i < command.getIndexCount(); i++) {
-        if (i >= o.command.getIndexCount()) {
-          return 1;
-        }
-        int r = Long.compare(command.getIndex(i), o.command.getIndex(i));
-        if (r != 0) {
-          return r;
-        }
-      }
-      return (command.getIndexCount() == o.command.getIndexCount()) ? 0 : -1;
+      return Paths.compare(command, o.command);
     }
   }
 
