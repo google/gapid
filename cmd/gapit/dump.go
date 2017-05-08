@@ -102,7 +102,7 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		fmt.Fprintf(stdout, "Device Information:\n%s\n", string(dev))
 	}
 
-	if verb.ShowTraceABIInfo {
+	if verb.ShowABIInfo {
 		abi, err := json.MarshalIndent(c.Abi, "", "  ")
 		if err != nil {
 			return log.Err(ctx, err, "Failed to marshal capture abi to JSON")
@@ -110,7 +110,7 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		fmt.Fprintf(stdout, "Trace ABI Information:\n%s\n", string(abi))
 	}
 
-	if verb.ShowDeviceInfo || verb.ShowTraceABIInfo {
+	if verb.ShowDeviceInfo || verb.ShowABIInfo {
 		return nil // That's all that was requested
 	}
 
