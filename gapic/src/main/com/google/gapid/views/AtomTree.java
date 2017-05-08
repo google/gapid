@@ -450,7 +450,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       AtomStream.Node child = ((AtomStream.Node)parent).getChild(index);
       atoms.load(child, refresher::refresh);
       viewer.replace(parent, index, child);
-      viewer.setChildCount(child, child.getChildCount());
+      viewer.setHasChildren(child, child.getChildCount() > 0);
     }
 
     @Override
