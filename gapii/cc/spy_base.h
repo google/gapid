@@ -194,7 +194,7 @@ protected:
     // return for this call. The actual return value comes from the driver.
     template <typename T> void setExpectedReturn(const T& t);
 
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+#ifdef COHERENT_TRACKING_ENABLED
     TrackMemory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
 private:

@@ -15,7 +15,7 @@
  */
 
 #include "memory_tracker.h"
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+#ifdef COHERENT_TRACKING_ENABLED
 
 #include <gmock/gmock.h>
 

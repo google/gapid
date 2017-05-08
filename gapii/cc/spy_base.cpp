@@ -33,7 +33,7 @@ SpyBase::SpyBase()
     , mCommandStartEndCounter(0)
     , mExpectedNextCommandStartCounterValue(0)
     , mNullEncoder(PackEncoder::noop())
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
+#ifdef COHERENT_TRACKING_ENABLED
     , mMemoryTracker()
 #endif // TARGET_OS
 {
