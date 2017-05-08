@@ -32,10 +32,12 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 
 	filters := filters{}
 
-	// TODO: Filter by thread.
-	if p.Context.IsValid() {
-		if err := filters.addContextFilter(ctx, p.Commands.Capture.Context(p.Context)); err != nil {
-			return nil, err
+	if f := p.Filter; f != nil {
+		// TODO: Filter by thread.
+		if f.Context.IsValid() {
+			if err := filters.addContextFilter(ctx, p.Commands.Capture.Context(f.Context)); err != nil {
+				return nil, err
+			}
 		}
 	}
 

@@ -141,16 +141,15 @@ message ConstantSet {
 // Resolves to a service.Events.
 message Events {
     Commands commands = 1;
-    ID context = 2;
-    ID thread = 3;
-    bool draw_calls = 4;
-    bool first_in_frame = 5;
-    bool last_in_frame = 6;
-    bool clears = 7;
-    bool user_markers = 8;
-    bool push_user_markers = 9;
-    bool pop_user_markers = 10;
-    bool framebuffer_observations = 11;
+    CommandFilter filter = 2;
+    bool draw_calls = 3;
+    bool first_in_frame = 4;
+    bool last_in_frame = 5;
+    bool clears = 6;
+    bool user_markers = 7;
+    bool push_user_markers = 8;
+    bool pop_user_markers = 9;
+    bool framebuffer_observations = 10;
 }
 
 // Parameter is the path to a single parameter on a command.
@@ -199,14 +198,21 @@ message Field {
     }
 }
 
+// CommandFilter are the optional filters applied to CommandTrees and Events.
+message CommandFilter {
+    // context filters the commands to the specified context.
+    ID context = 1;
+    // context filters the commands to the specified thread.
+    ID thread = 2;
+}
+
 // CommandTree is a path to a hierarchy of command tree nodes.
 // Resolves to a service.CommandTree.
 message CommandTree {
+    // The capture to get the tree for.
     Capture capture = 1;
-    // context filters the tree to the specified context.
-    ID context = 2;
-    // context filters the tree to the specified thread.
-    ID thread = 3;
+    // The command filter used to create the tree.
+    CommandFilter filter = 2;
 }
 
 // CommandTreeNode is a path to a command tree node.
@@ -217,7 +223,6 @@ message CommandTreeNode {
     // Descending child index starting from the root CommandTreeNode.
     repeated uint64 index = 2;
 }
-
 
 // CommandTreeNodeForCommand is a path to a command tree node, resolved from a
 // Command path and a CommandTree identifier. It is used to locate the

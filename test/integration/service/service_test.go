@@ -221,7 +221,7 @@ func TestGet(t *testing.T) {
 		{capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
 		{capture.Command(drawAtomIndex).Mesh(false), T((*gfxapi.Mesh)(nil))},
-		{capture.CommandTree(nil, nil), T((*service.CommandTree)(nil))},
+		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
 	} {

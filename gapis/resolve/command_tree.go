@@ -209,13 +209,14 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	filters := filters{}
 
-	if r.Path.Context.IsValid() {
-		if err := filters.addContextFilter(ctx, r.Path.Capture.Context(r.Path.Context)); err != nil {
-			return nil, err
+	if f := r.Path.Filter; f != nil {
+		// TODO: Thread filter.
+		if f.Context.IsValid() {
+			if err := filters.addContextFilter(ctx, r.Path.Capture.Context(f.Context)); err != nil {
+				return nil, err
+			}
 		}
 	}
-
-	// TODO: Thread filter.
 
 	groupers := []grouper{}
 
@@ -282,8 +283,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree) error {
 	events, err := Events(ctx, &path.Events{
 		Commands:     t.path.Capture.Commands(),
-		Context:      p.Context,
-		Thread:       p.Thread,
+		Filter:       p.Filter,
 		DrawCalls:    true,
 		FirstInFrame: true,
 		LastInFrame:  true,

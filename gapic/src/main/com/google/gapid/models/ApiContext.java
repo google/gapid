@@ -200,11 +200,13 @@ public class ApiContext
     }
 
     public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
-      return path.setContext(id);
+      path.getFilterBuilder().setContext(id);
+      return path;
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {
-      return path.setContext(id);
+      path.getFilterBuilder().setContext(id);
+      return path;
     }
 
     @Override

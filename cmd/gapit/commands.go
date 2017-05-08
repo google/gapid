@@ -63,16 +63,18 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	var context *path.Context
+	var filter *path.CommandFilter
 	if verb.Context >= 0 {
 		contexts, err := client.Get(ctx, c.Contexts().Path())
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the contexts")
 		}
-		context = contexts.(*service.Contexts).List[verb.Context]
+		filter = &path.CommandFilter{
+			Context: contexts.(*service.Contexts).List[verb.Context].Id,
+		}
 	}
 
-	boxedTree, err := client.Get(ctx, c.CommandTree(context, nil).Path())
+	boxedTree, err := client.Get(ctx, c.CommandTree(filter).Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the command tree")
 	}

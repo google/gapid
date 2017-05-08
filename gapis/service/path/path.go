@@ -359,9 +359,9 @@ func (n *Capture) CommandRange(from, to uint64) *Commands {
 }
 
 // CommandTree returns the path to the root node of a capture's command tree
-// filtered by the specified context and thread.
-func (n *Capture) CommandTree(c *Context, t *Thread) *CommandTree {
-	return &CommandTree{Capture: n, Context: c.GetId(), Thread: t.GetId()}
+// optionally filtered by f.
+func (n *Capture) CommandTree(f *CommandFilter) *CommandTree {
+	return &CommandTree{Capture: n, Filter: f}
 }
 
 // Child returns the path to the i'th child of the CommandTreeNode.
