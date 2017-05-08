@@ -233,15 +233,6 @@ func NewMemoryRanges(l memory.RangeList) []*MemoryRange {
 	return out
 }
 
-// Link returns the link to the atom pointed by a report item.
-// If nil, nil is returned then the path cannot be followed.
-func (i ReportItem) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	if capture := path.FindCapture(p); capture != nil {
-		return capture.Command(i.Command), nil
-	}
-	return nil, nil
-}
-
 // Find looks up a resource by type and identifier.
 func (r *Resources) Find(ty gfxapi.ResourceType, id id.ID) *Resource {
 	for _, t := range r.Types {

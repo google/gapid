@@ -38,6 +38,17 @@ func Report(ctx context.Context, p *path.Report) (*service.Report, error) {
 	return obj.(*service.Report), nil
 }
 
+func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtable.Msg) *service.ReportItemRaw {
+	var cmd *path.Command
+	if c != uint64(atom.NoID) {
+		cmd = r.Path.Capture.Command(c)
+	}
+	return service.WrapReportItem(&service.ReportItem{
+		Severity: service.Severity(s),
+		Command:  cmd, // TODO: Subcommands
+	}, m)
+}
+
 // Resolve implements the database.Resolver interface.
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.Capture)
@@ -62,54 +73,11 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		lastError = err
 	}
 	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
-		items = append(items, service.WrapReportItem(
-			&service.ReportItem{
-				Severity: service.Severity(s),
-				Command:  currentAtom,
-			}, m))
+		items = append(items, r.newReportItem(s, currentAtom, m))
 		return uint32(len(items) - 1)
 	}
 	state.AddTag = func(i uint32, t *stringtable.Msg) {
 		items[i].Tags = append(items[i].Tags, t)
-	}
-
-	process := func(i int, a atom.Atom) {
-		defer func() {
-			if err := recover(); err != nil {
-				items = append(items, service.WrapReportItem(
-					&service.ReportItem{
-						Severity: service.Severity_FatalLevel,
-						Command:  uint64(i),
-					}, messages.ErrCritical(fmt.Sprintf("%s", err))))
-			}
-		}()
-
-		if as := a.Extras().Aborted(); as != nil && as.IsAssert {
-			items = append(items, service.WrapReportItem(
-				&service.ReportItem{
-					Severity: service.Severity_FatalLevel,
-					Command:  uint64(i),
-				}, messages.ErrTraceAssert(as.Reason)))
-		}
-
-		currentAtom = uint64(i)
-		err := a.Mutate(ctx, state, nil /* no builder, just mutate */)
-
-		if len(items) == 0 {
-			var m *stringtable.Msg
-			if err != nil && !atom.IsAbortedError(err) {
-				m = messages.ErrMessage(err)
-			} else if lastError != nil {
-				m = messages.ErrMessage(fmt.Sprintf("%v", lastError))
-			}
-			if m != nil {
-				items = append(items, service.WrapReportItem(
-					&service.ReportItem{
-						Severity: service.Severity_ErrorLevel,
-						Command:  uint64(i),
-					}, m))
-			}
-		}
 	}
 
 	issues := map[atom.ID][]replay.Issue{}
@@ -139,6 +107,34 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		}
 	}
 
+	process := func(i int, a atom.Atom) {
+		items, lastError, currentAtom = items[:0], nil, uint64(i)
+
+		defer func() {
+			if err := recover(); err != nil {
+				items = append(items, r.newReportItem(log.Fatal, uint64(i),
+					messages.ErrCritical(fmt.Sprintf("%s", err))))
+			}
+		}()
+
+		if as := a.Extras().Aborted(); as != nil && as.IsAssert {
+			items = append(items, r.newReportItem(log.Fatal, uint64(i),
+				messages.ErrTraceAssert(as.Reason)))
+		}
+
+		err := a.Mutate(ctx, state, nil /* no builder, just mutate */)
+
+		if len(items) == 0 {
+			if err != nil && !atom.IsAbortedError(err) {
+				items = append(items, r.newReportItem(log.Error, uint64(i),
+					messages.ErrMessage(err)))
+			} else if lastError != nil {
+				items = append(items, r.newReportItem(log.Error, uint64(i),
+					messages.ErrMessage(fmt.Sprintf("%v", lastError))))
+			}
+		}
+	}
+
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	for i, a := range c.Atoms {
@@ -149,18 +145,14 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				builder.Add(ctx, item)
 			}
 			for _, issue := range issues[atom.ID(i)] {
-				item := service.WrapReportItem(
-					&service.ReportItem{
-						Severity: issue.Severity,
-						Command:  uint64(issue.Atom),
-					}, messages.ErrReplayDriver(issue.Error.Error()))
+				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Atom),
+					messages.ErrReplayDriver(issue.Error.Error()))
 				if int(issue.Atom) < len(c.Atoms) {
 					item.Tags = append(item.Tags, getAtomNameTag(c.Atoms[issue.Atom]))
 				}
 				builder.Add(ctx, item)
 			}
 		}
-		items, lastError = items[:0], nil
 	}
 
 	return builder.Build(), nil
