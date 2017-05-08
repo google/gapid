@@ -456,8 +456,8 @@ message ReportItem {
   Severity severity = 1;
   // The message for the item.
   MsgRef message = 2;
-  // The index of the command the item refers to.
-  uint64 command = 3;
+  // The path to the command that reported the issue.
+  path.Command command = 3;
   // The references to tags associated with this item.
   repeated MsgRef tags = 4;
 }

@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/stringtable"
 )
@@ -110,8 +109,8 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	report := boxedReport.(*service.Report)
 	for _, e := range report.Items {
 		where := ""
-		if e.Command != uint64(atom.NoID) {
-			where = fmt.Sprintf("(%d) %v ", e.Command, commands[e.Command])
+		if e.Command != nil {
+			where = fmt.Sprintf("%v %v ", e.Command.Index, commands[e.Command.Index[0]]) // TODO: Subcommands
 		}
 		msg := report.Msg(e.Message).Text(stringTable)
 		fmt.Fprintln(reportWriter, fmt.Sprintf("[%s] %s%s", e.Severity.String(), where, msg))

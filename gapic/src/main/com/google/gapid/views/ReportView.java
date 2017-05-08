@@ -290,7 +290,7 @@ public class ReportView extends Composite
       } else if (element instanceof Item) {
         Item item = (Item)element;
         string.startLink(item.item.getCommand());
-        string.append(String.valueOf(item.item.getCommand()), string.linkStyle());
+        string.append(String.valueOf(item.item.getCommand().getIndexList()), string.linkStyle());
         string.endLink();
         string.append(": ", string.structureStyle());
         switch (item.item.getSeverity()) {
