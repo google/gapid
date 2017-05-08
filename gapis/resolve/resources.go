@@ -77,21 +77,12 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	types := map[gfxapi.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {
 		ty := tr.resource.ResourceType(ctx)
-		handle := tr.resource.ResourceHandle()
-		label := tr.resource.ResourceLabel()
-		order := tr.resource.Order()
 		b := types[ty]
 		if b == nil {
 			b = &service.ResourcesByType{Type: ty}
 			types[ty] = b
 		}
-		b.Resources = append(b.Resources, &service.Resource{
-			Path:     r.Capture.Resource(path.NewID(tr.id)),
-			Handle:   handle,
-			Label:    label,
-			Order:    order,
-			Accesses: tr.accesses,
-		})
+		b.Resources = append(b.Resources, tr.asService(r.Capture))
 	}
 
 	out := &service.Resources{Types: make([]*service.ResourcesByType, 0, len(types))}
@@ -107,6 +98,20 @@ type trackedResource struct {
 	id       id.ID
 	name     string
 	accesses []uint64
+}
+
+func (r trackedResource) asService(p *path.Capture) *service.Resource {
+	out := &service.Resource{
+		Path:     p.Resource(path.NewID(r.id)),
+		Handle:   r.resource.ResourceHandle(),
+		Label:    r.resource.ResourceLabel(),
+		Order:    r.resource.Order(),
+		Accesses: make([]*path.Command, len(r.accesses)),
+	}
+	for i, a := range r.accesses {
+		out.Accesses[i] = p.Command(a)
+	}
+	return out
 }
 
 func genResourceID(createdAt uint64, rCount int) id.ID {

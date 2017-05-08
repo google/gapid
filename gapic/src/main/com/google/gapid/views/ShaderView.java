@@ -51,6 +51,7 @@ import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.util.UiCallback;
 import com.google.gapid.widgets.LoadablePanel;
@@ -392,7 +393,7 @@ public class ShaderView extends Composite
         for (Service.ResourcesByType bundle : models.resources.getResources()) {
           if (bundle.getType() == type.type) {
             for (Service.Resource info : bundle.getResourcesList()) {
-              if (firstAccess(info) <= range.getCommand().getIndex(0)) {
+              if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
                 if (newShaders.isEmpty()) {
                   newShaders.add(new Data(null) {
                     @Override
@@ -436,8 +437,8 @@ public class ShaderView extends Composite
       updateSelection();
     }
 
-    private static long firstAccess(Service.Resource info) {
-      return (info.getAccessesCount() == 0) ? 0 : info.getAccesses(0);
+    private static Path.Command firstAccess(Service.Resource info) {
+      return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
     }
 
     private void updateSelection() {
