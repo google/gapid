@@ -152,10 +152,6 @@ public class Paths {
   public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
     return Path.Any.newBuilder()
         .setCommandTree(context.commandTree(Path.CommandTree.newBuilder())
-            .setGroupByDrawCall(true) // TODO: Expose these to the user.
-            .setGroupByFrame(true)
-            .setGroupByUserMarkers(true)
-            .setGroupByContext(true)
             .setCapture(capture))
         .build();
   }
