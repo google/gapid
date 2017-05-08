@@ -2867,6 +2867,7 @@ cmd void RecreateDeviceMemory(
 
 @threadSafety("system")
 @indirect("VkDevice")
+@override
 cmd VkResult vkAllocateMemory(
     VkDevice                     device,
     const VkMemoryAllocateInfo*  pAllocateInfo,
