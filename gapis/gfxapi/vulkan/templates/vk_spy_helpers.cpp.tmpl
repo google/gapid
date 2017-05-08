@@ -421,6 +421,24 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_
 #endif // COHERENT_TRACKING_ENABLED
 }
 
+uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAllocateInfo* pAllocateInfo, VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
+    uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
+    std::shared_ptr<PhysicalDeviceObject> l_physical_device = PhysicalDevices[Devices[device]->mPhysicalDevice];
+    if (r >= 0 && 0 != (
+        l_physical_device->mMemoryProperties.mmemoryTypes[pAllocateInfo->mmemoryTypeIndex].mpropertyFlags &
+        ((uint32_t)(VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))) {
+        // This is host-coherent memory. Some drivers actually allocate these pages on-demand.
+        // This forces all of the pages to be created.
+        // This is needed as our coherent memory tracker relies on page-faults which interferes with the
+        // on-demand allocation.
+        char* memory;
+        mImports.mVkDeviceFunctions[device].vkMapMemory(device, *pMemory, 0, pAllocateInfo->mallocationSize, 0, reinterpret_cast<void**>(&memory));
+        memset(memory, 0x00, pAllocateInfo->mallocationSize);
+        mImports.mVkDeviceFunctions[device].vkUnmapMemory(device, *pMemory);
+    }
+    return r;
+}
+
 uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
   uint32_t counter = 0;
   while (pNext) {
