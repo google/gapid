@@ -200,7 +200,8 @@ func (g *markerGrouper) groups() []group { return g.out }
 // Resolve builds and returns a *commandTree for the path.CommandTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.Capture)
+	p := r.Path
+	ctx = capture.Put(ctx, p.Capture)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
@@ -208,11 +209,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	filters := filters{}
-
-	if f := r.Path.Filter; f != nil {
+	if f := p.Filter; f != nil {
 		// TODO: Thread filter.
 		if f.Context.IsValid() {
-			if err := filters.addContextFilter(ctx, r.Path.Capture.Context(f.Context)); err != nil {
+			if err := filters.addContextFilter(ctx, p.Capture.Context(f.Context)); err != nil {
 				return nil, err
 			}
 		}
@@ -220,21 +220,36 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	groupers := []grouper{}
 
-	groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
-		if api := a.API(); api != nil {
-			if context := api.Context(s); context != nil {
+	if p.GroupByApi {
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+			if api := a.API(); api != nil {
 				return api.ID(), api.Name()
 			}
-		}
-		return nil, "No context"
-	}})
+			return nil, "No context"
+		}})
+	}
 
-	// TODO: Threads
-	// groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
-	// 	return s.Thread, fmt.Sprintf("Thread: 0x%x", s.Thread)
-	// }})
+	if p.GroupByContext {
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+			if api := a.API(); api != nil {
+				if context := api.Context(s); context != nil {
+					return context.ID(), context.Name()
+				}
+			}
+			return nil, "No context"
+		}})
+	}
 
-	groupers = append(groupers, &markerGrouper{})
+	if p.GroupByThread {
+		// TODO: Threads
+		// groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+		// 	return s.Thread, fmt.Sprintf("Thread: 0x%x", s.Thread)
+		// }})
+	}
+
+	if p.GroupByUserMarkers {
+		groupers = append(groupers, &markerGrouper{})
+	}
 
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
@@ -252,7 +267,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Build the command tree
 	out := &commandTree{
-		path: r.Path,
+		path: p,
 		root: atom.Group{
 			Name:  "root",
 			Range: atom.Range{End: atom.ID(len(c.Atoms))},
@@ -264,7 +279,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
-	addDrawAndFrameEvents(ctx, r.Path, out)
+	if p.GroupByDrawCall || p.GroupByFrame {
+		addDrawAndFrameEvents(ctx, p, out)
+	}
 
 	// Now we have all the groups, we finally need to add the filtered atoms.
 
@@ -275,8 +292,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return filters.pass(a, s)
 	})
 
-	log.W(ctx, "%+v", out.root)
-
 	return out, nil
 }
 
@@ -284,7 +299,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 	events, err := Events(ctx, &path.Events{
 		Commands:     t.path.Capture.Commands(),
 		Filter:       p.Filter,
-		DrawCalls:    true,
+		DrawCalls:    p.GroupByDrawCall,
 		FirstInFrame: true,
 		LastInFrame:  true,
 	})
@@ -311,11 +326,13 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 			drawCount, drawStart, frameStart = 0, i, i
 
 		case service.EventKind_LastInFrame:
-			err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
-			if err != nil {
-				log.W(ctx, "Frame AddGroup errored: %v", err)
+			if p.GroupByFrame {
+				err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
+				if err != nil {
+					log.W(ctx, "Frame AddGroup errored: %v", err)
+				}
+				frameCount++
 			}
-			frameCount++
 		}
 	}
 	return nil

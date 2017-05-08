@@ -74,7 +74,15 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 	}
 
-	boxedTree, err := client.Get(ctx, c.CommandTree(filter).Path())
+	treePath := c.CommandTree(filter)
+	treePath.GroupByApi = true
+	treePath.GroupByContext = true
+	treePath.GroupByThread = true
+	treePath.GroupByDrawCall = true
+	treePath.GroupByFrame = true
+	treePath.GroupByUserMarkers = true
+
+	boxedTree, err := client.Get(ctx, treePath.Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the command tree")
 	}
