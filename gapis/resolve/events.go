@@ -30,11 +30,24 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		return nil, err
 	}
 
+	filters := filters{}
+
+	// TODO: Filter by thread.
+	if p.Context.IsValid() {
+		if err := filters.addContextFilter(ctx, p.Commands.Capture.Context(p.Context)); err != nil {
+			return nil, err
+		}
+	}
+
 	events := []*service.Event{}
 
+	s := c.NewState()
 	for i, a := range c.Atoms {
+		a.Mutate(ctx, s, nil)
 		// TODO: Add event generation to the API files.
-		// TODO: Filter by context and thread.
+		if !filters.pass(a, s) {
+			continue
+		}
 		f := a.AtomFlags()
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{

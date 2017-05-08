@@ -140,14 +140,20 @@ type runGrouper struct {
 
 func (g *runGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
 	val, name := g.f(a, s)
-	if val != g.current && g.current != nil {
-		g.out = append(g.out, group{g.start, id, g.name})
+	if val != g.current {
+		if g.current != nil {
+			g.out = append(g.out, group{g.start, id, g.name})
+		}
+		g.start = id
 	}
-	g.start, g.current, g.name = id, val, name
+	g.current, g.name = val, name
 }
 
 func (g *runGrouper) flush(count uint64) {
-	g.out = append(g.out, group{g.start, atom.ID(count), g.name})
+	end := atom.ID(count)
+	if g.current != nil && g.start != end {
+		g.out = append(g.out, group{g.start, end, g.name})
+	}
 }
 
 func (g *runGrouper) groups() []group { return g.out }
@@ -201,18 +207,12 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	filters := []func(a atom.Atom, s *gfxapi.State) bool{}
+	filters := filters{}
 
 	if r.Path.Context.IsValid() {
-		ctxID := gfxapi.ContextID(r.Path.Context.ID())
-		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
-			if api := a.API(); api != nil {
-				if ctx := api.Context(s); ctx != nil {
-					return ctx.ID() == ctxID
-				}
-			}
-			return false
-		})
+		if err := filters.addContextFilter(ctx, r.Path.Capture.Context(r.Path.Context)); err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: Thread filter.
@@ -237,16 +237,12 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
-nextAtom:
 	for i, a := range c.Atoms {
 		a.Mutate(ctx, s, nil)
-		for _, f := range filters {
-			if !f(a, s) {
-				continue nextAtom
+		if filters.pass(a, s) {
+			for _, g := range groupers {
+				g.process(ctx, atom.ID(i), a, s)
 			}
-		}
-		for _, g := range groupers {
-			g.process(ctx, atom.ID(i), a, s)
 		}
 	}
 	for _, g := range groupers {
@@ -268,6 +264,17 @@ nextAtom:
 	}
 
 	addDrawAndFrameEvents(ctx, r.Path, out)
+
+	// Now we have all the groups, we finally need to add the filtered atoms.
+
+	s = c.NewState()
+	out.root.AddAtoms(func(i atom.ID) bool {
+		a := c.Atoms[i]
+		a.Mutate(ctx, s, nil)
+		return filters.pass(a, s)
+	})
+
+	log.W(ctx, "%+v", out.root)
 
 	return out, nil
 }
@@ -292,7 +299,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 		i := atom.ID(e.Command.Index[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
-			err := t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount))
+			err := t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
 			if err != nil {
 				log.W(ctx, "Draw AddGroup errored: %v", err)
 			}
@@ -304,7 +311,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 			drawCount, drawStart, frameStart = 0, i, i
 
 		case service.EventKind_LastInFrame:
-			err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount))
+			err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
 			if err != nil {
 				log.W(ctx, "Frame AddGroup errored: %v", err)
 			}
