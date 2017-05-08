@@ -33,6 +33,7 @@ type commandsVerb struct{ CommandsFlags }
 
 func init() {
 	verb := &commandsVerb{}
+	verb.Context = -1
 	app.AddVerb(&app.Verb{
 		Name:      "commands",
 		ShortHelp: "Prints the command tree for a .gfxtrace file",
@@ -47,7 +48,6 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	filepath, err := filepath.Abs(flags.Arg(0))
-	ctx = log.V{"filepath": filepath}.Bind(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find capture file")
 	}
@@ -63,7 +63,16 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	boxedTree, err := client.Get(ctx, c.CommandTree(nil, nil).Path())
+	var context *path.Context
+	if verb.Context >= 0 {
+		contexts, err := client.Get(ctx, c.Contexts().Path())
+		if err != nil {
+			return log.Err(ctx, err, "Failed to load the contexts")
+		}
+		context = contexts.(*service.Contexts).List[verb.Context]
+	}
+
+	boxedTree, err := client.Get(ctx, c.CommandTree(context, nil).Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the command tree")
 	}
