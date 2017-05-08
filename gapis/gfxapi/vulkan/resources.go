@@ -618,11 +618,11 @@ func (shader *ShaderModuleObject) SetResourceData(
 	}
 
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index] > atomIdx && index >= 0 {
+	for resource.Accesses[index].Index[0] > atomIdx && index >= 0 { // TODO: Subcommands
 		index--
 	}
 	for j := index; j >= 0; j-- {
-		i := resource.Accesses[j]
+		i := resource.Accesses[j].Index[0] // TODO: Subcommands
 		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil

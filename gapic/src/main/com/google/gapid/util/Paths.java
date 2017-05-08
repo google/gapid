@@ -81,6 +81,49 @@ public class Paths {
         .build();
   }
 
+  /**
+   * Compares a and b, retuning -1 if a comes before b, 1 if b comes before a and 0 if they
+   * are equal.
+   */
+  public static int compare(Path.Command a, Path.Command b) {
+    if (a == null && b == null) {
+      return 0;
+    }
+    if (a == null) {
+      return -1;
+    }
+    if (b == null) {
+      return 1;
+    }
+    if (!a.getCapture().equals(b.getCapture())) {
+      int hashA = a.hashCode();
+      int hashB = b.hashCode();
+      if (hashA < hashB) {
+        return -1;
+      }
+      if (hashA > hashB) {
+        return 1;
+      }
+      return 0;
+    }
+    int depth = Math.min(a.getIndexCount(), b.getIndexCount());
+    for (int i = 0; i < depth; i++) {
+      if (a.getIndex(i) < b.getIndex(i)) {
+        return -1;
+      }
+      if (a.getIndex(i) > b.getIndex(i)) {
+        return 1;
+      }
+    }
+    if (a.getIndexCount() > b.getIndexCount()) {
+      return 1;
+    }
+    if (a.getIndexCount() < b.getIndexCount()) {
+      return -1;
+    }
+    return 0;
+  }
+
   public static Path.Any any(Path.Command command) {
     return Path.Any.newBuilder().setCommand(command).build();
   }

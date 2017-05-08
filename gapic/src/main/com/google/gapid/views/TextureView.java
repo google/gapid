@@ -53,6 +53,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.UiErrorCallback;
 import com.google.gapid.widgets.ImagePanel;
@@ -280,12 +281,7 @@ public class TextureView extends Composite
           loading.showMessage(Error, error);
         }
       });
-      gotoAction.setAtomIds(data.info.getAccessesList().stream()
-          .map(id -> Path.Command.newBuilder()
-              .setCapture(models.capture.getCapture())
-              .addIndex(id)
-              .build())
-          .collect(toList()), data.path.getResourceData().getAfter());
+      gotoAction.setAtomIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());
     }
   }
 
@@ -303,7 +299,7 @@ public class TextureView extends Composite
     AtomIndex range = models.atoms.getSelectedAtoms();
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
-      if (firstAccess(info) <= range.getCommand().getIndex(0)) {
+      if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
         Data data = new Data(resourceAfter(range, info.getPath().getId()), info, typeLabel);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
@@ -311,8 +307,8 @@ public class TextureView extends Composite
     }
   }
 
-  private static long firstAccess(Service.Resource info) {
-    return (info.getAccessesCount() == 0) ? 0 : info.getAccesses(0);
+  private static Path.Command firstAccess(Service.Resource info) {
+    return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
   }
 
   private static String getTypeLabel(GfxAPI.ResourceType type) {
