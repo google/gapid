@@ -281,6 +281,9 @@ message Memory {
     // If true then the actual memory bytes will be missing from in the
     // service.Memory. Useful for discovering memory ranges touched.
     bool exclude_data = 5;
+    // If true, only the observations at the given command are included.
+    // I.e, the returned service.Memory.observed will be empty.
+    bool exclude_observed = 6;
 }
 
 // Mesh is a path to a mesh representation of an object.

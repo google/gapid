@@ -51,7 +51,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 
 	r := memory.Range{Base: p.Address, Size: p.Size}
 
-	var reads, writes memory.RangeList
+	var reads, writes, observed memory.RangeList
 	pool.OnRead = func(rng memory.Range) {
 		if rng.Overlaps(r) {
 			interval.Merge(&reads, rng.Window(r).Span(), false)
@@ -65,7 +65,10 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	list.Atoms[atomIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
 
 	slice := pool.Slice(r)
-	observed := slice.ValidRanges()
+
+	if !p.ExcludeObserved {
+		observed = slice.ValidRanges()
+	}
 
 	var data []byte
 	if !p.ExcludeData {

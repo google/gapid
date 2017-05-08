@@ -216,7 +216,8 @@ public class Paths {
             .setPool(pool)
             .setAddress(0)
             .setSize(UnsignedLongs.MAX_VALUE)
-            .setExcludeData(true))
+            .setExcludeData(true)
+            .setExcludeObserved(true))
         .build();
   }
 
