@@ -149,7 +149,7 @@ public class ApiContext
     public static final FilteringContext ALL = new FilteringContext(null, null) {
       @Override
       public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
-        return path;
+        return path.setGroupByContext(true);
       }
 
       @Override
@@ -189,7 +189,10 @@ public class ApiContext
       return new FilteringContext(context.id, context.context) {
         @Override
         public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
-          return path;
+          return path
+              .setGroupByFrame(true)
+              .setGroupByDrawCall(true)
+              .setGroupByUserMarkers(true);
         }
 
         @Override
@@ -201,7 +204,10 @@ public class ApiContext
 
     public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
       path.getFilterBuilder().setContext(id);
-      return path;
+      return path
+          .setGroupByFrame(true)
+          .setGroupByDrawCall(true)
+          .setGroupByUserMarkers(true);
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {
