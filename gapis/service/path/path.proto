@@ -213,6 +213,18 @@ message CommandTree {
     Capture capture = 1;
     // The command filter used to create the tree.
     CommandFilter filter = 2;
+    // If true then commands will be grouped by API.
+    bool group_by_api = 3;
+    // If true then commands will be grouped by context.
+    bool group_by_context = 4;
+    // If true then commands will be grouped by thread.
+    bool group_by_thread = 5;
+    // If true then commands will be grouped by draw calls.
+    bool group_by_draw_call = 6;
+    // If true then commands will be grouped by frame.
+    bool group_by_frame = 7;
+    // If true then commands will be grouped by user markers.
+    bool group_by_user_markers = 8;
 }
 
 // CommandTreeNode is a path to a command tree node.
