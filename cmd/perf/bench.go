@@ -140,7 +140,7 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 				return s.get("Contexts", s.capture.Contexts(), &(s.contexts))
 			},
 			func() error {
-				return s.get("CommandTree", s.capture.CommandTree(nil, nil), &(s.commandTree))
+				return s.get("CommandTree", s.capture.CommandTree(nil), &(s.commandTree))
 			},
 			s.maybeSaveProfileData,
 		}
