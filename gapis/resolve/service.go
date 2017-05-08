@@ -24,6 +24,8 @@ func internalToService(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
 	case atom.Atom:
 		return atom.ToService(v)
+	case *InternalContext:
+		return &service.Context{Name: v.Name, Api: v.Api}, nil
 	default:
 		return v, nil
 	}

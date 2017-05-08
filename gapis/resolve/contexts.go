@@ -40,7 +40,7 @@ func Contexts(ctx context.Context, p *path.Contexts) (*service.Contexts, error) 
 }
 
 // Context resolves the single context.
-func Context(ctx context.Context, p *path.Context) (*service.Context, error) {
+func Context(ctx context.Context, p *path.Context) (*InternalContext, error) {
 	boxed, err := database.Resolve(ctx, p.Id.ID())
 	if err != nil {
 		return nil, &service.ErrInvalidPath{
@@ -48,11 +48,7 @@ func Context(ctx context.Context, p *path.Context) (*service.Context, error) {
 			Path:   p.Path(),
 		}
 	}
-	c := boxed.(*InternalContext)
-	return &service.Context{
-		Name: c.Name,
-		Api:  c.Api,
-	}, nil
+	return boxed.(*InternalContext), nil
 }
 
 // Resolve implements the database.Resolver interface.
