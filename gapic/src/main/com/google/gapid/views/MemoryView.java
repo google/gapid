@@ -35,13 +35,17 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
-import com.google.gapid.models.AtomStream.TypedObservation;
+import com.google.gapid.models.AtomStream.Observation;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Memory;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpclib.futures.FutureController;
+import com.google.gapid.rpclib.futures.SingleInFlight;
+import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.Rpc.Result;
+import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.IntRange;
@@ -50,6 +54,7 @@ import com.google.gapid.util.LongPoint;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Paths;
+import com.google.gapid.util.UiCallback;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.CopyPaste.CopyData;
 import com.google.gapid.widgets.CopyPaste.CopySource;
@@ -87,13 +92,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * View that displays the observed memory contents in an infinte scrolling panel.
  */
 public class MemoryView extends Composite
     implements Tab, Capture.Listener, AtomStream.Listener, Follower.Listener {
+  private static final Logger LOG = Logger.getLogger(MemoryView.class.getName());
+
   private final Client client;
   private final Models models;
   private final Selections selections;
@@ -101,6 +110,7 @@ public class MemoryView extends Composite
   protected final LoadablePanel<InfiniteScrolledComposite> loading;
   protected final InfiniteScrolledComposite memoryScroll;
   private final State uiState = new State();
+  private final FutureController rpcController = new SingleInFlight();
   private MemoryDataModel memoryData;
 
   public MemoryView(Composite parent, Client client, Models models, Widgets widgets) {
@@ -180,9 +190,23 @@ public class MemoryView extends Composite
 
   @Override
   public void onAtomsSelected(AtomIndex range) {
-    TypedObservation[] obs = models.atoms.getObservations(range);
-    selections.setObservations(obs);
+    Rpc.listen(models.atoms.getObservations(range), rpcController,
+        new UiCallback<Observation[], Observation[]>(this, LOG) {
+      @Override
+      protected Observation[] onRpcThread(Result<Observation[]> result)
+          throws RpcException, ExecutionException {
+        return result.get();
+      }
 
+      @Override
+      protected void onUiThread(Observation[] obs) {
+        setObservations(range, obs);
+      }
+    });
+  }
+
+  protected void setObservations(AtomIndex range, Observation[] obs) {
+    selections.setObservations(obs);
     if (obs.length > 0 && !uiState.isComplete()) {
       // If the memory view is not showing anything yet, show the first observation.
       setObservation(obs[0]);
@@ -204,7 +228,7 @@ public class MemoryView extends Composite
     }
   }
 
-  private void setObservation(TypedObservation obs) {
+  private void setObservation(Observation obs) {
     Path.Memory memoryPath = obs.getPath();
     uiState.update(memoryPath);
     update(memoryPath.getAddress());
@@ -253,7 +277,7 @@ public class MemoryView extends Composite
     private final ComboViewer obsCombo;
 
     public Selections(Composite parent, Consumer<DataType> dataTypeListener,
-        Consumer<TypedObservation> observationListener) {
+        Consumer<Observation> observationListener) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(6, false));
 
@@ -273,9 +297,9 @@ public class MemoryView extends Composite
       typeCombo.addListener(SWT.Selection,
           e -> dataTypeListener.accept(DataType.values()[typeCombo.getSelectionIndex()]));
       obsCombo.getCombo().addListener(SWT.Selection, e -> {
-        TypedObservation obs =
-            (TypedObservation)obsCombo.getElementAt(obsCombo.getCombo().getSelectionIndex());
-        if (obs != TypedObservation.NULL_OBSERVATION) {
+        Observation obs =
+            (Observation)obsCombo.getElementAt(obsCombo.getCombo().getSelectionIndex());
+        if (obs != Observation.NULL_OBSERVATION) {
           observationListener.accept(obs);
         }
       });
@@ -296,11 +320,11 @@ public class MemoryView extends Composite
       typeCombo.select(dataType.ordinal());
     }
 
-    public void setObservations(TypedObservation[] observations) {
+    public void setObservations(Observation[] observations) {
       if (observations.length == 0) {
         obsCombo.setInput(Arrays.asList(observations));
       } else {
-        obsCombo.setInput(Lists.asList(TypedObservation.NULL_OBSERVATION, observations));
+        obsCombo.setInput(Lists.asList(Observation.NULL_OBSERVATION, observations));
       }
 
       obsLabel.setVisible(observations.length != 0);
@@ -310,14 +334,14 @@ public class MemoryView extends Composite
 
     @SuppressWarnings("unchecked")
     public void updateSelectedObservation(long address) {
-      for (TypedObservation obs : (Iterable<TypedObservation>)obsCombo.getInput()) {
+      for (Observation obs : (Iterable<Observation>)obsCombo.getInput()) {
         if (obs.contains(address)) {
           obsCombo.setSelection(new StructuredSelection(obs), true);
           return;
         }
       }
       if (obsCombo.getCombo().getItemCount() > 0) {
-        obsCombo.setSelection(new StructuredSelection(TypedObservation.NULL_OBSERVATION));
+        obsCombo.setSelection(new StructuredSelection(Observation.NULL_OBSERVATION));
       }
     }
 
@@ -690,7 +714,7 @@ public class MemoryView extends Composite
     private final long address;
     private final long lastAddress;
 
-    private final Map<Long, SoftReference<ListenableFuture<Memory>>> cache = Maps.newHashMap();
+    private final Map<Long, SoftReference<ListenableFuture<Service.Memory>>> cache = Maps.newHashMap();
 
     public PagedMemoryDataModel(MemoryFetcher fetcher, long address, long lastAddress) {
       this.fetcher = fetcher;
@@ -755,7 +779,7 @@ public class MemoryView extends Composite
     private ListenableFuture<Service.Memory> getFromCache(long page) {
       ListenableFuture<Service.Memory> result = null;
       synchronized (cache) {
-        SoftReference<ListenableFuture<Memory>> reference = cache.get(page);
+        SoftReference<ListenableFuture<Service.Memory>> reference = cache.get(page);
         if (reference != null) {
           result = reference.get();
           if (result == null) {
@@ -766,9 +790,9 @@ public class MemoryView extends Composite
       return result;
     }
 
-    private void addToCache(long page, ListenableFuture<Memory> data) {
+    private void addToCache(long page, ListenableFuture<Service.Memory> data) {
       synchronized (cache) {
-        cache.put(page, new SoftReference<ListenableFuture<Memory>>(data));
+        cache.put(page, new SoftReference<ListenableFuture<Service.Memory>>(data));
       }
     }
 
@@ -778,7 +802,7 @@ public class MemoryView extends Composite
     }
 
     public interface MemoryFetcher {
-      ListenableFuture<Memory> get(long address, long count);
+      ListenableFuture<Service.Memory> get(long address, long count);
     }
   }
 
@@ -1354,7 +1378,7 @@ public class MemoryView extends Composite
       this.writes = writes;
     }
 
-    public MemorySegment(Memory info) {
+    public MemorySegment(Service.Memory info) {
       data = info.getData().toByteArray();
       offset = 0;
       known = computeKnown(info);
@@ -1448,7 +1472,7 @@ public class MemoryView extends Composite
       return (getInt(off) & 0xFFFFFFFFL) | ((long)getInt(off + 4) << 32);
     }
 
-    private static BitSet computeKnown(Memory data) {
+    private static BitSet computeKnown(Service.Memory data) {
       BitSet known = new BitSet(data.getData().size());
       for (Service.MemoryRange rng : data.getObservedList()) {
         known.set((int)rng.getBase(), (int)rng.getBase() + (int)rng.getSize());

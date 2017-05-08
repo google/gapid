@@ -15,9 +15,11 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.proto.service.memory.MemoryProtos.PoolNames.Application_VALUE;
 import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
+import static com.google.gapid.util.Paths.observationsAfter;
 
 import com.google.common.base.Objects;
 import com.google.common.util.concurrent.Futures;
@@ -38,6 +40,7 @@ import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
+import com.google.gapid.util.Ranges;
 import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
@@ -301,58 +304,58 @@ public class AtomStream implements ApiContext.Listener {
   }
   */
 
-  public TypedObservation[] getObservations(AtomIndex index) {
-    /*
-    Atom atom = getAtom(index);
-    if (atom.getObservationCount() == 0) {
-      return NO_OBSERVATIONS;
-    }
-
-    Observations obs = atom.getObservations();
-    TypedObservation[] result = new TypedObservation[obs.getReads().length + obs.getWrites().length];
-    for (int i = 0; i < obs.getReads().length; i++) {
-      result[i] = new TypedObservation(index, true, obs.getReads()[i]);
-    }
-    for (int i = 0, j = obs.getReads().length; i < obs.getWrites().length; i++, j++) {
-      result[j] = new TypedObservation(index, false, obs.getWrites()[i]);
-    }
-    return result;
-    */
-    return NO_OBSERVATIONS;
+  public ListenableFuture<Observation[]> getObservations(AtomIndex index) {
+    return Futures.transform(client.get(observationsAfter(index, Application_VALUE)), v -> {
+      Service.Memory mem = v.getMemory();
+      Observation[] obs = new Observation[mem.getReadsCount() + mem.getWritesCount()];
+      int idx = 0;
+      for (Service.MemoryRange read : mem.getReadsList()) {
+        obs[idx++] = new Observation(index, true, read);
+      }
+      for (Service.MemoryRange write : mem.getWritesList()) {
+        obs[idx++] = new Observation(index, false, write);
+      }
+      return obs;
+    });
   }
-
-  private static final TypedObservation[] NO_OBSERVATIONS = new TypedObservation[0];
 
   /**
    * Read or write memory observation at a specific command.
    */
-  public static class TypedObservation {
-    public static final TypedObservation NULL_OBSERVATION = new TypedObservation(null, false) {
+  public static class Observation {
+    public static final Observation NULL_OBSERVATION = new Observation(null, false, null) {
       @Override
       public String toString() {
         return Messages.SELECT_OBSERVATION;
+      }
+
+      @Override
+      public boolean contains(long address) {
+        return false;
       }
     };
 
     private final AtomIndex index;
     private final boolean read;
+    private final Service.MemoryRange range;
 
-    public TypedObservation(AtomIndex index, boolean read) {
+    public Observation(AtomIndex index, boolean read, Service.MemoryRange range) {
       this.index = index;
       this.read = read;
+      this.range = range;
     }
 
     public Path.Memory getPath() {
-      return Paths.memoryAfter(index, 0, null).getMemory();
+      return Paths.memoryAfter(index, Application_VALUE, range).getMemory();
     }
 
     public boolean contains(long address) {
-      return false;//observation.getRange().contains(address);
+      return Ranges.contains(range, address);
     }
 
     @Override
     public String toString() {
-      long base = 0/*observation.getRange().getBase()*/, count = 0;//observation.getRange().getSize();
+      long base = range.getBase(), count = range.getSize();
       return (read ? "Read " : "Write ") + count + " byte" + (count == 1 ? "" : "s") +
           String.format(" at 0x%016x", base);
     }
