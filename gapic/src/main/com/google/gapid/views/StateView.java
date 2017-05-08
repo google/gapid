@@ -333,13 +333,7 @@ public class StateView extends Composite
       ApiState.Node child = ((ApiState.Node)parent).getChild(index);
       state.load(child, refresher::refresh);
       viewer.replace(parent, index, child);
-      if (child.getChildCount() > 100) {
-        // For nodes with lots of children, only allocate the children, once the node
-        // is actually expanded.
-        viewer.setHasChildren(child, true);
-      } else {
-        viewer.setChildCount(child, child.getChildCount());
-      }
+      viewer.setHasChildren(child, child.getChildCount() > 0);
     }
 
     @Override
