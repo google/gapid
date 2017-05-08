@@ -25,36 +25,36 @@ import (
 
 type filter func(a atom.Atom, s *gfxapi.State) bool
 
-type filters []filter
-
-func (l filters) pass(a atom.Atom, s *gfxapi.State) bool {
-	for _, f := range l {
-		if !f(a, s) {
-			return false
+func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (filter, error) {
+	filters := []filter{}
+	if c := f.GetContext(); c.IsValid() {
+		c, err := Context(ctx, p.Context(c))
+		if err != nil {
+			return nil, err
 		}
+		id, err := id.Parse(c.Id)
+		if err != nil {
+			return nil, err
+		}
+		ctxID := gfxapi.ContextID(id)
+		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
+			if api := a.API(); api != nil {
+				if ctx := api.Context(s); ctx != nil {
+					return ctx.ID() == ctxID
+				}
+			}
+			return false
+		})
 	}
-	return true
-}
-
-func (l *filters) add(f filter) { *l = append(*l, f) }
-
-func (l *filters) addContextFilter(ctx context.Context, p *path.Context) error {
-	c, err := Context(ctx, p)
-	if err != nil {
-		return err
+	if t := f.GetThread(); t.IsValid() {
+		// TODO: Thread filter.
 	}
-	id, err := id.Parse(c.Id)
-	if err != nil {
-		return err
-	}
-	ctxID := gfxapi.ContextID(id)
-	l.add(func(a atom.Atom, s *gfxapi.State) bool {
-		if api := a.API(); api != nil {
-			if ctx := api.Context(s); ctx != nil {
-				return ctx.ID() == ctxID
+	return func(a atom.Atom, s *gfxapi.State) bool {
+		for _, f := range filters {
+			if !f(a, s) {
+				return false
 			}
 		}
-		return false
-	})
-	return nil
+		return true
+	}, nil
 }

@@ -67,6 +67,9 @@ func (v PackagesOutput) String() string {
 }
 
 type (
+	CommandFilterFlags struct {
+		Context int `help:"Filter to the i'th context."`
+	}
 	DeviceFlags struct {
 		Device string `help:"Device to spawn on. One of: 'host', 'android' or <device-serial>"`
 	}
@@ -122,11 +125,11 @@ type (
 		ShowABIInfo    bool `help:"if true then show information of the ABI used for the trace."`
 	}
 	CommandsFlags struct {
-		Gapis   GapisFlags
-		Gapir   GapirFlags
-		Raw     bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
-		Name    string `help:"Filter to commands and groups with the specified name."`
-		Context int    `help:"Filter to the i'th context."`
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Raw   bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Name  string `help:"Filter to commands and groups with the specified name."`
+		CommandFilterFlags
 	}
 	StateFlags struct {
 		Gapis GapisFlags
