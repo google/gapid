@@ -81,7 +81,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 	va := c.Objects.VertexArrays[c.BoundVertexArray]
 	for _, attr := range program.ActiveAttributes {
 		vaa := va.VertexAttributeArrays[attr.Location]
-		if vaa.Enabled == GLboolean_GL_FALSE {
+		if vaa == nil || vaa.Enabled == GLboolean_GL_FALSE {
 			continue
 		}
 		vbb := va.VertexBufferBindings[vaa.Binding]
