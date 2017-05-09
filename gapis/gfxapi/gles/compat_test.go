@@ -122,7 +122,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	srcPtr := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
 	got := strings.TrimRight(string(gfxapi.CharToBytes(srcPtr.StringSlice(ctx, s).Read(ctx, cmd, s, nil))), "\x00")
 
-	expected, err := glslCompat(ctx, c.source, c.lang, dev)
+	expected, err := glslCompat(ctx, c.source, c.lang, nil, dev)
 	if err != nil {
 		t.Errorf("Unexpected error returned by glslCompat: %v", err)
 	}

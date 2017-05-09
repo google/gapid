@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
+	"github.com/google/gapid/gapis/gfxapi/gles/glsl/preprocessor"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -94,6 +95,7 @@ func (s support) String() string {
 type features struct {
 	vertexHalfFloatOES        support // support for GL_OES_vertex_half_float
 	eglImageExternal          support // support for GL_OES_EGL_image_external
+	textureMultisample        support // support for ARB_texture_multisample
 	vertexArrayObjects        support // support for VBOs
 	supportGenerateMipmapHint bool    // support for GL_GENERATE_MIPMAP_HINT
 	compressedTextureFormats  map[GLenum]struct{}
@@ -109,16 +111,21 @@ func getFeatures(ctx context.Context, version string, ext extensions) (features,
 	f := features{
 		vertexHalfFloatOES:        ext.get("GL_OES_vertex_half_float"),
 		eglImageExternal:          ext.get("GL_OES_EGL_image_external"),
+		textureMultisample:        ext.get("ARB_texture_multisample"),
 		compressedTextureFormats:  getSupportedCompressedTextureFormats(ext),
 		supportGenerateMipmapHint: v.IsES,
 	}
 
 	// TODO: Properly check the specifications for these flags.
 	switch {
-	case v.IsES && v.Major >= 3:
+	case v.AtLeastES(3, 0):
 		f.vertexArrayObjects = supported
-	case !v.IsES && v.Major >= 3:
+	case v.AtLeastGL(3, 0):
 		f.vertexArrayObjects = required
+	}
+
+	if v.AtLeastES(3, 2) {
+		f.textureMultisample = required
 	}
 
 	// GLES defaults FRAMEBUFFER_SRGB to enabled and only allows changing it via
@@ -477,7 +484,15 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					log.W(ctx, "Unknown shader type: %v", shader.Type)
 				}
 
-				src, err = glslCompat(ctx, shader.Source, lang, device)
+				exts := []preprocessor.Extension{}
+				if target.textureMultisample == supported {
+					// TODO: Check that this extension is actually used by the shader.
+					exts = append(exts, preprocessor.Extension{
+						Name: "GL_ARB_texture_multisample", Behaviour: "enable",
+					})
+				}
+
+				src, err = glslCompat(ctx, shader.Source, lang, exts, device)
 				if err != nil {
 					log.E(ctx, "Error reformatting GLSL source for atom %d: %v", i, err)
 				}
