@@ -276,24 +276,26 @@ func (g *Group) AddGroup(start, end ID, name string) error {
 	return nil
 }
 
+// AddAtoms fills the group and sub-groups with atoms based on the predicate
+// pred.
 func (g *Group) AddAtoms(pred func(id ID) bool) error {
 	rng := g.Range
 	spans := make(Spans, 0, len(g.Spans))
 
 	scan := func(to ID) {
 		for id := rng.Start; id < to; id++ {
-			rng.End = id + 1
 			if !pred(id) {
-				if rng.Start != id {
+				rng.End = id
+				if rng.Start != rng.End {
 					spans = append(spans, rng)
 				}
-				rng.Start = rng.End
+				rng.Start = id + 1
 			}
 		}
 		if rng.Start != to {
 			rng.End = to
 			spans = append(spans, rng)
-			rng.Start = rng.End
+			rng.Start = to
 		}
 	}
 
