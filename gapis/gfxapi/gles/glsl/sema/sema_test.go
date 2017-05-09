@@ -65,6 +65,8 @@ var semaTests = []struct {
 	{"const int x = 1;", ""},
 	{"const int x = 1; int[x] y = int[1](1);", ""},
 
+	{"struct Bar { int i; }; void Foo(Bar Bar) {}", ""},
+
 	{"int[2] x[2];", "declared as an array of arrays"},
 	{"mat2 x = mat3(1.0);", "initialized with an expression of incompatible type"},
 	{"const int x;", "must be initialized"},
