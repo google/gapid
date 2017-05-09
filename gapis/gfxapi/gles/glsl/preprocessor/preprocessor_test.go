@@ -86,6 +86,8 @@ var preprocessorTests = []struct {
 	{`# define A B
 	A`, []Token{B}, "", nil},
 
+	{"#define A B\n#define A C", nil, "", nil},
+
 	{`#define int void
 	int`, []Token{ast.TVoid}, "", nil},
 
@@ -136,7 +138,6 @@ var preprocessorTests = []struct {
 	{"#endif", nil, "", []string{"Unmatched #endif"}},
 
 	{"#ifdef\n#endif", nil, "", []string{"#ifdef needs an argument"}},
-	{"#define A B\n#define A C", nil, "", []string{"'A' already defined"}},
 	{"#undef A", nil, "", []string{"'A' not defined"}},
 	{"#error Hello world", nil, "", []string{"Hello world"}},
 

@@ -314,7 +314,7 @@ func (p *preprocessorImpl) processDefine(args []TokenInfo) {
 	macro := args[0]
 
 	if _, ok := p.macros[macro.Token.String()]; ok {
-		p.err.Errorf("Macro '%s' already defined.", args[0].Token)
+		delete(p.macros, macro.Token.String())
 	}
 
 	args = args[1:]
