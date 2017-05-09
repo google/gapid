@@ -132,7 +132,8 @@ public class Paths {
   public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
     return Path.Any.newBuilder()
         .setCommandTree(context.commandTree(Path.CommandTree.newBuilder())
-            .setCapture(capture))
+            .setCapture(capture)
+            .setMaxChildren(2000))
         .build();
   }
 
