@@ -44,7 +44,7 @@ public class LogView extends Composite implements Tab {
   private final Theme theme;
   private final Tree tree;
   private final AtomicBoolean dirty = new AtomicBoolean(false);
-  private final int MAX_ITEMS = 1000;
+  private final int MAX_ITEMS = 10000;
   private final int MAX_NEW_ITEMS_PER_UPDATE = 100;
   private Logging.MessageIterator messageIterator;
 
