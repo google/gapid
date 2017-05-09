@@ -80,6 +80,14 @@ var (
 	TUsampler3D           = appendType("usampler3D")
 	TUsamplerCube         = appendType("usamplerCube")
 	TUsampler2DArray      = appendType("usampler2DArray")
+
+	// ARB_texture_multisample
+	TSampler2DMS        = appendType("sampler2DMS")
+	TIsampler2DMS       = appendType("isampler2DMS")
+	TUssampler2DMS      = appendType("ussampler2DMS")
+	TSampler2DMSArray   = appendType("sampler2DMSArray")
+	TIsampler2DMSArray  = appendType("isampler2DMSArray")
+	TUssampler2DMSArray = appendType("ussampler2DMSArray")
 )
 
 // Canonicalize returns a canonical representation of the type. Specifically, it returns TMat2x2
@@ -253,6 +261,12 @@ var precisionTypeMap = map[BareType]BareType{
 	TUsampler2D:           TUsampler2D,
 	TUsampler3D:           TUsampler3D,
 	TUsampler2DArray:      TUsampler2DArray,
+	TSampler2DMS:          TSampler2DMS,
+	TIsampler2DMS:         TIsampler2DMS,
+	TUssampler2DMS:        TUssampler2DMS,
+	TSampler2DMSArray:     TSampler2DMSArray,
+	TIsampler2DMSArray:    TIsampler2DMSArray,
+	TUssampler2DMSArray:   TUssampler2DMSArray,
 }
 
 // GetPrecisionType returns the type from which the provided type inherits is precision. E.g.,
