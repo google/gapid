@@ -30,6 +30,29 @@ type Version struct {
 	Minor int
 }
 
+// AtLeast returns true if the version is greater or equal to major.minor.
+func (v Version) AtLeast(major, minor int) bool {
+	if v.Major > major {
+		return true
+	}
+	if v.Major < major {
+		return false
+	}
+	return v.Minor >= minor
+}
+
+// AtLeastES returns true if the version is OpenGL ES and is greater or equal to
+// major.minor.
+func (v Version) AtLeastES(major, minor int) bool {
+	return v.IsES && v.AtLeast(major, minor)
+}
+
+// AtLeastGL returns true if the version is not OpenGL ES and is greater or
+// equal to major.minor.
+func (v Version) AtLeastGL(major, minor int) bool {
+	return !v.IsES && v.AtLeast(major, minor)
+}
+
 var versionRe = regexp.MustCompile(`^(OpenGL ES.*? )?(\d+)\.(\d+).*`)
 
 // ParseVersion parses the GL version major, minor and flavour from the output of glGetString(GL_VERSION).
