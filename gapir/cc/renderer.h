@@ -25,6 +25,13 @@ namespace gapir {
 // any necessary hidden window construction and minimal event handling for the target platform.
 class Renderer {
 public:
+    class Listener {
+    public:
+        virtual void onDebugMessage(int severity, const char* msg) = 0;
+    };
+
+    inline Renderer();
+
     // Destroys the renderer and any associated off-screen windows.
     virtual ~Renderer() {}
 
@@ -33,8 +40,15 @@ public:
 
     template <typename T> inline T* getApi();
 
+    inline void setListener(Listener* listener);
+    inline Listener* getListener() const;
+
     virtual bool isValid() = 0;
+private:
+    Listener* mListener;
 };
+
+inline Renderer::Renderer() : mListener(nullptr) {}
 
 template <typename T>
 inline T* Renderer::getApi() {
@@ -46,6 +60,9 @@ inline T* Renderer::getApi() {
     }
     return nullptr;
 }
+
+inline void Renderer::setListener(Listener* listener) { mListener = listener; }
+inline Renderer::Listener* Renderer::getListener() const { return mListener; }
 
 }  // namespace gapir
 

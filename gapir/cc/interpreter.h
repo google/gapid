@@ -89,6 +89,9 @@ public:
     // Registers an API instance if it has not already been done.
     bool registerApi(uint8_t api);
 
+    // Returns the last reached label value.
+    inline uint32_t getLabel() const;
+
 private:
     enum : uint32_t {
         TYPE_MASK        = 0x03f00000U,
@@ -186,6 +189,9 @@ inline bool Interpreter::isWriteAddress(void* address) const {
             !mMemoryManager->isConstantAddress(address);
 }
 
+inline uint32_t Interpreter::getLabel() const {
+    return mLabel;
+}
 
 }  // namespace gapir
 
