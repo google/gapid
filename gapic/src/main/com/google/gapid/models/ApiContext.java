@@ -149,7 +149,9 @@ public class ApiContext
     public static final FilteringContext ALL = new FilteringContext(null, null) {
       @Override
       public Path.CommandTree.Builder commandTree(Path.CommandTree.Builder path) {
-        return path.setGroupByContext(true);
+        return path
+            .setGroupByContext(true)
+            .setIncludeNoContextGroups(true);
       }
 
       @Override
@@ -192,7 +194,8 @@ public class ApiContext
           return path
               .setGroupByFrame(true)
               .setGroupByDrawCall(true)
-              .setGroupByUserMarkers(true);
+              .setGroupByUserMarkers(true)
+              .setAllowIncompleteFrame(true);
         }
 
         @Override
@@ -207,7 +210,8 @@ public class ApiContext
       return path
           .setGroupByFrame(true)
           .setGroupByDrawCall(true)
-          .setGroupByUserMarkers(true);
+          .setGroupByUserMarkers(true)
+          .setAllowIncompleteFrame(true);
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {

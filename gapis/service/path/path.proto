@@ -225,6 +225,12 @@ message CommandTree {
     bool group_by_frame = 7;
     // If true then commands will be grouped by user markers.
     bool group_by_user_markers = 8;
+    // If true and grouping by context, 'no context' groups will be created.
+    bool include_no_context_groups = 9;
+    // If true and grouping by frames, commands after the last frame will be
+    // grouped into an 'incomplete frame' group. Only if there is at least one
+    // complete frame.
+    bool allow_incomplete_frame = 10;
 }
 
 // CommandTreeNode is a path to a command tree node.

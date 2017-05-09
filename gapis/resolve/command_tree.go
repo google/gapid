@@ -225,13 +225,17 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByContext {
+		var noContextId interface{} = nil
+		if p.IncludeNoContextGroups {
+			noContextId = gfxapi.ContextID{}
+		}
 		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
 			if api := a.API(); api != nil {
 				if context := api.Context(s); context != nil {
 					return context.ID(), context.Name()
 				}
 			}
-			return nil, "No context"
+			return noContextId, "No context"
 		}})
 	}
 
@@ -275,7 +279,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByDrawCall || p.GroupByFrame {
-		addDrawAndFrameEvents(ctx, p, out)
+		addDrawAndFrameEvents(ctx, p, out, atom.ID(len(c.Atoms)))
 	}
 
 	// Now we have all the groups, we finally need to add the filtered atoms.
@@ -290,7 +294,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	return out, nil
 }
 
-func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree) error {
+func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree, last atom.ID) error {
 	events, err := Events(ctx, &path.Events{
 		Commands:     t.path.Capture.Commands(),
 		Filter:       p.Filter,
@@ -303,7 +307,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 	}
 
 	drawCount, drawStart := 0, atom.ID(0)
-	frameCount, frameStart := 0, atom.ID(0)
+	frameCount, frameStart, frameEnd := 0, atom.ID(0), atom.ID(0)
 
 	for _, e := range events.List {
 		i := atom.ID(e.Command.Index[0])
@@ -320,8 +324,13 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 			if p.GroupByFrame {
 				t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
 				frameCount++
+				frameEnd = i
 			}
 		}
+	}
+
+	if p.AllowIncompleteFrame && p.GroupByFrame && frameCount > 0 && frameStart > frameEnd {
+		t.root.AddGroup(frameStart, last, "Incomplete Frame")
 	}
 	return nil
 }
