@@ -586,6 +586,8 @@ message CommandTreeNode {
   string group = 2;
   // Path to the command range represented by this node.
   path.Commands commands = 3;
+  // Number of commands encapsulated by this group.
+  uint64 num_commands = 4;
 }
 
 // Command describes a single intercepted command or sub-command.
