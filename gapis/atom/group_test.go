@@ -393,26 +393,26 @@ func TestAddAtomsSparse(t *testing.T) {
 
 	expected := Group{
 		"root", Range{0, 1100}, Spans{
-			Range{0, 51},
+			Range{0, 50},
 			Group{"Sub-group 0", Range{100, 200}, Spans{
-				Range{100, 151},
+				Range{100, 150},
 			}},
-			Range{200, 251},
+			Range{200, 250},
 			Group{"Sub-group 1", Range{300, 400}, Spans{
 				Range{300, 340},
 				Group{"Sub-group 1.0", Range{340, 360}, Spans{
-					Range{340, 351},
+					Range{340, 350},
 				}},
 			}},
-			Range{400, 451},
+			Range{400, 450},
 			Group{"Sub-group 2", Range{500, 600}, Spans{
-				Range{500, 551},
+				Range{500, 550},
 			}},
-			Range{600, 651},
-			Range{700, 751},
-			Range{800, 851},
-			Range{900, 951},
-			Range{1000, 1051},
+			Range{600, 650},
+			Range{700, 750},
+			Range{800, 850},
+			Range{900, 950},
+			Range{1000, 1050},
 		},
 	}
 
