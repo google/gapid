@@ -20,6 +20,8 @@
 #include "core/cc/target.h"
 #include "core/cc/timer.h"
 
+#include "gapir/cc/renderer.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -30,7 +32,6 @@ class GlesRenderer;
 class Interpreter;
 class MemoryManager;
 class PostBuffer;
-class Renderer;
 class ReplayRequest;
 class ResourceInMemoryCache;
 class ResourceProvider;
@@ -40,7 +41,7 @@ class VulkanRenderer;
 
 // Context object for the replay containing the Gl context, the memory manager and the replay
 // specific functions to handle network communication of the interpreter
-class Context {
+class Context : private Renderer::Listener {
 public:
     // Creates a new Context object and initialize it with loading the replay request, setting up
     // the memory manager, setting up the caches and prefetching the resources
@@ -57,6 +58,10 @@ public:
     bool interpret();
 
 private:
+    // Renderer::Listener compliance
+    virtual void onDebugMessage(int severity, const char* msg) override;
+
+
     enum {
         MAX_TIMERS       = 256,
         POST_BUFFER_SIZE = 2*1024*1024,
@@ -120,6 +125,10 @@ private:
 
     // A buffer for data to be sent back to the server.
     std::unique_ptr<PostBuffer> mPostBuffer;
+
+    // The currently running interpreter.
+    // Only valid for the duration of interpret()
+    std::unique_ptr<Interpreter> mInterpreter;
 };
 
 }  // namespace gapir

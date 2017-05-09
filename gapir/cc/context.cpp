@@ -115,9 +115,26 @@ bool Context::interpret() {
             return false;
         };
 
-    Interpreter interpreter(mMemoryManager, mReplayRequest->getStackSize(), std::move(callback));
-    registerCallbacks(&interpreter);
-    return interpreter.run(mReplayRequest->getInstructionList()) && mPostBuffer->flush();
+    mInterpreter.reset(new Interpreter(mMemoryManager, mReplayRequest->getStackSize(), std::move(callback)));
+    registerCallbacks(mInterpreter.get());
+    auto res = mInterpreter->run(mReplayRequest->getInstructionList()) && mPostBuffer->flush();
+    mInterpreter.reset(nullptr);
+    return res;
+}
+
+void Context::onDebugMessage(int severity, const char* msg) {
+    auto label = mInterpreter->getLabel();
+    switch (severity) {
+    case LOG_LEVEL_ERROR:
+        GAPID_ERROR("Renderer (%d): %s", label, msg);
+        break;
+    case LOG_LEVEL_WARNING:
+        GAPID_WARNING("Renderer (%d): %s", label, msg);
+        break;
+    default:
+        GAPID_INFO("Renderer (%d): %s", label, msg);
+        break;
+    }
 }
 
 void Context::registerCallbacks(Interpreter* interpreter) {
@@ -154,7 +171,9 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             if (!mRootGlesRenderer) {
                 mRootGlesRenderer.reset(GlesRenderer::create(nullptr));
             }
-            mGlesRenderers[id] = GlesRenderer::create(mRootGlesRenderer.get());
+            auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
+            renderer->setListener(this);
+            mGlesRenderers[id] = renderer;
             return true;
         } else {
             GAPID_WARNING("Error during calling function replayCreateRenderer");

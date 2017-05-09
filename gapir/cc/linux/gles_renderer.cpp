@@ -182,18 +182,22 @@ void GlesRendererImpl::createPbuffer(int width, int height) {
 }
 
 static void* DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint id, Gles::GLenum severity,
-                           Gles::GLsizei length, const Gles::GLchar* message, const void* userParam) {
-  switch (severity) {
-    case Gles::GLenum::GL_DEBUG_SEVERITY_HIGH:
-      GAPID_ERROR("KHR_debug: %s", message);
-      break;
-    case Gles::GLenum::GL_DEBUG_SEVERITY_MEDIUM:
-      GAPID_WARNING("KHR_debug: %s", message);
-      break;
-    default:
-      GAPID_DEBUG("KHR_debug: %s", message);
-      break;
-  }
+                           Gles::GLsizei length, const Gles::GLchar* message, const void* user_param) {
+    auto renderer = reinterpret_cast<const GlesRendererImpl*>(user_param);
+    auto listener = renderer->getListener();
+    if (listener != nullptr) {
+        switch (severity) {
+            case Gles::GLenum::GL_DEBUG_SEVERITY_HIGH:
+                listener->onDebugMessage(LOG_LEVEL_ERROR, message);
+                break;
+            case Gles::GLenum::GL_DEBUG_SEVERITY_MEDIUM:
+                listener->onDebugMessage(LOG_LEVEL_WARNING, message);
+                break;
+            default:
+                listener->onDebugMessage(LOG_LEVEL_DEBUG, message);
+                break;
+        }
+    }
 }
 
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
@@ -309,7 +313,7 @@ void GlesRendererImpl::bind() {
         }
 
         if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
-            mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), nullptr);
+            mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), this);
             mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
             mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
             GAPID_DEBUG("Enabled KHR_debug extension");
