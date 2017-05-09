@@ -77,3 +77,13 @@ func (i *Range) SetSpan(span interval.U64Span) {
 	i.Start = ID(span.Start)
 	i.End = ID(span.End)
 }
+
+// Split splits this range into two subranges where the first range will have
+// a length no larger than the given value.
+func (r Range) Split(i uint64) (Range, Range) {
+	if i >= r.Length() {
+		return r, Range{0, 0}
+	}
+	x := r.Start + ID(i)
+	return Range{r.Start, x}, Range{x, r.End}
+}

@@ -202,7 +202,7 @@ message Field {
 message CommandFilter {
     // context filters the commands to the specified context.
     ID context = 1;
-    // context filters the commands to the specified thread.
+    // thread filters the commands to the specified thread.
     ID thread = 2;
 }
 
@@ -231,6 +231,9 @@ message CommandTree {
     // grouped into an 'incomplete frame' group. Only if there is at least one
     // complete frame.
     bool allow_incomplete_frame = 10;
+    // If positive, synthetic sub-nodes are created for nodes with more than
+    // this many children.
+    int32 max_children = 11;
 }
 
 // CommandTreeNode is a path to a command tree node.

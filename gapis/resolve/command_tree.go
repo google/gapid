@@ -289,7 +289,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		a := c.Atoms[i]
 		a.Mutate(ctx, s, nil)
 		return filter(a, s)
-	})
+	}, uint64(p.MaxChildren))
 
 	return out, nil
 }
