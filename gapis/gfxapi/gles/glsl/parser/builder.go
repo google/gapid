@@ -843,13 +843,9 @@ func (b *builder) getType(t pp.TokenInfo) ast.Type {
 	return nil
 }
 
-// A token is an identifier if it was parsed as an identifier by the preprocessor and this name
-// hasn't been assigned to a type already.
+// A token is an identifier if it was parsed as an identifier by the preprocessor.
 func (b *builder) isIdentifier(t pp.Token) (r bool) {
 	_, r = t.(pp.Identifier)
-	if r {
-		r = b.getType(pp.TokenInfo{Token: t}) == nil
-	}
 	return
 }
 
