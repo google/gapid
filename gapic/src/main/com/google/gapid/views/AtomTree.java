@@ -563,6 +563,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         } else {
           string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
           string.append(data.getGroup(), string.labelStyle());
+          long count = data.getNumCommands();
+          string.append(
+              " (" + count + " command" + (count != 1 ? "s" : "") + ")", string.structureStyle());
         }
       }
       return string;

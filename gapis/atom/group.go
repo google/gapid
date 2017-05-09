@@ -159,6 +159,26 @@ func (g Group) Count() uint64 {
 	return count
 }
 
+// DeepCount returns the total (recursive) number of items this group contains.
+// The given predicate determines wheter the tested group is counted as 1 or
+// is recursed into.
+func (g Group) DeepCount(pred func(g Group) bool) uint64 {
+	var count uint64
+	for _, s := range g.Spans {
+		switch s := s.(type) {
+		case Group:
+			if pred(s) {
+				count += s.DeepCount(pred)
+			} else {
+				count += 1
+			}
+		default:
+			count += s.itemCount()
+		}
+	}
+	return count
+}
+
 // Index returns the item at the specified index.
 func (g Group) Index(index uint64) GroupOrID {
 	for _, s := range g.Spans {

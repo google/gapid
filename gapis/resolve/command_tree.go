@@ -91,6 +91,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			NumChildren: item.Count(),
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
 			Group:       item.Name,
+			NumCommands: item.DeepCount(func(g atom.Group) bool { return true; /* TODO: Subcommands */ }),
 		}, nil
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
