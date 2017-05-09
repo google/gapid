@@ -309,11 +309,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 		i := atom.ID(e.Command.Index[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
-			err := t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
-			if err != nil {
-				log.W(ctx, "Draw AddGroup errored: %v", err)
-			}
-
+			t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
 			drawCount++
 			drawStart = i + 1
 
@@ -322,10 +318,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 
 		case service.EventKind_LastInFrame:
 			if p.GroupByFrame {
-				err := t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
-				if err != nil {
-					log.W(ctx, "Frame AddGroup errored: %v", err)
-				}
+				t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
 				frameCount++
 			}
 		}
