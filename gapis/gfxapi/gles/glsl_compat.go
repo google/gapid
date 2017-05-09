@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/parser"
+	"github.com/google/gapid/gapis/gfxapi/gles/glsl/preprocessor"
 )
 
 type glslTransform struct {
@@ -239,7 +240,13 @@ func (lt *GLSLParseResolvable) Resolve(ctx context.Context) (interface{}, error)
 	return &GLSLParseResult{Program: tree, Errors: errors}, nil
 }
 
-func glslCompat(ctx context.Context, src string, lang ast.Language, device *device.Instance) (string, error) {
+func glslCompat(
+	ctx context.Context,
+	src string,
+	lang ast.Language,
+	exts []preprocessor.Extension,
+	device *device.Instance) (string, error) {
+
 	robj, err := database.Build(
 		ctx,
 		&GLSLParseResolvable{
@@ -303,7 +310,7 @@ func glslCompat(ctx context.Context, src string, lang ast.Language, device *devi
 
 	transform.apply(r.Program)
 
-	return glsl.Format(r.Program, targetGLSLVersion, nil), nil
+	return glsl.Format(r.Program, targetGLSLVersion, exts), nil
 }
 
 func isPrecision(n interface{}) bool {

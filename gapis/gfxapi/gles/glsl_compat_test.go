@@ -294,7 +294,7 @@ func TestGLSLCompat(t *testing.T) {
 				OpenGL: &device.OpenGLDriver{Version: test.target},
 			},
 		}}
-		got, err := glslCompat(ctx, test.source, test.lang, dev)
+		got, err := glslCompat(ctx, test.source, test.lang, nil, dev)
 		if err != nil {
 			t.Errorf("Test '%s' gave unexpected error: %v", test.name, err)
 			continue
