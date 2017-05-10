@@ -110,7 +110,7 @@ public class TextureView extends Composite
     this.client = client;
     this.models = models;
     this.gotoAction = new GotoAction(this, widgets.theme,
-        a -> models.atoms.selectAtoms(new AtomIndex(a, null), true));
+        a -> models.atoms.selectAtoms(AtomIndex.forCommand(a), true));
 
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);

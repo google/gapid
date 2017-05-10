@@ -216,8 +216,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     RootNode root = (RootNode)getData();
     if (index.getNode() == null) {
-      resolve(index.getCommand(),
-          (node) -> selectAtoms(new AtomIndex(index.getCommand(), node), force));
+      resolve(index.getCommand(), node -> selectAtoms(index.withNode(node), force));
     } else if (!index.getNode().getTree().equals(root.tree)) {
       // TODO
       throw new UnsupportedOperationException("This is not yet supported, needs API clarification");
@@ -348,10 +347,28 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   public static class AtomIndex implements Comparable<AtomIndex> {
     private final Path.Command command;
     private final Path.CommandTreeNode node;
+    private final boolean group;
 
-    public AtomIndex(Path.Command command, Path.CommandTreeNode node) {
+    private AtomIndex(Path.Command command, Path.CommandTreeNode node, boolean group) {
       this.command = command;
       this.node = node;
+      this.group = group;
+    }
+
+    public static AtomIndex forNode(Path.Command command, Path.CommandTreeNode node) {
+      return new AtomIndex(command, node, false);
+    }
+
+    public static AtomIndex forCommand(Path.Command command) {
+      return new AtomIndex(command, null, false);
+    }
+
+    public static AtomIndex forGroup(Path.Command command) {
+      return new AtomIndex(command, null, true);
+    }
+
+    public AtomIndex withNode(Path.CommandTreeNode newNode) {
+      return new AtomIndex(command, newNode, group);
     }
 
     public Path.Command getCommand() {
@@ -360,6 +377,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     public Path.CommandTreeNode getNode() {
       return node;
+    }
+
+    public boolean isGroup() {
+      return group;
     }
 
     @Override
@@ -436,7 +457,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     }
 
     public AtomIndex getIndex() {
-      return (data == null) ? null : new AtomIndex(lastCommand(data.getCommands()),
+      return (data == null) ? null : AtomIndex.forNode(lastCommand(data.getCommands()),
           getPath(Path.CommandTreeNode.newBuilder()).build());
     }
 

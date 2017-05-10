@@ -362,8 +362,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   @Override
   public void onAtomsSelected(AtomIndex index) {
-    selectionHandler.updateSelectionFromModel(
-        () -> getTreePath(index.getNode()).get(),
+    selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(),
         selection -> viewer.setSelection(new TreeSelection(selection), true));
   }
 
@@ -404,26 +403,32 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     */
   }
 
-  private ListenableFuture<TreePath> getTreePath(Path.CommandTreeNode path) {
-    return getTreePath(
-        models.atoms.getData(), Lists.newArrayList(), path.getIndexList().iterator());
+  private ListenableFuture<TreePath> getTreePath(AtomIndex index) {
+    return getTreePath(models.atoms.getData(), Lists.newArrayList(),
+        index.getNode().getIndexList().iterator(), index.isGroup());
   }
 
   private ListenableFuture<TreePath> getTreePath(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices, boolean group) {
     if (!indices.hasNext()) {
       return Futures.immediateFuture(new TreePath(path.toArray()));
     }
     ListenableFuture<AtomStream.Node> load = models.atoms.load(node);
-    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
-      Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+    return (load == null) ? getTreePathForLoadedNode(node, path, indices, group) :
+        Futures.transformAsync(
+            load, loaded -> getTreePathForLoadedNode(loaded, path, indices, group));
   }
 
   private ListenableFuture<TreePath> getTreePathForLoadedNode(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
-    AtomStream.Node child = node.getChild(indices.next().intValue());
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices, boolean group) {
+    int index = indices.next().intValue();
+    if (group && index == node.getChildCount() - 1) {
+      return Futures.immediateFuture(new TreePath(path.toArray()));
+    }
+
+    AtomStream.Node child = node.getChild(index);
     path.add(child);
-    return getTreePath(child, path, indices);
+    return getTreePath(child, path, indices, group);
   }
 
   /**

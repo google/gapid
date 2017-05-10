@@ -197,7 +197,7 @@ public class ThumbnailScrubber extends Composite
     List<Data> generatedList = new ArrayList<>();
     int frameCount = 0;
     while (events.hasNext()) {
-      generatedList.add(new Data(new AtomIndex(events.next().getCommand(), null), ++frameCount));
+      generatedList.add(new Data(AtomIndex.forGroup(events.next().getCommand()), ++frameCount));
     }
     return generatedList;
   }
@@ -292,10 +292,11 @@ public class ThumbnailScrubber extends Composite
     public void selectFrame(AtomIndex range) {
       int index = Collections.<Data>binarySearch(datas, null,
           (x, ignored) -> x.range.compareTo(range));
-      if (index >= 0) {
-        selectAndScroll(index);
-        repainter.repaint();
+      if (index < 0) {
+        index = -index - 1;
       }
+      selectAndScroll(index);
+      repainter.repaint();
     }
 
     public void setData(List<Data> newDatas) {
