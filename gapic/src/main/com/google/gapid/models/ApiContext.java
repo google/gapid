@@ -154,6 +154,11 @@ public class ApiContext
       }
 
       @Override
+      public Path.Report.Builder report(Path.Report.Builder path) {
+        return path;
+      }
+
+      @Override
       public String toString() {
         return "All contexts";
       }
@@ -196,6 +201,11 @@ public class ApiContext
         public Path.Events.Builder events(Path.Events.Builder path) {
           return path;
         }
+
+        @Override
+        public Path.Report.Builder report(Path.Report.Builder path) {
+          return path;
+        }
       };
     }
 
@@ -209,6 +219,11 @@ public class ApiContext
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {
+      path.getFilterBuilder().setContext(id);
+      return path;
+    }
+
+    public Path.Report.Builder report(Path.Report.Builder path) {
       path.getFilterBuilder().setContext(id);
       return path;
     }
