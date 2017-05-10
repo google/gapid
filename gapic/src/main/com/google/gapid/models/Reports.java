@@ -29,20 +29,19 @@ import java.util.logging.Logger;
 /**
  * Model containing the report details of the current capture.
  */
-public class Reports extends CaptureDependentModel.ForValue<Service.Report> {
+public class Reports extends CaptureDependentModel.ForValue<Service.Report, Reports.Listener> {
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
   private final Devices devices;
-  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
   public Reports(Shell shell, Client client, Devices devices, Capture capture) {
-    super(LOG, shell, client, capture);
+    super(LOG, shell, client, Listener.class, capture);
     this.devices = devices;
 
     devices.addListener(new Devices.Listener() {
       @Override
       public void onReplayDeviceChanged() {
-        load(getPath(capture.getCapture()));
+        load(getPath(capture.getData()), false);
       }
     });
   }
@@ -65,16 +64,13 @@ public class Reports extends CaptureDependentModel.ForValue<Service.Report> {
   }
 
   @Override
-  protected void fireLoadEvent() {
+  protected void fireLoadStartEvent() {
+    // Do nothing.
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
     listeners.fire().onReportLoaded();
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
   }
 
   public static interface Listener extends Events.Listener {

@@ -15,20 +15,23 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.UiErrorCallback.error;
+import static com.google.gapid.util.UiErrorCallback.success;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.UiErrorCallback;
+import com.google.gapid.util.UiErrorCallback.ResultOrError;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -41,29 +44,15 @@ import java.util.logging.Logger;
 /**
  * Model containing information about the currently loaded trace.
  */
-public class Capture {
-  private static final Logger LOG = Logger.getLogger(Capture.class.getName());
+public class Capture extends ModelBase<Path.Capture, File, GapisInitException, Capture.Listener> {
+  protected static final Logger LOG = Logger.getLogger(Capture.class.getName());
 
-  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private final FutureController rpcController = new SingleInFlight();
-  private final Shell shell;
-  private final Client client;
   private final Settings settings;
-  private Path.Capture path;
   private String name = "";
 
   public Capture(Shell shell, Client client, Settings settings) {
-    this.shell = shell;
-    this.client = client;
+    super(LOG, shell, client, Listener.class);
     this.settings = settings;
-  }
-
-  public boolean isLoaded() {
-    return path != null;
-  }
-
-  public Path.Capture getCapture() {
-    return path;
   }
 
   public String getName() {
@@ -72,13 +61,15 @@ public class Capture {
 
   public void loadCapture(File file) {
     LOG.log(INFO, "Loading capture " + file + "...");
-    path = null;
     name = file.getName();
-    listeners.fire().onCaptureLoadingStart(false);
+    load(file, true);
+  }
+
+  @Override
+  protected ListenableFuture<Path.Capture> doLoad(File file) {
     if (file.length() == 0) {
-      fireError(new GapisInitException(
+      return Futures.immediateFailedFuture(new GapisInitException(
           GapisInitException.MESSAGE_TRACE_FILE_EMPTY + file, "empty file"));
-      return;
     }
 
     String canonicalPath;
@@ -93,42 +84,43 @@ public class Capture {
         settings.lastOpenDir = file.getParentFile().getAbsolutePath();
       }
 
-      fireError(new GapisInitException(
+      return Futures.immediateFailedFuture(new GapisInitException(
           GapisInitException.MESSAGE_TRACE_FILE_LOAD_FAILED + file, "Loading trace failed", e));
-      return;
     }
 
     settings.addToRecent(canonicalPath);
+    return client.loadCapture(canonicalPath);
+  }
 
-    Rpc.listen(client.loadCapture(canonicalPath), rpcController,
-        new UiErrorCallback<Path.Capture, Path.Capture, GapisInitException>(shell, LOG) {
-      @Override
-      protected ResultOrError<Path.Capture, GapisInitException> onRpcThread(
-          Result<Path.Capture> result) throws RpcException, ExecutionException {
-        try {
-          Path.Capture capturePath = result.get();
-          if (capturePath == null) {
-            return error(new GapisInitException(
-                GapisInitException.MESSAGE_TRACE_FILE_BROKEN + file, "Invalid/Corrupted"));
-          } else {
-            return success(capturePath);
-          }
-        } catch (ExecutionException | RpcException e) {
-          return error(new GapisInitException(
-              GapisInitException.MESSAGE_TRACE_FILE_LOAD_FAILED + file, "Loading trace failed", e));
-        }
+  @Override
+  protected ResultOrError<Path.Capture, GapisInitException> processResult(
+      Result<Path.Capture> result) {
+    try {
+      Path.Capture capturePath = result.get();
+      if (capturePath == null) {
+        return error(new GapisInitException(
+            GapisInitException.MESSAGE_TRACE_FILE_BROKEN + getSource(), "Invalid/Corrupted"));
+      } else {
+        return success(capturePath);
       }
+    } catch (ExecutionException | RpcException e) {
+      if (e.getCause() instanceof GapisInitException) {
+        return error((GapisInitException)e.getCause());
+      }
+      return error(new GapisInitException(
+          GapisInitException.MESSAGE_TRACE_FILE_LOAD_FAILED + getSource(),
+          "Loading trace failed", e));
+    }
+  }
 
-      @Override
-      protected void onUiThreadSuccess(Path.Capture result) {
-        setCapture(result);
-      }
+  @Override
+  protected void fireLoadStartEvent() {
+    listeners.fire().onCaptureLoadingStart(false);
+  }
 
-      @Override
-      protected void onUiThreadError(GapisInitException error) {
-        fireError(error);
-      }
-    });
+  @Override
+  protected void fireLoadedEvent() {
+    listeners.fire().onCaptureLoaded(null);
   }
 
   public void saveCapture(File file) {
@@ -148,48 +140,44 @@ public class Capture {
         settings.lastOpenDir = file.getParentFile().getAbsolutePath();
       }
 
-      fireError(new GapisInitException(
+      updateError(new GapisInitException(
           GapisInitException.MESSAGE_TRACE_FILE_SAVE_FAILED + file, "Saving trace failed", e));
       return;
     }
 
     settings.addToRecent(canonicalPath);
 
-    Rpc.listen(client.exportCapture(path), rpcController,
+    Rpc.listen(client.exportCapture(getData()), rpcController,
         new UiErrorCallback<byte[], Boolean, Exception>(shell, LOG) {
-          @Override
-          protected ResultOrError<Boolean, Exception> onRpcThread(Result<byte[]> result) throws RpcException, ExecutionException {
-            try {
-              byte[] data = result.get();
-              try (FileOutputStream fos = new FileOutputStream(file)) {
-                fos.write(data);
-              }
-              return success(true);
-            } catch (ExecutionException | RpcException | IOException e) {
-              return error(e);
-            }
+      @Override
+      protected ResultOrError<Boolean, Exception> onRpcThread(Result<byte[]> result) throws RpcException, ExecutionException {
+        try {
+          byte[] data = result.get();
+          try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(data);
           }
+          return success(true);
+        } catch (ExecutionException | RpcException | IOException e) {
+          return error(e);
+        }
+      }
 
-          @Override
-          protected void onUiThreadSuccess(Boolean unused) {
-            LOG.log(INFO, "Trace saved.");
-          }
+      @Override
+      protected void onUiThreadSuccess(Boolean unused) {
+        LOG.log(INFO, "Trace saved.");
+      }
 
-          @Override
-          protected void onUiThreadError(Exception error) {
-            LOG.log(WARNING, "Couldn't save trace", error);
-          }
-        });
+      @Override
+      protected void onUiThreadError(Exception error) {
+        LOG.log(WARNING, "Couldn't save trace", error);
+      }
+    });
   }
 
-  protected void fireError(GapisInitException error) {
+  @Override
+  protected void updateError(GapisInitException error) {
     LOG.log(SEVERE, "Failed to load capture", error); // TODO show to user.
     listeners.fire().onCaptureLoaded(error);
-  }
-
-  protected void setCapture(Path.Capture path) {
-    this.path = path;
-    listeners.fire().onCaptureLoaded(null);
   }
 
   public void updateCapture(Path.Capture newPath, String newName) {
@@ -201,15 +189,7 @@ public class Capture {
       name = newName;
     }
     listeners.fire().onCaptureLoadingStart(newName == null);
-    setCapture(newPath);
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
+    updateSuccess(newPath);
   }
 
   public static interface Listener extends Events.Listener {

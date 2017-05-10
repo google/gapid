@@ -24,7 +24,6 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.Events.ListenerCollection;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -36,14 +35,13 @@ import java.util.logging.Logger;
  * Model containing the different API contexts of a capture.
  */
 public class ApiContext
-    extends CaptureDependentModel<ApiContext.FilteringContext[], List<ApiContext.IdAndContext>> {
+    extends CaptureDependentModel<ApiContext.FilteringContext[], ApiContext.Listener> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
-  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
   private FilteringContext selectedContext = FilteringContext.ALL;
 
   public ApiContext(Shell shell, Client client, Capture capture) {
-    super(LOG, shell, client, capture);
+    super(LOG, shell, client, Listener.class, capture);
   }
 
   @Override
@@ -63,19 +61,18 @@ public class ApiContext
   }
 
   @Override
-  protected ListenableFuture<List<IdAndContext>> doLoad(Path.Any path) {
-    return Futures.transformAsync(client.get(path), val -> {
+  protected ListenableFuture<FilteringContext[]> doLoad(Path.Any path) {
+    return Futures.transform(Futures.transformAsync(client.get(path), val -> {
       List<ListenableFuture<ApiContext.IdAndContext>> contexts = Lists.newArrayList();
       for (Path.Context ctx : val.getContexts().getListList()) {
         contexts.add(Futures.transform(client.get(Path.Any.newBuilder().setContext(ctx).build()),
             value -> new IdAndContext(ctx, value.getContext())));
       }
       return Futures.allAsList(contexts);
-    });
+    }), this::unbox);
   }
 
-  @Override
-  protected FilteringContext[] unbox(List<IdAndContext> contexts) {
+  private FilteringContext[] unbox(List<IdAndContext> contexts) {
     if (contexts.isEmpty()) {
       return new FilteringContext[0];
     } else if (contexts.size() == 1) {
@@ -91,7 +88,12 @@ public class ApiContext
   }
 
   @Override
-  protected void fireLoadEvent() {
+  protected void fireLoadStartEvent() {
+    // Do nothing.
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
     if (count() == 1) {
       selectedContext = getData()[0];
     } else if (selectedContext != FilteringContext.ALL) {
@@ -132,14 +134,6 @@ public class ApiContext
     }
   }
   */
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
-  }
 
   /**
    * A {@link com.google.gapid.proto.service.Service.Context} wrapper to allow filtering of the

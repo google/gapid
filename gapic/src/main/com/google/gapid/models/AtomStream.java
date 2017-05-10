@@ -30,14 +30,11 @@ import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
@@ -53,23 +50,18 @@ import java.util.logging.Logger;
 /**
  * Model containing the API commands (atoms) of the capture.
  */
-public class AtomStream implements ApiContext.Listener {
+public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStream.Listener>
+    implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
 
-  private final Shell shell;
-  private final Client client;
   private final Capture capture;
   private final ApiContext context;
   private final ConstantSets constants;
-  private final FutureController rpcController = new SingleInFlight();
-  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private RootNode root;
   private AtomIndex selection;
 
   public AtomStream(
       Shell shell, Client client, Capture capture, ApiContext context, ConstantSets constants) {
-    this.shell = shell;
-    this.client = client;
+    super(LOG, shell, client, Listener.class);
     this.capture = capture;
     this.context = context;
     this.constants = constants;
@@ -84,37 +76,15 @@ public class AtomStream implements ApiContext.Listener {
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
-    root = null;
-    listeners.fire().onAtomsLoadingStart();
-    Rpc.listen(Futures.transformAsync(client.get(commandTree(capture.getCapture(), ctx)),
+    load(commandTree(capture.getData(), ctx), false);
+  }
+
+  @Override
+  protected ListenableFuture<Node> doLoad(Path.Any path) {
+    return Futures.transformAsync(client.get(path),
         tree -> Futures.transform(client.get(Paths.any(tree.getCommandTree().getRoot())),
             val -> new RootNode(
-                tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode()))),
-        rpcController, new UiCallback<RootNode, RootNode>(shell, LOG) {
-      @Override
-      protected RootNode onRpcThread(Result<RootNode> result)
-          throws RpcException, ExecutionException {
-        return result.get();
-      }
-
-      @Override
-      protected void onUiThread(RootNode result) {
-        update(result);
-      }
-    });
-  }
-
-  protected void update(RootNode newRoot) {
-    root = newRoot;
-    listeners.fire().onAtomsLoaded();
-  }
-
-  public boolean isLoaded() {
-    return root != null;
-  }
-
-  public Node getRoot() {
-    return root;
+                tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode())));
   }
 
   public ListenableFuture<Node> load(Node node) {
@@ -147,6 +117,16 @@ public class AtomStream implements ApiContext.Listener {
         }
       });
     }
+  }
+
+  @Override
+  protected void fireLoadStartEvent() {
+    listeners.fire().onAtomsLoadingStart();
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
+    listeners.fire().onAtomsLoaded();
   }
 
   /*
@@ -234,6 +214,7 @@ public class AtomStream implements ApiContext.Listener {
       return;
     }
 
+    RootNode root = (RootNode)getData();
     if (index.getNode() == null) {
       resolve(index.getCommand(),
           (node) -> selectAtoms(new AtomIndex(index.getCommand(), node), force));
@@ -247,7 +228,7 @@ public class AtomStream implements ApiContext.Listener {
   }
 
   private void resolve(Path.Command command, Consumer<Path.CommandTreeNode> cb) {
-    Rpc.listen(client.get(commandTree(root.tree, command)),
+    Rpc.listen(client.get(commandTree(((RootNode)getData()).tree, command)),
         new UiCallback<Service.Value, Path.CommandTreeNode>(shell, LOG) {
       @Override
       protected Path.CommandTreeNode onRpcThread(Result<Value> result)
@@ -359,14 +340,6 @@ public class AtomStream implements ApiContext.Listener {
       return (read ? "Read " : "Write ") + count + " byte" + (count == 1 ? "" : "s") +
           String.format(" at 0x%016x", base);
     }
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
   }
 
   /**

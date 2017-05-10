@@ -221,7 +221,7 @@ public class StateView extends Composite
     }
 
     loading.stopLoading();
-    viewer.setInput(models.state.getRoot());
+    viewer.setInput(models.state.getData());
 
     /*
     Path.Any selection = models.state.getSelectedPath();

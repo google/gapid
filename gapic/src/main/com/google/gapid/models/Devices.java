@@ -67,7 +67,7 @@ public class Devices {
       @Override
       public void onCaptureLoaded(GapisInitException error) {
         if (error == null) {
-          loadReplayDevice(capture.getCapture());
+          loadReplayDevice(capture.getData());
         }
       }
     });

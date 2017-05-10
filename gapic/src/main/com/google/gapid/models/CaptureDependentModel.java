@@ -15,46 +15,27 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.UiErrorCallback.error;
-import static com.google.gapid.util.UiErrorCallback.success;
-import static java.util.logging.Level.SEVERE;
-
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
-import com.google.gapid.util.PathStore;
-import com.google.gapid.util.UiErrorCallback;
-import com.google.gapid.util.UiErrorCallback.ResultOrError;
+import com.google.gapid.util.Events;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
  * Base class for models that depend on a capture. I.e. models that will trigger a load whenever
  * the capture changes and require a capture to be loaded.
  */
-abstract class CaptureDependentModel<T, B> {
-  private final Logger log;
-  protected final Shell shell;
-  protected final Client client;
-  private final PathStore pathStore = new PathStore();
-  private final FutureController rpcController = new SingleInFlight();
-  private T data;
-
-  public CaptureDependentModel(Logger log, Shell shell, Client client, Capture capture) {
-    this.log = log;
-    this.shell = shell;
-    this.client = client;
+abstract class CaptureDependentModel<T, L extends Events.Listener>
+    extends ModelBase.ForPath<T, Void, L> {
+  public CaptureDependentModel(
+      Logger log, Shell shell, Client client, Class<L> listenerClass, Capture capture) {
+    super(log, shell, client, listenerClass);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -65,7 +46,7 @@ abstract class CaptureDependentModel<T, B> {
       @Override
       public void onCaptureLoaded(GapisInitException error) {
         if (error == null) {
-          load(getPath(capture.getCapture()));
+          load(getPath(capture.getData()), false);
         } else {
           reset(false);
         }
@@ -75,78 +56,25 @@ abstract class CaptureDependentModel<T, B> {
 
   protected abstract Path.Any getPath(Path.Capture capturePath);
 
-  protected void load(Path.Any path) {
-    if (pathStore.updateIfNotNull(path)) {
-      Rpc.listen(doLoad(pathStore.getPath()), rpcController,
-          new UiErrorCallback<B, T, Void>(shell, log) {
-        @Override
-        protected ResultOrError<T, Void> onRpcThread(Result<B> result) {
-          return processResult(result);
-        }
-
-        @Override
-        protected void onUiThreadSuccess(T result) {
-          update(result);
-        }
-
-        @Override
-        protected void onUiThreadError(Void error) {
-          update(null);
-        }
-      });
-    }
-  }
-
-  protected abstract ListenableFuture<B> doLoad(Path.Any path);
-
-  protected ResultOrError<T, Void> processResult(Result<B> result) {
-    try {
-      return success(unbox(result.get()));
-    } catch (RpcException | ExecutionException | IOException e) {
-      if (!shell.isDisposed()) {
-        log.log(SEVERE, "LoadData error", e);
-      }
-      return error(null);
-    }
-  }
-
-  protected abstract T unbox(B value) throws IOException;
-
   /**
    * @param maintainState whether the model should attempt to maintain its state.
    */
   protected void reset(boolean maintainState) {
-    pathStore.update(null);
-    data = null;
+    reset();
   }
 
-  protected void update(T newData) {
-    data = newData;
-    fireLoadEvent();
-  }
-
-  protected abstract void fireLoadEvent();
-
-  public boolean isLoaded() {
-    return data != null;
-  }
-
-  public Path.Any getPath() {
-    return pathStore.getPath();
-  }
-
-  public T getData() {
-    return data;
-  }
-
-  public abstract static class ForValue<T> extends CaptureDependentModel<T, Service.Value> {
-    public ForValue(Logger log, Shell shell, Client client, Capture capture) {
-      super(log, shell, client, capture);
+  public abstract static class ForValue<T, L extends Events.Listener>
+      extends CaptureDependentModel<T, L> {
+    public ForValue(
+        Logger log, Shell shell, Client client, Class<L> listenerClass, Capture capture) {
+      super(log, shell, client, listenerClass, capture);
     }
 
     @Override
-    protected ListenableFuture<Service.Value> doLoad(Path.Any path) {
-      return client.get(path);
+    protected ListenableFuture<T> doLoad(Path.Any path) {
+      return Futures.transform(client.get(path), this::unbox);
     }
+
+    protected abstract T unbox(Service.Value value);
   }
 }

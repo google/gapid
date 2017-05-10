@@ -16,25 +16,23 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.stateAfter;
+import static com.google.gapid.util.UiErrorCallback.error;
+import static com.google.gapid.util.UiErrorCallback.success;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.Events.ListenerCollection;
-import com.google.gapid.util.PathStore;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.UiCallback;
-import com.google.gapid.util.UiErrorCallback;
+import com.google.gapid.util.UiErrorCallback.ResultOrError;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -45,28 +43,22 @@ import java.util.logging.Logger;
 /**
  * Model managing the API state object of the currently selected command.
  */
-public class ApiState {
+public class ApiState
+    extends ModelBase.ForPath<ApiState.Node, DataUnavailableException, ApiState.Listener> {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
-  private final Shell shell;
-  private final Client client;
   private final ConstantSets constants;
-  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private final FutureController rpcController = new SingleInFlight();
-  private final PathStore statePath = new PathStore();
   //private final PathStore selection = new PathStore();
-  private RootNode root;
 
   public ApiState(
       Shell shell, Client client, Follower follower, AtomStream atoms, ConstantSets constants) {
-    this.shell = shell;
-    this.client = client;
+    super(LOG, shell, client, Listener.class);
     this.constants = constants;
 
     atoms.addListener(new AtomStream.Listener() {
       @Override
       public void onAtomsSelected(AtomIndex index) {
-        loadState(index);
+        load(stateAfter(index), false);
       }
     });
     follower.addListener(new Follower.Listener() {
@@ -77,55 +69,42 @@ public class ApiState {
     });
   }
 
-  protected void loadState(AtomIndex index) {
-    if (statePath.updateIfNotNull(stateAfter(index))) {
-      // we are making a request for a new state, this means our current state is old and irrelevant
-      root = null;
-      listeners.fire().onStateLoadingStart();
-      Rpc.listen(Futures.transformAsync(client.get(statePath.getPath()),
-          tree -> Futures.transform(client.get(Paths.any(tree.getStateTree().getRoot())),
-              val -> new RootNode(
-                  tree.getStateTree().getRoot().getTree(), val.getStateTreeNode()))),
-          rpcController,
-          new UiErrorCallback<RootNode, RootNode, DataUnavailableException>(shell, LOG) {
-        @Override
-        protected ResultOrError<RootNode, DataUnavailableException> onRpcThread(
-            Rpc.Result<RootNode> result) throws RpcException, ExecutionException {
-          try {
-            return success(result.get());
-          } catch (DataUnavailableException e) {
-            return error(e);
-          }
-        }
+  @Override
+  protected ListenableFuture<Node> doLoad(Path.Any path) {
+    return Futures.transformAsync(client.get(path),
+        tree -> Futures.transform(client.get(Paths.any(tree.getStateTree().getRoot())),
+            val -> new RootNode(
+                tree.getStateTree().getRoot().getTree(), val.getStateTreeNode())));
+  }
 
-        @Override
-        protected void onUiThreadSuccess(RootNode result) {
-          update(result);
-        }
-
-        @Override
-        protected void onUiThreadError(DataUnavailableException error) {
-          update(error);
-        }
-      });
+  @Override
+  protected ResultOrError<Node, DataUnavailableException> processResult(Result<Node> result) {
+    try {
+      return success(result.get());
+    } catch (DataUnavailableException e) {
+      return error(e);
+    } catch (RpcException | ExecutionException e) {
+      return super.processResult(result);
     }
   }
 
-  protected void update(RootNode newRoot) {
-    root = newRoot;
+  @Override
+  protected void updateError(DataUnavailableException error) {
+    if (error != null) {
+      listeners.fire().onStateLoaded(error);
+    } else {
+      super.updateError(error);
+    }
+  }
+
+  @Override
+  protected void fireLoadStartEvent() {
+    listeners.fire().onStateLoadingStart();
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
     listeners.fire().onStateLoaded(null);
-  }
-
-  protected void update(DataUnavailableException error) {
-    listeners.fire().onStateLoaded(error);
-  }
-
-  public boolean isLoaded() {
-    return root != null;
-  }
-
-  public Node getRoot() {
-    return root;
   }
 
   public ListenableFuture<Node> load(Node node) {
@@ -164,14 +143,6 @@ public class ApiState {
     }
   }
   */
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
-  }
 
   public static class Node {
     private final Node parent;

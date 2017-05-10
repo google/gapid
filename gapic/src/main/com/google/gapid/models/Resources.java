@@ -23,20 +23,18 @@ import com.google.gapid.util.Events;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
 /**
  * Model containing the capture resources (textures, shaders, etc.) metadata.
  */
-public class Resources extends CaptureDependentModel.ForValue<Service.Resources> {
+public class Resources
+    extends CaptureDependentModel.ForValue<Service.Resources, Resources.Listener> {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
-  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-
   public Resources(Shell shell, Client client, Capture capture) {
-    super(LOG, shell, client, capture);
+    super(LOG, shell, client, Listener.class, capture);
   }
 
   @Override
@@ -48,25 +46,22 @@ public class Resources extends CaptureDependentModel.ForValue<Service.Resources>
   }
 
   @Override
-  protected Service.Resources unbox(Service.Value value) throws IOException {
+  protected Service.Resources unbox(Service.Value value) {
     return value.getResources();
   }
 
   @Override
-  protected void fireLoadEvent() {
+  protected void fireLoadStartEvent() {
+    // Do nothing.
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
     listeners.fire().onResourcesLoaded();
   }
 
   public List<ResourcesByType> getResources() {
     return getData().getTypesList();
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
   }
 
   public static interface Listener extends Events.Listener {
