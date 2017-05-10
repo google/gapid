@@ -102,7 +102,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
     viewer.getTree().addListener(SWT.MouseDown, e -> {
       Path.Command command = (Path.Command)labelProvider.getFollow(new Point(e.x, e.y));
       if (command != null) {
-        models.atoms.selectAtoms(new AtomIndex(command, null), true);
+        models.atoms.selectAtoms(AtomIndex.forCommand(command), true);
       }
     });
     viewer.getTree().addListener(SWT.Selection, e -> {

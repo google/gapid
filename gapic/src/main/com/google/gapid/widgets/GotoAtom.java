@@ -45,10 +45,10 @@ public class GotoAtom {
   public static void showGotoAtomDialog(Shell shell, Path.Capture capture, AtomStream atoms) {
     GotoDialog dialog = new GotoDialog(shell, atoms);
     if (dialog.open() == Window.OK) {
-      atoms.selectAtoms(new AtomStream.AtomIndex(Path.Command.newBuilder()
+      atoms.selectAtoms(AtomIndex.forCommand(Path.Command.newBuilder()
           .addIndex(dialog.value)
           .setCapture(capture)
-          .build(), null), true);
+          .build()), true);
     }
   }
 
