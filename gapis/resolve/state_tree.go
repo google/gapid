@@ -81,7 +81,7 @@ func (t stateTree) subrange(size, idx uint64) (i, j uint64, name string) {
 }
 
 func deref(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+	for (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && !v.IsNil() {
 		v = v.Elem()
 	}
 	return v
@@ -255,6 +255,9 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 		}
 		return box.NewValue(v.Interface()), true
 	case reflect.Interface, reflect.Ptr:
+		if v.IsNil() {
+			return box.NewValue(v.Interface()), true
+		}
 		return stateValuePreview(v.Elem())
 	default:
 		return nil, false

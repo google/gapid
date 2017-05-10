@@ -379,7 +379,7 @@ public class Formatter {
     switch (ref.getValCase()) {
       case NULL:
         ctx.unbox(ref.getNull());
-        string.append("NULL", style);
+        string.append("(nil)", string.structureStyle());
         break;
       case VALUE:
         format(ref.getValue(), ctx, string, style);
