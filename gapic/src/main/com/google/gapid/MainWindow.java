@@ -310,7 +310,8 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createGotoMenu() {
     MenuManager manager = new MenuManager("&Goto");
-    gotoAtom = MenuItems.GotoAtom.create(() -> showGotoAtomDialog(getShell(), models().capture.getCapture(), models().atoms));
+    gotoAtom = MenuItems.GotoAtom.create(() ->
+        showGotoAtomDialog(getShell(), models().capture.getData(), models().atoms));
     gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models()));
 
     manager.add(gotoAtom);

@@ -15,34 +15,34 @@
  */
 package com.google.gapid.util;
 
-import com.google.gapid.proto.service.path.Path;
+import java.util.Objects;
 
 /**
- * Contains a mutable path reference.
+ * Contains a mutable reference.
  */
-public class PathStore {
-  private Path.Any path;
+public class ObjectStore<T> {
+  private T value;
 
-  public boolean update(Path.Any newPath) {
-    if (is(newPath)) {
+  public boolean update(T newValue) {
+    if (is(newValue)) {
       return false;
     }
-    path = newPath;
+    value = newValue;
     return true;
   }
 
   /**
-   * Same as {@link #update(Path.Any)}, but ignores passed null values.
+   * Same as {@link #update(Object)}, but ignores passed null values.
    */
-  public boolean updateIfNotNull(Path.Any newPath) {
-    return newPath != null && update(newPath);
+  public boolean updateIfNotNull(T newValue) {
+    return newValue != null && update(newValue);
   }
 
-  public Path.Any getPath() {
-    return path;
+  public T get() {
+    return value;
   }
 
-  public boolean is(Path.Any otherPath) {
-    return (path == null) ? otherPath == null : path.equals(otherPath);
+  public boolean is(T otherValue) {
+    return Objects.equals(value, otherValue);
   }
 }

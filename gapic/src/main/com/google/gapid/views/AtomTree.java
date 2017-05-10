@@ -393,7 +393,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     loading.stopLoading();
-    viewer.setInput(models.atoms.getRoot());
+    viewer.setInput(models.atoms.getData());
     viewer.getTree().setSelection(viewer.getTree().getItem(0));
     viewer.getTree().showSelection();
 
@@ -406,7 +406,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private ListenableFuture<TreePath> getTreePath(Path.CommandTreeNode path) {
     return getTreePath(
-        models.atoms.getRoot(), Lists.newArrayList(), path.getIndexList().iterator());
+        models.atoms.getData(), Lists.newArrayList(), path.getIndexList().iterator());
   }
 
   private ListenableFuture<TreePath> getTreePath(

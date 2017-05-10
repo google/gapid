@@ -15,39 +15,32 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.Paths.events;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.proto.service.Service.Event;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.Paths;
-import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
-public class Timeline implements ApiContext.Listener {
+public class Timeline extends ModelBase.ForPath<List<Service.Event>, Void, Timeline.Listener>
+    implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(Timeline.class.getName());
 
-  private final Shell shell;
-  private final Client client;
   private final Capture capture;
   private final ApiContext context;
-  private final FutureController rpcController = new SingleInFlight();
-  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private List<Service.Event> events;
 
   public Timeline(Shell shell, Client client, Capture capture, ApiContext context) {
-    this.shell = shell;
-    this.client = client;
+    super(LOG, shell, client, Listener.class);
     this.capture = capture;
     this.context = context;
 
@@ -61,44 +54,28 @@ public class Timeline implements ApiContext.Listener {
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
-    events = null;
-    listeners.fire().onTimeLineLoadingStart();
-    Rpc.listen(client.get(Paths.events(capture.getCapture(), ctx)), rpcController,
-        new UiCallback<Service.Value, List<Service.Event>>(shell, LOG) {
-      @Override
-      protected List<Service.Event> onRpcThread(Result<Service.Value> result)
-          throws RpcException, ExecutionException {
-        return result.get().getEvents().getListList();
-      }
-
-      @Override
-      protected void onUiThread(List<Service.Event> result) {
-        update(result);
-      }
-    });
+    load(events(capture.getData(), ctx), false);
   }
 
-  protected void update(List<Service.Event> newEvents) {
-    events = newEvents;
+  @Override
+  protected ListenableFuture<List<Event>> doLoad(Path.Any path) {
+    return Futures.transform(client.get(path), v -> v.getEvents().getListList());
+  }
+
+  @Override
+  protected void fireLoadStartEvent() {
+    listeners.fire().onTimeLineLoadingStart();
+  }
+
+  @Override
+  protected void fireLoadedEvent() {
     listeners.fire().onTimeLineLoaded();
   }
 
-  public boolean isLoaded() {
-    return events != null;
-  }
-
   public Iterator<Service.Event> getEndOfFrames() {
-    return events.stream()
+    return getData().stream()
         .filter(e -> e.getKind() == Service.EventKind.LastInFrame)
         .iterator();
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
   }
 
   public static interface Listener extends Events.Listener {
