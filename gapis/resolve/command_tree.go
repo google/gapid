@@ -61,9 +61,9 @@ func (t *commandTree) indices(id atom.ID) []uint64 {
 	group := t.root
 	for {
 		i := group.IndexOf(id)
+		out = append(out, i)
 		switch item := group.Index(i).(type) {
 		case atom.Group:
-			out = append(out, i)
 			group = item
 		default:
 			return out
