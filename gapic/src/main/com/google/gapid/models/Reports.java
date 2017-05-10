@@ -15,9 +15,11 @@
  */
 package com.google.gapid.models;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Report;
-import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -29,43 +31,56 @@ import java.util.logging.Logger;
 /**
  * Model containing the report details of the current capture.
  */
-public class Reports extends CaptureDependentModel.ForValue<Service.Report, Reports.Listener> {
+public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Listener> {
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
   private final Devices devices;
 
-  public Reports(Shell shell, Client client, Devices devices, Capture capture) {
-    super(LOG, shell, client, Listener.class, capture);
+  public Reports(Shell shell, Client client, Capture capture, Devices devices, ApiContext context) {
+    super(LOG, shell, client, Listener.class);
     this.devices = devices;
 
     devices.addListener(new Devices.Listener() {
       @Override
       public void onReplayDeviceChanged() {
-        load(getPath(capture.getData()), false);
+        if (context.isLoaded()) {
+          load(getPath(capture.getData(), context.getSelectedContext()), false);
+        }
+      }
+    });
+
+    context.addListener(new ApiContext.Listener() {
+      @Override
+      public void onContextsLoaded() {
+        onContextSelected(context.getSelectedContext());
+      }
+
+      @Override
+      public void onContextSelected(FilteringContext ctx) {
+        load(getPath(capture.getData(), ctx), false);
       }
     });
   }
 
-  @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
+  protected Path.Any getPath(Path.Capture capturePath, FilteringContext context) {
     if (!devices.hasReplayDevice()) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setReport(Path.Report.newBuilder()
+        .setReport(context.report(Path.Report.newBuilder())
             .setCapture(capturePath)
             .setDevice(devices.getReplayDevice()))
         .build();
   }
 
   @Override
-  protected Report unbox(Value value) {
-    return value.getReport();
+  protected ListenableFuture<Report> doLoad(Path.Any source) {
+    return Futures.transform(client.get(source), Service.Value::getReport);
   }
 
   @Override
   protected void fireLoadStartEvent() {
-    // Do nothing.
+    listeners.fire().onReportLoadingStart();
   }
 
   @Override
@@ -74,6 +89,11 @@ public class Reports extends CaptureDependentModel.ForValue<Service.Report, Repo
   }
 
   public static interface Listener extends Events.Listener {
+    /**
+     * Event indicating that the report items are being loaded.
+     */
+    public default void onReportLoadingStart() { /* empty */ }
+
     /**
      * Event indicating that the report items have been loaded.
      */

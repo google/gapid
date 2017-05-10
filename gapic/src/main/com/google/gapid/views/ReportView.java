@@ -24,8 +24,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
 import com.google.gapid.Server.GapisInitException;
-import com.google.gapid.models.ApiContext;
-import com.google.gapid.models.ApiContext.FilteringContext;
+import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
@@ -35,6 +34,7 @@ import com.google.gapid.proto.service.Service.MsgRef;
 import com.google.gapid.proto.service.Service.Report;
 import com.google.gapid.proto.service.Service.ReportGroup;
 import com.google.gapid.proto.service.Service.ReportItem;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.views.Formatter.StylingString;
@@ -63,8 +63,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * View that shows the capture report items in a tree.
  */
-public class ReportView extends Composite
-    implements Tab, Capture.Listener, ApiContext.Listener, Reports.Listener {
+public class ReportView extends Composite implements Tab, Capture.Listener, Reports.Listener {
   private final Models models;
   private final MessageProvider messages = new MessageProvider();
   private final LoadablePanel<SashForm> loading;
@@ -90,11 +89,9 @@ public class ReportView extends Composite
     splitter.setWeights(models.settings.reportSplitterWeights);
 
     models.capture.addListener(this);
-    models.contexts.addListener(this);
     models.reports.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.contexts.removeListener(this);
       models.reports.removeListener(this);
     });
 
@@ -103,9 +100,9 @@ public class ReportView extends Composite
       setCursor((follow == null) ? null : e.display.getSystemCursor(SWT.CURSOR_HAND));
     });
     viewer.getTree().addListener(SWT.MouseDown, e -> {
-      Long atomId = (Long)labelProvider.getFollow(new Point(e.x, e.y));
-      if (atomId != null) {
-        //models.atoms.selectAtoms(atomId, 1, true);
+      Path.Command command = (Path.Command)labelProvider.getFollow(new Point(e.x, e.y));
+      if (command != null) {
+        models.atoms.selectAtoms(new AtomIndex(command, null), true);
       }
     });
     viewer.getTree().addListener(SWT.Selection, e -> {
@@ -131,7 +128,7 @@ public class ReportView extends Composite
   @Override
   public void reinitialize() {
     onCaptureLoadingStart(false);
-    updateReport();
+    onReportLoaded();
   }
 
   @Override
@@ -147,18 +144,14 @@ public class ReportView extends Composite
   }
 
   @Override
-  public void onContextsLoaded() {
-    updateReport();
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext context) {
-    updateReport();
+  public void onReportLoadingStart() {
+    loading.startLoading();
   }
 
   @Override
   public void onReportLoaded() {
     messages.clear();
+    reportDetails.setText("");
     if (models.reports.isLoaded()) {
       updateReport();
     } else {
@@ -167,31 +160,9 @@ public class ReportView extends Composite
   }
 
   private void updateReport() {
-    if (models.reports.isLoaded()) {
-      loading.stopLoading();
-      viewer.setInput(filter(models.reports.getData()));
-      viewer.setSelection(new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
-    }
-  }
-
-  private Service.Report filter(Service.Report report) {
-    FilteringContext context = models.contexts.getSelectedContext();
-    if (context == FilteringContext.ALL) {
-      return report;
-    }
-
-    Service.Report.Builder result = report.toBuilder();
-    for (int i = report.getGroupsCount() - 1; i >= 0; i--) {
-      for (int item : report.getGroups(i).getItemsList()) {
-        /*
-        if (!context.contains(report.getItems(item).getCommand())) {
-          result.removeGroups(i);
-          break;
-        }
-        */
-      }
-    }
-    return result.build();
+    loading.stopLoading();
+    viewer.setInput(models.reports.getData());
+    viewer.setSelection(new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
   }
 
   /**
