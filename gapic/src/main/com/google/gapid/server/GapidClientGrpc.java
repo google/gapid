@@ -132,24 +132,44 @@ public class GapidClientGrpc implements GapidClient {
 
   @Override
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
-    SettableFuture<Void> result = SettableFuture.create();
-    stub.getLogStream(
-        Service.GetLogStreamRequest.getDefaultInstance(), new StreamObserver<Log.Message>() {
-      @Override
-      public void onNext(Log.Message value) {
-        onLogMessage.accept(value);
-      }
+    StreamHandler<Log.Message> handler = StreamHandler.wrap(onLogMessage);
+    stub.getLogStream(Service.GetLogStreamRequest.getDefaultInstance(), handler);
+    return handler.future;
+  }
 
-      @Override
-      public void onCompleted() {
-        result.set(null);
-      }
+  @Override
+  public ListenableFuture<Void> streamSearch(
+      Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
+    StreamHandler<Service.FindResponse> handler= StreamHandler.wrap(onResult);
+    stub.find(request, handler);
+    return handler.future;
+  }
 
-      @Override
-      public void onError(Throwable t) {
-        result.setException(t);
-      }
-    });
-    return result;
+  private static class StreamHandler<T> implements StreamObserver<T> {
+    public final SettableFuture<Void> future = SettableFuture.create();
+    private final Consumer<T> consumer;
+
+    private StreamHandler(Consumer<T> consumer) {
+      this.consumer = consumer;
+    }
+
+    public static <T> StreamHandler<T> wrap(Consumer<T> consumer) {
+      return new StreamHandler<T>(consumer);
+    }
+
+    @Override
+    public void onNext(T value) {
+      consumer.accept(value);
+    }
+
+    @Override
+    public void onCompleted() {
+      future.set(null);
+    }
+
+    @Override
+    public void onError(Throwable t) {
+      future.setException(t);
+    }
   }
 }

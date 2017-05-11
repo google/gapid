@@ -168,6 +168,12 @@ public class Client {
     return client.streamLog(onLogMessage);
   }
 
+  public ListenableFuture<Void> streamSearch(
+      Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
+    LOG.log(FINE, "RPC->find({0})", request);
+    return client.streamSearch(request, onResult);
+  }
+
   private static <V> V throwIfError(V value, Service.Error err) throws RpcException {
     switch (err.getErrCase()) {
       case ERR_NOT_SET:

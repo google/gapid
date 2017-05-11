@@ -281,6 +281,10 @@ message FindRequest {
   string text = 3;
   // If true then text should be treated as a regular expression.
   bool is_regex = 4;
+  // If true the search should be case sensitive.
+  bool is_case_sensitive = 7;
+  // If true, the search will wrap.
+  bool wrap = 8;
 }
 
 message FindResponse {

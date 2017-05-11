@@ -37,13 +37,22 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpclib.futures.FutureController;
+import com.google.gapid.rpclib.futures.SingleInFlight;
+import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.Rpc.Result;
+import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.server.Client;
+import com.google.gapid.util.Events;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
+import com.google.gapid.util.UiCallback;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.Balloon;
 import com.google.gapid.widgets.CopySources;
@@ -80,6 +89,7 @@ import org.eclipse.swt.widgets.TreeItem;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -92,14 +102,17 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
   private static final int PREVIEW_HOVER_DELAY_MS = 500;
 
+  private final Client client;
   private final Models models;
   private final LoadablePanel<Tree> loading;
   private final TreeViewer viewer;
   private final ImageProvider imageProvider;
   private final SelectionHandler<Tree> selectionHandler;
+  private final FutureController searchController = new SingleInFlight();
 
-  public AtomTree(Composite parent, Models models, Widgets widgets) {
+  public AtomTree(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
+    this.client = client;
     this.models = models;
 
     setLayout(new GridLayout(1, false));
@@ -130,7 +143,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       imageProvider.reset();
     });
 
-    //search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
+    search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
 
     selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
       @Override
@@ -304,34 +317,42 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     });
   }
 
-  /*
   private void search(String text, boolean regex) {
-    if (root != null && !text.isEmpty()) {
-      FilteredGroup parent = root;
-      Object start = null;
+    AtomStream.Node parent = models.atoms.getData();
+    if (parent != null && !text.isEmpty()) {
       if (viewer.getTree().getSelectionCount() >= 1) {
-        start = viewer.getTree().getSelection()[0].getData();
-        if (start instanceof FilteredGroup) {
-          parent = ((FilteredGroup)start).parent;
-        } else if (start instanceof AtomNode) {
-          parent = ((AtomNode)start).parent;
-        } else {
-          return;
-        }
+        parent = (AtomStream.Node)viewer.getTree().getSelection()[0].getData();
       }
-
-      Pattern pattern = SearchBox.getPattern(text, regex);
-      CommandRange range = parent.search(pattern, start, start instanceof AtomNode, true);
-      if (range == null && (parent != root || start != null)) {
-        range = root.search(pattern, null, false, false);
-      }
-
-      if (range != null) {
-        models.atoms.selectAtoms(range, true);
-      }
+      client.streamSearch(Service.FindRequest.newBuilder()
+          .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
+          .setText(text)
+          .setIsRegex(regex)
+          .setMaxItems(1)
+          .setWrap(true)
+          .build(), this::processSearchResult);
     }
   }
-  */
+
+  private void processSearchResult(Service.FindResponse found) {
+    ListenableFuture<TreePath> path = getTreePath(models.atoms.getData(), Lists.newArrayList(),
+        found.getCommandTreeNode().getIndexList().iterator(), false);
+    Rpc.listen(path, searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
+      @Override
+      protected TreePath onRpcThread(Result<TreePath> result)
+          throws RpcException, ExecutionException {
+        return result.get();
+      }
+
+      @Override
+      protected void onUiThread(TreePath result) {
+        select(result);
+      }
+    });
+  }
+
+  protected void select(TreePath path) {
+    models.atoms.selectAtoms(((AtomStream.Node)path.getLastSegment()).getIndex(), true);
+  }
 
   @Override
   public Control getControl() {
@@ -410,10 +431,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private ListenableFuture<TreePath> getTreePath(
       AtomStream.Node node, List<Object> path, Iterator<Long> indices, boolean group) {
-    if (!indices.hasNext()) {
-      return Futures.immediateFuture(new TreePath(path.toArray()));
-    }
     ListenableFuture<AtomStream.Node> load = models.atoms.load(node);
+    if (!indices.hasNext()) {
+      TreePath result = new TreePath(path.toArray());
+      // Ensure the last node in the path is loaded.
+      return (load == null) ? Futures.immediateFuture(result) :
+          Futures.transform(load, ignored -> result);
+    }
     return (load == null) ? getTreePathForLoadedNode(node, path, indices, group) :
         Futures.transformAsync(
             load, loaded -> getTreePathForLoadedNode(loaded, path, indices, group));

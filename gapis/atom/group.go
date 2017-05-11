@@ -446,7 +446,9 @@ func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) err
 			// Group is not the deepest.
 			// Search after / before the index that passes through this group.
 			if backwards {
-				err = g.IterateBackwards(indices[i]-1, t.visit)
+				if indices[i] > 0 {
+					err = g.IterateBackwards(indices[i]-1, t.visit)
+				}
 			} else {
 				err = g.IterateForwards(indices[i]+1, t.visit)
 			}
