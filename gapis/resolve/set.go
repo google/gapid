@@ -87,14 +87,17 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		if err := meta.Resource.SetResourceData(ctx, p.After, val, meta.IDMap, replaceAtoms); err != nil {
 			return nil, err
 		}
-		commands, err := change(ctx, p.After.Capture.Commands(), list)
+
+		// Store the new atom list
+		c, err := changeAtoms(ctx, p.After.Capture, list.Atoms)
 		if err != nil {
 			return nil, err
 		}
+
 		return &path.ResourceData{
 			Id: p.Id, // TODO: Shouldn't this change?
 			After: &path.Command{
-				Capture: commands.(*path.Commands).Capture,
+				Capture: c,
 				Index:   p.After.Index,
 			},
 		}, nil
