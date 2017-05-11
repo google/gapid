@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -31,17 +32,31 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+const (
+	stop = fault.Const("stop")
+)
+
 // Find performs a search using req and calling handler for each result.
 func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) error {
 	var pred func(s string) bool
+	text := req.Text
+	if !req.IsCaseSensitive {
+		text = strings.ToLower(text)
+	}
 	if req.IsRegex {
-		re, err := regexp.Compile(req.Text)
+		re, err := regexp.Compile(text)
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't compile regular expression")
 		}
-		pred = re.MatchString
+		if req.IsCaseSensitive {
+			pred = re.MatchString
+		} else {
+			pred = func(s string) bool { return re.MatchString(strings.ToLower(s)) }
+		}
+	} else if req.IsCaseSensitive {
+		pred = func(s string) bool { return strings.Contains(s, text) }
 	} else {
-		pred = func(s string) bool { return strings.Contains(s, req.Text) }
+		pred = func(s string) bool { return strings.Contains(strings.ToLower(s), text) }
 	}
 
 	switch from := protoutil.OneOf(req.From).(type) {
@@ -61,37 +76,28 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			return err
 		}
 
-		const stop = fault.Const("stop")
-		count := uint32(0)
-		cb := func(indices []uint64, item atom.GroupOrID) error {
-			var text string
+		nodePred := func(item atom.GroupOrID) bool {
 			switch item := item.(type) {
 			case atom.Group:
-				text = item.Name
+				return pred(item.Name)
 			case atom.ID:
-				text = fmt.Sprint(c.Atoms[item])
+				return pred(fmt.Sprint(c.Atoms[item]))
+			default:
+				return false
 			}
-			if !pred(text) {
-				return nil
-			}
-			err := h(&service.FindResponse{
-				Result: &service.FindResponse_CommandTreeNode{
-					CommandTreeNode: &path.CommandTreeNode{
-						Tree:  from.Tree,
-						Index: indices,
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-			count++
-			if req.MaxItems != 0 && count > req.MaxItems {
-				return stop
-			}
-			return task.StopReason(ctx)
 		}
-		err = cmdTree.root.Traverse(req.Backwards, from.Index, cb)
+
+		emitter := &commandEmitter{ctx, req, from, h, 0, nodePred, false, true}
+		err = cmdTree.root.Traverse(req.Backwards, from.Index, emitter.process)
+		if err == nil && req.Wrap && len(from.Index) > 0 {
+			var start []uint64 = nil
+			if req.Backwards {
+				start = []uint64{cmdTree.root.Count() - 1}
+			}
+			emitter.wrapping = true
+			err = cmdTree.root.Traverse(req.Backwards, start, emitter.process)
+		}
+
 		switch err {
 		case nil, stop:
 			return nil
@@ -104,4 +110,60 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 	default:
 		return fmt.Errorf("Unsupported FindRequest.From type %T", from)
 	}
+}
+
+type commandEmitter struct {
+	ctx context.Context
+	req *service.FindRequest
+	from *path.CommandTreeNode
+	h service.FindHandler
+	count uint32
+	pred func(item atom.GroupOrID) bool
+	wrapping bool
+	first bool
+}
+
+func (c *commandEmitter) process(indices []uint64, item atom.GroupOrID) error {
+	// Skip the first item if we're not doing the wrapped search.
+	if !c.wrapping && c.first {
+		if reflect.DeepEqual(c.from.Index, indices) {
+			return task.StopReason(c.ctx)
+		}
+		c.first = false
+	}
+
+	if c.pred(item) {
+		if err := c.emit(indices); err != nil {
+			return err
+		}
+	}
+
+	if c.shouldStop(indices) {
+		return stop
+	}
+	return task.StopReason(c.ctx)
+}
+
+func (c *commandEmitter) emit(indices []uint64) error {
+	err := c.h(&service.FindResponse{
+		Result: &service.FindResponse_CommandTreeNode{
+			CommandTreeNode: &path.CommandTreeNode{
+				Tree:  c.from.Tree,
+				Index: indices,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	c.count++
+	if c.req.MaxItems != 0 && c.count >= c.req.MaxItems {
+		return stop
+	}
+	return nil
+}
+
+func (c *commandEmitter) shouldStop(indices []uint64) bool {
+	// Stop searching if we're wrapping and have arrived back where we started.
+	return c.wrapping && reflect.DeepEqual(c.from.Index, indices)
 }

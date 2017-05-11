@@ -507,7 +507,7 @@ public class MainWindow extends ApplicationWindow {
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(Location.Left, "Commands", (p, c, m, w) -> new AtomTree(p, m, w)),
+      ApiCalls(Location.Left, "Commands", AtomTree::new),
 
       Framebuffer(Location.Center, "Framebuffer", FramebufferView::new),
       Textures(Location.Center, "Textures", TextureView::new),
