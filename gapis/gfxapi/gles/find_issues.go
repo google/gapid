@@ -189,10 +189,10 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		}
 
 	case *GlCompileShader:
-		const buflen = 2048
+		const buflen = 8192
 		tmp := atom.Must(atom.Alloc(ctx, t.state, buflen))
 
-		infoLog := make([]byte, 2048)
+		infoLog := make([]byte, buflen)
 		out.MutateAndWrite(ctx, dID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
@@ -206,7 +206,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			return nil
 		}))
 
-		source := make([]byte, 2048)
+		source := make([]byte, buflen)
 		out.MutateAndWrite(ctx, dID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
