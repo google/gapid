@@ -16,18 +16,25 @@
 package com.google.gapid.server;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.GapidGrpc;
-import com.google.gapid.proto.service.GapidGrpc.GapidFutureStub;
 import com.google.gapid.proto.service.Service;
+
+import java.util.function.Consumer;
+
+import io.grpc.stub.StreamObserver;
 
 /**
  * A {@link GapidClient} based on a gRPC service.
  */
 public class GapidClientGrpc implements GapidClient {
   private final GapidGrpc.GapidFutureStub client;
+  private final GapidGrpc.GapidStub stub;
 
-  public GapidClientGrpc(GapidFutureStub client) {
+  public GapidClientGrpc(GapidGrpc.GapidFutureStub client, GapidGrpc.GapidStub stub) {
     this.client = client;
+    this.stub = stub;
   }
 
   @Override
@@ -121,5 +128,28 @@ public class GapidClientGrpc implements GapidClient {
   public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
       Service.GetFramebufferAttachmentRequest request) {
     return client.getFramebufferAttachment(request);
+  }
+
+  @Override
+  public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
+    SettableFuture<Void> result = SettableFuture.create();
+    stub.getLogStream(
+        Service.GetLogStreamRequest.getDefaultInstance(), new StreamObserver<Log.Message>() {
+      @Override
+      public void onNext(Log.Message value) {
+        onLogMessage.accept(value);
+      }
+
+      @Override
+      public void onCompleted() {
+        result.set(null);
+      }
+
+      @Override
+      public void onError(Throwable t) {
+        result.setException(t);
+      }
+    });
+    return result;
   }
 }

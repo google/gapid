@@ -22,14 +22,11 @@ import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.models.Info;
 import com.google.gapid.models.Strings;
-import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
-import com.google.gapid.server.GapidClientCache;
-import com.google.gapid.server.GapidClientGrpc;
 import com.google.gapid.server.GapisConnection;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.server.Version;
@@ -73,7 +70,7 @@ public class Server {
       status = "fetch string table";
       fetchStringTable();
       status = "monitoring logs";
-      monitorLogs();
+      client.streamLog(Logging::logMessage);
     } catch (ExecutionException | RpcException | TimeoutException e) {
       throw new GapisInitException(GapisInitException.MESSAGE_FAILED_INIT, "Failed to " + status, e);
     }
@@ -97,13 +94,10 @@ public class Server {
     }
     gapisConnection = connection;
     try {
-      GapidGrpc.GapidFutureStub service = connection.createGapidClient();
-      if (useCache.get()) {
-        client = new Client(new GapidClientCache(service));
-      } else {
+      if (!useCache.get()) {
         LOG.log(WARNING, "** Not using caching in the UI, this is only meant for testing. **");
-        client = new Client(new GapidClientGrpc(service));
       }
+      client = new Client(connection.createGapidClient(useCache.get()));
     } catch (IOException e) {
       throw new GapisInitException(
           GapisInitException.MESSAGE_FAILED_CONNECT, "unable to create client", e);
@@ -148,10 +142,6 @@ public class Server {
     Stringtable.StringTable table =
         Rpc.get(client.getStringTable(info), FETCH_STRING_TABLE_TIMEOUT_MS, MILLISECONDS);
     Strings.setCurrent(table);
-  }
-
-  private void monitorLogs() {
-    gapisConnection.setLogMonitor(Logging::logMessage);
   }
 
   /**

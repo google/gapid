@@ -16,7 +16,10 @@
 package com.google.gapid.server;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
+
+import java.util.function.Consumer;
 
 /**
  * The public API to communicate with the server.
@@ -49,4 +52,6 @@ public interface GapidClient {
       Service.GetDevicesForReplayRequest request);
   public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
       Service.GetFramebufferAttachmentRequest request);
+
+  public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
 }

@@ -20,6 +20,7 @@ import static java.util.logging.Level.FINE;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Strings;
+import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
@@ -43,6 +44,7 @@ import com.google.gapid.util.Paths;
 import com.google.protobuf.ByteString;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
@@ -159,6 +161,11 @@ public class Client {
             .build()),
         in -> Futures.immediateFuture(throwIfError(in.getImage(), in.getError()))
     );
+  }
+
+  public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
+    LOG.log(FINE, "RPC->getLogStream()");
+    return client.streamLog(onLogMessage);
   }
 
   private static <V> V throwIfError(V value, Service.Error err) throws RpcException {
