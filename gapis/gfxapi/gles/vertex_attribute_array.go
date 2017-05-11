@@ -19,23 +19,18 @@ import "fmt"
 // DataTypeSize returns the size in bytes of the the specified data type.
 func DataTypeSize(t GLenum) int {
 	switch t {
-	case GLenum_GL_BYTE:
+	case GLenum_GL_BYTE,
+		GLenum_GL_UNSIGNED_BYTE:
 		return 1
-	case GLenum_GL_UNSIGNED_BYTE:
-		return 1
-	case GLenum_GL_SHORT:
+	case GLenum_GL_SHORT,
+		GLenum_GL_UNSIGNED_SHORT,
+		GLenum_GL_HALF_FLOAT_ARB,
+		GLenum_GL_HALF_FLOAT_OES:
 		return 2
-	case GLenum_GL_UNSIGNED_SHORT:
-		return 2
-	case GLenum_GL_HALF_FLOAT_ARB:
-		return 2
-	case GLenum_GL_HALF_FLOAT_OES:
-		return 2
-	case GLenum_GL_FIXED:
-		return 4
-	case GLenum_GL_FLOAT:
-		return 4
-	case GLenum_GL_UNSIGNED_INT:
+	case GLenum_GL_FIXED,
+		GLenum_GL_FLOAT,
+		GLenum_GL_UNSIGNED_INT,
+		GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
 		return 4
 	default:
 		panic(fmt.Errorf("Unknown data type %v", t))
