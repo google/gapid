@@ -27,8 +27,8 @@ public class GapidClientCache extends GapidClientGrpc {
   private final FutureCache<Service.GetRequest, Service.GetResponse> getCache;
   private final FutureCache<Service.FollowRequest, Service.FollowResponse> followCache;
 
-  public GapidClientCache(GapidGrpc.GapidFutureStub client) {
-    super(client);
+  public GapidClientCache(GapidGrpc.GapidFutureStub client, GapidGrpc.GapidStub stub) {
+    super(client, stub);
     this.getCache = FutureCache.softCache(
         client::get, result -> result.getResCase() == Service.GetResponse.ResCase.VALUE);
     this.followCache = FutureCache.softCache(
