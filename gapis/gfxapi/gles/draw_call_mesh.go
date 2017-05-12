@@ -166,7 +166,7 @@ func vertexStreamData(
 	}
 
 	// Only read as much data as we actually have.
-	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.count)
+	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.count-base)
 	data := slice.Slice(base, base+size, s.MemoryLayout).Read(ctx, nil, s, nil)
 	if gap > 0 {
 		// Adjust vectorCount to the number of complete vectors found in data.
