@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(cc)
-build_subdirectory(data)
-build_subdirectory(image)
-build_subdirectory(memory_tracker)
-build_subdirectory(os)
-build_subdirectory(text)
-build_subdirectory(vulkan)
+# Generated globbing source file
+# This file will be automatically regenerated if deleted, do not edit by hand.
+# If you add a new file to the directory, just delete this file, run any cmake
+# build and the file will be recreated, check in the new version.
+
+set(files
+    astc.cc
+    astc.go
+    astc.h
+)
+set(dirs
+
+)
