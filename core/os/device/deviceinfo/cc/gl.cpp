@@ -34,6 +34,8 @@ void glDriver(device::OpenGLDriver* driver) {
     GLint major_version = 2;
     GLint minor_version = 0;
     GLint uniformbufferalignment = 1;
+    GLint maxtransformfeedbackseparateattribs = 0;
+    GLint maxtransformfeedbackinterleavedcomponents = 0;
 
     auto glGetIntegerv = reinterpret_cast<PFNGLGETINTEGERV>(core::GetGlesProcAddress("glGetIntegerv", true));
     auto glGetError = reinterpret_cast<PFNGLGETERROR>(core::GetGlesProcAddress("glGetError", true));
@@ -45,6 +47,8 @@ void glDriver(device::OpenGLDriver* driver) {
 
     if (glGetIntegerv != nullptr) {
         glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
+        glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS, &maxtransformfeedbackseparateattribs);
+        glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, &maxtransformfeedbackinterleavedcomponents);
 
         glGetError();  // Clear error state.
         glGetIntegerv(GL_MAJOR_VERSION, &major_version);
@@ -81,6 +85,8 @@ void glDriver(device::OpenGLDriver* driver) {
     driver->set_vendor(safe_string(glGetString(GL_VENDOR)));
     driver->set_version(safe_string(glGetString(GL_VERSION)));
     driver->set_uniformbufferalignment(uniformbufferalignment);
+    driver->set_maxtransformfeedbackseparateattribs(maxtransformfeedbackseparateattribs);
+    driver->set_maxtransformfeedbackinterleavedcomponents(maxtransformfeedbackinterleavedcomponents);
 }
 
 }  // namespace query
