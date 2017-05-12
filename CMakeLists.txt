@@ -58,6 +58,7 @@ if(ARMLINUX_GAPII)
 endif()
 
 # Third party libraries
+include(third_party/astc-encoder.cmake)
 include(third_party/cityhash.cmake)
 include(third_party/khronos.cmake)
 include(third_party/protobuf.cmake)

@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/atom"
@@ -377,61 +378,61 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
 		return image.NewETC2_RG_S11_NORM("VK_FORMAT_EAC_R11G11_SNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
-		return image.NewASTC_RGBA_4x4("VK_FORMAT_ASTC_4x4_UNORM_BLOCK"), nil
+		return astc.NewRGBA_4x4("VK_FORMAT_ASTC_4x4_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
-		return image.NewASTC_RGBA_4x4("VK_FORMAT_ASTC_4x4_SRGB_BLOCK"), nil
+		return astc.NewRGBA_4x4("VK_FORMAT_ASTC_4x4_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_5x4_UNORM_BLOCK:
-		return image.NewASTC_RGBA_5x4("VK_FORMAT_ASTC_5x4_UNORM_BLOCK"), nil
+		return astc.NewRGBA_5x4("VK_FORMAT_ASTC_5x4_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_5x4_SRGB_BLOCK:
-		return image.NewASTC_RGBA_5x4("VK_FORMAT_ASTC_5x4_SRGB_BLOCK"), nil
+		return astc.NewRGBA_5x4("VK_FORMAT_ASTC_5x4_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_5x5_UNORM_BLOCK:
-		return image.NewASTC_RGBA_5x5("VK_FORMAT_ASTC_5x5_UNORM_BLOCK"), nil
+		return astc.NewRGBA_5x5("VK_FORMAT_ASTC_5x5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_5x5_SRGB_BLOCK:
-		return image.NewASTC_RGBA_5x5("VK_FORMAT_ASTC_5x5_SRGB_BLOCK"), nil
+		return astc.NewRGBA_5x5("VK_FORMAT_ASTC_5x5_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_6x5_UNORM_BLOCK:
-		return image.NewASTC_RGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
+		return astc.NewRGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_6x5_SRGB_BLOCK:
-		return image.NewASTC_RGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
+		return astc.NewRGBA_6x5("VK_FORMAT_ASTC_6x5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_6x6_UNORM_BLOCK:
-		return image.NewASTC_RGBA_6x6("VK_FORMAT_ASTC_6x6_UNORM_BLOCK"), nil
+		return astc.NewRGBA_6x6("VK_FORMAT_ASTC_6x6_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_6x6_SRGB_BLOCK:
-		return image.NewASTC_RGBA_6x6("VK_FORMAT_ASTC_6x6_SRGB_BLOCK"), nil
+		return astc.NewRGBA_6x6("VK_FORMAT_ASTC_6x6_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x5_UNORM_BLOCK:
-		return image.NewASTC_RGBA_8x5("VK_FORMAT_ASTC_8x5_UNORM_BLOCK"), nil
+		return astc.NewRGBA_8x5("VK_FORMAT_ASTC_8x5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x5_SRGB_BLOCK:
-		return image.NewASTC_RGBA_8x5("VK_FORMAT_ASTC_8x5_SRGB_BLOCK"), nil
+		return astc.NewRGBA_8x5("VK_FORMAT_ASTC_8x5_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x6_UNORM_BLOCK:
-		return image.NewASTC_RGBA_8x6("VK_FORMAT_ASTC_8x6_UNORM_BLOCK"), nil
+		return astc.NewRGBA_8x6("VK_FORMAT_ASTC_8x6_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x6_SRGB_BLOCK:
-		return image.NewASTC_RGBA_8x6("VK_FORMAT_ASTC_8x6_SRGB_BLOCK"), nil
+		return astc.NewRGBA_8x6("VK_FORMAT_ASTC_8x6_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x8_UNORM_BLOCK:
-		return image.NewASTC_RGBA_8x8("VK_FORMAT_ASTC_8x8_UNORM_BLOCK"), nil
+		return astc.NewRGBA_8x8("VK_FORMAT_ASTC_8x8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_8x8_SRGB_BLOCK:
-		return image.NewASTC_RGBA_8x8("VK_FORMAT_ASTC_8x8_SRGB_BLOCK"), nil
+		return astc.NewRGBA_8x8("VK_FORMAT_ASTC_8x8_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x5_UNORM_BLOCK:
-		return image.NewASTC_RGBA_10x5("VK_FORMAT_ASTC_10x5_UNORM_BLOCK"), nil
+		return astc.NewRGBA_10x5("VK_FORMAT_ASTC_10x5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x5_SRGB_BLOCK:
-		return image.NewASTC_RGBA_10x5("VK_FORMAT_ASTC_10x5_SRGB_BLOCK"), nil
+		return astc.NewRGBA_10x5("VK_FORMAT_ASTC_10x5_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x6_UNORM_BLOCK:
-		return image.NewASTC_RGBA_10x6("VK_FORMAT_ASTC_10x6_UNORM_BLOCK"), nil
+		return astc.NewRGBA_10x6("VK_FORMAT_ASTC_10x6_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x6_SRGB_BLOCK:
-		return image.NewASTC_RGBA_10x6("VK_FORMAT_ASTC_10x6_SRGB_BLOCK"), nil
+		return astc.NewRGBA_10x6("VK_FORMAT_ASTC_10x6_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x8_UNORM_BLOCK:
-		return image.NewASTC_RGBA_10x8("VK_FORMAT_ASTC_10x8_UNORM_BLOCK"), nil
+		return astc.NewRGBA_10x8("VK_FORMAT_ASTC_10x8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x8_SRGB_BLOCK:
-		return image.NewASTC_RGBA_10x8("VK_FORMAT_ASTC_10x8_SRGB_BLOCK"), nil
+		return astc.NewRGBA_10x8("VK_FORMAT_ASTC_10x8_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x10_UNORM_BLOCK:
-		return image.NewASTC_RGBA_10x10("VK_FORMAT_ASTC_10x10_UNORM_BLOCK"), nil
+		return astc.NewRGBA_10x10("VK_FORMAT_ASTC_10x10_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_10x10_SRGB_BLOCK:
-		return image.NewASTC_RGBA_10x10("VK_FORMAT_ASTC_10x10_SRGB_BLOCK"), nil
+		return astc.NewRGBA_10x10("VK_FORMAT_ASTC_10x10_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_12x10_UNORM_BLOCK:
-		return image.NewASTC_RGBA_12x10("VK_FORMAT_ASTC_12x10_UNORM_BLOCK"), nil
+		return astc.NewRGBA_12x10("VK_FORMAT_ASTC_12x10_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_12x10_SRGB_BLOCK:
-		return image.NewASTC_RGBA_12x10("VK_FORMAT_ASTC_12x10_SRGB_BLOCK"), nil
+		return astc.NewRGBA_12x10("VK_FORMAT_ASTC_12x10_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_12x12_UNORM_BLOCK:
-		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_UNORM_BLOCK"), nil
+		return astc.NewRGBA_12x12("VK_FORMAT_ASTC_12x12_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
-		return image.NewASTC_RGBA_12x12("VK_FORMAT_ASTC_12x12_SRGB_BLOCK"), nil
+		return astc.NewRGBA_12x12("VK_FORMAT_ASTC_12x12_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
 		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.DS_F32U8), nil
 	case VkFormat_VK_FORMAT_D32_SFLOAT:

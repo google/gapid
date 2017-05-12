@@ -15,9 +15,8 @@
 package atom
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/fault"

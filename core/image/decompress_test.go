@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
 )
@@ -35,7 +36,7 @@ func loadKTX(data []byte) (*image.Image2D, error) {
 	var ident [12]byte
 	r.Data(ident[:])
 	if ident != [12]byte{0xAB, 0x4B, 0x54, 0x58, 0x20, 0x31, 0x31, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A} {
-		return nil, fmt.Errorf("Invalid header")
+		return nil, fmt.Errorf("Invalid header. Got: %x", ident)
 	}
 
 	if endianness := r.Uint32(); endianness != 0x04030201 {
@@ -47,8 +48,8 @@ func loadKTX(data []byte) (*image.Image2D, error) {
 	glFormat := r.Uint32()
 	glInternalFormat := r.Uint32()
 	glBaseInternalFormat := r.Uint32()
-	pixelWidth := r.Uint32()
-	pixelHeight := r.Uint32()
+	texelWidth := r.Uint32()
+	texelHeight := r.Uint32()
 	pixelDepth := r.Uint32()
 	numberOfArrayElements := r.Uint32()
 	numberOfFaces := r.Uint32()
@@ -101,8 +102,8 @@ glBaseInternalFormat=0x%x
 	}
 
 	imageSize := r.Uint32()
-	pixelData := make([]byte, imageSize)
-	r.Data(pixelData)
+	texelData := make([]byte, imageSize)
+	r.Data(texelData)
 
 	if err := r.Error(); err != nil {
 		return nil, err
@@ -110,9 +111,50 @@ glBaseInternalFormat=0x%x
 
 	return &image.Image2D{
 		Format: format,
-		Width:  pixelWidth,
-		Height: pixelHeight,
-		Data:   pixelData,
+		Width:  texelWidth,
+		Height: texelHeight,
+		Data:   texelData,
+	}, nil
+}
+
+func loadASTC(data []byte) (*image.Image2D, error) {
+	r := endian.Reader(bytes.NewBuffer(data), device.LittleEndian)
+
+	if got := r.Uint32(); got != 0x5ca1ab13 {
+		return nil, fmt.Errorf("Invalid header. Got: %x", got)
+	}
+
+	blockWidth := uint32(r.Uint8())
+	blockHeight := uint32(r.Uint8())
+	blockDepth := uint32(r.Uint8())
+
+	if blockDepth != 1 {
+		return nil, fmt.Errorf("Got a block depth of %v. Only 2D textures are currently supported", blockDepth)
+	}
+
+	texelWidth := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
+	texelHeight := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
+	texelDepth := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
+
+	if texelDepth != 1 {
+		return nil, fmt.Errorf("Got a texel depth of %v. Only 2D textures are currently supported", texelDepth)
+	}
+
+	blocksX := (texelWidth + blockWidth - 1) / blockWidth
+	blocksY := (texelHeight + blockHeight - 1) / blockHeight
+
+	texelData := make([]byte, blocksX*blocksY*16)
+	r.Data(texelData)
+
+	if err := r.Error(); err != nil {
+		return nil, err
+	}
+
+	return &image.Image2D{
+		Format: image.NewASTC("astc", blockWidth, blockHeight, false),
+		Width:  texelWidth,
+		Height: texelHeight,
+		Data:   texelData,
 	}, nil
 }
 
@@ -138,6 +180,7 @@ func TestDecompressors(t *testing.T) {
 		{image.S3_DXT1_RGBA, ".bin"},
 		{image.S3_DXT3_RGBA, ".bin"},
 		{image.S3_DXT5_RGBA, ".bin"},
+		{astc.RGBA_4x4, ".astc"},
 	} {
 		name := test.fmt.Name
 		inPath := filepath.Join("test_data", name+test.ext)
@@ -175,12 +218,26 @@ func TestDecompressors(t *testing.T) {
 				continue
 			}
 
-			if ktx.Format != test.fmt {
+			if ktx.Format.Key() != test.fmt.Key() {
 				t.Errorf("%v was not the expected format. Expected %v, got %v",
-					inPath, ktx.Format, test.fmt)
+					inPath, test.fmt, ktx.Format)
 				continue
 			}
 			in = ktx
+
+		case ".astc":
+			astc, err := loadASTC(data)
+			if err != nil {
+				t.Errorf("Failed to read '%s': %v", inPath, err)
+				continue
+			}
+
+			if astc.Format.Key() != test.fmt.Key() {
+				t.Errorf("%v was not the expected format. Expected %v, got %v",
+					inPath, test.fmt, astc.Format)
+				continue
+			}
+			in = astc
 
 		case ".bin":
 			in = &image.Image2D{
