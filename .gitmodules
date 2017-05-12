@@ -73,3 +73,6 @@
 	path = third_party/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
 	ignore = untracked
+[submodule "third_party/astc-encoder"]
+	path = third_party/astc-encoder
+	url = https://github.com/ARM-software/astc-encoder.git
