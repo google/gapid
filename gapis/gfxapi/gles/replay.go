@@ -87,6 +87,10 @@ func (a api) Replay(
 	capture *capture.Capture,
 	out transform.Writer) error {
 
+	if a.GetReplayPriority(ctx, device, capture.Header.Abi.MemoryLayout) == 0 {
+		return log.Errf(ctx, nil, "Cannot replay GLES commands on device '%v'", device.Name)
+	}
+
 	ctx = PutUnusedIDMap(ctx)
 
 	atoms := atom.NewList(capture.Atoms...)

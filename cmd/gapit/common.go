@@ -78,6 +78,17 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 	ctx = log.V{"device": flags.Device}.Bind(ctx)
 	paths, err := client.GetDevicesForReplay(ctx, capture)
 	if err != nil {
+		return nil, log.Err(ctx, err, "Failed query list of devices for replay")
+	}
+
+	if len(paths) > 0 {
+		return paths[0], nil
+	}
+
+	log.W(ctx, "No compatible devices found. Attempting to use the first device anyway...")
+
+	paths, err = client.GetDevices(ctx)
+	if err != nil {
 		return nil, log.Err(ctx, err, "Failed query list of devices")
 	}
 
@@ -85,7 +96,7 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 		return paths[0], nil
 	}
 
-	return nil, log.Err(ctx, nil, "No compatible devices found")
+	return nil, log.Err(ctx, nil, "No devices found")
 }
 
 func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
