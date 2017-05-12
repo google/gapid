@@ -39,7 +39,12 @@ var tree = `Group 'root' [0..1099]
  │                ├─ [0..9] ────── Atoms [310..319]
  │                ├─ [10] ──────── Group 'Sub-group 1.0' [340..359]
  │                │                └─ [0] ───────── Atoms [350..350]
- │                └─ [11..20] ──── Atoms [370..379]
+ │                ├─ [11] ──────── Group 'Sub-group 1.1' [360..369]
+ │                │                ├─ [0] ───────── Group 'Sub-group 1.1.0' [360..361]
+ │                │                │                └─ [0..1] ────── Atoms [360..361]
+ │                │                └─ [1] ───────── Group 'Sub-group 1.1.1' [362..364]
+ │                │                                 └─ [0..2] ────── Atoms [362..364]
+ │                └─ [12..21] ──── Atoms [370..379]
  ├─ [202..301] ── Atoms [400..499]
  ├─ [302] ─────── Group 'Sub-group 2' [500..599]
  │                └─ [0..99] ───── Atoms [500..599]
@@ -58,13 +63,21 @@ func buildTestGroup(end uint64) Group {
 				Group{"Sub-group 1.0", Range{340, 360}, Spans{
 					Range{350, 351},
 				}},
+				Group{"Sub-group 1.1", Range{360, 370}, Spans{
+					Group{"Sub-group 1.1.0", Range{360, 362}, Spans{
+						Range{360, 362},
+					}},
+					Group{"Sub-group 1.1.1", Range{362, 365}, Spans{
+						Range{362, 365},
+					}},
+				}},
 				Range{370, 380},
 			}},
 			Range{400, 500},
 			Group{"Sub-group 2", Range{500, 600}, Spans{
 				Range{500, 600},
 			}},
-			Range{600, ID(end-100)},
+			Range{600, ID(end - 100)},
 		},
 	}
 }
@@ -80,7 +93,7 @@ func TestGroupCount(t *testing.T) {
 
 	check(t, "root count", 703, root.Count())
 	check(t, "sub group 0 count", 100, root.Spans[1].(Group).Count())
-	check(t, "sub group 1 count", 21, root.Spans[3].(Group).Count())
+	check(t, "sub group 1 count", 22, root.Spans[3].(Group).Count())
 	check(t, "sub group 1.0 count", 1, root.Spans[3].(Group).Spans[1].(Group).Count())
 	check(t, "sub group 2 count", 100, root.Spans[5].(Group).Count())
 }
@@ -372,7 +385,16 @@ func TestAddAtomsFill(t *testing.T) {
 				Group{"Sub-group 1.0", Range{340, 360}, Spans{
 					Range{340, 360},
 				}},
-				Range{360, 400},
+				Group{"Sub-group 1.1", Range{360, 370}, Spans{
+					Group{"Sub-group 1.1.0", Range{360, 362}, Spans{
+						Range{360, 362},
+					}},
+					Group{"Sub-group 1.1.1", Range{362, 365}, Spans{
+						Range{362, 365},
+					}},
+					Range{365, 370},
+				}},
+				Range{370, 400},
 			}},
 			Range{400, 500},
 			Group{"Sub-group 2", Range{500, 600}, Spans{
@@ -402,6 +424,10 @@ func TestAddAtomsSparse(t *testing.T) {
 				Range{300, 340},
 				Group{"Sub-group 1.0", Range{340, 360}, Spans{
 					Range{340, 350},
+				}},
+				Group{"Sub-group 1.1", Range{360, 370}, Spans{
+					Group{"Sub-group 1.1.0", Range{360, 362}, Spans{}},
+					Group{"Sub-group 1.1.1", Range{362, 365}, Spans{}},
 				}},
 			}},
 			Range{400, 450},
@@ -442,14 +468,23 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 			Group{"Sub Group 5", Range{279, 423}, Spans{
 				Range{279, 300},
 				Group{"Sub-group 1", Range{300, 400}, Spans{
-					Group{"Sub Group 1", Range{300, 364}, Spans{
+					Group{"Sub Group 1", Range{300, 373}, Spans{
 						Range{300, 340},
 						Group{"Sub-group 1.0", Range{340, 360}, Spans{
 							Range{340, 360},
 						}},
-						Range{360, 364},
+						Group{"Sub-group 1.1", Range{360, 370}, Spans{
+							Group{"Sub-group 1.1.0", Range{360, 362}, Spans{
+								Range{360, 362},
+							}},
+							Group{"Sub-group 1.1.1", Range{362, 365}, Spans{
+								Range{362, 365},
+							}},
+							Range{365, 370},
+						}},
+						Range{370, 373},
 					}},
-					Group{"Sub Group 2", Range{364, 400}, Spans{Range{364, 400}}},
+					Group{"Sub Group 2", Range{373, 400}, Spans{Range{373, 400}}},
 				}},
 				Range{400, 423},
 			}},
@@ -680,8 +715,15 @@ func TestTraverseForwards(t *testing.T) {
 			{I(201, 9), ID(319)},
 			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
 			{I(201, 10, 0), ID(350)},
-			{I(201, 11), ID(370)},
-			{I(201, 12), ID(371)},
+			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
+			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
+			{I(201, 11, 0, 0), ID(360)},
+			{I(201, 11, 0, 1), ID(361)},
+			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
+			{I(201, 11, 1, 0), ID(362)},
+			{I(201, 11, 1, 1), ID(363)},
+			{I(201, 11, 1, 2), ID(364)},
+			{I(201, 12), ID(370)},
 		}},
 		{I(300), []indicesAndGroupOrID{
 			{I(300), ID(498)},
@@ -716,16 +758,41 @@ func TestTraverseForwards(t *testing.T) {
 func TestTraverseBackwards(t *testing.T) {
 	ctx := log.Testing(t)
 	root := buildTestGroup(1100)
+	root.Name = "testGroup"
+	overflowTest := Group{
+		"overflowTest", Range{0, 10}, Spans{
+			Group{"Frame 1", Range{0, 5}, Spans{
+				Group{"Draw 1", Range{0, 2}, Spans{
+					Range{0, 2},
+				}},
+				Group{"Draw 2", Range{2, 4}, Spans{
+					Range{2, 4},
+				}},
+				Range{4, 5},
+			}},
+			Group{"Frame 2", Range{5, 10}, Spans{
+				Group{"Draw 1", Range{5, 7}, Spans{
+					Range{5, 7},
+				}},
+				Group{"Draw 2", Range{7, 9}, Spans{
+					Range{7, 9},
+				}},
+				Range{9, 10},
+			}},
+		},
+	}
+
 	for ti, test := range []struct {
+		root     Group
 		from     []uint64
 		expected []indicesAndGroupOrID
 	}{
-		{I(), []indicesAndGroupOrID{
+		{root, I(), []indicesAndGroupOrID{
 			{I(702), ID(999)},
 			{I(701), ID(998)},
 			{I(700), ID(997)},
 		}},
-		{I(100, 2), []indicesAndGroupOrID{
+		{root, I(100, 2), []indicesAndGroupOrID{
 			{I(100, 2), ID(102)},
 			{I(100, 1), ID(101)},
 			{I(100, 0), ID(100)},
@@ -733,22 +800,42 @@ func TestTraverseBackwards(t *testing.T) {
 			{I(99), ID(99)},
 			{I(98), ID(98)},
 		}},
-		{I(201, 1), []indicesAndGroupOrID{
+		{root, I(201, 1), []indicesAndGroupOrID{
 			{I(201, 1), ID(311)},
 			{I(201, 0), ID(310)},
 			{I(201), root.Spans[3].(Group)},
 			{I(200), ID(299)},
 			{I(199), ID(298)},
 		}},
-		{I(201, 12), []indicesAndGroupOrID{
-			{I(201, 12), ID(371)},
-			{I(201, 11), ID(370)},
+		{root, I(201, 13), []indicesAndGroupOrID{
+			{I(201, 13), ID(371)},
+			{I(201, 12), ID(370)},
+			{I(201, 11, 1, 2), ID(364)},
+			{I(201, 11, 1, 1), ID(363)},
+			{I(201, 11, 1, 0), ID(362)},
+			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
+			{I(201, 11, 0, 1), ID(361)},
+			{I(201, 11, 0, 0), ID(360)},
+			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
+			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
 			{I(201, 10, 0), ID(350)},
 			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
 			{I(201, 9), ID(319)},
 			{I(201, 8), ID(318)},
 		}},
-		{I(302, 2), []indicesAndGroupOrID{
+		{root, I(201, 11, 1, 1), []indicesAndGroupOrID{
+			{I(201, 11, 1, 1), ID(363)},
+			{I(201, 11, 1, 0), ID(362)},
+			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
+			{I(201, 11, 0, 1), ID(361)},
+			{I(201, 11, 0, 0), ID(360)},
+			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
+			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
+			{I(201, 10, 0), ID(350)},
+			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
+			{I(201, 9), ID(319)},
+		}},
+		{root, I(302, 2), []indicesAndGroupOrID{
 			{I(302, 2), ID(502)},
 			{I(302, 1), ID(501)},
 			{I(302, 0), ID(500)},
@@ -756,16 +843,39 @@ func TestTraverseBackwards(t *testing.T) {
 			{I(301), ID(499)},
 			{I(300), ID(498)},
 		}},
-		{I(702), []indicesAndGroupOrID{
+		{root, I(702), []indicesAndGroupOrID{
 			{I(702), ID(999)},
 			{I(701), ID(998)},
 			{I(700), ID(997)},
 		}},
+		{overflowTest, I(1, 1, 1), []indicesAndGroupOrID{
+			{I(1, 1, 1), ID(8)},
+			{I(1, 1, 0), ID(7)},
+			{I(1, 1), overflowTest.Spans[1].(Group).Spans[1].(Group)},
+			{I(1, 0, 1), ID(6)},
+			{I(1, 0, 0), ID(5)},
+			{I(1, 0), overflowTest.Spans[1].(Group).Spans[0].(Group)},
+			{I(1), overflowTest.Spans[1].(Group)},
+			{I(0, 2), ID(4)},
+			{I(0, 1, 1), ID(3)},
+			{I(0, 1, 0), ID(2)},
+		}},
+		// This test should pass, given the previous test (it's a subrange), but
+		// it used to cause an unsinged int overflow and thus fail (see 3c90b4c).
+		{overflowTest, I(1, 0, 1), []indicesAndGroupOrID{
+			{I(1, 0, 1), ID(6)},
+			{I(1, 0, 0), ID(5)},
+			{I(1, 0), overflowTest.Spans[1].(Group).Spans[0].(Group)},
+			{I(1), overflowTest.Spans[1].(Group)},
+			{I(0, 2), ID(4)},
+			{I(0, 1, 1), ID(3)},
+			{I(0, 1, 0), ID(2)},
+		}},
 	} {
 		i := 0
-		err := root.Traverse(true, test.from, func(indices []uint64, item GroupOrID) error {
+		err := test.root.Traverse(true, test.from, func(indices []uint64, item GroupOrID) error {
 			got, expected := indicesAndGroupOrID{indices, item}, test.expected[i]
-			assert.For(ctx, "root.Traverse(true, %v) callback %v", test.from, i).That(got).DeepEquals(expected)
+			assert.For(ctx, "%s.Traverse(true, %v) callback %v", test.root.Name, test.from, i).That(got).DeepEquals(expected)
 			i++
 			if i == len(test.expected) {
 				return stop

@@ -447,8 +447,11 @@ func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) err
 			// Search after / before the index that passes through this group.
 			if backwards {
 				if indices[i] > 0 {
-					err = g.IterateBackwards(indices[i]-1, t.visit)
+					if err := g.IterateBackwards(indices[i]-1, t.visit); err != nil {
+						return err
+					}
 				}
+				err = cb(t.indices, g)
 			} else {
 				err = g.IterateForwards(indices[i]+1, t.visit)
 			}
