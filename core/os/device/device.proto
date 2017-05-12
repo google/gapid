@@ -196,6 +196,10 @@ message OpenGLDriver {
     string Version = 4;
     // Value returned by glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
     uint32 UniformBufferAlignment = 5;
+    // Value returned by glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS)
+    uint32 MaxTransformFeedbackSeparateAttribs = 6;
+    // Value returned by glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS)
+    uint32 MaxTransformFeedbackInterleavedComponents = 7;
 }
 
 // VulkanDriver describes the device driver support for the Vulkan API.
