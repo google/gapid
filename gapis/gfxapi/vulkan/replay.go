@@ -460,6 +460,10 @@ func (a api) Replay(
 	capture *capture.Capture,
 	out transform.Writer) error {
 
+	if a.GetReplayPriority(ctx, device, capture.Header.Abi.MemoryLayout) == 0 {
+		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
+	}
+
 	atoms := atom.NewList(capture.Atoms...)
 
 	transforms := transform.Transforms{}

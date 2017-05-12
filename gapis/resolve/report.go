@@ -98,7 +98,13 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			if qi, ok := api.(replay.QueryIssues); ok {
 				apiIssues, err := qi.QueryIssues(ctx, intent, mgr)
 				if err != nil {
-					return nil, err
+					issue := replay.Issue{
+						Atom:     atom.NoID,
+						Severity: service.Severity_ErrorLevel,
+						Error:    err,
+					}
+					issues[atom.NoID] = append(issues[atom.NoID], issue)
+					continue
 				}
 				for _, issue := range apiIssues {
 					issues[issue.Atom] = append(issues[issue.Atom], issue)
