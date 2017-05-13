@@ -15,38 +15,31 @@
 package memory
 
 import (
-	"context"
-	"io"
-
-	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/os/device"
 )
 
-// Slice is the interface for a data source that can be resolved to a byte slice
-// with Get, or 'sliced' to a subset of the data source.
+// Slice is the interface implemented by types that represent a slice on
+// a memory pool.
 type Slice interface {
-	// Get writes the bytes representing the slice to out, starting at offset
-	// bytes. This is equivalent to: copy(out, data[offset:]).
-	Get(ctx context.Context, offset uint64, out []byte) error
+	// Root returns the original pointer this slice derives from.
+	Root() uint64
 
-	// NewReader returns an io.Reader to efficiently read from the slice.
-	// There shouldn't be a need to wrap this in additional buffers.
-	NewReader(ctx context.Context) io.Reader
+	// Base returns the address of first element.
+	Base() uint64
 
-	// ResourceID returns the identifier of the resource representing the slice,
-	// creating a new resource if it isn't already backed by one.
-	ResourceID(ctx context.Context) (id.ID, error)
+	// Count returns the number of elements in the slice.
+	Count() uint64
 
-	// Size returns the number of bytes that would be returned by calling Get.
-	Size() uint64
+	// Pool returns the the pool identifier.
+	Pool() PoolID
 
-	// Slice returns a new Slice referencing a subset range of the data.
-	// The range r is relative to the base of the Slice. For example a slice of
-	// [0, 4] would return a Slice referencing the first 5 bytes of this Slice.
-	// Attempting to slice outside the range of this Slice will result in a
-	// panic.
-	Slice(r Range) Slice
+	// ElementSize returns the size in bytes of a single element in the slice.
+	ElementSize(*device.MemoryLayout) uint64
 
-	// ValidRanges returns the list of slice-relative memory ranges that contain
-	// valid (non-zero) data that can be read with Get.
-	ValidRanges() RangeList
+	// ElementTypeName returns the name of the element type.
+	// TODO: Legacy. Kill.
+	ElementTypeName() string
+
+	// Range returns the memory range this slice represents in the underlying pool.
+	Range(*device.MemoryLayout) Range
 }

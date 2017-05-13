@@ -43,7 +43,7 @@ func readFully(r io.Reader, maxRead int) ([]byte, error) {
 	}
 }
 
-func checkSlice(ctx context.Context, s Slice, expected []byte) {
+func checkData(ctx context.Context, s Data, expected []byte) {
 	assert.With(ctx).That(s.Size()).Equals(uint64(len(expected)))
 
 	for _, offset := range []uint64{0, 1, s.Size() - 1, s.Size()} {
@@ -72,7 +72,7 @@ func TestBlobSlice(t *testing.T) {
 		{Range{Base: 3, Size: 3}, []byte{3, 4, 5}},
 		{Range{Base: 6, Size: 3}, []byte{6, 7, 8}},
 	} {
-		checkSlice(ctx, data.Slice(test.rng), test.expected)
+		checkData(ctx, data.Slice(test.rng), test.expected)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestPoolBlobWriteRead(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	p := Pool{}
 	for _, test := range []struct {
-		data     Slice
+		data     Data
 		expected []byte
 	}{
 		{Blob([]byte{10, 11, 12, 13, 14}), []byte{10, 11, 12, 13, 14, 0}},
@@ -105,7 +105,7 @@ func TestPoolBlobWriteRead(t *testing.T) {
 	} {
 		p.Write(0, test.data)
 
-		checkSlice(ctx, p.Slice(Range{Base: 0, Size: 6}), test.expected)
+		checkData(ctx, p.Slice(Range{Base: 0, Size: 6}), test.expected)
 	}
 }
 
@@ -149,7 +149,7 @@ func TestMemoryBlobWriteReadScattered(t *testing.T) {
 		{Range{Base: 5, Size: 2}, []byte{0, 0}},
 		{Range{Base: 8, Size: 1}, []byte{50}},
 	} {
-		checkSlice(ctx, p.Slice(test.rng), test.expected)
+		checkData(ctx, p.Slice(test.rng), test.expected)
 	}
 
 }
@@ -199,7 +199,7 @@ func TestMemoryResourceWriteReadScattered(t *testing.T) {
 		{Range{Base: 8, Size: 1}, []byte{50}},
 	} {
 		slice := p.Slice(test.rng)
-		checkSlice(ctx, slice, test.expected)
+		checkData(ctx, slice, test.expected)
 
 		gotID, err := slice.ResourceID(ctx)
 		assert.With(ctx).ThatError(err).Succeeded()
@@ -266,5 +266,5 @@ func TestSliceNesting(t *testing.T) {
 	outerPool.Write(1, Blob([]byte{1, 2, 3, 44}))
 	outerPool.Write(4, midPool.Slice(Range{Base: 1, Size: 7}))
 
-	checkSlice(ctx, outerPool.Slice(Range{Size: 11}), []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	checkData(ctx, outerPool.Slice(Range{Size: 11}), []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 }

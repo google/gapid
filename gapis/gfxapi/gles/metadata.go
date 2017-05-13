@@ -45,7 +45,7 @@ func AddMetadata(n *registry.Namespace) {
 		obj := u.New()
 		if a, ok := obj.(atom.Atom); ok {
 			atom.AddMetadata(a, ent)
-		} else if s, ok := obj.(slice); ok {
+		} else if s, ok := obj.(memory.Slice); ok {
 			addSliceMetadata(s, ent)
 		}
 	})
@@ -68,7 +68,7 @@ func init() {
 	gfxapi.AddCanFollowState(reflect.TypeOf(state).Elem(), &entity.Metadata)
 }
 
-func addSliceMetadata(s slice, ent *binary.Entity) {
+func addSliceMetadata(s memory.Slice, ent *binary.Entity) {
 	meta := &memory.SliceMetadata{
 		ElementTypeName: s.ElementTypeName(),
 	}

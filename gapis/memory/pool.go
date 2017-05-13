@@ -57,8 +57,8 @@ const (
 	ApplicationPool = PoolID(PoolNames_Application)
 )
 
-// Slice returns a Slice referencing the subset of the Pool range.
-func (m *Pool) Slice(rng Range) Slice {
+// Slice returns a Data referencing the subset of the Pool range.
+func (m *Pool) Slice(rng Range) Data {
 	i, c := interval.Intersect(&m.writes, rng.Span())
 	if c == 1 {
 		w := m.writes[i]
@@ -77,13 +77,13 @@ func (m *Pool) Slice(rng Range) Slice {
 	return poolSlice{rng: rng, writes: writes}
 }
 
-// At returns an unbounded Slice starting at p.
-func (m *Pool) At(addr uint64) Slice {
+// At returns an unbounded Data starting at p.
+func (m *Pool) At(addr uint64) Data {
 	return m.Slice(Range{Base: addr, Size: ^uint64(0) - addr})
 }
 
-// Write copies the slice src to the address dst.
-func (m *Pool) Write(dst uint64, src Slice) {
+// Write copies the data src to the address dst.
+func (m *Pool) Write(dst uint64, src Data) {
 	rng := Range{Base: dst, Size: src.Size()}
 	i := interval.Replace(&m.writes, rng.Span())
 	m.writes[i].src = src
@@ -124,7 +124,7 @@ func (m poolSlice) ResourceID(ctx context.Context) (id.ID, error) {
 	return database.Store(ctx, bytes)
 }
 
-func (m poolSlice) Slice(rng Range) Slice {
+func (m poolSlice) Slice(rng Range) Data {
 	if uint64(rng.Last()) > m.rng.Size {
 		panic(fmt.Errorf("%v.Slice(%v) - out of bounds", m.String(), rng))
 	}

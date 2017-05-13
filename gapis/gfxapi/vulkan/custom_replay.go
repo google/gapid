@@ -1007,16 +1007,17 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, s *gfxapi.State, b *b
 }
 
 func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	o.ApplyWrites(s.Memory[memory.ApplicationPool])
-	_ = a.PImageIndex.Slice(uint64(0), uint64(1), s).Index(uint64(0), s).Read(ctx, a, s, b)
+	_ = a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)
 	}
-	a.PImageIndex.Slice(uint64(0), uint64(1), s).Index(uint64(0), s).Write(ctx, a.PImageIndex.Slice(uint64(0), uint64(1), s).Index(uint64(0), s).Read(ctx, a, s, nil), a, s, b)
+	a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, nil), a, s, b)
 	_ = a.Result
 	return nil
 }
@@ -1034,8 +1035,9 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State,
 	if err := a.mutate(ctx, s, b); err != nil {
 		return err
 	}
+	l := s.MemoryLayout
 	c := GetState(s)
-	memory := a.PMemory.Slice(uint64(0), uint64(1), s).Index(uint64(0), s).Read(ctx, a, s, nil)
+	memory := a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, nil)
 	imageObject := c.Images.Get(a.Image)
 	imageWidth := imageObject.Layers.Get(0).Levels.Get(0).Width
 	imageHeight := imageObject.Layers.Get(0).Levels.Get(0).Height
@@ -1052,7 +1054,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State,
 		MemoryTypeIndex: 0,
 		Data:            MakeU8ˢ(uint64(imageSize), s)}
 	c.DeviceMemories[memory] = memoryObject
-	a.PMemory.Slice(uint64(0), uint64(1), s).Index(uint64(0), s).Write(ctx, memory, a, s, b)
+	a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, memory, a, s, b)
 	return err
 }
 
@@ -1288,12 +1290,12 @@ func flushBufferMemory(ctx context.Context, s *gfxapi.State, b *builder.Builder,
 	}
 	flushData := atom.Must(atom.AllocData(ctx, s, flushRange))
 	defer flushData.Free()
-	slice := mapped.Slice(0, uint64(size), s)
+	slice := mapped.Slice(0, uint64(size), s.MemoryLayout)
 
 	return NewVkFlushMappedMemoryRanges(
 		device, uint32(1), flushData.Ptr(), VkResult_VK_SUCCESS,
 	).AddRead(flushData.Data()).
-		AddRead(slice.Range(s), slice.ResourceID(ctx, s)).Mutate(ctx, s, b)
+		AddRead(slice.Range(s.MemoryLayout), slice.ResourceID(ctx, s)).Mutate(ctx, s, b)
 }
 
 func createBufferBarrier(ctx context.Context, s *gfxapi.State, b *builder.Builder, buffer VkBuffer, size VkDeviceSize, commandBuffer VkCommandBuffer) error {
@@ -1385,6 +1387,7 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b
 }
 
 func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
 	imageObject := GetState(s).Images[a.Image]
@@ -1418,7 +1421,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 			}
 			mappedChars := U8ᵖ(mappedLocation)
 			dataP := U8ᵖ(a.Data)
-			mappedChars.Slice(uint64(0), uint64(a.DataSize), s).Copy(ctx, dataP.Slice(uint64(0), uint64(a.DataSize), s), a, s, b)
+			mappedChars.Slice(uint64(0), uint64(a.DataSize), l).Copy(ctx, dataP.Slice(uint64(0), uint64(a.DataSize), l), a, s, b)
 
 			if err := flushBufferMemory(ctx, s, b, device, a.DataSize, memoryId, mappedChars); err != nil {
 				return err
@@ -1547,6 +1550,7 @@ func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, s *gfxapi.State, 
 }
 
 func (a *RecreateBufferData) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
 
@@ -1568,7 +1572,7 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, s *gfxapi.State, b *bui
 		}
 		mappedChars := U8ᵖ(mappedLocation)
 		dataP := U8ᵖ(a.Data)
-		mappedChars.Slice(uint64(0), uint64(bufferInfo.Size), s).Copy(ctx, dataP.Slice(uint64(0), uint64(bufferInfo.Size), s), a, s, b)
+		mappedChars.Slice(uint64(0), uint64(bufferInfo.Size), l).Copy(ctx, dataP.Slice(uint64(0), uint64(bufferInfo.Size), l), a, s, b)
 
 		if err := flushBufferMemory(ctx, s, b, device, bufferInfo.Size, memoryId, mappedChars); err != nil {
 			return err
@@ -1651,6 +1655,7 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *gfxapi.State) VkQu
 }
 
 func (a *RecreateQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	l := s.MemoryLayout
 	createInfo := memory.Pointer(a.PCreateInfo)
 	allocator := memory.Pointer{}
 	pQueryPool := memory.Pointer(a.PPool)
@@ -1662,7 +1667,7 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 	}
 
 	createInfoObject := a.PCreateInfo.Read(ctx, a, s, b)
-	queryStates := a.PQueryStatuses.Slice(0, uint64(createInfoObject.QueryCount), s).Read(ctx, a, s, b)
+	queryStates := a.PQueryStatuses.Slice(0, uint64(createInfoObject.QueryCount), l).Read(ctx, a, s, b)
 	pool := a.PPool.Read(ctx, a, s, b)
 
 	anyActive := false
@@ -1718,6 +1723,7 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 }
 
 func (a *RecreateSwapchain) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	l := s.MemoryLayout
 	createInfo := memory.Pointer(a.PCreateInfo)
 	allocator := memory.Pointer{}
 	pSwapchain := memory.Pointer(a.PSwapchain)
@@ -1739,9 +1745,9 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 
-	images := a.PSwapchainImages.Slice(0, uint64(createInfoData.MinImageCount), s).Read(ctx, a, s, b)
-	imageLayouts := a.PSwapchainLayouts.Slice(0, uint64(createInfoData.MinImageCount), s).Read(ctx, a, s, b)
-	boundQueues := a.PInitialQueues.Slice(0, uint64(createInfoData.MinImageCount), s).Read(ctx, a, s, b)
+	images := a.PSwapchainImages.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
+	imageLayouts := a.PSwapchainLayouts.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
+	boundQueues := a.PInitialQueues.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
 	for i := 0; i < int(createInfoData.MinImageCount); i++ {
 		imageObject := GetState(s).Images[images[i]]
 		if boundQueues[i] != VkQueue(0) && imageLayouts[i] != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {

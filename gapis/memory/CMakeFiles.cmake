@@ -21,6 +21,7 @@ set(files
     allocator.go
     allocator_test.go
     blob.go
+    data.go
     doc.go
     id.go
     memory.pb.go
