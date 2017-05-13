@@ -86,7 +86,7 @@ void abiByName(const std::string name, device::ABI* abi) {
         memory_layout->set_endian(device::LittleEndian);
         abi->set_allocated_memorylayout(memory_layout);
         abi->set_architecture(device::ARMv8a);
-    } if (name == "x86") {
+    } else if (name == "x86") {
         // https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86
         auto memory_layout = new device::MemoryLayout();
         memory_layout->set_allocated_pointer(new_dt_layout(4, 4));
