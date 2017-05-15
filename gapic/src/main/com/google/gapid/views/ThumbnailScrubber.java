@@ -399,6 +399,7 @@ public class ThumbnailScrubber extends Composite
       if (dirty) {
         updateSize.run();
         selectAndScroll(selectedIndex);
+        repainter.repaint();
       }
     }
 
