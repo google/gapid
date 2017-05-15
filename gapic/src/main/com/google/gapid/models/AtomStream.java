@@ -51,7 +51,7 @@ import java.util.logging.Logger;
  * Model containing the API commands (atoms) of the capture.
  */
 public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStream.Listener>
-    implements ApiContext.Listener {
+    implements ApiContext.Listener, Capture.Listener {
   private static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
 
   private final Capture capture;
@@ -66,7 +66,15 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     this.context = context;
     this.constants = constants;
 
+    capture.addListener(this);
     context.addListener(this);
+  }
+
+  @Override
+  public void onCaptureLoadingStart(boolean maintainState) {
+    if (!maintainState) {
+      selection = null;
+    }
   }
 
   @Override
