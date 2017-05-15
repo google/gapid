@@ -108,6 +108,9 @@ const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 const int32_t  kSuspendIndefinitely = -1;
 
 const uint8_t kCoreAPI = 0;
+const uint8_t kGLESAPI = 1;
+const uint8_t kVulkanAPI = 2;
+
 core::Mutex gMutex;  // Guards gSpy.
 std::unique_ptr<gapii::Spy> gSpy;
 
@@ -209,6 +212,7 @@ Spy::Spy()
         }));
     }
     set_suspended(mSuspendCaptureFrames.load() != 0);
+    set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
 }
 
 void Spy::writeHeader() {
@@ -340,19 +344,25 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
 #undef EGL_GET_CONFIG_ATTRIB
 
 
-void Spy::onPostDrawCall() {
+void Spy::onPostDrawCall(uint8_t api) {
+    if (is_suspended()) {
+         return;
+    }
     if (mObserveDrawFrequency != 0 && (mNumDraws % mObserveDrawFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after draw call %d", mNumDraws);
-        observeFramebuffer();
+        observeFramebuffer(api);
     }
     mNumDraws++;
     mNumDrawsPerFrame++;
 }
 
-void Spy::onPreEndOfFrame() {
+void Spy::onPreEndOfFrame(uint8_t api) {
+    if (is_suspended()) {
+        return;
+    }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-        observeFramebuffer();
+        observeFramebuffer(api);
     }
     GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d",
                mNumFrames, mNumDraws, mNumDrawsPerFrame);
@@ -375,8 +385,8 @@ void Spy::onPostEndOfFrame(CallObserver* observer) {
     }
 }
 
-static bool downsamplePixels(uint8_t* srcData, uint32_t srcW, uint32_t srcH,
-                             uint8_t** outData, uint32_t* outW, uint32_t* outH,
+static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW, uint32_t srcH,
+                             std::vector<uint8_t>* outData, uint32_t* outW, uint32_t* outH,
                              uint32_t maxW, uint32_t maxH) {
     // Calculate the minimal scaling factor as integer fraction.
     uint32_t mul = 1;
@@ -393,21 +403,16 @@ static bool downsamplePixels(uint8_t* srcData, uint32_t srcW, uint32_t srcH,
     // Calculate the final dimensions (round up) and allocate new buffer.
     uint32_t dstW = (srcW*mul + div - 1) / div;
     uint32_t dstH = (srcH*mul + div - 1) / div;
-    uint8_t* dstData = new uint8_t[dstW*dstH*4];
-    if (dstData == nullptr) {
-        GAPID_WARNING("Failed to allocate buffer to downsample framebuffer");
-        return false;
-    }
+    outData->reserve(dstW*dstH*4);
 
     // Downsample the image by averaging the colours of neighbouring pixels.
-    uint8_t* dst = dstData;
     for (uint32_t srcY = 0, y = 0, dstY = 0; dstY < dstH; srcY = y, dstY++) {
         for (uint32_t srcX = 0, x = 0, dstX = 0; dstX < dstW; srcX = x, dstX++) {
             uint32_t r = 0, g = 0, b = 0, a = 0, n = 0;
             // We need to loop over srcX/srcY ranges several times, so we keep them in x/y,
             // and we update srcX/srcY to the last x/y only once we are done with the pixel.
             for (y = srcY; y*dstH < (dstY+1)*srcH; y++) { // while y*yScale < dstY+1
-                uint8_t* src = &srcData[(srcX + y*srcW) * 4];
+                const uint8_t* src = &srcData[(srcX + y*srcW) * 4];
                 for (x = srcX; x*dstW < (dstX+1)*srcW; x++) { // while x*xScale < dstX+1
                     r += *(src++);
                     g += *(src++);
@@ -416,107 +421,55 @@ static bool downsamplePixels(uint8_t* srcData, uint32_t srcW, uint32_t srcH,
                     n += 1;
                 }
             }
-            *(dst++) = r / n;
-            *(dst++) = g / n;
-            *(dst++) = b / n;
-            *(dst++) = a / n;
+            outData->push_back(r/n);
+            outData->push_back(g/n);
+            outData->push_back(b/n);
+            outData->push_back(a/n);
         }
     }
 
     *outW = dstW;
     *outH = dstH;
-    *outData = dstData;
     return true;
 }
 
 // observeFramebuffer captures the currently bound framebuffer, and writes
 // it to a FramebufferObservation atom.
-void Spy::observeFramebuffer() {
+void Spy::observeFramebuffer(uint8_t api) {
     uint32_t w = 0;
     uint32_t h = 0;
-    if (!getFramebufferAttachmentSize(w, h)) {
-        return; // Could not get the framebuffer size.
+    std::vector<uint8_t> data;
+    switch(api) {
+        case kCoreAPI:
+            if (!CoreSpy::observeFramebuffer(&w, &h, &data)) {
+                return;
+            }
+            break;
+        case kGLESAPI:
+            if (!GlesSpy::observeFramebuffer(&w, &h, &data)) {
+                return;
+            }
+            break;
+        case kVulkanAPI:
+            if (!VulkanSpy::observeFramebuffer(&w, &h, &data)) {
+                return;
+            }
+            break;
     }
-    uint8_t* data = new uint8_t[w * h * 4];
-    if (data == nullptr) {
-        GAPID_WARNING("Failed to allocate buffer to observe framebuffer of size %ux%u", w, h);
-        return;
-    }
-    GlesSpy::mImports.glReadPixels(0, 0, int32_t(w), int32_t(h),
-            GL_RGBA, GL_UNSIGNED_BYTE, data);
+
     uint32_t downsampledW, downsampledH;
-    uint8_t* downsampledData = nullptr;
+    std::vector<uint8_t> downsampledData;
     if (downsamplePixels(data, w, h,
                          &downsampledData, &downsampledW, &downsampledH,
                          kMaxFramebufferObservationWidth, kMaxFramebufferObservationHeight)) {
-
-        uint32_t downsampledSize = downsampledW * downsampledH * 4;
         atom_pb::FramebufferObservation observation;
         observation.set_originalwidth(w);
         observation.set_originalheight(h);
         observation.set_datawidth(downsampledW);
         observation.set_dataheight(downsampledH);
-        observation.set_data(downsampledData, downsampledSize);
+        observation.set_data(downsampledData.data(), downsampledData.size());
         mEncoder->message(&observation);
-        delete [] downsampledData;
     }
-    delete [] data;
-}
-
-// TODO: When gfx api macros produce functions instead of inlining, move this logic
-// to the gles.api file.
-bool Spy::getFramebufferAttachmentSize(uint32_t& width, uint32_t& height) {
-    std::shared_ptr<Context> ctx = GlesSpy::Contexts[GlesSpy::CurrentThread];
-    if (ctx == nullptr) {
-      return false;
-    }
-
-    auto framebuffer = ctx->mObjects.mFramebuffers.find(ctx->mBoundReadFramebuffer);
-    if (framebuffer == ctx->mObjects.mFramebuffers.end()) {
-        return false;
-    }
-
-    auto attachment = framebuffer->second->mColorAttachments.find(0);
-    if (attachment == framebuffer->second->mColorAttachments.end()) {
-        return false;
-    }
-
-    switch (attachment->second.mType) {
-        case GL_TEXTURE: {
-            auto t = attachment->second.mTexture;
-            switch (t->mKind) {
-                case GLenum::GL_TEXTURE_2D: {
-                    auto l = t->mTexture2D.find(attachment->second.mTextureLevel);
-                    if (l == t->mTexture2D.end()) {
-                        return false;
-                    }
-                    width = uint32_t(l->second.mWidth);
-                    height = uint32_t(l->second.mHeight);
-                    return true;
-                }
-                case GLenum::GL_TEXTURE_CUBE_MAP: {
-                    auto l = t->mCubemap.find(attachment->second.mTextureLevel);
-                    if (l == t->mCubemap.end()) {
-                        return false;
-                    }
-                    auto f = l->second.mFaces.find(attachment->second.mTextureCubeMapFace);
-                    if (f == l->second.mFaces.end()) {
-                        return false;
-                    }
-                    width = uint32_t(f->second.mWidth);
-                    height = uint32_t(f->second.mHeight);
-                    return true;
-                }
-            }
-        }
-        case GL_RENDERBUFFER: {
-            auto r = attachment->second.mRenderbuffer;
-            width = uint32_t(r->mWidth);
-            height = uint32_t(r->mHeight);
-            return true;
-        }
-    }
-    return false;
 }
 
 void Spy::onPostFence(CallObserver* observer) {

@@ -294,12 +294,26 @@ uint32_t VulkanSpy::SpyOverride_vkCreateImage(
         VkImageCreateInfo*           pCreateInfo,
         VkAllocationCallbacks*       pAllocator,
         VkImage*                     pImage) {
-    if (is_suspended()) {
+    if (is_suspended() || is_observing()) {
         VkImageCreateInfo override_create_info = *pCreateInfo;
         override_create_info.musage |= VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         return  mImports.mVkDeviceFunctions[device].vkCreateImage(device, &override_create_info, pAllocator, pImage);
     } else {
         return  mImports.mVkDeviceFunctions[device].vkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    }
+}
+
+uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
+        VkDevice                         device,
+        VkSwapchainCreateInfoKHR*           pCreateInfo,
+        VkAllocationCallbacks*           pAllocator,
+        VkSwapchainKHR*                  pImage) {
+    if (is_observing()) {
+        VkSwapchainCreateInfoKHR override_create_info = *pCreateInfo;
+        override_create_info.mimageUsage |= VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        return  mImports.mVkDeviceFunctions[device].vkCreateSwapchainKHR(device, &override_create_info, pAllocator, pImage);
+    } else {
+        return  mImports.mVkDeviceFunctions[device].vkCreateSwapchainKHR(device, pCreateInfo, pAllocator, pImage);
     }
 }
 
