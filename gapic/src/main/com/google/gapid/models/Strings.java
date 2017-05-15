@@ -103,7 +103,7 @@ public class Strings {
   private static StringBuilder append(StringBuilder sb, Stringtable.Value value) {
     switch (value.getValueCase()) {
       case VALUE_NOT_SET: return sb.append("[null]");
-      case BOX: return sb.append(Formatter.toString(value.getBox(), null));
+      case BOX: return sb.append(Formatter.toString(value.getBox(), null, true));
       case PATH: return sb.append(Paths.toString(value.getPath()));
       default:
         throw new UnsupportedOperationException("Unsupported value type: " + value.getValueCase());
