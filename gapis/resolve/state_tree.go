@@ -124,7 +124,7 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 	name, pth, consts := "root", path.Node(stateTree.path), (*path.ConstantSet)(nil)
 	v := deref(reflect.ValueOf(stateTree.apiState))
 
-	numChildren := uint64(v.Type().NumField())
+	numChildren := uint64(visibleFieldCount(v.Type()))
 	syntheticOffset := uint64(0)
 
 	for i, idx64 := range c.Index {
@@ -166,14 +166,15 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
-				if cs, ok := t.Field(idx).Tag.Lookup("constset"); ok {
+				f, t := visibleField(v, idx)
+				if cs, ok := t.Tag.Lookup("constset"); ok {
 					if idx, _ := strconv.Atoi(cs); idx > 0 {
 						consts = stateTree.api.ConstantSet(idx)
 					}
 				}
-				name = t.Field(idx).Name
+				name = t.Name
 				pth = path.NewField(name, pth)
-				v = deref(v.Field(idx))
+				v = deref(f)
 			case reflect.Slice, reflect.Array:
 				if size := uint64(v.Len()); stateTree.needsSubgrouping(size) {
 					i, j, n := stateTree.subrange(size, idx64)
@@ -205,7 +206,7 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
-				numChildren = uint64(v.NumField())
+				numChildren = uint64(visibleFieldCount(t))
 			case reflect.Slice, reflect.Array:
 				numChildren = stateTree.limit(uint64(v.Len()))
 			case reflect.Map:
@@ -226,6 +227,36 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		PreviewIsValue: previewIsValue,
 		Constants:      consts,
 	}, nil
+}
+
+func isFieldVisible(t reflect.Type, i int) bool {
+	f := t.Field(i)
+	return f.PkgPath == "" && f.Tag.Get("nobox") != "true"
+}
+
+func visibleFieldCount(t reflect.Type) int {
+	count := 0
+	for i, c := 0, t.NumField(); i < c; i++ {
+		if isFieldVisible(t, i) {
+			count++
+		}
+	}
+	return count
+}
+
+func visibleField(v reflect.Value, idx int) (reflect.Value, reflect.StructField) {
+	t := v.Type()
+	count := 0
+	for i, c := 0, v.NumField(); i < c; i++ {
+		if !isFieldVisible(t, i) {
+			continue
+		}
+		if count == idx {
+			return v.Field(i), t.Field(i)
+		}
+		count++
+	}
+	return reflect.Value{}, reflect.StructField{}
 }
 
 func stateValuePreview(v reflect.Value) (*box.Value, bool) {

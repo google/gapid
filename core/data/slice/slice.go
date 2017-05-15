@@ -17,6 +17,13 @@ package slice
 
 import "reflect"
 
+// New returns a new addressable slice value of type ty.
+func New(ty reflect.Type, len, cap int) reflect.Value {
+	ptr := reflect.New(ty)
+	ptr.Elem().Set(reflect.MakeSlice(ty, len, cap))
+	return ptr.Elem()
+}
+
 // Replace replaces count elements of s starting from first with with.
 // s must be a pointer to a slice.
 func Replace(s interface{}, first, count int, with interface{}) {
@@ -28,7 +35,7 @@ func Replace(s interface{}, first, count int, with interface{}) {
 // s must be a pointer to a slice.
 func Remove(s, v interface{}) {
 	ptr, slice := getSlicePtr(s)
-	out := newSlice(slice.Type(), 0, slice.Len())
+	out := New(slice.Type(), 0, slice.Len())
 	for i, c := 0, slice.Len(); i < c; i++ {
 		el := slice.Index(i)
 		if el.Interface() != v {
@@ -90,13 +97,6 @@ func getSlicePtr(s interface{}) (ptr, slice reflect.Value) {
 		panic("s must be a pointer to a slice")
 	}
 	return ptr, slice
-}
-
-// newSlice returns a new addressable slice value.
-func newSlice(ty reflect.Type, len, cap int) reflect.Value {
-	ptr := reflect.New(ty)
-	ptr.Elem().Set(reflect.MakeSlice(ty, len, cap))
-	return ptr.Elem()
 }
 
 // toSlice returns the reflect.Value of v, turning it into a single element
