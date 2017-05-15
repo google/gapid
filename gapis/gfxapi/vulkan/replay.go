@@ -555,16 +555,7 @@ func (a api) Replay(
 		transforms = newTransforms
 	}
 
-	return catchPanics(ctx, func() { transforms.Transform(ctx, *atoms, out) })
-}
-
-func catchPanics(ctx context.Context, do func()) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = log.Errf(ctx, nil, "Panic raised: %v", e)
-		}
-	}()
-	do()
+	transforms.Transform(ctx, *atoms, out)
 	return nil
 }
 
