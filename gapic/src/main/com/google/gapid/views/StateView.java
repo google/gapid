@@ -130,8 +130,8 @@ public class StateView extends Composite
           return;
         }
 
-        String text = Formatter.toString(
-            data.getPreview(), models.constants.getConstants(data.getConstants()));
+        String text = Formatter.toString(data.getPreview(),
+            models.constants.getConstants(data.getConstants()), data.getPreviewIsValue());
         TextViewer.showViewTextPopup(getShell(), data.getName() + ":", text);
       }
     });
@@ -152,8 +152,8 @@ public class StateView extends Composite
           return new String[] { node.getName() };
         }
 
-        String text = Formatter.toString(
-            node.getPreview(), models.constants.getConstants(node.getConstants()));
+        String text = Formatter.toString(node.getPreview(),
+            models.constants.getConstants(node.getConstants()), node.getPreviewIsValue());
         return new String[] { node.getName(), text };
       }
 
@@ -363,7 +363,7 @@ public class StateView extends Composite
         if (data.hasPreview()) {
          string.append(": ", string.structureStyle());
          Formatter.format(data.getPreview(), constants.getConstants(data.getConstants()),
-             string, string.defaultStyle());
+             data.getPreviewIsValue(), string, string.defaultStyle());
         }
       }
       return string;

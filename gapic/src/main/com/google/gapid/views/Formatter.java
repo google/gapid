@@ -94,28 +94,29 @@ public class Formatter {
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       StylingString string, Style style) {
     Box.Value value = param.getValue();
-    format(value, constantResolver.apply(param.getConstants()), string, style);
+    format(value, constantResolver.apply(param.getConstants()), true, string, style);
   }
 
-  public static void format(
-          Box.Value value, Service.ConstantSet constants, StylingString string, Style style) {
+  public static void format(Box.Value value, Service.ConstantSet constants, boolean isComplete,
+      StylingString string, Style style) {
     if (value.getValCase() == Box.Value.ValCase.POD) {
-      format(value.getPod(), constants, string, style);
+      format(value.getPod(), constants, isComplete, string, style);
     } else {
-      format(value, new Boxes.Context(), string, style);
+      format(value, new Boxes.Context(), isComplete, string, style);
     }
   }
 
-  public static String toString(Box.Value value, Service.ConstantSet constants) {
+  public static String toString(
+      Box.Value value, Service.ConstantSet constants, boolean isComplete) {
     NoStyleStylingString string = new NoStyleStylingString();
-    format(value, constants, string, null);
+    format(value, constants, isComplete, string, null);
     return string.toString();
   }
 
-  private static void format(
-      Pod.Value value, Service.ConstantSet constants, StylingString string, Style style) {
+  private static void format(// check ref
+      Pod.Value value, Service.ConstantSet constants, boolean isComplete, StylingString string, Style style) {
     if (constants == null || !Pods.mayBeConstant(value)) {
-      format(value, string, style);
+      format(value, isComplete, string, style);
     } else if (constants.getIsBitfield()) {
       long bits = Pods.getConstant(value);
       boolean first = true;
@@ -155,7 +156,8 @@ public class Formatter {
     }
   }
 
-  private static void format(Box.Value value, Boxes.Context ctx, StylingString string, Style style) {
+  private static void format(
+      Box.Value value, Boxes.Context ctx, boolean isComplete, StylingString string, Style style) {
     Integer id = value.getValueId();
     switch (value.getValCase()) {
       case BACK_REFERENCE:
@@ -165,7 +167,7 @@ public class Formatter {
         string.append(">", string.structureStyle());
         break;
       case POD:
-        format(value.getPod(), string, style);
+        format(value.getPod(), isComplete, string, style);
         break;
       case POINTER:
         format(value.getPointer(), string, style);
@@ -174,20 +176,23 @@ public class Formatter {
         format(value.getSlice(), string, style);
         break;
       case REFERENCE:
-        format(value.getReference(), ctx, string, style);
+        format(value.getReference(), ctx, isComplete, string, style);
         break;
       case STRUCT:
-        format(value.getStruct(), ctx, string, style);
+        format(value.getStruct(), ctx, isComplete, string, style);
         break;
       case MAP:
-        format(value.getMap(), ctx, string, style);
+        format(value.getMap(), ctx, isComplete, string, style);
+        break;
+      case ARRAY:
+        format(value.getArray(), ctx, isComplete, string, style);
         break;
       default:
         format(value, string, style);
     }
   }
 
-  private static void format(Pod.Value v, StylingString string, Style style) {
+  private static void format(Pod.Value v, boolean isComplete, StylingString string, Style style) {
     switch (v.getValCase()) {
       case VAL_NOT_SET:
         string.append("[null]", style); break;
@@ -236,46 +241,48 @@ public class Formatter {
         string.append(uint64ToString(v.getUint64()), style);
         break;
       case STRING_ARRAY:
-        formatArray(v.getStringArray().getValList(), identity(), string, style);
+        formatArray(v.getStringArray().getValList(), identity(), isComplete, string, style);
         break;
       case BOOL_ARRAY:
-        formatArray(v.getBoolArray().getValList(), Object::toString, string, style);
+        formatArray(v.getBoolArray().getValList(), Object::toString, isComplete, string, style);
         break;
       case FLOAT64_ARRAY:
-        formatArray(v.getFloat64Array().getValList(), Object::toString, string, style);
+        formatArray(v.getFloat64Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case FLOAT32_ARRAY:
-        formatArray(v.getFloat32Array().getValList(), Object::toString, string, style);
+        formatArray(v.getFloat32Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case SINT_ARRAY:
-        formatArray(v.getSintArray().getValList(), Object::toString, string, style);
+        formatArray(v.getSintArray().getValList(), Object::toString, isComplete, string, style);
         break;
       case SINT8_ARRAY:
-        formatArray(v.getSint8Array().getValList(), Object::toString, string, style);
+        formatArray(v.getSint8Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case SINT16_ARRAY:
-        formatArray(v.getSint16Array().getValList(), Object::toString, string, style);
+        formatArray(v.getSint16Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case SINT32_ARRAY:
-        formatArray(v.getSint32Array().getValList(), Object::toString, string, style);
+        formatArray(v.getSint32Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case SINT64_ARRAY:
-        formatArray(v.getSint64Array().getValList(), Object::toString, string, style);
+        formatArray(v.getSint64Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case UINT_ARRAY:
-        formatArray(v.getUintArray().getValList(), Object::toString, string, style);
+        formatArray(v.getUintArray().getValList(), Object::toString, isComplete, string, style);
         break;
       case UINT8_ARRAY:
-        formatArray(v.getUint8Array(), string, style);
+        formatArray(v.getUint8Array(), isComplete, string, style);
         break;
       case UINT16_ARRAY:
-        formatArray(v.getUint16Array().getValList(), Object::toString, string, style);
+        formatArray(v.getUint16Array().getValList(), Object::toString, isComplete, string, style);
         break;
       case UINT32_ARRAY:
-        formatArray(v.getUint32Array().getValList(), Formatter::uint32ToString, string, style);
+        formatArray(
+            v.getUint32Array().getValList(), Formatter::uint32ToString, isComplete, string, style);
         break;
       case UINT64_ARRAY:
-        formatArray(v.getUint64Array().getValList(), Formatter::uint64ToString, string, style);
+        formatArray(
+            v.getUint64Array().getValList(), Formatter::uint64ToString, isComplete, string, style);
         break;
       default:
         format(v, string, style);
@@ -296,8 +303,8 @@ public class Formatter {
   }
 
   private static final int MAX_DISPLAY = 4;
-  private static <T> void formatArray(
-      List<T> list, Function<T, String> formatter, StylingString string, Style style) {
+  private static <T> void formatArray(List<T> list, Function<T, String> formatter,
+      boolean isComplete, StylingString string, Style style) {
     string.append("[", string.structureStyle());
     if (!list.isEmpty()) {
       string.append(formatter.apply(list.get(0)), style);
@@ -305,14 +312,15 @@ public class Formatter {
         string.append(", ", string.structureStyle());
         string.append(formatter.apply(list.get(i)), style);
       }
-      if (list.size() > MAX_DISPLAY) {
+      if (list.size() > MAX_DISPLAY || !isComplete) {
         string.append(", ...", string.structureStyle());
       }
     }
     string.append("]", string.structureStyle());
   }
 
-  private static void formatArray(ByteString bytes, StylingString string, Style style) {
+  private static void formatArray(
+      ByteString bytes, boolean isComplete, StylingString string, Style style) {
     string.append("[", string.structureStyle());
     if (!bytes.isEmpty()) {
       string.append(byteToString(bytes.byteAt(0)), style);
@@ -320,7 +328,7 @@ public class Formatter {
         string.append(", ", string.structureStyle());
         string.append(byteToString(bytes.byteAt(i)), style);
       }
-      if (bytes.size() > MAX_DISPLAY) {
+      if (bytes.size() > MAX_DISPLAY || !isComplete) {
         string.append(", ...", string.structureStyle());
       }
     }
@@ -375,14 +383,14 @@ public class Formatter {
   }
 
   private static void format(
-      Box.Reference ref, Boxes.Context ctx, StylingString string, Style style) {
+      Box.Reference ref, Boxes.Context ctx, boolean isComplete, StylingString string, Style style) {
     switch (ref.getValCase()) {
       case NULL:
         ctx.unbox(ref.getNull());
         string.append("(nil)", string.structureStyle());
         break;
       case VALUE:
-        format(ref.getValue(), ctx, string, style);
+        format(ref.getValue(), ctx, isComplete, string, style);
         break;
       default:
         format(ref, string, style);
@@ -390,7 +398,7 @@ public class Formatter {
   }
 
   private static void format(
-      Box.Struct struct, Boxes.Context ctx, StylingString string, Style style) {
+      Box.Struct struct, Boxes.Context ctx, boolean isComplete, StylingString string, Style style) {
     Box.StructType type = Boxes.struct(ctx.unbox(struct.getType()));
 
     string.append("{", string.structureStyle());
@@ -408,7 +416,7 @@ public class Formatter {
       string.startLink(follow);
       string.append(type.getFields(i).getName(), paramStyle);
       string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
-      format(struct.getFields(i), ctx, string, style);
+      format(struct.getFields(i), ctx, isComplete, string, style);
       string.endLink();
     }
     string.append("}", string.structureStyle());
@@ -418,7 +426,8 @@ public class Formatter {
     }
   }
 
-  private static void format(Box.Map map, Boxes.Context ctx, StylingString string, Style style) {
+  private static void format(
+      Box.Map map, Boxes.Context ctx, boolean isComplete, StylingString string, Style style) {
     // TODO - from old serialization style: it looked like this was only ever used for empty maps?
 
     Box.MapType type = Boxes.map(ctx.unbox(map.getType()));
@@ -426,21 +435,41 @@ public class Formatter {
     ctx.unbox(type.getValueType()); // for back references
 
     string.append("{", string.structureStyle());
-    for (int i = 0; i < map.getEntriesCount(); i++) {
+    for (int i = 0; i < Math.min(MAX_DISPLAY, map.getEntriesCount()); i++) {
       if (i > 0) {
         string.append(", ", string.structureStyle());
       }
 
       Box.MapEntry e = map.getEntries(i);
-      format(e.getKey(), ctx, string, style);
+      format(e.getKey(), ctx, isComplete, string, style);
       string.append("=", string.structureStyle());
       //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
       Object follow = null;
       string.startLink(follow);
-      format(e.getValue(), ctx, string, (follow == null) ? style : string.linkStyle());
+      format(e.getValue(), ctx, isComplete, string, (follow == null) ? style : string.linkStyle());
       string.endLink();
     }
+    if (!isComplete || map.getEntriesCount() > MAX_DISPLAY) {
+      string.append(", ...", string.structureStyle());
+    }
     string.append("}", string.structureStyle());
+  }
+
+  private static void format(
+      Box.Array arr, Boxes.Context ctx, boolean isComplete, StylingString string, Style style) {
+    ctx.unbox(arr.getType());
+    string.append("[", string.structureStyle());
+    if (arr.getEntriesCount() > 0) {
+      format(arr.getEntries(0), ctx, isComplete, string, style);
+      for (int i = 1; i < Math.min(MAX_DISPLAY, arr.getEntriesCount()); i++) {
+        string.append(", ", string.structureStyle());
+        format(arr.getEntries(i), ctx, isComplete, string, style);
+      }
+      if (!isComplete || arr.getEntriesCount() > MAX_DISPLAY) {
+        string.append(", ...", string.structureStyle());
+      }
+    }
+    string.append("]", string.structureStyle());
   }
 
   private static void format(MessageOrBuilder proto, StylingString string, Style style) {

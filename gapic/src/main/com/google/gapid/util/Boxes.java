@@ -49,6 +49,13 @@ public class Boxes {
     return type.getMap();
   }
 
+  public static Box.ArrayType array(Box.Type type) {
+    if (type.getTyCase() != Box.Type.TyCase.ARRAY) {
+      throw new IllegalArgumentException("Invalid type, expected array: " + type.getTyCase());
+    }
+    return type.getArray();
+  }
+
 //  @SuppressWarnings("unused")
 //  public static interface Visitor {
 //    public default void backReference(Integer id) { /* empty */ }
@@ -193,6 +200,8 @@ public class Boxes {
           return putValue(id, unbox(value.getStruct()));
         case MAP:
           return putValue(id, unbox(value.getMap()));
+        case ARRAY:
+          return putValue(id, unbox(value.getArray()));
         default:
           throw new IllegalArgumentException("Invalid box value: " + value.getValCase());
       }
@@ -231,6 +240,15 @@ public class Boxes {
       return result;
     }
 
+    private Object unbox(Box.Array array) {
+      array(unbox(array.getType())); // for back references.
+      Object[] result = new Object[array.getEntriesCount()];
+      for (int i = 0; i < result.length; i++) {
+        result[i] = unbox(array.getEntries(i));
+      }
+      return result;
+    }
+
     public Box.Type unbox(Box.Type type) {
       Integer id = type.getTypeId();
       switch (type.getTyCase()) {
@@ -246,6 +264,9 @@ public class Boxes {
         case MAP:
           unbox(type.getMap().getKeyType());
           unbox(type.getMap().getValueType());
+          return putType(id, type);
+        case ARRAY:
+          unbox(type.getArray().getElementType());
           return putType(id, type);
         default:
           return putType(id, type);
