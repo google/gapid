@@ -39,6 +39,8 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
+import org.eclipse.jface.viewers.TreePath;
+import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
@@ -225,9 +227,10 @@ public class StateView extends Composite
 
     /*
     Path.Any selection = models.state.getSelectedPath();
-    if (selection == null) {
-      viewer.setSelection(new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
-    } else {
+    if (selection == null) {*/
+      viewer.setSelection(
+          new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
+    /*} else {
       onStateSelected(selection);
     }
     */
