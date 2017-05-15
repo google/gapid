@@ -950,7 +950,7 @@
       {{Template "ClassFields" $}}
       {{/* TODO: Remove this once closure support is in the API language */}}
       {{if (eq $.Name "CommandBufferObject")}}
-        Commands CommandBufferCommands `disable:"true"`
+        Commands CommandBufferCommands `nobox:"true"`
       {{end}}
     }
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -149,6 +150,9 @@ func (b *boxer) val(v reflect.Value) *Value {
 			if f.PkgPath != "" {
 				continue // Unexported.
 			}
+			if f.Tag.Get("nobox") == "true" {
+				continue // Explictly disabled.
+			}
 			fields = append(fields, b.val(v.FieldByName(f.Name)))
 		}
 		return &Value{id, &Value_Struct{&Struct{structTy, fields}}}
@@ -165,6 +169,14 @@ func (b *boxer) val(v reflect.Value) *Value {
 		m := &Map{Type: mapTy, Entries: entries}
 		m.Sort()
 		return &Value{id, &Value_Map{m}}
+
+	case reflect.Slice, reflect.Array:
+		arrTy := b.ty(v.Type())
+		entries := []*Value{}
+		for i, c := 0, v.Len(); i < c; i++ {
+			entries = append(entries, b.val(v.Index(i)))
+		}
+		return &Value{id, &Value_Array{&Array{arrTy, entries}}}
 	}
 
 	panic(fmt.Errorf("Unsupported Type %v", t))
@@ -205,6 +217,9 @@ func (b *boxer) ty(t reflect.Type) *Type {
 			if f.PkgPath != "" {
 				continue // Unexported.
 			}
+			if f.Tag.Get("nobox") == "true" {
+				continue // Explictly disabled.
+			}
 			fields = append(fields, &StructField{Type: b.ty(f.Type), Name: f.Name})
 		}
 		return &Type{id, &Type_Struct{&StructType{fields}}}
@@ -213,6 +228,10 @@ func (b *boxer) ty(t reflect.Type) *Type {
 		keyTy := b.ty(t.Key())
 		valTy := b.ty(t.Elem())
 		return &Type{id, &Type_Map{&MapType{keyTy, valTy}}}
+
+	case reflect.Array, reflect.Slice:
+		elTy := b.ty(t.Elem())
+		return &Type{id, &Type_Array{&ArrayType{elTy}}}
 	}
 
 	panic(fmt.Errorf("Unsupported Type %v", t))
@@ -281,6 +300,14 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 			mapVal.SetMapIndex(k, v)
 		}
 		return mapVal
+	case *Value_Array:
+		arrTy := b.ty(v.Array.Type)
+		arrVal := slice.New(arrTy, len(v.Array.Entries), len(v.Array.Entries))
+		for i, e := range v.Array.Entries {
+			v := b.val(e)
+			arrVal.Index(i).Set(v)
+		}
+		return arrVal
 	case *Value_Struct:
 		structTy := b.ty(v.Struct.Type)
 		structVal := reflect.New(structTy).Elem()
@@ -348,6 +375,9 @@ func (b *unboxer) ty(t *Type) (out reflect.Type) {
 		keyTy := b.ty(t.Map.KeyType)
 		valTy := b.ty(t.Map.ValueType)
 		return reflect.MapOf(keyTy, valTy)
+	case *Type_Array:
+		elTy := b.ty(t.Array.ElementType)
+		return reflect.SliceOf(elTy)
 	default:
 		panic(fmt.Errorf("Unsupported Type %T", t))
 	}
@@ -376,20 +406,20 @@ func (m mapSorter) Swap(i, j int) {
 
 // NewSlice returns a new memory.Slice implementation.
 func NewSlice(root, base, count uint64, pool memory.PoolID) memory.Slice {
-	return slice{root, base, count, pool}
+	return memorySlice{root, base, count, pool}
 }
 
-// slice is an implementation of the memory.Slice interface.
-type slice struct {
+// memorySlice is an implementation of the memory.Slice interface.
+type memorySlice struct {
 	root  uint64
 	base  uint64
 	count uint64
 	pool  memory.PoolID
 }
 
-func (s slice) Root() uint64                            { return s.root }
-func (s slice) Base() uint64                            { return s.base }
-func (s slice) Count() uint64                           { return s.count }
-func (s slice) Pool() memory.PoolID                     { return s.pool }
-func (s slice) ElementSize(*device.MemoryLayout) uint64 { return 1 }
-func (s slice) Range(*device.MemoryLayout) memory.Range { return memory.Range{} }
+func (s memorySlice) Root() uint64                            { return s.root }
+func (s memorySlice) Base() uint64                            { return s.base }
+func (s memorySlice) Count() uint64                           { return s.count }
+func (s memorySlice) Pool() memory.PoolID                     { return s.pool }
+func (s memorySlice) ElementSize(*device.MemoryLayout) uint64 { return 1 }
+func (s memorySlice) Range(*device.MemoryLayout) memory.Range { return memory.Range{} }

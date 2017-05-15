@@ -34,6 +34,7 @@ message Value {
     Reference reference = 6;
     Struct struct = 7;
     Map map = 8;
+    Array array = 9;
   }
 }
 
@@ -70,7 +71,8 @@ message Type {
     Type reference = 6;
     StructType struct = 7;
     MapType map = 8;
-    bool any = 9;
+    ArrayType array = 9;
+    bool any = 10;
   }
 }
 
@@ -86,6 +88,15 @@ message StructType {
 message StructField {
   Type type = 1;
   string name = 2;
+}
+
+message Array {
+  Type type = 1;
+  repeated Value entries = 2;
+}
+
+message ArrayType {
+  Type element_type = 2;
 }
 
 message Map {
