@@ -15,6 +15,9 @@
  */
 
 #include "gapii/cc/gles_spy.h"
+#include "gapii/cc/gles_exports.h"
+#include "gapii/cc/gles_types.h"
+
 
 #define ANDROID_NATIVE_MAKE_CONSTANT(a,b,c,d) \
     (((unsigned)(a)<<24)|((unsigned)(b)<<16)|((unsigned)(c)<<8)|(unsigned)(d))
@@ -119,6 +122,72 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
 #else
     return nullptr;
 #endif  // TARGET_OS == GAPID_OS_ANDROID
+}
+
+// TODO: When gfx api macros produce functions instead of inlining, move this logic
+// to the gles.api file.
+bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
+    std::shared_ptr<Context> ctx = Contexts[CurrentThread];
+    if (ctx == nullptr) {
+      return false;
+    }
+
+    auto framebuffer = ctx->mObjects.mFramebuffers.find(ctx->mBoundReadFramebuffer);
+    if (framebuffer == ctx->mObjects.mFramebuffers.end()) {
+        return false;
+    }
+
+    auto attachment = framebuffer->second->mColorAttachments.find(0);
+    if (attachment == framebuffer->second->mColorAttachments.end()) {
+        return false;
+    }
+
+    switch (attachment->second.mType) {
+        case GLenum::GL_TEXTURE: {
+            auto t = attachment->second.mTexture;
+            switch (t->mKind) {
+                case GLenum::GL_TEXTURE_2D: {
+                    auto l = t->mTexture2D.find(attachment->second.mTextureLevel);
+                    if (l == t->mTexture2D.end()) {
+                        return false;
+                    }
+                    *width = uint32_t(l->second.mWidth);
+                    *height = uint32_t(l->second.mHeight);
+                    return true;
+                }
+                case GLenum::GL_TEXTURE_CUBE_MAP: {
+                    auto l = t->mCubemap.find(attachment->second.mTextureLevel);
+                    if (l == t->mCubemap.end()) {
+                        return false;
+                    }
+                    auto f = l->second.mFaces.find(attachment->second.mTextureCubeMapFace);
+                    if (f == l->second.mFaces.end()) {
+                        return false;
+                    }
+                    *width = uint32_t(f->second.mWidth);
+                    *height = uint32_t(f->second.mHeight);
+                    return true;
+                }
+            }
+        }
+        case GLenum::GL_RENDERBUFFER: {
+            auto r = attachment->second.mRenderbuffer;
+            *width = uint32_t(r->mWidth);
+            *height = uint32_t(r->mHeight);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GlesSpy::observeFramebuffer(uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
+    if (!getFramebufferAttachmentSize(w, h)) {
+        return false; // Could not get the framebuffer size.
+    }
+    data->resize((*w) * (*h) * 4);
+    GlesSpy::mImports.glReadPixels(0, 0, int32_t(*w), int32_t(*h),
+            GLenum::GL_RGBA, GLenum::GL_UNSIGNED_BYTE, data->data());
+    return true;
 }
 
 }

@@ -66,7 +66,10 @@ uint32_t SpyOverride_vkAllocateMemory(VkDevice device,
                                       VkMemoryAllocateInfo* pAllocateInfo,
                                       VkAllocationCallbacks* pAllocator,
                                       VkDeviceMemory* pMemory);
-
+uint32_t SpyOverride_vkCreateSwapchainKHR(VkDevice device,
+                                          VkSwapchainCreateInfoKHR* pCreateInfo,
+                                          VkAllocationCallbacks* pAllocator,
+                                          VkSwapchainKHR* pImage);
 void SpyOverride_RecreateInstance(const VkInstanceCreateInfo*, VkInstance*) {}
 void SpyOverride_RecreatePhysicalDevices(VkInstance, uint32_t*,
                                          VkPhysicalDevice*) {}

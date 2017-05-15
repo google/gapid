@@ -121,6 +121,9 @@ public:
         return !is_suspended() && (mWatchedApis & (1 << api)) != 0;
     }
     void set_valid_apis(uint32_t apis) { mWatchedApis = apis; }
+
+    void set_observing(bool observing) { mIsObserving = observing; }
+    bool is_observing() const { return mIsObserving; }
 protected:
     static const size_t kMaxExtras = 16; // Per atom
 
@@ -158,10 +161,10 @@ protected:
     inline void handleAbort(CallObserver* observer, const AbortException& e);
 
     // onPostDrawCall is after any command annotated with @DrawCall
-    inline virtual void onPostDrawCall() {}
+    inline virtual void onPostDrawCall(uint8_t) {}
 
     // onPreEndOfFrame is before any command annotated with @EndOfFrame
-    inline virtual void onPreEndOfFrame() {}
+    inline virtual void onPreEndOfFrame(uint8_t) {}
 
     // onPostEndOfFrame is after any command annotated with @EndOfFrame
     inline virtual void onPostEndOfFrame(CallObserver* observer) {}
@@ -238,6 +241,11 @@ private:
     // bit set of apis where bit (1 << api) is set if a particular api
     // should be traced.
     uint32_t mWatchedApis;
+
+    // This is true if we may be observing frame-buffers during the trace.
+    // For some API's this will require that we modify some of the
+    // image creation parameters
+    bool mIsObserving;
 };
 
 // finds a key in the map and returns the value. If no value is present

@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-// Note this file is included in context in gles_spy.h:
-//
-// namespace gapii {
-//
-// class GlesSpy {
-// protected:
+#include "core_spy.h"
 
-// Declared in gles_context.cpp.
-void getContextConstants(Constants&);
-
-bool getFramebufferAttachmentSize(uint32_t* width, uint32_t* height);
+namespace gapii {
+bool CoreSpy::observeFramebuffer(uint32_t*, uint32_t*, std::vector<uint8_t>*) {
+    return false;
+}
+}
