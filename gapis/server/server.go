@@ -24,17 +24,15 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"runtime/pprof"
-	"sort"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -119,25 +117,9 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	return capture.Import(ctx, name, in)
 }
 
-// Returns all devices, sorted by Android first, and then Host
-func getSortedDevices(ctx context.Context) []bind.Device {
-	all := bind.GetRegistry(ctx).Devices()
-	androidDevices := make([]bind.Device, 0, len(all))
-	nonAndroidDevices := make([]bind.Device, 0, len(all))
-	for _, dev := range all {
-		instance := dev.Instance()
-		if instance.GetConfiguration().GetOS().GetKind() == device.Android {
-			androidDevices = append(androidDevices, dev)
-		} else {
-			nonAndroidDevices = append(nonAndroidDevices, dev)
-		}
-	}
-	return append(androidDevices, nonAndroidDevices...)
-}
-
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
-	devices := getSortedDevices(ctx)
+	devices := devices.Sorted(ctx)
 	paths := make([]*path.Device, len(devices))
 	for i, d := range devices {
 		paths[i] = path.NewDevice(d.Instance().Id.ID())
@@ -164,56 +146,7 @@ func (p prioritizedDevices) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 	s.deviceScanDone.Wait(ctx)
-	c, err := capture.ResolveFromPath(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	state := c.NewState()
-
-	apis := make([]replay.Support, 0, len(c.APIs))
-	for _, i := range c.APIs {
-		api := gfxapi.Find(gfxapi.ID(i.ID()))
-		if f, ok := api.(replay.Support); ok {
-			apis = append(apis, f)
-		}
-	}
-
-	all := getSortedDevices(ctx)
-	filtered := make([]prioritizedDevice, 0, len(all))
-	for _, device := range all {
-		instance := device.Instance()
-		p := uint32(1)
-		for _, api := range apis {
-			// TODO: Check if device is a LAD, and if so filter by supportsLAD.
-			ctx := log.V{
-				"api":    fmt.Sprintf("%T", api),
-				"device": instance.Name,
-			}.Bind(ctx)
-			priority := api.GetReplayPriority(ctx, instance, state.MemoryLayout)
-			p = p * priority
-			if priority != 0 {
-				log.I(ctx, "Compatible %d", priority)
-			} else {
-				log.I(ctx, "Incompatible")
-			}
-		}
-		if p > 0 {
-			ctx := log.V{
-				"device": instance,
-			}.Bind(ctx)
-			log.I(ctx, "Priority %d", p)
-			filtered = append(filtered, prioritizedDevice{device, p})
-		}
-	}
-
-	sort.Sort(prioritizedDevices(filtered))
-
-	paths := make([]*path.Device, len(filtered))
-	for i, d := range filtered {
-		paths[i] = path.NewDevice(d.device.Instance().Id.ID())
-	}
-	return paths, nil
+	return devices.ForReplay(ctx, p)
 }
 
 func (s *server) GetFramebufferAttachment(
