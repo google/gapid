@@ -7487,16 +7487,19 @@ cmd void vkCmdBeginRenderPass(
     recreate_data.ClearValues[i] = clear_values[i]
   }
 
-  addCmd(commandBuffer, recreate_data, CmdBeginRenderPass(begin_info.framebuffer), doCmdBeginRenderPass)
+  addCmd(commandBuffer, recreate_data, CmdBeginRenderPass(begin_info.framebuffer,
+    begin_info.renderPass), doCmdBeginRenderPass)
 }
 
 class CmdBeginRenderPass {
   VkFramebuffer Framebuffer
+  VkRenderPass RenderPass
 }
 
 sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
   LastDrawInfo.Framebuffer = Framebuffers[args.Framebuffer]
   LastDrawInfo.LastSubpass = 0
+  LastDrawInfo.RenderPass = RenderPasses[args.RenderPass]
   for _ , _ , v in LastDrawInfo.Framebuffer.ImageAttachments {
     v.Image.LastBoundQueue = LastBoundQueue
   }
@@ -7796,6 +7799,7 @@ cmd void RecreateSwapchain(VkDevice device,
 @custom
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
+@override
 cmd VkResult vkCreateSwapchainKHR(
     VkDevice                        device,
     const VkSwapchainCreateInfoKHR* pCreateInfo,
@@ -8486,6 +8490,8 @@ ref!ComputePipelineObject  CurrentComputePipeline
   ref!BoundIndexBuffer                BoundIndexBuffer
   // The draw parameters used for the draw
   DrawParameters                      CommandParameters
+  // The render pass in which this draw takes place
+  ref!RenderPassObject                RenderPass
 }
 // Records the draw information of the last draw.
 DrawInfo LastDrawInfo
