@@ -51,6 +51,10 @@ Value of type {{ty}} does not have field {{field}}.
 
 Command of type {{ty}} does not have parameter {{field}}.
 
+# ERR_RESULT_DOES_NOT_EXIST
+
+Command of type {{ty}} does not have a result value.
+
 # ERR_MAP_KEY_DOES_NOT_EXIST
 
 Map does not contain entry with key {{key}}.

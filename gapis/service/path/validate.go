@@ -225,6 +225,11 @@ func (n *Resources) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Result) Validate() error {
+	return checkNotNilAndValidate(n, n.Command, "command")
+}
+
+// Validate checks the path is valid.
 func (n *Slice) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Array), "array")
 }

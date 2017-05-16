@@ -78,6 +78,7 @@ func (n *Parameter) Path() *Any                 { return &Any{&Any_Parameter{n}}
 func (n *Report) Path() *Any                    { return &Any{&Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{&Any_ResourceData{n}} }
 func (n *Resources) Path() *Any                 { return &Any{&Any_Resources{n}} }
+func (n *Result) Path() *Any                    { return &Any{&Any_Result{n}} }
 func (n *Slice) Path() *Any                     { return &Any{&Any_Slice{n}} }
 func (n *State) Path() *Any                     { return &Any{&Any_State{n}} }
 func (n *StateTree) Path() *Any                 { return &Any{&Any_StateTree{n}} }
@@ -108,6 +109,7 @@ func (n Parameter) Parent() Node                 { return n.Command }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
 func (n Resources) Parent() Node                 { return n.Capture }
+func (n Result) Parent() Node                    { return n.Command }
 func (n Slice) Parent() Node                     { return oneOfNode(n.Array) }
 func (n State) Parent() Node                     { return n.After }
 func (n StateTree) Parent() Node                 { return n.After }
@@ -150,6 +152,7 @@ func (n ResourceData) Text() string {
 	return fmt.Sprintf("%v.resource-data<%x>", n.Parent().Text(), n.Id)
 }
 func (n Resources) Text() string { return fmt.Sprintf("%v.resources", n.Parent().Text()) }
+func (n Result) Text() string    { return fmt.Sprintf("%v.result", n.Parent().Text()) }
 func (n Slice) Text() string     { return fmt.Sprintf("%v[%v:%v]", n.Parent().Text(), n.Start, n.End) }
 func (n State) Text() string     { return fmt.Sprintf("%v.state-after", n.Parent().Text()) }
 func (n StateTree) Text() string { return fmt.Sprintf("%v.state-tree") }
@@ -439,6 +442,11 @@ func (n *StateTreeNode) Child(i uint64) *StateTreeNode {
 // Parameter returns the path node to the parameter with the given name.
 func (n *Command) Parameter(name string) *Parameter {
 	return &Parameter{Name: name, Command: n}
+}
+
+// Result returns the path node to the command's result.
+func (n *Command) Result() *Result {
+	return &Result{Command: n}
 }
 
 func (n *State) Field(name string) *Field             { return NewField(name, n) }
