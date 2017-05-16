@@ -665,7 +665,7 @@ message StateTreeNode {
   // The name of the field or group.
   string name = 2;
   // The path to the value.
-  path.Any path = 3;
+  path.Any value_path = 3;
   // The 'preview' value of the field.
   // For simple POD types, this may be the actual value, in which case
   // preview_is_value will be true.
