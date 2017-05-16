@@ -32,24 +32,29 @@ func adb() (file.Path, error) {
 		return ADB, nil
 	}
 
-	search := "adb"
+	exe := "adb"
+
+	search := []string{exe}
+
 	// If ANDROID_HOME is set, build a fully rooted path
 	// We still want to call LookPath to pick up the extension and check the binary exists
 	if home := os.Getenv("ANDROID_HOME"); home != "" {
-		search = filepath.Join(home, "platform-tools", search)
+		search = append(search, filepath.Join(home, "platform-tools", exe))
 	}
 
-	// Search the path if no directory prefix, otherwise just check the executable.
-	p, err := file.FindExecutable(search)
-	if err != nil {
-		return file.Path{}, fmt.Errorf("adb could not be found from ANDROID_HOME or PATH\n"+
-			"ANDROID_HOME: %v\n"+
-			"PATH: %v\n",
-			os.Getenv("ANDROID_HOME"), os.Getenv("PATH"))
+	for _, path := range search {
+		if p, err := file.FindExecutable(path); err == nil {
+			ADB = p
+			return ADB, nil
+		}
 	}
 
-	ADB = p
-	return ADB, nil
+	return file.Path{}, fmt.Errorf("adb could not be found from ANDROID_HOME or PATH\n"+
+		"ANDROID_HOME: %v\n"+
+		"PATH: %v\n"+
+		"search: %v",
+		os.Getenv("ANDROID_HOME"), os.Getenv("PATH"), search)
+
 }
 
 // Command is a helper that builds a shell.Cmd with the device as its target.
