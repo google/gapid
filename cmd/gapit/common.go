@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/gapis/client"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -201,15 +202,19 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't fetch memory observations")
 		}
-		memory := boxedMemory.(*service.Memory)
-		for _, read := range memory.Reads {
-			fmt.Printf("   R: [0x%x - 0x%x]\n", read.Base, read.Base+read.Size-1)
+		m := boxedMemory.(*service.Memory)
+		for _, read := range m.Reads {
+			fmt.Printf("   R: [%v - %v]\n",
+				memory.BytePtr(read.Base, 0),
+				memory.BytePtr(read.Base+read.Size-1, 0))
 			if of.Data {
 				printMemoryData(ctx, client, p, read)
 			}
 		}
-		for _, write := range memory.Writes {
-			fmt.Printf("   W: [0x%x - 0x%x]\n", write.Base, write.Base+write.Size-1)
+		for _, write := range m.Writes {
+			fmt.Printf("   W: [%v - %v]\n",
+				memory.BytePtr(write.Base, 0),
+				memory.BytePtr(write.Base+write.Size-1, 0))
 			if of.Data {
 				printMemoryData(ctx, client, p, write)
 			}
