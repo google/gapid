@@ -21,8 +21,9 @@ option java_package = "com.google.gapid.proto.service.box";
 option java_outer_classname = "Box";
 
 message Value {
-  // value_id is used to describe cyclic values. The identifier is scoped to
-  // this nested value declaration; it is not global.
+  // value_id is used to describe cyclic / 'diamond' values. The identifiers are
+  // only used for the duration of encoding / decoding the outermost `Value` or
+  // `Type` - they are not global.
   uint32 value_id = 1;
   oneof val {
     // If true then this value is a back-reference to a previously described
@@ -58,8 +59,9 @@ message Reference {
 }
 
 message Type {
-  // type_id is used to describe cyclic types. The identifier is scoped to this
-  // nested type declaration; it is not global.
+  // type_id is used to describe cyclic / 'diamond' types. The identifiers are
+  // only used for the duration of encoding / decoding the outermost `Value` or
+  // `Type` - they are not global.
   uint32 type_id = 1;
   oneof ty {
     // If true then this type is a back-reference to a previously described
