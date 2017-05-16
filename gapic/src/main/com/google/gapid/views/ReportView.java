@@ -296,7 +296,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
       str = str.trim();
       int p = str.indexOf('\n');
       if (p > 0) {
-        str = str.substring(0, p) + "\u2026";
+        str = str.substring(0, p) + '…';
       }
       return str;
     }
@@ -307,7 +307,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
         result = result.substring(0, result.length() - 1);
       }
       if (result.length() > TAG_STR_LENGTH) {
-        result = result.substring(0, TAG_STR_LENGTH - 1) + "\u2026";
+        result = result.substring(0, TAG_STR_LENGTH - 1) + '…';
       }
       return result;
     }
