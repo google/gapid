@@ -258,6 +258,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return ResourceData(ctx, p)
 	case *path.Resources:
 		return Resources(ctx, p.Capture)
+	case *path.Result:
+		return Result(ctx, p)
 	case *path.Slice:
 		return Slice(ctx, p)
 	case *path.State:

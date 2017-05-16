@@ -49,11 +49,12 @@ message Any {
     Report report = 22;
     ResourceData resource_data = 23;
     Resources resources = 24;
-    Slice slice = 25;
-    State state = 26;
-    StateTree state_tree = 27;
-    StateTreeNode state_tree_node = 28;
-    Thumbnail thumbnail = 29;
+    Result result = 25;
+    Slice slice = 26;
+    State state = 27;
+    StateTree state_tree = 28;
+    StateTreeNode state_tree_node = 29;
+    Thumbnail thumbnail = 30;
   }
 }
 
@@ -156,6 +157,11 @@ message Events {
 message Parameter {
     string name = 1;
     Command command = 2;
+}
+
+// Result is the path to the result value of a command.
+message Result {
+    Command command = 1;
 }
 
 // Threads is path to a list of threads in a capture.

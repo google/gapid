@@ -29,13 +29,16 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// ErrParameterNotFound is the error returned by SetParameter when the atom
-// does not have the named parameter.
 const (
+	// ErrParameterNotFound is the error returned by Parameter() and
+	// SetParameter() when the atom does not have the named parameter.
 	ErrParameterNotFound = fault.Const("Parameter not found")
-	paramTag             = "param"
-	resultTag            = "result"
-	constsetTag          = "constset"
+	// ErrResultNotFound is the error returned by Result() and SetResult() when
+	// the atom does not have a result value.
+	ErrResultNotFound = fault.Const("Result not found")
+	paramTag          = "param"
+	resultTag         = "result"
+	constsetTag       = "constset"
 )
 
 // ToService returns the service command representing atom a.
@@ -155,4 +158,36 @@ func SetParameter(ctx context.Context, a Atom, name string, val interface{}) err
 		}
 	}
 	return ErrParameterNotFound
+}
+
+// Result returns the command's result value.
+func Result(ctx context.Context, a Atom) (interface{}, error) {
+	v := reflect.ValueOf(a)
+	for v.Kind() != reflect.Struct {
+		v = v.Elem()
+	}
+	t := v.Type()
+	for i, count := 0, t.NumField(); i < count; i++ {
+		f, t := v.Field(i), t.Field(i)
+		if _, ok := t.Tag.Lookup(resultTag); ok {
+			return f.Interface(), nil
+		}
+	}
+	return nil, ErrResultNotFound
+}
+
+// SetResult sets the commands result value to val.
+func SetResult(ctx context.Context, a Atom, val interface{}) error {
+	v := reflect.ValueOf(a)
+	for v.Kind() != reflect.Struct {
+		v = v.Elem()
+	}
+	t := v.Type()
+	for i, count := 0, t.NumField(); i < count; i++ {
+		f, t := v.Field(i), t.Field(i)
+		if _, ok := t.Tag.Lookup(resultTag); ok {
+			return deep.Copy(f.Addr().Interface(), val)
+		}
+	}
+	return ErrResultNotFound
 }

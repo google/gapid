@@ -80,3 +80,24 @@ func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 		return nil, err
 	}
 }
+
+// Result resolves and returns the command's result from the path p.
+func Result(ctx context.Context, p *path.Result) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent())
+	if err != nil {
+		return nil, err
+	}
+	a := obj.(atom.Atom)
+	param, err := atom.Result(ctx, a)
+	switch err {
+	case nil:
+		return param, nil
+	case atom.ErrResultNotFound:
+		return nil, &service.ErrInvalidPath{
+			Reason: messages.ErrResultDoesNotExist(a.AtomName()),
+			Path:   p.Path(),
+		}
+	default:
+		return nil, err
+	}
+}

@@ -183,6 +183,27 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			}
 			return parent.(*path.Command).Parameter(p.Name), nil
 
+		case *path.Result:
+			// TODO: Deal with parameters belonging to sub-commands.
+			a := obj.Interface().(atom.Atom)
+			err := atom.SetResult(ctx, a, val)
+			switch err {
+			case nil:
+			case atom.ErrResultNotFound:
+				return nil, &service.ErrInvalidPath{
+					Reason: messages.ErrResultDoesNotExist(a.AtomName()),
+					Path:   p.Path(),
+				}
+			default:
+				return nil, err
+			}
+
+			parent, err := change(ctx, p.Parent(), obj.Interface())
+			if err != nil {
+				return nil, err
+			}
+			return parent.(*path.Command).Result(), nil
+
 		case *path.Field:
 			parent, err := setField(ctx, obj, reflect.ValueOf(val), p.Name, p)
 			if err != nil {
