@@ -19,5 +19,5 @@ import (
 )
 
 var (
-	version = app.VersionSpec{Major: 0, Minor: 1}
+	version = app.VersionSpec{Major: 0, Minor: 2}
 )
