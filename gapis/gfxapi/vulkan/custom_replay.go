@@ -1378,15 +1378,15 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 			srcLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			copies := []VkBufferImageCopy{}
 
-			block_info, _ := subGetElementAndTexelBlockSize(ctx, a, nil, nil, nil, nil, imageInfo.Format)
+			block_info, _ := subGetElementAndTexelBlockSize(ctx, a, nil, s, nil, nil, imageInfo.Format)
 			offset := VkDeviceSize(0)
 
 			for i := uint32(0); i < imageInfo.MipLevels; i++ {
-				width, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Width, i)
-				height, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Height, i)
-				depth, _ := subGetMipSize(ctx, a, nil, nil, nil, nil, imageInfo.Extent.Depth, i)
-				width_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, width, block_info.TexelBlockSize.Width)
-				height_in_blocks, _ := subRoundUpTo(ctx, a, nil, nil, nil, nil, height, block_info.TexelBlockSize.Height)
+				width, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Width, i)
+				height, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Height, i)
+				depth, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Depth, i)
+				width_in_blocks, _ := subRoundUpTo(ctx, a, nil, s, nil, nil, width, block_info.TexelBlockSize.Width)
+				height_in_blocks, _ := subRoundUpTo(ctx, a, nil, s, nil, nil, height, block_info.TexelBlockSize.Height)
 				copies = append(copies, VkBufferImageCopy{
 					BufferOffset:      offset,
 					BufferRowLength:   0, // Tightly packed
