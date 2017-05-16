@@ -80,11 +80,11 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	for _, types := range resources.GetTypes() {
 		if types.Type == gfxapi.ResourceType_ShaderResource {
 			for _, v := range types.GetResources() {
-				if v.Path == nil {
-					log.E(ctx, "Got resource with no path!\n%+v", v)
+				if !v.Id.IsValid() {
+					log.E(ctx, "Got resource with invalid ID!\n%+v", v)
 					continue
 				}
-				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.Path.Id)
+				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.Id)
 				shaderData, err := client.Get(ctx, resourcePath.Path())
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)

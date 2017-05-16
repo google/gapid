@@ -557,8 +557,8 @@ message ResourcesByType {
 
 // Resource describes a single resource.
 message Resource {
-  // The resource's path.
-  path.Resource path = 1;
+  // The resource's unique identifier.
+  path.ID id = 1;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.

@@ -102,7 +102,7 @@ type trackedResource struct {
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	out := &service.Resource{
-		Path:     p.Resource(path.NewID(r.id)),
+		Id:       path.NewID(r.id),
 		Handle:   r.resource.ResourceHandle(),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),

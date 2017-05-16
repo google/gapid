@@ -383,11 +383,6 @@ func (n *Capture) Context(id *ID) *Context {
 	return &Context{Capture: n, Id: id}
 }
 
-// Resource returns the path node to the resource with the given ID.
-func (n *Capture) Resource(id *ID) *Resource {
-	return &Resource{Capture: n, Id: id}
-}
-
 // MemoryAfter returns the path node to the memory after this command.
 func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 	return &Memory{addr, size, pool, n, false, false}

@@ -238,7 +238,7 @@ func (r *Resources) Find(ty gfxapi.ResourceType, id id.ID) *Resource {
 	for _, t := range r.Types {
 		if t.Type == ty {
 			for _, r := range t.Resources {
-				if r.Path.Id.ID() == id {
+				if r.Id.ID() == id {
 					return r
 				}
 			}

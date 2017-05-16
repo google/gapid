@@ -299,7 +299,7 @@ public class TextureView extends Composite
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-        Data data = new Data(resourceAfter(range, info.getPath().getId()), info, typeLabel);
+        Data data = new Data(resourceAfter(range, info.getId()), info, typeLabel);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
       }
