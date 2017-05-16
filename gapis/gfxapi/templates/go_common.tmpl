@@ -593,7 +593,7 @@
   {{else if IsMember           $}}{{Template "Go.Member" $}}
   {{else if IsGlobal           $}}{{Template "Go.Global" $}}
   {{else if IsParameter        $}}{{Template "Go.Parameter" $}}
-  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Elements[{{Template "Go.Read" $.Index}}]
+  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}[{{Template "Go.Read" $.Index}}]
   {{else if IsMapIndex         $}}{{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
   {{else if IsMapContains      $}}{{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
@@ -722,7 +722,7 @@
   {{AssertType $ "ArrayInitializer"}}
 
   {{$a := $.Array | Underlying | Unpack}}
-  {{Template "Go.Type" $}}{ Elements: [{{$a.Size}}]{{Template "Go.Type" $a.ValueType}}{ {{ForEach $.Values "Go.Read" | JoinWith ", "}} } }
+  {{Template "Go.Type" $}}{ {{ForEach $.Values "Go.Read" | JoinWith ", "}} }
 {{end}}
 
 

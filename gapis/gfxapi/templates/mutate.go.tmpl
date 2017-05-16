@@ -527,7 +527,7 @@
 {{define "ArrayAssign"}}
   {{AssertType $ "ArrayAssign"}}
 
-  {{Template "Go.Read" $.To.Array}}.Elements[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
+  {{Template "Go.Read" $.To.Array}}[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
 {{end}}
 
 

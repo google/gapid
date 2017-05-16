@@ -205,7 +205,7 @@ func postImageData(ctx context.Context,
 	physicalDeviceMemoryPropertiesData := MustAllocData(ctx, s, physicalDevice.MemoryProperties)
 	bufferMemoryTypeIndex := uint32(0)
 	for i := uint32(0); i < physicalDevice.MemoryProperties.MemoryTypeCount; i++ {
-		t := physicalDevice.MemoryProperties.MemoryTypes.Elements[i]
+		t := physicalDevice.MemoryProperties.MemoryTypes[i]
 		if 0 != (t.PropertyFlags & VkMemoryPropertyFlags(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
 			VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
 			bufferMemoryTypeIndex = i
@@ -538,17 +538,15 @@ func postImageData(ctx context.Context,
 			LayerCount:     1,
 		},
 		SrcOffsets: VkOffset3Dː2ᵃ{
-			Elements: [2]VkOffset3D{
-				{
-					X: 0,
-					Y: 0,
-					Z: 0,
-				},
-				{
-					X: int32(imgWidth),
-					Y: int32(imgHeight),
-					Z: 1,
-				},
+			{
+				X: 0,
+				Y: 0,
+				Z: 0,
+			},
+			{
+				X: int32(imgWidth),
+				Y: int32(imgHeight),
+				Z: 1,
 			},
 		},
 		DstSubresource: VkImageSubresourceLayers{
@@ -558,17 +556,15 @@ func postImageData(ctx context.Context,
 			LayerCount:     1,
 		},
 		DstOffsets: VkOffset3Dː2ᵃ{
-			Elements: [2]VkOffset3D{
-				{
-					X: int32(0),
-					Y: int32(0),
-					Z: 0,
-				},
-				{
-					X: int32(reqWidth),
-					Y: int32(reqHeight),
-					Z: 1,
-				},
+			{
+				X: int32(0),
+				Y: int32(0),
+				Z: 0,
+			},
+			{
+				X: int32(reqWidth),
+				Y: int32(reqHeight),
+				Z: 1,
 			},
 		},
 	}

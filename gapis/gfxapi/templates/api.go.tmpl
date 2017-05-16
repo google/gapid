@@ -151,25 +151,23 @@
   {{AssertType $ "StaticArray"}}
 
   {{$ty := Macro "Go.Type" $}}
-  type {{$ty}} struct {
-    Elements [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
-  }
+  type {{$ty}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
 
   func (a *{{$ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-    for _, v := range a.Elements {
+    for _, v := range (*a) {
       {{Template "Go.Encode" "Name" "v" "Type" $.ValueType "ErrHandler" "panic(e.Error())"}}
     }
   }
 
   func (a *{{$ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-    for i := range a.Elements {
-      {{Template "Go.Decode" "Name" "a.Elements[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
+    for i := range (*a) {
+      {{Template "Go.Decode" "Name" "(*a)[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
     }
   }
 
   {{if IsNumericType $.ValueType}}
     func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
-      for _, v := range a.Elements {
+      for _, v := range a {
         ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
       }
       return ϟb.Buffer({{$.Size}})
@@ -731,19 +729,6 @@
     }
     return nil, nil
   }
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a type declaration and implementation for the specified static array.
--------------------------------------------------------------------------------
-*/}}
-{{define "StaticArray"}}
-  {{AssertType $ "StaticArray"}}
-  type {{$.Name}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
-  func (s {{$.Name}}) Len() int { return {{$.Size}} }
-  func (s {{$.Name}}) Range() [{{$.Size}}]{{Template "Go.Type" $.ValueType}} { return s}
 {{end}}
 
 

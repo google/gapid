@@ -149,7 +149,7 @@
   {{if IsStaticArray $truetype}}
     to.{{$proto}} = make([]{{Macro "Convert.StorageType" $truetype.ValueType}}, {{$truetype.Size}})¶
     for ϟi := 0; ϟi < {{$type.Size}}; ϟi++ {»¶
-      ϟv := ϟa.{{$name}}.Elements[ϟi]¶
+      ϟv := ϟa.{{$name}}[ϟi]¶
       to.{{$proto}}[ϟi] = {{Template "Convert.ToProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
@@ -180,7 +180,7 @@
   {{if IsStaticArray $truetype}}
     for ϟi := 0; ϟi < {{$truetype.Size}}; ϟi++ {»¶
       ϟv := from.{{$proto}}[ϟi]¶
-      ϟa.{{$name}}.Elements[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
+      ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
     ϟa.{{$name}} = make({{$.Field.Type.Name}}, len(from.{{$proto}}))¶
