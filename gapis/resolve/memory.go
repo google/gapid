@@ -71,7 +71,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	}
 
 	var data []byte
-	if !p.ExcludeData {
+	if !p.ExcludeData && slice.Size() > 0 {
 		data = make([]byte, slice.Size())
 		if err := slice.Get(ctx, 0, data); err != nil {
 			return nil, err
