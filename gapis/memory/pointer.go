@@ -14,6 +14,8 @@
 
 package memory
 
+import "fmt"
+
 // Nullptr is a zero-address pointer in the application pool.
 var Nullptr = BytePtr(0, ApplicationPool)
 
@@ -45,6 +47,8 @@ type ptr struct {
 	pool PoolID
 }
 
+func (p ptr) String() string { return PointerToString(p) }
+
 // IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
 func (p ptr) IsNullptr() bool { return p.addr == 0 && p.pool == ApplicationPool }
 
@@ -57,22 +61,20 @@ func (p ptr) Pool() PoolID { return p.pool }
 // Offset returns the pointer offset by n bytes.
 func (p ptr) Offset(n uint64) Pointer { return ptr{p.addr + n, p.pool} }
 
-/*
-// TODO: Pointer string utility.
-
-func (p Pointer) String() string {
-	if p.Pool == PoolID(0) {
-		if p.Address < lowMem {
-			return fmt.Sprint(p.Address)
+// PointerToString returns a string representation of the pointer.
+func PointerToString(p Pointer) string {
+	addr, pool := p.Address(), p.Pool()
+	if pool == PoolID(0) {
+		if addr < lowMem {
+			return fmt.Sprint(addr)
 		}
-		if p.Address < bits32 {
-			return fmt.Sprintf("0x%.8x", p.Address)
+		if addr < bits32 {
+			return fmt.Sprintf("0x%.8x", addr)
 		}
-		return fmt.Sprintf("0x%.16x", p.Address)
+		return fmt.Sprintf("0x%.16x", addr)
 	}
-	if p.Address < bits32 {
-		return fmt.Sprintf("0x%.8x@%d", p.Address, p.Pool)
+	if addr < bits32 {
+		return fmt.Sprintf("0x%.8x@%d", addr, pool)
 	}
-	return fmt.Sprintf("0x%.16x@%d", p.Address, p.Pool)
+	return fmt.Sprintf("0x%.16x@%d", addr, pool)
 }
-*/
