@@ -70,6 +70,10 @@ type (
 	CommandFilterFlags struct {
 		Context int `help:"Filter to the i'th context."`
 	}
+	ObservationFlags struct {
+		Ranges bool `help:"if true then display the read and write ranges made by each command."`
+		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
+	}
 	DeviceFlags struct {
 		Device string `help:"Device to spawn on. One of: 'host', 'android' or <device-serial>"`
 	}
@@ -124,12 +128,14 @@ type (
 		Raw            bool `help:"if true then the value of constants, instead of their names, will be dumped."`
 		ShowDeviceInfo bool `help:"if true then show originating device information."`
 		ShowABIInfo    bool `help:"if true then show information of the ABI used for the trace."`
+		Observations   ObservationFlags
 	}
 	CommandsFlags struct {
-		Gapis GapisFlags
-		Gapir GapirFlags
-		Raw   bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
-		Name  string `help:"Filter to commands and groups with the specified name."`
+		Gapis        GapisFlags
+		Gapir        GapirFlags
+		Raw          bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Name         string `help:"Filter to commands and groups with the specified name."`
+		Observations ObservationFlags
 		CommandFilterFlags
 	}
 	StateFlags struct {
