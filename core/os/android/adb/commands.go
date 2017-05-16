@@ -58,6 +58,9 @@ retry:
 		if err != nil {
 			return err
 		}
+		if len(output) == 0 {
+			return nil // Assume no output is success
+		}
 		output = strings.Replace(output, "\r\n", "\n", -1) // Not expected, but let's be safe.
 		buf.WriteString(fmt.Sprintf("\n#%d: %v", attempt, output))
 		lines := strings.Split(output, "\n")
