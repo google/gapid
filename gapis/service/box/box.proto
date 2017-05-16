@@ -40,20 +40,29 @@ message Value {
 }
 
 message Pointer {
+  // base address of the pointer.
   uint64 address = 1;
+  // the pool identifier.
   uint32 pool = 2;
 }
 
 message Slice {
+  // the type of the slice data.
   pod.Type type = 1;
+  // the base address of the slice.
   Pointer base = 2;
+  // the number of elements in the slice.
   uint64 count = 3;
+  // the original pointer this slice derives from.
+  // Is constant even after sub-slicing.
   uint64 root = 4;
 }
 
 message Reference {
   oneof val {
+    // null is used to describe a null reference to the specified type.
     Type null = 1;
+    // a reference to value.
     Value value = 2;
   }
 }
