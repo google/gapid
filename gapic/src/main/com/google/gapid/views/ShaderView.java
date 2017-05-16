@@ -579,7 +579,7 @@ public class ShaderView extends Composite
     }
 
     public Path.Any getPath(AtomStream atoms) {
-      return resourceAfter(atoms.getSelectedAtoms(), info.getPath().getId());
+      return resourceAfter(atoms.getSelectedAtoms(), info.getId());
     }
 
     @Override

@@ -323,12 +323,6 @@ message Resources {
     Capture capture = 1;
 }
 
-// Resource is a path to a single resource used in a capture.
-message Resource {
-    Capture capture = 1;
-    ID id = 2;
-}
-
 // ResourceData is a path to a single resource snapshot at a given point in an
 // atom stream.
 message ResourceData {
