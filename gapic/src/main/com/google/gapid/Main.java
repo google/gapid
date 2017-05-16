@@ -18,6 +18,7 @@ package com.google.gapid;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
+import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
@@ -166,11 +167,12 @@ public class Main {
 
   private static final Flag<?>[] ALL_FLAGS = {
     Flags.help,
-    Logging.logLevel,
-    Logging.logDir,
     GapiPaths.gapidPath,
     Server.gapis,
     Server.gapisAuthToken,
+    Logging.logLevel,
+    Logging.logDir,
+    Follower.logFollowRequests,
     Server.useCache,
   };
 }

@@ -16,10 +16,12 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
+import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.vertCenter;
 import static com.google.gapid.util.Loadable.MessageType.Error;
+import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
@@ -35,6 +37,7 @@ import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
+import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.service.Service;
@@ -85,6 +88,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.Iterator;
 import java.util.List;
@@ -178,9 +182,11 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     });
     */
 
+    Widgets.Refresher treeRefresher = Widgets.withAsyncRefresh(viewer);
     MouseAdapter mouseHandler = new MouseAdapter() {
       private Future<?> lastScheduledFuture = Futures.immediateFuture(null);
-      private TreeItem lastHoveredItem;
+      private TreeItem lastHovered, lastHoveredImage;
+      private Follower.Prefetcher<String> lastPrefetcher = nullPrefetcher();
       private Balloon lastShownBalloon;
 
       @Override
@@ -206,47 +212,67 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       @Override
       public void mouseDown(MouseEvent e) {
         Point location = new Point(e.x, e.y);
-        Object follow = /*TODO(CanFollow)*/labelProvider.getFollow(location);
+        Path.Any follow = (Path.Any)labelProvider.getFollow(location);
         if (follow != null) {
-          //models.follower.follow(getFollowPath(tree.getItem(location), follow.getPath()));
+          models.follower.onFollow(follow);
         }
+      }
+
+      @Override
+      public void mouseExit(MouseEvent e) {
+        hoverItem(null);
+        hoverImage(null);
       }
 
       private void updateHover(int x, int y) {
         TreeItem item = tree.getItem(new Point(x, y));
-        if (item != null && (item.getData() instanceof AtomStream.Node) &&
-            item.getImage() != null && item.getImageBounds(0).contains(x, y)) {
-          hover(item);
-        } else {
-          hover(null);
+        // When hovering over the far left of deep items, getItem returns null. Let's check a few
+        // more places to the right.
+        if (item == null) {
+          for (int testX = x + 20; item == null && testX < 300; testX += 20) {
+            item = tree.getItem(new Point(testX, y));
+          }
+        }
 
-          Object follow = /*TODO(CanFollow)*/labelProvider.getFollow(new Point(x, y));
+        if (item != null && (item.getData() instanceof AtomStream.Node)) {
+          hoverItem(item);
+          if (item.getImage() != null && item.getImageBounds(0).contains(x, y)) {
+            hoverImage(item);
+          } else {
+            hoverImage(null);
+          }
+
+          Path.Any follow = (Path.Any)labelProvider.getFollow(new Point(x, y));
           setCursor((follow == null) ? null : getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-          if (follow != null) {
-            //models.follower.prepareFollow(getFollowPath(item, follow.getPath()));
-          }
+        } else {
+          hoverItem(null);
+          hoverImage(null);
         }
       }
 
-      /*
-      private Path.Any getFollowPath(TreeItem item, Pathway path) {
-        AtomNode atom = (AtomNode)item.getData();
-        String field = ((com.google.gapid.service.snippets.FieldPath)path).getName();
-        for (int i = 0; i < atom.atom.getFieldCount(); i++) {
-          String actualField = atom.atom.getFieldInfo(i).getName();
-          if (actualField.equalsIgnoreCase(field)) {
-            return Paths.atomField(models.atoms.getPath(), atom.index, actualField);
-          }
-        }
-        LOG.log(Level.WARNING, "Field " + path + " not found in atom " + atom.atom);
-        return null;
-      }
-      */
+      private void hoverItem(TreeItem item) {
+        if (item != lastHovered) {
+          lastHovered = item;
+          lastPrefetcher.cancel();
 
-      private void hover(TreeItem item) {
-        if (item != lastHoveredItem) {
+          AtomStream.Node node = (item == null) ? null : (AtomStream.Node)item.getData();
+          // TODO: if still loading, once loaded should update the hover data.
+          if (node == null || node.getData() == null || node.getCommand() == null) {
+            lastPrefetcher = nullPrefetcher();
+          } else {
+            lastPrefetcher = models.follower.prepare(lastCommand(node.getData().getCommands()),
+                node.getCommand(), () -> Widgets.scheduleIfNotDisposed(tree, treeRefresher::refresh));
+          }
+
+          labelProvider.setHoveredItem(lastHovered, lastPrefetcher);
+          treeRefresher.refresh();
+        }
+      }
+
+      private void hoverImage(TreeItem item) {
+        if (item != lastHoveredImage) {
           lastScheduledFuture.cancel(true);
-          lastHoveredItem = item;
+          lastHoveredImage = item;
           if (item != null) {
             lastScheduledFuture = Scheduler.EXECUTOR.schedule(() ->
               Widgets.scheduleIfNotDisposed(
@@ -284,6 +310,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
     };
     tree.addMouseListener(mouseHandler);
+    tree.addMouseTrackListener(mouseHandler);
     tree.addMouseMoveListener(mouseHandler);
     tree.addMouseWheelListener(mouseHandler);
     tree.getVerticalBar().addSelectionListener(mouseHandler);
@@ -567,6 +594,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       implements VisibilityTrackingTreeViewer.Listener {
     private final ConstantSets constants;
     private final ImageProvider imageProvider;
+    private TreeItem hoveredItem;
+    private Follower.Prefetcher<String> follower;
 
     public ViewLabelProvider(
         TreeViewer viewer, ConstantSets constants, Theme theme, ImageProvider imageProvider) {
@@ -575,8 +604,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       this.imageProvider = imageProvider;
     }
 
+    public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<String> follower) {
+      this.hoveredItem = hoveredItem;
+      this.follower = follower;
+    }
+
     @Override
-    protected <S extends StylingString> S format(Object element, S string) {
+    protected <S extends StylingString> S format(Widget item, Object element, S string) {
       CommandTreeNode data = ((AtomStream.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
@@ -587,7 +621,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
           if (cmd == null) {
             string.append("Loading...", string.structureStyle());
           } else {
-            Formatter.format(cmd, constants::getConstants, string, string.identifierStyle());
+            Formatter.format(cmd, constants::getConstants, getFollower(item)::canFollow,
+                string, string.identifierStyle());
           }
         } else {
           string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
@@ -598,6 +633,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         }
       }
       return string;
+    }
+
+    private Follower.Prefetcher<String> getFollower(Widget item) {
+      return (item == hoveredItem) ? follower : nullPrefetcher();
     }
 
     @Override
@@ -611,8 +650,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     protected boolean isFollowable(Object element) {
-      //return element instanceof AtomNode;
-      return false;
+      AtomStream.Node node = (AtomStream.Node)element;
+      return node.getData() != null && node.getCommand() != null;
     }
 
     @Override

@@ -20,6 +20,7 @@ import static java.util.function.Function.identity;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.UnsignedInts;
 import com.google.common.primitives.UnsignedLongs;
+import com.google.gapid.models.Follower;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.box.Box;
@@ -49,6 +50,7 @@ public class Formatter {
 
   public static void format(Service.Command atom,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
+      Function<String, Path.Any> followResolver,
       StylingString string, Style style) {
     string.append(atom.getName(), string.labelStyle());
     string.append("(", string.structureStyle());
@@ -60,9 +62,7 @@ public class Formatter {
         string.append(", ", string.structureStyle());
       }
       needComma = true;
-      //SnippetObject paramValue = SnippetObject.param(atom, i);
-      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Object follow = null;
+      Path.Any follow = followResolver.apply(field.getName());
       Style paramStyle = (follow == null) ? style : string.linkStyle();
       string.startLink(follow);
       string.append(field.getName(), paramStyle);
@@ -74,8 +74,7 @@ public class Formatter {
     string.append(")", string.structureStyle());
     if (atom.hasResult()) {
       string.append("->", string.structureStyle());
-      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Object follow = null;
+      Path.Any follow = followResolver.apply(Follower.RESULT_NAME);
       string.startLink(follow);
       format(atom.getResult(), constantResolver, string,
           (follow == null) ? style : string.linkStyle());
@@ -86,7 +85,7 @@ public class Formatter {
   public static String toString(Service.Command atom,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver) {
     NoStyleStylingString string = new NoStyleStylingString();
-    format(atom, constantResolver, string, null);
+    format(atom, constantResolver, s -> null, string, null);
     return string.toString();
   }
 

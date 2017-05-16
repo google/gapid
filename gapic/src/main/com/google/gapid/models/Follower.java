@@ -16,22 +16,30 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.findState;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.WARNING;
 
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.service.path.Path.Any;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
+import com.google.gapid.server.Client.PathNotFollowableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.util.Objects;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,14 +48,17 @@ import java.util.logging.Logger;
  * Model handling link following throughout the UI.
  */
 public class Follower {
+  public static final Flag<Boolean> logFollowRequests =
+      Flags.value("logFollowRequests", false, "Whether to log follow prefetch requests.");
+
+  public static final String RESULT_NAME = "\u03df__RESULT__\u03df";
+
   protected static final Logger LOG = Logger.getLogger(Follower.class.getName());
   private static final int FOLLOW_TIMEOUT_MS = 1000;
 
   private final Shell shell;
   private final Client client;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  protected Path.Any lastFollowCacheRequest, lastFollowCacheResult;
-  protected ListenableFuture<Path.Any> lastFollowCacheFuture = Futures.immediateFuture(null);
 
   public Follower(Shell shell, Client client) {
     this.shell = shell;
@@ -55,34 +66,64 @@ public class Follower {
   }
 
   /**
-   * Looks up how to follow a path in the background. The idea is to prime the follow cache - on
-   * hover, for example - so that when the user actually requests to follow the link, the UI can
-   * react quickly.
+   * Prefetches all the follow paths for the given command.
    */
-  public void prepareFollow(Path.Any path) {
-    if (path == null || Objects.equals(path, lastFollowCacheRequest)) {
-      return;
+  public Prefetcher<String> prepare(Path.Command path, Service.Command atom, Runnable onResult) {
+    LazyMap<String, Path.Any> paths = new LazyMap<String, Path.Any>();
+    for (Service.Parameter p : atom.getParametersList()) {
+      Path.Any follow = Paths.atomField(path, p.getName());
+      Futures.addCallback(client.follow(follow), callback(paths, follow, p.getName(), onResult));
     }
 
-    lastFollowCacheRequest = path;
-    lastFollowCacheFuture.cancel(true);
+    if (atom.hasResult()) {
+      Path.Any follow = Paths.atomResult(path);
+      Futures.addCallback(client.follow(follow), callback(paths, follow, RESULT_NAME, onResult));
+    }
 
-    // Assumes the client caches follow requests. We simply hold a reference to the last returned
-    // path (via the future), to keep it from being evicted from the soft reference cache.
-    lastFollowCacheFuture = client.follow(path);
-
-    /*
-    Futures.addCallback(lastFollowCacheFuture, new FutureCallback<Paths.Any>() {
+    return new Prefetcher<String>() {
       @Override
-      public void onSuccess(Paths.Any result) {
-        LOG.log(FINE, "Follow result: " + path + " -> " + result);
+      public Any canFollow(String follow) {
+        return paths.get(follow);
       }
+
+      @Override
+      public void cancel() {
+        // TODO.
+      }
+    };
+  }
+
+  private static FutureCallback<Path.Any> callback(
+      LazyMap<String, Path.Any> paths, Path.Any follow, String name, Runnable onResult) {
+    return new FutureCallback<Path.Any>() {
+      @Override
+      public void onSuccess(Path.Any result) {
+        paths.put(name, result);
+        onResult.run();
+
+        if (logFollowRequests.get()) {
+          LOG.log(FINE, "Follow result: {0} -> {1}", new Object[] { follow, result });
+        }
+      }
+
       @Override
       public void onFailure(Throwable t) {
-        LOG.log(FINE, "Follow failure:", t);
+        if (t instanceof PathNotFollowableException) {
+          onResult.run();
+
+          if (logFollowRequests.get()) {
+            LOG.log(FINE, "Path {0} not followable", follow);
+          }
+        } else if (logFollowRequests.get()) {
+          LOG.log(FINE, "Follow failure:", t);
+        }
       }
-    });
-    */
+    };
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> Prefetcher<T> nullPrefetcher() {
+    return (Prefetcher<T>)Prefetcher.NULL;
   }
 
   /**
@@ -100,7 +141,7 @@ public class Follower {
         try {
           return result.get();
         } catch (RpcException | ExecutionException e) {
-          // We ignore errors on follow (likely just means we couldn't follow).
+          // We ignore errors on follow.
           LOG.log(Level.FINE, "Follow failure:", e);
           return null;
         }
@@ -118,13 +159,16 @@ public class Follower {
           // expects us to actually follow the link.
           LOG.log(WARNING, "We took too long (" + duration + ") to follow " + path);
         } else {
-          handleFollowResult(result);
+          onFollow(result);
         }
       }
     });
   }
 
-  protected void handleFollowResult(Path.Any path) {
+  /**
+   * Update the UI with the given follow path result.
+   */
+  public void onFollow(Path.Any path) {
     switch (path.getPathCase()) {
       case MEMORY:
         listeners.fire().onMemoryFollowed(path.getMemory());
@@ -169,5 +213,51 @@ public class Follower {
      * Event indicating that a link with the given path to a memory region was followed.
      */
     public default void onMemoryFollowed(Path.Memory path)  { /* empty */ }
+  }
+
+  public static interface Prefetcher<K> {
+    public static final Prefetcher<?> NULL = new Prefetcher<Object>() {
+      @Override
+      public Path.Any canFollow(Object key) {
+        return null;
+      }
+
+      @Override
+      public void cancel() {
+        // No-op.
+      }
+    };
+
+    /**
+     * Returns {@code null} if the item cannot be followed, or the known follow path.
+     */
+    public Path.Any canFollow(K key);
+
+    public void cancel();
+  }
+
+  /**
+   * Map that synchronizes access and only allocates backing storage once non-empty.
+   */
+  private static class LazyMap<K, V> {
+    private Map<K, V> map;
+
+    public LazyMap() {
+    }
+
+    public void put(K key, V value) {
+      synchronized (this) {
+        if (map == null) {
+          map = Maps.newHashMap();
+        }
+        map.put(key, value);
+      }
+    }
+
+    public V get(K key) {
+      synchronized (this) {
+        return (map == null) ? null : map.get(key);
+      }
+    }
   }
 }

@@ -56,6 +56,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -253,7 +254,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
     }
 
     @Override
-    protected <S extends StylingString> S format(Object element, S string) {
+    protected <S extends StylingString> S format(Widget widget, Object element, S string) {
       if (element instanceof Group) {
         Group group = (Group)element;
         string.append(trimGroupString(group.name), string.defaultStyle());

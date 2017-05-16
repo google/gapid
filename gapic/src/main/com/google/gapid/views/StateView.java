@@ -28,8 +28,10 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.StateTreeNode;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadablePanel;
@@ -47,9 +49,11 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -64,7 +68,7 @@ public class StateView extends Composite
   private final Models models;
   private final LoadablePanel<Tree> loading;
   private final TreeViewer viewer;
-  //private final SelectionHandler<Tree> selectionHandler;
+  private final SelectionHandler<Tree> selectionHandler;
 
   public StateView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -90,14 +94,12 @@ public class StateView extends Composite
       models.state.removeListener(this);
     });
 
-    /*
     selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
       @Override
       protected void updateModel(Event e) {
         // Do nothing.
       }
     };
-    */
 
     tree.addListener(SWT.MouseMove, e -> {
       Point location = new Point(e.x, e.y);
@@ -225,43 +227,31 @@ public class StateView extends Composite
     loading.stopLoading();
     viewer.setInput(models.state.getData());
 
-    /*
     Path.Any selection = models.state.getSelectedPath();
-    if (selection == null) {*/
+    if (selection == null) {
       viewer.setSelection(
           new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
-    /*} else {
+    } else {
       onStateSelected(selection);
     }
-    */
   }
 
-  /*
   @Override
   public void onStateSelected(Path.Any path) {
-    Element root = (Element)viewer.getInput();
-    if (root == null) {
+    if (models.state.getData() == null) {
       return;
     }
 
     selectionHandler.updateSelectionFromModel(() -> {
-      Element element = root;
-      SnippetObject[] selection = getStatePath(path);
-      List<Element> segments = Lists.newArrayList();
-      for (int i = 0; i < selection.length; i++) {
-        element = element.findChild(selection[i]);
-        if (element == null) {
-          break; // Didn't find child at current level. Give up.
-        }
-        segments.add(element);
-      }
-      return segments.isEmpty() ? null : new TreePath(segments.toArray());
+      TreePath result = null;
+      // TODO: resolve path on server and select the correct node.
+      // See https://github.com/google/gapid/issues/370
+      return result;
     }, selection -> {
       viewer.setSelection(new TreeSelection(selection), true);
       viewer.setExpandedState(selection, true);
     });
   }
-  */
 
   /*
   private Path.Any getFollowPath(Point location) {
@@ -357,7 +347,7 @@ public class StateView extends Composite
     }
 
     @Override
-    protected <S extends StylingString> S format(Object element, S string) {
+    protected <S extends StylingString> S format(Widget item, Object element, S string) {
       StateTreeNode data = ((ApiState.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
