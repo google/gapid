@@ -222,7 +222,7 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 	return &service.StateTreeNode{
 		NumChildren:    numChildren,
 		Name:           name,
-		Path:           pth.Path(),
+		ValuePath:      pth.Path(),
 		Preview:        preview,
 		PreviewIsValue: previewIsValue,
 		Constants:      consts,
