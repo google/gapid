@@ -57,7 +57,9 @@ func ExecutablePath() Path {
 	return path
 }
 
-// FindExecutable searches the system search path for the named binary, and returns a non empty Path if found.
+// FindExecutable searches the system search path for the named binary, and
+// returns a non empty Path if found. OS executable file extensions (".exe") are
+// automatically considered when searching.
 func FindExecutable(name string) (Path, error) {
 	path, err := exec.LookPath(name)
 	if err != nil {
