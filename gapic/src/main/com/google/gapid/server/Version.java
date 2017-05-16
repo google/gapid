@@ -24,7 +24,7 @@ import com.google.gapid.proto.service.Service;
  *   $GPUPATH/core/app/run.go VersionSpec</a>
  */
 public class Version {
-  public static final Version GAPIC_VERSION = new Version(0, 1, 0);
+  public static final Version GAPIC_VERSION = new Version(0, 2, 0);
 
   public final int major;
   public final int minor;
