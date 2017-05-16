@@ -30,6 +30,7 @@ import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.UiErrorCallback.ResultOrError;
@@ -48,7 +49,7 @@ public class ApiState
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   private final ConstantSets constants;
-  //private final PathStore selection = new PathStore();
+  private final ObjectStore<Path.Any> selection = new ObjectStore<Path.Any>();
 
   public ApiState(
       Shell shell, Client client, Follower follower, AtomStream atoms, ConstantSets constants) {
@@ -64,7 +65,7 @@ public class ApiState
     follower.addListener(new Follower.Listener() {
       @Override
       public void onStateFollowed(Path.Any path) {
-        //selectPath(path, true);
+        selectPath(path, true);
       }
     });
   }
@@ -131,10 +132,8 @@ public class ApiState
     }
   }
 
-  /*
-
   public Path.Any getSelectedPath() {
-    return selection.getPath();
+    return selection.get();
   }
 
   public void selectPath(Path.Any path, boolean force) {
@@ -142,7 +141,6 @@ public class ApiState
       listeners.fire().onStateSelected(path);
     }
   }
-  */
 
   public static class Node {
     private final Node parent;

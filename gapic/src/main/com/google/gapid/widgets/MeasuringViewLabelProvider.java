@@ -27,6 +27,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.graphics.TextLayout;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.Arrays;
 
@@ -56,7 +57,7 @@ public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider
     // Adjusted from the DelegatingStyledCellLabelProvider implementation.
 
     StyledString styledString =
-        format(cell.getElement(), LinkableStyledString.ignoring(theme)).getString();
+        format(cell.getItem(), cell.getElement(), LinkableStyledString.ignoring(theme)).getString();
     String newText = styledString.toString();
 
     StyleRange[] oldStyleRanges = cell.getStyleRanges();
@@ -76,7 +77,7 @@ public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider
     return null;
   }
 
-  protected abstract <S extends StylingString> S format(Object element, S string);
+  protected abstract <S extends StylingString> S format(Widget item, Object element, S string);
 
   public Object getFollow(Point point) {
     ViewerCell cell = viewer.getCell(point);
@@ -84,7 +85,8 @@ public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider
       return null;
     }
 
-    LinkableStyledString string = format(cell.getElement(), LinkableStyledString.create(theme));
+    LinkableStyledString string =
+        format(cell.getItem(), cell.getElement(), LinkableStyledString.create(theme));
     string.endLink();
     string.append("dummy", string.defaultStyle());
     updateLayout(cell, string.getString());

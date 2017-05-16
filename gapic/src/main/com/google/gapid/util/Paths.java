@@ -15,8 +15,6 @@
  */
 package com.google.gapid.util;
 
-import static com.google.gapid.proto.service.path.Path.Any.PathCase.COMMANDS;
-
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
@@ -245,16 +243,24 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any atomField(Path.Any atomsPath, long index, String field) {
-    if (atomsPath == null || field == null || atomsPath.getPathCase() != COMMANDS) {
+  public static Path.Any atomField(Path.Command atom, String field) {
+    if (atom == null || field == null) {
       return null;
     }
     return Path.Any.newBuilder()
         .setParameter(Path.Parameter.newBuilder()
-            .setCommand(Path.Command.newBuilder()
-                .setCapture(atomsPath.getCommand().getCapture())
-                .addIndex(index))
-             .setName(field))
+            .setCommand(atom)
+            .setName(field))
+        .build();
+  }
+
+  public static Path.Any atomResult(Path.Command atom) {
+    if (atom == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setResult(Path.Result.newBuilder()
+            .setCommand(atom))
         .build();
   }
 
