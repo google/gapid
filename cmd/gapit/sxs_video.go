@@ -91,7 +91,7 @@ func (verb *videoVerb) sxsVideoSource(
 				fboIndex:     i,
 				frameIndex:   frameIndex,
 				numDrawCalls: numDrawCalls,
-				command:      capture.Command(uint64(i)),
+				command:      e.Command.Capture.Command(e.Command.Index[0] - 1), // -1 to skip the observation itself.
 			})
 		case service.EventKind_DrawCall:
 			numDrawCalls++

@@ -28,9 +28,11 @@ import (
 // of the bound framebuffer at the time of capture. These atoms can be used to
 // verify that replay gave the same results as what was captured.
 type FramebufferObservation struct {
-	OriginalWidth, OriginalHeight uint32 // Framebuffer dimensions in pixels
-	DataWidth, DataHeight         uint32 // Dimensions of downsampled data.
-	Data                          []byte // The RGBA color-buffer data
+	OriginalWidth  uint32 `param:"OriginalWidth"`  // Framebuffer width in pixels
+	OriginalHeight uint32 `param:"OriginalHeight"` // Framebuffer height in pixels
+	DataWidth      uint32 `param:"DataWidth"`      // Dimensions of downsampled data.
+	DataHeight     uint32 `param:"DataHeight"`     // Dimensions of downsampled data.
+	Data           []byte `param:"Data"`           // The RGBA color-buffer data
 }
 
 func (a *FramebufferObservation) String() string {
