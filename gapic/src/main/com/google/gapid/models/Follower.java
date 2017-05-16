@@ -51,7 +51,7 @@ public class Follower {
   public static final Flag<Boolean> logFollowRequests =
       Flags.value("logFollowRequests", false, "Whether to log follow prefetch requests.");
 
-  public static final String RESULT_NAME = "\u03df__RESULT__\u03df";
+  public static final String RESULT_NAME = "ϟ__RESULT__ϟ";
 
   protected static final Logger LOG = Logger.getLogger(Follower.class.getName());
   private static final int FOLLOW_TIMEOUT_MS = 1000;
