@@ -40,19 +40,11 @@ func env(cfg Config) *shell.Env {
 		system32 := cmd.Parent()
 		windows := system32.Parent()
 		path = append(path, system32.System(), windows.System())
+		path = append(path, exePaths("node.exe", "adb.exe")...)
 	} else {
-		added := map[file.Path]bool{}
-		for _, name := range []string{"sh", "uname", "sed", "clang", "gcc", "node", "adb"} {
-			exe, err := file.FindExecutable(name)
-			if err != nil {
-				continue
-			}
-			dir := exe.Parent()
-			if !added[dir] {
-				path = append(path, dir.System())
-				added[dir] = true
-			}
-		}
+		path = append(path, exePaths(
+			"sh", "uname", "sed", "clang", "gcc", "node", "adb",
+		)...)
 	}
 
 	path = append(path,
@@ -64,4 +56,21 @@ func env(cfg Config) *shell.Env {
 	env.Unset("PATH")
 	env.AddPathEnd("PATH", path...)
 	return env
+}
+
+func exePaths(exes ...string) []string {
+	path := []string{}
+	added := map[file.Path]bool{}
+	for _, name := range exes {
+		exe, err := file.FindExecutable(name)
+		if err != nil {
+			continue
+		}
+		dir := exe.Parent()
+		if !added[dir] {
+			path = append(path, dir.System())
+			added[dir] = true
+		}
+	}
+	return path
 }
