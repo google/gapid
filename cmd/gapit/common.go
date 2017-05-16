@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -159,7 +160,7 @@ func getConstantSet(ctx context.Context, client service.Service, p *path.Constan
 	return boxedConstants.(*service.ConstantSet), nil
 }
 
-func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command) error {
+func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command, of ObservationFlags) error {
 	indices := make([]string, len(p.Index))
 	for i, v := range p.Index {
 		indices[i] = fmt.Sprintf("%d", v)
@@ -177,7 +178,7 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 		}
 		params[i] = fmt.Sprintf("%v: %v", p.Name, v)
 	}
-	fmt.Fprintf(os.Stdout, "%v %v(%v)", indices, c.Name, strings.Join(params, ", "))
+	fmt.Printf("%v %v(%v)", indices, c.Name, strings.Join(params, ", "))
 	if c.Result != nil {
 		v := c.Result.Value.Get()
 		if c.Result.Constants != nil {
@@ -187,16 +188,52 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 			}
 			v = constants.Sprint(v)
 		}
-		fmt.Fprintf(os.Stdout, " → %v", v)
+		fmt.Printf(" → %v", v)
 	}
+
 	fmt.Fprintln(os.Stdout, "")
+
+	if of.Ranges || of.Data {
+		mp := p.MemoryAfter(0, 0, math.MaxUint64)
+		mp.ExcludeData = true
+		mp.ExcludeObserved = true
+		boxedMemory, err := client.Get(ctx, mp.Path())
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't fetch memory observations")
+		}
+		memory := boxedMemory.(*service.Memory)
+		for _, read := range memory.Reads {
+			fmt.Printf("   R: [0x%x - 0x%x]\n", read.Base, read.Base+read.Size-1)
+			if of.Data {
+				printMemoryData(ctx, client, p, read)
+			}
+		}
+		for _, write := range memory.Writes {
+			fmt.Printf("   W: [0x%x - 0x%x]\n", write.Base, write.Base+write.Size-1)
+			if of.Data {
+				printMemoryData(ctx, client, p, write)
+			}
+		}
+	}
 	return nil
 }
 
-func getAndPrintCommand(ctx context.Context, client service.Service, p *path.Command) error {
+func printMemoryData(ctx context.Context, client service.Service, p *path.Command, rng *service.MemoryRange) error {
+	mp := p.MemoryAfter(0, rng.Base, rng.Size)
+	mp.ExcludeObserved = true
+	boxedMemory, err := client.Get(ctx, mp.Path())
+	if err != nil {
+		return log.Err(ctx, err, "Couldn't fetch memory observations")
+	}
+	memory := boxedMemory.(*service.Memory)
+	fmt.Printf("%x\n", memory.Data)
+	return nil
+}
+
+func getAndPrintCommand(ctx context.Context, client service.Service, p *path.Command, of ObservationFlags) error {
 	cmd, err := getCommand(ctx, client, p)
 	if err != nil {
 		return err
 	}
-	return printCommand(ctx, client, p, cmd)
+	return printCommand(ctx, client, p, cmd, of)
 }

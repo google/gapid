@@ -100,7 +100,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				fmt.Fprintln(os.Stdout, n.Group)
 				return nil
 			}
-			return getAndPrintCommand(ctx, client, n.Commands.First())
+			return getAndPrintCommand(ctx, client, n.Commands.First(), verb.Observations)
 		})
 		return nil
 	}
@@ -111,7 +111,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			fmt.Fprintln(os.Stdout, n.Group)
 			return nil
 		}
-		return getAndPrintCommand(ctx, client, n.Commands.First())
+		return getAndPrintCommand(ctx, client, n.Commands.First(), verb.Observations)
 	}, "", true)
 }
 

@@ -93,7 +93,7 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	for _, c := range commands {
-		if err := getAndPrintCommand(ctx, client, c); err != nil {
+		if err := getAndPrintCommand(ctx, client, c, verb.Observations); err != nil {
 			return err
 		}
 	}
