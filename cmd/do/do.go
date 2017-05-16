@@ -125,7 +125,7 @@ func init() {
 		hostExeExt = ".exe"
 	}
 
-	if got := strings.TrimLeft(runtime.Version(), "go"); got != requiredGoVersion {
+	if got := strings.TrimLeft(runtime.Version(), "go"); got < requiredGoVersion {
 		fmt.Fprintf(os.Stderr, "Requires Go version '%s', got '%s'", requiredGoVersion, got)
 		os.Exit(1)
 	}
