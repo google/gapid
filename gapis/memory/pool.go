@@ -41,13 +41,16 @@ type Pool struct {
 	OnWrite func(Range)
 }
 
+// Pools is a map of PoolID to *Pool.
+type Pools map[PoolID]*Pool
+
+// PoolID is an identifier of a Pool.
+type PoolID uint32
+
 type poolSlice struct {
 	rng    Range         // The memory range of the slice.
 	writes poolWriteList // The list of writes to the pool when this slice was created.
 }
-
-// PoolID is an identifier of a Pool.
-type PoolID uint32
 
 const (
 	// ApplicationPool is the PoolID of Pool representing the application's memory

@@ -35,7 +35,6 @@ func Read(r binary.Reader, m *device.MemoryLayout, p interface{}) {
 
 func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
-
 	switch {
 	case t.Implements(tyPointer):
 		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)

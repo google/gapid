@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/slice"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -110,8 +109,12 @@ func (b *boxer) val(v reflect.Value) *Value {
 		return &Value{0, &Value_Pointer{&Pointer{p.Address(), uint32(p.Pool())}}}
 	case IsMemorySlice(t):
 		s := v.Interface().(memory.Slice)
+		elTy, ok := pod.TypeOf(s.ElementType())
+		if !ok {
+			panic(fmt.Errorf("Type %T is not a POD type", s.ElementType()))
+		}
 		return &Value{0, &Value_Slice{&Slice{
-			// TODO Type:
+			Type:  elTy,
 			Base:  &Pointer{s.Base(), uint32(s.Pool())},
 			Count: s.Count(),
 			Root:  s.Root(),
@@ -260,11 +263,12 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		p := memory.BytePtr(v.Pointer.Address, memory.PoolID(v.Pointer.Pool))
 		return reflect.ValueOf(p)
 	case *Value_Slice:
-		p := NewSlice(
+		p := memory.NewSlice(
 			v.Slice.Root,
 			v.Slice.Base.Address,
 			v.Slice.Count,
 			memory.PoolID(v.Slice.Base.Pool),
+			v.Slice.Type.Get(),
 		)
 		return reflect.ValueOf(p)
 	}
@@ -403,23 +407,3 @@ func (m mapSorter) Swap(i, j int) {
 	m.keys[i], m.keys[j] = m.keys[j], m.keys[i]
 	m.entries[i], m.entries[j] = m.entries[j], m.entries[i]
 }
-
-// NewSlice returns a new memory.Slice implementation.
-func NewSlice(root, base, count uint64, pool memory.PoolID) memory.Slice {
-	return memorySlice{root, base, count, pool}
-}
-
-// memorySlice is an implementation of the memory.Slice interface.
-type memorySlice struct {
-	root  uint64
-	base  uint64
-	count uint64
-	pool  memory.PoolID
-}
-
-func (s memorySlice) Root() uint64                            { return s.root }
-func (s memorySlice) Base() uint64                            { return s.base }
-func (s memorySlice) Count() uint64                           { return s.count }
-func (s memorySlice) Pool() memory.PoolID                     { return s.pool }
-func (s memorySlice) ElementSize(*device.MemoryLayout) uint64 { return 1 }
-func (s memorySlice) Range(*device.MemoryLayout) memory.Range { return memory.Range{} }

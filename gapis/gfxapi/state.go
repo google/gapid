@@ -35,7 +35,7 @@ type State struct {
 	MemoryLayout *device.MemoryLayout
 
 	// Memory holds the memory state of the application.
-	Memory map[memory.PoolID]*memory.Pool
+	Memory memory.Pools
 
 	// NextPoolID hold the identifier of the next Pool to be created.
 	NextPoolID memory.PoolID
@@ -76,12 +76,10 @@ func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *State {
 func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *State {
 	return &State{
 		MemoryLayout: memoryLayout,
-		Memory: map[memory.PoolID]*memory.Pool{
-			memory.ApplicationPool: {},
-		},
-		NextPoolID: memory.ApplicationPool + 1,
-		APIs:       map[API]interface{}{},
-		Allocator:  allocator,
+		Memory:       memory.Pools{memory.ApplicationPool: {}},
+		NextPoolID:   memory.ApplicationPool + 1,
+		APIs:         map[API]interface{}{},
+		Allocator:    allocator,
 	}
 }
 
