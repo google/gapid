@@ -63,10 +63,6 @@ func (o OnSlice) DeepEquals(expected interface{}) bool {
 }
 
 func (o OnSlice) slicesEqual(expected interface{}, same func(a, b interface{}) bool) bool {
-	const (
-		gformat = "%s\t%d\t%s\t" // status index got_type
-		eformat = "\t==>\t%s\t"  // expected_type
-	)
 	return o.Test(func() bool {
 		gs := reflect.ValueOf(o.slice)
 		glen := gs.Len()
@@ -82,14 +78,14 @@ func (o OnSlice) slicesEqual(expected interface{}, same func(a, b interface{}) b
 			case i >= glen:
 				// expected but not present
 				ev := es.Index(i)
-				o.Printf(gformat, "-", i, "")
-				o.Printf(eformat, ev.Type())
+				o.Printf("-\t%d\t\t", i)
+				o.Printf("\t==>\t%T\t", ev.Interface())
 				o.Println(ev.Interface())
 				equal = false
 			case i >= elen:
 				// present but not expected
 				gv := gs.Index(i)
-				o.Printf(gformat, "+", i, gv.Type())
+				o.Printf("+\t%d\t%T\t", i, gv.Interface())
 				o.Print(gv.Interface())
 				o.Rawln("\t;")
 				equal = false
@@ -98,14 +94,14 @@ func (o OnSlice) slicesEqual(expected interface{}, same func(a, b interface{}) b
 				ev := es.Index(i)
 				gv := gs.Index(i)
 				if same(gv.Interface(), ev.Interface()) {
-					o.Printf(gformat, "", i, gv.Type())
+					o.Printf("\t%d\t%T\t", i, gv.Interface())
 					o.Print(gv.Interface())
 					o.Rawln("\t;")
 				} else {
 					ev := es.Index(i)
-					o.Printf(gformat, "*", i, gv.Type())
+					o.Printf("*\t%d\t%T\t", i, gv.Interface())
 					o.Print(gv.Interface())
-					o.Printf(eformat, ev.Type())
+					o.Printf("\t==>\t%T\t", ev.Interface())
 					o.Println(ev.Interface())
 					equal = false
 				}
