@@ -59,7 +59,12 @@ git submodule update --init
 REM Invoke the build. At this point, only ensure that the tests build, but don't
 REM execute the tests.
 echo %DATE% %TIME%
-call do.bat build --test build --buildnum %KOKORO_BUILD_NUMBER% --buildsha %KOKORO_GITHUB_COMMIT%
+if "%KOKORO_GITHUB_COMMIT%." == "." (
+  set BUILD_SHA=%KOKORO_GITHUB_PULL_REQUEST_COMMIT%
+) else (
+  set BUILD_SHA=%KOKORO_GITHUB_COMMIT%
+)
+call do.bat build --test build --buildnum %KOKORO_BUILD_NUMBER% --buildsha "%BUILD_SHA%"
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 cd %BUILD_ROOT%
