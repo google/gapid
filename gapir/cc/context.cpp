@@ -132,7 +132,7 @@ void Context::onDebugMessage(int severity, const char* msg) {
         GAPID_WARNING("Renderer (%d): %s", label, msg);
         break;
     default:
-        GAPID_INFO("Renderer (%d): %s", label, msg);
+        GAPID_DEBUG("Renderer (%d): %s", label, msg);
         break;
     }
 }
