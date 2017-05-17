@@ -37,6 +37,7 @@ type glslTransform struct {
 	declareFragColor         bool
 	declareFragData          bool
 	renameSamplerExternalOES bool
+	renameViewID             bool
 	reservedNames            map[string]bool
 }
 
@@ -48,6 +49,7 @@ const (
 type glslTransformState struct {
 	glslTransform
 	FragColor *ast.VariableSym
+	ViewID    *ast.VariableSym
 	FragData  map[int]*ast.VariableSym
 }
 
@@ -64,9 +66,9 @@ var vec4 = &ast.BuiltinType{Type: ast.TVec4}
 func (t *glslTransformState) apply(child, parent interface{}) interface{} {
 	ast.TransformChildren(child, t.apply)
 
-	addOut := func(n *ast.Ast, v *ast.VariableSym) *ast.MultiVarDecl {
+	addDecl := func(n *ast.Ast, v *ast.VariableSym, s ast.StorageQualifier) *ast.MultiVarDecl {
 		decl := &ast.MultiVarDecl{
-			Quals: &ast.TypeQualifiers{Storage: ast.StorOut},
+			Quals: &ast.TypeQualifiers{Storage: s},
 			Type:  v.Type(),
 			Vars:  []*ast.VariableSym{v},
 		}
@@ -97,17 +99,20 @@ func (t *glslTransformState) apply(child, parent interface{}) interface{} {
 			n.Decls = removePrecisions(n.Decls)
 		}
 		if t.declareFragColor && t.FragColor != nil {
-			addOut(n, t.FragColor) // out vec4 FragColor;
+			addDecl(n, t.FragColor, ast.StorOut) // out vec4 FragColor;
 		}
 		if t.declareFragData {
 			for idx, fragdata := range t.FragData {
-				decl := addOut(n, fragdata) // layout(location = N) out vec4 FragDataN;
+				decl := addDecl(n, fragdata, ast.StorOut) // layout(location = N) out vec4 FragDataN;
 				decl.Quals.Layout = &ast.LayoutQualifier{
 					Ids: []ast.LayoutQualifierID{
 						{Name: "location", Value: ast.IntValue(idx)},
 					},
 				}
 			}
+		}
+		if t.ViewID != nil {
+			addDecl(n, t.ViewID, ast.StorUniform)
 		}
 	case *ast.IfStmt:
 		if t.stripPrecision {
@@ -210,6 +215,25 @@ func (t *glslTransformState) apply(child, parent interface{}) interface{} {
 				t.Type = ast.TSampler2D
 			}
 		}
+		if t.renameViewID {
+			if n.Name() == "gl_ViewID_OVR" {
+				if t.ViewID == nil {
+					t.ViewID = &ast.VariableSym{
+						SymType: &ast.BuiltinType{Type: ast.TUint},
+						SymName: "gapid_gl_ViewID_OVR",
+					}
+				}
+				return t.ViewID // replace usage
+			}
+		}
+	case *ast.LayoutDecl:
+		if t.renameViewID {
+			if n.Layout != nil {
+				if ids := n.Layout.Ids; len(ids) == 1 && ids[0].Name == "num_views" {
+					return ""
+				}
+			}
+		}
 	case *ast.FuncParameterSym:
 		fixReservedNames(&n.SymName)
 	case *ast.BinaryExpr:
@@ -286,6 +310,7 @@ func glslCompat(
 		transform.stripPrecision = true
 		// ES-specific sampler - replace it with sampler2D
 		transform.renameSamplerExternalOES = true
+		transform.renameViewID = true
 		// Rename identifiers which are keywords.
 		// TODO: Handle all keyword differences.
 		transform.reservedNames = map[string]bool{"sample": true}

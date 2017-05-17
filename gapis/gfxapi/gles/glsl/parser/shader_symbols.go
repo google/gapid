@@ -49,6 +49,8 @@ var builtinSymbols = [...]ast.Symbol{
 	&ast.StructSym{SymName: "gl_DepthRangeParameters"},
 	&ast.VariableSym{SymName: "gl_DepthRange"},
 
+	&ast.VariableSym{SymName: "gl_ViewID_OVR"}, // GL_OVR_multiview2
+
 	&ast.FunctionDecl{SymName: "textureSize"},
 	&ast.FunctionDecl{SymName: "texture"},
 	&ast.FunctionDecl{SymName: "textureProj"},
