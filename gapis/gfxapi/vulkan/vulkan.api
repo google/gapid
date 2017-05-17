@@ -6012,16 +6012,16 @@ cmd void vkCmdDrawIndexedIndirect(
 @no_replay
 cmd void RecreateCmdDispatch(
     VkCommandBuffer commandBuffer,
-    u32             x,
-    u32             y,
-    u32             z) {
+    u32             groupCountX,
+    u32             groupCountY,
+    u32             groupCountZ) {
 }
 
 @internal class
 RecreateCmdDispatchData {
-    u32             X,
-    u32             Y,
-    u32             Z
+    u32             GroupCountX,
+    u32             GroupCountY,
+    u32             GroupCountZ
 }
 
 sub void doCmdDispatch(u32 unused) {
@@ -6031,11 +6031,11 @@ sub void doCmdDispatch(u32 unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDispatch(
     VkCommandBuffer commandBuffer,
-    u32             x,
-    u32             y,
-    u32             z) {
+    u32             groupCountX,
+    u32             groupCountY,
+    u32             groupCountZ) {
   addCmd(commandBuffer,
-    new!RecreateCmdDispatchData(x, y, z), as!u32(0), doCmdDispatch)
+    new!RecreateCmdDispatchData(groupCountX, groupCountY, groupCountZ), as!u32(0), doCmdDispatch)
 }
 
 @internal class CmdDispatchIndirect {

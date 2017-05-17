@@ -453,9 +453,9 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *gfxapi.State, b 
 func (a *RecreateCmdDispatch) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdDispatch(
 		a.CommandBuffer,
-		a.X,
-		a.Y,
-		a.Z)
+		a.GroupCountX,
+		a.GroupCountY,
+		a.GroupCountZ)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }

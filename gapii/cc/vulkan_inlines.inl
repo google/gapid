@@ -441,7 +441,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdDispatchData>>::oper
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
     const std::shared_ptr<RecreateCmdDispatchData>& t) {
     spy->RecreateCmdDispatch(observer, commandBuf,
-        t->mX, t->mY, t->mZ);
+        t->mGroupCountX, t->mGroupCountY, t->mGroupCountZ);
 }
 
 template <>
