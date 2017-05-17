@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # MacOS Build Script.
-set -x
+set -ex
 
 BUILD_ROOT=$PWD
 SRC=$PWD/github/src/github.com/google/gapid/
