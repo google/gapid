@@ -22,11 +22,10 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/slice"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
@@ -112,30 +111,21 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		t := v.Type()
 		switch {
 		case box.IsMemorySlice(t):
-			if size := box.AsMemorySlice(v).Count(); stateTree.needsSubgrouping(size) {
+			slice := box.AsMemorySlice(v)
+			if size := slice.Count(); stateTree.needsSubgrouping(size) {
 				i, j, n := stateTree.subrange(size, idx64)
 				name = n
-				// TODO: Use proper interfaces to kill the nasty reflection.
-				v = v.MethodByName("Slice").Call([]reflect.Value{
-					reflect.ValueOf(i),
-					reflect.ValueOf(j),
-					reflect.ValueOf(stateTree.state.MemoryLayout),
-				})[0]
+				v = reflect.ValueOf(slice.ISlice(i, j, stateTree.state.MemoryLayout))
 				syntheticOffset += i
 			} else {
 				name = fmt.Sprint(syntheticOffset + idx64)
 				pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
-				// TODO: Use proper interfaces to kill the nasty reflection.
-				ptr := v.MethodByName("Index").Call([]reflect.Value{
-					reflect.ValueOf(idx64),
-					reflect.ValueOf(stateTree.state.MemoryLayout),
-				})[0]
-				v = ptr.MethodByName("Read").Call([]reflect.Value{
-					reflect.ValueOf(ctx),
-					reflect.Zero(reflect.TypeOf((*atom.Atom)(nil)).Elem()),
-					reflect.ValueOf(stateTree.state),
-					reflect.Zero(reflect.TypeOf((*builder.Builder)(nil))),
-				})[0]
+				ptr := slice.IIndex(idx64, stateTree.state.MemoryLayout)
+				el, err := memory.LoadPointer(ctx, ptr, stateTree.state.Memory, stateTree.state.MemoryLayout)
+				if err != nil {
+					return nil, err
+				}
+				v = reflect.ValueOf(el)
 				syntheticOffset = 0
 			}
 		default:

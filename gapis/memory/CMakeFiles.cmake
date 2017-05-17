@@ -27,6 +27,7 @@ set(files
     doc.go
     encoder.go
     id.go
+    load.go
     memory.pb.go
     memory.proto
     pointer.go

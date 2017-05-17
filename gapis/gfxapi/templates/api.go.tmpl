@@ -194,22 +194,22 @@
     return {{$ptr_ty}}{ p.Address(), p.Pool() }
   }
 
-	// Set returns a new Pointer with the given address and pool.
-	func (p {{$ptr_ty}}) Set(addr uint64, pool ϟmem.PoolID) ϟmem.Pointer { return {{$ptr_ty}}{ addr, pool } }
+  // Set returns a new Pointer with the given address and pool.
+  func (p {{$ptr_ty}}) Set(addr uint64, pool ϟmem.PoolID) ϟmem.Pointer { return {{$ptr_ty}}{ addr, pool } }
 
-	// IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
-	func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
+  // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
+  func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
 
-	// Address returns the pointer's memory address.
-	func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
+  // Address returns the pointer's memory address.
+  func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
 
-	// Pool returns the memory pool.
-	func (p {{$ptr_ty}}) Pool() ϟmem.PoolID { return p.pool }
+  // Pool returns the memory pool.
+  func (p {{$ptr_ty}}) Pool() ϟmem.PoolID { return p.pool }
 
-	// Offset returns the pointer offset by n bytes.
-	func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
+  // Offset returns the pointer offset by n bytes.
+  func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
 
-	// ElementType returns the reflect.Type of the element that {{$ptr_ty}} points to.
+  // ElementType returns the reflect.Type of the element that {{$ptr_ty}} points to.
   func (p {{$ptr_ty}}) ElementType() reflect.Type {
       var el {{if not $el_is_void}}{{$el_ty}}{{else}}byte{{end}}
       return reflect.TypeOf(el)
@@ -252,6 +252,9 @@
     }
     return {{$slice_ty}}{root: p.addr, base: p.addr + start * p.ElementSize(ϟl), count: end-start, pool: p.pool}
   }
+
+  // ISlice returns a new Slice from the pointer using start and end indices.
+  func (p {{$ptr_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice { return p.Slice(start, end, ϟl) }
 
   // Check interface conformance
   var _ path.Linker = {{$ptr_ty}}{}
@@ -422,17 +425,23 @@
     return dst
   }
 
-	// Root returns the original pointer this slice derives from.
-	func (s {{$slice_ty}}) Root() uint64 { return s.root }
+  // Root returns the original pointer this slice derives from.
+  func (s {{$slice_ty}}) Root() uint64 { return s.root }
 
-	// Base returns the address of first element.
-	func (s {{$slice_ty}}) Base() uint64 { return s.base }
+  // Base returns the address of first element.
+  func (s {{$slice_ty}}) Base() uint64 { return s.base }
 
-	// Count returns the number of elements in the slice.
-	func (s {{$slice_ty}}) Count() uint64 { return s.count }
+  // Count returns the number of elements in the slice.
+  func (s {{$slice_ty}}) Count() uint64 { return s.count }
 
-	// Pool returns the the pool identifier.
-	func (s {{$slice_ty}}) Pool() ϟmem.PoolID { return s.pool }
+  // Pool returns the the pool identifier.
+  func (s {{$slice_ty}}) Pool() ϟmem.PoolID { return s.pool }
+
+  // ElementType returns the reflect.Type of the elements in the slice.
+  func (s {{$slice_ty}}) ElementType() reflect.Type {
+      var el {{if not $el_is_void}}{{$el_ty}}{{else}}byte{{end}}
+      return reflect.TypeOf(el)
+  }
 
   // ElementSize returns the size in bytes of an element that {{$slice_ty}} points to.
   func (s {{$slice_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
@@ -619,6 +628,11 @@
     return {{$ptr_ty}}{ s.base + i * s.ElementSize(ϟl), s.pool }
   }
 
+  // IIndex returns a pointer to the i'th element in the slice.
+  func (s {{$slice_ty}}) IIndex(i uint64, ϟl *device.MemoryLayout) ϟmem.Pointer {
+    return s.Index(i, ϟl)
+  }
+
   // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
   func (s {{$slice_ty}}) Slice(start, end uint64, ϟl *device.MemoryLayout) {{$slice_ty}} {
     if start > end {
@@ -628,6 +642,11 @@
       panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
     }
     return {{$slice_ty}}{root: s.root, base: s.base + start * s.ElementSize(ϟl), count: end-start, pool: s.pool}
+  }
+
+  // ISlice returns a sub-slice from this slice using start and end indices.
+  func (s {{$slice_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice {
+    return s.Slice(start, end, ϟl)
   }
 
   // String returns a string description of the {{$slice_ty}} slice.

@@ -14,7 +14,12 @@
 
 package memory
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/google/gapid/core/os/device"
+)
 
 // Nullptr is a zero-address pointer in the application pool.
 var Nullptr = BytePtr(0, ApplicationPool)
@@ -39,23 +44,49 @@ type Pointer interface {
 
 	// Offset returns the pointer offset by n bytes.
 	Offset(n uint64) Pointer
+
+	// ElementSize returns the size in bytes of the element type.
+	ElementSize(m *device.MemoryLayout) uint64
+
+	// ElementType returns the type of the pointee.
+	ElementType() reflect.Type
+
+	// ISlice returns a new Slice of elements based from this pointer using
+	// start and end indices.
+	ISlice(start, end uint64, m *device.MemoryLayout) Slice
+}
+
+// NewPtr returns a new pointer.
+func NewPtr(addr uint64, pool PoolID, elTy reflect.Type) Pointer {
+	return ptr{addr, pool, elTy}
 }
 
 // BytePtr returns a pointer to bytes.
-func BytePtr(addr uint64, pool PoolID) Pointer { return ptr{addr, pool} }
+func BytePtr(addr uint64, pool PoolID) Pointer {
+	return NewPtr(addr, pool, reflect.TypeOf(byte(0)))
+}
 
 // ptr is a pointer to a basic type.
 type ptr struct {
 	addr uint64
 	pool PoolID
+	elTy reflect.Type
 }
 
-func (p ptr) String() string                       { return PointerToString(p) }
-func (p ptr) Set(addr uint64, pool PoolID) Pointer { return ptr{addr, pool} }
-func (p ptr) IsNullptr() bool                      { return p.addr == 0 && p.pool == ApplicationPool }
-func (p ptr) Address() uint64                      { return p.addr }
-func (p ptr) Pool() PoolID                         { return p.pool }
-func (p ptr) Offset(n uint64) Pointer              { return ptr{p.addr + n, p.pool} }
+func (p ptr) String() string                            { return PointerToString(p) }
+func (p ptr) Set(addr uint64, pool PoolID) Pointer      { return ptr{addr, pool, p.elTy} }
+func (p ptr) IsNullptr() bool                           { return p.addr == 0 && p.pool == ApplicationPool }
+func (p ptr) Address() uint64                           { return p.addr }
+func (p ptr) Pool() PoolID                              { return p.pool }
+func (p ptr) Offset(n uint64) Pointer                   { return ptr{p.addr + n, p.pool, p.elTy} }
+func (p ptr) ElementSize(m *device.MemoryLayout) uint64 { return SizeOf(p.elTy, m) }
+func (p ptr) ElementType() reflect.Type                 { return p.elTy }
+func (p ptr) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
+	if start > end {
+		panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", p, start, end))
+	}
+	return sli{root: p.addr, base: p.addr + start*p.ElementSize(m), count: end - start, pool: p.pool, elTy: p.elTy}
+}
 
 // PointerToString returns a string representation of the pointer.
 func PointerToString(p Pointer) string {
