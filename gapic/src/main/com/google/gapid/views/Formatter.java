@@ -112,8 +112,8 @@ public class Formatter {
     return string.toString();
   }
 
-  private static void format(// check ref
-      Pod.Value value, Service.ConstantSet constants, boolean isComplete, StylingString string, Style style) {
+  private static void format(Pod.Value value, Service.ConstantSet constants, boolean isComplete,
+      StylingString string, Style style) {
     if (constants == null || !Pods.mayBeConstant(value)) {
       format(value, isComplete, string, style);
     } else if (constants.getIsBitfield()) {
@@ -151,7 +151,7 @@ public class Formatter {
         }
       }
       // Uh-oh value not found in constant set, probably an invalid value was passed by the app.
-      format(value, string, style);
+      format(value, isComplete, string, style);
     }
   }
 
