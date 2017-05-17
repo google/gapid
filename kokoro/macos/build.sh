@@ -61,8 +61,9 @@ git submodule update --init
 
 # Invoke the build. At this point, only ensure that the tests build, but don't
 # execute the tests.
+BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 echo $(date): Starting build...
-./do build --test build --buildnum $KOKORO_BUILD_NUMBER --buildsha $KOKORO_GITHUB_COMMIT
+./do build --test build --buildnum $KOKORO_BUILD_NUMBER --buildsha "$BUILD_SHA"
 echo $(date): Build completed.
 
 # Build the release packages.
