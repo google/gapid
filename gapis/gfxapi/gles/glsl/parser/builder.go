@@ -212,9 +212,11 @@ func (b *builder) parseExternalDeclaration() interface{} {
 }
 
 func (b *builder) parseLayoutDeclaration(quals *ast.TypeQualifiers) *ast.LayoutDecl {
-	if quals.Storage != ast.StorUniform || quals.Interpolation != ast.IntNone ||
-		quals.Invariant || quals.Layout == nil {
-
+	if quals.Storage == ast.StorUniform {
+		if quals.Interpolation != ast.IntNone || quals.Invariant || quals.Layout == nil {
+			b.Errorf("Invalid combination of qualifiers for a layout qualifier declaration.")
+		}
+	} else if quals.Storage != ast.StorIn {
 		b.Errorf("Invalid combination of qualifiers for a layout qualifier declaration.")
 	}
 	return &ast.LayoutDecl{

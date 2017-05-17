@@ -282,6 +282,24 @@ void main() {
     FragColor = vec4(texture(u_texture, v_texCoord));
 }
 `,
+	}, {
+		name:   "Multiview",
+		target: OpenGL_3_0,
+		source: `#version 110
+layout(num_views = 2) in;
+void main() {
+	  uint id = gl_ViewID_OVR;
+    gl_Position = vec4(0., 0., 0., 1.);
+}
+`,
+		compat: `#version 130
+uniform uint gapid_gl_ViewID_OVR;
+
+void main() {
+    uint id = gapid_gl_ViewID_OVR;
+    gl_Position = vec4(0., 0., 0., 1.);
+}
+`,
 	},
 }
 
