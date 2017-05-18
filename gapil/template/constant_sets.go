@@ -15,9 +15,9 @@
 package template
 
 import (
-	"bytes"
-	"fmt"
 	"sort"
+
+	"fmt"
 
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/constset"
@@ -25,54 +25,93 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-type constsetBuilder struct {
-	sets    []constset.Set // Deterministic ordered.
-	setIdx  map[string]int // Used for removing duplicates.
-	symOff  map[string]int // Symbol offsets.
-	symbols bytes.Buffer   // Full packed symbols.
+// constsetEntryBuilder is a transient structure used to build a constset.Entry.
+type constsetEntryBuilder struct {
+	name string
+	val  uint64
+}
+type constsetEntryBuilderList []constsetEntryBuilder
+
+// constsetSetBuilder is a transient structure used to build a constset.Set.
+type constsetSetBuilder struct {
+	isBitfield bool // true if this set is for a bitfield.
+	entries    constsetEntryBuilderList
+	idx        *int // pointer to index of the Set in the built Pack.
 }
 
-func (b *constsetBuilder) build() constset.Pack {
-	return constset.Pack{
-		Symbols: constset.Symbols(b.symbols.String()),
-		Sets:    b.sets,
-	}
+// constsetPackBuilder is a transient structure used to build a constset.Pack.
+type constsetPackBuilder struct {
+	syms   map[string]struct{}            // contains all the used symbol names.
+	sets   map[string]*constsetSetBuilder // set builder key to builder.
+	setIdx map[string]int                 // set builder key to index in sets.
 }
 
-func (b *constsetBuilder) addSym(sym string) (int, int) {
-	offset, ok := b.symOff[sym]
-	if !ok {
-		offset = b.symbols.Len()
-		b.symOff[sym] = offset
-		b.symbols.WriteString(sym)
+func (l constsetEntryBuilderList) Len() int           { return len(l) }
+func (l constsetEntryBuilderList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l constsetEntryBuilderList) Less(i, j int) bool { return l[i].val < l[j].val }
+
+func (b *constsetPackBuilder) addLabels(labels analysis.Labels, isBitfield bool) *int {
+	set := &constsetSetBuilder{
+		isBitfield: isBitfield,
+		entries:    make([]constsetEntryBuilder, 0, len(labels)),
 	}
-	return offset, len(sym)
+	for v, n := range labels {
+		b.syms[n] = struct{}{}
+		set.entries = append(set.entries, constsetEntryBuilder{n, v})
+	}
+	sort.Sort(set.entries)
+	key := fmt.Sprintf("%v %+v", isBitfield, set.entries)
+	if set, ok := b.sets[key]; ok {
+		return set.idx
+	}
+	set.idx = new(int)
+	b.sets[key] = set
+	return set.idx
 }
 
-func (b *constsetBuilder) addLabels(labels analysis.Labels, isBitfield bool) int {
-	keys := make(u64s, 0, len(labels))
-	for k := range labels {
-		keys = append(keys, k)
+func (b *constsetPackBuilder) sortedSyms() []string {
+	syms := make([]string, 0, len(b.syms))
+	for sym := range b.syms {
+		syms = append(syms, sym)
 	}
-	sort.Sort(keys)
+	sort.Strings(syms)
+	return syms
+}
 
-	set := constset.Set{
-		IsBitfield: isBitfield,
-		Entries:    make([]constset.Entry, len(keys)),
-	}
-	for i, k := range keys {
-		set.Entries[i].V = k
-		set.Entries[i].O, set.Entries[i].L = b.addSym(labels[k])
+func (b *constsetPackBuilder) build() constset.Pack {
+	out := constset.Pack{}
+
+	offsets := map[string]int{}
+	for _, s := range b.sortedSyms() {
+		offsets[s] = len(out.Symbols)
+		out.Symbols += constset.Symbols(s)
 	}
 
-	id := fmt.Sprintf("%+v", set)
-	idx, ok := b.setIdx[id]
-	if !ok {
-		idx = len(b.sets)
-		b.setIdx[id] = idx
-		b.sets = append(b.sets, set)
+	keys := make([]string, 0, len(b.sets))
+	for key := range b.sets {
+		keys = append(keys, key)
 	}
-	return idx
+	sort.Strings(keys)
+
+	out.Sets = make([]constset.Set, len(keys))
+	for i, key := range keys {
+		set := b.sets[key]
+		*set.idx = i
+		entries := make([]constset.Entry, len(set.entries))
+		for i, e := range set.entries {
+			entries[i] = constset.Entry{
+				V: e.val,
+				O: offsets[e.name],
+				L: len(e.name),
+			}
+		}
+		out.Sets[i] = constset.Set{
+			IsBitfield: set.isBitfield,
+			Entries:    entries,
+		}
+	}
+
+	return out
 }
 
 type u64s []uint64
@@ -85,7 +124,7 @@ func (p u64s) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 // constset.Set index.
 type ConstantSets struct {
 	Pack constset.Pack
-	Sets map[semantic.Node]int
+	Sets map[semantic.Node]*int
 }
 
 type nodeLabeler struct {
@@ -126,14 +165,15 @@ func (nl *nodeLabeler) traverse(n semantic.Node, v analysis.Value) {
 }
 
 func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *ConstantSets {
-	b := &constsetBuilder{
+	b := &constsetPackBuilder{
+		syms:   map[string]struct{}{},
+		sets:   map[string]*constsetSetBuilder{},
 		setIdx: map[string]int{},
-		symOff: map[string]int{},
 	}
 
 	a := analysis.Analyze(api, mappings)
 
-	constsets := map[semantic.Node]int{}
+	constsets := map[semantic.Node]*int{}
 
 	for _, f := range api.Functions {
 		for _, p := range f.FullParameters {
@@ -188,7 +228,7 @@ func (f *Functions) ConstantSets() constset.Pack {
 // ConstantSetIndex returns the constant set for the given parameter.
 func (f *Functions) ConstantSetIndex(n semantic.Node) int {
 	if i, ok := f.constantSets().Sets[n]; ok {
-		return i
+		return *i
 	}
 	return -1
 }
