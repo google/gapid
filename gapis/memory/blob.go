@@ -77,9 +77,7 @@ func NewData(layout *device.MemoryLayout, data ...interface{}) Data {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, layout.GetEndian())
 	for _, d := range data {
-		if _, err := Write(w, layout, d); err != nil {
-			panic(err)
-		}
+		Write(w, layout, d)
 	}
 	return Blob(buf.Bytes())
 }

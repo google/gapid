@@ -33,13 +33,14 @@
     "github.com/google/gapid/gapis/capture"
     "github.com/google/gapid/gapis/gfxapi"
     "github.com/google/gapid/gapis/gfxapi/test/gfxapi_test_import"
-    "github.com/google/gapid/gapis/memory"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
     "github.com/google/gapid/gapis/replay/value"
     "github.com/google/gapid/gapis/resolve"
     "github.com/google/gapid/gapis/service"
     "github.com/google/gapid/gapis/service/path"
+
+    ϟmem "github.com/google/gapid/gapis/memory"
 )
 
   {{range $p := $.Pseudonyms}}
@@ -126,16 +127,6 @@
     {{$to := Macro "Go.Type" $.To}}
 
     type {{$.Name}} {{$to}}
-
-    {{$out := print "(*(*" $to ")(a))"}}
-
-    func (a *{{$.Name}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-      {{Template "Go.Encode" "Name" $out "Type" $.To "ErrHandler" "panic(e.Error())"}}
-    }
-
-    func (a *{{$.Name}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-      {{Template "Go.Decode" "Name" $out "Type" $.To "ErrHandler" "panic(d.Error())"}}
-    }
   {{end}}
 
   {{template "LabelsForLabeledType" $}}
@@ -152,18 +143,6 @@
 
   {{$ty := Macro "Go.Type" $}}
   type {{$ty}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
-
-  func (a *{{$ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-    for _, v := range (*a) {
-      {{Template "Go.Encode" "Name" "v" "Type" $.ValueType "ErrHandler" "panic(e.Error())"}}
-    }
-  }
-
-  func (a *{{$ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-    for i := range (*a) {
-      {{Template "Go.Decode" "Name" "(*a)[i]" "Type" $.ValueType "ErrHandler" "panic(d.Error())"}}
-    }
-  }
 
   {{if IsNumericType $.ValueType}}
     func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *gfxapi.State) value.Pointer {
@@ -193,7 +172,7 @@
   {{$el_is_char := IsChar    ($p.To | Underlying | Unpack) }}
   {{$el_is_ptr  := IsPointer ($p.To | Underlying | Unpack) }}
 
-  var _ = memory.Pointer({{$ptr_ty}}{})
+  var _ = ϟmem.Pointer({{$ptr_ty}}{})
 
   // {{$ptr_ty}} is a pointer to a {{$el_ty}} element.
   {{if $el_is_ptr}}
@@ -204,50 +183,41 @@
   {{end}}
   type {{$ptr_ty}} struct {
     addr uint64
-    pool memory.PoolID
+    pool ϟmem.PoolID
   }
 
   // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
-  func New{{$ptr_ty}}(p memory.Pointer) {{$ptr_ty}} {
+  func New{{$ptr_ty}}(p ϟmem.Pointer) {{$ptr_ty}} {
     if p == nil {
-      return {{$ptr_ty}}{  0, memory.ApplicationPool }
+      return {{$ptr_ty}}{  0, ϟmem.ApplicationPool }
     }
     return {{$ptr_ty}}{ p.Address(), p.Pool() }
   }
 
-	// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
-	func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == memory.ApplicationPool }
+	// Set returns a new Pointer with the given address and pool.
+	func (p {{$ptr_ty}}) Set(addr uint64, pool ϟmem.PoolID) ϟmem.Pointer { return {{$ptr_ty}}{ addr, pool } }
+
+	// IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
+	func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
 
 	// Address returns the pointer's memory address.
 	func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
 
 	// Pool returns the memory pool.
-	func (p {{$ptr_ty}}) Pool() memory.PoolID { return p.pool }
+	func (p {{$ptr_ty}}) Pool() ϟmem.PoolID { return p.pool }
 
 	// Offset returns the pointer offset by n bytes.
-	func (p {{$ptr_ty}}) Offset(n uint64) memory.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
+	func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
 
-  func (p {{$ptr_ty}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-      e.Uint64(p.addr);
-      e.Uint32(uint32(p.pool));
-  }
-
-  func (p *{{$ptr_ty}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-      p.addr = d.Uint64();
-      p.pool = memory.PoolID(d.Uint32());
+	// ElementType returns the reflect.Type of the element that {{$ptr_ty}} points to.
+  func (p {{$ptr_ty}}) ElementType() reflect.Type {
+      var el {{if not $el_is_void}}{{$el_ty}}{{else}}byte{{end}}
+      return reflect.TypeOf(el)
   }
 
   // ElementSize returns the size in bytes of an element that {{$ptr_ty}} points to.
   func (p {{$ptr_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
-    {{if $el_is_ptr}}
-      if p.pool == memory.ApplicationPool {
-        return uint64(ϟl.GetPointer().GetSize())
-      } else {
-        return 12
-      }
-    {{else}}
-      return {{Template "Go.SizeOf" $p.To}}
-    {{end}}
+    return {{Template "Go.SizeOf" $p.To}}
   }
 
   {{if not $el_is_void}}
@@ -352,7 +322,7 @@
   {{/* TODO: Handle member alignment here */}}
   {{range $f := $.Fields}}
     {
-      required_alignment := {{Template "Go.AlignmentOf" (TypeOf $f)}}
+      required_alignment := {{Template "Go.AlignOf" (TypeOf $f)}}
       if (offset % required_alignment != 0) {
           extra_reads := required_alignment - (offset % required_alignment)
           offset += extra_reads
@@ -366,7 +336,7 @@
       {{if IsPointer ($f.Type | Underlying)}}
           offset += {{Template "Go.SizeOf" (TypeOf $f)}}
           i := binary.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
-          v := {{Macro "Go.Type" $f}}{i, memory.ApplicationPool}.value(ϟb, ϟa, ϟs)
+          v := {{Macro "Go.Type" $f}}{i, ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.Push(v)
           ϟb.Store(base)
           base += value.ObservedPointer(ϟs.MemoryLayout.GetPointer().GetSize())
@@ -375,7 +345,7 @@
       {{else}}
         offset += {{Template "Go.SizeOf" (TypeOf $f)}}
         var v {{Macro "Go.Type" $f}}
-        {{Template "Go.Decode" "Name" "v" "Type" $f.Type "ErrHandler" "panic(d.Error())"}}
+        {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
         {{if GetAnnotation $f.Type "replay_remap"}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
@@ -416,15 +386,15 @@
     root  uint64        // Original pointer this slice derives from.
     base  uint64        // Address of first element.
     count uint64        // Number of elements in the slice.
-    pool  memory.PoolID // The pool identifier.
+    pool  ϟmem.PoolID // The pool identifier.
   }
 
   {{if $el_is_char}}
     // Make{{$slice_ty}}FromString returns a {{$slice_ty}} backed by a new
     // memory pool containing a copy of str.
     func Make{{$slice_ty}}FromString(str string, ϟs *gfxapi.State) {{$slice_ty}} {
-      pool := &memory.Pool{}
-      pool.Write(0, memory.Blob([]byte(str)))
+      pool := &ϟmem.Pool{}
+      pool.Write(0, ϟmem.Blob([]byte(str)))
       id := ϟs.NextPoolID
       ϟs.Memory[id] = pool
       ϟs.NextPoolID++
@@ -435,7 +405,7 @@
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟs *gfxapi.State) {{$slice_ty}} {
     id := ϟs.NextPoolID
-    ϟs.Memory[id] = &memory.Pool{}
+    ϟs.Memory[id] = &ϟmem.Pool{}
     ϟs.NextPoolID++
     return {{$slice_ty}}{ count: count, pool: id }
   }
@@ -443,7 +413,7 @@
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
   func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
-    pool := &memory.Pool{}
+    pool := &ϟmem.Pool{}
     pool.Write(0, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
     id := ϟs.NextPoolID
     ϟs.Memory[id] = pool
@@ -462,24 +432,16 @@
 	func (s {{$slice_ty}}) Count() uint64 { return s.count }
 
 	// Pool returns the the pool identifier.
-	func (s {{$slice_ty}}) Pool() memory.PoolID { return s.pool }
+	func (s {{$slice_ty}}) Pool() ϟmem.PoolID { return s.pool }
 
   // ElementSize returns the size in bytes of an element that {{$slice_ty}} points to.
   func (s {{$slice_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
-    {{if $el_is_ptr}}
-      if s.pool == memory.ApplicationPool {
-        return uint64(ϟl.GetPointer().GetSize())
-      } else {
-        return 12
-      }
-    {{else}}
-      return {{Template "Go.SizeOf" $s.To}}
-    {{end}}
+    return {{Template "Go.SizeOf" $s.To}}
   }
 
   // Range returns the memory range this slice represents in the underlying pool.
-  func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) memory.Range {
-    return memory.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
+  func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) ϟmem.Range {
+    return ϟmem.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
   }
 
   // ResourceID returns an identifier to a resource representing the data of
@@ -506,7 +468,7 @@
     // As{{$slice_ty}} returns s cast to a {{$slice_ty}}.
     // The returned slice length will be calculated so that the returned slice is
     // no longer (in bytes) than s.
-    func As{{$slice_ty}}(s memory.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
+    func As{{$slice_ty}}(s ϟmem.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
       out := {{$slice_ty}}{
         root: s.Root(),
         base: s.Base(),
@@ -518,58 +480,19 @@
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) []{{$el_ty}} {
-      d, res, ϟl := s.Decoder(ϟctx, ϟs), make([]{{$el_ty}}, s.count), ϟs.MemoryLayout
-      _ = ϟl
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
-      for i := range res {
-        {{if $el_is_ptr}}
-          if s.pool == memory.ApplicationPool {
-            ptr := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
-            if d.Error() != nil {
-              panic(d.Error())
-            }
-            res[i] = {{$el_ty}}{ptr, memory.ApplicationPool}
-          } else {
-        {{else if $el_is_class}}
-          if s.pool == memory.ApplicationPool {
-            {{$el_ty}}DecodeRaw(ϟl, d, &res[i])
-            if d.Error() != nil {
-              panic(d.Error())
-            }
-          } else {
-        {{end}}
-        {{Template "Go.Decode" "Name" "res[i]" "Type" $s.To "ErrHandler" "panic(d.Error())"}}
-        {{if $el_is_ptr}} } {{end}}
-        {{if $el_is_class}} } {{end}}
-      }
+      res := make([]{{$el_ty}}, s.count)
+      d := s.Decoder(ϟctx, ϟs)
+      ϟmem.Read(d, ϟs.MemoryLayout, &res)
       return res
     }
 
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
-      count, ϟl := min(s.count, uint64(len(src))), ϟs.MemoryLayout
-      s = s.Slice(0, count, ϟl)
-      e := s.Encoder(ϟs)
-      for i := uint64(0); i < count; i++ {
-        {{if $el_is_ptr}}
-          if s.pool == memory.ApplicationPool {
-            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, src[i].addr); e.Error() != nil {
-              panic(e.Error())
-            }
-          } else {
-        {{else if $el_is_class}}
-          if s.pool == memory.ApplicationPool {
-            {{$el_ty}}EncodeRaw(ϟl, e, &src[i])
-            if e.Error() != nil {
-              panic(e.Error())
-            }
-          } else {
-        {{end}}
-        {{Template "Go.Encode" "Name" "src[i]" "Type" $s.To "ErrHandler" "panic(e.Error())"}}
-        {{if $el_is_ptr}} } {{end}}
-        {{if $el_is_class}} } {{end}}
-      }
+      count := min(s.count, uint64(len(src)))
+      e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
+      ϟmem.Write(e, ϟs.MemoryLayout, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
       return count
     }
@@ -581,7 +504,7 @@
       count := min(dst.count, src.count)
       dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
     {{if $el_is_ptr}}
-      if (dst.pool == memory.ApplicationPool) != (src.pool == memory.ApplicationPool) {
+      if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
         dst.Write(ϟctx, src.Read(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
@@ -610,7 +533,7 @@
     if f := ϟs.Memory[s.pool].OnRead; f != nil {
       f(s.Range(ϟl))
     }
-    if ϟb != nil && s.pool == memory.ApplicationPool {
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
       {{if IsPointer ($s.To | Underlying)}}
         {{/* Pointers need remapping to replay addresses.
              Pointer sizes may vary between capture and replay.
@@ -621,7 +544,7 @@
         for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
           i := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
-          ptr := {{$el_ty}}{i, memory.ApplicationPool}.value(ϟb, ϟa, ϟs)
+          ptr := {{$el_ty}}{i, ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.StorePointer(dst, ptr)
           dst++
         }
@@ -635,7 +558,7 @@
           ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
           for i := uint64(0); i < s.count; i++ {
             var v {{$el_ty}}
-            {{Template "Go.Decode" "Name" "v" "Type" $s.To "ErrHandler" "panic(d.Error())"}}
+            {{Template "Go.Decode" "Name" "v" "Type" $s.To}}
             if key, remap := v.remap(ϟa, ϟs); remap {
               loadRemap(ϟb, key, {{Template "Go.Replay.Type" $s.To}}, {{Template "Go.Replay.Value" "Type" $s.To "Name" "v"}})
             } else {
@@ -658,15 +581,15 @@
     if f := ϟs.Memory[s.pool].OnWrite; f != nil {
       f(s.Range(ϟl))
     }
-    if ϟb != nil && s.pool == memory.ApplicationPool {
-      ϟb.ReserveMemory(memory.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
       {{if (GetAnnotation $s.To "replay_remap")}}
         {{/* Element type has explicitly stated it needs custom remapping */}}
         size := s.ElementSize(ϟl)
         ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
         for i := uint64(0); i < s.count; i++ {
           var v {{$el_ty}}
-          {{Template "Go.Decode" "Name" "v" "Type" $s.To "ErrHandler" "panic(d.Error())"}}
+          {{Template "Go.Decode" "Name" "v" "Type" $s.To}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             dst, found := ϟb.Remappings[key]
             if !found {
@@ -684,9 +607,9 @@
   }
 
   func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) {{$slice_ty}} {
-    if ϟb != nil && s.pool == memory.ApplicationPool {
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
       rng := s.Range(ϟs.MemoryLayout)
-      ϟb.ReserveMemory(memory.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
     }
     return s
   }
@@ -892,7 +815,7 @@
     // AddRead appends a new read observation to the atom of the range rng with
     // the data id.
     // The {{$name}} pointer is returned so that calls can be chained.
-    func (ϟa *{{$name}}) AddRead(rng memory.Range, id id.ID) *{{$name}} {
+    func (ϟa *{{$name}}) AddRead(rng ϟmem.Range, id id.ID) *{{$name}} {
       ϟa.extras.GetOrAppendObservations().AddRead(rng, id)
       return ϟa
     }
@@ -900,7 +823,7 @@
     // AddWrite appends a new write observation to the atom of the range rng with
     // the data id.
     // The {{$name}} pointer is returned so that calls can be chained.
-    func (ϟa *{{$name}}) AddWrite(rng memory.Range, id id.ID) *{{$name}} {
+    func (ϟa *{{$name}}) AddWrite(rng ϟmem.Range, id id.ID) *{{$name}} {
       ϟa.extras.GetOrAppendObservations().AddWrite(rng, id)
       return ϟa
     }
@@ -938,97 +861,6 @@
         Commands CommandBufferCommands `nobox:"true"`
       {{end}}
     }
-
-    {{if not (GetAnnotation $ "internal")}}
-      func {{$.Name}}Size(ϟl *device.MemoryLayout) uint64 {
-        size := uint64(0)
-        alignment := uint64(1)
-        {{range $v := $.Fields}}
-          {
-            size, alignment = u64.AlignToNextAndReturnLargestAlignment(size, {{Template "Go.AlignmentOf" (TypeOf $v)}}, alignment)
-            size += {{Template "Go.SizeOf" (TypeOf $v)}}
-          }
-        {{end}}
-        if (size % alignment != 0) {
-          size += alignment - (size % alignment)
-        }
-        return size
-      }
-
-      func {{$.Name}}Alignment(ϟl *device.MemoryLayout) uint64 {
-        alignment := uint64(1)
-        {{range $v := $.Fields}}
-          {
-            required_alignment := {{Template "Go.AlignmentOf" (TypeOf $v)}}
-            if (required_alignment > alignment) {
-              alignment = required_alignment
-            }
-          }
-        {{end}}
-        return alignment
-      }
-
-      func (c {{$.Name}}) Encode(ϟl *device.MemoryLayout, e binary.Writer) {
-        {{range $v := $.Fields}}
-          {{Template "Go.Encode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(e.Error())"}}
-        {{end}}
-      }
-
-      func (c *{{$.Name}}) Decode(ϟl *device.MemoryLayout, d binary.Reader) {
-        {{range $v := $.Fields}}
-          {{Template "Go.Decode" "Name" (print "c." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(d.Error())"}}
-        {{end}}
-      }
-
-      // {{$.Name}}DecodeRaw decodes a structure as it would have been stored
-      // in memory by the traced application. This means native-width pointers
-      // and aligned member variables.
-      func {{$.Name}}DecodeRaw(ϟl *device.MemoryLayout, d binary.Reader, o *{{$.Name}}) {
-        offset := uint64(0)
-        _ = offset // Silence warnings for objects with no fields
-        {{range $v := $.Fields}}
-          {
-            newOffset, _ := u64.AlignToNextAndReturnLargestAlignment(offset, {{Template "Go.AlignmentOf" (TypeOf $v)}}, 0)
-            offset = offset + binary.ConsumeBytes(d, newOffset - offset) + {{Template "Go.SizeOf" (TypeOf $v)}}
-          }
-          {{if IsPointer $v.Type}}
-            if ϟv := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8); d.Error() == nil { o.{{Title $v.Name}} = {{$v.Type.Name}}{ϟv, memory.ApplicationPool} } else { panic(d.Error()) }
-          {{else if IsClass $v.Type}}
-            {{$el_ty := Macro "Go.Type"   $v.Type}}
-            {{$el_ty}}DecodeRaw(ϟl, d, &o.{{Title $v.Name}})
-          {{else}}
-            {{Template "Go.Decode" "Name" (print "o." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(d.Error())"}}
-          {{end}}
-        {{end}}
-      }
-      func {{$.Name}}EncodeRaw(ϟl *device.MemoryLayout, e binary.Writer, o *{{$.Name}}) {
-        offset := uint64(0)
-        _ = offset // Silence warnings for objects with no fields
-        {{range $v := $.Fields}}
-          {
-            required_alignment := {{Template "Go.AlignmentOf" (TypeOf $v)}}
-            if (offset % required_alignment != 0) {
-              extra_writes := required_alignment - (offset % required_alignment)
-              offset += extra_writes
-              for i := uint64(0); i < extra_writes; i++ {
-                if binary.WriteUint(e, 8, 0); e.Error() != nil {
-                  panic(e.Error())
-                }
-              }
-            }
-            offset += {{Template "Go.SizeOf" (TypeOf $v)}}
-          }
-          {{if IsPointer $v.Type}}
-            if binary.WriteUint(e, ϟl.GetPointer().GetSize()*8, o.{{Title $v.Name}}.addr); e.Error() != nil { panic(e.Error()) }
-          {{else if IsClass $v.Type}}
-            {{$el_ty := Macro "Go.Type"   $v.Type}}
-            {{$el_ty}}EncodeRaw(ϟl, e, &o.{{Title $v.Name}})
-          {{else}}
-            {{Template "Go.Encode" "Name" (print "o." (Title $v.Name)) "Type" $v.Type "ErrHandler" "panic(e.Error())"}}
-          {{end}}
-        {{end}}
-      }
-    {{end}}
 
     {{if GetAnnotation $ "resource"}}
       // OnCreate should be called immediately after the {{$.Name}} resource is created.
@@ -1312,7 +1144,7 @@
       func New{{$name}}(§
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
-              {{Title $p.Name}} memory.Pointer,§
+              {{Title $p.Name}} ϟmem.Pointer,§
             {{else}}
               {{Title $p.Name}} {{Template "Go.Type" $p}},§
             {{end}}

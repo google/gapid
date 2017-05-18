@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
 	"github.com/google/gapid/gapis/memory"
@@ -120,7 +119,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	}
 
 	srcPtr := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
-	got := strings.TrimRight(string(gfxapi.CharToBytes(srcPtr.StringSlice(ctx, s).Read(ctx, cmd, s, nil))), "\x00")
+	got := strings.TrimRight(string(memory.CharToBytes(srcPtr.StringSlice(ctx, s).Read(ctx, cmd, s, nil))), "\x00")
 
 	expected, err := glslCompat(ctx, c.source, c.lang, nil, dev)
 	if err != nil {

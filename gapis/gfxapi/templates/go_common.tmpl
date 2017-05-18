@@ -59,10 +59,10 @@
   {{else if IsSlice         $}}{{Template "Go.QualifiedName" $}}
   {{else if IsReference     $}}(*{{Template "Go.Type" $.To}})
   {{else if IsBool          $}}bool
-  {{else if IsInt           $}}int64
-  {{else if IsUint          $}}uint64
-  {{else if IsSize          $}}uint64
-  {{else if IsChar          $}}gfxapi.Char
+  {{else if IsInt           $}}ϟmem.Int
+  {{else if IsUint          $}}ϟmem.Uint
+  {{else if IsSize          $}}ϟmem.Size
+  {{else if IsChar          $}}ϟmem.Char
   {{else if IsU8            $}}uint8
   {{else if IsS8            $}}int8
   {{else if IsU16           $}}uint16
@@ -145,30 +145,26 @@
 {{/*
 -------------------------------------------------------------------------------
   Emits the logic to decode the specified type and variable name.
-  ErrHandler can control what should happen if there's a decode error. By
-  default ErrHandler is set to "return err".
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Decode"}}
   {{AssertType $.Type       "Type"        }}
   {{AssertType $.Name       "string"      }}
-  {{AssertType $.ErrHandler "string" "nil"}}
 
-  {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $.Type}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
+  {{     if IsStaticArray $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
+  {{else if IsMap         $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
+  {{else if IsPointer     $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
+  {{else if IsClass       $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
   {{else if IsPseudonym   $.Type}}
     {{$ty := $.Type.To | Unpack}}
-    {{     if IsStaticArray $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsMap         $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsPointer     $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsClass       $ty}}if {{$.Name}}.Decode(ϟl, d); d.Error() != nil { {{$.ErrHandler}} }
-    {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
-    {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "ErrHandler" $.ErrHandler "Cast" $.Type}}
+    {{     if IsStaticArray $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
+    {{else if IsMap         $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
+    {{else if IsPointer     $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
+    {{else if IsClass       $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
+    {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "Cast" $.Type}}
+    {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "Cast" $.Type}}
     {{end}}
-  {{else}}{{Template "Go.DecodePOD" "Type" $.Type "Name" $.Name "ErrHandler" $.ErrHandler}}
+  {{else}}{{Template "Go.DecodePOD" "Type" $.Type "Name" $.Name}}
   {{end}}
 {{end}}
 
@@ -176,39 +172,36 @@
 {{/*
 -------------------------------------------------------------------------------
   Emits the logic to decode the specified Plain-Old-Data type and variable name.
-  ErrHandler can control what should happen if there's a decode error. By
-  default ErrHandler is set to "return err".
   Cast can be used to cast the value type before assignment to Name.
 -------------------------------------------------------------------------------
 */}}
-{{define "Go.DecodePOD_cast"}}{{if $}}{{Template "Go.Type" $}}(ϟv){{else}}ϟv{{end}}{{end}}
+{{define "Go.DecodePOD_cast"}}{{if $}}{{Template "Go.Type" $}}{{end}}{{end}}
 {{define "Go.DecodePOD"}}
   {{AssertType $.Type       "Type"        }}
   {{AssertType $.Name       "string"      }}
-  {{AssertType $.ErrHandler "string" "nil"}}
   {{AssertType $.Cast       "Type"   "nil"}}
 
-  {{$v         := Macro "Go.DecodePOD_cast" $.Cast}}
+  {{$cast      := Macro "Go.DecodePOD_cast" $.Cast}}
   {{$int_size  := "ϟl.GetInteger().GetSize()*8"}}
   {{$size_size := "ϟl.GetSize().GetSize()*8"}}
 
-  {{     if IsEnum        $.Type}}if ϟv := d.Uint32();  d.Error() == nil { {{$.Name}} = {{$.Type.Name}}(ϟv) } else { {{$.ErrHandler}} }
-  {{else if IsBool        $.Type}}if ϟv := d.Bool();    d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsChar        $.Type}}if ϟv := d.Uint8();   d.Error() == nil { {{$.Name}} = {{if not $.Cast}}gfxapi.Char{{end}}({{$v}}) } else { {{$.ErrHandler}} }
-  {{else if IsU8          $.Type}}if ϟv := d.Uint8();   d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsS8          $.Type}}if ϟv := d.Int8();    d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsU16         $.Type}}if ϟv := d.Uint16();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsS16         $.Type}}if ϟv := d.Int16();   d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsF32         $.Type}}if ϟv := d.Float32(); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsU32         $.Type}}if ϟv := d.Uint32();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsS32         $.Type}}if ϟv := d.Int32();   d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsF64         $.Type}}if ϟv := d.Float64(); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsU64         $.Type}}if ϟv := d.Uint64();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsS64         $.Type}}if ϟv := d.Int64();   d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsString      $.Type}}if ϟv := d.String();  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsInt         $.Type}}if ϟv := binary.ReadInt(d,  {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsUint        $.Type}}if ϟv := binary.ReadUint(d, {{$int_size}});  d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
-  {{else if IsSize        $.Type}}if ϟv := binary.ReadUint(d, {{$size_size}}); d.Error() == nil { {{$.Name}} = {{$v}} } else { {{$.ErrHandler}} }
+  {{     if IsEnum        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}{{$.Type.Name}}{{end}}(d.Uint32())
+  {{else if IsBool        $.Type}}{{$.Name}} = {{$cast}}(d.Bool())
+  {{else if IsU8          $.Type}}{{$.Name}} = {{$cast}}(d.Uint8())
+  {{else if IsS8          $.Type}}{{$.Name}} = {{$cast}}(d.Int8())
+  {{else if IsU16         $.Type}}{{$.Name}} = {{$cast}}(d.Uint16())
+  {{else if IsS16         $.Type}}{{$.Name}} = {{$cast}}(d.Int16())
+  {{else if IsF32         $.Type}}{{$.Name}} = {{$cast}}(d.Float32())
+  {{else if IsU32         $.Type}}{{$.Name}} = {{$cast}}(d.Uint32())
+  {{else if IsS32         $.Type}}{{$.Name}} = {{$cast}}(d.Int32())
+  {{else if IsF64         $.Type}}{{$.Name}} = {{$cast}}(d.Float64())
+  {{else if IsU64         $.Type}}{{$.Name}} = {{$cast}}(d.Uint64())
+  {{else if IsS64         $.Type}}{{$.Name}} = {{$cast}}(d.Int64())
+  {{else if IsString      $.Type}}{{$.Name}} = {{$cast}}(d.String())
+  {{else if IsChar        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Char{{end}}(d.Uint8())
+  {{else if IsInt         $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Int{{end}}(binary.ReadInt(d, {{$int_size}}))
+  {{else if IsUint        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Uint{{end}}(binary.ReadUint(d, {{$int_size}}))
+  {{else if IsSize        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Size{{end}}(binary.ReadUint(d, {{$size_size}}))
   {{else if IsSlice       $.Type}}
   {{else if IsReference   $.Type}}
   {{else if IsVoid        $.Type}}
@@ -220,41 +213,37 @@
 {{/*
 -------------------------------------------------------------------------------
   Emits the logic to encode the specified type and variable name.
-  ErrHandler can control what should happen if there's a encode error. By
-  default ErrHandler is set to "return err".
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Encode"}}
   {{AssertType $.Type       "Type"        }}
   {{AssertType $.Name       "string"      }}
-  {{AssertType $.ErrHandler "string" "nil"}}
 
   {{$ty        := $.Type | Underlying}}
   {{$int_size  := "ϟl.GetInteger().GetSize()*8"}}
   {{$size_size := "ϟl.GetSize().GetSize()*8"}}
 
-  {{     if not $.ErrHandler}}{{Template "Go.Decode" "Type" $.Type "Name" $.Name "ErrHandler" "return err"}}
-  {{else if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟl, e);  e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsEnum        $ty}}if e.Uint32(uint32({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsBool        $ty}}if e.Bool(bool({{$.Name}}));       e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsChar        $ty}}if e.Uint8(uint8({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsU8          $ty}}if e.Uint8(uint8({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsS8          $ty}}if e.Int8(int8({{$.Name}}));       e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsU16         $ty}}if e.Uint16(uint16({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsS16         $ty}}if e.Int16(int16({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsF32         $ty}}if e.Float32(float32({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsU32         $ty}}if e.Uint32(uint32({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsS32         $ty}}if e.Int32(int32({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsF64         $ty}}if e.Float64(float64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsU64         $ty}}if e.Uint64(uint64({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsS64         $ty}}if e.Int64(int64({{$.Name}}));     e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsString      $ty}}if e.String(string({{$.Name}}));   e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsInt         $ty}}if binary.WriteInt(e,  {{$int_size}},   int64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsUint        $ty}}if binary.WriteUint(e, {{$int_size}},  uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
-  {{else if IsSize        $ty}}if binary.WriteUint(e, {{$size_size}}, uint64({{$.Name}})); e.Error() != nil { {{$.ErrHandler}} }
+  {{     if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟl, e)
+  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟl, e)
+  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟl, e)
+  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟl, e)
+  {{else if IsEnum        $ty}}if e.Uint32(uint32({{$.Name}}))
+  {{else if IsBool        $ty}}if e.Bool(bool({{$.Name}}))
+  {{else if IsChar        $ty}}if e.Uint8(uint8({{$.Name}}))
+  {{else if IsU8          $ty}}if e.Uint8(uint8({{$.Name}}))
+  {{else if IsS8          $ty}}if e.Int8(int8({{$.Name}}))
+  {{else if IsU16         $ty}}if e.Uint16(uint16({{$.Name}}))
+  {{else if IsS16         $ty}}if e.Int16(int16({{$.Name}}))
+  {{else if IsF32         $ty}}if e.Float32(float32({{$.Name}}))
+  {{else if IsU32         $ty}}if e.Uint32(uint32({{$.Name}}))
+  {{else if IsS32         $ty}}if e.Int32(int32({{$.Name}}))
+  {{else if IsF64         $ty}}if e.Float64(float64({{$.Name}}))
+  {{else if IsU64         $ty}}if e.Uint64(uint64({{$.Name}}))
+  {{else if IsS64         $ty}}if e.Int64(int64({{$.Name}}))
+  {{else if IsString      $ty}}if e.String(string({{$.Name}}))
+  {{else if IsInt         $ty}}if binary.WriteInt(e,  {{$int_size}},   int64({{$.Name}}))
+  {{else if IsUint        $ty}}if binary.WriteUint(e, {{$int_size}},  uint64({{$.Name}}))
+  {{else if IsSize        $ty}}if binary.WriteUint(e, {{$size_size}}, uint64({{$.Name}}))
   {{else if IsSlice       $ty}}
   {{else if IsReference   $ty}}
   {{else if IsVoid        $ty}}
@@ -292,42 +281,43 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
-  {{else if IsClass       $}}{{Macro "Go.PackagePrefix" $}}{{$.Name}}Size(ϟl)
+  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{Macro "Go.PackagePrefix" $}}{{$.Name}}{}), ϟl)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
   Emits the alignment in bytes of the specified type as a uint64
 -------------------------------------------------------------------------------
 */}}
-{{define "Go.AlignmentOf"}}
+{{define "Go.AlignOf"}}
   {{AssertType $ "Type"}}
 
-  {{     if IsPseudonym   $}}{{Template "Go.AlignmentOf" $.To}}
-  {{else if IsVoid        $}}uint64(1)
-  {{else if IsBool        $}}uint64(1)
-  {{else if IsChar        $}}uint64(1)
-  {{else if IsU8          $}}uint64(1)
-  {{else if IsS8          $}}uint64(1)
-  {{else if IsU16         $}}uint64(2)
-  {{else if IsS16         $}}uint64(2)
-  {{else if IsF32         $}}uint64(4)
-  {{else if IsU32         $}}uint64(4)
-  {{else if IsS32         $}}uint64(4)
-  {{else if IsF64         $}}uint64(8)
+  {{     if IsPseudonym   $}}{{Template "Go.AlignOf" $.To}}
+  {{else if IsVoid        $}}uint64(ϟl.GetI8().GetAlignment())
+  {{else if IsBool        $}}uint64(ϟl.GetI8().GetAlignment())
+  {{else if IsChar        $}}uint64(ϟl.GetI8().GetAlignment())
+  {{else if IsU8          $}}uint64(ϟl.GetI8().GetAlignment())
+  {{else if IsS8          $}}uint64(ϟl.GetI8().GetAlignment())
+  {{else if IsU16         $}}uint64(ϟl.GetI16().GetAlignment())
+  {{else if IsS16         $}}uint64(ϟl.GetI16().GetAlignment())
+  {{else if IsF32         $}}uint64(ϟl.GetF32().GetAlignment())
+  {{else if IsU32         $}}uint64(ϟl.GetI32().GetAlignment())
+  {{else if IsS32         $}}uint64(ϟl.GetI32().GetAlignment())
+  {{else if IsF64         $}}uint64(ϟl.GetF64().GetAlignment())
   {{else if IsU64         $}}uint64(ϟl.GetI64().GetAlignment())
   {{else if IsS64         $}}uint64(ϟl.GetI64().GetAlignment())
-  {{else if IsEnum        $}}uint64(4)
+  {{else if IsEnum        $}}uint64(ϟl.GetI32().GetAlignment())
   {{else if IsString      $}}uint64(ϟl.GetPointer().GetSize())
   {{else if IsPointer     $}}uint64(ϟl.GetPointer().GetSize())
   {{else if IsInt         $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
-  {{else if IsStaticArray $}}{{Template "Go.AlignmentOf" $.ValueType}}
-  {{else if IsClass       $}}{{Macro "Go.PackagePrefix" $}}{{$.Name}}Alignment(ϟl)
-  {{else                   }}{{Error "macro Go.AlignmentOf called with unsupported type: %v" $}}
+  {{else if IsStaticArray $}}{{Template "Go.AlignOf" $.ValueType}}
+  {{else if IsClass       $}}ϟmem.AlignOf(reflect.TypeOf({{Macro "Go.PackagePrefix" $}}{{$.Name}}{}), ϟl)
+  {{else                   }}{{Error "macro Go.AlignOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
 
@@ -692,9 +682,9 @@
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}}.Index(0, ϟl))
   {{/* char* -> string */}}{{else if and (IsPointer $src_ty) (IsString $dst_ty)}}
-    strings.TrimRight(string(gfxapi.CharToBytes({{$src}}.StringSlice(ϟctx, ϟs).{{Macro "Go.MemoryRead"}})), "\x00")
+    strings.TrimRight(string(ϟmem.CharToBytes({{$src}}.StringSlice(ϟctx, ϟs).{{Macro "Go.MemoryRead"}})), "\x00")
   {{/* char[] -> string */}}{{else if and (IsSlice $src_ty) (IsString $dst_ty)}}
-    string(gfxapi.CharToBytes({{$src}}.{{Macro "Go.MemoryRead"}}))
+    string(ϟmem.CharToBytes({{$src}}.{{Macro "Go.MemoryRead"}}))
   {{/* string[] -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
     Make{{Template "Go.Type" $.Type}}FromString({{$src}}, ϟs)
   {{/* bool -> number */}}{{else if and (IsBool $src_ty) (IsNumericType $dst_ty)}}

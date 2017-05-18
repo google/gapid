@@ -32,12 +32,13 @@
     "github.com/google/gapid/gapis/database"
     "github.com/google/gapid/gapis/gfxapi"
     "github.com/google/gapid/gapis/gfxapi/gles"
-    "github.com/google/gapid/gapis/memory"
     "github.com/google/gapid/gapis/messages"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
     "github.com/google/gapid/gapis/replay/value"
     "github.com/google/gapid/gapis/stringtable"
+
+    ϟmem "github.com/google/gapid/gapis/memory"
   )
 
   type callable interface {
@@ -152,7 +153,7 @@
       {{Global "CurrentFunction" $}}
 
       {{/* simulate the call */}}
-      ϟo.ApplyReads(ϟs.Memory[memory.ApplicationPool])
+      ϟo.ApplyReads(ϟs.Memory[ϟmem.ApplicationPool])
       {{Template "Block" $.Block}}
 
       return nil
@@ -629,7 +630,7 @@
   {{end}}
 
   {{/* Merge the observed writes into the application pool */}}
-  ϟo.ApplyWrites(ϟs.Memory[memory.ApplicationPool])
+  ϟo.ApplyWrites(ϟs.Memory[ϟmem.ApplicationPool])
 {{end}}
 
 
