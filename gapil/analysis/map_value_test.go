@@ -62,6 +62,29 @@ func TestU32ToU32MapGlobalAnalysis(t *testing.T) {
 	}
 }
 
+func TestU32ToU32MapGlobalAnalysis2(t *testing.T) {
+	ctx := log.Testing(t)
+
+	common := `
+    map!(u32, u32) M
+    u32 G`
+
+	for _, test := range []struct {
+		source   string
+		expected string
+	}{
+		{``, `[0x0]`},
+		{`cmd void f() { G = M[0x1] }`, `[0x0]`},
+	} {
+		ctx := log.V{"source": test.source}.Bind(ctx)
+		api, mappings, err := compile(ctx, common+" "+test.source)
+		assert.With(ctx).ThatError(err).Succeeded()
+		res := analysis.Analyze(api, mappings)
+		got := res.Globals[api.Globals[1]].(*analysis.UintValue)
+		s := strings.Join(strings.Fields(got.Print(res)), " ")
+		assert.With(ctx).ThatString(s).Equals(test.expected)
+	}
+}
 func TestPointerToRefStructMapGlobalAnalysis(t *testing.T) {
 	ctx := log.Testing(t)
 

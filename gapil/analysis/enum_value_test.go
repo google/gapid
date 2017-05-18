@@ -27,8 +27,8 @@ func TestEnumGlobalAnalysis(t *testing.T) {
 
 	common := `
     enum E{ A = 0x1  B = 0x2  C = 0x3 }
-	E G
-	`
+    E G
+    `
 
 	for _, test := range []struct {
 		source   string
@@ -41,6 +41,15 @@ func TestEnumGlobalAnalysis(t *testing.T) {
 		{`cmd void c(E e) { G = e }`, &analysis.EnumValue{
 			Numbers: u64Rng(0, 0xffffffffffffffff),
 			Labels:  map[uint64]string{},
+		}},
+		{`cmd void c(E e) {
+            switch e {
+              case A, B, C:
+                G = e
+            }
+          }`, &analysis.EnumValue{
+			Numbers: u64(0, 1, 2, 3),
+			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
 		{`cmd void c(E e) {
             switch e {
@@ -67,7 +76,7 @@ func TestEnumParameterAnalysis(t *testing.T) {
 
 	common := `
     enum E{ A = 0x1  B = 0x2  C = 0x3 }
-	`
+    `
 
 	for _, test := range []struct {
 		source   string
@@ -104,8 +113,8 @@ func TestBitfieldGlobalAnalysis(t *testing.T) {
 
 	common := `
     bitfield E{ A = 0x1  B = 0x2  C = 0x4 }
-	E G
-	`
+    E G
+    `
 
 	for _, test := range []struct {
 		source   string
@@ -152,7 +161,7 @@ func TestBitfieldParameterAnalysis(t *testing.T) {
 
 	common := `
     bitfield E{ A = 0x1  B = 0x2  C = 0x4 }
-	`
+    `
 
 	for _, test := range []struct {
 		source   string

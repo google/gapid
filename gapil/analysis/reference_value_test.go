@@ -49,6 +49,9 @@ func TestReferenceGlobalAnalysis(t *testing.T) {
 			`cmd void c() { G = new!X(1, Y(2), null) }`,
 			`ref!X{ a: [0x1] b: Y{ p: [0x2] } c: <nil> }`,
 		}, {
+			`cmd void c() { G = new!X() }`,
+			`ref!X{ a: [0x0] b: Y{ p: [0x0] } c: <nil> }`,
+		}, {
 			`cmd void c() { x := new!X(1, Y(2), null)  G = x  x.a = 2  x.c = new!Y(3)}`,
 			`ref!X{ a: [0x2] b: Y{ p: [0x2] } c: ref!Y{ p: [0x3] } }`,
 		}, {
@@ -68,6 +71,17 @@ func TestReferenceGlobalAnalysis(t *testing.T) {
 		}, {
 			`cmd void c() { if G != null { G = new!X(1, Y(2), null) } }`,
 			`<nil>`,
+		}, {
+			`sub void uncalled(ref!X x) { G = x }`,
+			`<nil>`,
+		}, {
+			`sub void s(ref!X x) { G = x }
+			 cmd void c() { s(new!X(1, Y(2), null)) }`,
+			`ref!X{ a: [0x1] b: Y{ p: [0x2] } c: <nil> }`,
+		}, {
+			`sub ref!X s() { return new!X(1, Y(2), null) }
+			 cmd void c() { G = s() }`,
+			`ref!X{ a: [0x1] b: Y{ p: [0x2] } c: <nil> }`,
 		},
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
