@@ -35,7 +35,7 @@
           IsBitfield: {{$s.IsBitfield}},¶
           Entries:    []constset.Entry{»¶
             {{range $e := $s.Entries}}
-              { V: {{printf "0x%x" $e.V}}, O: {{$e.O}}, L: {{$e.L}} },¶
+              { V: {{printf "0x%x" $e.V}}, O: {{$e.O}}, L: {{$e.L}} }, // {{$p.Symbols.Get $e}}¶
             {{end}}
           «},¶
         «},•
