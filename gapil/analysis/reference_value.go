@@ -62,7 +62,7 @@ func (v *ReferenceValue) Print(results *Results) string {
 	for a := range v.Assignments {
 		values = append(values, results.Instances[a])
 	}
-	return "ref!" + unionOf(values...).Print(results)
+	return "ref!" + UnionOf(values...).Print(results)
 }
 
 // Type returns the semantic reference type of the value.
@@ -177,7 +177,7 @@ func (v *ReferenceValue) field(s *scope, name string) Value {
 	if len(candidates) == 0 {
 		return v.Unknown.(fieldHolder).field(s, name)
 	}
-	return unionOf(candidates...)
+	return UnionOf(candidates...)
 }
 
 // setField calls setField across all assignments to v and updating the value

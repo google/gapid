@@ -166,7 +166,7 @@ func (v *MapValue) Get(s *scope, key Value) Value {
 		// TODO: Track potential invalid map index.
 		return s.defaultOf(v.Map.ValueType)
 	}
-	return unionOf(candidates...)
+	return UnionOf(candidates...)
 }
 
 // findEqualByKey looks for an existing key in v that is equal to keyin,

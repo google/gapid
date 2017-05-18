@@ -113,7 +113,7 @@ func (s *scope) publicFunction(n *semantic.Function) {
 
 	// Feed parameter values that didn't lead to an abort back to the root scope.
 	for p, v := range ss.parameters {
-		s.parameters[p] = unionOf(v, s.parameters[p])
+		s.parameters[p] = UnionOf(v, s.parameters[p])
 	}
 }
 
