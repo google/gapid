@@ -164,7 +164,7 @@ func (v *MapValue) Get(s *scope, key Value) Value {
 	}
 	if len(candidates) == 0 {
 		// TODO: Track potential invalid map index.
-		return s.unknownOf(v.Map.ValueType)
+		return s.defaultOf(v.Map.ValueType)
 	}
 	return unionOf(candidates...)
 }

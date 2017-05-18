@@ -240,7 +240,7 @@ func (s *scope) unknownOf(ty semantic.Type) (out Value) {
 
 	case *semantic.Reference:
 		// Fake a semantic create node for this unknown reference.
-		create := &semantic.Create{}
+		create := &semantic.Create{Type: ty}
 		s.instances[create] = s.unknownOf(ty.To)
 		return &ReferenceValue{
 			Ty:      ty.To,
