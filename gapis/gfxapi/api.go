@@ -52,18 +52,6 @@ type APIObject interface {
 	API() API
 }
 
-// Char is the possibly signed but maybe unsigned C/C++ char.
-type Char uint8
-
-// CharToBytes changes the gfxapi.Char values to their byte[] representation.
-func CharToBytes(ϟchars []Char) []byte {
-	bytes := make([]byte, len(ϟchars))
-	for i := range ϟchars {
-		bytes[i] = byte(ϟchars[i])
-	}
-	return bytes
-}
-
 // IsValid returns true if the id is not the default zero value.
 func (i ID) IsValid() bool { return id.ID(i).IsValid() }
 

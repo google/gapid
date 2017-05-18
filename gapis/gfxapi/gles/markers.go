@@ -19,40 +19,41 @@ import (
 	"strings"
 
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/memory"
 )
 
 // Label returns the user maker name.
 func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
-	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
 
 // Label returns the user maker name.
 func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
-	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
 
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
-	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }
 
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
 	if ϟa.Length >= 0 {
-		return string(gfxapi.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
+		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
-	return strings.TrimRight(string(gfxapi.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
 }

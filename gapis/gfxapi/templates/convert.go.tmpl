@@ -27,7 +27,6 @@
     "context"¶
 ¶
   	"github.com/google/gapid/core/data/protoconv"¶
-    "github.com/google/gapid/gapis/gfxapi"¶
     "github.com/google/gapid/gapis/gfxapi/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
@@ -36,7 +35,6 @@
   // Just in case it is not used¶
   var _ memory.PoolID¶
   var _ memory_pb.Pointer¶
-  var _ gfxapi.Char¶
   ¶
   func init() {»¶
     {{range $c := AllCommands $}}
@@ -202,10 +200,10 @@
 */}}
 {{define "Convert.LiveType"}}
   {{if IsBool               $}}bool
-  {{else if IsInt           $}}int64
-  {{else if IsUint          $}}uint64
-  {{else if IsSize          $}}uint64
-  {{else if IsChar          $}}gfxapi.Char
+  {{else if IsInt           $}}memory.Int
+  {{else if IsUint          $}}memory.Uint
+  {{else if IsSize          $}}memory.Size
+  {{else if IsChar          $}}memory.Char
   {{else if IsU8            $}}uint8
   {{else if IsS8            $}}int8
   {{else if IsU16           $}}uint16

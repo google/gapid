@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/memory"
 )
 
 func TestSubAdd(t *testing.T) {
@@ -30,6 +31,6 @@ func TestSubAdd(t *testing.T) {
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	NewCmdAdd(10, 20).Mutate(ctx, s, nil)
 	got := GetState(s).Ints.Read(ctx, nil, s, nil)
-	expected := []int64{30}
+	expected := []memory.Int{30}
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }

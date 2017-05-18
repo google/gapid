@@ -18,11 +18,14 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    alignof_sizeof.go
     allocator.go
     allocator_test.go
     blob.go
     data.go
+    decoder.go
     doc.go
+    encoder.go
     id.go
     memory.pb.go
     memory.proto
@@ -32,6 +35,7 @@ set(files
     pool_write.go
     range.go
     range_list.go
+    read.go
     resource.go
     slice.go
     subslice.go

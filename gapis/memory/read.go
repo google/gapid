@@ -22,69 +22,76 @@ import (
 	"github.com/google/gapid/core/os/device"
 )
 
-// Write writes the value v to the writer w using C alignment rules.
-// If v is an array or slice, then each of the elements will be written,
-// sequentially. Zeros are used as for paddinge.
-func Write(w binary.Writer, m *device.MemoryLayout, v interface{}) {
-	encode(NewEncoder(w, m), reflect.ValueOf(v))
+// Read reads the value pointed at p from the reader r using C alignment rules.
+// If v is an array or slice, then each of the elements will be read,
+// sequentially.
+func Read(r binary.Reader, m *device.MemoryLayout, p interface{}) {
+	v := reflect.ValueOf(p)
+	if v.Kind() != reflect.Ptr {
+		panic(fmt.Errorf("p must be pointer, got %T", p))
+	}
+	decode(NewDecoder(r, m), v)
 }
 
-func encode(e *Encoder, v reflect.Value) {
+func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
+
 	switch {
 	case t.Implements(tyPointer):
-		e.Pointer(v.Interface().(Pointer).Address())
+		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)
+		v.Set(reflect.ValueOf(p))
 	case t == tyInt:
-		e.Int(v.Int())
+		v.SetInt(d.Int())
 	case t == tyUint:
-		e.Uint(v.Uint())
+		v.SetUint(d.Uint())
 	case t == tySize:
-		e.Size(v.Uint())
+		v.SetUint(d.Size())
 	default:
+
 		switch t.Kind() {
 		case reflect.Float32:
-			e.F32(float32(v.Float()))
+			v.SetFloat(float64(d.F32()))
 		case reflect.Float64:
-			e.F64(v.Float())
+			v.SetFloat(d.F64())
 		case reflect.Int8:
-			e.I8(int8(v.Int()))
+			v.SetInt(int64(d.I8()))
 		case reflect.Int16:
-			e.I16(int16(v.Int()))
+			v.SetInt(int64(d.I16()))
 		case reflect.Int32:
-			e.I32(int32(v.Int()))
+			v.SetInt(int64(d.I32()))
 		case reflect.Int64:
-			e.I64(v.Int())
+			v.SetInt(d.I64())
 		case reflect.Uint8:
-			e.U8(uint8(v.Uint()))
+			v.SetUint(uint64(d.U8()))
 		case reflect.Uint16:
-			e.U16(uint16(v.Uint()))
+			v.SetUint(uint64(d.U16()))
 		case reflect.Uint32:
-			e.U32(uint32(v.Uint()))
+			v.SetUint(uint64(d.U32()))
 		case reflect.Uint64:
-			e.U64(v.Uint())
+			v.SetUint(d.U64())
 		case reflect.Int:
-			e.Int(v.Int())
+			v.SetInt(d.Int())
 		case reflect.Uint:
-			e.Uint(v.Uint())
+			v.SetUint(d.Uint())
 		case reflect.Array, reflect.Slice:
 			for i, c := 0, v.Len(); i < c; i++ {
-				encode(e, v.Index(i))
+				decode(d, v.Index(i))
 			}
 		case reflect.Struct:
-			e.Align(AlignOf(v.Type(), e.m))
-			base := e.o
+			d.Align(AlignOf(v.Type(), d.m))
+			base := d.o
 			for i, c := 0, v.NumField(); i < c; i++ {
-				encode(e, v.Field(i))
+				decode(d, v.Field(i))
 			}
-			written := e.o - base
-			padding := SizeOf(v.Type(), e.m) - written
-			e.Pad(padding)
+			read := d.o - base
+			padding := SizeOf(v.Type(), d.m) - read
+			d.Skip(padding)
 		case reflect.String:
-			e.String(v.String())
+			v.SetString(d.String())
 		case reflect.Bool:
-			e.Bool(v.Bool())
+			v.SetBool(d.Bool())
 		case reflect.Interface, reflect.Ptr:
-			encode(e, v.Elem())
+			decode(d, v.Elem())
 		default:
 			panic(fmt.Errorf("Cannot write type: %v", t))
 		}

@@ -32,9 +32,7 @@ import (
 func Data(ctx context.Context, a *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, a.GetEndian())
-	if _, err := memory.Write(w, a, v); err != nil {
-		panic(err)
-	}
+	memory.Write(w, a, v)
 	id, err := database.Store(ctx, buf.Bytes())
 	if err != nil {
 		panic(err)
@@ -89,9 +87,7 @@ func (r AllocResult) Address() uint64 {
 func AllocData(ctx context.Context, s *gfxapi.State, v ...interface{}) (AllocResult, error) {
 	buf := &bytes.Buffer{}
 	w := endian.Writer(buf, s.MemoryLayout.GetEndian())
-	if _, err := memory.Write(w, s.MemoryLayout, v); err != nil {
-		return AllocResult{}, err
-	}
+	memory.Write(w, s.MemoryLayout, v)
 	id, err := database.Store(ctx, buf.Bytes())
 	if err != nil {
 		return AllocResult{}, err

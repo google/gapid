@@ -15,12 +15,9 @@
 package memory
 
 import (
+	"fmt"
 	"io"
-
-	"github.com/google/gapid/core/fault"
 )
-
-const ErrWriteOverflow = fault.Const("Write overflowed buffer")
 
 // Writer returns a binary writer for the specified memory pool and range.
 func Writer(p *Pool, rng Range) io.Writer {
@@ -35,7 +32,7 @@ type writer []byte
 func (w *writer) Write(p []byte) (n int, err error) {
 	n = copy(*w, p)
 	if n < len(p) {
-		err = ErrWriteOverflow
+		err = fmt.Errorf("Write overflowed buffer (buffer len: %v, data len: %v)", len(*w), len(p))
 	}
 	*w = (*w)[n:]
 	return

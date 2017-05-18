@@ -105,7 +105,7 @@ func checkResource(ctx context.Context, gotInfos []protocol.ResourceInfo, expect
 		assert.For(ctx, "Get resource").ThatError(err).Succeeded()
 	}
 
-	assert.With(ctx).ThatSlice(got).DeepEquals(expected)
+	assert.For(ctx, "Data").ThatSlice(got).DeepEquals(expected)
 }
 
 func max(a, b int) int {

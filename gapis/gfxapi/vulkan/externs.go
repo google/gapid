@@ -111,8 +111,8 @@ func (e externs) unmapMemory(slice memory.Slice) {
 	}
 }
 
-func (e externs) trackMappedCoherentMemory(start uint64, size uint64) {}
-func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size uint64) {
+func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
+func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size memory.Size) {
 	l := e.s.MemoryLayout
 	memory := GetState(e.s).DeviceMemories.Get(memory_handle)
 	mapped_offset := uint64(memory.MappedOffset)
@@ -138,7 +138,7 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 		dstStart += copySize
 	}
 }
-func (e externs) untrackMappedCoherentMemory(start uint64, size uint64) {}
+func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 
 func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	l := e.s.MemoryLayout

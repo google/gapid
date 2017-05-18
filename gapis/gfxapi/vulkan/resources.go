@@ -654,7 +654,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
-	createInfo.CodeSize = uint64(len(codeSlice)) * 4
+	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
 	// TODO(qining): The following is a hack to work around memory.Write().
 	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
 	// 'uint64' is used for now, and memory.Write() will always treat is as
@@ -664,7 +664,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	VkShaderModuleCreateInfoEncodeRaw(state.MemoryLayout, writer, &createInfo)
+	memory.Write(writer, state.MemoryLayout, createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewVkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
@@ -701,7 +701,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
-	createInfo.CodeSize = uint64(len(codeSlice)) * 4
+	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
 	// TODO(qining): The following is a hack to work around memory.Write().
 	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
 	// 'uint64' is used for now, and memory.Write() will always treat is as
@@ -711,7 +711,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	VkShaderModuleCreateInfoEncodeRaw(state.MemoryLayout, writer, &createInfo)
+	memory.Write(writer, state.MemoryLayout, createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewRecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
