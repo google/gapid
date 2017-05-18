@@ -57,10 +57,10 @@ func (s *scope) push() (child *scope, pop func()) {
 	return &c, func() {
 		// Merge global and instance values back together from child branch
 		for g, v := range c.globals {
-			s.globals[g] = unionOf(s.getGlobal(g), v)
+			s.globals[g] = UnionOf(s.getGlobal(g), v)
 		}
 		for i, v := range c.instances {
-			s.instances[i] = unionOf(s.getInstance(i), v)
+			s.instances[i] = UnionOf(s.getInstance(i), v)
 		}
 	}
 }
@@ -120,28 +120,28 @@ func (s *scope) setUnion(l ...*scope) {
 		for i, ss := range l {
 			vals[i] = ss.getLocal(n)
 		}
-		s.locals[n] = unionOf(vals...)
+		s.locals[n] = UnionOf(vals...)
 	}
 	for n := range parameters {
 		vals := make([]Value, len(l))
 		for i, ss := range l {
 			vals[i] = ss.getParameter(n)
 		}
-		s.parameters[n] = unionOf(vals...)
+		s.parameters[n] = UnionOf(vals...)
 	}
 	for n := range globals {
 		vals := make([]Value, len(l))
 		for i, ss := range l {
 			vals[i] = ss.getGlobal(n)
 		}
-		s.globals[n] = unionOf(vals...)
+		s.globals[n] = UnionOf(vals...)
 	}
 	for n := range instances {
 		vals := make([]Value, len(l))
 		for i, ss := range l {
 			vals[i] = ss.getInstance(n)
 		}
-		s.instances[n] = unionOf(vals...)
+		s.instances[n] = UnionOf(vals...)
 	}
 }
 

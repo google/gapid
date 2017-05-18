@@ -588,6 +588,19 @@ func possibleValues(da *docAnalysis, pos ls.Position) (analysis.Value, *analysis
 				if val, ok := root.results.Parameters[sem]; ok {
 					return val, root.results
 				}
+			case *semantic.Field:
+				var out analysis.Value
+				for create, val := range root.results.Instances {
+					if create.Type.To == sem.Owner() {
+						val := val.(*analysis.ClassValue)
+						if val, ok := val.Fields[sem.Name()]; ok {
+							out = analysis.UnionOf(val, out)
+						}
+					}
+				}
+				if out != nil {
+					return out, root.results
+				}
 			}
 		}
 	}

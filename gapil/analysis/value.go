@@ -185,9 +185,9 @@ type SetRelational interface {
 	SetLessEqual(v Value) Value
 }
 
-// unionOf returns the union of all the values in the slice vals.
+// UnionOf returns the union of all the values in the slice vals.
 // nil values in the slice are ignored.
-func unionOf(vals ...Value) Value {
+func UnionOf(vals ...Value) Value {
 	var out Value
 	for _, v := range vals {
 		switch {
@@ -555,7 +555,7 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 				cs.considerTrue(isTrue)
 				// Evaluate the choice's expression and merge into the result.
 				val, _ := cs.valueOf(choice.Expression)
-				out = unionOf(out, val)
+				out = UnionOf(out, val)
 				pop()
 				if cs.abort != nil {
 					// case resulted in an abort.
@@ -575,7 +575,7 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 			cs, pop := ss.push()
 			// Evaluate the default's expression and merge into the result.
 			val, _ := cs.valueOf(n.Default)
-			out = unionOf(out, val)
+			out = UnionOf(out, val)
 			pop()
 			if cs.abort != nil {
 				// default resulted in an abort.
@@ -590,7 +590,7 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 						}
 					}
 					if len(conditions) > 0 {
-						set(unionOf(conditions...))
+						set(UnionOf(conditions...))
 					}
 				}
 			}
