@@ -488,6 +488,10 @@ public class Formatter {
     return atomIndex(cmd.getToList());
   }
 
+  public static String toString(Service.Constant constant) {
+    return constant.getName() + " (0x" + Long.toHexString(constant.getValue()) + ")";
+  }
+
   private static String atomIndex(List<Long> cmd) {
     switch (cmd.size()) {
       case 0: return "";

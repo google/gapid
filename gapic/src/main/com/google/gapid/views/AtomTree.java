@@ -57,6 +57,7 @@ import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.util.UiCallback;
 import com.google.gapid.views.Formatter.StylingString;
+import com.google.gapid.widgets.AtomEditor;
 import com.google.gapid.widgets.Balloon;
 import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadableImage;
@@ -86,6 +87,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
@@ -165,22 +167,31 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
     };
 
-    /*
     Menu popup = new Menu(tree);
     Widgets.createMenuItem(popup, "&Edit", SWT.MOD1 + 'E', e -> {
       TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
-      if (item != null && (item.getData() instanceof AtomNode)) {
-        widgets.editor.showEditPopup(getShell(), ((AtomNode)item.getData()).index);
+      if (item != null && (item.getData() instanceof AtomStream.Node)) {
+        AtomStream.Node node = (AtomStream.Node)item.getData();
+        if (node.getData() != null && node.getCommand() != null) {
+          widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
+              node.getCommand());
+        }
       }
     });
     tree.setMenu(popup);
     tree.addListener(SWT.MenuDetect, e -> {
       TreeItem item = tree.getItem(tree.toControl(e.x, e.y));
-      if (item == null || !(item.getData() instanceof AtomNode)) {
+      if (item == null || !(item.getData() instanceof AtomStream.Node)) {
         e.doit = false;
+      } else {
+        AtomStream.Node node = (AtomStream.Node)item.getData();
+        if (node.getData() == null || node.getCommand() == null) {
+          e.doit = false;
+        } else {
+          e.doit = AtomEditor.shouldShowEditPopup(node.getCommand());
+        }
       }
     });
-    */
 
     Widgets.Refresher treeRefresher = Widgets.withAsyncRefresh(viewer);
     MouseAdapter mouseHandler = new MouseAdapter() {

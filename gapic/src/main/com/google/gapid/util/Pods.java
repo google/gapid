@@ -194,4 +194,114 @@ public class Pods {
       default: return 0;
     }
   }
+
+  public static Pod.Value.Builder setConstant(Pod.Value.Builder pod, long value) {
+    switch (pod.getValCase()) {
+      case BOOL: return pod.setBool(value != 0);
+      case SINT: return pod.setSint(value);
+      case SINT8: return pod.setSint8((int)value);
+      case SINT16: return pod.setSint16((int)value);
+      case SINT32: return pod.setSint32((int)value);
+      case SINT64: return pod.setSint64(value);
+      case UINT: return pod.setUint(value);
+      case UINT8: return pod.setUint8((int)value);
+      case UINT16: return pod.setUint16((int)value);
+      case UINT32: return pod.setUint32((int)value);
+      case UINT64: return pod.setUint64(value);
+      default: return pod;
+    }
+  }
+
+  public static boolean isInt(Pod.Value v) {
+    switch (v.getValCase()) {
+      case SINT:
+      case SINT8:
+      case SINT16:
+      case SINT32:
+      case UINT8:
+      case UINT16:
+        return true;
+      default: return false;
+    }
+  }
+
+  public static int getInt(Pod.Value v) {
+    switch (v.getValCase()) {
+      case SINT: return (int)v.getSint();
+      case SINT8: return v.getSint8();
+      case SINT16: return v.getSint16();
+      case SINT32: return v.getSint32();
+      case UINT8: return v.getUint8();
+      case UINT16: return v.getUint16();
+      default: return 0;
+    }
+  }
+
+  public static Pod.Value.Builder setInt(Pod.Value.Builder pod, int value) {
+    switch (pod.getValCase()) {
+      case SINT: return pod.setSint(value);
+      case SINT8: return pod.setSint8(value);
+      case SINT16: return pod.setSint16(value);
+      case SINT32: return pod.setSint32(value);
+      case UINT8: return pod.setUint8(value);
+      case UINT16: return pod.setUint16(value);
+      default: return pod;
+    }
+  }
+
+  public static boolean isLong(Pod.Value v) {
+    switch (v.getValCase()) {
+      case SINT64:
+      case UINT:
+      case UINT32:
+      case UINT64:
+        return true;
+      default: return false;
+    }
+  }
+
+  public static long getLong(Pod.Value v) {
+    switch (v.getValCase()) {
+      case SINT64: return v.getSint64();
+      case UINT: return v.getUint();
+      case UINT32: return v.getUint32();
+      case UINT64: return v.getUint64(); // TODO unsigned
+      default: return 0;
+    }
+  }
+
+  public static Pod.Value.Builder setLong(Pod.Value.Builder pod, long value) {
+    switch (pod.getValCase()) {
+      case SINT64: return pod.setSint64(value);
+      case UINT: return pod.setUint(value);
+      case UINT32: return pod.setUint32((int)value);
+      case UINT64: return pod.setUint64(value);
+      default: return pod;
+    }
+  }
+
+  public static boolean isFloat(Pod.Value v) {
+    switch (v.getValCase()) {
+      case FLOAT32:
+      case FLOAT64:
+        return true;
+      default: return false;
+    }
+  }
+
+  public static double getFloat(Pod.Value v) {
+    switch (v.getValCase()) {
+      case FLOAT32: return v.getFloat32();
+      case FLOAT64: return v.getFloat64();
+      default: return 0;
+    }
+  }
+
+  public static Pod.Value.Builder setFloat(Pod.Value.Builder pod, double value) {
+    switch (pod.getValCase()) {
+      case FLOAT32: return pod.setFloat32((float)value);
+      case FLOAT64: return pod.setFloat64(value);
+      default: return pod;
+    }
+  }
 }

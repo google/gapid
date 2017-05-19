@@ -15,9 +15,56 @@
  */
 package com.google.gapid.widgets;
 
-import com.google.gapid.models.Models;
-import com.google.gapid.server.Client;
+import static com.google.gapid.widgets.Widgets.createCheckbox;
+import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createDropDown;
+import static com.google.gapid.widgets.Widgets.createDropDownViewer;
+import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createSpinner;
+import static com.google.gapid.widgets.Widgets.createTextbox;
 
+import com.google.common.collect.Lists;
+import com.google.gapid.models.ConstantSets;
+import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.box.Box;
+import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.server.Client;
+import com.google.gapid.util.Paths;
+import com.google.gapid.util.Pods;
+import com.google.gapid.util.PrefixTree;
+import com.google.gapid.util.UiCallback;
+import com.google.gapid.util.Values;
+import com.google.gapid.views.Formatter;
+
+import org.eclipse.jface.dialogs.TitleAreaDialog;
+import org.eclipse.jface.fieldassist.ContentProposal;
+import org.eclipse.jface.fieldassist.ContentProposalAdapter;
+import org.eclipse.jface.fieldassist.IContentProposal;
+import org.eclipse.jface.fieldassist.IContentProposalProvider;
+import org.eclipse.jface.fieldassist.TextContentAdapter;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.Text;
+
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
@@ -35,11 +82,14 @@ public class AtomEditor {
     this.models = models;
   }
 
-  /*
-  public void showEditPopup(Shell parent, long index) {
-    EditDialog dialog = new EditDialog(parent, models.atoms.getAtom(index));
+  public static boolean shouldShowEditPopup(Service.Command command) {
+    return command.getParametersCount() > 0;
+  }
+
+  public void showEditPopup(Shell parent, Path.Command path, Service.Command command) {
+    EditDialog dialog = new EditDialog(parent, models, command);
     if (dialog.open() == Window.OK) {
-      Rpc.listen(client.set(getSetPath(index), getSetValue(dialog.newAtom)),
+      Rpc.listen(client.set(Paths.any(path), Values.value(dialog.newAtom)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
         @Override
         protected Path.Any onRpcThread(Rpc.Result<Path.Any> result)
@@ -49,42 +99,24 @@ public class AtomEditor {
 
         @Override
         protected void onUiThread(Path.Any newPath) {
-          // TODO this should probably be able to handle any path.
-          models.capture.updateCapture(newPath.getCommand().getCommands().getCapture(), null);
+          models.capture.updateCapture(newPath.getCommand().getCapture(), null);
         }
       });
     }
   }
 
-  private Path.Any getSetPath(long index) {
-    return Path.Any.newBuilder()
-        .setCommand(command(models.atoms.getPath(), index))
-        .build();
-  }
-
-  private static Service.Value getSetValue(Dynamic atom) {
-    try {
-      return Service.Value.newBuilder()
-          .setObject(Client.encode(atom))
-          .build();
-    } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to encode atom " + atom);
-      return Service.Value.getDefaultInstance();
-    }
-  }
-  */
-
   /**
    * The dialog containing the editors for a given command.
    */
-  /*
   private static class EditDialog extends TitleAreaDialog {
-    private final Atom atom;
+    private final Models models;
+    private final Service.Command atom;
     private final List<Editor<?>> editors = Lists.newArrayList();
-    public Dynamic newAtom;
+    public Service.Command newAtom;
 
-    public EditDialog(Shell parentShell, Atom atom) {
+    public EditDialog(Shell parentShell, Models models, Service.Command atom) {
       super(parentShell);
+      this.models = models;
       this.atom = atom;
     }
 
@@ -104,24 +136,15 @@ public class AtomEditor {
     protected Control createDialogArea(Composite parent) {
       Composite area = (Composite)super.createDialogArea(parent);
 
-      Composite container = createComposite(area, new GridLayout(2, false));
+      Composite container = Widgets.createComposite(area, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      int resultIndex = atom.getResultIndex();
-      int extrasIndex = atom.getExtrasIndex();
-      for (int i = 0; i < atom.getFieldCount(); i++) {
-        if (i == resultIndex || i == extrasIndex) {
-          continue;
-        }
-
-        SnippetObject snippetObject = SnippetObject.param(atom, i);
-        Object value = atom.getFieldValue(i);
-        Field field = atom.getFieldInfo(i);
-
-        String typeString = field.getType() instanceof Primitive ?
-            " (" + ((Primitive)field.getType()).getMethod() + ")" : "";
-        createLabel(container, atom.getFieldInfo(i).getName() + typeString + ":");
-        Editor<?> editor = Editor.getFor(container, field.getType(), value, snippetObject, i);
+      for (Service.Parameter param : atom.getParametersList()) {
+        Service.ConstantSet constants = models.constants.getConstants(param.getConstants());
+        String typeString = Editor.getTypeString(param);
+        typeString = typeString.isEmpty() ? "" : " (" + typeString + ")";
+        createLabel(container, param.getName() + typeString + ":");
+        Editor<?> editor = Editor.getFor(container, param, constants);
         editor.control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
         editors.add(editor);
       }
@@ -136,147 +159,141 @@ public class AtomEditor {
 
     @Override
     protected void okPressed() {
-      newAtom = ((Dynamic)atom.unwrap()).copy();
-      for (Editor<?> editor : editors) {
-        editor.update(newAtom);
+      Service.Command.Builder builder = atom.toBuilder();
+      for (int i = atom.getParametersCount() - 1; i >= 0; i--) {
+        if (!editors.get(i).update(builder.getParametersBuilder(i).getValueBuilder())) {
+          builder.removeParameters(i);
+        }
       }
+      newAtom = builder.build();
 
       super.okPressed();
     }
 
     /**
      * Base class for the different types of editors.
-     *
+     */
     private abstract static class Editor<C extends Control> {
       private static final int MAX_DROP_DOWN_SIZE = 1000;
 
-      public final int fieldIndex;
       public final C control;
 
-      public Editor(int fieldIndex, C control) {
-        this.fieldIndex = fieldIndex;
+      public Editor(C control) {
         this.control = control;
       }
 
-      public abstract void update(Dynamic atom);
+      /**
+       * @return {@code false} if the parameter should be removed.
+       */
+      public abstract boolean update(Box.Value.Builder param);
 
       public static Editor<?> getFor(
-          Composite parent,Type type, Object value, SnippetObject snippetObject, int fieldIndex) {
-        if (type instanceof Primitive) {
-          final Primitive primitive = (Primitive) type;
-
-          Collection<Constant> constant = Formatter.findConstant(snippetObject, primitive);
-          if (constant.size() >= 1) {
-            // handle enum
-            List<Constant> constants = Arrays.asList(ConstantSet.lookup(type).getEntries());
-            // if we have a set of preferred constants, use them.
-            Labels labels = Labels.fromSnippets(snippetObject.getSnippets());
-            if (labels != null) {
-              List<Constant> preferred = labels.preferred(constants);
-              if (preferred.containsAll(constant)) {
-                constants = preferred;
-              }
-            }
-
-            // TODO change this to actually check if this ConstantSet is flags
-            if (constant.size() == 1) {
-              Constant current = Iterables.get(constant, 0);
-              if (constants.size() > MAX_DROP_DOWN_SIZE) {
-                return new ConstantEditor(parent, constants, current, fieldIndex);
+          Composite parent, Service.Parameter param, Service.ConstantSet constants) {
+        Box.Value value = param.getValue();
+        switch (value.getValCase()) {
+          case POD:
+            if (constants != null && Pods.mayBeConstant(value.getPod())) {
+              if (constants.getIsBitfield()) {
+                return new FlagEditor(parent, constants, value);
+              } else if (constants.getConstantsCount() > MAX_DROP_DOWN_SIZE) {
+                return new ConstantEditor(parent, constants, value);
               } else {
-                return new EnumEditor(parent, constants, current, fieldIndex);
+                return new EnumEditor(parent, constants, value);
               }
-            } else {
-              return new FlagEditor(parent, constants, constant, fieldIndex);
             }
-          }
 
-          Method method = primitive.getMethod();
-          if (method == Method.Bool) {
-            return new BooleanEditor(parent, ((Boolean) value).booleanValue(), fieldIndex);
-          } else if (method == Method.Float32 || method == Method.Float64) {
-            return new FloatEditor(parent, ((Number) value).doubleValue(), fieldIndex);
-          } else if (method == Method.String) {
-            return new StringEditor(parent, String.valueOf(value), fieldIndex);
-          } else if (method == Method.Uint8) {
-            return new IntEditor(parent, ((Number) value).intValue(), 0, 255, fieldIndex);
-          } else if (method == Method.Int8) {
-            return new IntEditor(parent, ((Number) value).intValue(), -128, 127, fieldIndex);
-          } else if (method == Method.Uint16) {
-            return new IntEditor(parent, ((Number) value).intValue(), 0, 65535, fieldIndex);
-          } else if (method == Method.Int16) {
-            return new IntEditor(parent, ((Number) value).intValue(), -32768, 32767, fieldIndex);
-          } else if (method == Method.Int32) {
-            return new IntEditor(
-                parent, ((Number) value).intValue(), 0x80000000, 0x7fffffff, fieldIndex);
-          } else if (method == Method.Uint32 || method == Method.Int64) {
-            return new LongEditor(
-                parent, BigInteger.valueOf(((Number) value).longValue()), fieldIndex);
-          } else if (method == Method.Uint64) {
-            ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-            buffer.putLong(((Number) value).longValue());
-            return new LongEditor(parent, new BigInteger(1, buffer.array()), fieldIndex);
-          }
+            switch (value.getPod().getValCase()) {
+              case BOOL: return new BooleanEditor(parent, value);
+              case UINT8: return new IntEditor(parent, value, 0, 255);
+              case SINT8: return new IntEditor(parent, value, -128, 127);
+              case UINT16: return new IntEditor(parent, value, 0, 65535);
+              case SINT16: return new IntEditor(parent, value, -32768, 32767);
+              case SINT:
+              case SINT32: return new IntEditor(parent, value, 0x80000000, 0x7fffffff);
+              case STRING: return new StringEditor(parent, value);
+              default: // Fall through.
+            }
+
+            if (Pods.isLong(value.getPod())) {
+              return new LongEditor(parent, value);
+            } else if (Pods.isFloat(value.getPod())) {
+              return new FloatEditor(parent, value);
+            }
+            break;
+
+          default: // Fall through.
         }
-        return new NoEditEditor(parent, type, snippetObject);
+        return new NoEditEditor(parent, value, constants);
+      }
+
+      public static String getTypeString(Service.Parameter param) {
+        Box.Value value = param.getValue();
+        switch (value.getValCase()) {
+          case POD: return value.getPod().getValCase().name().toLowerCase();
+          default: return "";
+        }
       }
     }
 
     /**
      * {@link Editor} for read-only values.
-     *
+     */
     private static class NoEditEditor extends Editor<Label> {
-      public NoEditEditor(Composite parent, Type type, SnippetObject value) {
-        super(-1, new Label(parent, SWT.NONE));
-        control.setText(Formatter.toString(value, type));
+      public NoEditEditor(Composite parent, Box.Value value, Service.ConstantSet constants) {
+        super(new Label(parent, SWT.NONE));
+        control.setText(Formatter.toString(value, constants, true));
       }
 
       @Override
-      public void update(Dynamic atom) {
-        // Noop.
+      public boolean update(Box.Value.Builder param) {
+        return false;
       }
     }
 
     /**
      * {@link Editor} for enums using a drop down.
-     *
+     */
     private static class EnumEditor extends Editor<Combo> {
       private final ComboViewer viewer;
 
-      public EnumEditor(
-          Composite parent, List<Constant> constants, Constant value, int fieldIndex) {
-        super(fieldIndex, createDropDown(parent));
+      public EnumEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
+        super(createDropDown(parent));
         viewer = createDropDownViewer(control);
         viewer.setContentProvider(ArrayContentProvider.getInstance());
-        viewer.setLabelProvider(new LabelProvider());
-        viewer.setUseHashlookup(true);
-        viewer.setInput(constants);
-        control.select(constants.indexOf(value));
+        viewer.setLabelProvider(new LabelProvider() {
+          @Override
+          public String getText(Object element) {
+            return Formatter.toString((Service.Constant)element);
+          }
+        });
+        viewer.setInput(constants.getConstantsList());
+        viewer.setSelection(new StructuredSelection(ConstantSets.find(constants, value)));
       }
 
       @Override
-      public void update(Dynamic atom) {
-        atom.setFieldValue(
-            fieldIndex, ((Constant)viewer.getElementAt(control.getSelectionIndex())).getValue());
+      public boolean update(Box.Value.Builder param) {
+        Pods.setConstant(param.getPodBuilder(),
+            ((Service.Constant)viewer.getElementAt(control.getSelectionIndex())).getValue());
+        return true;
       }
     }
 
     /**
      * {@link Editor} for enums using a free from text box with auto completion suggestions.
-     *
+     */
     private static class ConstantEditor extends Editor<Text> {
       private static final int MAX_PROPOSALS = 1000;
 
       protected final PrefixTree<ConstantValue> lookup;
 
-      public ConstantEditor(
-          Composite parent, List<Constant> constants, Constant value, int fieldIndex) {
-        super(fieldIndex, Widgets.createTextbox(parent, value.getName()));
+      public ConstantEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
+        super(Widgets.createTextbox(parent, ConstantSets.find(constants, value).getName()));
 
-        constants = Lists.newArrayList(constants);
-        // Reverse order. The prefix tree returns elements in LIFO order.
-        Collections.sort(constants, (c1, c2) -> c2.getName().compareTo(c1.getName()));
-        lookup = PrefixTree.of(constants.stream().map(ConstantValue::new).iterator());
+        lookup = PrefixTree.of(constants.getConstantsList().stream()
+            // Reverse order. The prefix tree returns elements in LIFO order.
+            .sorted((c1, c2) -> c1.getName().compareTo(c1.getName()))
+            .map(ConstantValue::new)
+            .iterator());
 
         IContentProposalProvider cpp = new IContentProposalProvider(){
           @Override
@@ -295,18 +312,19 @@ public class AtomEditor {
       }
 
       @Override
-      public void update(Dynamic atom) {
+      public boolean update(Box.Value.Builder param) {
         ConstantValue value = lookup.get(control.getText().toLowerCase());
         if (value != null) { // TODO
-          atom.setFieldValue(fieldIndex, value.constant.getValue());
+          Pods.setConstant(param.getPodBuilder(), value.constant.getValue());
         }
+        return true;
       }
 
       private static class ConstantValue extends ContentProposal implements PrefixTree.Value {
-        public final Constant constant;
+        public final Service.Constant constant;
 
-        public ConstantValue(Constant constant) {
-          super(constant.getName(), constant.toString());
+        public ConstantValue(Service.Constant constant) {
+          super(constant.getName(), Formatter.toString(constant));
           this.constant = constant;
         }
 
@@ -319,110 +337,116 @@ public class AtomEditor {
 
     /**
      * {@link Editor} for flag/bitmask values.
-     *
+     */
     private static class FlagEditor extends Editor<Composite> {
-      private final List<Constant> constants;
+      private final Service.ConstantSet constants;
 
-      public FlagEditor(
-          Composite parent, List<Constant> constants, Collection<Constant> value, int fieldIndex) {
-        super(fieldIndex, createComposite(parent, new RowLayout(SWT.VERTICAL)));
+      public FlagEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
+        super(createComposite(parent, new RowLayout(SWT.VERTICAL)));
         this.constants = constants;
 
-        for (Constant constant : constants) {
-          createCheckbox(control, String.valueOf(constant), value.contains(constant));
+        long bits = Pods.getConstant(value.getPod());
+        for (Service.Constant constant : constants.getConstantsList()) {
+          createCheckbox(control, Formatter.toString(constant),
+              (bits & constant.getValue()) == constant.getValue());
         }
       }
 
       @Override
-      public void update(Dynamic atom) {
+      public boolean update(Box.Value.Builder param) {
         long value = 0;
         Control[] children = control.getChildren();
         for (int i = 0; i < children.length; i++) {
           if (((Button)children[i]).getSelection()) {
-            value |= ((Number)constants.get(i).getValue()).longValue();
+            value |= constants.getConstants(i).getValue();
           }
         }
-        atom.setFieldValue(fieldIndex, value);
+        Pods.setConstant(param.getPodBuilder(), value);
+        return true;
       }
     }
 
     /**
      * {@link Editor} for boolean values.
-     *
+     */
     private static class BooleanEditor extends Editor<Button> {
-      public BooleanEditor(Composite parent, boolean value, int fieldIndex) {
-        super(fieldIndex, createCheckbox(parent, value));
+      public BooleanEditor(Composite parent, Box.Value value) {
+        super(createCheckbox(parent, value.getPod().getBool()));
       }
 
       @Override
-      public void update(Dynamic atom) {
-        atom.setFieldValue(fieldIndex, control.getSelection());
+      public boolean update(Box.Value.Builder param) {
+        param.getPodBuilder().setBool(control.getSelection());
+        return true;
       }
     }
 
     /**
      * {@link Editor} for integer values.
-     *
+     */
     private static class IntEditor extends Editor<Spinner> {
-      public IntEditor(Composite parent, int value, int min, int max, int fieldIndex) {
-        super(fieldIndex, createSpinner(parent, value, min, max));
+      public IntEditor(Composite parent, Box.Value value, int min, int max) {
+        super(createSpinner(parent, Pods.getInt(value.getPod()), min, max));
       }
 
       @Override
-      public void update(Dynamic atom) {
-        atom.setFieldValue(fieldIndex, control.getSelection());
+      public boolean update(Box.Value.Builder param) {
+        Pods.setInt(param.getPodBuilder(), control.getSelection());
+        return true;
       }
     }
 
     /**
      * {@link Editor} for long values.
-     *
+     */
     private static class LongEditor extends Editor<Text> {
-      public LongEditor(Composite parent, BigInteger value, int fieldIndex) {
-        super(fieldIndex, createTextbox(parent, String.valueOf(value)));
+      public LongEditor(Composite parent, Box.Value value) {
+        super(createTextbox(parent, String.valueOf(Pods.getLong(value.getPod()))));
       }
 
       @Override
-      public void update(Dynamic atom) {
+      public boolean update(Box.Value.Builder param) {
         try {
-          atom.setFieldValue(fieldIndex, new BigInteger(control.getText()));
+          Pods.setLong(param.getPodBuilder(), Long.parseLong(control.getText()));
         } catch (NumberFormatException e) {
           // TODO.
         }
+        return true;
       }
     }
 
     /**
      * {@link Editor} for floating point values.
-     *
+     */
     private static class FloatEditor extends Editor<Text> {
-      public FloatEditor(Composite parent, double value, int fieldIndex) {
-        super(fieldIndex, createTextbox(parent, String.valueOf(value)));
+      public FloatEditor(Composite parent, Box.Value value) {
+        super(createTextbox(parent, String.valueOf(Pods.getFloat(value.getPod()))));
       }
 
       @Override
-      public void update(Dynamic atom) {
+      public boolean update(Box.Value.Builder param) {
         try {
-          atom.setFieldValue(fieldIndex, Double.parseDouble(control.getText()));
+          Pods.setFloat(param.getPodBuilder(), Double.parseDouble(control.getText()));
         } catch (NumberFormatException e) {
           // TODO.
         }
+        return true;
       }
     }
 
     /**
      * {@link Editor} for string values.
-     *
+     */
     private static class StringEditor extends Editor<Text> {
-      public StringEditor(Composite parent, String value, int fieldIndex) {
-        super(fieldIndex, createTextbox(parent, value));
+      public StringEditor(Composite parent, Box.Value value) {
+        super(createTextbox(parent, value.getPod().getString()));
       }
 
       @Override
-      public void update(Dynamic atom) {
-        atom.setFieldValue(fieldIndex, control.getText());
+      public boolean update(Box.Value.Builder param) {
+        param.getPodBuilder().setString(control.getText());
+        return true;
       }
     }
   }
-  */
 }
