@@ -470,7 +470,7 @@
 
   // Encoder returns a memory encoder for the slice.
   func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) binary.Writer {
-    return ϟs.MemoryEncoder(ϟs.Memory[s.pool], s.Range(ϟs.MemoryLayout))
+    return ϟs.MemoryEncoder(s.pool, s.Range(ϟs.MemoryLayout))
   }
 
   {{if not $el_is_void}}

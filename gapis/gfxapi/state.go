@@ -104,7 +104,7 @@ func (s State) MemoryDecoder(ctx context.Context, d memory.Data) binary.Reader {
 
 // MemoryEncoder returns an endian reader that uses the byte-order of the
 // capture device to encode to the pool p, for the range rng.
-func (s State) MemoryEncoder(p *memory.Pool, rng memory.Range) binary.Writer {
-	bw := memory.Writer(p, rng)
+func (s State) MemoryEncoder(p memory.PoolID, rng memory.Range) binary.Writer {
+	bw := memory.Writer(s.Memory[p], rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }
