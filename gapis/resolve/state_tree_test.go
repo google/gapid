@@ -90,6 +90,70 @@ var testState = TestState{
 	ReferenceC: nil,
 }
 
+func TestSubgroupSize(t *testing.T) {
+	ctx := log.Testing(t)
+	for _, test := range []struct {
+		groupLimit, childCount, expected uint64
+	}{
+		{10, 5, 1},
+		{10, 9, 1},
+		{10, 10, 1},
+		{10, 11, 10},
+		{10, 20, 10},
+		{10, 99, 10},
+		{10, 100, 10},
+		{10, 101, 100},
+	} {
+		got := subgroupSize(test.groupLimit, test.childCount)
+		assert.For(ctx, "subgroupSize(%v, %v)", test.groupLimit, test.childCount).
+			That(got).Equals(test.expected)
+	}
+}
+
+func TestSubgroupCount(t *testing.T) {
+	ctx := log.Testing(t)
+	for _, test := range []struct {
+		groupLimit, childCount, expected uint64
+	}{
+		{10, 5, 5},
+		{10, 9, 9},
+		{10, 10, 10},
+		{10, 11, 2},
+		{10, 20, 2},
+		{10, 99, 10},
+		{10, 100, 10},
+		{10, 101, 2},
+	} {
+		got := subgroupCount(test.groupLimit, test.childCount)
+		assert.For(ctx, "subgroupCount(%v, %v)", test.groupLimit, test.childCount).
+			That(got).Equals(test.expected)
+	}
+}
+
+func TestSubgroupRange(t *testing.T) {
+	ctx := log.Testing(t)
+	for _, test := range []struct {
+		groupLimit, childCount, idx uint64
+		s, e                        uint64
+	}{
+		{groupLimit: 10, childCount: 5, idx: 3, s: 3, e: 4},
+		{groupLimit: 10, childCount: 9, idx: 3, s: 3, e: 4},
+		{groupLimit: 10, childCount: 10, idx: 3, s: 3, e: 4},
+		{groupLimit: 10, childCount: 11, idx: 0, s: 0, e: 10},
+		{groupLimit: 10, childCount: 11, idx: 1, s: 10, e: 11},
+		{groupLimit: 10, childCount: 20, idx: 0, s: 0, e: 10},
+		{groupLimit: 10, childCount: 20, idx: 1, s: 10, e: 20},
+		{groupLimit: 10, childCount: 99, idx: 5, s: 50, e: 60},
+		{groupLimit: 10, childCount: 100, idx: 5, s: 50, e: 60},
+		{groupLimit: 10, childCount: 101, idx: 0, s: 0, e: 100},
+		{groupLimit: 10, childCount: 101, idx: 1, s: 100, e: 101},
+	} {
+		type R struct{ S, E uint64 }
+		s, e := subgroupRange(test.groupLimit, test.childCount, test.idx)
+		assert.For(ctx, "subgroupRange(groupLimit: %v, childCount: %v, idx: %v)", test.groupLimit, test.childCount, test.idx).
+			That(R{s, e}).Equals(R{test.s, test.e})
+	}
+}
 func TestStateTreeNode(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
@@ -421,7 +485,7 @@ func TestStateTreeNode(t *testing.T) {
 		}, {
 			root.Index(5, 7),
 			&service.StateTreeNode{
-				NumChildren:    11,
+				NumChildren:    2,
 				Name:           "Slice",
 				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
@@ -431,49 +495,40 @@ func TestStateTreeNode(t *testing.T) {
 			root.Index(5, 7, 0),
 			&service.StateTreeNode{
 				NumChildren:    10,
-				Name:           "[0 - 99]",
+				Name:           "[0 - 999]",
 				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1000, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
 		}, {
 			root.Index(5, 7, 0, 4),
 			&service.StateTreeNode{
 				NumChildren:    10,
-				Name:           "[40 - 49]",
+				Name:           "[400 - 499]",
 				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1140, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1C80, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
 		}, {
 			root.Index(5, 7, 0, 4, 3),
 			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[430 - 439]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1D70, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 0, 4, 3, 5),
+			&service.StateTreeNode{
 				NumChildren:    0,
-				Name:           "43",
-				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(43).Path(),
-				Preview:        box.NewValue(memory.Int(430)),
+				Name:           "435",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(435).Path(),
+				Preview:        box.NewValue(memory.Int(4350)),
 				PreviewIsValue: true,
 			},
 		}, {
 			root.Index(5, 7, 1),
-			&service.StateTreeNode{
-				NumChildren:    10,
-				Name:           "[100 - 199]",
-				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1320, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
-				PreviewIsValue: true,
-			},
-		}, {
-			root.Index(5, 7, 9),
-			&service.StateTreeNode{
-				NumChildren:    10,
-				Name:           "[900 - 999]",
-				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2C20, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
-				PreviewIsValue: true,
-			},
-		}, {
-			root.Index(5, 7, 10),
 			&service.StateTreeNode{
 				NumChildren:    5,
 				Name:           "[1000 - 1004]",
@@ -482,12 +537,12 @@ func TestStateTreeNode(t *testing.T) {
 				PreviewIsValue: true,
 			},
 		}, {
-			root.Index(5, 7, 10, 2),
+			root.Index(5, 7, 1, 3),
 			&service.StateTreeNode{
 				NumChildren:    0,
-				Name:           "1002",
-				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(1002).Path(),
-				Preview:        box.NewValue(memory.Int(10020)),
+				Name:           "1003",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(1003).Path(),
+				Preview:        box.NewValue(memory.Int(10030)),
 				PreviewIsValue: true,
 			},
 		},

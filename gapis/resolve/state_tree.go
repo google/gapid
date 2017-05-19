@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/slice"
+	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -50,33 +51,39 @@ type stateTree struct {
 	groupLimit uint64
 }
 
-func (t stateTree) needsSubgrouping(size uint64) bool {
-	return t.groupLimit > 0 && size > t.groupLimit
+// needsSubgrouping returns true if the child count exceeds the group limit and
+// grouping is desired (groupLimit > 0).
+func needsSubgrouping(groupLimit, childCount uint64) bool {
+	return groupLimit > 0 && childCount > groupLimit
 }
 
-func (t stateTree) limit(numChildren uint64) uint64 {
-	if t.groupLimit > 0 && numChildren > t.groupLimit {
-		numChildren = (numChildren + t.groupLimit - 1) / t.groupLimit
-		if numChildren > t.groupLimit {
-			numChildren = (numChildren + t.groupLimit - 1) / t.groupLimit
-		}
+// subgroupSize returns the maximum number of entries in each subgroup.
+func subgroupSize(groupLimit, childCount uint64) uint64 {
+	if !needsSubgrouping(groupLimit, childCount) {
+		return 1
 	}
-	return numChildren
+	groupSize := uint64(1)
+	for (childCount+groupSize-1)/groupSize > groupLimit {
+		groupSize *= groupLimit
+	}
+	return groupSize
 }
 
-func (t stateTree) subrange(size, idx uint64) (i, j uint64, name string) {
-	if size > t.groupLimit*t.groupLimit {
-		i = idx * t.groupLimit * t.groupLimit
-		j = i + t.groupLimit*t.groupLimit
-	} else {
-		i = idx * t.groupLimit
-		j = i + t.groupLimit
-	}
-	if j > size {
-		j = size
-	}
-	name = fmt.Sprintf("[%d - %d]", i, j-1)
-	return
+// subgroupCount returns the number of immediate children for a given group,
+// taking into consideration group limits.
+func subgroupCount(groupLimit, childCount uint64) uint64 {
+	groupSize := subgroupSize(groupLimit, childCount)
+	return (childCount + groupSize - 1) / groupSize
+}
+
+// subgroupRange returns the start and end indices (s, e) for the i'th immediate
+// child for the given group. e is one greater than the last index in the
+// subgroup.
+func subgroupRange(groupLimit, childCount, i uint64) (s, e uint64) {
+	groupSize := subgroupSize(groupLimit, childCount)
+	s = i * groupSize
+	e = u64.Min(s+groupSize, childCount)
+	return s, e
 }
 
 func deref(v reflect.Value) reflect.Value {
@@ -100,7 +107,7 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 	v := deref(reflect.ValueOf(tree.apiState))
 
 	numChildren := uint64(visibleFieldCount(v.Type()))
-	syntheticOffset := uint64(0)
+	subgroupOffset := uint64(0)
 
 	for i, idx64 := range p.Indices {
 		idx := int(idx64)
@@ -113,21 +120,21 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 		switch {
 		case box.IsMemorySlice(t):
 			slice := box.AsMemorySlice(v)
-			if size := slice.Count(); tree.needsSubgrouping(size) {
-				i, j, n := tree.subrange(size, idx64)
-				name = n
-				v = reflect.ValueOf(slice.ISlice(i, j, tree.state.MemoryLayout))
-				syntheticOffset += i
+			if size := slice.Count(); needsSubgrouping(tree.groupLimit, size) {
+				s, e := subgroupRange(tree.groupLimit, size, idx64)
+				name = fmt.Sprintf("[%d - %d]", subgroupOffset+s, subgroupOffset+e-1)
+				v = reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout))
+				subgroupOffset += s
 			} else {
-				name = fmt.Sprint(syntheticOffset + idx64)
-				pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
+				name = fmt.Sprint(subgroupOffset + idx64)
+				pth = path.NewArrayIndex(subgroupOffset+idx64, pth)
 				ptr := slice.IIndex(idx64, tree.state.MemoryLayout)
 				el, err := memory.LoadPointer(ctx, ptr, tree.state.Memory, tree.state.MemoryLayout)
 				if err != nil {
 					return nil, err
 				}
 				v = reflect.ValueOf(el)
-				syntheticOffset = 0
+				subgroupOffset = 0
 			}
 		default:
 			switch v.Kind() {
@@ -142,16 +149,16 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 				pth = path.NewField(name, pth)
 				v = deref(f)
 			case reflect.Slice, reflect.Array:
-				if size := uint64(v.Len()); tree.needsSubgrouping(size) {
-					i, j, n := tree.subrange(size, idx64)
-					name = n
-					v = v.Slice(int(i), int(j))
-					syntheticOffset += i
+				if size := uint64(v.Len()); needsSubgrouping(tree.groupLimit, size) {
+					s, e := subgroupRange(tree.groupLimit, size, idx64)
+					name = fmt.Sprintf("[%d - %d]", subgroupOffset+s, subgroupOffset+e-1)
+					v = v.Slice(int(s), int(e))
+					subgroupOffset += s
 				} else {
-					name = fmt.Sprint(syntheticOffset + idx64)
-					pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
+					name = fmt.Sprint(subgroupOffset + idx64)
+					pth = path.NewArrayIndex(subgroupOffset+idx64, pth)
 					v = deref(v.Index(idx))
-					syntheticOffset = 0
+					subgroupOffset = 0
 				}
 			case reflect.Map:
 				keys := v.MapKeys()
@@ -170,13 +177,13 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 		case box.IsMemoryPointer(t):
 			numChildren = 0
 		case box.IsMemorySlice(t):
-			numChildren = tree.limit(box.AsMemorySlice(v).Count())
+			numChildren = subgroupCount(tree.groupLimit, box.AsMemorySlice(v).Count())
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
 				numChildren = uint64(visibleFieldCount(t))
 			case reflect.Slice, reflect.Array:
-				numChildren = tree.limit(uint64(v.Len()))
+				numChildren = subgroupCount(tree.groupLimit, uint64(v.Len()))
 			case reflect.Map:
 				numChildren = uint64(v.Len())
 			default:
