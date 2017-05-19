@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"strconv"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -85,31 +85,6 @@ func deref(v reflect.Value) reflect.Value {
 		v = v.Elem()
 	}
 	return v
-}
-
-type strVal struct {
-	s string
-	v reflect.Value
-}
-
-type strVals []strVal
-
-func (l strVals) Len() int           { return len(l) }
-func (l strVals) Less(i, j int) bool { return l[i].s < l[j].s }
-func (l strVals) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-
-func sortMapKeys(m reflect.Value) []reflect.Value {
-	keys := m.MapKeys()
-	pairs := make(strVals, len(keys))
-	for i, k := range keys {
-		pairs[i] = strVal{fmt.Sprint(k.Interface()), k}
-	}
-	sort.Sort(pairs)
-	sorted := make([]reflect.Value, len(keys))
-	for i, v := range pairs {
-		sorted[i] = v.v
-	}
-	return sorted
 }
 
 // StateTreeNode resolves the specified command tree node path.
@@ -188,7 +163,9 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 					syntheticOffset = 0
 				}
 			case reflect.Map:
-				key := sortMapKeys(v)[idx]
+				keys := v.MapKeys()
+				slice.SortValues(keys, v.Type().Key())
+				key := keys[idx]
 				name = fmt.Sprint(key.Interface())
 				pth = path.NewMapIndex(key.Interface(), pth)
 				v = deref(v.MapIndex(key))
