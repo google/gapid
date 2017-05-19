@@ -110,7 +110,7 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	for _, e := range report.Items {
 		where := ""
 		if e.Command != nil {
-			where = fmt.Sprintf("%v %v ", e.Command.Index, commands[e.Command.Index[0]]) // TODO: Subcommands
+			where = fmt.Sprintf("%v %v ", e.Command.Indices, commands[e.Command.Indices[0]]) // TODO: Subcommands
 		}
 		msg := report.Msg(e.Message).Text(stringTable)
 		fmt.Fprintln(reportWriter, fmt.Sprintf("[%s] %s%s", e.Severity.String(), where, msg))

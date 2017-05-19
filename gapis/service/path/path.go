@@ -125,14 +125,14 @@ func (n ConstantSet) Text() string {
 	return fmt.Sprintf("%v.constant-set<%v>", n.Parent().Text(), n.Index)
 }
 func (n Command) Text() string {
-	return fmt.Sprintf("%v.commands[%v]", n.Parent().Text(), printIndices(n.Index))
+	return fmt.Sprintf("%v.commands[%v]", n.Parent().Text(), printIndices(n.Indices))
 }
 func (n Commands) Text() string {
 	return fmt.Sprintf("%v.commands[%v-%v]", n.Parent().Text(), printIndices(n.From), printIndices(n.To))
 }
 func (n CommandTree) Text() string { return fmt.Sprintf("%v.command-tree") }
 func (n CommandTreeNode) Text() string {
-	return fmt.Sprintf("command-tree<%v>[%v]", n.Tree, printIndices(n.Index))
+	return fmt.Sprintf("command-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
 }
 func (n CommandTreeNodeForCommand) Text() string {
 	return fmt.Sprintf("%v.command-tree-node<%v>", n.Command.Text(), n.Tree)
@@ -157,7 +157,7 @@ func (n Slice) Text() string     { return fmt.Sprintf("%v[%v:%v]", n.Parent().Te
 func (n State) Text() string     { return fmt.Sprintf("%v.state-after", n.Parent().Text()) }
 func (n StateTree) Text() string { return fmt.Sprintf("%v.state-tree") }
 func (n StateTreeNode) Text() string {
-	return fmt.Sprintf("state-tree<%v>[%v]", n.Tree, printIndices(n.Index))
+	return fmt.Sprintf("state-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
 }
 func (n Thumbnail) Text() string { return fmt.Sprintf("%v.thumbnail", n.Parent().Text()) }
 
@@ -369,16 +369,16 @@ func (n *Capture) CommandTree(f *CommandFilter) *CommandTree {
 
 // Child returns the path to the i'th child of the CommandTreeNode.
 func (n *CommandTreeNode) Child(i uint64) *CommandTreeNode {
-	newIndex := make([]uint64, len(n.Index)+1)
-	copy(newIndex, n.Index)
-	newIndex[len(n.Index)] = i
-	return &CommandTreeNode{Tree: n.Tree, Index: newIndex}
+	newIndices := make([]uint64, len(n.Indices)+1)
+	copy(newIndices, n.Indices)
+	newIndices[len(n.Indices)] = i
+	return &CommandTreeNode{Tree: n.Tree, Indices: newIndices}
 }
 
 // Command returns the path node to a single command in the capture.
 func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
-	index := append([]uint64{i}, subidx...)
-	return &Command{Capture: n, Index: index}
+	indices := append([]uint64{i}, subidx...)
+	return &Command{Capture: n, Indices: indices}
 }
 
 // Context returns the path node to the a context with the given ID.
@@ -418,20 +418,20 @@ func (n *Command) StateTreeAfter() *StateTree {
 
 // First returns the path to the first command.
 func (n *Commands) First() *Command {
-	return &Command{Capture: n.Capture, Index: n.From}
+	return &Command{Capture: n.Capture, Indices: n.From}
 }
 
 // Last returns the path to the last command.
 func (n *Commands) Last() *Command {
-	return &Command{Capture: n.Capture, Index: n.To}
+	return &Command{Capture: n.Capture, Indices: n.To}
 }
 
 // Child returns the path to the i'th child of the StateTreeNode.
 func (n *StateTreeNode) Child(i uint64) *StateTreeNode {
-	newIndex := make([]uint64, len(n.Index)+1)
-	copy(newIndex, n.Index)
-	newIndex[len(n.Index)] = i
-	return &StateTreeNode{Tree: n.Tree, Index: newIndex}
+	newIndices := make([]uint64, len(n.Indices)+1)
+	copy(newIndices, n.Indices)
+	newIndices[len(n.Indices)] = i
+	return &StateTreeNode{Tree: n.Tree, Indices: newIndices}
 }
 
 // Parameter returns the path node to the parameter with the given name.

@@ -69,8 +69,8 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, err
 		}
 
-		atomIdx := p.After.Index[0]
-		if len(p.After.Index) > 1 {
+		atomIdx := p.After.Indices[0]
+		if len(p.After.Indices) > 1 {
 			return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 		}
 
@@ -98,13 +98,13 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			Id: p.Id, // TODO: Shouldn't this change?
 			After: &path.Command{
 				Capture: c,
-				Index:   p.After.Index,
+				Indices: p.After.Indices,
 			},
 		}, nil
 
 	case *path.Command:
-		atomIdx := p.Index[0]
-		if len(p.Index) > 1 {
+		atomIdx := p.Indices[0]
+		if len(p.Indices) > 1 {
 			return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 		}
 
@@ -141,7 +141,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 
 		return &path.Command{
 			Capture: c,
-			Index:   p.Index,
+			Indices: p.Indices,
 		}, nil
 
 	case *path.Commands:

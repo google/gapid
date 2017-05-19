@@ -162,8 +162,8 @@ func getConstantSet(ctx context.Context, client service.Service, p *path.Constan
 }
 
 func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command, of ObservationFlags) error {
-	indices := make([]string, len(p.Index))
-	for i, v := range p.Index {
+	indices := make([]string, len(p.Indices))
+	for i, v := range p.Indices {
 		indices[i] = fmt.Sprintf("%d", v)
 	}
 

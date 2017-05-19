@@ -82,7 +82,7 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 
 	cmdTree := boxedCmdTree.(*commandTree)
 
-	switch item := cmdTree.index(p.Index).(type) {
+	switch item := cmdTree.index(p.Indices).(type) {
 	case atom.Group:
 		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Range.Last())))
 	case atom.ID:

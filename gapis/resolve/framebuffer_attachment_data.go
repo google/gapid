@@ -38,8 +38,8 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 		return nil, err
 	}
 
-	atomIdx := r.After.Index[0]
-	if len(r.After.Index) > 1 {
+	atomIdx := r.After.Indices[0]
+	if len(r.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 

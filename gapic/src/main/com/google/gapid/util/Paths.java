@@ -62,21 +62,21 @@ public class Paths {
     }
     return Path.Command.newBuilder()
         .setCapture(capture)
-        .addIndex(index)
+        .addIndices(index)
         .build();
   }
 
   public static Path.Command firstCommand(Path.Commands commands) {
     return Path.Command.newBuilder()
         .setCapture(commands.getCapture())
-        .addAllIndex(commands.getFromList())
+        .addAllIndices(commands.getFromList())
         .build();
   }
 
   public static Path.Command lastCommand(Path.Commands commands) {
     return Path.Command.newBuilder()
         .setCapture(commands.getCapture())
-        .addAllIndex(commands.getToList())
+        .addAllIndices(commands.getToList())
         .build();
   }
 
@@ -91,16 +91,16 @@ public class Paths {
       return 1;
     }
 
-    for (int i = 0; i < a.getIndexCount(); i++) {
-      if (i >= b.getIndexCount()) {
+    for (int i = 0; i < a.getIndicesCount(); i++) {
+      if (i >= b.getIndicesCount()) {
         return 1;
       }
-      int r = Long.compare(a.getIndex(i), b.getIndex(i));
+      int r = Long.compare(a.getIndices(i), b.getIndices(i));
       if (r != 0) {
         return r;
       }
     }
-    return (a.getIndexCount() == b.getIndexCount()) ? 0 : -1;
+    return (a.getIndicesCount() == b.getIndicesCount()) ? 0 : -1;
   }
 
   public static Path.Any any(Path.Command command) {

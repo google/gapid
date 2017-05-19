@@ -596,8 +596,8 @@ func (shader *ShaderModuleObject) SetResourceData(
 
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
 
-	atomIdx := at.Index[0]
-	if len(at.Index) > 1 {
+	atomIdx := at.Indices[0]
+	if len(at.Indices) > 1 {
 		return fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
@@ -619,11 +619,11 @@ func (shader *ShaderModuleObject) SetResourceData(
 	}
 
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index].Index[0] > atomIdx && index >= 0 { // TODO: Subcommands
+	for resource.Accesses[index].Indices[0] > atomIdx && index >= 0 { // TODO: Subcommands
 		index--
 	}
 	for j := index; j >= 0; j-- {
-		i := resource.Accesses[j].Index[0] // TODO: Subcommands
+		i := resource.Accesses[j].Indices[0] // TODO: Subcommands
 		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), a.Replace(ctx, data))
 			return nil

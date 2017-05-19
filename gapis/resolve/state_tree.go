@@ -87,24 +87,25 @@ func deref(v reflect.Value) reflect.Value {
 }
 
 // StateTreeNode resolves the specified command tree node path.
-func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTreeNode, error) {
-	boxed, err := database.Resolve(ctx, c.Tree.ID())
+func StateTreeNode(ctx context.Context, p *path.StateTreeNode) (*service.StateTreeNode, error) {
+	boxed, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
 	}
+	return stateTreeNode(ctx, boxed.(*stateTree), p)
+}
 
-	stateTree := boxed.(*stateTree)
-
-	name, pth, consts := "root", path.Node(stateTree.path), (*path.ConstantSet)(nil)
-	v := deref(reflect.ValueOf(stateTree.apiState))
+func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) (*service.StateTreeNode, error) {
+	name, pth, consts := "root", path.Node(tree.path), (*path.ConstantSet)(nil)
+	v := deref(reflect.ValueOf(tree.apiState))
 
 	numChildren := uint64(visibleFieldCount(v.Type()))
 	syntheticOffset := uint64(0)
 
-	for i, idx64 := range c.Index {
+	for i, idx64 := range p.Indices {
 		idx := int(idx64)
 		if idx64 >= numChildren {
-			at := &path.StateTreeNode{Tree: c.Tree, Index: c.Index[:i+1]}
+			at := &path.StateTreeNode{Tree: p.Tree, Indices: p.Indices[:i+1]}
 			return nil, errPathOOB(idx64, "Index", 0, numChildren-1, at)
 		}
 
@@ -112,16 +113,16 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		switch {
 		case box.IsMemorySlice(t):
 			slice := box.AsMemorySlice(v)
-			if size := slice.Count(); stateTree.needsSubgrouping(size) {
-				i, j, n := stateTree.subrange(size, idx64)
+			if size := slice.Count(); tree.needsSubgrouping(size) {
+				i, j, n := tree.subrange(size, idx64)
 				name = n
-				v = reflect.ValueOf(slice.ISlice(i, j, stateTree.state.MemoryLayout))
+				v = reflect.ValueOf(slice.ISlice(i, j, tree.state.MemoryLayout))
 				syntheticOffset += i
 			} else {
 				name = fmt.Sprint(syntheticOffset + idx64)
 				pth = path.NewArrayIndex(syntheticOffset+idx64, pth)
-				ptr := slice.IIndex(idx64, stateTree.state.MemoryLayout)
-				el, err := memory.LoadPointer(ctx, ptr, stateTree.state.Memory, stateTree.state.MemoryLayout)
+				ptr := slice.IIndex(idx64, tree.state.MemoryLayout)
+				el, err := memory.LoadPointer(ctx, ptr, tree.state.Memory, tree.state.MemoryLayout)
 				if err != nil {
 					return nil, err
 				}
@@ -134,15 +135,15 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 				f, t := visibleField(v, idx)
 				if cs, ok := t.Tag.Lookup("constset"); ok {
 					if idx, _ := strconv.Atoi(cs); idx > 0 {
-						consts = stateTree.api.ConstantSet(idx)
+						consts = tree.api.ConstantSet(idx)
 					}
 				}
 				name = t.Name
 				pth = path.NewField(name, pth)
 				v = deref(f)
 			case reflect.Slice, reflect.Array:
-				if size := uint64(v.Len()); stateTree.needsSubgrouping(size) {
-					i, j, n := stateTree.subrange(size, idx64)
+				if size := uint64(v.Len()); tree.needsSubgrouping(size) {
+					i, j, n := tree.subrange(size, idx64)
 					name = n
 					v = v.Slice(int(i), int(j))
 					syntheticOffset += i
@@ -169,13 +170,13 @@ func StateTreeNode(ctx context.Context, c *path.StateTreeNode) (*service.StateTr
 		case box.IsMemoryPointer(t):
 			numChildren = 0
 		case box.IsMemorySlice(t):
-			numChildren = stateTree.limit(box.AsMemorySlice(v).Count())
+			numChildren = tree.limit(box.AsMemorySlice(v).Count())
 		default:
 			switch v.Kind() {
 			case reflect.Struct:
 				numChildren = uint64(visibleFieldCount(t))
 			case reflect.Slice, reflect.Array:
-				numChildren = stateTree.limit(uint64(v.Len()))
+				numChildren = tree.limit(uint64(v.Len()))
 			case reflect.Map:
 				numChildren = uint64(v.Len())
 			default:
@@ -273,8 +274,8 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	atomIdx := r.Path.After.Index[0]
-	if len(r.Path.After.Index) > 1 {
+	atomIdx := r.Path.After.Indices[0]
+	if len(r.Path.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	api := c.Atoms[atomIdx].API()

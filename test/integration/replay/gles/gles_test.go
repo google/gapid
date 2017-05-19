@@ -239,7 +239,7 @@ func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	got := []string{}
 	for _, e := range report.Items {
 		if e.Command != nil {
-			got = append(got, fmt.Sprintf("%s@%d: %s: %v", e.Severity.String(), e.Command.Index, atoms.Atoms[e.Command.Index[0]], report.Msg(e.Message).Text(nil)))
+			got = append(got, fmt.Sprintf("%s@%d: %s: %v", e.Severity.String(), e.Command.Indices, atoms.Atoms[e.Command.Indices[0]], report.Msg(e.Message).Text(nil)))
 		} else {
 			got = append(got, fmt.Sprintf("%s /%v", e.Severity.String(), report.Msg(e.Message).Text(nil)))
 		}

@@ -29,8 +29,8 @@ import (
 func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	ctx = capture.Put(ctx, path.FindCapture(p))
 
-	atomIdx := p.After.Index[0]
-	if len(p.After.Index) > 1 {
+	atomIdx := p.After.Indices[0]
+	if len(p.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
@@ -46,7 +46,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 
 	pool, ok := s.Memory[memory.PoolID(p.Pool)]
 	if !ok {
-		return nil, fmt.Errorf("Pool %d not found", p)
+		return nil, fmt.Errorf("Pool %v not found", p)
 	}
 
 	r := memory.Range{Base: p.Address, Size: p.Size}

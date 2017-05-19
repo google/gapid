@@ -159,7 +159,7 @@ func (verb *videoVerb) regularVideoSource(
 			sb := new(bytes.Buffer)
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
-			fmt.Fprintf(refw, "Frame: %d, atom: %v", i, eofEvents[i].Command.Index)
+			fmt.Fprintf(refw, "Frame: %d, atom: %v", i, eofEvents[i].Command.Indices)
 			refw.Flush()
 			str := sb.String()
 			font.DrawString(str, frame, image.Pt(4, 4), color.Black)
@@ -330,7 +330,7 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 }
 
 func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
-	ctx = log.V{"cmd": cmd.Index}.Bind(ctx)
+	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(flags.Max.Width), MaxHeight: uint32(flags.Max.Height)}
 	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {

@@ -88,9 +88,9 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 		}
 
 		emitter := &commandEmitter{ctx, req, from, h, 0, nodePred, false, true}
-		err = cmdTree.root.Traverse(req.Backwards, from.Index, emitter.process)
-		if err == nil && req.Wrap && len(from.Index) > 0 {
-			var start []uint64 = nil
+		err = cmdTree.root.Traverse(req.Backwards, from.Indices, emitter.process)
+		if err == nil && req.Wrap && len(from.Indices) > 0 {
+			var start []uint64
 			if req.Backwards {
 				start = []uint64{cmdTree.root.Count() - 1}
 			}
@@ -113,20 +113,20 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 }
 
 type commandEmitter struct {
-	ctx context.Context
-	req *service.FindRequest
-	from *path.CommandTreeNode
-	h service.FindHandler
-	count uint32
-	pred func(item atom.GroupOrID) bool
+	ctx      context.Context
+	req      *service.FindRequest
+	from     *path.CommandTreeNode
+	h        service.FindHandler
+	count    uint32
+	pred     func(item atom.GroupOrID) bool
 	wrapping bool
-	first bool
+	first    bool
 }
 
 func (c *commandEmitter) process(indices []uint64, item atom.GroupOrID) error {
 	// Skip the first item if we're not doing the wrapped search.
 	if !c.wrapping && c.first {
-		if reflect.DeepEqual(c.from.Index, indices) {
+		if reflect.DeepEqual(c.from.Indices, indices) {
 			return task.StopReason(c.ctx)
 		}
 		c.first = false
@@ -148,8 +148,8 @@ func (c *commandEmitter) emit(indices []uint64) error {
 	err := c.h(&service.FindResponse{
 		Result: &service.FindResponse_CommandTreeNode{
 			CommandTreeNode: &path.CommandTreeNode{
-				Tree:  c.from.Tree,
-				Index: indices,
+				Tree:    c.from.Tree,
+				Indices: indices,
 			},
 		},
 	})
@@ -165,5 +165,5 @@ func (c *commandEmitter) emit(indices []uint64) error {
 
 func (c *commandEmitter) shouldStop(indices []uint64) bool {
 	// Stop searching if we're wrapping and have arrived back where we started.
-	return c.wrapping && reflect.DeepEqual(c.from.Index, indices)
+	return c.wrapping && reflect.DeepEqual(c.from.Indices, indices)
 }

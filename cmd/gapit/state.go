@@ -122,7 +122,7 @@ func traverseStateTree(
 	n := boxedNode.(*service.StateTreeNode)
 
 	curPrefix := prefix
-	if len(p.Index) > 0 {
+	if len(p.Indices) > 0 {
 		if last {
 			curPrefix += "└──"
 		} else {
