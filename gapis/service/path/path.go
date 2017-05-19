@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/service/box"
 )
@@ -475,4 +476,15 @@ func (n *ImageInfo) As(f *image.Format) *As {
 		To:   &As_ImageFormat{f},
 		From: &As_ImageInfo{n},
 	}
+}
+
+// ToList unchains the parents of each node, returning them as a list, starting
+// with the root node.
+func ToList(n Node) []Node {
+	out := []Node{}
+	for ; n != nil; n = n.Parent() {
+		out = append(out, n)
+	}
+	slice.Reverse(out)
+	return out
 }
