@@ -73,6 +73,20 @@ func Clone(s interface{}) interface{} {
 	return out.Interface()
 }
 
+// Reverse swaps the order of elements in the slice so that the first become the
+// last, and so on.
+func Reverse(s interface{}) {
+	slice := getSlice(s)
+	tmp := reflect.New(slice.Type().Elem()).Elem()
+	for i, c, m := 0, slice.Len(), slice.Len()/2; i < m; i++ {
+		j := c - i - 1
+		a, b := slice.Index(i), slice.Index(j)
+		tmp.Set(a)
+		a.Set(b)
+		b.Set(tmp)
+	}
+}
+
 func replace(ptr, old reflect.Value, first, count int, with interface{}) {
 	d := toSlice(with, old.Type())
 	newLen, oldLen := old.Len()-count+d.Len(), old.Len()

@@ -134,3 +134,22 @@ func TestAppend(t *testing.T) {
 			That(got).DeepEquals(test.expected)
 	}
 }
+
+func TestReverse(t *testing.T) {
+	ctx := log.Testing(t)
+
+	for _, test := range []struct {
+		data     []int
+		expected []int
+	}{
+		{[]int{}, []int{}},
+		{[]int{1}, []int{1}},
+		{[]int{1, 2}, []int{2, 1}},
+		{[]int{1, 2, 3}, []int{3, 2, 1}},
+		{[]int{1, 2, 3, 4}, []int{4, 3, 2, 1}},
+	} {
+		data := slice.Clone(test.data)
+		slice.Reverse(data)
+		assert.For(ctx, "Reverse(%v)", test.data).That(data).DeepEquals(test.expected)
+	}
+}
