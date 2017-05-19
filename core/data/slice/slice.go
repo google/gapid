@@ -15,7 +15,10 @@
 // Package slice provides utilities for mutating generic slices.
 package slice
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // New returns a new addressable slice value of type ty.
 func New(ty reflect.Type, len, cap int) reflect.Value {
@@ -62,6 +65,14 @@ func Append(s interface{}, v interface{}) {
 	replace(ptr, old, old.Len(), 0, v)
 }
 
+// Clone returns a shallow copy of the slice s.
+func Clone(s interface{}) interface{} {
+	in := getSlice(s)
+	out := New(in.Type(), in.Len(), in.Len())
+	reflect.Copy(out, in)
+	return out.Interface()
+}
+
 func replace(ptr, old reflect.Value, first, count int, with interface{}) {
 	d := toSlice(with, old.Type())
 	newLen, oldLen := old.Len()-count+d.Len(), old.Len()
@@ -90,13 +101,22 @@ func replace(ptr, old reflect.Value, first, count int, with interface{}) {
 func getSlicePtr(s interface{}) (ptr, slice reflect.Value) {
 	ptr = reflect.ValueOf(s)
 	if ptr.Kind() != reflect.Ptr {
-		panic("s must be a pointer to a slice")
+		panic(fmt.Errorf("s must be a pointer to a slice, got: %T", s))
 	}
 	slice = ptr.Elem()
 	if slice.Kind() != reflect.Slice {
-		panic("s must be a pointer to a slice")
+		panic(fmt.Errorf("s must be a pointer to a slice, got: %T", s))
 	}
 	return ptr, slice
+}
+
+// getSlice checks s is a slice, returning the slice as a reflect.Value.
+func getSlice(s interface{}) (slice reflect.Value) {
+	slice = reflect.ValueOf(s)
+	if slice.Kind() != reflect.Slice {
+		panic(fmt.Errorf("s must be a slice, got: %T", s))
+	}
+	return slice
 }
 
 // toSlice returns the reflect.Value of v, turning it into a single element

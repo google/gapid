@@ -20,6 +20,8 @@
 set(files
     slice_test.go
     slice.go
+    sort_test.go
+    sort.go
 )
 set(dirs
 
