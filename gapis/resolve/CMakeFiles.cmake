@@ -49,6 +49,7 @@ set(files
     set.go
     service.go
     state.go
+    state_tree_test.go
     state_tree.go
     thumbnail.go
 )

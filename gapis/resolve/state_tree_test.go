@@ -1,0 +1,512 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package resolve
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/box"
+	"github.com/google/gapid/gapis/service/path"
+)
+
+type TestStruct struct {
+	/* 0 */ Bool bool
+	/* 1 */ Int int
+	/* 2 */ Float float32
+	/* 3 */ String string
+	/* 4 */ Reference *TestStruct
+	/* 5 */ Map map[int]string
+	/* 6 */ Array []int
+	/* 7 */ Slice memory.Slice
+	/* 8 */ Pointer memory.Pointer
+	/* 9 */ Interface interface{}
+}
+
+type TestState struct {
+	/* 0 */ Bool bool
+	/* 1 */ Int int
+	/* 2 */ Float float32
+	/* 3 */ String string
+	/* 4 */ ReferenceA *TestStruct
+	/* 5 */ ReferenceB *TestStruct
+	/* 6 */ ReferenceC *TestStruct
+}
+
+var testState = TestState{
+	Bool:   true,
+	Int:    42,
+	Float:  123.456,
+	String: "meow",
+	ReferenceA: &TestStruct{
+		Bool:      true,
+		Int:       7,
+		Float:     0.25,
+		String:    "hello cat",
+		Reference: nil,
+		Map:       map[int]string{1: "one", 5: "five", 9: "nine"},
+		Array:     []int{0, 10, 20, 30, 40},
+		Slice:     memory.NewSlice(0x1000, 0x1000, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0))),
+		Pointer:   memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Size(0))),
+		Interface: &TestStruct{},
+	},
+	ReferenceB: &TestStruct{
+		String: "this is a really, really, really, really, really, really, really long string",
+		Map: map[int]string{
+			0: "0.0", 1: "0.1", 2: "0.2", 3: "0.3", 4: "0.4", 5: "0.5", 6: "0.6", 7: "0.7", 8: "0.8", 9: "0.9",
+			10: "1.0", 11: "1.1", 12: "1.2", 13: "1.3", 14: "1.4", 15: "1.5", 16: "1.6", 17: "1.7", 18: "1.8", 19: "1.9",
+			20: "2.0", 21: "2.1", 22: "2.2", 23: "2.3", 24: "2.4", 25: "2.5", 26: "2.6", 27: "2.7", 28: "2.8", 29: "2.9",
+			30: "3.0", 31: "3.1", 32: "3.2", 33: "3.3", 34: "3.4", 35: "3.5",
+		},
+		Array: []int{
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+			10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+			20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+			30, 31, 32, 33,
+		},
+		Slice: memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0))),
+	},
+	ReferenceC: nil,
+}
+
+func TestStateTreeNode(t *testing.T) {
+	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	header := capture.Header{Abi: device.AndroidARM64v8a}
+	c, err := capture.New(ctx, "test-capture", &header, []atom.Atom{})
+	if err != nil {
+		panic(err)
+	}
+	ctx = capture.Put(ctx, c)
+	tree := &stateTree{
+		state:      capture.NewState(ctx),
+		apiState:   testState,
+		path:       c.Command(0).StateAfter(),
+		api:        &path.API{Id: path.NewID(id.ID(testAPIID))},
+		groupLimit: 10,
+	}
+	root := &path.StateTreeNode{Indices: []uint64{}}
+
+	// Write some data to 0x1000.
+	e := tree.state.MemoryEncoder(memory.ApplicationPool, memory.Range{Base: 0x1000, Size: 0x8000})
+	for i := 0; i < 0x1000; i++ {
+		e.Int64(int64(i * 10))
+	}
+
+	for _, test := range []struct {
+		path     *path.StateTreeNode
+		expected *service.StateTreeNode
+	}{
+		{
+			root,
+			&service.StateTreeNode{
+				NumChildren: 7,
+				Name:        "root",
+				ValuePath:   tree.path.Path(),
+			},
+		}, {
+			root.Index(0),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Bool",
+				ValuePath:      tree.path.Field("Bool").Path(),
+				Preview:        box.NewValue(true),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(1),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Int",
+				ValuePath:      tree.path.Field("Int").Path(),
+				Preview:        box.NewValue(42),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Float",
+				ValuePath:      tree.path.Field("Float").Path(),
+				Preview:        box.NewValue(float32(123.456)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(3),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "String",
+				ValuePath:      tree.path.Field("String").Path(),
+				Preview:        box.NewValue("meow"),
+				PreviewIsValue: true,
+			},
+		},
+		// testState.ReferenceA
+		{
+			root.Index(4),
+			&service.StateTreeNode{
+				NumChildren: 10,
+				Name:        "ReferenceA",
+				ValuePath:   tree.path.Field("ReferenceA").Path(),
+			},
+		}, {
+			root.Index(4, 0),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Bool",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Bool").Path(),
+				Preview:        box.NewValue(true),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 1),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Int",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Int").Path(),
+				Preview:        box.NewValue(7),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Float",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Float").Path(),
+				Preview:        box.NewValue(float32(0.25)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 3),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "String",
+				ValuePath:      tree.path.Field("ReferenceA").Field("String").Path(),
+				Preview:        box.NewValue("hello cat"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 4),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Reference",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Reference").Path(),
+				Preview:        box.NewValue((*TestStruct)(nil)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 5),
+			&service.StateTreeNode{
+				NumChildren:    3,
+				Name:           "Map",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Map").Path(),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(4, 5, 0),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "1",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Map").MapIndex(1).Path(),
+				Preview:        box.NewValue("one"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 5, 1),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "5",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Map").MapIndex(5).Path(),
+				Preview:        box.NewValue("five"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 5, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "9",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Map").MapIndex(9).Path(),
+				Preview:        box.NewValue("nine"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 6),
+			&service.StateTreeNode{
+				NumChildren:    5,
+				Name:           "Array",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Array").Path(),
+				Preview:        box.NewValue([]int{0, 10, 20, 30}),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(4, 6, 3),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "3",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Array").ArrayIndex(3).Path(),
+				Preview:        box.NewValue(30),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 7),
+			&service.StateTreeNode{
+				NumChildren:    5,
+				Name:           "Slice",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 7, 0),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "0",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Slice").ArrayIndex(0).Path(),
+				Preview:        box.NewValue(memory.Int(0)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 7, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "2",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Slice").ArrayIndex(2).Path(),
+				Preview:        box.NewValue(memory.Int(20)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 7, 4),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "4",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Slice").ArrayIndex(4).Path(),
+				Preview:        box.NewValue(memory.Int(40)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 8),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "Pointer",
+				ValuePath:      tree.path.Field("ReferenceA").Field("Pointer").Path(),
+				Preview:        box.NewValue(memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(4, 9),
+			&service.StateTreeNode{
+				NumChildren: 10,
+				Name:        "Interface",
+				ValuePath:   tree.path.Field("ReferenceA").Field("Interface").Path(),
+			},
+		},
+		// testState.ReferenceB
+		{
+			root.Index(5),
+			&service.StateTreeNode{
+				NumChildren: 10,
+				Name:        "ReferenceB",
+				ValuePath:   tree.path.Field("ReferenceB").Path(),
+			},
+		}, {
+			root.Index(5, 3),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "String",
+				ValuePath:      tree.path.Field("ReferenceB").Field("String").Path(),
+				Preview:        box.NewValue("this is a really, really, really, really, really, really, reall…"),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(5, 5),
+			&service.StateTreeNode{
+				NumChildren:    36,
+				Name:           "Map",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Map").Path(),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(5, 5, 0),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "0",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Map").MapIndex(0).Path(),
+				Preview:        box.NewValue("0.0"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 5, 5),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "5",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Map").MapIndex(5).Path(),
+				Preview:        box.NewValue("0.5"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 5, 15),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "15",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Map").MapIndex(15).Path(),
+				Preview:        box.NewValue("1.5"),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 6),
+			&service.StateTreeNode{
+				NumChildren:    4,
+				Name:           "Array",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Array").Path(),
+				Preview:        box.NewValue([]int{0, 1, 2, 3}),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(5, 6, 1),
+			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[10 - 19]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Array").Path(),
+				Preview:        box.NewValue([]int{10, 11, 12, 13}),
+				PreviewIsValue: false,
+			},
+		}, {
+			root.Index(5, 6, 1, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "12",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Array").ArrayIndex(12).Path(),
+				Preview:        box.NewValue(12),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 6, 3),
+			&service.StateTreeNode{
+				NumChildren:    4,
+				Name:           "[30 - 33]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Array").Path(),
+				Preview:        box.NewValue([]int{30, 31, 32, 33}),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 6, 3, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "32",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Array").ArrayIndex(32).Path(),
+				Preview:        box.NewValue(32),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7),
+			&service.StateTreeNode{
+				NumChildren:    11,
+				Name:           "Slice",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 0),
+			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[0 - 99]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 0, 4),
+			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[40 - 49]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1140, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 0, 4, 3),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "43",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(43).Path(),
+				Preview:        box.NewValue(memory.Int(430)),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 1),
+			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[100 - 199]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1320, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 9),
+			&service.StateTreeNode{
+				NumChildren:    10,
+				Name:           "[900 - 999]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2C20, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 10),
+			&service.StateTreeNode{
+				NumChildren:    5,
+				Name:           "[1000 - 1004]",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").Path(),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2F40, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				PreviewIsValue: true,
+			},
+		}, {
+			root.Index(5, 7, 10, 2),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "1002",
+				ValuePath:      tree.path.Field("ReferenceB").Field("Slice").ArrayIndex(1002).Path(),
+				Preview:        box.NewValue(memory.Int(10020)),
+				PreviewIsValue: true,
+			},
+		},
+		// testState.ReferenceC
+		{
+			root.Index(6),
+			&service.StateTreeNode{
+				NumChildren:    0,
+				Name:           "ReferenceC",
+				ValuePath:      tree.path.Field("ReferenceC").Path(),
+				Preview:        box.NewValue((*TestStruct)(nil)),
+				PreviewIsValue: true,
+			},
+		},
+	} {
+		node, err := stateTreeNode(ctx, tree, test.path)
+		if assert.For(ctx, "err").ThatError(err).Succeeded() {
+			assert.For(ctx, "StateTreeNode(%v)", test.path.Text()).
+				That(node).DeepEquals(test.expected)
+		}
+	}
+}
