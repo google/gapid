@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"sync"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/slice"
@@ -45,8 +46,7 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 
 type stateTree struct {
 	state      *gfxapi.State
-	apiState   interface{}
-	path       *path.State
+	root       *stn
 	api        *path.API
 	groupLimit uint64
 }
@@ -103,135 +103,157 @@ func StateTreeNode(ctx context.Context, p *path.StateTreeNode) (*service.StateTr
 }
 
 func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) (*service.StateTreeNode, error) {
-	name, pth, consts := "root", path.Node(tree.path), (*path.ConstantSet)(nil)
-	v := deref(reflect.ValueOf(tree.apiState))
-
-	numChildren := uint64(visibleFieldCount(v.Type()))
-	subgroupOffset := uint64(0)
-
+	node := tree.root
 	for i, idx64 := range p.Indices {
-		idx := int(idx64)
-		if idx64 >= numChildren {
+		var err error
+		node, err = node.index(ctx, idx64, tree)
+		switch err := err.(type) {
+		case nil:
+		case errIndexOOB:
 			at := &path.StateTreeNode{Tree: p.Tree, Indices: p.Indices[:i+1]}
-			return nil, errPathOOB(idx64, "Index", 0, numChildren-1, at)
+			return nil, errPathOOB(err.idx, "Index", 0, err.count-1, at)
+		default:
+			return nil, err
 		}
+	}
+	return node.service(ctx, tree), nil
+}
 
-		t := v.Type()
-		switch {
-		case box.IsMemorySlice(t):
-			slice := box.AsMemorySlice(v)
-			if size := slice.Count(); needsSubgrouping(tree.groupLimit, size) {
-				s, e := subgroupRange(tree.groupLimit, size, idx64)
-				name = fmt.Sprintf("[%d - %d]", subgroupOffset+s, subgroupOffset+e-1)
-				v = reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout))
-				subgroupOffset += s
-			} else {
-				name = fmt.Sprint(subgroupOffset + idx64)
-				pth = path.NewArrayIndex(subgroupOffset+idx64, pth)
-				ptr := slice.IIndex(idx64, tree.state.MemoryLayout)
+type errIndexOOB struct {
+	idx, count uint64
+}
+
+func (e errIndexOOB) Error() string { return fmt.Sprintf("index %d out of bounds", e.idx) }
+
+type stn struct {
+	mutex          sync.Mutex
+	name           string
+	value          reflect.Value
+	path           path.Node
+	consts         *path.ConstantSet
+	children       []*stn
+	subgroupOffset uint64
+}
+
+func (n *stn) index(ctx context.Context, i uint64, tree *stateTree) (*stn, error) {
+	n.buildChildren(ctx, tree)
+	if count := uint64(len(n.children)); i >= count {
+		return nil, errIndexOOB{i, count}
+	}
+	return n.children[i], nil
+}
+
+func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.children != nil {
+		return
+	}
+
+	v, t, children := n.value, n.value.Type(), []*stn{}
+
+	switch {
+	case box.IsMemorySlice(t):
+		slice := box.AsMemorySlice(v)
+		if size := slice.Count(); needsSubgrouping(tree.groupLimit, size) {
+			for i, c := uint64(0), subgroupCount(tree.groupLimit, size); i < c; i++ {
+				s, e := subgroupRange(tree.groupLimit, size, i)
+				children = append(children, &stn{
+					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
+					value:          reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout)),
+					path:           n.path,
+					subgroupOffset: n.subgroupOffset + s,
+				})
+			}
+		} else {
+			for i, c := uint64(0), slice.Count(); i < c; i++ {
+				ptr := slice.IIndex(i, tree.state.MemoryLayout)
 				el, err := memory.LoadPointer(ctx, ptr, tree.state.Memory, tree.state.MemoryLayout)
 				if err != nil {
-					return nil, err
+					panic(err)
 				}
 				v = reflect.ValueOf(el)
-				subgroupOffset = 0
+				children = append(children, &stn{
+					name:  fmt.Sprint(n.subgroupOffset + i),
+					value: reflect.ValueOf(el),
+					path:  path.NewArrayIndex(n.subgroupOffset+i, n.path),
+				})
 			}
-		default:
-			switch v.Kind() {
-			case reflect.Struct:
-				f, t := visibleField(v, idx)
-				if cs, ok := t.Tag.Lookup("constset"); ok {
+		}
+	default:
+		switch v.Kind() {
+		case reflect.Struct:
+			for i, c := 0, v.NumField(); i < c; i++ {
+				f := t.Field(i)
+				if !isFieldVisible(f) {
+					continue
+				}
+				var consts *path.ConstantSet
+				if cs, ok := f.Tag.Lookup("constset"); ok {
 					if idx, _ := strconv.Atoi(cs); idx > 0 {
 						consts = tree.api.ConstantSet(idx)
 					}
 				}
-				name = t.Name
-				pth = path.NewField(name, pth)
-				v = deref(f)
-			case reflect.Slice, reflect.Array:
-				if size := uint64(v.Len()); needsSubgrouping(tree.groupLimit, size) {
-					s, e := subgroupRange(tree.groupLimit, size, idx64)
-					name = fmt.Sprintf("[%d - %d]", subgroupOffset+s, subgroupOffset+e-1)
-					v = v.Slice(int(s), int(e))
-					subgroupOffset += s
-				} else {
-					name = fmt.Sprint(subgroupOffset + idx64)
-					pth = path.NewArrayIndex(subgroupOffset+idx64, pth)
-					v = deref(v.Index(idx))
-					subgroupOffset = 0
-				}
-			case reflect.Map:
-				keys := v.MapKeys()
-				slice.SortValues(keys, v.Type().Key())
-				key := keys[idx]
-				name = fmt.Sprint(key.Interface())
-				pth = path.NewMapIndex(key.Interface(), pth)
-				v = deref(v.MapIndex(key))
-			default:
-				return nil, fmt.Errorf("Cannot index type %v (%v)", v.Type(), v.Kind())
+				children = append(children, &stn{
+					name:   f.Name,
+					value:  deref(v.Field(i)),
+					path:   path.NewField(f.Name, n.path),
+					consts: consts,
+				})
 			}
-		}
-
-		t = v.Type()
-		switch {
-		case box.IsMemoryPointer(t):
-			numChildren = 0
-		case box.IsMemorySlice(t):
-			numChildren = subgroupCount(tree.groupLimit, box.AsMemorySlice(v).Count())
-		default:
-			switch v.Kind() {
-			case reflect.Struct:
-				numChildren = uint64(visibleFieldCount(t))
-			case reflect.Slice, reflect.Array:
-				numChildren = subgroupCount(tree.groupLimit, uint64(v.Len()))
-			case reflect.Map:
-				numChildren = uint64(v.Len())
-			default:
-				numChildren = 0
+		case reflect.Slice, reflect.Array:
+			size := uint64(v.Len())
+			if needsSubgrouping(tree.groupLimit, size) {
+				for i, c := uint64(0), subgroupCount(tree.groupLimit, size); i < c; i++ {
+					s, e := subgroupRange(tree.groupLimit, size, i)
+					children = append(children, &stn{
+						name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
+						value:          v.Slice(int(s), int(e)),
+						path:           n.path,
+						subgroupOffset: n.subgroupOffset + s,
+					})
+				}
+			} else {
+				for i := uint64(0); i < size; i++ {
+					children = append(children, &stn{
+						name:  fmt.Sprint(n.subgroupOffset + i),
+						value: deref(v.Index(int(i))),
+						path:  path.NewArrayIndex(n.subgroupOffset+i, n.path),
+					})
+				}
+			}
+		case reflect.Map:
+			keys := v.MapKeys()
+			slice.SortValues(keys, v.Type().Key())
+			for _, key := range keys {
+				children = append(children, &stn{
+					name:  fmt.Sprint(key.Interface()),
+					value: deref(v.MapIndex(key)),
+					path:  path.NewMapIndex(key.Interface(), n.path),
+				})
 			}
 		}
 	}
 
-	preview, previewIsValue := stateValuePreview(v)
+	n.children = children
+}
 
+func (n *stn) service(ctx context.Context, tree *stateTree) *service.StateTreeNode {
+	n.buildChildren(ctx, tree)
+	preview, previewIsValue := stateValuePreview(n.value)
 	return &service.StateTreeNode{
-		NumChildren:    numChildren,
-		Name:           name,
-		ValuePath:      pth.Path(),
+		NumChildren:    uint64(len(n.children)),
+		Name:           n.name,
+		ValuePath:      n.path.Path(),
 		Preview:        preview,
 		PreviewIsValue: previewIsValue,
-		Constants:      consts,
-	}, nil
+		Constants:      n.consts,
+	}
 }
 
-func isFieldVisible(t reflect.Type, i int) bool {
-	f := t.Field(i)
+func isFieldVisible(f reflect.StructField) bool {
 	return f.PkgPath == "" && f.Tag.Get("nobox") != "true"
-}
-
-func visibleFieldCount(t reflect.Type) int {
-	count := 0
-	for i, c := 0, t.NumField(); i < c; i++ {
-		if isFieldVisible(t, i) {
-			count++
-		}
-	}
-	return count
-}
-
-func visibleField(v reflect.Value, idx int) (reflect.Value, reflect.StructField) {
-	t := v.Type()
-	count := 0
-	for i, c := 0, v.NumField(); i < c; i++ {
-		if !isFieldVisible(t, i) {
-			continue
-		}
-		if count == idx {
-			return v.Field(i), t.Field(i)
-		}
-		count++
-	}
-	return reflect.Value{}, reflect.StructField{}
 }
 
 func stateValuePreview(v reflect.Value) (*box.Value, bool) {
@@ -288,5 +310,10 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	api := c.Atoms[atomIdx].API()
 	apiState := state.APIs[api]
 	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
-	return &stateTree{state, apiState, r.Path, apiPath, uint64(r.ArrayGroupSize)}, nil
+	root := &stn{
+		name:  "root",
+		value: deref(reflect.ValueOf(apiState)),
+		path:  r.Path,
+	}
+	return &stateTree{state, root, apiPath, uint64(r.ArrayGroupSize)}, nil
 }
