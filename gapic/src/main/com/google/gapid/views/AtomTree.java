@@ -362,7 +362,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private void processSearchResult(Service.FindResponse found) {
     ListenableFuture<TreePath> path = getTreePath(models.atoms.getData(), Lists.newArrayList(),
-        found.getCommandTreeNode().getIndexList().iterator(), false);
+        found.getCommandTreeNode().getIndicesList().iterator(), false);
     Rpc.listen(path, searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
       @Override
       protected TreePath onRpcThread(Result<TreePath> result)
@@ -453,7 +453,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private ListenableFuture<TreePath> getTreePath(AtomIndex index) {
     return getTreePath(models.atoms.getData(), Lists.newArrayList(),
-        index.getNode().getIndexList().iterator(), index.isGroup());
+        index.getNode().getIndicesList().iterator(), index.isGroup());
   }
 
   private ListenableFuture<TreePath> getTreePath(

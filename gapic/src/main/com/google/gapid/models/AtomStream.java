@@ -393,12 +393,12 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     @Override
     public String toString() {
-      return command.getIndexList().toString();
+      return command.getIndicesList().toString();
     }
 
     @Override
     public int hashCode() {
-      return command.getIndexList().hashCode();
+      return command.getIndicesList().hashCode();
     }
 
     @Override
@@ -408,7 +408,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       } else if (!(obj instanceof AtomIndex)) {
         return false;
       }
-      return command.getIndexList().equals(((AtomIndex)obj).command.getIndexList());
+      return command.getIndicesList().equals(((AtomIndex)obj).command.getIndicesList());
     }
 
     @Override
@@ -461,7 +461,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     }
 
     public Path.CommandTreeNode.Builder getPath(Path.CommandTreeNode.Builder path) {
-      return parent.getPath(path).addIndex(index);
+      return parent.getPath(path).addIndices(index);
     }
 
     public AtomIndex getIndex() {

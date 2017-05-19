@@ -406,7 +406,7 @@ func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 		return err
 	}
 	if ii.Width == 0 || ii.Height == 0 {
-		return fmt.Errorf("Framebuffer at atom %d was %x x %x", cmd.Index, ii.Width, ii.Height)
+		return fmt.Errorf("Framebuffer at atom %d was %x x %x", cmd.Indices, ii.Width, ii.Height)
 	}
 
 	return nil

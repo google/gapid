@@ -114,9 +114,9 @@ message Capture {
 // Resolves to a service.Command.
 message Command {
     Capture capture = 1;
-    // Index of this command in the capture.
+    // Indices of this command in the capture.
     // If there is more than one index, then the index refers to a sub-command.
-    repeated uint64 index = 2;
+    repeated uint64 indices = 2;
 }
 
 // Commands is a path to a list of commands in a capture.
@@ -247,8 +247,8 @@ message CommandTree {
 message CommandTreeNode {
     // Unique identifier of the command tree.
     ID tree = 1;
-    // Descending child index starting from the root CommandTreeNode.
-    repeated uint64 index = 2;
+    // Descending child indices starting from the root CommandTreeNode.
+    repeated uint64 indices = 2;
 }
 
 // CommandTreeNodeForCommand is a path to a command tree node, resolved from a
@@ -371,8 +371,8 @@ message StateTree {
 message StateTreeNode {
     // Unique identifier of the state tree.
     ID tree = 1;
-    // Descending child index starting from the root StateTreeNode.
-    repeated uint64 index = 2;
+    // Descending child indices starting from the root StateTreeNode.
+    repeated uint64 indices = 2;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.

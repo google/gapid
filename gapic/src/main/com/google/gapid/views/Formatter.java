@@ -477,7 +477,7 @@ public class Formatter {
   }
 
   public static String atomIndex(Path.Command cmd) {
-    return atomIndex(cmd.getIndexList());
+    return atomIndex(cmd.getIndicesList());
   }
 
   public static String firstIndex(Path.Commands cmd) {

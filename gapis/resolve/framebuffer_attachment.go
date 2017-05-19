@@ -73,8 +73,8 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att gfx
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
-	atomIdx := after.Index[0]
-	if len(after.Index) > 1 {
+	atomIdx := after.Indices[0]
+	if len(after.Indices) > 1 {
 		return framebufferAttachmentInfo{}, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	info, err := changes.attachments[att].after(ctx, atomIdx)

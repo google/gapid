@@ -46,7 +46,7 @@ public class GotoAtom {
     GotoDialog dialog = new GotoDialog(shell, atoms);
     if (dialog.open() == Window.OK) {
       atoms.selectAtoms(AtomIndex.forCommand(Path.Command.newBuilder()
-          .addIndex(dialog.value)
+          .addIndices(dialog.value)
           .setCapture(capture)
           .build()), true);
     }

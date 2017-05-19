@@ -49,8 +49,8 @@ func NAtoms(ctx context.Context, p *path.Capture, n uint64) (*atom.List, error) 
 
 // Atom resolves and returns the atom from the path p.
 func Atom(ctx context.Context, p *path.Command) (atom.Atom, error) {
-	atomIdx := p.Index[0]
-	if len(p.Index) > 1 {
+	atomIdx := p.Indices[0]
+	if len(p.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	list, err := NAtoms(ctx, p.Capture, atomIdx+1)

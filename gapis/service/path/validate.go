@@ -106,7 +106,7 @@ func (n *Capture) Validate() error {
 func (n *Command) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, n.Capture, "capture"),
-		checkGreaterThan(n, len(n.Index), 0, "length(index)"),
+		checkGreaterThan(n, len(n.Indices), 0, "length(index)"),
 	)
 }
 

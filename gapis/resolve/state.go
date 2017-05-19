@@ -49,8 +49,8 @@ func APIState(ctx context.Context, p *path.State) (interface{}, error) {
 // Resolve implements the database.Resolver interface.
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
-	atomIdx := r.Path.After.Index[0]
-	if len(r.Path.After.Index) > 1 {
+	atomIdx := r.Path.After.Indices[0]
+	if len(r.Path.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
@@ -67,8 +67,8 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 // Resolve implements the database.Resolver interface.
 func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
-	atomIdx := r.Path.After.Index[0]
-	if len(r.Path.After.Index) > 1 {
+	atomIdx := r.Path.After.Indices[0]
+	if len(r.Path.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
@@ -79,8 +79,8 @@ func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 }
 
 func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{}, error) {
-	atomIdx := p.After.Index[0]
-	if len(p.After.Index) > 1 {
+	atomIdx := p.After.Indices[0]
+	if len(p.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	if count := uint64(len(atoms)); atomIdx >= count {

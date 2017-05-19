@@ -181,7 +181,7 @@ public class ApiState
     }
 
     public Path.StateTreeNode.Builder getPath(Path.StateTreeNode.Builder path) {
-      return parent.getPath(path).addIndex(index);
+      return parent.getPath(path).addIndices(index);
     }
 
     public ListenableFuture<Node> load(Supplier<ListenableFuture<NodeData>> loader) {

@@ -80,7 +80,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	switch item := cmdTree.index(c.Index).(type) {
+	switch item := cmdTree.index(c.Indices).(type) {
 	case atom.ID:
 		return &service.CommandTreeNode{
 			NumChildren: 0, // TODO: Subcommands
@@ -91,7 +91,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			NumChildren: item.Count(),
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
 			Group:       item.Name,
-			NumCommands: item.DeepCount(func(g atom.Group) bool { return true; /* TODO: Subcommands */ }),
+			NumCommands: item.DeepCount(func(g atom.Group) bool { return true /* TODO: Subcommands */ }),
 		}, nil
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
@@ -108,14 +108,14 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	cmdTree := boxed.(*commandTree)
 
-	atomIdx := p.Command.Index[0]
-	if len(p.Command.Index) > 1 {
+	atomIdx := p.Command.Indices[0]
+	if len(p.Command.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
 	return &path.CommandTreeNode{
-		Tree:  p.Tree,
-		Index: cmdTree.indices(atom.ID(atomIdx)),
+		Tree:    p.Tree,
+		Indices: cmdTree.indices(atom.ID(atomIdx)),
 	}, nil
 }
 
@@ -311,7 +311,7 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 	frameCount, frameStart, frameEnd := 0, atom.ID(0), atom.ID(0)
 
 	for _, e := range events.List {
-		i := atom.ID(e.Command.Index[0])
+		i := atom.ID(e.Command.Indices[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
 			t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
