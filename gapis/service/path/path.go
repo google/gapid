@@ -426,11 +426,11 @@ func (n *Commands) Last() *Command {
 	return &Command{Capture: n.Capture, Indices: n.To}
 }
 
-// Child returns the path to the i'th child of the StateTreeNode.
-func (n *StateTreeNode) Child(i uint64) *StateTreeNode {
-	newIndices := make([]uint64, len(n.Indices)+1)
+// Index returns the path to the i'th child of the StateTreeNode.
+func (n *StateTreeNode) Index(i ...uint64) *StateTreeNode {
+	newIndices := make([]uint64, len(n.Indices)+len(i))
 	copy(newIndices, n.Indices)
-	newIndices[len(n.Indices)] = i
+	copy(newIndices[len(n.Indices):], i)
 	return &StateTreeNode{Tree: n.Tree, Indices: newIndices}
 }
 

@@ -140,7 +140,7 @@ func traverseStateTree(
 		prefix += "│   "
 	}
 	for i := uint64(0); i < n.NumChildren; i++ {
-		err := traverseStateTree(ctx, c, p.Child(i), f, prefix, i == n.NumChildren-1)
+		err := traverseStateTree(ctx, c, p.Index(i), f, prefix, i == n.NumChildren-1)
 		if err != nil {
 			return err
 		}
