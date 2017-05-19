@@ -82,11 +82,11 @@ func (s sli) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
 	if end > s.count {
 		panic(fmt.Errorf("%v.ISlice(%d, %d) - out of bounds", s, start, end))
 	}
-	return sli{root: s.root, base: s.base + start*s.ElementSize(m), count: end - start, pool: s.pool}
+	return sli{s.root, s.base + start*s.ElementSize(m), end - start, s.pool, s.elTy}
 }
 func (s sli) IIndex(i uint64, m *device.MemoryLayout) Pointer {
 	if i >= s.count {
 		panic(fmt.Errorf("%v.IIndex(%d) is out of bounds [0 - %d]", s, i, s.count-1))
 	}
-	return ptr{addr: s.base + i*s.ElementSize(m), pool: s.pool, elTy: s.elTy}
+	return ptr{s.base + i*s.ElementSize(m), s.pool, s.elTy}
 }
