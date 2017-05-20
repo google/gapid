@@ -24,22 +24,38 @@ import (
 // a given MemoryLayout.
 // Encoder will automatically handle alignment and types sizes.
 type Encoder struct {
-	w binary.Writer
-	m *device.MemoryLayout
-	o uint64
+	w  binary.Writer
+	m  *device.MemoryLayout
+	o  uint64
+	tp []bool // tight-packing mode stack
 }
 
 // NewEncoder constructs and returns a new Encoder that writes to w using
 // the memory layout m.
-func NewEncoder(w binary.Writer, m *device.MemoryLayout) *Encoder { return &Encoder{w, m, 0} }
+func NewEncoder(w binary.Writer, m *device.MemoryLayout) *Encoder {
+	return &Encoder{w, m, 0, []bool{false}}
+}
 
 func (e *Encoder) alignAndOffset(d *device.DataTypeLayout) {
 	e.Align(uint64(d.GetAlignment()))
 	e.o += uint64(d.GetSize())
 }
 
+// PushTightPacking controls alignment of decoding.
+func (e *Encoder) PushTightPacking(tightPacking bool) {
+	e.tp = append(e.tp, tightPacking)
+}
+
+// PopTightPacking restores the alignment packing mode.
+func (e *Encoder) PopTightPacking() {
+	e.tp = e.tp[:len(e.tp)-1]
+}
+
 // Align writes zero bytes until the write position is a multiple of to.
 func (e *Encoder) Align(to uint64) {
+	if e.tp[len(e.tp)-1] {
+		return
+	}
 	alignment := u64.AlignUp(e.o, to)
 	if pad := alignment - e.o; pad != 0 {
 		e.Pad(pad)
@@ -118,22 +134,28 @@ func (e *Encoder) U64(v uint64) {
 	e.w.Uint64(v)
 }
 
+// Char stores an char.
+func (e *Encoder) Char(v Char) {
+	e.alignAndOffset(e.m.GetChar())
+	binary.WriteInt(e.w, 8*e.m.GetChar().GetSize(), int64(v))
+}
+
 // Int stores an int.
-func (e *Encoder) Int(v int64) {
+func (e *Encoder) Int(v Int) {
 	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteInt(e.w, 8*e.m.GetInteger().GetSize(), v)
+	binary.WriteInt(e.w, 8*e.m.GetInteger().GetSize(), int64(v))
 }
 
 // Uint stores a uint.
-func (e *Encoder) Uint(v uint64) {
+func (e *Encoder) Uint(v Uint) {
 	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteUint(e.w, 8*e.m.GetInteger().GetSize(), v)
+	binary.WriteUint(e.w, 8*e.m.GetInteger().GetSize(), uint64(v))
 }
 
 // Size stores a size_t.
-func (e *Encoder) Size(v uint64) {
+func (e *Encoder) Size(v Size) {
 	e.alignAndOffset(e.m.GetSize())
-	binary.WriteUint(e.w, 8*e.m.GetSize().GetSize(), v)
+	binary.WriteUint(e.w, 8*e.m.GetSize().GetSize(), uint64(v))
 }
 
 // String stores a null-terminated string.

@@ -24,15 +24,16 @@ import (
 // a given MemoryLayout.
 // Decoder will automatically handle alignment and types sizes.
 type Decoder struct {
-	r binary.Reader
-	m *device.MemoryLayout
-	o uint64
+	r  binary.Reader
+	m  *device.MemoryLayout
+	o  uint64
+	tp []bool // tight-packing mode stack
 }
 
 // NewDecoder constructs and returns a new Decoder that reads from r using
 // the memory layout m.
 func NewDecoder(r binary.Reader, m *device.MemoryLayout) *Decoder {
-	return &Decoder{r, m, 0}
+	return &Decoder{r, m, 0, []bool{false}}
 }
 
 func (d *Decoder) alignAndOffset(l *device.DataTypeLayout) {
@@ -40,8 +41,21 @@ func (d *Decoder) alignAndOffset(l *device.DataTypeLayout) {
 	d.o += uint64(l.GetSize())
 }
 
+// PushTightPacking controls alignment of decoding.
+func (d *Decoder) PushTightPacking(tightPacking bool) {
+	d.tp = append(d.tp, tightPacking)
+}
+
+// PopTightPacking restores the alignment packing mode.
+func (d *Decoder) PopTightPacking() {
+	d.tp = d.tp[:len(d.tp)-1]
+}
+
 // Align skips bytes until the read position is a multiple of to.
 func (d *Decoder) Align(to uint64) {
+	if d.tp[len(d.tp)-1] {
+		return
+	}
 	alignment := u64.AlignUp(d.o, uint64(to))
 	if pad := alignment - d.o; pad != 0 {
 		d.Skip(pad)
@@ -120,22 +134,28 @@ func (d *Decoder) U64() uint64 {
 	return d.r.Uint64()
 }
 
+// Char loads and returns an char.
+func (d *Decoder) Char() Char {
+	d.alignAndOffset(d.m.GetChar())
+	return Char(binary.ReadInt(d.r, 8*d.m.GetChar().GetSize()))
+}
+
 // Int loads and returns an int.
-func (d *Decoder) Int() int64 {
+func (d *Decoder) Int() Int {
 	d.alignAndOffset(d.m.GetInteger())
-	return binary.ReadInt(d.r, 8*d.m.GetInteger().GetSize())
+	return Int(binary.ReadInt(d.r, 8*d.m.GetInteger().GetSize()))
 }
 
 // Uint loads and returns a uint.
-func (d *Decoder) Uint() uint64 {
+func (d *Decoder) Uint() Uint {
 	d.alignAndOffset(d.m.GetInteger())
-	return binary.ReadUint(d.r, 8*d.m.GetInteger().GetSize())
+	return Uint(binary.ReadUint(d.r, 8*d.m.GetInteger().GetSize()))
 }
 
 // Size loads and returns a size_t.
-func (d *Decoder) Size() uint64 {
+func (d *Decoder) Size() Size {
 	d.alignAndOffset(d.m.GetSize())
-	return binary.ReadUint(d.r, 8*d.m.GetSize().GetSize())
+	return Size(binary.ReadUint(d.r, 8*d.m.GetSize().GetSize()))
 }
 
 // String loads and returns a null-terminated string.

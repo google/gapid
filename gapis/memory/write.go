@@ -34,12 +34,14 @@ func encode(e *Encoder, v reflect.Value) {
 	switch {
 	case t.Implements(tyPointer):
 		e.Pointer(v.Interface().(Pointer).Address())
+	case t == tyChar:
+		e.Char(Char(v.Uint()))
 	case t == tyInt:
-		e.Int(v.Int())
+		e.Int(Int(v.Int()))
 	case t == tyUint:
-		e.Uint(v.Uint())
+		e.Uint(Uint(v.Uint()))
 	case t == tySize:
-		e.Size(v.Uint())
+		e.Size(Size(v.Uint()))
 	default:
 		switch t.Kind() {
 		case reflect.Float32:
@@ -63,14 +65,17 @@ func encode(e *Encoder, v reflect.Value) {
 		case reflect.Uint64:
 			e.U64(v.Uint())
 		case reflect.Int:
-			e.Int(v.Int())
+			e.Int(Int(v.Int()))
 		case reflect.Uint:
-			e.Uint(v.Uint())
+			e.Uint(Uint(v.Uint()))
 		case reflect.Array, reflect.Slice:
+			e.PushTightPacking(true)
 			for i, c := 0, v.Len(); i < c; i++ {
 				encode(e, v.Index(i))
 			}
+			e.PopTightPacking()
 		case reflect.Struct:
+			e.PushTightPacking(false)
 			e.Align(AlignOf(v.Type(), e.m))
 			base := e.o
 			for i, c := 0, v.NumField(); i < c; i++ {
@@ -79,6 +84,7 @@ func encode(e *Encoder, v reflect.Value) {
 			written := e.o - base
 			padding := SizeOf(v.Type(), e.m) - written
 			e.Pad(padding)
+			e.PopTightPacking()
 		case reflect.String:
 			e.String(v.String())
 		case reflect.Bool:

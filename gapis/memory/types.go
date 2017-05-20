@@ -18,6 +18,7 @@ import "reflect"
 
 var (
 	tyPointer = reflect.TypeOf((*Pointer)(nil)).Elem()
+	tyChar    = reflect.TypeOf(Char(0))
 	tyInt     = reflect.TypeOf(Int(0))
 	tyUint    = reflect.TypeOf(Uint(0))
 	tySize    = reflect.TypeOf(Size(0))
