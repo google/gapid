@@ -118,22 +118,28 @@ func (e *Encoder) U64(v uint64) {
 	e.w.Uint64(v)
 }
 
+// Char stores an char.
+func (e *Encoder) Char(v Char) {
+	e.alignAndOffset(e.m.GetChar())
+	binary.WriteInt(e.w, 8*e.m.GetChar().GetSize(), int64(v))
+}
+
 // Int stores an int.
-func (e *Encoder) Int(v int64) {
+func (e *Encoder) Int(v Int) {
 	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteInt(e.w, 8*e.m.GetInteger().GetSize(), v)
+	binary.WriteInt(e.w, 8*e.m.GetInteger().GetSize(), int64(v))
 }
 
 // Uint stores a uint.
-func (e *Encoder) Uint(v uint64) {
+func (e *Encoder) Uint(v Uint) {
 	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteUint(e.w, 8*e.m.GetInteger().GetSize(), v)
+	binary.WriteUint(e.w, 8*e.m.GetInteger().GetSize(), uint64(v))
 }
 
 // Size stores a size_t.
-func (e *Encoder) Size(v uint64) {
+func (e *Encoder) Size(v Size) {
 	e.alignAndOffset(e.m.GetSize())
-	binary.WriteUint(e.w, 8*e.m.GetSize().GetSize(), v)
+	binary.WriteUint(e.w, 8*e.m.GetSize().GetSize(), uint64(v))
 }
 
 // String stores a null-terminated string.

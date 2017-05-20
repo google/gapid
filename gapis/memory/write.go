@@ -34,12 +34,14 @@ func encode(e *Encoder, v reflect.Value) {
 	switch {
 	case t.Implements(tyPointer):
 		e.Pointer(v.Interface().(Pointer).Address())
+	case t == tyChar:
+		e.Char(Char(v.Uint()))
 	case t == tyInt:
-		e.Int(v.Int())
+		e.Int(Int(v.Int()))
 	case t == tyUint:
-		e.Uint(v.Uint())
+		e.Uint(Uint(v.Uint()))
 	case t == tySize:
-		e.Size(v.Uint())
+		e.Size(Size(v.Uint()))
 	default:
 		switch t.Kind() {
 		case reflect.Float32:
@@ -63,9 +65,9 @@ func encode(e *Encoder, v reflect.Value) {
 		case reflect.Uint64:
 			e.U64(v.Uint())
 		case reflect.Int:
-			e.Int(v.Int())
+			e.Int(Int(v.Int()))
 		case reflect.Uint:
-			e.Uint(v.Uint())
+			e.Uint(Uint(v.Uint()))
 		case reflect.Array, reflect.Slice:
 			for i, c := 0, v.Len(); i < c; i++ {
 				encode(e, v.Index(i))
