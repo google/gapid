@@ -120,22 +120,28 @@ func (d *Decoder) U64() uint64 {
 	return d.r.Uint64()
 }
 
+// Char loads and returns an char.
+func (d *Decoder) Char() Char {
+	d.alignAndOffset(d.m.GetChar())
+	return Char(binary.ReadInt(d.r, 8*d.m.GetChar().GetSize()))
+}
+
 // Int loads and returns an int.
-func (d *Decoder) Int() int64 {
+func (d *Decoder) Int() Int {
 	d.alignAndOffset(d.m.GetInteger())
-	return binary.ReadInt(d.r, 8*d.m.GetInteger().GetSize())
+	return Int(binary.ReadInt(d.r, 8*d.m.GetInteger().GetSize()))
 }
 
 // Uint loads and returns a uint.
-func (d *Decoder) Uint() uint64 {
+func (d *Decoder) Uint() Uint {
 	d.alignAndOffset(d.m.GetInteger())
-	return binary.ReadUint(d.r, 8*d.m.GetInteger().GetSize())
+	return Uint(binary.ReadUint(d.r, 8*d.m.GetInteger().GetSize()))
 }
 
 // Size loads and returns a size_t.
-func (d *Decoder) Size() uint64 {
+func (d *Decoder) Size() Size {
 	d.alignAndOffset(d.m.GetSize())
-	return binary.ReadUint(d.r, 8*d.m.GetSize().GetSize())
+	return Size(binary.ReadUint(d.r, 8*d.m.GetSize().GetSize()))
 }
 
 // String loads and returns a null-terminated string.

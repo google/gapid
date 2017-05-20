@@ -16,11 +16,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-
-	"encoding/json"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"

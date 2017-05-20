@@ -39,12 +39,14 @@ func decode(d *Decoder, v reflect.Value) {
 	case t.Implements(tyPointer):
 		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)
 		v.Set(reflect.ValueOf(p))
+	case t == tyChar:
+		v.SetUint(uint64(d.Char()))
 	case t == tyInt:
-		v.SetInt(d.Int())
+		v.SetInt(int64(d.Int()))
 	case t == tyUint:
-		v.SetUint(d.Uint())
+		v.SetUint(uint64(d.Uint()))
 	case t == tySize:
-		v.SetUint(d.Size())
+		v.SetUint(uint64(d.Size()))
 	default:
 
 		switch t.Kind() {
@@ -69,9 +71,9 @@ func decode(d *Decoder, v reflect.Value) {
 		case reflect.Uint64:
 			v.SetUint(d.U64())
 		case reflect.Int:
-			v.SetInt(d.Int())
+			v.SetInt(int64(d.Int()))
 		case reflect.Uint:
-			v.SetUint(d.Uint())
+			v.SetUint(uint64(d.Uint()))
 		case reflect.Array, reflect.Slice:
 			for i, c := 0, v.Len(); i < c; i++ {
 				decode(d, v.Index(i))
