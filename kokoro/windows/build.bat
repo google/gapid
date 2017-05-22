@@ -31,6 +31,11 @@ unzip -q go1.8.windows-amd64.zip
 set GOROOT=%BUILD_ROOT%\go
 set PATH=%GOROOT%\bin;%PATH%
 
+REM Install WiX Toolset.
+wget -q https://github.com/wixtoolset/wix3/releases/download/wix311rtm/wix311-binaries.zip
+unzip -q -d wix wix311-binaries.zip
+set WIX=%cd%\wix
+
 REM Fix up the MSYS environment: remove gcc and add mingw's gcc
 c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm gcc"
 c:\tools\msys64\usr\bin\bash --login -c "pacman -S --noconfirm mingw-w64-x86_64-gcc"
@@ -87,3 +92,9 @@ call %SRC%\kokoro\windows\copy_jre.bat %cd%\gapid\jre
 
 REM Package up the zip file.
 zip -r gapid-%VERSION%-windows.zip gapid
+
+REM Create an MSI installer.
+copy %SRC%\kokoro\windows\gapid.wxs .
+%WIX%\heat.exe dir gapid -ag -cg gapid -dr gapid -template fragment -sreg -sfrag -srd -o component.wxs
+%WIX%\candle.exe gapid.wxs component.wxs
+%WIX%\light.exe gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%.msi

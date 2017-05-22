@@ -19,4 +19,4 @@ GAPID launch script. https://github.com/google/gapid
 :start
 
 SET GAPID=%~dp0
-"%~dp0\jre\bin\javaw.exe" -jar "%~dp0/lib/gapic.jar" $@
+"%~dp0\jre\bin\javaw.exe" -jar "%~dp0/lib/gapic.jar" %*
