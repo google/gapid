@@ -52,7 +52,6 @@ class FramebufferAttachment {
   ref!Texture      Texture
   ref!Renderbuffer Renderbuffer
   GLint            TextureLevel       = 0
-  GLenum           TextureCubeMapFace = GL_NONE
   GLint            TextureLayer       = 0
   GLboolean        Layered            = GL_FALSE
 /* TODO
@@ -636,13 +635,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
     attachment.Type = GL_TEXTURE
     attachment.Texture = ctx.SharedObjects.Textures[texture]
     attachment.TextureLevel = level
-    attachment.TextureCubeMapFace = switch (texture_target) {
-      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-          GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-        texture_target
-      default: GL_NONE
-    }
+    attachment.TextureLayer = CubemapFaceToLayer(texture_target)
   }
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
@@ -771,7 +764,7 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
         case GL_RENDERBUFFER: as!GLint(a.Renderbuffer.ID)
       }
     case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL:         as!GLint(a.TextureLevel)
-    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: as!GLint(a.TextureCubeMapFace)
+    // TODO: case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: as!GLint(a.TextureCubeMapFace)
     case GL_FRAMEBUFFER_ATTACHMENT_LAYERED:               as!GLint(a.Layered)
     case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER:         as!GLint(a.TextureLayer)
   }

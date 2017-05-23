@@ -494,3 +494,24 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     default: GL_NONE
   }
 }
+
+sub void CheckTextureDataType(GLenum type) {
+  switch (type) {
+    // GLES20
+    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_5_6_5: { }
+    // GL_OES_texture_half_float
+    case GL_HALF_FLOAT_OES: { }
+    // GLES30 || OES_texture_float
+    case GL_FLOAT: {}
+    // GLES30 || EXT_texture_type_2_10_10_10_REV
+    case GL_UNSIGNED_INT_2_10_10_10_REV: {}
+    // GLES30 || OES_depth_texture
+    case GL_UNSIGNED_SHORT, GL_UNSIGNED_INT: {}
+    // GLES30 || OES_packed_depth_stencil
+    case GL_UNSIGNED_INT_24_8: {}
+    // GLES30
+    case GL_BYTE, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
+         GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_5_9_9_9_REV: { }
+    default: { glErrorInvalidEnum(type) }
+  }
+}

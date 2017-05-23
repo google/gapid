@@ -197,7 +197,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		} else {
 			if !boundTexture.EGLImage.IsNullptr() {
 				origUnpackAlignment := c.PixelStorage.UnpackAlignment
-				img := boundTexture.Texture2D[0]
+				img := boundTexture.Levels[0].Layers[0]
 				data := eglImageData[boundTexture.EGLImage]
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -232,7 +232,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
 					t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
 					t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
-					img := tex.Texture2D[0]
+					img := tex.Levels[0].Layers[0]
 					data, ok := eglImageData[tex.EGLImage]
 					if !ok {
 						data = atom.Must(atom.Alloc(ctx, s, img.Data.count)).Ptr()
@@ -592,7 +592,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlCompressedTexImage2D:
-			if _, supported := target.compressedTextureFormats[a.Format]; !supported {
+			if _, supported := target.compressedTextureFormats[a.Internalformat]; !supported {
 				if err := decompressTexImage2D(ctx, i, a, s, out); err == nil {
 					return
 				}
@@ -600,7 +600,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlCompressedTexSubImage2D:
-			if _, supported := target.compressedTextureFormats[a.Format]; !supported {
+			if _, supported := target.compressedTextureFormats[a.Internalformat]; !supported {
 				if err := decompressTexSubImage2D(ctx, i, a, s, out); err == nil {
 					return
 				}

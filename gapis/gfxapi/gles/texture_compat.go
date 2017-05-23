@@ -225,7 +225,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
-		Format: getImageFormatOrPanic(a.Format, 0),
+		Format: getImageFormatOrPanic(a.Internalformat, 0),
 	}
 	dst, err := src.ConvertTo(ctx, image.RGBA_U8_NORM)
 	if err != nil {
@@ -272,7 +272,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
-		Format: getImageFormatOrPanic(a.Format, 0),
+		Format: getImageFormatOrPanic(a.Internalformat, 0),
 	}
 	dst, err := src.ConvertTo(ctx, image.RGBA_U8_NORM)
 	if err != nil {
