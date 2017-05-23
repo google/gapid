@@ -110,7 +110,7 @@ public class FramebufferView extends Composite
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    imagePanel.createToolbar(toolBar, widgets.theme, false);
+    imagePanel.createToolbar(toolBar, widgets.theme, true);
 
     models.capture.addListener(this);
     models.devices.addListener(this);
