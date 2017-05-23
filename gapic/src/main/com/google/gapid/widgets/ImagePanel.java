@@ -568,7 +568,8 @@ public class ImagePanel extends Composite {
       };
       float[] texOffset = new float[] {
           previewPixel.u - ((PREVIEW_WIDTH - 0.5f) / imageData.getWidth() / 2),
-          previewPixel.v - ((PREVIEW_HEIGHT - 0.5f) / imageData.getHeight() / 2),
+          (flipped ? 1 - previewPixel.v : previewPixel.v) -
+              ((PREVIEW_HEIGHT - 0.5f) / imageData.getHeight() / 2),
       };
 
       shader.setUniform("uMode", MODE_TEXTURE);
@@ -577,7 +578,7 @@ public class ImagePanel extends Composite {
       shader.setUniform("uTextureSize", texScale);
       shader.setUniform("uTextureOffset", texOffset);
       shader.setUniform("uChannels", new float[] { 1, 1, 1, 0 });
-      shader.setUniform("uFlipped", 0);
+      shader.setUniform("uFlipped", flipped ? 1 : 0);
       GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, 4);
 
       // Render cursor "cross-hair"
