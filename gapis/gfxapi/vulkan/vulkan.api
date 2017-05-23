@@ -3504,13 +3504,15 @@ cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
     const VkAllocationCallbacks* pAllocator) {
-  bufferObject := Buffers[buffer]
-  if (bufferObject.Memory != null) {
-    // If the memory is deleted first, then do not try to remove ourselves.
-    delete(bufferObject.Memory.BoundObjects,
-    as!u64(buffer))
+  if (buffer != as!VkBuffer(0)) {
+    bufferObject := Buffers[buffer]
+    if (bufferObject.Memory != null) {
+      // If the memory is deleted first, then do not try to remove ourselves.
+      delete(bufferObject.Memory.BoundObjects,
+      as!u64(buffer))
+    }
+    delete(Buffers, buffer)
   }
-  delete(Buffers, buffer)
 }
 
 
@@ -3708,12 +3710,14 @@ cmd void vkDestroyImage(
     VkImage                      image,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
-  imageObject := Images[image]
-  if (imageObject.BoundMemory != null) {
-    // If the memory is deleted first, then do not try to remove ourselves.
-    delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
+  if (image != as!VkImage(0)) {
+    imageObject := Images[image]
+    if (imageObject.BoundMemory != null) {
+      // If the memory is deleted first, then do not try to remove ourselves.
+      delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
+    }
+    delete(Images, image)
   }
-  delete(Images, image)
 
 }
 
