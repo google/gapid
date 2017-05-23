@@ -2027,13 +2027,13 @@ cmd void glTexSubImage2D(GLenum         target,
   }
   src_stride := uncompressedImageSize(as!GLsizei(src_width), 1, format, type)
   src_size := src_stride * as!u32(height)
+  line_bytes := uncompressedImageSize(width, 1, format, type)
   dst_stride := uncompressedImageSize(image.Width, 1, format, type)
   dst_offset := uncompressedImageSize(as!GLsizei(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
   src_data := switch (pbo == 0) {
     case true:  as!u8*(data)[0:src_size]
-    case false: ctx.SharedObjects.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size)]
+    case false: ctx.SharedObjects.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size) + as!u64(line_bytes) - as!u64(src_stride)]
   }
-  line_bytes := uncompressedImageSize(width, 1, format, type)
 
   image.DataFormat = format
   image.DataType = type
