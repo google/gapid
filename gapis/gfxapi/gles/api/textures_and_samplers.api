@@ -32,8 +32,7 @@ class TextureUnit {
 class Texture {
   @unused TextureId         ID
   GLenum                    Kind
-  map!(GLint, Image)        Texture2D
-  map!(GLint, CubemapLevel) Cubemap
+  map!(GLint, Level)        Levels
 
   // Table 21.10: Textures (state per texture object)
   GLenum         SwizzleR                = GL_RED
@@ -67,8 +66,8 @@ class Texture {
 }
 
 @internal
-class CubemapLevel {
-  map!(GLenum, Image) Faces
+class Level {
+  map!(GLint, Image) Layers
 }
 
 @internal
@@ -139,6 +138,17 @@ class ImageUnit {
   GLint     Layer   = 0
   GLenum    Access  = GL_READ_ONLY
   GLenum    Format  = GL_R32UI
+}
+
+// The spec maps cubemap faces to layers 0..5 in the exact order of GLenum values.
+sub GLint CubemapFaceToLayer(GLenum target) {
+  return switch (target) {
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+      as!GLint(target) - as!GLint(GL_TEXTURE_CUBE_MAP_POSITIVE_X)
+    default:
+      as!GLint(0)
+  }
 }
 
 sub ref!Texture GetBoundTextureOrErrorInvalidEnum(GLenum target) {
@@ -267,6 +277,152 @@ sub UnsizedFormatInfo GetUnsizedFormatInfoOrEnumError(GLenum format) {
     glErrorInvalidEnum(format)
   }
   return info
+}
+
+@internal
+bitfield TexImageFlags {
+  IsCompressedTexImageCmd = 1,
+  IsCopyTexImageCmd = 2,
+  IsTexImageCmd = 4,
+  IsTexStorageCmd = 8,
+  HasSubModifier = 16,
+  Has3DModifier = 32,
+  HasMultisampleModifier = 64,
+}
+
+// Uber-function to handle all texture image specification commands.
+sub void TexImage(TexImageFlags  flags,
+                  GLenum         target,
+                  // Offsets
+                  GLint          loffset,
+                  GLint          xoffset,
+                  GLint          yoffset,
+                  GLint          zoffset,
+                  // Dimensions
+                  GLsizei        levels,
+                  GLsizei        width,
+                  GLsizei        height,
+                  GLsizei        depth,
+                  GLint          border,
+                  // Format&data
+                  GLenum         sized_format,
+                  GLenum         data_format,
+                  GLenum         data_type,
+                  GLsizei        data_size,
+                  TexturePointer data) {
+  isCompressedTexImageCmd := IsCompressedTexImageCmd in flags
+  isCopyTexImageCmd := IsCopyTexImageCmd in flags
+  isTexImageCmd := IsTexImageCmd in flags
+  isTexStorageCmd := IsTexStorageCmd in flags
+  hasSubModifier := HasSubModifier in flags
+  has3DModifier := Has3DModifier in flags
+  hasMultisampleModifier := HasMultisampleModifier in flags
+
+  img := Image(Width: width,
+               Height: height,
+               SizedFormat: sized_format,
+               DataFormat: data_format,
+               DataType: data_type)
+
+  // Check target
+  if hasMultisampleModifier {
+    if has3DModifier {
+      if target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY { glErrorInvalidEnum(target) }
+    } else {
+      if target != GL_TEXTURE_2D_MULTISAMPLE { glErrorInvalidEnum(target) }
+    }
+  } else {
+    if has3DModifier {
+      switch (target) {
+        case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP_ARRAY: { }
+        default: { glErrorInvalidEnum(target) }
+      }
+    } else {
+      if isTexStorageCmd {
+        switch (target) {
+          case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: { }
+          default: { glErrorInvalidEnum(target) }
+        }
+      } else {
+        switch (target) {
+          case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: { }
+          default: { glErrorInvalidEnum(target) }
+        }
+      }
+    }
+  }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+
+  // Check offsets and sizes
+  if loffset < 0 { glErrorInvalidValue() }
+  if xoffset < 0 { glErrorInvalidValue() }
+  if yoffset < 0 { glErrorInvalidValue() }
+  if zoffset < 0 { glErrorInvalidValue() }
+  if levels < 1 { glErrorInvalidValue() }
+  if width < 0 { glErrorInvalidValue() }
+  if height < 0 { glErrorInvalidValue() }
+  if depth < 0 { glErrorInvalidValue() }
+  if border != 0 { glErrorInvalidValue() }
+  if data_size < 0 { glErrorInvalidValue() }
+  switch target {
+    case GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
+      if width != height { glErrorInvalidValue() }
+    }
+    default: { }
+  }
+
+  // Check the data_format and data_type
+  if isTexImageCmd {
+    _ = GetUnsizedFormatInfoOrEnumError(data_format)
+    CheckTextureDataType(data_type)
+  }
+
+  // Check the sized_format
+  if !hasSubModifier {
+    if isTexImageCmd && as!GLenum(sized_format) == data_format {
+      sf := GetSizedFormatFromTuple(data_format, data_type)
+      if sf == GL_NONE { glErrorInvalidOperation() } // Invalid combination of format and type
+      img.SizedFormat = sf // Legacy - sized format is inferred from data format and type
+    } else {
+      sizedFormatInfo := GetSizedFormatInfoOrEnumError(sized_format)
+      isCompressedFmt := sizedFormatInfo.Compression != Uncompressed
+      if isCompressedTexImageCmd {
+        if !isCompressedFmt { glErrorInvalidEnum(sized_format) } // Requires compressed format
+      }
+      if isCopyTexImageCmd || isTexImageCmd || hasMultisampleModifier {
+        if isCompressedFmt { glErrorInvalidEnum(sized_format) } // Requires uncompressed format
+      }
+    }
+  }
+
+  if isTexStorageCmd {
+    t.Levels = Texture().Levels
+    t.ImmutableFormat = GL_TRUE
+  }
+
+  ctx := GetContext()
+  if !hasSubModifier {
+    cubemap_face := CubemapFaceToLayer(target)
+    for l in (0 .. as!GLint(levels)) {
+      tmpLevel := t.Levels[loffset + l] // TODO: Update directly
+      for z in (0 .. as!GLint(depth)) {
+        tmpLevel.Layers[zoffset + z + cubemap_face] = img // Copy the image by value
+      }
+      t.Levels[loffset + l] = tmpLevel
+      img.Width = img.Width / 2
+      img.Height = img.Height / 2
+    }
+  }
+
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    if isTexImageCmd {
+      pixel_size := uncompressedPixelSize(data_format, data_type)
+      read(data[0:width * height * depth * as!GLsizei(pixel_size)])
+    }
+    if isCompressedTexImageCmd {
+      read(data[0:data_size])
+    }
+  }
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml","OpenGL ES 2.0")
@@ -418,97 +574,32 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
   }
 }
 
-sub void checkMaxTextureSize(
-ref!Context ctx, GLenum target, GLint level, GLsizei width, GLsizei height) {
-  // These are not always mentioned in the spec for gl*TexImage*, but they
-  // are mentioned for glTexImage2D which is incorporated by reference and/or
-  // in section 8.5.3, which is about textures. Also, they are required by the
-  // dEQP certification tests.
-  //
-  // e.g. level > log_2(GL_MAX_TEXTURE_SIZE) is implemented:
-  //      ((1 << level) > ctx.Constants.MaxTextureSize)
-  maxSize := switch target {
-    case GL_TEXTURE_2D: { ctx.Constants.MaxTextureSize }
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      ctx.Constants.MaxCubeMapTextureSize
-    }
-  }
-  if (level < 0) || (width < 0) || (height < 0)
-      || (width > as!GLsizei(maxSize))
-      || (height > as!GLsizei(maxSize))
-      || (as!u32(level) > 31) // log_2(s32) <= 32
-      || ((1 << as!u32(level)) > as!u32(maxSize)) {
-    glErrorInvalidValue()
-  }
-}
-
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexImage2D.xml","OpenGL ES 2.0")
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.0")
 @Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.1")
 @Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.2")
 cmd void glCompressedTexImage2D(GLenum         target,
                                 GLint          level,
-                                GLenum         format,
+                                GLenum         internalformat,
                                 GLsizei        width,
                                 GLsizei        height,
                                 GLint          border,
                                 GLsizei        image_size,
                                 TexturePointer data) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      // version 2.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
-  if sizedFormatInfo.Compression == Uncompressed {
-    glErrorInvalidEnum(format)
-  }
-
-  if (border != 0) || (image_size < 0) { glErrorInvalidValue() }
+  TexImage(IsCompressedTexImageCmd, target,
+           level, 0, 0, 0, // Offsets
+           1, width, height, 1, border, // Dimensions
+           internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 
   ctx := GetContext()
-  checkMaxTextureSize(ctx, target, level, width, height)
-
-  switch (target) {
-    case GL_TEXTURE_2D: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
-      l := Image(
-        Width:        width,
-        Height:       height,
-        SizedFormat:  format,
-        DataFormat:   format,
-        DataType:     GL_NONE,
-      )
-      if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-        l.Data = clone(as!u8*(data)[0:image_size])
-      }
-      t.Texture2D[level] = l
-    }
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
-      l := Image(
-        Width:        width,
-        Height:       height,
-        SizedFormat:  format,
-        DataFormat:   format,
-        DataType:     GL_NONE,
-      )
-      if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-        l.Data = clone(as!u8*(data)[0:image_size])
-      }
-      cube := t.Cubemap[level]
-      cube.Faces[as!GLenum(target)] = l
-      t.Cubemap[level] = cube
-    }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    tmpLevel := t.Levels[level] // TODO: Update directly
+    tmpLayer := tmpLevel.Layers[0] // TODO: Update directly
+    tmpLayer.Data = clone(as!u8*(data)[0:image_size])
+    tmpLevel.Layers[0] = tmpLayer
+    t.Levels[level] = tmpLevel
   }
 }
 
@@ -529,32 +620,10 @@ cmd void glCompressedTexImage3D(GLenum         target,
 }
 
 sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei image_size, TexturePointer data) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  sizedFormatInfo := GetSizedFormatInfoOrEnumError(internalformat)
-  if sizedFormatInfo.Compression == Uncompressed {
-    glErrorInvalidEnum(internalformat)
-  }
-
-  _ = level // TODO
-  _ = width // TODO
-  _ = height // TODO
-  _ = depth // TODO
-  _ = border // TODO
-
-  ctx := GetContext()
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    read(as!u8*(data)[0:image_size])
-  }
+  TexImage(IsCompressedTexImageCmd | Has3DModifier, target,
+           level, 0, 0, 0, // Offsets
+           1, width, height, depth, border, // Dimensions
+           internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexSubImage2D.xml","OpenGL ES 2.0")
@@ -567,32 +636,14 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
                                    GLint          yoffset,
                                    GLsizei        width,
                                    GLsizei        height,
-                                   GLenum         format,
+                                   GLenum         internalformat,
                                    GLsizei        image_size,
                                    TexturePointer data) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      // version 2.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
-  if sizedFormatInfo.Compression == Uncompressed {
-    glErrorInvalidEnum(format)
-  }
-
-  // TODO: Check that the data format is consistent.
-  // TODO: Update texture data field.
-
-  ctx := GetContext()
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    read(as!u8*(data)[0:image_size])
-  }
+  TexImage(IsCompressedTexImageCmd | HasSubModifier, target,
+           level, xoffset, yoffset, 0, // Offsets
+           1, width, height, 1, 0, // Dimensions
+           internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.0")
@@ -606,42 +657,18 @@ cmd void glCompressedTexSubImage3D(GLenum         target,
                                    GLsizei        width,
                                    GLsizei        height,
                                    GLsizei        depth,
-                                   GLenum         format,
+                                   GLenum         internalformat,
                                    GLsizei        image_size,
                                    TexturePointer data) {
   minRequiredVersion(3, 0)
-  CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, image_size, data)
+  CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, internalformat, image_size, data)
 }
 
-sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei image_size, TexturePointer data) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  sizedFormatInfo := GetSizedFormatInfoOrEnumError(format)
-  if sizedFormatInfo.Compression == Uncompressed {
-    glErrorInvalidEnum(format)
-  }
-
-  _ = level // TODO
-  _ = xoffset // TODO
-  _ = yoffset // TODO
-  _ = zoffset // TODO
-  _ = width // TODO
-  _ = height // TODO
-  _ = depth // TODO
-
-  ctx := GetContext()
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    read(as!u8*(data)[0:image_size])
-  }
+sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum internalformat, GLsizei image_size, TexturePointer data) {
+  TexImage(IsCompressedTexImageCmd | HasSubModifier | Has3DModifier, target,
+           level, xoffset, yoffset, zoffset, // Offsets
+           1, width, height, depth, 0, // Dimensions
+           internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml","OpenGL ES 3.2")
@@ -714,36 +741,10 @@ cmd void glCopyTexImage2D(GLenum  target,
                           GLsizei height,
                           GLint   border) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D: {
-      // version 2.0
-    }
-    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      if width != height { glErrorInvalidValue() } // cube faces are square
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  switch (internalformat) {
-    case GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, GL_RGBA: {
-      // version 2.0
-    }
-    case GL_R16I, GL_R16UI, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI, GL_RG16I, GL_RG16UI,
-        GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I, GL_RG8UI, GL_RGB10_A2, GL_RGB10_A2UI, GL_RGB565,
-        GL_RGB5_A1, GL_RGB8, GL_RGBA16I, GL_RGBA16UI, GL_RGBA32I, GL_RGBA32UI, GL_RGBA4, GL_RGBA8,
-        GL_RGBA8I, GL_RGBA8UI, GL_SRGB8, GL_SRGB8_ALPHA8: {
-      minRequiredVersion(3, 0)
-    }
-    default: {
-      glErrorInvalidEnum(internalformat)
-    }
-  }
-  ctx := GetContext()
-  if border != 0 { glErrorInvalidValue() }
-  checkMaxTextureSize(ctx, target, level, width, height)
+  TexImage(IsCopyTexImageCmd, target,
+           level, 0, 0, 0, // Offsets
+           1, width, height, 1, border, // Dimensions
+           internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexSubImage2D.xml","OpenGL ES 2.0")
@@ -759,24 +760,10 @@ cmd void glCopyTexSubImage2D(GLenum  target,
                              GLsizei width,
                              GLsizei height) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      // version 2.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  // TODO
-  ctx := GetContext()
-  checkMaxTextureSize(ctx, target, level, width, height)
-  if (xoffset < 0) || (yoffset < 0) { glErrorInvalidValue() } // PDF page 173
-  t := GetBoundTextureOrErrorInvalidEnum(target)
-  if !(level in t.Texture2D) { glErrorInvalidValue() }
-  l := t.Texture2D[level]
-  if ((as!GLsizei(xoffset) + width) > l.Width) || ((as!GLsizei(yoffset) + height) > l.Height) { glErrorInvalidValue() }
+  TexImage(IsCopyTexImageCmd | HasSubModifier, target,
+           level, xoffset, yoffset, 0, // Offsets
+           1, width, height, 1, 0, // Dimensions
+           GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.0")
@@ -796,34 +783,12 @@ cmd void glCopyTexSubImage3D(GLenum  target,
 }
 
 sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-
-  ctx := GetContext()
-  checkMaxTextureSize(ctx, target, level, width, height)
-  t := GetBoundTextureOrErrorInvalidEnum(target)
-  if !(level in t.Texture2D) { glErrorInvalidValue() }
-  l := t.Texture2D[level]
-  if (xoffset < 0) || (yoffset < 0) || (zoffset < 0) { glErrorInvalidValue() } // PDF page 173
-  if ((as!GLsizei(xoffset) + width) > l.Width) || ((as!GLsizei(yoffset) + height) > l.Height) { glErrorInvalidValue() }
-
-  _ = level // TODO
-  _ = xoffset // TODO
-  _ = yoffset // TODO
-  _ = zoffset // TODO
+  TexImage(IsCopyTexImageCmd | HasSubModifier | Has3DModifier, target,
+           level, xoffset, yoffset, zoffset, // Offsets
+           1, width, height, 1, 0, // Dimensions
+           GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
   _ = x // TODO
   _ = y // TODO
-  _ = width // TODO
-  _ = height // TODO
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSamplers.xhtml","OpenGL ES 3.0")
@@ -1460,94 +1425,20 @@ cmd void glTexImage2D(GLenum         target,
                       GLenum         type,
                       TexturePointer data) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D: {
-      // version 2.0
-    }
-    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      // version 2.0
-      if width != height { glErrorInvalidValue() } // cube faces are square
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-
-  img := Image(
-    Width:        width,
-    Height:       height,
-    DataFormat:   format,
-    DataType:     type,
-  )
-  _ = GetUnsizedFormatInfoOrEnumError(format)
-  if as!GLenum(internalformat) != format {
-    _ = GetSizedFormatInfoOrValueError(internalformat)
-    img.SizedFormat = as!GLenum(internalformat)
-  } else {
-    sf := GetSizedFormatFromTuple(format, type)
-    if sf == GL_NONE {
-      glErrorInvalidOperation() // Invalid combination of format and type
-    }
-    img.SizedFormat = sf
-  }
-
-  switch (type) {
-    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
-        GL_UNSIGNED_SHORT_5_6_5: {
-      // version 2.0
-    }
-    case GL_HALF_FLOAT_OES: {
-      requiresExtension(GL_OES_texture_half_float)
-    }
-    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
-        GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
-        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT: {
-      minRequiredVersion(3, 0)
-      // TODO: UNSIGNED_SHORT and UNSIGNED_INT also valid with OES_depth_texture
-    }
-    default: {
-      glErrorInvalidEnum(type)
-    }
-  }
-  if border != 0 { glErrorInvalidValue() }
-
-  // TODO: We might need to convert from format to internal format.
+  TexImage(IsTexImageCmd, target,
+           level, 0, 0, 0, // Offsets
+           1, width, height, 1, border, // Dimensions
+           as!GLenum(internalformat), format, type, 0, data) // Format&data
 
   ctx := GetContext()
-  checkMaxTextureSize(ctx, target, level, width, height)
-  switch (target) {
-    case GL_TEXTURE_2D: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
-      l := img
-      size := uncompressedImageSize(width, height, format, type)
-      if (data != null) {
-        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-          l.Data = clone(as!u8*(data)[0:size])
-        }
-      } else {
-        l.Data = make!u8(size)
-      }
-
-      t.Texture2D[level] = l
-    }
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
-      l := img
-      size := uncompressedImageSize(width, height, format, type)
-      if (data != null) {
-        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-          l.Data = clone(as!u8*(data)[0:size])
-        }
-      } else {
-        l.Data = make!u8(size)
-      }
-      cube := t.Cubemap[level]
-      cube.Faces[as!GLenum(target)] = l
-      t.Cubemap[level] = cube
-    }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+    data_size := as!u32(width * height) * uncompressedPixelSize(format, type)
+    tmpLevel := t.Levels[level] // TODO: Update directly
+    tmpLayer := tmpLevel.Layers[0] // TODO: Update directly
+    tmpLayer.Data = clone(as!u8*(data)[0:data_size])
+    tmpLevel.Layers[0] = tmpLayer
+    t.Levels[level] = tmpLevel
   }
 }
 
@@ -1569,45 +1460,10 @@ cmd void glTexImage3D(GLenum         target,
 }
 
 sub void TexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, TexturePointer data) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  _ = GetUnsizedFormatInfoOrEnumError(format)
-  if as!GLenum(internalformat) != format {
-    _ = GetSizedFormatInfoOrValueError(internalformat)
-  }
-  switch (type) {
-    case GL_HALF_FLOAT_OES: {
-      requiresExtension(GL_OES_texture_half_float)
-    }
-    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
-        GL_UNSIGNED_BYTE, GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
-        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT,
-        GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_5_6_5: {
-      // version 3.0
-    }
-    default: {
-      glErrorInvalidEnum(type)
-    }
-  }
-
-  _ = level // TODO
-  _ = internalformat // TODO
-  _ = border // TODO
-
-  ctx := GetContext()
-  if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-    size := uncompressedImageSize(width, height, format, type) * as!u32(depth)
-    read(as!u8*(data)[0:size])
-  }
+  TexImage(IsTexImageCmd | Has3DModifier, target,
+           level, 0, 0, 0, // Offsets
+           1, width, height, depth, border, // Dimensions
+           as!GLenum(internalformat), format, type, 0, data) // Format&data
 }
 
 // Check that wrap is a valid value for GL_TEXTURE_WRAP_* otherwise
@@ -1821,51 +1677,14 @@ cmd void glTexStorage2D(GLenum  target,
 }
 
 sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height) {
-  switch (target) {
-    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
-      // version 3.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
+  depth := switch (target) {
+    case GL_TEXTURE_CUBE_MAP: as!GLsizei(6)
+    default: as!GLsizei(1)
   }
-  if levels < 1 { glErrorInvalidValue() }
-  _ = GetSizedFormatInfoOrEnumError(internalformat)
-
-  switch (target) {
-    case GL_TEXTURE_2D: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_2D)
-      for i in (0 .. as!GLint(levels)) {
-        w := max!GLsizei(width >> as!u32(i), 1)
-        h := max!GLsizei(height >> as!u32(i), 1)
-        l := Image(Width: w, Height: h, SizedFormat: internalformat)
-        t.Texture2D[i] = l
-      }
-      t.ImmutableFormat = GL_TRUE
-    }
-    case GL_TEXTURE_CUBE_MAP: {
-      t := GetBoundTextureOrErrorInvalidEnum(GL_TEXTURE_CUBE_MAP)
-      for i in (0 .. as!GLint(levels)) {
-        w := max!GLsizei(width >> as!u32(i), 1)
-        h := max!GLsizei(height >> as!u32(i), 1)
-        cube := t.Cubemap[i]
-
-        img := Image(Width: w, Height: h, SizedFormat: internalformat)
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_X] = img
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Y] = img
-        cube.Faces[GL_TEXTURE_CUBE_MAP_POSITIVE_Z] = img
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_X] = img
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Y] = img
-        cube.Faces[GL_TEXTURE_CUBE_MAP_NEGATIVE_Z] = img
-
-        t.Cubemap[i] = cube
-      }
-      t.ImmutableFormat = GL_TRUE
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
+  TexImage(IsTexStorageCmd, target,
+           0, 0, 0, 0, // Offsets
+           levels, width, height, depth, 0, // Dimensions
+           internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2DMultisample.xhtml","OpenGL ES 3.1")
@@ -1877,19 +1696,12 @@ cmd void glTexStorage2DMultisample(GLenum    target,
                                    GLsizei   height,
                                    GLboolean fixedsamplelocations) {
   minRequiredVersion(3, 1)
-  switch (target) {
-    case GL_TEXTURE_2D_MULTISAMPLE: {
-      // version 3.1
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  fmtInfo := GetSizedFormatInfoOrEnumError(internalformat)
-  if fmtInfo.Compression != Uncompressed {
-      glErrorInvalidEnum(internalformat)
-  }
-  // TODO
+  TexImage(IsTexStorageCmd | HasMultisampleModifier, target,
+           0, 0, 0, 0, // Offsets
+           1, width, height, 1, 0, // Dimensions
+           internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
+  _ = samples // TODO
+  _ = fixedsamplelocations // TODO
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage3D.xhtml","OpenGL ES 3.0")
@@ -1906,23 +1718,10 @@ cmd void glTexStorage3D(GLenum  target,
 }
 
 sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  _ = GetSizedFormatInfoOrEnumError(internalformat)
-
-  _ = levels // TODO
-  _ = width // TODO
-  _ = height // TODO
-  _ = depth // TODO
+  TexImage(IsTexStorageCmd | Has3DModifier, target,
+           0, 0, 0, 0, // Offsets
+           levels, width, height, depth, 0, // Dimensions
+           internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3DMultisample.xhtml","OpenGL ES 3.2")
@@ -1938,23 +1737,11 @@ cmd void glTexStorage3DMultisample(GLenum    target,
 }
 
 sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedsamplelocations) {
-  switch (target) {
-    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
-      // version 3.2
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  fmtInfo := GetSizedFormatInfoOrEnumError(internalformat)
-  if fmtInfo.Compression != Uncompressed {
-      glErrorInvalidEnum(internalformat)
-  }
-
+  TexImage(IsTexStorageCmd | Has3DModifier | HasMultisampleModifier, target,
+           0, 0, 0, 0, // Offsets
+           1, width, height, depth, 0, // Dimensions
+           internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
   _ = samples // TODO
-  _ = width // TODO
-  _ = height // TODO
-  _ = depth // TODO
   _ = fixedsamplelocations // TODO
 }
 
@@ -1972,51 +1759,17 @@ cmd void glTexSubImage2D(GLenum         target,
                          GLenum         type,
                          TexturePointer data) {
   minRequiredVersion(1, 0)
-  switch (target) {
-    case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
-      // version 2.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
+  TexImage(IsTexImageCmd | HasSubModifier, target,
+           level, xoffset, yoffset, 0, // Offsets
+           1, width, height, 1, 0, // Dimensions
+           GL_NONE, format, type, 0, data) // Format&data
 
-  // dEQP is giving priority to GL_INVALID_VALUE over GL_INVALID_ENUM (from
-  // type). The spec. is silent on the issue, so we do these tests before
-  // checking format and type.
-  if (level < 0) || (xoffset < 0) || (yoffset < 0) || (width < 0) || (height < 0) { glErrorInvalidValue() }
   ctx := GetContext()
-  checkMaxTextureSize(ctx, target, level, width, height)
-
-  _ = GetUnsizedFormatInfoOrEnumError(format)
-  switch (type) {
-    case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1,
-        GL_UNSIGNED_SHORT_5_6_5: {
-      // version 2.0
-    }
-    case GL_HALF_FLOAT_OES: {
-      requiresExtension(GL_OES_texture_half_float)
-    }
-    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
-        GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
-        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT: {
-      minRequiredVersion(3, 0)
-    }
-    default: {
-      glErrorInvalidEnum(type)
-    }
-  }
   t := GetBoundTextureOrErrorInvalidEnum(target)
-  image := switch (target) {
-    case GL_TEXTURE_2D:
-      t.Texture2D[level]
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-      t.Cubemap[level].Faces[as!GLenum(target)]
-  }
-  if ((as!GLsizei(xoffset) + width) > image.Width) || ((as!GLsizei(yoffset) + height) > image.Height) { glErrorInvalidValue() }
+  layer := CubemapFaceToLayer(target)
+  image := t.Levels[level].Layers[layer]
+  if (as!GLsizei(xoffset) + width) > image.Width { glErrorInvalidValue() }
+  if (as!GLsizei(yoffset) + height) > image.Height { glErrorInvalidValue() }
 
   // TODO: consider GL_UNPACK_ALIGNMENT, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS and GL_UNPACK_SKIP_IMAGES
   pbo := ctx.BoundBuffers.PixelUnpackBuffer
@@ -2049,16 +1802,10 @@ cmd void glTexSubImage2D(GLenum         target,
     dst := (dst_stride * y) + dst_offset
     copy(image.Data[dst:dst + line_bytes], src_data[src:src + line_bytes])
   }
-  switch (target) {
-    case GL_TEXTURE_2D:
-      t.Texture2D[level] = image
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      cbl := t.Cubemap[level]
-      cbl.Faces[as!GLenum(target)] = image
-      t.Cubemap[level] = cbl
-    }
-  }
+
+  tmpLevel := t.Levels[level]
+  tmpLevel.Layers[layer] = image
+  t.Levels[level] = tmpLevel
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml","OpenGL ES 3.0")
@@ -2080,41 +1827,8 @@ cmd void glTexSubImage3D(GLenum         target,
 }
 
 sub void TexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, TexturePointer data) {
-  switch (target) {
-    case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      // version 3.0
-    }
-    case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
-  _ = GetUnsizedFormatInfoOrEnumError(format)
-  switch (type) {
-    case GL_HALF_FLOAT_OES: {
-      requiresExtension(GL_OES_texture_half_float)
-    }
-    case GL_BYTE, GL_FLOAT, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_HALF_FLOAT, GL_INT, GL_SHORT,
-        GL_UNSIGNED_BYTE, GL_UNSIGNED_INT, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_24_8,
-        GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_5_9_9_9_REV, GL_UNSIGNED_SHORT,
-        GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_5_6_5: {
-      // version 3.0
-    }
-    default: {
-      glErrorInvalidEnum(type)
-    }
-  }
-
-  _ = level // TODO
-  _ = xoffset // TODO
-  _ = yoffset // TODO
-  _ = zoffset // TODO
-
-  ctx := GetContext()
-  if (data != null) && (ctx.BoundBuffers.PixelUnpackBuffer == 0) {
-    size := uncompressedImageSize(width, height, format, type) * as!u32(depth)
-    read(as!u8*(data)[0:size])
-  }
+  TexImage(IsTexImageCmd | HasSubModifier | Has3DModifier, target,
+           level, xoffset, yoffset, zoffset, // Offsets
+           1, width, height, depth, 0, // Dimensions
+           GL_NONE, format, type, 0, data) // Format&data
 }

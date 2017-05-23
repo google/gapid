@@ -639,7 +639,9 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
       DataType:     GL_UNSIGNED_BYTE,
     )
     i.Data = make!u8(uncompressedImageSize(i.Width, i.Height, i.DataFormat, i.DataType))
-    t.Texture2D[0] = i
+    tmpLevel := t.Levels[0] // TODO: Update directly
+    tmpLevel.Layers[0] = i
+    t.Levels[0] = tmpLevel
     t.EGLImage = image
   }
 }

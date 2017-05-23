@@ -472,19 +472,16 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     backbuffer.ColorAttachments[0] = FramebufferAttachment(
       Type:                GL_RENDERBUFFER,
       Renderbuffer:        ctx.SharedObjects.Renderbuffers[color_id],
-      TextureCubeMapFace:  GL_NONE,
     )
 
     backbuffer.DepthAttachment = FramebufferAttachment(
       Type:                GL_RENDERBUFFER,
       Renderbuffer:        ctx.SharedObjects.Renderbuffers[depth_id],
-      TextureCubeMapFace:  GL_NONE,
     )
 
     backbuffer.StencilAttachment = FramebufferAttachment(
       Type:                GL_RENDERBUFFER,
       Renderbuffer:        ctx.SharedObjects.Renderbuffers[stencil_id],
-      TextureCubeMapFace:  GL_NONE,
     )
 
     ctx.BoundDrawFramebuffer = 0

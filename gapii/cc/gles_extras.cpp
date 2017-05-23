@@ -145,30 +145,17 @@ bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
     switch (attachment->second.mType) {
         case GLenum::GL_TEXTURE: {
             auto t = attachment->second.mTexture;
-            switch (t->mKind) {
-                case GLenum::GL_TEXTURE_2D: {
-                    auto l = t->mTexture2D.find(attachment->second.mTextureLevel);
-                    if (l == t->mTexture2D.end()) {
-                        return false;
-                    }
-                    *width = uint32_t(l->second.mWidth);
-                    *height = uint32_t(l->second.mHeight);
-                    return true;
-                }
-                case GLenum::GL_TEXTURE_CUBE_MAP: {
-                    auto l = t->mCubemap.find(attachment->second.mTextureLevel);
-                    if (l == t->mCubemap.end()) {
-                        return false;
-                    }
-                    auto f = l->second.mFaces.find(attachment->second.mTextureCubeMapFace);
-                    if (f == l->second.mFaces.end()) {
-                        return false;
-                    }
-                    *width = uint32_t(f->second.mWidth);
-                    *height = uint32_t(f->second.mHeight);
-                    return true;
-                }
+            auto level = t->mLevels.find(attachment->second.mTextureLevel);
+            if (level == t->mLevels.end()) {
+                return false;
             }
+            auto layer = level->second.mLayers.find(attachment->second.mTextureLayer);
+            if (layer == level->second.mLayers.end()) {
+                return false;
+            }
+            *width = uint32_t(layer->second.mWidth);
+            *height = uint32_t(layer->second.mHeight);
+            return true;
         }
         case GLenum::GL_RENDERBUFFER: {
             auto r = attachment->second.mRenderbuffer;

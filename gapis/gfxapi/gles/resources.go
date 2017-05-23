@@ -70,26 +70,27 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 	ctx = log.Enter(ctx, "Texture.Resource()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_2D:
-		levels := make([]*image.Info2D, len(t.Texture2D))
-		for i, level := range t.Texture2D {
-			if level.Data.count == 0 {
+		levels := make([]*image.Info2D, len(t.Levels))
+		for i, level := range t.Levels {
+			img := level.Layers[0]
+			if img.Data.count == 0 {
 				// TODO: Make other results available
 				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
 			levels[i] = &image.Info2D{
-				Format: getImageFormatOrPanic(level.DataFormat, level.DataType),
-				Width:  uint32(level.Width),
-				Height: uint32(level.Height),
-				Data:   image.NewID(level.Data.ResourceID(ctx, s)),
+				Format: getImageFormatOrPanic(img.DataFormat, img.DataType),
+				Width:  uint32(img.Width),
+				Height: uint32(img.Height),
+				Data:   image.NewID(img.Data.ResourceID(ctx, s)),
 			}
 		}
 		return &gfxapi.Texture2D{Levels: levels}, nil
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
-		levels := make([]*gfxapi.CubemapLevel, len(t.Cubemap))
-		for i, level := range t.Cubemap {
+		levels := make([]*gfxapi.CubemapLevel, len(t.Levels))
+		for i, level := range t.Levels {
 			levels[i] = &gfxapi.CubemapLevel{}
-			for j, face := range level.Faces {
+			for j, face := range level.Layers {
 				if face.Data.count == 0 {
 					// TODO: Make other results available
 					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
@@ -100,7 +101,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 					Height: uint32(face.Height),
 					Data:   image.NewID(face.Data.ResourceID(ctx, s)),
 				}
-				switch j {
+				switch GLenum(j) + GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X {
 				case GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
 					levels[i].NegativeX = img
 				case GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X:
