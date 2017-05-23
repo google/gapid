@@ -26,7 +26,8 @@
   import (»¶
     "context"¶
 ¶
-  	"github.com/google/gapid/core/data/protoconv"¶
+    "github.com/google/gapid/core/data/protoconv"¶
+    "github.com/google/gapid/gapis/atom"¶
     "github.com/google/gapid/gapis/gfxapi/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
@@ -46,6 +47,7 @@
           func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
           func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
         )¶
+        atom.Register(API(), &{{$o}}{})¶
       {{end}}
     {{end}}
     {{range $c := $.Classes}}
