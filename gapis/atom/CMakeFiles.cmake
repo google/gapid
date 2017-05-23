@@ -35,6 +35,7 @@ set(files
     observations.go
     range.go
     range_list.go
+    registry.go
     resource.go
     service.go
     writer.go
