@@ -705,6 +705,44 @@ func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, s *gfxapi.
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetEvent(
+		a.CommandBuffer,
+		a.Event,
+		a.StageMask,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdResetEvent(
+		a.CommandBuffer,
+		a.Event,
+		a.StageMask,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdWaitEvents(
+		a.CommandBuffer,
+		a.EventCount,
+		a.PEvents,
+		a.SrcStageMask,
+		a.DstStageMask,
+		a.MemoryBarrierCount,
+		a.PMemoryBarriers,
+		a.BufferMemoryBarrierCount,
+		a.PBufferMemoryBarriers,
+		a.ImageMemoryBarrierCount,
+		a.PImageMemoryBarriers,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkGetPhysicalDeviceQueueFamilyProperties(
 		a.PhysicalDevice,
@@ -772,6 +810,27 @@ func (a *RecreateFence) Mutate(ctx context.Context, s *gfxapi.State, b *builder.
 	hijack := NewVkCreateFence(a.Device, a.PCreateInfo, allocator, a.PFence, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	allocator := memory.Nullptr
+
+	hijack := NewVkCreateEvent(a.Device, a.PCreateInfo, allocator, a.PEvent, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	if err := hijack.Mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if a.Signaled != VkBool32(0) {
+		event := a.PEvent.Read(ctx, a, s, b)
+		err := NewVkSetEvent(
+			a.Device,
+			event,
+			VkResult_VK_SUCCESS,
+		).Mutate(ctx, s, b)
+
+		return err
+	}
+	return nil
 }
 
 func (a *RecreateCommandPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {

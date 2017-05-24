@@ -86,8 +86,62 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 
 func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
+	lastBoundQueue := GetState(e.s).LastBoundQueue
 	for _, command := range o.Commands {
-		command.function()
+		if len(lastBoundQueue.PendingEvents) != 0 {
+			lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
+				command)
+		} else {
+			command.function()
+			// If a vkCmdWaitEvents is hit in the commands, it will set the pending
+			// events list of the current LastBoundQueue. Once that happens, we should
+			// records all the following commands to the pending commands list.
+			if len(lastBoundQueue.PendingEvents) != 0 {
+				// The vkCmdWaitEvents carries memory barriers, those should take
+				// effect when the event is signaled.
+				lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
+					command)
+			}
+		}
+	}
+}
+
+func (e externs) execPendingCommands(queue VkQueue) {
+	// Set the global LastBoundQueue, so the next vkCmdWaitEvent in the pending
+	// commands knows in which queue it will be waiting.
+	GetState(e.s).LastBoundQueue = GetState(e.s).Queues.Get(queue)
+	lastBoundQueue := GetState(e.s).LastBoundQueue
+	newPendingCommands := []CommandBufferCommand{}
+	for _, command := range lastBoundQueue.PendingCommands {
+		if len(lastBoundQueue.PendingEvents) != 0 {
+			newPendingCommands = append(newPendingCommands, command)
+		} else {
+			command.function()
+			// If a vkCmdWaitEvent is hit in the pending commands, it will set a new
+			// list of pending events to the LastBoundQueue. Once that happens, we
+			// should start a new pending command list.
+			if len(lastBoundQueue.PendingEvents) != 0 {
+				newPendingCommands = append(newPendingCommands, command)
+			}
+		}
+	}
+	// Refresh or clear the pending commands in LastBoundQueue
+	lastBoundQueue.PendingCommands = newPendingCommands
+}
+
+func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled bool) {
+	signal_semaphore := CommandBufferCommand{
+		function: func() {
+			GetState(e.s).Semaphores[semaphore].Signaled = Signaled
+		},
+		a: &e.a,
+	}
+	lastBoundQueue := GetState(e.s).LastBoundQueue
+	if len(lastBoundQueue.PendingEvents) != 0 {
+		lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
+			signal_semaphore)
+	} else {
+		signal_semaphore.function()
 	}
 }
 

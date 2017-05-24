@@ -530,6 +530,51 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
            const std::shared_ptr<RecreateCmdNextSubpassData>& t) {
   spy->RecreateCmdNextSubpass(observer, commandBuf, t->mContents);
 }
+
+template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetEventData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetEventData>& t) {
+  spy->RecreateCmdSetEvent(observer, commandBuf, t->mEvent, t->mStageMask);
+}
+
+template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdResetEventData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdResetEventData>& t) {
+  spy->RecreateCmdResetEvent(observer, commandBuf, t->mEvent, t->mStageMask);
+}
+
+template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdWaitEventsData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdWaitEventsData>& t) {
+  std::vector<VkEvent> events;
+  events.reserve(t->mEvents.size());
+  for (size_t i = 0; i < t->mEvents.size(); ++i) {
+    events.push_back(t->mEvents[i]);
+  }
+  std::vector<VkMemoryBarrier> memory_barriers;
+  memory_barriers.reserve(t->mMemoryBarriers.size());
+  for (size_t i = 0; i < t->mMemoryBarriers.size(); ++i) {
+    memory_barriers.push_back(t->mMemoryBarriers[i]);
+  }
+  std::vector<VkBufferMemoryBarrier> buffer_memory_barriers;
+  buffer_memory_barriers.reserve(t->mBufferMemoryBarriers.size());
+  for (size_t i = 0; i < t->mBufferMemoryBarriers.size(); ++i) {
+    buffer_memory_barriers.push_back(t->mBufferMemoryBarriers[i]);
+  }
+  std::vector<VkImageMemoryBarrier> image_memory_barriers;
+  image_memory_barriers.reserve(t->mImageMemoryBarriers.size());
+  for (size_t i = 0; i < t->mImageMemoryBarriers.size(); ++i) {
+    image_memory_barriers.push_back(t->mImageMemoryBarriers[i]);
+  }
+  spy->RecreateCmdWaitEvents(
+      observer, commandBuf, events.size(), events.data(), t->mSrcStageMask,
+      t->mDstStageMask, memory_barriers.size(), memory_barriers.data(),
+      buffer_memory_barriers.size(), buffer_memory_barriers.data(),
+      image_memory_barriers.size(), image_memory_barriers.data());
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
