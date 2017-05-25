@@ -121,7 +121,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     setLayout(new GridLayout(1, false));
 
-    SearchBox search = new SearchBox(this);
+    SearchBox search = new SearchBox(this, false);
     loading = new LoadablePanel<Tree>(this, widgets,
         p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
     Tree tree = loading.getContents();
