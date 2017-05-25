@@ -371,9 +371,9 @@ public class ThumbnailScrubber extends Composite
       for (int i = first; i < last; i++) {
         Data data = datas.get(i);
         if (data.image == null && thumbs.isReady()) {
-          data.image = LoadableImage.forImageData(parent,
-              noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)),
-              loading, repainter);
+          data.image = LoadableImage.newBuilder(loading)
+              .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)))
+              .build(parent, repainter);
         }
       }
     }

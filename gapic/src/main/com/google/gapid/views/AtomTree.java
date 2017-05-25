@@ -302,16 +302,17 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         }
         Rectangle bounds = item.getImageBounds(0);
         lastShownBalloon = Balloon.createAndShow(tree, shell -> {
-          LoadableImageWidget.forImageData(shell, loadImage(node), widgets.loading)
-              .withImageEventListener(new LoadableImage.Listener() {
-                @Override
-                public void onLoaded(boolean success) {
-                  if (success) {
-                    Widgets.ifNotDisposed(shell,
-                        () -> shell.setSize(shell.computeSize(SWT.DEFAULT, SWT.DEFAULT)));
-                  }
-                }
-              });
+          LoadableImageWidget.forImage(
+              shell, LoadableImage.newBuilder(widgets.loading).forImageData(loadImage(node)))
+          .withImageEventListener(new LoadableImage.Listener() {
+            @Override
+            public void onLoaded(boolean success) {
+              if (success) {
+                Widgets.ifNotDisposed(shell,
+                    () -> shell.setSize(shell.computeSize(SWT.DEFAULT, SWT.DEFAULT)));
+              }
+            }
+          });
         }, new Point(right(bounds) + 2, vertCenter(bounds) - THUMB_SIZE / 2));
       }
 
@@ -570,8 +571,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
           return null;
         }
 
-        image = LoadableImage.forSmallImageData(
-            viewer.getTree(), () -> loadImage(group), loading, this);
+        image = LoadableImage.newBuilder(loading)
+            .small()
+            .forImageData(() -> loadImage(group))
+            .build(viewer.getTree(), this);
         images.put(group, image);
       }
       return image;

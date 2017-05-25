@@ -17,6 +17,7 @@ package com.google.gapid.widgets;
 
 import static java.util.logging.Level.FINE;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.Images;
 import com.google.gapid.rpclib.rpccore.Rpc;
@@ -60,6 +61,10 @@ public class LoadableImage {
     this.repaintable = repaintable;
 
     state = State.NOT_STARTED;
+  }
+
+  public static Builder newBuilder(LoadingIndicator loading) {
+    return new Builder(loading);
   }
 
   public LoadableImage load() {
@@ -111,70 +116,6 @@ public class LoadableImage {
     future.cancel(true);
     state = State.NOT_STARTED;
     return this;
-  }
-
-  // Factory methods: those taking in a future are assumed to already be loading, while those
-  // taking a supplier will need their load() method to be invoked to start the loading process.
-
-  public static LoadableImage forImageData(Widget widget, ListenableFuture<ImageData> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return forImageData(widget, supplier(future), loading, repaintable).load();
-  }
-
-  public static LoadableImage forImage(Widget widget, ListenableFuture<Image> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return forImage(widget, supplier(future), loading, repaintable).load();
-  }
-
-  public static LoadableImage forSmallImageData(Widget widget, ListenableFuture<ImageData> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return forSmallImageData(widget, supplier(future), loading, repaintable).load();
-  }
-
-  public static LoadableImage forSmallImage(Widget widget, ListenableFuture<Image> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return forSmallImage(widget, supplier(future), loading, repaintable).load();
-  }
-
-  public static LoadableImage forImageData(Widget widget,
-      Supplier<ListenableFuture<ImageData>> future, LoadingIndicator loading,
-      LoadingIndicator.Repaintable repaintable) {
-    return new LoadableImage(widget, cast(future), loading, repaintable);
-  }
-
-  public static LoadableImage forImage(Widget widget, Supplier<ListenableFuture<Image>> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return new LoadableImage(widget, cast(future), loading, repaintable);
-  }
-
-  public static LoadableImage forSmallImageData(Widget widget,
-      Supplier<ListenableFuture<ImageData>> future, LoadingIndicator loading,
-      LoadingIndicator.Repaintable repaintable) {
-    return new LoadableImage(widget, cast(future), loading, repaintable) {
-      @Override
-      protected Image getLoadingImage() {
-        return loading.getCurrentSmallFrame();
-      }
-    };
-  }
-
-  public static LoadableImage forSmallImage(Widget widget, Supplier<ListenableFuture<Image>> future,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
-    return new LoadableImage(widget, cast(future), loading, repaintable) {
-      @Override
-      protected Image getLoadingImage() {
-        return loading.getCurrentSmallFrame();
-      }
-    };
-  }
-
-  private static <T> Supplier<ListenableFuture<T>> supplier(ListenableFuture<T> future) {
-    return () -> future;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Supplier<ListenableFuture<Object>> cast(Supplier<?> future) {
-    return (Supplier<ListenableFuture<Object>>)future;
   }
 
   public Image getImage() {
@@ -233,6 +174,83 @@ public class LoadableImage {
      * @param success whether the image was loaded successfully
      */
     public default void onLoaded(boolean success) { /* empty */ }
+  }
+
+  /**
+   * Builder for {@link LoadableImage}. If built using a future, it is assumed
+   * to already be loading, while if built with a supplier, the {@link #load()}
+   * method needs to be invoked to start the loading process.
+   */
+  public static class Builder {
+    private final LoadingIndicator loading;
+    private Supplier<ListenableFuture<Object>> futureSupplier;
+    private boolean small;
+    // True if build() should call load, because the future was wrapped via supplier().
+    private boolean shouldLoad;
+
+    protected Builder(LoadingIndicator loading) {
+      this.loading = loading;
+    }
+
+    public Builder small() {
+      this.small = true;
+      return this;
+    }
+
+    public Builder large() {
+      this.small = false;
+      return this;
+    }
+
+    public Builder forImageData(ListenableFuture<ImageData> future) {
+      this.shouldLoad = true;
+      this.futureSupplier = cast(supplier(future));
+      return this;
+    }
+
+    public Builder forImageData(Supplier<ListenableFuture<ImageData>> future) {
+      this.shouldLoad = false;
+      this.futureSupplier = cast(future);
+      return this;
+    }
+
+    public Builder forImage(ListenableFuture<Image> future) {
+      this.shouldLoad = true;
+      this.futureSupplier = cast(supplier(future));
+      return this;
+    }
+
+    public Builder forImage(Supplier<ListenableFuture<Image>> future) {
+      this.shouldLoad = false;
+      this.futureSupplier = cast(future);
+      return this;
+    }
+
+    public LoadableImage build(Widget widget, LoadingIndicator.Repaintable repaintable) {
+      Preconditions.checkState(futureSupplier != null);
+
+      LoadableImage result;
+      if (small) {
+        result = new LoadableImage(widget, futureSupplier, loading, repaintable) {
+          @Override
+          protected Image getLoadingImage() {
+            return loading.getCurrentSmallFrame();
+          }
+        };
+      } else {
+        result = new LoadableImage(widget, futureSupplier, loading, repaintable);
+      }
+      return shouldLoad ? result.load() : result;
+    }
+
+    private static <T> Supplier<ListenableFuture<T>> supplier(ListenableFuture<T> future) {
+      return () -> future;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Supplier<ListenableFuture<Object>> cast(Supplier<?> future) {
+      return (Supplier<ListenableFuture<Object>>)future;
+    }
   }
 
   private static enum State {
