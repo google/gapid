@@ -31,7 +31,13 @@ import java.util.regex.PatternSyntaxException;
  * A search box widget supporting regex searches.
  */
 public class SearchBox extends Composite {
-  public SearchBox(Composite parent) {
+  /**
+   * @param parent the parent {@link Composite}
+   * @param fireEventOnChange whether to fire an event when the input changes,
+   *     if {@code false}, search events are only triggered on button click/enter.
+   *     Passing {@code true} is useful in the case of filtering workflow.
+   */
+  public SearchBox(Composite parent, boolean fireEventOnChange) {
     super(parent, SWT.NONE);
     setLayout(new GridLayout(2, false));
 
@@ -41,10 +47,21 @@ public class SearchBox extends Composite {
     text.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     regex.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
 
-    text.addListener(SWT.DefaultSelection, e -> {
-      notifyListeners(Events.Search,
-          Events.newSearchEvent(SearchBox.this, text.getText(), regex.getSelection()));
+    text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regex));
+    text.addListener(SWT.Traverse, e -> {
+      if (e.detail == SWT.TRAVERSE_RETURN) {
+        notifySearch(text, regex);
+      }
     });
+    if (fireEventOnChange) {
+      text.addListener(SWT.Modify, e -> notifySearch(text, regex));
+      regex.addListener(SWT.Selection, e -> notifySearch(text, regex));
+    }
+  }
+
+  private void notifySearch(Text text, Button regex) {
+    notifyListeners(Events.Search,
+        Events.newSearchEvent(SearchBox.this, text.getText(), regex.getSelection()));
   }
 
   public static Pattern getPattern(String text, boolean regex) {
