@@ -33,20 +33,21 @@ const (
 	getPidRetries = 7
 )
 
-// Start launches an activity on an android device with the GAPII interceptor
-// enabled using the gapid.apk built for the ABI matching the specified action
-// and device.
-// GAPII will attempt to connect back on the returned host port to write the
-// trace.
-func Start(ctx context.Context, a *android.ActivityAction) (port adb.TCPPort, cleanup task.Task, err error) {
-	p := a.Package
+// StartOrAttach launches an activity on an android device with the GAPII interceptor
+// enabled using the gapid.apk built for the ABI matching the specified action and device.
+// If there is no activity provided, it will try to attach to any already running one.
+// GAPII will attempt to connect back on the returned host port to write the trace.
+func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.ActivityAction) (port adb.TCPPort, cleanup task.Task, err error) {
 	ctx = log.Enter(ctx, "start")
-	ctx = log.V{"activity": a.Activity, "on": p.Name}.Bind(ctx)
+	if a != nil {
+		ctx = log.V{"activity": a.Activity}.Bind(ctx)
+	}
+	ctx = log.V{"on": p.Name}.Bind(ctx)
 	d := p.Device.(adb.Device)
 
-	abi := a.Package.ABI
+	abi := p.ABI
 	if abi.SameAs(device.UnknownABI) {
-		abi = a.Package.Device.Instance().GetConfiguration().PreferredABI(nil)
+		abi = p.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
 	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
@@ -100,9 +101,13 @@ func Start(ctx context.Context, a *android.ActivityAction) (port adb.TCPPort, cl
 		}
 	}()
 
-	log.I(ctx, "Starting activity in debug mode")
-	if err := d.StartActivityForDebug(ctx, *a); err != nil {
-		return 0, nil, log.Err(ctx, err, "Starting activity in debug mode")
+	if a != nil {
+		log.I(ctx, "Starting activity in debug mode")
+		if err := d.StartActivityForDebug(ctx, *a); err != nil {
+			return 0, nil, log.Err(ctx, err, "Starting activity in debug mode")
+		}
+	} else {
+		log.I(ctx, "No start activity selected - trying to attach...")
 	}
 
 	var pid int
