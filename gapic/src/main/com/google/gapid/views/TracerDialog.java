@@ -36,6 +36,7 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.views.ActivityPickerDialog.Action;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.FileTextbox;
+import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -147,6 +148,7 @@ public class TracerDialog {
     private final Settings settings;
     protected final Widgets widgets;
     private ComboViewer device;
+    private LoadingIndicator.Widget deviceLoader;
     private ActionTextbox traceTarget;
     private FileTextbox.Directory directory;
     private Text file;
@@ -198,8 +200,12 @@ public class TracerDialog {
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
       createLabel(container, "Device:");
-      device = createDeviceDropDown(container);
+      Composite deviceComposite = createComposite(container, new GridLayout(2, false));
+      device = createDeviceDropDown(deviceComposite);
+      deviceLoader = widgets.loading.createWidget(deviceComposite);
       device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+      deviceLoader.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+      deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
       createLabel(container, "Package / Action:");
       traceTarget = withLayoutData(new ActionTextbox(container, settings.tracePackage) {
@@ -282,6 +288,7 @@ public class TracerDialog {
 
     private void updateDevicesDropDown() {
       if (device != null && devices != null) {
+        deviceLoader.stopLoading();
         device.setInput(devices);
         if (!settings.traceDevice.isEmpty()) {
           Optional<Device.Instance> deflt = devices.stream()
@@ -292,6 +299,8 @@ public class TracerDialog {
           }
         }
         device.getCombo().notifyListeners(SWT.Selection, new Event());
+      } else if (deviceLoader != null) {
+        deviceLoader.startLoading();
       }
     }
 
