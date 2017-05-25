@@ -15,13 +15,11 @@
  */
 package com.google.gapid.widgets;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Thumbnails;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Canvas;
@@ -41,32 +39,9 @@ public class LoadableImageWidget extends Canvas {
     addListener(SWT.Dispose, e -> image.dispose());
   }
 
-  public static LoadableImageWidget forImageData(
-      Composite parent, ListenableFuture<ImageData> future, LoadingIndicator loading) {
+  public static LoadableImageWidget forImage(Composite parent, LoadableImage.Builder image) {
     LoadableImageWidget result = new LoadableImageWidget(parent);
-    result.image = LoadableImage.forImageData(result, future, loading, result::redrawIfNotDisposed);
-    return result;
-  }
-
-  public static LoadableImageWidget forImage(
-      Composite parent, ListenableFuture<Image> future, LoadingIndicator loading) {
-    LoadableImageWidget result = new LoadableImageWidget(parent);
-    result.image = LoadableImage.forImage(result, future, loading, result::redrawIfNotDisposed);
-    return result;
-  }
-
-  public static LoadableImageWidget forSmallImageData(
-      Composite parent, ListenableFuture<ImageData> future, LoadingIndicator loading) {
-    LoadableImageWidget result = new LoadableImageWidget(parent);
-    result.image = LoadableImage.forSmallImageData(
-        result, future, loading, result::redrawIfNotDisposed);
-    return result;
-  }
-
-  public static LoadableImageWidget forSmallImage(
-      Composite parent, ListenableFuture<Image> future, LoadingIndicator loading) {
-    LoadableImageWidget result = new LoadableImageWidget(parent);
-    result.image = LoadableImage.forSmallImage(result, future, loading, result::redrawIfNotDisposed);
+    result.image = image.build(result, result::redrawIfNotDisposed);
     return result;
   }
 

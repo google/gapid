@@ -547,8 +547,10 @@ public class TextureView extends Composite
     private LoadableImage getLoadableImage(Data data) {
       LoadableImage image = images.get(data);
       if (image == null) {
-        image = LoadableImage.forSmallImageData(
-            viewer.getTable(), () -> loadImage(data), loading, this);
+        image = LoadableImage.newBuilder(loading)
+            .small()
+            .forImageData(() -> loadImage(data))
+            .build(viewer.getTable(), this);
         images.put(data, image);
       }
       return image;
