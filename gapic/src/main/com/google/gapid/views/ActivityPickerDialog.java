@@ -16,35 +16,44 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createTree;
+import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
-import static org.eclipse.swt.SWT.VERTICAL;
 
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.gapid.image.Images;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.server.GapitPkgInfoProcess;
+import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable.MessageType;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.SearchBox;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-import com.google.protobuf.ByteString;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.resource.LocalResourceManager;
+import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
+import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider.IStyledLabelProvider;
+import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.StyledString;
+import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerComparator;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.ImageLoader;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.internal.DPIUtil;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -52,10 +61,9 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Dialog to allow the user to pick which application and activity to trace.
@@ -63,11 +71,13 @@ import java.util.logging.Logger;
 public class ActivityPickerDialog extends TitleAreaDialog {
   protected static final Logger LOG = Logger.getLogger(ActivityPickerDialog.class.getName());
   private static final int ICON_SIZE_DIP = 24;
+  private static final int INITIAL_MIN_HEIGHT = 600;
 
   private final Widgets widgets;
   private final Device.Instance device;
   private LoadablePanel<Tree> loading;
-  private Tree tree;
+  private TreeViewer tree;
+  private PackageLabelProvider labelProvider;
   private LocalResourceManager resources;
   private PkgInfo.PackageList packageList;
   private Action selected;
@@ -80,10 +90,61 @@ public class ActivityPickerDialog extends TitleAreaDialog {
     public final PkgInfo.Activity activity;
     public final PkgInfo.Action action;
 
-    Action(PkgInfo.Package pkg, PkgInfo.Activity activity, PkgInfo.Action action) {
+    private Action(PkgInfo.Package pkg, PkgInfo.Activity activity, PkgInfo.Action action) {
       this.pkg = pkg;
       this.activity = activity;
       this.action = action;
+    }
+
+    @Override
+    public String toString() {
+      return action.getName() + ":" + pkg.getName() + "/" + activity.getName();
+    }
+
+    public static Action getFor(TreeItem item) {
+      Object data = item.getData();
+      if (data instanceof PkgInfo.Action) {
+        TreeItem activity = item.getParentItem();
+        TreeItem pkg = activity.getParentItem();
+        return new Action((PkgInfo.Package)pkg.getData(), (PkgInfo.Activity)activity.getData(),
+            (PkgInfo.Action)data);
+      } else if (data instanceof PkgInfo.Activity) {
+        TreeItem pkg = item.getParentItem();
+        PkgInfo.Activity activity = (PkgInfo.Activity)data;
+        PkgInfo.Action action = findLaunchAction(activity);
+        if (action == null && activity.getActionsCount() == 1) {
+          action = activity.getActions(0);
+        }
+        return (action == null) ? null :
+            new Action((PkgInfo.Package)pkg.getData(), activity, action);
+      } else if (data instanceof PkgInfo.Package) {
+        return getFor((PkgInfo.Package)data);
+      } else {
+        return null;
+      }
+    }
+
+    private static Action getFor(PkgInfo.Package pkg) {
+      for (PkgInfo.Activity activity : pkg.getActivitiesList()) {
+        PkgInfo.Action action = findLaunchAction(activity);
+        if (action != null) {
+          return new Action(pkg, activity, action);
+        }
+      }
+
+      if (pkg.getActivitiesCount() == 1 && pkg.getActivities(0).getActionsCount() == 1) {
+        return new Action(pkg, pkg.getActivities(0), pkg.getActivities(0).getActions(0));
+      }
+      return null;
+    }
+
+    public static PkgInfo.Action findLaunchAction(PkgInfo.Activity activity) {
+      for (PkgInfo.Action action : activity.getActionsList()) {
+        if (action.getIsLaunch()) {
+          return action;
+        }
+      }
+      return null;
     }
   }
 
@@ -117,21 +178,52 @@ public class ActivityPickerDialog extends TitleAreaDialog {
   }
 
   @Override
+  protected Point getInitialSize() {
+    Point size = super.getInitialSize();
+    size.y = Math.max(size.y, INITIAL_MIN_HEIGHT);
+    return size;
+  }
+
+  @Override
   protected Control createDialogArea(Composite parent) {
     Composite area = (Composite)super.createDialogArea(parent);
 
-    Composite container = createComposite(area, new FillLayout(VERTICAL));
+    Composite container = createComposite(area, new GridLayout(1, false));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    loading = LoadablePanel.create(container, widgets, panel -> createTree(panel, SWT.BORDER));
-    tree = loading.getContents();
-    tree.addListener(SWT.Selection, e -> {
-      Object data = e.item.getData();
-      selected = (data instanceof Action) ? (Action)data : null;
+    SearchBox search = new SearchBox(container, true);
+    search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
+    loading = LoadablePanel.create(container, widgets, p -> createTreeForViewer(p, SWT.BORDER));
+    loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    tree = Widgets.createTreeViewer(loading.getContents());
+    tree.setContentProvider(new PackageContentProvider());
+    labelProvider = new PackageLabelProvider(widgets.theme);
+    tree.setLabelProvider(new DelegatingStyledCellLabelProvider(labelProvider));
+    tree.setComparator(new ViewerComparator()); // Sort by name.
+
+    tree.getTree().addListener(SWT.Selection, e -> {
+      selected = Action.getFor((TreeItem)e.item);
     });
-    resources = new LocalResourceManager(JFaceResources.getResources(), tree);
+    resources = new LocalResourceManager(JFaceResources.getResources(), tree.getTree());
 
     update();
+
+    search.addListener(Events.Search, e -> {
+      if (e.text.isEmpty()) {
+        tree.resetFilters();
+        return;
+      }
+
+      Pattern pattern = SearchBox.getPattern(e.text, (e.detail & Events.REGEX) != 0);
+      tree.setFilters(new ViewerFilter() {
+        @Override
+        public boolean select(Viewer viewer, Object parentElement, Object element) {
+          return !(element instanceof PkgInfo.Package) ||
+              pattern.matcher(((PkgInfo.Package)element).getName()).find();
+        }
+      });
+    });
     return area;
   }
 
@@ -141,7 +233,7 @@ public class ActivityPickerDialog extends TitleAreaDialog {
     createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
 
     ok.setEnabled(false);
-    tree.addListener(SWT.Selection, e -> ok.setEnabled(selected != null));
+    tree.getTree().addListener(SWT.Selection, e -> ok.setEnabled(selected != null));
   }
 
   private void load(Shell shell) {
@@ -171,67 +263,111 @@ public class ActivityPickerDialog extends TitleAreaDialog {
   }
 
   private void update() {
-    tree.removeAll();
     if (packageList == null) {
+      tree.setInput(PkgInfo.PackageList.getDefaultInstance());
       loading.startLoading();
       return;
     }
-    loading.stopLoading();
 
-    float iconDensityScale = DPIUtil.getDeviceZoom() / 100.0f;
-    int iconSize = (int)(ICON_SIZE_DIP * iconDensityScale);
-
+    int iconSize = (int)(ICON_SIZE_DIP * DPIUtil.getDeviceZoom() / 100.0f);
     ImageLoader loader = new ImageLoader();
     int iconCount = packageList.getIconsCount();
     Image icons[] = new Image[iconCount];
     for (int i = 0; i < iconCount; i++) {
-      ByteString data = packageList.getIcons(i);
-      ImageData imageData[] = loader.load(data.newInput());
+      ImageData imageData[] = loader.load(packageList.getIcons(i).newInput());
       icons[i] = Images.createNonScaledImage(resources, imageData[0].scaledTo(iconSize, iconSize));
     }
 
-    List<PkgInfo.Package> packages = Lists.newArrayList(packageList.getPackagesList());
-    Collections.sort(packages, (p1, p2) -> {
-      return p1.getName().compareTo(p2.getName());
-    });
+    labelProvider.setIcons(icons);
+    tree.setInput(packageList);
+    loading.stopLoading();
+  }
 
-    Font boldFont = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT);
-    Image noIcon = widgets.theme.androidLogo();
-    for (PkgInfo.Package pkg : packages) {
-      TreeItem pkgItem = new TreeItem(tree, 0);
-      pkgItem.setText(pkg.getName());
-      int pkgIconIdx = pkg.getIcon();
-      pkgItem.setImage((pkgIconIdx >= 0 && pkgIconIdx < iconCount) ? icons[pkgIconIdx] : noIcon);
+  private static class PackageContentProvider implements ITreeContentProvider {
+    public PackageContentProvider() {
+    }
 
-      Action launchAction = null;
+    @Override
+    public Object[] getElements(Object root) {
+      return ((PkgInfo.PackageList)root).getPackagesList().toArray();
+    }
 
-      for (PkgInfo.Activity activity : pkg.getActivitiesList()) {
-        TreeItem activityItem = new TreeItem(pkgItem, 0);
-        activityItem.setText(activity.getName());
-
-        for (PkgInfo.Action action : activity.getActionsList()) {
-          TreeItem actionItem = new TreeItem(activityItem, 0);
-          actionItem.setText(action.getName());
-          if (action.getIsLaunch() && launchAction == null) {
-            actionItem.setFont(boldFont);
-            launchAction = new Action(pkg, activity, action);
-          }
-          actionItem.setData(new Action(pkg, activity, action));
-        }
-        if (launchAction != null && launchAction.activity == activity) {
-          activityItem.setFont(boldFont);
-          activityItem.setData(launchAction);
-        }
-        int activityIconIdx = activity.getIcon();
-        if (activityIconIdx < 0 || activityIconIdx >= iconCount) {
-          activityIconIdx = pkgIconIdx;
-        }
-        activityItem.setImage((activityIconIdx >= 0 && activityIconIdx < iconCount) ?
-            icons[activityIconIdx] : noIcon);
+    @Override
+    public boolean hasChildren(Object element) {
+      if (element instanceof PkgInfo.PackageList) {
+        return ((PkgInfo.PackageList)element).getPackagesCount() > 0;
+      } else if (element instanceof PkgInfo.Package) {
+        return ((PkgInfo.Package)element).getActivitiesCount() > 0;
+      } else if (element instanceof PkgInfo.Activity) {
+        return ((PkgInfo.Activity)element).getActionsCount() > 0;
+      } else {
+        return false;
       }
-      if (launchAction != null) {
-        pkgItem.setData(launchAction);
+    }
+
+    @Override
+    public Object[] getChildren(Object element) {
+      if (element instanceof PkgInfo.PackageList) {
+        return ((PkgInfo.PackageList)element).getPackagesList().toArray();
+      } else if (element instanceof PkgInfo.Package) {
+        return ((PkgInfo.Package)element).getActivitiesList().toArray();
+      } else if (element instanceof PkgInfo.Activity) {
+        return ((PkgInfo.Activity)element).getActionsList().toArray();
+      } else {
+        return new Object[0];
       }
+    }
+
+    @Override
+    public Object getParent(Object element) {
+      return null;
+    }
+  }
+
+  private static class PackageLabelProvider extends LabelProvider implements IStyledLabelProvider {
+    private final Theme theme;
+    private Image[] icons = new Image[0];
+
+    public PackageLabelProvider(Theme theme) {
+      this.theme = theme;
+    }
+
+    public void setIcons(Image[] icons) {
+      this.icons = icons;
+    }
+
+    @Override
+    public StyledString getStyledText(Object element) {
+      if (element instanceof PkgInfo.Package) {
+        return new StyledString(((PkgInfo.Package)element).getName());
+      } else if (element instanceof PkgInfo.Activity) {
+        PkgInfo.Activity a = (PkgInfo.Activity)element;
+        return new StyledString(
+            a.getName(), Action.findLaunchAction(a) != null ? theme.labelStyler() : null);
+      } else if (element instanceof PkgInfo.Action){
+        PkgInfo.Action a = (PkgInfo.Action)element;
+        return new StyledString(a.getName(), a.getIsLaunch() ? theme.labelStyler() : null);
+      } else {
+        return new StyledString("");
+      }
+    }
+
+    @Override
+    public Image getImage(Object element) {
+      if (element instanceof PkgInfo.Package) {
+        return getIcon(((PkgInfo.Package) element).getIcon(), true);
+      } else if (element instanceof PkgInfo.Activity) {
+        return getIcon(((PkgInfo.Activity) element).getIcon(), false);
+      } else {
+        return null;
+      }
+    }
+
+    private Image getIcon(int index, boolean fallback) {
+      if (index < 0 || index >= icons.length || icons[index] == null) {
+        return fallback ? theme.androidLogo() : null;
+      }
+      return icons[index];
     }
   }
 }
