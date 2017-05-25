@@ -197,7 +197,7 @@
 
         observer->invoke();
 
-        {{if (GetAnnotation $ "mayBlockTrace")}}
+        {{if (GetAnnotation $ "blocking")}}
           unlock();
         {{end}}
         {{/* Perform the call */}}
@@ -211,7 +211,7 @@
             mImports.{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
           {{end}}
         {{end}}
-        {{if (GetAnnotation $ "mayBlockTrace")}}
+        {{if (GetAnnotation $ "blocking")}}
           lock(observer, "Tracing blocking atom: {{$name}} locks again.");
         {{end}}
         onPostFence(observer);

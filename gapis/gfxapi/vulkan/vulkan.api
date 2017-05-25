@@ -2805,7 +2805,7 @@ cmd VkResult vkQueueSubmit(
 
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
-@mayBlockTrace
+@blocking
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
   return ?
@@ -2813,7 +2813,7 @@ cmd VkResult vkQueueWaitIdle(
 
 @threadSafety("system")
 @indirect("VkDevice")
-@mayBlockTrace
+@blocking
 cmd VkResult vkDeviceWaitIdle(
     VkDevice device) {
   return ?
@@ -3262,7 +3262,7 @@ cmd VkResult vkGetFenceStatus(
 
 @threadSafety("system")
 @indirect("VkDevice")
-@mayBlockTrace
+@blocking
 cmd VkResult vkWaitForFences(
     VkDevice       device,
     u32            fenceCount,
@@ -3441,7 +3441,7 @@ cmd void vkDestroyQueryPool(
 
 @threadSafety("system")
 @indirect("VkDevice")
-@mayBlockTrace
+@blocking
 cmd VkResult vkGetQueryPoolResults(
     VkDevice           device,
     VkQueryPool        queryPool,
@@ -7910,7 +7910,7 @@ cmd VkResult vkGetSwapchainImagesKHR(
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
 @custom
-@mayBlockTrace
+@blocking
 cmd VkResult vkAcquireNextImageKHR(
     VkDevice       device,
     VkSwapchainKHR swapchain,
