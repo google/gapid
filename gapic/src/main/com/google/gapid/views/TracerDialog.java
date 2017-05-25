@@ -215,8 +215,7 @@ public class TracerDialog {
               getShell(), widgets, getSelectedDevice());
           dialog.open();
           Action action = dialog.getSelected();
-          return (action == null) ? null :
-            action.action.getName() + ":" + action.pkg.getName() + "/" + action.activity.getName();
+          return (action == null) ? null : action.toString();
         }
       }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
