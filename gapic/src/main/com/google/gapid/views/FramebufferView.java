@@ -220,14 +220,16 @@ public class FramebufferView extends Composite
     } else {
       loading.startLoading();
       Rpc.listen(FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())), rpcController,
-          new UiErrorCallback<FetchedImage, MultiLevelImage, String>(this, LOG) {
+          new UiErrorCallback<FetchedImage, MultiLevelImage, Loadable.Message>(this, LOG) {
         @Override
-        protected ResultOrError<MultiLevelImage, String> onRpcThread(
+        protected ResultOrError<MultiLevelImage, Loadable.Message> onRpcThread(
             Rpc.Result<FetchedImage> result) throws RpcException, ExecutionException {
           try {
             return success(result.get());
           } catch (DataUnavailableException e) {
-            return error(e.getMessage());
+            return error(Loadable.Message.info(e));
+          } catch (RpcException e) {
+            return error(Loadable.Message.error(e));
           }
         }
 
@@ -237,8 +239,8 @@ public class FramebufferView extends Composite
         }
 
         @Override
-        protected void onUiThreadError(String error) {
-          loading.showMessage(Error, error);
+        protected void onUiThreadError(Loadable.Message message) {
+          loading.showMessage(message);
         }
       });
     }

@@ -15,7 +15,6 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
@@ -274,14 +273,16 @@ public class ImagePanel extends Composite {
     index = Math.min(image.getLevelCount() - 1, index);
     loading.startLoading();
     Rpc.listen(image.getLevel(index), imageRequestController,
-        new UiErrorCallback<Image, Image, String>(this, LOG) {
+        new UiErrorCallback<Image, Image, Loadable.Message>(this, LOG) {
       @Override
-      protected ResultOrError<Image, String> onRpcThread(Rpc.Result<Image> result)
+      protected ResultOrError<Image, Loadable.Message> onRpcThread(Rpc.Result<Image> result)
           throws RpcException, ExecutionException {
         try {
           return success(result.get());
         } catch (DataUnavailableException e) {
-          return error(e.getMessage());
+          return error(Loadable.Message.info(e));
+        } catch (RpcException e) {
+          return error(Loadable.Message.error(e));
         }
       }
 
@@ -291,9 +292,9 @@ public class ImagePanel extends Composite {
       }
 
       @Override
-      protected void onUiThreadError(String message) {
+      protected void onUiThreadError(Loadable.Message message) {
         clearImage();
-        loading.showMessage(Error, message);
+        loading.showMessage(message);
       }
     });
   }

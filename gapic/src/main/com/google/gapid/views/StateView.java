@@ -29,7 +29,7 @@ import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.server.Client.DataUnavailableException;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
@@ -218,9 +218,9 @@ public class StateView extends Composite
   }
 
   @Override
-  public void onStateLoaded(DataUnavailableException error) {
+  public void onStateLoaded(Loadable.Message error) {
     if (error != null) {
-      loading.showMessage(Error, error.getMessage());
+      loading.showMessage(error);
       return;
     }
 

@@ -15,6 +15,8 @@
  */
 package com.google.gapid.util;
 
+import com.google.gapid.rpclib.rpccore.RpcException;
+
 /**
  * Widget mixin for widgets that show loadable data. Typical implementations should show a loading
  * animation to the user while the data is loading.
@@ -38,7 +40,43 @@ public interface Loadable {
   @SuppressWarnings("unused")
   public default void showMessage(MessageType type, String text) { /* empty */ }
 
+  /**
+   * Shows a message to the user instead of the loading animation.
+   */
+  public default void showMessage(Message message) {
+    showMessage(message.type, message.text);
+  }
+
   public static enum MessageType {
     Info, Error;
+  }
+
+  /**
+   * Convenience class bundling a message with a type.
+   */
+  public static class Message {
+    public final MessageType type;
+    public final String text;
+
+    public Message(MessageType type, String text) {
+      this.type = type;
+      this.text = text;
+    }
+
+    public static Message info(String text) {
+      return new Message(MessageType.Info, text);
+    }
+
+    public static Message info(RpcException e) {
+      return new Message(MessageType.Info, e.getMessage());
+    }
+
+    public static Message error(String text) {
+      return new Message(MessageType.Error, text);
+    }
+
+    public static Message error(RpcException e) {
+      return new Message(MessageType.Error, e.getMessage());
+    }
   }
 }
