@@ -95,7 +95,7 @@ func loadLibrariesViaJDWP(ctx context.Context, gapidAPK *gapidapk.APK, pid int, 
 	}
 	ctx = log.V{"jdwpPort": jdwpPort}.Bind(ctx)
 
-	log.I(ctx, "Forwarding JDWP port")
+	log.I(ctx, "Forwarding TCP port %v -> JDWP pid %v", jdwpPort, pid)
 	if err := d.Forward(ctx, adb.TCPPort(jdwpPort), adb.Jdwp(pid)); err != nil {
 		return log.Err(ctx, err, "Setting up JDWP port forwarding")
 	}

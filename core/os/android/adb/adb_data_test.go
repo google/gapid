@@ -138,7 +138,7 @@ WINDOW MANAGER POLICY STATE (dumpsys window policy)
 
 		// Pid queries.
 		stub.Regex(`adb -s ok_pgrep_\S*device shell pgrep .* com.google.foo`, stub.Respond("")),
-		stub.Regex(`adb -s ok_pgrep\S*device shell pgrep -o -f com.google.bar`, stub.Respond("2778")),
+		stub.Regex(`adb -s ok_pgrep\S*device shell pgrep -n -f com.google.bar`, stub.Respond("2778")),
 		stub.RespondTo(adbPath.System()+` -s no_pgrep_ok_ps_device shell ps`, `
 u0_a11    21926 5061  1976096 42524 SyS_epoll_ 0000000000 S com.google.android.gms
 u0_a111   2778  5062  1990796 59268 SyS_epoll_ 0000000000 S com.google.bar
