@@ -48,7 +48,7 @@ public abstract class UiCallback<T, U> implements Rpc.Callback<T> {
     } catch (CancellationException cancel) {
       // Not an error, don't log.
     } catch (Exception e) {
-      logger.log(SEVERE, "error in UiCallback.onRpcThread", e);
+      logger.log(SEVERE, "error in " + getClass().getName() + ".onRpcThread", e);
     }
   }
 

@@ -74,8 +74,8 @@ public class ThumbnailScrubber extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    carousel = new Carousel(this, models.thumbs, widgets.loading, this::redrawScroll,
-        this::resizeScroll, this::scrollTo);
+    carousel = new Carousel(
+        this, models.thumbs, widgets, this::redrawScroll, this::resizeScroll, this::scrollTo);
     loading = new LoadablePanel<InfiniteScrolledComposite>(this, widgets,
         panel -> new InfiniteScrolledComposite(panel, SWT.H_SCROLL | SWT.V_SCROLL, carousel));
     scroll = loading.getContents();
@@ -257,7 +257,7 @@ public class ThumbnailScrubber extends Composite
 
     private final Control parent;
     private final Thumbnails thumbs;
-    private final LoadingIndicator loading;
+    private final Widgets widgets;
     private final LoadingIndicator.Repaintable repainter;
     private final Runnable updateSize;
     private final Consumer<BigInteger> scrollTo;
@@ -265,12 +265,12 @@ public class ThumbnailScrubber extends Composite
     private Point imageSize;
     private int selectedIndex = -1;
 
-    public Carousel(Control parent, Thumbnails thumbs, LoadingIndicator loading,
+    public Carousel(Control parent, Thumbnails thumbs, Widgets widgets,
         LoadingIndicator.Repaintable repainter, Runnable updateSize,
         Consumer<BigInteger> scrollTo) {
       this.parent = parent;
       this.thumbs = thumbs;
-      this.loading = loading;
+      this.widgets = widgets;
       this.repainter = repainter;
       this.updateSize = updateSize;
       this.scrollTo = scrollTo;
@@ -359,8 +359,8 @@ public class ThumbnailScrubber extends Composite
         if (data.image != null) {
           toDraw = data.image.getImage();
         } else {
-          toDraw = loading.getCurrentFrame();
-          loading.scheduleForRedraw(repainter);
+          toDraw = widgets.loading.getCurrentFrame();
+          widgets.loading.scheduleForRedraw(repainter);
         }
         data.paint(gc, toDraw, x + MARGIN, MARGIN / 2, size.x, size.y, i == selectedIndex);
       }
@@ -371,8 +371,9 @@ public class ThumbnailScrubber extends Composite
       for (int i = first; i < last; i++) {
         Data data = datas.get(i);
         if (data.image == null && thumbs.isReady()) {
-          data.image = LoadableImage.newBuilder(loading)
+          data.image = LoadableImage.newBuilder(widgets.loading)
               .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)))
+              .onErrorShowErrorIcon(widgets.theme)
               .build(parent, repainter);
         }
       }

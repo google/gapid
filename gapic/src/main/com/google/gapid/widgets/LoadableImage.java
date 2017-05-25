@@ -15,14 +15,13 @@
  */
 package com.google.gapid.widgets;
 
-import static java.util.logging.Level.FINE;
-
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.Images;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.UiErrorCallback;
@@ -34,6 +33,7 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -50,15 +50,18 @@ public class LoadableImage {
   private ListenableFuture<Object> future;
   protected final LoadingIndicator loading;
   private final LoadingIndicator.Repaintable repaintable;
+  protected final ErrorStrategy errorStrategy;
   private State state;
   private Image image;
 
   protected LoadableImage(Widget widget, Supplier<ListenableFuture<Object>> futureSupplier,
-      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable) {
+      LoadingIndicator loading, LoadingIndicator.Repaintable repaintable,
+      ErrorStrategy errorStrategy) {
     this.widget = widget;
     this.futureSupplier = futureSupplier;
     this.loading = loading;
     this.repaintable = repaintable;
+    this.errorStrategy = errorStrategy;
 
     state = State.NOT_STARTED;
   }
@@ -77,15 +80,15 @@ public class LoadableImage {
     loading.scheduleForRedraw(repaintable);
 
     future = futureSupplier.get();
-    Rpc.listen(future, new UiErrorCallback<Object, Object, Void>(widget, LOG) {
+    Rpc.listen(future, new UiErrorCallback<Object, Object, Image>(widget, LOG) {
       @Override
-      protected ResultOrError<Object, Void> onRpcThread(Result<Object> result)
+      protected ResultOrError<Object, Image> onRpcThread(Result<Object> result)
           throws RpcException, ExecutionException {
         try {
           return success(result.get());
         } catch (RpcException | ExecutionException e) {
           if (!widget.isDisposed()) {
-            LOG.log(FINE, "Failed to load image", e);
+            return error(errorStrategy.handleError(e));
           }
           return error(null);
         }
@@ -94,15 +97,15 @@ public class LoadableImage {
       @Override
       protected void onUiThreadSuccess(Object result) {
         if (result instanceof Image) {
-          updateImage((Image)result);
+          updateImage((Image)result, true);
         } else {
-          updateImage(Images.createNonScaledImage(widget.getDisplay(), (ImageData)result));
+          updateImage(Images.createNonScaledImage(widget.getDisplay(), (ImageData)result), true);
         }
       }
 
       @Override
-      protected void onUiThreadError(Void error) {
-        updateImage(null);
+      protected void onUiThreadError(Image errorIcon) {
+        updateImage(errorIcon, false);
       }
     });
     return this;
@@ -122,8 +125,8 @@ public class LoadableImage {
     switch (state) {
       case NOT_STARTED: return getLoadingImage();
       case LOADING: loading.scheduleForRedraw(repaintable); return getLoadingImage();
-      case LOADED: return image;
-      case FAILED: return loading.getErrorImage();
+      case LOADED:
+      case FAILED: return image;
       case DISPOSED: SWT.error(SWT.ERROR_WIDGET_DISPOSED); return null;
       default: throw new AssertionError();
     }
@@ -145,9 +148,9 @@ public class LoadableImage {
     }
   }
 
-  protected void updateImage(Image result) {
+  protected void updateImage(Image result, boolean success) {
     if (state == State.LOADING) {
-      state = (result == null) ? State.FAILED : State.LOADED;
+      state = (result == null || !success) ? State.FAILED : State.LOADED;
       image = result;
       listeners.fire().onLoaded(result != null);
     } else if (result != null) {
@@ -177,6 +180,13 @@ public class LoadableImage {
   }
 
   /**
+   * Determines how to deal with image loading errors.
+   */
+  public static interface ErrorStrategy {
+    public Image handleError(Exception e);
+  }
+
+  /**
    * Builder for {@link LoadableImage}. If built using a future, it is assumed
    * to already be loading, while if built with a supplier, the {@link #load()}
    * method needs to be invoked to start the loading process.
@@ -184,6 +194,7 @@ public class LoadableImage {
   public static class Builder {
     private final LoadingIndicator loading;
     private Supplier<ListenableFuture<Object>> futureSupplier;
+    private ErrorStrategy errorStrategy;
     private boolean small;
     // True if build() should call load, because the future was wrapped via supplier().
     private boolean shouldLoad;
@@ -226,19 +237,42 @@ public class LoadableImage {
       return this;
     }
 
+    public Builder onErrorReturnNull() {
+      this.errorStrategy = e -> {
+        logImageError(e);
+        return null;
+      };
+      return this;
+    }
+
+    public Builder onErrorShowErrorIcon(Theme theme) {
+      this.errorStrategy = e -> {
+        logImageError(e);
+        return theme.error();
+      };
+      return this;
+    }
+
+    private static void logImageError(Exception e) {
+      if (!(e instanceof DataUnavailableException)) {
+        LOG.log(Level.WARNING, "Failed to load image", e);
+      }
+    }
+
     public LoadableImage build(Widget widget, LoadingIndicator.Repaintable repaintable) {
       Preconditions.checkState(futureSupplier != null);
+      Preconditions.checkState(errorStrategy != null);
 
       LoadableImage result;
       if (small) {
-        result = new LoadableImage(widget, futureSupplier, loading, repaintable) {
+        result = new LoadableImage(widget, futureSupplier, loading, repaintable, errorStrategy) {
           @Override
           protected Image getLoadingImage() {
             return loading.getCurrentSmallFrame();
           }
         };
       } else {
-        result = new LoadableImage(widget, futureSupplier, loading, repaintable);
+        result = new LoadableImage(widget, futureSupplier, loading, repaintable, errorStrategy);
       }
       return shouldLoad ? result.load() : result;
     }
