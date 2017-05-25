@@ -118,7 +118,14 @@ func (b *binding) parsePackages(str string) (android.InstalledPackages, error) {
 			ip, ok := packageMap[name]
 			if !ok {
 				// We didn't find an action for this package
-				continue
+				ip = &android.InstalledPackage{
+					Name:            name,
+					Device:          b,
+					ActivityActions: android.ActivityActions{},
+					ServiceActions:  android.ServiceActions{},
+					ABI:             device.UnknownABI,
+				}
+				packageMap[name] = ip
 			}
 
 			for _, attr := range pack.children {
