@@ -141,6 +141,7 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 	if err != nil {
 		return err
 	}
+	var pkg *android.InstalledPackage
 	var a *android.ActivityAction
 	switch {
 	case !options.APK.IsEmpty():
@@ -158,7 +159,7 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 		if err := d.InstallAPK(ctx, options.APK.System(), true, true); err != nil {
 			return log.Err(ctx, err, "Install APK")
 		}
-		pkg := &android.InstalledPackage{
+		pkg = &android.InstalledPackage{
 			Name:       info.Name,
 			Device:     d,
 			ABI:        d.Instance().GetConfiguration().PreferredABI(info.ABI),
@@ -174,12 +175,25 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 			Activity: info.Activity,
 		}
 
+	case verb.Android.Attach:
+		if verb.TraceFlags.Android.Package == "" {
+			return fmt.Errorf("Package name needs to be specified")
+		}
+		packages, err := d.InstalledPackages(ctx)
+		if err != nil {
+			return err
+		}
+		pkg = packages.FindByName(verb.TraceFlags.Android.Package)
+		if pkg == nil {
+			return fmt.Errorf("Package '%v' not found", verb.TraceFlags.Android.Package)
+		}
+
 	case verb.TraceFlags.Android.Package != "":
 		packages, err := d.InstalledPackages(ctx)
 		if err != nil {
 			return err
 		}
-		pkg := packages.FindByName(verb.TraceFlags.Android.Package)
+		pkg = packages.FindByName(verb.TraceFlags.Android.Package)
 		if pkg == nil {
 			return fmt.Errorf("Package '%v' not found", verb.TraceFlags.Android.Package)
 		}
@@ -204,8 +218,9 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 		if err != nil {
 			return err
 		}
+		pkg = a.Package
 	}
-	if a.Package.Debuggable {
+	if pkg.Debuggable {
 		log.I(ctx, "Package is debuggable")
 	} else {
 		err = d.Root(ctx)
@@ -222,16 +237,16 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 	// Filenames - if no name specified, use package name.
 	output := verb.Out
 	if output == "" {
-		output = a.Package.Name + ".gfxtrace"
+		output = pkg.Name + ".gfxtrace"
 	}
 	inputFile := verb.Input.File
 	if inputFile == "" {
-		inputFile = a.Package.Name + ".inputs"
+		inputFile = pkg.Name + ".inputs"
 	}
 
 	if verb.Clear.Cache {
 		log.I(ctx, "Clearing package cache")
-		if err := a.Package.ClearCache(ctx); err != nil {
+		if err := pkg.ClearCache(ctx); err != nil {
 			return err
 		}
 	}
@@ -240,7 +255,7 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 		defer d.TurnScreenOff(ctx) // Think green!
 	}
 
-	port, cleanup, err := client.Start(ctx, a)
+	port, cleanup, err := client.StartOrAttach(ctx, pkg, a)
 	if err != nil {
 		return err
 	}

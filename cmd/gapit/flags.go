@@ -136,6 +136,7 @@ type (
 			Package  string `help:"the full package name"`
 			Activity string `help:"the full activity name"`
 			Action   string `help:"the full action name"`
+			Attach   bool   `help:"attach to running instance of the specified package"`
 		}
 		APK     file.Path `help:"the path to an apk to install"`
 		Observe struct {
