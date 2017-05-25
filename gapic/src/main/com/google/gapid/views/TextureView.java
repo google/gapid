@@ -277,7 +277,7 @@ public class TextureView extends Composite
         @Override
         protected void onUiThreadError(String error) {
           setImage(null);
-          loading.showMessage(Error, error);
+          loading.showMessage(Info, error);
         }
       });
       gotoAction.setAtomIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());
@@ -390,7 +390,11 @@ public class TextureView extends Composite
         @Override
         protected AdditionalInfo onRpcThread(Result<Service.Value> result)
             throws RpcException, ExecutionException {
-          return AdditionalInfo.from(result.get());
+          try {
+            return AdditionalInfo.from(result.get());
+          } catch (DataUnavailableException e) {
+            return AdditionalInfo.NULL;
+          }
         }
 
         @Override
@@ -550,6 +554,7 @@ public class TextureView extends Composite
         image = LoadableImage.newBuilder(loading)
             .small()
             .forImageData(() -> loadImage(data))
+            .onErrorReturnNull()
             .build(viewer.getTable(), this);
         images.put(data, image);
       }

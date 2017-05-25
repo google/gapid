@@ -303,7 +303,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         Rectangle bounds = item.getImageBounds(0);
         lastShownBalloon = Balloon.createAndShow(tree, shell -> {
           LoadableImageWidget.forImage(
-              shell, LoadableImage.newBuilder(widgets.loading).forImageData(loadImage(node)))
+              shell, LoadableImage.newBuilder(widgets.loading)
+                  .forImageData(loadImage(node))
+                  .onErrorShowErrorIcon(widgets.theme))
           .withImageEventListener(new LoadableImage.Listener() {
             @Override
             public void onLoaded(boolean success) {
@@ -574,6 +576,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         image = LoadableImage.newBuilder(loading)
             .small()
             .forImageData(() -> loadImage(group))
+            .onErrorReturnNull()
             .build(viewer.getTree(), this);
         images.put(group, image);
       }

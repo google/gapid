@@ -45,7 +45,6 @@ public class LoadingIndicator {
   private final Display display;
   private final Image[] icons;
   private final Image[] smallIcons;
-  private final Image error;
   private final Set<Repaintable> componentsToRedraw = Sets.newIdentityHashSet();
 
   public LoadingIndicator(Display display, Theme theme) {
@@ -58,7 +57,6 @@ public class LoadingIndicator {
         theme.loading0small(), theme.loading1small(), theme.loading2small(), theme.loading3small(),
         theme.loading4small(), theme.loading5small(), theme.loading6small(), theme.loading7small()
     };
-    this.error = theme.error();
   }
 
   public void paint(GC g, int x, int y, Point size) {
@@ -80,10 +78,6 @@ public class LoadingIndicator {
   public Image getCurrentSmallFrame() {
     long elapsed = System.currentTimeMillis() % CYCLE_LENGTH;
     return smallIcons[(int)((elapsed * smallIcons.length) / CYCLE_LENGTH)];
-  }
-
-  public Image getErrorImage() {
-    return error;
   }
 
   public void scheduleForRedraw(Repaintable c) {
