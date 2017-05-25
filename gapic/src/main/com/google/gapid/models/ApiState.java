@@ -18,6 +18,7 @@ package com.google.gapid.models;
 import static com.google.gapid.util.Paths.stateAfter;
 import static com.google.gapid.util.UiErrorCallback.error;
 import static com.google.gapid.util.UiErrorCallback.success;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -30,6 +31,7 @@ import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.UiCallback;
@@ -45,7 +47,7 @@ import java.util.logging.Logger;
  * Model managing the API state object of the currently selected command.
  */
 public class ApiState
-    extends ModelBase.ForPath<ApiState.Node, DataUnavailableException, ApiState.Listener> {
+    extends ModelBase.ForPath<ApiState.Node, Loadable.Message, ApiState.Listener> {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   private final ConstantSets constants;
@@ -79,18 +81,21 @@ public class ApiState
   }
 
   @Override
-  protected ResultOrError<Node, DataUnavailableException> processResult(Result<Node> result) {
+  protected ResultOrError<Node, Loadable.Message> processResult(Result<Node> result) {
     try {
       return success(result.get());
     } catch (DataUnavailableException e) {
-      return error(e);
-    } catch (RpcException | ExecutionException e) {
+      return error(Loadable.Message.info(e));
+    } catch (RpcException e) {
+      LOG.log(WARNING, "Failed to load the API state", e);
+      return error(Loadable.Message.error(e));
+    } catch (ExecutionException e) {
       return super.processResult(result);
     }
   }
 
   @Override
-  protected void updateError(DataUnavailableException error) {
+  protected void updateError(Loadable.Message error) {
     if (error != null) {
       listeners.fire().onStateLoaded(error);
     } else {
@@ -276,7 +281,7 @@ public class ApiState
      *
      * @param error the loading error or {@code null} if loading was successful.
      */
-    public default void onStateLoaded(DataUnavailableException error) { /* empty */ }
+    public default void onStateLoaded(Loadable.Message error) { /* empty */ }
 
     /**
      * Event indicating that the portion of the state that is selected has changed.
