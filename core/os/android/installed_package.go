@@ -152,10 +152,10 @@ func (p *InstalledPackage) FileDir(ctx context.Context) (string, error) {
 	return path, err
 }
 
-// Pid returns the PID of the oldest (if pgrep exists) running process belonging to the given package.
+// Pid returns the PID of the newest (if pgrep exists) running process belonging to the given package.
 func (p *InstalledPackage) Pid(ctx context.Context) (int, error) {
 	// First, try pgrep.
-	out, err := p.Device.Shell("pgrep", "-o", "-f", p.Name).Call(ctx)
+	out, err := p.Device.Shell("pgrep", "-n", "-f", p.Name).Call(ctx)
 	if err == nil {
 		if out == "" {
 			// Empty pgrep output. Process not found.
