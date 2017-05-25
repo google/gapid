@@ -15,12 +15,18 @@
  */
 package com.google.gapid.widgets;
 
-import com.google.common.collect.Sets;
+import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
+import com.google.common.collect.Sets;
+import com.google.gapid.util.Loadable;
+
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.widgets.Canvas;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.Set;
@@ -33,7 +39,8 @@ public class LoadingIndicator {
   private static final int CYCLE_LENGTH = 1000;
   private static final int MS_PER_FRAME = CYCLE_LENGTH / FRAME_COUNT;
   private static final int LARGE_SIZE = 32;
-  private static final int MIN_SIZE = 3 * LARGE_SIZE / 2;
+  private static final int SIZE_THRESHOLD = 3 * LARGE_SIZE / 2;
+  private static final int SMALL_SIZE = 16;
 
   private final Display display;
   private final Image[] icons;
@@ -58,6 +65,13 @@ public class LoadingIndicator {
     paint(g, x, y, size.x, size.y);
   }
 
+  public void paint(GC g, int x, int y, int w, int h) {
+    Image image = (Math.min(w, h) < SIZE_THRESHOLD) ? getCurrentSmallFrame() : getCurrentFrame();
+    Rectangle s = image.getBounds();
+    g.drawImage(image, 0, 0, s.width, s.height,
+        x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
+  }
+
   public Image getCurrentFrame() {
     long elapsed = System.currentTimeMillis() % CYCLE_LENGTH;
     return icons[(int)((elapsed * icons.length) / CYCLE_LENGTH)];
@@ -70,13 +84,6 @@ public class LoadingIndicator {
 
   public Image getErrorImage() {
     return error;
-  }
-
-  public void paint(GC g, int x, int y, int w, int h) {
-    Image image = (Math.min(w, h) < MIN_SIZE) ? getCurrentSmallFrame() : getCurrentFrame();
-    Rectangle s = image.getBounds();
-    g.drawImage(image, 0, 0, s.width, s.height,
-        x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
   }
 
   public void scheduleForRedraw(Repaintable c) {
@@ -107,6 +114,10 @@ public class LoadingIndicator {
     }
   }
 
+  public Widget createWidget(Composite parent) {
+    return new Widget(parent);
+  }
+
   /**
    * Object containing the loading indicator that needs to be animated.
    */
@@ -115,5 +126,44 @@ public class LoadingIndicator {
      * Repaints the widget, potentially rendering the next frame in the loading animation.
      */
     public void repaint();
+  }
+
+  /**
+   * Widget that shows the loading indicator while loading and is blank once done.
+   */
+  public class Widget extends Canvas implements Loadable, Repaintable {
+    private boolean showing = false;
+
+    public Widget(Composite parent) {
+      super(parent, SWT.DOUBLE_BUFFERED);
+      addListener(SWT.Paint, e -> {
+        if (showing) {
+          paint(e.gc, 0, 0, getSize());
+          scheduleForRedraw(this);
+        }
+      });
+    }
+
+    @Override
+    public void startLoading() {
+      showing = true;
+      scheduleForRedraw(this);
+    }
+
+    @Override
+    public void stopLoading() {
+      showing = false;
+      scheduleForRedraw(this);
+    }
+
+    @Override
+    public void repaint() {
+      redrawIfNotDisposed(this);
+    }
+
+    @Override
+    public Point computeSize(int wHint, int hHint, boolean changed) {
+      return new Point(SMALL_SIZE, SMALL_SIZE);
+    }
   }
 }
