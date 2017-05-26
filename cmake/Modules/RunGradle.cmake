@@ -24,6 +24,8 @@ endif(CMAKE_HOST_WIN32)
 execute_process(
     COMMAND "${gradle}"
             ${args}
+            --info
+            --stacktrace
             -Djava.awt.headless=true # Prevent gradle from stealing window focus.
             build
     RESULT_VARIABLE result
