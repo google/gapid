@@ -38,6 +38,13 @@ mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
 echo y | ./android/tools/bin/sdkmanager build-tools\;21.1.2 platforms\;android-21 ndk-bundle
 
+# Create the debug keystore, so gradle won't try to and fail due to a race.
+mkdir -p ~/.android
+$(/usr/libexec/java_home -v 1.8)/bin/keytool -genkey -keystore ~/.android/debug.keystore \
+  -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+  -validity 10950 -dname "CN=Android Debug,O=Android,C=US"
+
+
 # Setup the build config file.
 cat <<EOF>gapid-config
 {
