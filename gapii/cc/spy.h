@@ -51,8 +51,8 @@ public:
     GLubyte* glGetString(CallObserver* observer, uint32_t name);
     GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
 
-    void onPostDrawCall() override;
-    void onPreEndOfFrame() override;
+    void onPostDrawCall(uint8_t api) override;
+    void onPreEndOfFrame(uint8_t api) override;
     void onPostEndOfFrame(CallObserver* observer) override;
     void onPostFence(CallObserver* observer) override;
 
@@ -76,7 +76,7 @@ private:
 
     // observeFramebuffer captures the currently bound framebuffer's color
     // buffer, and writes it to a FramebufferObservation atom.
-    void observeFramebuffer();
+    void observeFramebuffer(uint8_t api);
 
     // getFramebufferAttachmentSize attempts to retrieve the currently bound
     // framebuffer's color buffer dimensions, returning true on success or

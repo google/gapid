@@ -25,6 +25,7 @@ set(files
     connection_header.h
     connection_stream.cpp
     connection_stream.h
+    core_extras.cpp
     core_imports.cpp
     core_imports.h
     core_spy.h
@@ -71,6 +72,7 @@ set(files
     vulkan_VkQueue_exports.cpp
     vulkan_exports.cpp
     vulkan_exports.h
+    vulkan_extras.cpp
     vulkan_extras.h
     vulkan_imports.cpp
     vulkan_imports.h

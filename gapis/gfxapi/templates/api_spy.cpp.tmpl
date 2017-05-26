@@ -22,6 +22,7 @@
 {{Global "C++.EnumTypeOverride"   "uint32_t"}}
 {{Global "C++.Statement.Override" "Statement"}}
 
+{{Global "ApiIndex" $.Index}}
 {{Global "SpyName" (print (Title (Global "API")) "Spy")}}
 {{$ | Macro "SpyCpp"}}
 
@@ -211,7 +212,7 @@
         onPostFence(observer);
       };
 ¶
-      {{if GetAnnotation $ "EndOfFrame"}}onPreEndOfFrame();{{end}}
+      {{if GetAnnotation $ "EndOfFrame"}}onPreEndOfFrame({{Global "ApiIndex"}});{{end}}
 ¶
       uint64_t counter_at_begin = mCommandStartEndCounter++;
 ¶
@@ -244,7 +245,7 @@
       };
       observer->encodeAndDeleteCommand(c.toProto());
 
-      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall();{{end}}
+      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall({{Global "ApiIndex"}});{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
 ¶
       {{if not (IsVoid $.Return.Type)}}¶
