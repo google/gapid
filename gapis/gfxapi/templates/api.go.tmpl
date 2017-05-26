@@ -879,6 +879,9 @@
       {{if (eq $.Name "CommandBufferObject")}}
         Commands CommandBufferCommands `nobox:"true"`
       {{end}}
+      {{if (eq $.Name "QueueObject")}}
+        PendingCommands CommandBufferCommands `nobox:"true"`
+      {{end}}
     }
 
     {{if GetAnnotation $ "resource"}}

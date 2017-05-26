@@ -334,8 +334,50 @@ void VulkanSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
 void VulkanSpy::execCommands(CallObserver* observer, VkCommandBuffer cmdBuf) {
     auto& buffer = CommandBuffers[cmdBuf];
     for (auto& command: buffer->commands) {
-        command(observer);
+        if (LastBoundQueue->mPendingEvents.size() != 0) {
+          LastBoundQueue->pendingCommands.push_back(command);
+        } else {
+          command(observer);
+          // vkCmdWaitEvents will set pending events to the last bound queue.
+          // If there are pending events waiting to be signaled, following
+          // commands should be recorded to the pending list, including
+          // vkCmdEvents.
+          if (LastBoundQueue->mPendingEvents.size() != 0) {
+            LastBoundQueue->pendingCommands.push_back(command);
+          }
+        }
     }
+}
+
+void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
+  LastBoundQueue = Queues[queue];
+  std::vector<std::function<void(CallObserver * observer)>> newPendingCommands;
+  for (auto& command : LastBoundQueue->pendingCommands) {
+    if (LastBoundQueue->mPendingEvents.size() != 0) {
+      newPendingCommands.push_back(command);
+    } else {
+      command(observer);
+      if (LastBoundQueue->mPendingEvents.size() != 0) {
+        // Make sure the vkCmdWaitEvents is also added to the pending list
+        newPendingCommands.push_back(command);
+      }
+    }
+  }
+  LastBoundQueue->pendingCommands = std::move(newPendingCommands);
+}
+
+void VulkanSpy::recordUpdateSemaphoreSignal(CallObserver* observer,
+                                            VkSemaphore semaphore,
+                                            bool signaled) {
+  std::function<void(CallObserver*)> signal_semaphore =
+      [this, semaphore, signaled](CallObserver*) {
+        this->Semaphores[semaphore]->mSignaled = signaled;
+      };
+  if (LastBoundQueue->mPendingEvents.size() != 0) {
+    LastBoundQueue->pendingCommands.push_back(signal_semaphore);
+  } else {
+    signal_semaphore(observer);
+  }
 }
 
 void VulkanSpy::resetCmd(CallObserver* observer, VkCommandBuffer cmdBuf) {

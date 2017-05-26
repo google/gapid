@@ -2784,26 +2784,28 @@ cmd VkResult vkQueueSubmit(
     info := submitInfo[i]
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
-      Semaphores[wait_semaphores[j]].Signaled = false
+      recordUpdateSemaphoreSignal(wait_semaphores[j], false)
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
-
-    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
-    for j in (0 .. info.signalSemaphoreCount) {
-      Semaphores[signal_semaphores[j]].Signaled = true
-    }
 
     command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
 
     for j in (0 .. info.commandBufferCount) {
       execCommands(command_buffers[j])
     }
+
+    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    for j in (0 .. info.signalSemaphoreCount) {
+      recordUpdateSemaphoreSignal(signal_semaphores[j], true)
+    }
+
   }
   return ?
 }
 
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
+@blocking
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
   return ?
@@ -2811,6 +2813,7 @@ cmd VkResult vkQueueWaitIdle(
 
 @threadSafety("system")
 @indirect("VkDevice")
+@blocking
 cmd VkResult vkDeviceWaitIdle(
     VkDevice device) {
   return ?
@@ -3259,6 +3262,7 @@ cmd VkResult vkGetFenceStatus(
 
 @threadSafety("system")
 @indirect("VkDevice")
+@blocking
 cmd VkResult vkWaitForFences(
     VkDevice       device,
     u32            fenceCount,
@@ -3310,6 +3314,16 @@ cmd void vkDestroySemaphore(
   delete(Semaphores, semaphore)
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateEvent(
+    VkDevice                     device,
+    const VkEventCreateInfo*     pCreateInfo,
+    VkBool32                     signaled,
+    VkEvent*                     pEvent) {
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateEvent(
@@ -3317,6 +3331,15 @@ cmd VkResult vkCreateEvent(
     const VkEventCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkEvent*                     pEvent) {
+  read(pCreateInfo[0:1])
+  event := new!EventObject()
+  event.Device = device
+  event.Signaled = false
+  event.SubmitQueue = as!VkQueue(0)
+  handle := ?
+  pEvent[0] = handle
+  event.VulkanHandle = handle
+  Events[handle] = event
   return ?
 }
 
@@ -3342,6 +3365,20 @@ cmd VkResult vkGetEventStatus(
 cmd VkResult vkSetEvent(
     VkDevice device,
     VkEvent  event) {
+  e := Events[event]
+  e.Signaled = true
+  queue := e.SubmitQueue
+  if queue != as!VkQueue(0) {
+    q := Queues[queue]
+    if e.VulkanHandle in q.PendingEvents {
+      delete(q.PendingEvents, e.VulkanHandle)
+    }
+    // If all pending events are signaled, so all removed from the pending
+    // event list in the queue object, we should roll out the pending commands
+    if len(q.PendingEvents) == 0 {
+      execPendingCommands(queue)
+    }
+  }
   return ?
 }
 
@@ -3350,6 +3387,7 @@ cmd VkResult vkSetEvent(
 cmd VkResult vkResetEvent(
     VkDevice device,
     VkEvent  event) {
+  Events[event].Signaled = false
   return ?
 }
 
@@ -3403,6 +3441,7 @@ cmd void vkDestroyQueryPool(
 
 @threadSafety("system")
 @indirect("VkDevice")
+@blocking
 cmd VkResult vkGetQueryPoolResults(
     VkDevice           device,
     VkQueryPool        queryPool,
@@ -5286,6 +5325,8 @@ extern void addCmd(VkCommandBuffer cmdBuf, any recreatePayload, any payload, any
 extern void setSpecData(ref!SpecializationInfo info, size numBytes, const void* pData)
 extern void resetCmd(VkCommandBuffer cmdBuf)
 extern void execCommands(VkCommandBuffer cmdBuf)
+extern void execPendingCommands(VkQueue queue)
+extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
 extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
 extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
   VkBuffer        dstBuffer
@@ -6966,12 +7007,55 @@ cmd void vkCmdResolveImage(
   addCmd(commandBuffer, recreate_data, as!(u32)(0), doCmdResolveImage)
 }
 
+sub void doCmdSetEvent(VkEvent event) {
+  Events[event].Signaled = true
+  Events[event].SubmitQueue = LastBoundQueue.VulkanHandle
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetEvent(
+    VkCommandBuffer      commandBuffer,
+    VkEvent              event,
+    VkPipelineStageFlags stageMask) {
+}
+
+@internal class RecreateCmdSetEventData {
+    VkEvent              Event,
+    VkPipelineStageFlags StageMask,
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  recreate_data := new!RecreateCmdSetEventData(
+    Event:     event,
+    StageMask: stageMask
+  )
+  addCmd(commandBuffer, recreate_data, event, doCmdSetEvent)
+}
+
+sub void doCmdResetEvent(VkEvent event) {
+  Events[event].Signaled = false
+  Events[event].SubmitQueue = LastBoundQueue.VulkanHandle
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdResetEvent(
+    VkCommandBuffer      commandBuffer,
+    VkEvent              event,
+    VkPipelineStageFlags stageMask) {
+}
+
+@internal class RecreateCmdResetEventData {
+  VkEvent              Event,
+  VkPipelineStageFlags StageMask
 }
 
 @threadSafety("app")
@@ -6980,6 +7064,71 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  recreate_data := new!RecreateCmdResetEventData(
+    Event:     event,
+    StageMask: stageMask,
+  )
+  addCmd(commandBuffer, recreate_data, event, doCmdResetEvent)
+}
+
+@internal class CmdWaitEvents {
+  map!(u32, VkEvent)              Events,
+  map!(u32, VkImageMemoryBarrier) ImageMemoryBarriers
+}
+
+sub void doCmdWaitEvents(CmdWaitEvents args) {
+  for _, _, e in args.Events {
+    event := Events[e]
+    event.SubmitQueue = LastBoundQueue.VulkanHandle
+    if event.Signaled != true {
+      LastBoundQueue.PendingEvents[e] = event
+    }
+  }
+  if len(LastBoundQueue.PendingEvents) == 0 {
+    for _ , _ , b in args.ImageMemoryBarriers {
+      image := Images[b.image]
+      image.Info.Layout = b.newLayout
+      image.LastBoundQueue = LastBoundQueue
+    }
+  }
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdWaitEvents(
+    VkCommandBuffer              commandBuffer,
+    u32                          eventCount,
+    const VkEvent*               pEvents,
+    VkPipelineStageFlags         srcStageMask,
+    VkPipelineStageFlags         dstStageMask,
+    u32                          memoryBarrierCount,
+    const VkMemoryBarrier*       pMemoryBarriers,
+    u32                          bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+    u32                          imageMemoryBarrierCount,
+    const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  if pEvents != null {
+    read(pEvents[0:eventCount])
+  }
+  if pMemoryBarriers != null {
+    read(pMemoryBarriers[0:memoryBarrierCount])
+  }
+  if pBufferMemoryBarriers != null {
+    read(pBufferMemoryBarriers[0:bufferMemoryBarrierCount])
+  }
+  if pImageMemoryBarriers != null {
+    read(pImageMemoryBarriers[0:imageMemoryBarrierCount])
+  }
+}
+
+@internal class RecreateCmdWaitEventsData {
+  map!(u32, VkEvent)                Events,
+  VkPipelineStageFlags              SrcStageMask,
+  VkPipelineStageFlags              DstStageMask,
+  map!(u32, VkMemoryBarrier)        MemoryBarriers
+  map!(u32, VkBufferMemoryBarrier)  BufferMemoryBarriers,
+  map!(u32, VkImageMemoryBarrier)   ImageMemoryBarriers,
 }
 
 @threadSafety("app")
@@ -6996,8 +7145,31 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  recreate_data := new!RecreateCmdWaitEventsData(
+      SrcStageMask: srcStageMask,
+      DstStageMask: dstStageMask,
+  )
+  wait := CmdWaitEvents()
+  events := pEvents[0:eventCount]
+  memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+  bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+  imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
+  for i in (0 .. eventCount) {
+    recreate_data.Events[i] = events[i]
+    wait.Events[i] = events[i]
+  }
+  for i in (0 .. memoryBarrierCount) {
+    recreate_data.MemoryBarriers[i] = memoryBarriers[i]
+  }
+  for i in (0 .. bufferMemoryBarrierCount) {
+    recreate_data.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+  }
+  for i in (0 .. imageMemoryBarrierCount) {
+    recreate_data.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+    wait.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+  }
+  addCmd(commandBuffer, recreate_data, wait, doCmdWaitEvents)
 }
-
 
 @override
 @custom
@@ -7742,6 +7914,7 @@ cmd VkResult vkGetSwapchainImagesKHR(
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
 @custom
+@blocking
 cmd VkResult vkAcquireNextImageKHR(
     VkDevice       device,
     VkSwapchainKHR swapchain,
@@ -8371,10 +8544,11 @@ sub void clearLastDrawInfoDrawCommandParameters() {
 }
 
 @internal class QueueObject {
-  @unused VkDevice Device
-  @unused u32      Family
-  @unused u32      Index
-  @unused VkQueue  VulkanHandle
+  @unused VkDevice               Device
+  @unused u32                    Family
+  @unused u32                    Index
+  @unused VkQueue                VulkanHandle
+  map!(VkEvent, ref!EventObject) PendingEvents
 }
 
 enum RecordingState {
@@ -8686,6 +8860,7 @@ enum RecordingState {
   @unused bool     Signaled
 }
 
+
 @internal class SemaphoreObject {
   @unused VkDevice    Device
   @unused VkSemaphore VulkanHandle
@@ -8696,6 +8871,8 @@ enum RecordingState {
 @internal class EventObject {
   @unused VkDevice Device
   @unused VkEvent  VulkanHandle
+  @unused bool Signaled
+  @unused VkQueue SubmitQueue
 }
 
 enum QueryStatus {

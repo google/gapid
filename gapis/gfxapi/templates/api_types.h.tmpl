@@ -126,6 +126,7 @@
   {{$is_specialization_info := (eq $.Name "SpecializationInfo")}}
   {{$is_update_buffer := (eq $.Name "RecreateCmdUpdateBufferData")}}
   {{$is_push_constants := (eq $.Name "RecreateCmdPushConstantsData")}}
+  {{$is_queue := (eq $.Name "QueueObject")}}
   {{range $f := $.Fields}}
     {{Template "DeclareType" (TypeOf $f)}}
   {{end}}
@@ -173,6 +174,9 @@
     {{end}}
     {{if $is_push_constants}}
       std::vector<uint8_t> pushConstantData;
+    {{end}}
+    {{if $is_queue}}
+      std::vector<std::function<void(CallObserver* observer)>> pendingCommands;
     {{end}}
   };
 {{end}}
