@@ -32,7 +32,6 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.AtomStream.Observation;
@@ -177,7 +176,7 @@ public class MemoryView extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }

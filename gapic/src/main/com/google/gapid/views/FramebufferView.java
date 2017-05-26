@@ -24,7 +24,6 @@ import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLevelImage;
 import com.google.gapid.models.AtomStream;
@@ -183,7 +182,7 @@ public class FramebufferView extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       imagePanel.setImage(null);
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);

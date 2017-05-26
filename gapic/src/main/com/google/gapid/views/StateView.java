@@ -20,7 +20,6 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.ApiState;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -190,7 +189,7 @@ public class StateView extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }

@@ -30,7 +30,6 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
 import com.google.common.collect.Lists;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -50,6 +49,7 @@ import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.ProtoDebugTextFormat;
@@ -219,7 +219,7 @@ public class ShaderView extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }

@@ -29,7 +29,6 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.glviewer.Geometry;
 import com.google.gapid.glviewer.Geometry.DisplayMode;
 import com.google.gapid.glviewer.Viewer;
@@ -51,6 +50,7 @@ import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Streams;
 import com.google.gapid.util.UiErrorCallback;
@@ -221,7 +221,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }

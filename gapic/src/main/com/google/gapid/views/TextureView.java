@@ -32,7 +32,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -194,7 +193,7 @@ public class TextureView extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
       clear();
