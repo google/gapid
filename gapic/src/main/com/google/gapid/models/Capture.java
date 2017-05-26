@@ -18,18 +18,17 @@ package com.google.gapid.models;
 import static com.google.gapid.util.UiErrorCallback.error;
 import static com.google.gapid.util.UiErrorCallback.success;
 import static java.util.logging.Level.INFO;
-import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.UiErrorCallback;
 import com.google.gapid.util.UiErrorCallback.ResultOrError;
 
@@ -39,12 +38,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Model containing information about the currently loaded trace.
  */
-public class Capture extends ModelBase<Path.Capture, File, GapisInitException, Capture.Listener> {
+public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Capture.Listener> {
   protected static final Logger LOG = Logger.getLogger(Capture.class.getName());
 
   private final Settings settings;
@@ -68,8 +68,7 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
   @Override
   protected ListenableFuture<Path.Capture> doLoad(File file) {
     if (file.length() == 0) {
-      return Futures.immediateFailedFuture(new GapisInitException(
-          GapisInitException.MESSAGE_TRACE_FILE_EMPTY + file, "empty file"));
+      return Futures.immediateFailedFuture(new Exception("Trace file is empty!"));
     }
 
     String canonicalPath;
@@ -84,8 +83,7 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
         settings.lastOpenDir = file.getParentFile().getAbsolutePath();
       }
 
-      return Futures.immediateFailedFuture(new GapisInitException(
-          GapisInitException.MESSAGE_TRACE_FILE_LOAD_FAILED + file, "Loading trace failed", e));
+      return Futures.immediateFailedFuture(new Exception("Failed to load trace!", e));
     }
 
     settings.addToRecent(canonicalPath);
@@ -93,23 +91,20 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
   }
 
   @Override
-  protected ResultOrError<Path.Capture, GapisInitException> processResult(
+  protected ResultOrError<Path.Capture, Loadable.Message> processResult(
       Result<Path.Capture> result) {
     try {
       Path.Capture capturePath = result.get();
       if (capturePath == null) {
-        return error(new GapisInitException(
-            GapisInitException.MESSAGE_TRACE_FILE_BROKEN + getSource(), "Invalid/Corrupted"));
+        return error(Loadable.Message.error("Invalid/Corrupted trace file!"));
       } else {
         return success(capturePath);
       }
-    } catch (ExecutionException | RpcException e) {
-      if (e.getCause() instanceof GapisInitException) {
-        return error((GapisInitException)e.getCause());
-      }
-      return error(new GapisInitException(
-          GapisInitException.MESSAGE_TRACE_FILE_LOAD_FAILED + getSource(),
-          "Loading trace failed", e));
+    } catch (RpcException e) {
+      return error(Loadable.Message.error(e));
+    } catch (ExecutionException e) {
+      LOG.log(Level.WARNING, "Failed to load trace", e);
+      return error(Loadable.Message.error(e.getCause().getMessage()));
     }
   }
 
@@ -140,8 +135,8 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
         settings.lastOpenDir = file.getParentFile().getAbsolutePath();
       }
 
-      updateError(new GapisInitException(
-          GapisInitException.MESSAGE_TRACE_FILE_SAVE_FAILED + file, "Saving trace failed", e));
+      LOG.log(Level.WARNING, "Failed to save trace", e);
+      updateError(Loadable.Message.error("Saving trace failed"));
       return;
     }
 
@@ -175,8 +170,7 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
   }
 
   @Override
-  protected void updateError(GapisInitException error) {
-    LOG.log(SEVERE, "Failed to load capture", error); // TODO show to user.
+  protected void updateError(Loadable.Message error) {
     listeners.fire().onCaptureLoaded(error);
   }
 
@@ -205,6 +199,6 @@ public class Capture extends ModelBase<Path.Capture, File, GapisInitException, C
      *
      * @param error the loading error or {@code null} if loading was successful.
      */
-    public default void onCaptureLoaded(GapisInitException error) { /* empty */ }
+    public default void onCaptureLoaded(Loadable.Message error) { /* empty */ }
   }
 }

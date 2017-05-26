@@ -17,11 +17,11 @@ package com.google.gapid.models;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Loadable;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -44,7 +44,7 @@ abstract class CaptureDependentModel<T, L extends Events.Listener>
       }
 
       @Override
-      public void onCaptureLoaded(GapisInitException error) {
+      public void onCaptureLoaded(Loadable.Message error) {
         if (error == null) {
           load(getPath(capture.getData()), false);
         } else {

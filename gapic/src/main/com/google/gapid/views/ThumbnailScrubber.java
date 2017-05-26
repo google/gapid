@@ -24,7 +24,6 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
 import com.google.common.collect.Lists;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
@@ -35,6 +34,7 @@ import com.google.gapid.models.Thumbnails;
 import com.google.gapid.models.Timeline;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.BigPoint;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.InfiniteScrolledComposite;
 import com.google.gapid.widgets.LoadableImage;
@@ -135,9 +135,9 @@ public class ThumbnailScrubber extends Composite
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+      loading.showMessage(error);
       carousel.setData(Collections.emptyList());
     } else {
       updateScrubber();

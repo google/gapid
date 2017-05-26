@@ -23,7 +23,6 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
-import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
@@ -36,6 +35,7 @@ import com.google.gapid.proto.service.Service.ReportGroup;
 import com.google.gapid.proto.service.Service.ReportItem;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.LoadablePanel;
@@ -138,7 +138,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
   }
 
   @Override
-  public void onCaptureLoaded(GapisInitException error) {
+  public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
