@@ -59,6 +59,9 @@ public:
     // Helper method for sending plain-old-data values.
     // Returns true if the send was successful, otherwise false.
     template<typename T> inline bool send(const T& data);
+
+    // Closes the connection for read/write but leaves the object around.
+    virtual void close() = 0;
 };
 
 template<typename T>

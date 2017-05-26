@@ -49,6 +49,9 @@ public:
     // core::StreamWriter compliance
     virtual uint64_t write(const void* data, uint64_t size) override;
 
+    // Closes the connection stream
+    virtual void close();
+
 private:
     ConnectionStream(std::unique_ptr<core::Connection>);
 

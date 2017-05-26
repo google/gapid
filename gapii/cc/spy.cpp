@@ -161,15 +161,15 @@ Spy::Spy()
 #if TARGET_OS == GAPID_OS_ANDROID
     // Use a "localabstract" pipe on Android to prevent depending on the traced application
     // having the INTERNET permission set, required for opening and listening on a TCP socket.
-    auto conn = ConnectionStream::listenPipe("gapii", true);
+    mConnection = ConnectionStream::listenPipe("gapii", true);
 #else // TARGET_OS
-    auto conn = ConnectionStream::listenSocket("127.0.0.1", "9286");
+    mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
 #endif // TARGET_OS
 
     GAPID_INFO("Connection made");
 
     ConnectionHeader header;
-    if (header.read(conn.get())) {
+    if (header.read(mConnection.get())) {
         mObserveFrameFrequency = header.mObserveFrameFrequency;
         mObserveDrawFrequency = header.mObserveDrawFrequency;
         mDisablePrecompiledShaders =
@@ -193,7 +193,7 @@ Spy::Spy()
 
     CallObserver observer(this, kCoreAPI);
 
-    mEncoder = gapii::PackEncoder::create(conn);
+    mEncoder = gapii::PackEncoder::create(mConnection);
 
     GlesSpy::init();
     CoreSpy::init();
@@ -202,9 +202,9 @@ Spy::Spy()
 
     if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
         mDeferStartJob = std::unique_ptr<core::AsyncJob>(
-        new core::AsyncJob([this, conn]() {
+        new core::AsyncJob([this]() {
             uint32_t buffer;
-            if (4 == conn->read(&buffer, 4)) {
+            if (4 == mConnection->read(&buffer, 4)) {
                 if (buffer == kStartMidExecutionCapture) {
                     mSuspendCaptureFrames.store(1);
                 }
@@ -374,6 +374,7 @@ void Spy::onPostEndOfFrame(CallObserver* observer) {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
+            mConnection->close();
             set_suspended(true);
         }
     }

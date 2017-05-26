@@ -59,6 +59,8 @@ public:
         connections.pop();
         return std::unique_ptr<Connection>(conn);
     }
+    void close() override {
+    }
 
     std::queue<Connection*> connections;
     std::vector<uint8_t> in;

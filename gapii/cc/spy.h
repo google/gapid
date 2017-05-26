@@ -25,7 +25,7 @@
 #include <unordered_map>
 
 namespace gapii {
-
+class ConnectionStream;
 class Spy : public GlesSpy, public VulkanSpy, public CoreSpy {
 public:
     // get lazily constructs and returns the singleton instance to the spy.
@@ -90,6 +90,9 @@ private:
     // The number of frames that we want to suspend capture for before
     // we start.
     std::atomic<int> mSuspendCaptureFrames;
+
+    // The connection stream to the server
+    std::shared_ptr<ConnectionStream> mConnection;
     // The number of frames that we want to capture
     int mCaptureFrames;
     int mNumDraws;
