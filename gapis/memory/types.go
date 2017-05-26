@@ -30,9 +30,6 @@ type Int int64
 // Uint is an unsigned integer type.
 type Uint uint64
 
-// Size is a size_t type.
-type Size uint64
-
 // Char is the possibly signed but maybe unsigned C/C++ char.
 type Char uint8
 
@@ -43,4 +40,21 @@ func CharToBytes(ϟchars []Char) []byte {
 		bytes[i] = byte(ϟchars[i])
 	}
 	return bytes
+}
+
+// Size is a size_t type.
+type Size uint64
+
+// SizeTy is the interface implemented by types that should be treated as a size_t type.
+type SizeTy interface {
+	IsMemorySize()
+}
+
+// Dummy function to make Size implement SizeTy interface
+func (Size) IsMemorySize() {}
+
+// IsSize returns true if v is a Size or alias to a Size.
+func IsSize(v interface{}) bool {
+	_, ok := v.(SizeTy)
+	return ok
 }

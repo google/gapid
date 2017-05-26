@@ -40,7 +40,7 @@ func encode(e *Encoder, v reflect.Value) {
 		e.Int(Int(v.Int()))
 	case t == tyUint:
 		e.Uint(Uint(v.Uint()))
-	case t == tySize:
+	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
 		e.Size(Size(v.Uint()))
 	default:
 		switch t.Kind() {

@@ -29,7 +29,7 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 		return uint64(m.GetPointer().GetAlignment())
 	case t == tyInt, t == tyUint:
 		return uint64(m.GetInteger().GetAlignment())
-	case t == tySize:
+	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
 		return uint64(m.GetSize().GetAlignment())
 	default:
 

@@ -45,7 +45,7 @@ func decode(d *Decoder, v reflect.Value) {
 		v.SetInt(int64(d.Int()))
 	case t == tyUint:
 		v.SetUint(uint64(d.Uint()))
-	case t == tySize:
+	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
 		v.SetUint(uint64(d.Size()))
 	default:
 

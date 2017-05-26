@@ -127,6 +127,11 @@
     {{$to := Macro "Go.Type" $.To}}
 
     type {{$.Name}} {{$to}}
+    {{if (GetAnnotation $ "dispatchHandle")}}
+      // Dummy function to make dispatchable handle implement SizeTy interface
+      func ({{$.Name}}) IsMemorySize() {}
+
+    {{end}}
   {{end}}
 
   {{template "LabelsForLabeledType" $}}
