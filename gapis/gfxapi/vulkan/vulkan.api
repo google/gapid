@@ -3322,6 +3322,8 @@ cmd void RecreateEvent(
     const VkEventCreateInfo*     pCreateInfo,
     VkBool32                     signaled,
     VkEvent*                     pEvent) {
+  read(pCreateInfo[0:1])
+  write(pEvent[0:1])
 }
 
 @threadSafety("system")
@@ -5644,6 +5646,12 @@ cmd void vkCmdBindDescriptorSets(
           bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
               Buffers[bufferBinding.Buffer], binding_offset, bufferBinding.Range)
         }
+        for k in (0 .. len(binding.BufferViewBindings)) {
+          buffer_view := binding.BufferViewBindings[as!u32(k)]
+          buffer_view_object := BufferViews[buffer_view]
+          bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
+            buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
+        }
       }
     }
   }
@@ -5787,7 +5795,11 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
 sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
   mem := buffer.Memory
   if mem != null {
-    readCoherentMemory(mem, buffer.MemoryOffset + readOffset, readSize)
+    if as!u64(readSize) == 0xFFFFFFFFFFFFFFFF {
+      readCoherentMemory(mem, buffer.MemoryOffset + readOffset, buffer.Info.Size - readOffset)
+    } else {
+      readCoherentMemory(mem, buffer.MemoryOffset + readOffset, readSize)
+    }
   }
 }
 

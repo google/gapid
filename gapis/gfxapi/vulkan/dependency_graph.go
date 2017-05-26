@@ -1435,6 +1435,26 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	case *RecreateCmdSetBlendConstants:
 		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
 
+	case *VkCmdSetEvent:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+
+	case *RecreateCmdSetEvent:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+
+	case *VkCmdResetEvent:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+
+	case *RecreateCmdResetEvent:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+
+	case *VkCmdWaitEvents:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		//TODO: handle the image and buffer memory barriers?
+
+	case *RecreateCmdWaitEvents:
+		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		//TODO: handle the image and buffer memory barriers?
+
 	case *VkCmdExecuteCommands:
 		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
 		for i := uint32(0); i < a.CommandBufferCount; i++ {
