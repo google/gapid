@@ -47,4 +47,8 @@ uint64_t ConnectionStream::write(const void* data, uint64_t size) {
     return mConnection->send(data, size);
 }
 
+void ConnectionStream::close() {
+    mConnection->close();
+}
+
 } // namespace gapii

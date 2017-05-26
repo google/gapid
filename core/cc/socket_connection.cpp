@@ -184,6 +184,11 @@ const char* SocketConnection::error() {
     return strerror(core::error());
 }
 
+void SocketConnection::close() {
+    core::close(mSocket);
+    mSocket = -1;
+}
+
 std::unique_ptr<Connection> SocketConnection::accept(int timeoutMs /* = NO_TIMEOUT */) {
     int clientSocket = core::accept(mSocket, timeoutMs);
     switch (clientSocket) {

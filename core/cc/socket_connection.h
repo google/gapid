@@ -44,6 +44,7 @@ public:
     const char* error() override;
     std::unique_ptr<Connection> accept(int timeoutMs = NO_TIMEOUT) override;
 
+    void close() override;
 private:
     // Private constructor used only by the static create function
     explicit SocketConnection(int socket);

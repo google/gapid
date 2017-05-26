@@ -113,19 +113,20 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
 	args := r.FindAllString(verb.Local.Args, -1)
-
+	ctx, cancel := context.WithCancel(ctx)
 	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
 		Env:  env,
 		Args: args,
 	})
 
 	if err != nil {
+		cancel()
 		return cleanup, err
 	}
 	if verb.Local.Port == 0 {
 		verb.Local.Port = boundPort
 	}
-	return cleanup, nil
+	return func() { cancel(); cleanup() }, nil
 }
 
 func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, options client.Options) error {
