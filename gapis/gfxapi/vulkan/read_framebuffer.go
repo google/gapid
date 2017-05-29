@@ -42,7 +42,7 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	}
 }
 
-// If we are acutally swapping, we really do want toshow the image before
+// If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
 func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
 	isEof := a.AtomFlags().IsEndOfFrame()
@@ -52,6 +52,10 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 
 	if !isEof {
 		doMutate()
+	} else {
+		// This is a VkQueuePresent, we need to extract the information out of this,
+		// so that we can correctly display the image.
+		a.Mutate(ctx, out.State(), nil)
 	}
 
 	if r, ok := t.injections[id]; ok {
@@ -94,9 +98,14 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		// TODO: Figure out a better way to select the framebuffer here.
-		imageView := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
-		imageObject := imageView.Image
-		postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
+			imageView := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
+			imageObject := imageView.Image
+			postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+		} else {
+			imageObject := GetState(s).LastPresentInfo.PresentImages[attachmentIndex]
+			postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+		}
 	})
 }
 

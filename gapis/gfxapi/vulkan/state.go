@@ -20,7 +20,7 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
-func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
+func (st *State) getSubmitAttachmentInfo(attachment gfxapi.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
 	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
 		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, fmt.Errorf(format_str, e...)
 	}
@@ -71,4 +71,37 @@ func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttac
 	}
 
 	return returnError("%s is not bound", attachment)
+}
+
+func (st *State) getPresentAttachmentInfo(attachment gfxapi.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
+	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
+		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, fmt.Errorf(format_str, e...)
+	}
+
+	switch attachment {
+	case gfxapi.FramebufferAttachment_Color0,
+		gfxapi.FramebufferAttachment_Color1,
+		gfxapi.FramebufferAttachment_Color2,
+		gfxapi.FramebufferAttachment_Color3:
+		image_idx := uint32(attachment - gfxapi.FramebufferAttachment_Color0)
+		if st.LastPresentInfo.PresentImageCount <= image_idx {
+			return returnError("Swapchain does not contain image %v", attachment)
+		}
+		color_img := st.LastPresentInfo.PresentImages[image_idx]
+		return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, image_idx, nil
+	case gfxapi.FramebufferAttachment_Depth:
+		fallthrough
+	case gfxapi.FramebufferAttachment_Stencil:
+		fallthrough
+	default:
+		return returnError("Swapchain attachment %v does not exist", attachment)
+	}
+}
+
+func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
+	if st.LastSubmission == LastSubmissionType_SUBMIT {
+		return st.getSubmitAttachmentInfo(attachment)
+	} else {
+		return st.getPresentAttachmentInfo(attachment)
+	}
 }
