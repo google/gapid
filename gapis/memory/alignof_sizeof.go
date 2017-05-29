@@ -27,9 +27,11 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	switch {
 	case t.Implements(tyPointer):
 		return uint64(m.GetPointer().GetAlignment())
-	case t == tyInt, t == tyUint:
+	case t.Implements(tyChar):
+		return uint64(m.GetChar().GetAlignment())
+	case t.Implements(tyInt), t.Implements(tyUint):
 		return uint64(m.GetInteger().GetAlignment())
-	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
+	case t.Implements(tySize):
 		return uint64(m.GetSize().GetAlignment())
 	default:
 
@@ -71,9 +73,11 @@ func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	switch {
 	case t.Implements(tyPointer):
 		return uint64(m.GetPointer().GetSize())
-	case t == tyInt, t == tyUint:
+	case t.Implements(tyChar):
+		return uint64(m.GetChar().GetSize())
+	case t.Implements(tyInt), t.Implements(tyUint):
 		return uint64(m.GetInteger().GetSize())
-	case t == tySize:
+	case t.Implements(tySize):
 		return uint64(m.GetSize().GetSize())
 	default:
 

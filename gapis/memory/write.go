@@ -34,13 +34,13 @@ func encode(e *Encoder, v reflect.Value) {
 	switch {
 	case t.Implements(tyPointer):
 		e.Pointer(v.Interface().(Pointer).Address())
-	case t == tyChar:
+	case t.Implements(tyChar):
 		e.Char(Char(v.Uint()))
-	case t == tyInt:
+	case t.Implements(tyInt):
 		e.Int(Int(v.Int()))
-	case t == tyUint:
+	case t.Implements(tyUint):
 		e.Uint(Uint(v.Uint()))
-	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
+	case t.Implements(tySize):
 		e.Size(Size(v.Uint()))
 	default:
 		switch t.Kind() {

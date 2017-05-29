@@ -39,13 +39,13 @@ func decode(d *Decoder, v reflect.Value) {
 	case t.Implements(tyPointer):
 		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)
 		v.Set(reflect.ValueOf(p))
-	case t == tyChar:
+	case t.Implements(tyChar):
 		v.SetUint(uint64(d.Char()))
-	case t == tyInt:
+	case t.Implements(tyInt):
 		v.SetInt(int64(d.Int()))
-	case t == tyUint:
+	case t.Implements(tyUint):
 		v.SetUint(uint64(d.Uint()))
-	case t.Implements(reflect.TypeOf((*SizeTy)(nil)).Elem()):
+	case t.Implements(tySize):
 		v.SetUint(uint64(d.Size()))
 	default:
 

@@ -18,20 +18,44 @@ import "reflect"
 
 var (
 	tyPointer = reflect.TypeOf((*Pointer)(nil)).Elem()
-	tyChar    = reflect.TypeOf(Char(0))
-	tyInt     = reflect.TypeOf(Int(0))
-	tyUint    = reflect.TypeOf(Uint(0))
-	tySize    = reflect.TypeOf(Size(0))
+	tyChar    = reflect.TypeOf((*CharTy)(nil)).Elem()
+	tyInt     = reflect.TypeOf((*IntTy)(nil)).Elem()
+	tyUint    = reflect.TypeOf((*UintTy)(nil)).Elem()
+	tySize    = reflect.TypeOf((*SizeTy)(nil)).Elem()
 )
 
 // Int is a signed integer type.
 type Int int64
 
+// IntTy is the interface implemented by types that should be treated as int type.
+type IntTy interface {
+	IsInt()
+}
+
+// Dummy function to make Int implement IntTy interface
+func (Int) IsInt() {}
+
 // Uint is an unsigned integer type.
 type Uint uint64
 
+// UintTy is the interface implemented by types that should be treated as uint type.
+type UintTy interface {
+	IsUint()
+}
+
+// Dummy function to make Uint implement UintTy interface
+func (Uint) IsUint() {}
+
 // Char is the possibly signed but maybe unsigned C/C++ char.
 type Char uint8
+
+// UintTy is the interface implemented by types that should be treated as char type.
+type CharTy interface {
+	IsChar()
+}
+
+// Dummy function to make Uint implement CharTy interface
+func (Char) IsChar() {}
 
 // CharToBytes changes the Char values to their byte[] representation.
 func CharToBytes(ϟchars []Char) []byte {
@@ -45,7 +69,7 @@ func CharToBytes(ϟchars []Char) []byte {
 // Size is a size_t type.
 type Size uint64
 
-// SizeTy is the interface implemented by types that should be treated as a size_t type.
+// SizeTy is the interface implemented by types that should be treated as size_t type.
 type SizeTy interface {
 	IsMemorySize()
 }
