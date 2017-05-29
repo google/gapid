@@ -24,22 +24,38 @@ import (
 // a given MemoryLayout.
 // Encoder will automatically handle alignment and types sizes.
 type Encoder struct {
-	w binary.Writer
-	m *device.MemoryLayout
-	o uint64
+	w  binary.Writer
+	m  *device.MemoryLayout
+	o  uint64
+	tp []bool // tight-packing mode stack
 }
 
 // NewEncoder constructs and returns a new Encoder that writes to w using
 // the memory layout m.
-func NewEncoder(w binary.Writer, m *device.MemoryLayout) *Encoder { return &Encoder{w, m, 0} }
+func NewEncoder(w binary.Writer, m *device.MemoryLayout) *Encoder {
+	return &Encoder{w, m, 0, []bool{false}}
+}
 
 func (e *Encoder) alignAndOffset(d *device.DataTypeLayout) {
 	e.Align(uint64(d.GetAlignment()))
 	e.o += uint64(d.GetSize())
 }
 
+// PushTightPacking controls alignment of decoding.
+func (e *Encoder) PushTightPacking(tightPacking bool) {
+	e.tp = append(e.tp, tightPacking)
+}
+
+// PopTightPacking restores the alignment packing mode.
+func (e *Encoder) PopTightPacking() {
+	e.tp = e.tp[:len(e.tp)-1]
+}
+
 // Align writes zero bytes until the write position is a multiple of to.
 func (e *Encoder) Align(to uint64) {
+	if e.tp[len(e.tp)-1] {
+		return
+	}
 	alignment := u64.AlignUp(e.o, to)
 	if pad := alignment - e.o; pad != 0 {
 		e.Pad(pad)

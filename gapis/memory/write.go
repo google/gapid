@@ -69,10 +69,13 @@ func encode(e *Encoder, v reflect.Value) {
 		case reflect.Uint:
 			e.Uint(Uint(v.Uint()))
 		case reflect.Array, reflect.Slice:
+			e.PushTightPacking(true)
 			for i, c := 0, v.Len(); i < c; i++ {
 				encode(e, v.Index(i))
 			}
+			e.PopTightPacking()
 		case reflect.Struct:
+			e.PushTightPacking(false)
 			e.Align(AlignOf(v.Type(), e.m))
 			base := e.o
 			for i, c := 0, v.NumField(); i < c; i++ {
@@ -81,6 +84,7 @@ func encode(e *Encoder, v reflect.Value) {
 			written := e.o - base
 			padding := SizeOf(v.Type(), e.m) - written
 			e.Pad(padding)
+			e.PopTightPacking()
 		case reflect.String:
 			e.String(v.String())
 		case reflect.Bool:

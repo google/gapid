@@ -75,10 +75,13 @@ func decode(d *Decoder, v reflect.Value) {
 		case reflect.Uint:
 			v.SetUint(uint64(d.Uint()))
 		case reflect.Array, reflect.Slice:
+			d.PushTightPacking(true)
 			for i, c := 0, v.Len(); i < c; i++ {
 				decode(d, v.Index(i))
 			}
+			d.PopTightPacking()
 		case reflect.Struct:
+			d.PushTightPacking(false)
 			d.Align(AlignOf(v.Type(), d.m))
 			base := d.o
 			for i, c := 0, v.NumField(); i < c; i++ {
@@ -87,6 +90,7 @@ func decode(d *Decoder, v reflect.Value) {
 			read := d.o - base
 			padding := SizeOf(v.Type(), d.m) - read
 			d.Skip(padding)
+			d.PopTightPacking()
 		case reflect.String:
 			v.SetString(d.String())
 		case reflect.Bool:
