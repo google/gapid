@@ -107,10 +107,6 @@ const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 
 const int32_t  kSuspendIndefinitely = -1;
 
-const uint8_t kCoreAPI = 0;
-const uint8_t kGLESAPI = 1;
-const uint8_t kVulkanAPI = 2;
-
 core::Mutex gMutex;  // Guards gSpy.
 std::unique_ptr<gapii::Spy> gSpy;
 
@@ -137,7 +133,7 @@ Spy* Spy::get() {
         if (!s->try_to_enter()) {
             GAPID_FATAL("Couldn't enter on init?!")
         }
-        CallObserver observer(s, kCoreAPI);
+        CallObserver observer(s, CoreSpy::kApiIndex);
         s->lock(&observer, "writeHeader");
         s->writeHeader();
         s->unlock();
@@ -191,7 +187,7 @@ Spy::Spy()
     GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
     GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
 
-    CallObserver observer(this, kCoreAPI);
+    CallObserver observer(this, CoreSpy::kApiIndex);
 
     mEncoder = gapii::PackEncoder::create(mConnection);
 
@@ -441,17 +437,17 @@ void Spy::observeFramebuffer(uint8_t api) {
     uint32_t h = 0;
     std::vector<uint8_t> data;
     switch(api) {
-        case kCoreAPI:
+        case CoreSpy::kApiIndex:
             if (!CoreSpy::observeFramebuffer(&w, &h, &data)) {
                 return;
             }
             break;
-        case kGLESAPI:
+        case GlesSpy::kApiIndex:
             if (!GlesSpy::observeFramebuffer(&w, &h, &data)) {
                 return;
             }
             break;
-        case kVulkanAPI:
+        case VulkanSpy::kApiIndex:
             if (!VulkanSpy::observeFramebuffer(&w, &h, &data)) {
                 return;
             }
