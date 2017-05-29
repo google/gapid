@@ -125,8 +125,27 @@
   {{else if IsVoid     $u}}
   {{else}}
     {{$to := Macro "Go.Type" $.To}}
-
     type {{$.Name}} {{$to}}
+    {{if IsSize $u}}
+      // Dummy function to make {{$.Name}} implement SizeTy interface
+      func ({{$.Name}}) IsMemorySize() {}
+
+    {{end}}
+    {{if IsChar $u}}
+      // Dummy function to make {{$.Name}} implement CharTy interface
+      func ({{$.Name}}) IsChar() {}
+
+    {{end}}
+    {{if IsInt $u}}
+      // Dummy function to make {{$.Name}} implement IntTy interface
+      func ({{$.Name}}) IsInt() {}
+
+    {{end}}
+    {{if IsUint $u}}
+      // Dummy function to make {{$.Name}} implement UintTy interface
+      func ({{$.Name}}) IsUint() {}
+
+    {{end}}
   {{end}}
 
   {{template "LabelsForLabeledType" $}}
