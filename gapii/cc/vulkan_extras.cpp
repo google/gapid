@@ -29,36 +29,48 @@ struct destroyer {
 
 bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         std::vector<uint8_t>* data) {
-    if (!LastDrawInfo.mRenderPass) {
-        return false;
-    }
-    if (!LastDrawInfo.mFramebuffer) {
-        return false;
-    }
-    if (LastDrawInfo.mLastSubpass >=
-        LastDrawInfo.mRenderPass->mSubpassDescriptions.size()) {
-        return false;
-    }
-    if (LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments.empty()) {
-        return false;
+    std::shared_ptr<ImageObject> image;
+    if (LastSubmission == LastSubmissionType::SUBMIT) {
+        if (!LastDrawInfo.mRenderPass) {
+            return false;
+        }
+        if (!LastDrawInfo.mFramebuffer) {
+            return false;
+        }
+        if (LastDrawInfo.mLastSubpass >=
+            LastDrawInfo.mRenderPass->mSubpassDescriptions.size()) {
+            return false;
+        }
+        if (LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments.empty()) {
+            return false;
+        }
+
+        uint32_t color_attachment_index = LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments[0].mAttachment;
+        if (LastDrawInfo.mFramebuffer->mImageAttachments.count(color_attachment_index) == 0) {
+            return false;
+        }
+
+        auto& imageView = LastDrawInfo.mFramebuffer->mImageAttachments[color_attachment_index];
+        image = imageView->mImage;
+        *w = LastDrawInfo.mFramebuffer->mWidth;
+        *h = LastDrawInfo.mFramebuffer->mHeight;
+    } else {
+        if (LastPresentInfo.mPresentImageCount == 0) {
+            return false;
+        }
+        image = LastPresentInfo.mPresentImages[0];
+        *w = image->mInfo.mExtent.mWidth;
+        *h = image->mInfo.mExtent.mHeight;
     }
 
-    uint32_t color_attachment_index = LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments[0].mAttachment;
-    if (LastDrawInfo.mFramebuffer->mImageAttachments.count(color_attachment_index) == 0) {
-        return false;
-    }
+    // TODO: Handle multisampled images. This is only a concern for
+    // draw-level observations.
 
-    auto& imageView = LastDrawInfo.mFramebuffer->mImageAttachments[color_attachment_index];
-    *w = LastDrawInfo.mFramebuffer->mWidth;
-    *h = LastDrawInfo.mFramebuffer->mHeight;
-
-    // If the image is multisampled, then resolve it first, to a temporary
-
-    VkDevice device = imageView->mDevice;
+    VkDevice device = image->mDevice;
     VkPhysicalDevice physical_device = Devices[device]->mPhysicalDevice;
     VkInstance instance = PhysicalDevices[physical_device]->mInstance;
-    VkQueue queue = imageView->mImage->mLastBoundQueue->mVulkanHandle;
-    uint32_t queue_family = imageView->mImage->mLastBoundQueue->mFamily;
+    VkQueue queue = image->mLastBoundQueue->mVulkanHandle;
+    uint32_t queue_family = image->mLastBoundQueue->mFamily;
     auto& instance_fn = mImports.mVkInstanceFunctions[instance];
 
     VkPhysicalDeviceMemoryProperties memory_properties;
@@ -66,7 +78,7 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         &memory_properties);
 
 
-    uint32_t format = imageView->mImage->mInfo.mFormat;
+    uint32_t format = image->mInfo.mFormat;
     auto& fn = mImports.mVkDeviceFunctions[device];
 
     VkImageCreateInfo create_info {
@@ -88,19 +100,19 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED              // layout
     };
 
-    VkImage image;
+    VkImage resolve_image;
     VkDeviceMemory image_memory;
 
-    if (VkResult::VK_SUCCESS != fn.vkCreateImage(device, &create_info, nullptr, &image)) {
+    if (VkResult::VK_SUCCESS != fn.vkCreateImage(device, &create_info, nullptr, &resolve_image)) {
         return false;
     }
     destroyer image_destroyer([&]() {
-        fn.vkDestroyImage(device, image, nullptr);
+        fn.vkDestroyImage(device, resolve_image, nullptr);
     });
 
 
     VkMemoryRequirements image_reqs;
-    fn.vkGetImageMemoryRequirements(device, image, &image_reqs);
+    fn.vkGetImageMemoryRequirements(device, resolve_image, &image_reqs);
 
     uint32_t image_memory_req = 0xFFFFFFFF;
     for (size_t i = 0; i < 32; ++i) {
@@ -127,7 +139,7 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         fn.vkFreeMemory(device, image_memory, nullptr);
     });
 
-    fn.vkBindImageMemory(device, image, image_memory, 0);
+    fn.vkBindImageMemory(device, resolve_image, image_memory, 0);
 
     VkBuffer buffer;
     VkDeviceMemory buffer_memory;
@@ -210,11 +222,11 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         nullptr,                                                 // pNext
         (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1, // srcAccessMask
         VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,           // dstAccessMask
-        imageView->mImage->mInfo.mLayout,                        // srcLayout
+        image->mInfo.mLayout,                        // srcLayout
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,     // dstLayout
         0xFFFFFFFF,                                              // srcQueueFamily
         0xFFFFFFFF,                                              // dstQueueFamily
-        imageView->mImage->mVulkanHandle,                        // image
+        image->mVulkanHandle,                        // image
         {                                                        // subresourcerange
             VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,    // aspectMask
             0,                                                   // baseMipLevel
@@ -231,7 +243,7 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,     // dstLayout
         0xFFFFFFFF,                                              // srcQueueFamily
         0xFFFFFFFF,                                              // dstQueueFamily
-        image,                                                   // image
+        resolve_image,                                           // image
         {                                                        // subresourcerange
             VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,    // aspectMask
             0,                                                   // baseMipLevel
@@ -252,9 +264,9 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         {VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
         {{0, 0, 0}, {static_cast<int32_t>(*w), static_cast<int32_t>(*h), 1}}
     };
-    fn.vkCmdBlitImage(command_buffer, imageView->mImage->mVulkanHandle,
+    fn.vkCmdBlitImage(command_buffer, image->mVulkanHandle,
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        image,
+        resolve_image,
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         1,
         &blit, VkFilter::VK_FILTER_NEAREST);
@@ -262,7 +274,7 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
     barriers[0].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
     barriers[0].mdstAccessMask = (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
     barriers[0].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barriers[0].mnewLayout = imageView->mImage->mInfo.mLayout;
+    barriers[0].mnewLayout = image->mInfo.mLayout;
     barriers[1].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT;
     barriers[1].mdstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
     barriers[1].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -282,7 +294,7 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         {*w, *h, 1}
     }
     ;
-    fn.vkCmdCopyImageToBuffer(command_buffer, image,
+    fn.vkCmdCopyImageToBuffer(command_buffer, resolve_image,
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         buffer, 1, &copy_region);
 

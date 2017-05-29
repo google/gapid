@@ -2777,6 +2777,7 @@ cmd VkResult vkQueueSubmit(
     u32                 submitCount,
     const VkSubmitInfo* pSubmits,
     VkFence             fence) {
+  LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
 
@@ -7952,7 +7953,14 @@ cmd VkResult vkAcquireNextImageKHR(
 cmd VkResult vkQueuePresentKHR(
     VkQueue                 queue,
     const VkPresentInfoKHR* pPresentInfo) {
+  LastSubmission = PRESENT
   LastBoundQueue = Queues[queue]
+  for i in (0 .. LastPresentInfo.PresentImageCount) {
+    delete(LastPresentInfo.PresentImages, i)
+  }
+  LastPresentInfo.PresentImageCount = 0
+
+
   info := pPresentInfo[0]
   // TODO: handle pNext
 
@@ -7967,6 +7975,9 @@ cmd VkResult vkQueuePresentKHR(
   for i in (0 .. info.swapchainCount) {
     swapchain := Swapchains[swapchains[i]]
     image := swapchain.SwapchainImages[imageIndices[i]]
+    LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
+      image
+    LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
     image.LastBoundQueue = Queues[queue]
   }
   fence
@@ -8507,6 +8518,22 @@ ref!ComputePipelineObject  CurrentComputePipeline
 }
 // Records the draw information of the last draw.
 DrawInfo LastDrawInfo
+
+@internal class PresentInfo {
+  // The number of images presented last present
+  u32                                 PresentImageCount
+  // The images presented in the last present
+  map!(u32, ref!ImageObject)          PresentImages
+}
+
+PresentInfo LastPresentInfo
+
+enum LastSubmissionType {
+  SUBMIT = 0
+  PRESENT = 1
+}
+
+LastSubmissionType LastSubmission
 
 // Clear the recorded descriptor sets in the last draw
 sub void clearLastDrawInfoDescriptorSets() {

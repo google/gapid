@@ -195,6 +195,9 @@
       bool called = false;
       auto call = [{{Macro "CallCapture" $}}] {
         called = true;
+        {{if GetAnnotation $ "EndOfFrame"}}
+          onPreEndOfFrame({{Global "ApiIndex"}});
+        {{end}}
 
         observer->invoke();
 
@@ -217,8 +220,6 @@
         {{end}}
         onPostFence(observer);
       };
-¶
-      {{if GetAnnotation $ "EndOfFrame"}}onPreEndOfFrame({{Global "ApiIndex"}});{{end}}
 ¶
       uint64_t counter_at_begin = mCommandStartEndCounter++;
 ¶
