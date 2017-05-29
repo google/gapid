@@ -18,10 +18,10 @@ import "reflect"
 
 var (
 	tyPointer = reflect.TypeOf((*Pointer)(nil)).Elem()
-	tyChar    = reflect.TypeOf((*CharTy)(nil)).Elem()
-	tyInt     = reflect.TypeOf((*IntTy)(nil)).Elem()
-	tyUint    = reflect.TypeOf((*UintTy)(nil)).Elem()
-	tySize    = reflect.TypeOf((*SizeTy)(nil)).Elem()
+	tyCharTy  = reflect.TypeOf((*CharTy)(nil)).Elem()
+	tyIntTy   = reflect.TypeOf((*IntTy)(nil)).Elem()
+	tyUintTy  = reflect.TypeOf((*UintTy)(nil)).Elem()
+	tySizeTy  = reflect.TypeOf((*SizeTy)(nil)).Elem()
 )
 
 // Int is a signed integer type.
@@ -49,12 +49,12 @@ func (Uint) IsUint() {}
 // Char is the possibly signed but maybe unsigned C/C++ char.
 type Char uint8
 
-// UintTy is the interface implemented by types that should be treated as char type.
+// CharTy is the interface implemented by types that should be treated as char type.
 type CharTy interface {
 	IsChar()
 }
 
-// Dummy function to make Uint implement CharTy interface
+// Dummy function to make Char implement CharTy interface
 func (Char) IsChar() {}
 
 // CharToBytes changes the Char values to their byte[] representation.
