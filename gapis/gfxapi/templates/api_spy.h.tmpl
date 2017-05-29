@@ -62,6 +62,8 @@
 ¶
     {{ForEach (AllCommands $) "DeclareCommand" | JoinWith "\n"}}
 ¶
+    const static uint32_t kApiIndex = {{$.Index}};
+¶
     // Globals
     {{range $g := $.Globals}}
       {{Template "C++.Type" $g}} {{$g.Name}};
