@@ -74,7 +74,7 @@ func (m *Manager) Replay(
 	generator Generator,
 	hints *service.UsageHints) (val interface{}, err error) {
 
-	log.I(ctx, "Replay request")
+	log.D(ctx, "Replay request")
 	s, err := m.scheduler(ctx, intent.Device.Id.ID())
 	if err != nil {
 		return nil, err
