@@ -35,13 +35,13 @@ func encode(e *Encoder, v reflect.Value) {
 	case t.Implements(tyPointer):
 		e.Pointer(v.Interface().(Pointer).Address())
 	case t.Implements(tyCharTy):
-		e.Char(Char(v.Uint()))
+		e.Char(Char(deref(v).Uint()))
 	case t.Implements(tyIntTy):
-		e.Int(Int(v.Int()))
+		e.Int(Int(deref(v).Int()))
 	case t.Implements(tyUintTy):
-		e.Uint(Uint(v.Uint()))
+		e.Uint(Uint(deref(v).Uint()))
 	case t.Implements(tySizeTy):
-		e.Size(Size(v.Uint()))
+		e.Size(Size(deref(v).Uint()))
 	default:
 		switch t.Kind() {
 		case reflect.Float32:

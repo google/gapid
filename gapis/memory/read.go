@@ -33,6 +33,13 @@ func Read(r binary.Reader, m *device.MemoryLayout, p interface{}) {
 	decode(NewDecoder(r, m), v)
 }
 
+func deref(v reflect.Value) reflect.Value {
+	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return v
+}
+
 func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
 	switch {
@@ -40,13 +47,13 @@ func decode(d *Decoder, v reflect.Value) {
 		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)
 		v.Set(reflect.ValueOf(p))
 	case t.Implements(tyCharTy):
-		v.SetUint(uint64(d.Char()))
+		deref(v).SetUint(uint64(d.Char()))
 	case t.Implements(tyIntTy):
-		v.SetInt(int64(d.Int()))
+		deref(v).SetInt(int64(d.Int()))
 	case t.Implements(tyUintTy):
-		v.SetUint(uint64(d.Uint()))
+		deref(v).SetUint(uint64(d.Uint()))
 	case t.Implements(tySizeTy):
-		v.SetUint(uint64(d.Size()))
+		deref(v).SetUint(uint64(d.Size()))
 	default:
 
 		switch t.Kind() {
