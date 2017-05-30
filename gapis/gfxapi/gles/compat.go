@@ -246,6 +246,15 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		}
 	}
 
+	// TODO: Implement full support for external images.
+	convertTexTarget := func(t *GLenum) {
+		if *t == GLenum_GL_TEXTURE_EXTERNAL_OES && target.eglImageExternal == unsupported {
+			// Remap external textures to plain 2D textures - this matches GLSL compat.
+			// TODO: This aliases GLenum_GL_TEXTURE_EXTERNAL_OES and GLenum_GL_TEXTURE_2D
+			*t = GLenum_GL_TEXTURE_2D
+		}
+	}
+
 	var t transform.Transformer
 	t = transform.Transform("compat", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		dID := i.Derived()
@@ -326,22 +335,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlBindTexture:
-			if a.Texture != 0 && !c.SharedObjects.Textures.Contains(a.Texture) {
-				// glGenTextures() was not used to generate the texture. Legal in GLES 2.
-				tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(a.Texture)))
-				out.MutateAndWrite(ctx, dID, NewGlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
-			}
+			{
+				a := *a
+				if a.Texture != 0 && !c.SharedObjects.Textures.Contains(a.Texture) {
+					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
+					tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(a.Texture)))
+					out.MutateAndWrite(ctx, dID, NewGlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
+				}
 
-			if a.Target == GLenum_GL_TEXTURE_EXTERNAL_OES && target.eglImageExternal == unsupported {
-				// TODO: Implement full support for external images.
-				// Remap external textures to plain 2D textures - this matches GLSL compat.
-				out.MutateAndWrite(ctx, i, NewGlBindTexture(GLenum_GL_TEXTURE_2D, a.Texture))
-				return
-			}
+				convertTexTarget(&a.Target)
 
-			if !version.IsES {
-				out.MutateAndWrite(ctx, i, a)
-				loadEglImageData(ctx, i, a, a.Target, c, out)
+				out.MutateAndWrite(ctx, i, &a)
+
+				if !version.IsES {
+					loadEglImageData(ctx, i, &a, a.Target, c, out)
+				}
 				return
 			}
 
@@ -754,45 +762,85 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlTexParameterIivOES:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterIuivOES:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterIiv:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterIuiv:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterf:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
+				return
+			}
 		case *GlTexParameterfv:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameteri:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
+				return
+			}
 		case *GlTexParameteriv:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterIivEXT:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 		case *GlTexParameterIuivEXT:
-			out.MutateAndWrite(ctx, i, a)
-			textureCompat.postTexParameter(a.Target, a.Pname, out, i)
-			return
+			{
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, i, &a)
+				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				return
+			}
 
 		case *GlProgramBinary:
 			if !canUsePrecompiledShader(c, glDev) {
