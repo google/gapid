@@ -1,6 +1,7 @@
 # GAPID: **G**raphics **API** **D**ebugger
 
 [![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
+[![Gitter](https://badges.gitter.im/google/gapid.svg)](https://gitter.im/google/gapid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 ![Linux](kokoro/img/linux.png)![Linux Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_linux.png)
 ![MacOS](kokoro/img/macos.png)![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.png)
 ![Windows](kokoro/img/windows.png)![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.png)
