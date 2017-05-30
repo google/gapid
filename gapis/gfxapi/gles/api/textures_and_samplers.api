@@ -2037,8 +2037,12 @@ cmd void glTexSubImage2D(GLenum         target,
 
   image.DataFormat = format
   image.DataType = type
-  if len(image.Data) == 0 {
-    image.Data = make!u8(uncompressedImageSize(image.Width, image.Height, format, type))
+  image_size := uncompressedImageSize(image.Width, image.Height, format, type)
+  // Initialize the buffer if we have not used the image before or
+  // if the format changed to one with different size per texel.
+  // TODO: Do this properly using data conversion.
+  if len(image.Data) != as!s32(image_size) {
+    image.Data = make!u8(image_size)
   }
   for y in (0 .. as!u32(height)) {
     src := (src_stride * y)
