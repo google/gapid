@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"google.golang.org/grpc/grpclog"
+
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/event/task"
@@ -77,6 +79,8 @@ func run(ctx context.Context) error {
 	m := replay.New(ctx)
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+
+	grpclog.SetLogger(log.From(ctx))
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
 	if *scanAndroidDevs {
