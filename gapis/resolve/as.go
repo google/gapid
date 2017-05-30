@@ -32,14 +32,9 @@ func As(ctx context.Context, p *path.As) (interface{}, error) {
 	}
 	switch to := p.To.(type) {
 	case *path.As_ImageFormat:
-		f := to.ImageFormat
 		switch o := o.(type) {
-		case *image.Info2D:
-			return o.ConvertTo(ctx, f)
-		case *gfxapi.Texture2D:
-			return o.ConvertTo(ctx, f)
-		case *gfxapi.Cubemap:
-			return o.ConvertTo(ctx, f)
+		case image.Convertable:
+			return o.ConvertTo(ctx, to.ImageFormat)
 		}
 	case *path.As_VertexBufferFormat:
 		f := to.VertexBufferFormat

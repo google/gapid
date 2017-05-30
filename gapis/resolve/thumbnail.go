@@ -116,7 +116,7 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 	if f != nil {
 		// Convert the image to the desired format.
 		if img.Format.Key() != f.Key() {
-			img, err = img.ConvertTo(ctx, f)
+			img, err = img.Convert(ctx, f)
 			if err != nil {
 				return nil, err
 			}

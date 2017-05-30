@@ -25,8 +25,16 @@ import (
 	"github.com/google/gapid/gapis/database"
 )
 
-// ConvertTo returns this image Info converted to the format f.
-func (i *Info2D) ConvertTo(ctx context.Context, f *Format) (*Info2D, error) {
+// Interface compliance check
+var _ = Convertable((*Info2D)(nil))
+
+// ConvertTo implements the Convertable interface. It directly calls Convert.
+func (i *Info2D) ConvertTo(ctx context.Context, f *Format) (interface{}, error) {
+	return i.Convert(ctx, f)
+}
+
+// Convert returns this image Info converted to the format f.
+func (i *Info2D) Convert(ctx context.Context, f *Format) (*Info2D, error) {
 	id, err := database.Store(ctx, &ConvertResolvable{
 		Data:       i.Data,
 		Width:      i.Width,

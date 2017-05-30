@@ -21,6 +21,7 @@ set(files
     astc.go
     atc.go
     convert.go
+    convertable.go
     decompress_test.go
     doc.go
     etc1.go

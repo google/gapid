@@ -97,11 +97,8 @@ message Value {
 
     device.Instance device = 20;
 
-    gfxapi.Cubemap cubemap = 30;
+    gfxapi.ResourceData resource_data = 30;
     gfxapi.Mesh mesh = 31;
-    gfxapi.Program program = 32;
-    gfxapi.Shader shader = 33;
-    gfxapi.Texture2D texture_2d = 34;
 
     image.Info2D image_info_2d = 40;
 

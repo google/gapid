@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType.TextureResource;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -288,8 +289,7 @@ public class TextureView extends Composite
       return;
     }
 
-    String typeLabel = getTypeLabel(resources.getType());
-    if (typeLabel == null) {
+    if (resources.getType() != TextureResource) {
       // Ignore non-texture resources (and unknown texture types).
       return;
     }
@@ -298,7 +298,7 @@ public class TextureView extends Composite
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-        Data data = new Data(resourceAfter(range, info.getId()), info, typeLabel);
+        Data data = new Data(resourceAfter(range, info.getId()), info);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
       }
@@ -309,38 +309,22 @@ public class TextureView extends Composite
     return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
   }
 
-  private static String getTypeLabel(GfxAPI.ResourceType type) {
-    if (type == null) {
-      return null;
-    }
-
-    switch (type) {
-      case Texture1DResource: return "1D";
-      case Texture2DResource: return "2D";
-      case Texture3DResource: return "3D";
-      case CubemapResource: return "Cubemap";
-      default: return null;
-    }
-  }
-
   /**
    * Texture metadata.
    */
   private static class Data {
     public final Path.Any path;
     public final Service.Resource info;
-    public final String typeLabel;
     protected AdditionalInfo imageInfo;
 
-    public Data(Path.Any path, Service.Resource info, String typeLabel) {
+    public Data(Path.Any path, Service.Resource info) {
       this.path = path;
       this.info = info;
-      this.typeLabel = typeLabel;
       this.imageInfo = AdditionalInfo.NULL;
     }
 
     public String getType() {
-      return typeLabel;
+      return imageInfo.getType();
     }
 
     public String getId() {
@@ -406,28 +390,36 @@ public class TextureView extends Composite
 
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
-          new AdditionalInfo(Image.Info2D.getDefaultInstance(), 0);
+          new AdditionalInfo("<unknown>", Image.Info2D.getDefaultInstance(), 0);
 
       public final Image.Info2D level0;
       public final int levelCount;
+      public final String typeLabel;
 
-      public AdditionalInfo(Image.Info2D level0, int levelCount) {
+      public AdditionalInfo(String typeLabel, Image.Info2D level0, int levelCount) {
         this.level0 = level0;
         this.levelCount = levelCount;
+        this.typeLabel = typeLabel;
       }
 
       public static AdditionalInfo from(Service.Value value) {
-        switch (value.getValCase()) {
+        GfxAPI.ResourceData data = value.getResourceData();
+        GfxAPI.Texture texture = data.getTexture();
+        switch (texture.getTypeCase()) {
           case TEXTURE_2D:
-            GfxAPI.Texture2D t = value.getTexture2D();
+            GfxAPI.Texture2D t = texture.getTexture2D();
             return (t.getLevelsCount() == 0) ? NULL :
-              new AdditionalInfo(t.getLevels(0), t.getLevelsCount());
+              new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
           case CUBEMAP:
-            GfxAPI.Cubemap c = value.getCubemap();
+            GfxAPI.Cubemap c = texture.getCubemap();
             return (c.getLevelsCount() == 0) ? NULL :
-              new AdditionalInfo(c.getLevels(0).getNegativeX(), c.getLevelsCount());
+              new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
           default: return NULL;
         }
+      }
+
+      public String getType() {
+        return typeLabel;
       }
 
       public String getWidth() {

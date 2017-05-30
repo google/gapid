@@ -85,12 +85,13 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 					continue
 				}
 				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.Id)
-				shaderData, err := client.Get(ctx, resourcePath.Path())
+				resourceData, err := client.Get(ctx, resourcePath.Path())
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)
 					continue
 				}
-				shaderSource := shaderData.(*gfxapi.Shader).GetSource()
+
+				shaderSource := resourceData.(*gfxapi.ResourceData).GetShader().GetSource()
 
 				f, err := os.Create(v.GetHandle())
 				if err != nil {

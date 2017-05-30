@@ -39,22 +39,12 @@ enum DrawPrimitive {
 enum ResourceType {
 	// UnknownResource represents an unknown resource type
 	UnknownResource = 0;
-	// Texture1DResource represents the Texture1D resource type
-	Texture1DResource = 1;
-	// Texture2DResource represents the Texture2D resource type
-	Texture2DResource = 2;
-	// Texture3DResource represents the Texture2D resource type
-	Texture3DResource = 3;
-	// CubemapResource represents the Cubemap resource type
-	CubemapResource = 4;
+	// Texture represents the Texture resource type
+	TextureResource = 1;
 	// ShaderResource represents the Shader resource type
-	ShaderResource = 5;
+	ShaderResource = 2;
 	// ProgramResource represents the Program resource type
-	ProgramResource = 6;
-	// UninitializedTextureResource represents texture resource type
-	// which has been generated but was never assigned dimensions.
-	// TODO: Clean up texture handling as per issue #237
-	UninitializedTextureResource = 7;
+	ProgramResource = 3;
 }
 
 // FramebufferAttachment values indicate the type of frame buffer attachment.
@@ -100,6 +90,26 @@ enum UniformType {
 	Bool = 2;
 	Float = 3;
 	Double = 4;
+}
+
+// ResourceData represents the resource state at a single point in a capture
+message ResourceData {
+	oneof data {
+		Texture texture = 1;
+		Shader shader = 2;
+		Program program = 3;
+	}
+}
+
+// Texture represents a texture resource.
+message Texture {
+	oneof type {
+		// Texture1D texture_1d = 1;
+		Texture2D texture_2d = 2;
+		// Texture3D texture_3d = 3;
+		// Texture2DArray array = 4;
+		Cubemap cubemap = 5;
+	}
 }
 
 // Shader represents a shader resource.
