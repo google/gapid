@@ -165,3 +165,21 @@ func (l *Logger) Writer(s Severity) io.WriteCloser {
 		return nil
 	})
 }
+
+// Fatal implements the standard go logger interface.
+func (l *Logger) Fatal(args ...interface{}) { l.F("%s", fmt.Sprint(args...)) }
+
+// Fatalf implements the standard go logger interface.
+func (l *Logger) Fatalf(format string, args ...interface{}) { l.F(format, args...) }
+
+// Fatalln implements the standard go logger interface.
+func (l *Logger) Fatalln(args ...interface{}) { l.Fatal(args...) }
+
+// Print implements the standard go logger interface.
+func (l *Logger) Print(args ...interface{}) { l.I("%s", fmt.Sprint(args...)) }
+
+// Printf implements the standard go logger interface.
+func (l *Logger) Printf(format string, args ...interface{}) { l.I(format, args...) }
+
+// Println implements the standard go logger interface.
+func (l *Logger) Println(args ...interface{}) { l.Print(args...) }
