@@ -60,16 +60,16 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 			priority := api.GetReplayPriority(ctx, instance, c.Header.Abi.MemoryLayout)
 			p = p * priority
 			if priority != 0 {
-				log.I(ctx, "Compatible %d", priority)
+				log.D(ctx, "Compatible %d", priority)
 			} else {
-				log.I(ctx, "Incompatible")
+				log.D(ctx, "Incompatible")
 			}
 		}
 		if p > 0 {
 			ctx := log.V{
 				"device": instance,
 			}.Bind(ctx)
-			log.I(ctx, "Priority %d", p)
+			log.D(ctx, "Priority %d", p)
 			filtered = append(filtered, prioritizedDevice{device, p})
 		}
 	}
