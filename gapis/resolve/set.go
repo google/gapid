@@ -84,7 +84,12 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			list.Atoms[where] = with.(atom.Atom)
 		}
 
-		if err := meta.Resource.SetResourceData(ctx, p.After, val, meta.IDMap, replaceAtoms); err != nil {
+		data, ok := val.(*gfxapi.ResourceData)
+		if !ok {
+			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
+		}
+
+		if err := meta.Resource.SetResourceData(ctx, p.After, data, meta.IDMap, replaceAtoms); err != nil {
 			return nil, err
 		}
 

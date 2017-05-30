@@ -16,8 +16,11 @@ package gfxapi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/protoutil"
+	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -40,10 +43,10 @@ type Resource interface {
 	ResourceType(ctx context.Context) ResourceType
 
 	// ResourceData returns the resource data given the current state.
-	ResourceData(ctx context.Context, s *State) (interface{}, error)
+	ResourceData(ctx context.Context, s *State) (*ResourceData, error)
 
 	// SetResourceData sets resource data in a new capture.
-	SetResourceData(ctx context.Context, at *path.Command, data interface{}, resources ResourceMap, edits ReplaceCallback) error
+	SetResourceData(ctx context.Context, at *path.Command, data *ResourceData, resources ResourceMap, edits ReplaceCallback) error
 }
 
 // ResourceMeta represents resource with a state information obtained during building.
@@ -56,8 +59,48 @@ type ResourceMeta struct {
 // TODO: Remove it and use atom.Atom itself (which is impossible for now because of a dependency cycle).
 type ResourceAtom interface {
 	// Replace clones an atom and sets new data.
-	Replace(ctx context.Context, data interface{}) ResourceAtom
+	Replace(ctx context.Context, data *ResourceData) ResourceAtom
 }
 
 // ReplaceCallback is called from SetResourceData to propagate changes to current atom stream.
 type ReplaceCallback func(where uint64, with ResourceAtom)
+
+// Interface compliance check
+var _ = image.Convertable((*ResourceData)(nil))
+var _ = image.Thumbnailer((*ResourceData)(nil))
+
+// ConvertTo returns this Texture2D with each mip-level converted to the requested format.
+func (r *ResourceData) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
+	data := protoutil.OneOf(r.Data)
+	if c, ok := data.(image.Convertable); ok {
+		data, err := c.ConvertTo(ctx, f)
+		if err != nil {
+			return nil, err
+		}
+		return NewResourceData(data), nil
+	}
+	return nil, nil
+}
+
+// Thumbnail returns the image that most closely matches the desired size.
+func (r *ResourceData) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
+	data := protoutil.OneOf(r.Data)
+	if t, ok := data.(image.Thumbnailer); ok {
+		return t.Thumbnail(ctx, w, h)
+	}
+	return nil, nil
+}
+
+// NewResourceData returns a new *ResourceData with the specified data.
+func NewResourceData(data interface{}) *ResourceData {
+	switch data := data.(type) {
+	case *Texture:
+		return &ResourceData{Data: &ResourceData_Texture{data}}
+	case *Shader:
+		return &ResourceData{Data: &ResourceData_Shader{data}}
+	case *Program:
+		return &ResourceData{Data: &ResourceData_Program{data}}
+	default:
+		panic(fmt.Errorf("%T is not a ResourceData type", data))
+	}
+}

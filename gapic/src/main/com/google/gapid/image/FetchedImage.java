@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image.Info2D;
 import com.google.gapid.proto.service.Service.Value;
+import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.CubemapLevel;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Texture2D;
@@ -59,9 +60,11 @@ public class FetchedImage implements MultiLevelImage {
 
   public static ListenableFuture<FetchedImage> load(Client client, Path.ResourceData imagePath) {
     return Futures.transformAsync(client.get(resourceInfo(imagePath)), value -> {
-      switch (value.getValCase()) {
-        case TEXTURE_2D: return load(client, imagePath, getFormat(value.getTexture2D()));
-        case CUBEMAP: return load(client, imagePath, getFormat(value.getCubemap()));
+      GfxAPI.ResourceData data = value.getResourceData();
+      GfxAPI.Texture texture = data.getTexture();
+      switch (texture.getTypeCase()) {
+        case TEXTURE_2D: return load(client, imagePath, getFormat(texture.getTexture2D()));
+        case CUBEMAP: return load(client, imagePath, getFormat(texture.getCubemap()));
         default:
           throw new UnsupportedOperationException("Unexpected resource type: " + value);
       }
@@ -71,9 +74,11 @@ public class FetchedImage implements MultiLevelImage {
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.ResourceData imagePath, Images.Format format) {
     return Futures.transform(client.get(imageData(imagePath, format.format)), value -> {
-      switch (value.getValCase()) {
-        case TEXTURE_2D: return new FetchedImage(client, format, value.getTexture2D());
-        case CUBEMAP: return new FetchedImage(client, format, value.getCubemap());
+      GfxAPI.ResourceData data = value.getResourceData();
+      GfxAPI.Texture texture = data.getTexture();
+      switch (texture.getTypeCase()) {
+        case TEXTURE_2D: return new FetchedImage(client, format, texture.getTexture2D());
+        case CUBEMAP: return new FetchedImage(client, format, texture.getCubemap());
         default:
           throw new UnsupportedOperationException("Unexpected resource type: " + value);
       }

@@ -184,14 +184,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_StateTreeNode{v}}
 	case *gfxapi.Mesh:
 		return &Value{&Value_Mesh{v}}
-	case *gfxapi.Texture2D:
-		return &Value{&Value_Texture_2D{v}}
-	case *gfxapi.Cubemap:
-		return &Value{&Value_Cubemap{v}}
-	case *gfxapi.Shader:
-		return &Value{&Value_Shader{v}}
-	case *gfxapi.Program:
-		return &Value{&Value_Program{v}}
+	case *gfxapi.ResourceData:
+		return &Value{&Value_ResourceData{v}}
 	case *image.Info2D:
 		return &Value{&Value_ImageInfo_2D{v}}
 	case *device.Instance:

@@ -52,21 +52,11 @@ func (t *Texture) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (t *Texture) ResourceType(ctx context.Context) gfxapi.ResourceType {
-	switch t.Kind {
-	case GLenum_GL_NONE:
-		return gfxapi.ResourceType_UninitializedTextureResource
-	case GLenum_GL_TEXTURE_2D:
-		return gfxapi.ResourceType_Texture2DResource
-	case GLenum_GL_TEXTURE_CUBE_MAP:
-		return gfxapi.ResourceType_CubemapResource
-	default:
-		log.E(ctx, "Unknown texture resource type: %v", t.Kind)
-		return gfxapi.ResourceType_UnknownResource
-	}
+	return gfxapi.ResourceType_TextureResource
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
+func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.ResourceData, error) {
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_2D:
@@ -84,7 +74,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 				Data:   image.NewID(img.Data.ResourceID(ctx, s)),
 			}
 		}
-		return &gfxapi.Texture2D{Levels: levels}, nil
+		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture2D{Levels: levels})), nil
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
 		levels := make([]*gfxapi.CubemapLevel, len(t.Levels))
@@ -117,7 +107,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 				}
 			}
 		}
-		return &gfxapi.Cubemap{Levels: levels}, nil
+		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture_Cubemap{
+			Cubemap: &gfxapi.Cubemap{Levels: levels},
+		})), nil
 
 	default:
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
@@ -125,7 +117,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 }
 
 func (t *Texture) SetResourceData(ctx context.Context, at *path.Command,
-	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
+	data *gfxapi.ResourceData, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Texture")
 }
 
@@ -155,7 +147,7 @@ func (s *Shader) ResourceType(ctx context.Context) gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}, error) {
+func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (*gfxapi.ResourceData, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty gfxapi.ShaderType
 	switch s.ShaderType {
@@ -172,13 +164,14 @@ func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}
 	case GLenum_GL_COMPUTE_SHADER:
 		ty = gfxapi.ShaderType_Compute
 	}
-	return &gfxapi.Shader{Type: ty, Source: s.Source}, nil
+
+	return gfxapi.NewResourceData(&gfxapi.Shader{Type: ty, Source: s.Source}), nil
 }
 
 func (shader *Shader) SetResourceData(
 	ctx context.Context,
 	at *path.Command,
-	data interface{},
+	data *gfxapi.ResourceData,
 	resourceIDs gfxapi.ResourceMap,
 	edits gfxapi.ReplaceCallback) error {
 
@@ -219,9 +212,9 @@ func (shader *Shader) SetResourceData(
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *GlShaderSource) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
+func (a *GlShaderSource) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
 	state := capture.NewState(ctx)
-	shader := data.(*gfxapi.Shader)
+	shader := data.GetShader()
 	source := shader.Source
 	src, _ := atom.AllocData(ctx, state, source)
 	srcLen, _ := atom.AllocData(ctx, state, GLint(len(source)))
@@ -258,7 +251,7 @@ func (p *Program) ResourceType(ctx context.Context) gfxapi.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
+func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 	state := GetState(s)
 
@@ -439,7 +432,7 @@ func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 		})
 	}
 
-	return &gfxapi.Program{Shaders: shaders, Uniforms: uniforms}, nil
+	return gfxapi.NewResourceData(&gfxapi.Program{Shaders: shaders, Uniforms: uniforms}), nil
 }
 
 func uniformValue(ctx context.Context, s *gfxapi.State, kind gfxapi.UniformType, data U8ˢ) interface{} {
@@ -482,6 +475,6 @@ func uniformValue(ctx context.Context, s *gfxapi.State, kind gfxapi.UniformType,
 }
 
 func (program *Program) SetResourceData(ctx context.Context, at *path.Command,
-	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
+	data *gfxapi.ResourceData, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Program")
 }

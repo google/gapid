@@ -38,6 +38,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Program;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Shader;
@@ -123,8 +124,9 @@ public class ShaderView extends Composite
       Shader shader = (data == null) ? null : (Shader)data.resource;
       if (shader != null) {
         Service.Value value = Service.Value.newBuilder()
-            .setShader(shader.toBuilder()
-                .setSource(src))
+            .setResourceData(GfxAPI.ResourceData.newBuilder()
+                .setShader(shader.toBuilder()
+                    .setSource(src)))
             .build();
         Rpc.listen(client.set(data.getPath(models.atoms), value),
             new UiCallback<Path.Any, Path.Capture>(this, LOG) {
@@ -169,7 +171,7 @@ public class ShaderView extends Composite
       @Override
       protected ShaderPanel.Source onRpcThread(Result<Service.Value> result)
           throws RpcException, ExecutionException {
-        Shader shader = result.get().getShader();
+        Shader shader = result.get().getResourceData().getShader();
         data.resource = shader;
         return ShaderPanel.Source.of(shader);
       }
@@ -188,7 +190,7 @@ public class ShaderView extends Composite
       @Override
       protected ShaderPanel.Source[] onRpcThread(Result<Service.Value> result)
           throws RpcException, ExecutionException {
-        Program program = result.get().getProgram();
+        Program program = result.get().getResourceData().getProgram();
         data.resource = program;
         onProgramLoaded.accept(program);
         return ShaderPanel.Source.of(program);

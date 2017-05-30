@@ -62,11 +62,7 @@ func (t *ImageObject) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (t *ImageObject) ResourceType(ctx context.Context) gfxapi.ResourceType {
-	if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
-		return gfxapi.ResourceType_CubemapResource
-	} else {
-		return gfxapi.ResourceType_Texture2DResource
-	}
+	return gfxapi.ResourceType_TextureResource
 }
 
 type unsupportedVulkanFormatError struct {
@@ -500,9 +496,8 @@ func setCubemapFace(img *image.Info2D, cubeMap *gfxapi.CubemapLevel, layerIndex 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
+func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
-
 	vkFmt := t.Info.Format
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
@@ -531,26 +526,28 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (interf
 					}
 				}
 			}
-			return &gfxapi.Cubemap{Levels: cubeMapLevels}, nil
-		} else {
-			levels := make([]*image.Info2D, len(t.Layers[0].Levels))
-			for i, level := range t.Layers[0].Levels {
-				levels[i] = &image.Info2D{
-					Format: format,
-					Width:  level.Width,
-					Height: level.Height,
-					Data:   image.NewID(level.Data.ResourceID(ctx, s)),
-				}
-			}
-			return &gfxapi.Texture2D{Levels: levels}, nil
+			return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture_Cubemap{
+				Cubemap: &gfxapi.Cubemap{Levels: cubeMapLevels},
+			})), nil
 		}
+
+		levels := make([]*image.Info2D, len(t.Layers[0].Levels))
+		for i, level := range t.Layers[0].Levels {
+			levels[i] = &image.Info2D{
+				Format: format,
+				Width:  level.Width,
+				Height: level.Height,
+				Data:   image.NewID(level.Data.ResourceID(ctx, s)),
+			}
+		}
+		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture2D{Levels: levels})), nil
 	default:
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
 }
 
 func (t *ImageObject) SetResourceData(ctx context.Context, at *path.Command,
-	data interface{}, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
+	data *gfxapi.ResourceData, resources gfxapi.ResourceMap, edits gfxapi.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
 }
 
@@ -580,17 +577,17 @@ func (s *ShaderModuleObject) ResourceType(ctx context.Context) gfxapi.ResourceTy
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}, error) {
-	ctx = log.Enter(ctx, "Shader.ResourceData()")
+func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *gfxapi.State) (*gfxapi.ResourceData, error) {
+	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
 	words := s.Words.Read(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)
-	return &gfxapi.Shader{Type: gfxapi.ShaderType_Spirv, Source: source}, nil
+	return gfxapi.NewResourceData(&gfxapi.Shader{Type: gfxapi.ShaderType_Spirv, Source: source}), nil
 }
 
 func (shader *ShaderModuleObject) SetResourceData(
 	ctx context.Context,
 	at *path.Command,
-	data interface{},
+	data *gfxapi.ResourceData,
 	resourceIDs gfxapi.ResourceMap,
 	edits gfxapi.ReplaceCallback) error {
 
@@ -635,12 +632,12 @@ func (shader *ShaderModuleObject) SetResourceData(
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
+func (a *VkCreateShaderModule) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	state := capture.NewState(ctx)
 	a.Mutate(ctx, state, nil)
 
-	shader := data.(*gfxapi.Shader)
+	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
 	if codeSlice == nil {
 		return nil
@@ -684,12 +681,12 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	return newAtom
 }
 
-func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gfxapi.ResourceAtom {
+func (a *RecreateShaderModule) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
 	state := capture.NewState(ctx)
 	a.Mutate(ctx, state, nil)
 
-	shader := data.(*gfxapi.Shader)
+	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
 	if codeSlice == nil {
 		return nil
