@@ -269,6 +269,15 @@ func (g Group) IterateBackwards(index uint64, cb func(childIdx uint64, item Grou
 // Attemping to call this function after atoms have been added may result in
 // panics!
 func (g *Group) AddGroup(start, end ID, name string) error {
+	if start > end {
+		return fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
+	}
+	if start < g.Range.Start {
+		return fmt.Errorf("sub-group start (%d) is earlier than group start (%v)", start, g.Range.Start)
+	}
+	if end > g.Range.End {
+		return fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
+	}
 	r := Range{Start: start, End: end}
 	s, c := interval.Intersect(&g.Spans, r.Span())
 	if c == 0 {
