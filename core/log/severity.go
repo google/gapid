@@ -79,6 +79,6 @@ func (s *Severity) Choose(c interface{}) { *s = c.(Severity) }
 func (s *Severity) Chooser() flags.Chooser {
 	return flags.Chooser{
 		Value:   s,
-		Choices: flags.Choices{Debug, Info, Warning, Error, Fatal},
+		Choices: flags.Choices{Verbose, Debug, Info, Warning, Error, Fatal},
 	}
 }
