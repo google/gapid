@@ -192,7 +192,7 @@ func (g *markerGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s 
 
 func (g *markerGrouper) flush(count uint64) {
 	for len(g.stack) > 0 {
-		g.pop(atom.ID(count))
+		g.pop(atom.ID(count) - 1)
 	}
 }
 
@@ -226,9 +226,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByContext {
-		var noContextId interface{} = nil
+		var noContextID interface{}
 		if p.IncludeNoContextGroups {
-			noContextId = gfxapi.ContextID{}
+			noContextID = gfxapi.ContextID{}
 		}
 		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
 			if api := a.API(); api != nil {
@@ -236,7 +236,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 					return context.ID(), context.Name()
 				}
 			}
-			return noContextId, "No context"
+			return noContextID, "No context"
 		}})
 	}
 
