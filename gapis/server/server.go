@@ -76,10 +76,12 @@ type server struct {
 }
 
 func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
+	ctx = log.Enter(ctx, "GetServerInfo")
 	return s.info, nil
 }
 
 func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
+	ctx = log.Enter(ctx, "GetAvailableStringTables")
 	infos := make([]*stringtable.Info, len(s.stbs))
 	for i, table := range s.stbs {
 		infos[i] = table.Info
@@ -88,6 +90,7 @@ func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.I
 }
 
 func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*stringtable.StringTable, error) {
+	ctx = log.Enter(ctx, "GetStringTable")
 	for _, table := range s.stbs {
 		if table.Info.CultureCode == info.CultureCode {
 			return table, nil
@@ -97,10 +100,12 @@ func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*s
 }
 
 func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error) {
+	ctx = log.Enter(ctx, "ImportCapture")
 	return capture.Import(ctx, name, data)
 }
 
 func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error) {
+	ctx = log.Enter(ctx, "ExportCapture")
 	b := bytes.Buffer{}
 	if err := capture.Export(ctx, c, &b); err != nil {
 		return nil, err
@@ -109,6 +114,7 @@ func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, er
 }
 
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
+	ctx = log.Enter(ctx, "LoadCapture")
 	name := filepath.Base(path)
 	in, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -118,6 +124,7 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
+	ctx = log.Enter(ctx, "GetDevices")
 	s.deviceScanDone.Wait(ctx)
 	devices := devices.Sorted(ctx)
 	paths := make([]*path.Device, len(devices))
@@ -145,6 +152,7 @@ func (p prioritizedDevices) Less(i, j int) bool {
 func (p prioritizedDevices) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
+	ctx = log.Enter(ctx, "GetDevicesForReplay")
 	s.deviceScanDone.Wait(ctx)
 	return devices.ForReplay(ctx, p)
 }
@@ -157,6 +165,7 @@ func (s *server) GetFramebufferAttachment(
 	settings *service.RenderSettings,
 	hints *service.UsageHints) (*path.ImageInfo, error) {
 
+	ctx = log.Enter(ctx, "GetFramebufferAttachment")
 	if err := device.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", device.Text())
 	}
@@ -167,6 +176,7 @@ func (s *server) GetFramebufferAttachment(
 }
 
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
+	ctx = log.Enter(ctx, "Get")
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
 	}
@@ -178,6 +188,7 @@ func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 }
 
 func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
+	ctx = log.Enter(ctx, "Set")
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
 	}
@@ -185,6 +196,7 @@ func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any
 }
 
 func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
+	ctx = log.Enter(ctx, "Follow")
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
 	}
@@ -192,6 +204,7 @@ func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 }
 
 func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
+	ctx = log.Enter(ctx, "GetLogStream")
 	handler = log.Channel(handler, 64)
 	unregister := s.logBroadcaster.Listen(handler)
 	defer func() {
@@ -203,24 +216,29 @@ func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
 }
 
 func (s *server) Find(ctx context.Context, req *service.FindRequest, handler service.FindHandler) error {
+	ctx = log.Enter(ctx, "Find")
 	return resolve.Find(ctx, req, handler)
 }
 
 func (s *server) BeginCPUProfile(ctx context.Context) error {
+	ctx = log.Enter(ctx, "BeginCPUProfile")
 	s.profile.Reset()
 	return pprof.StartCPUProfile(&s.profile)
 }
 
 func (s *server) EndCPUProfile(ctx context.Context) ([]byte, error) {
+	ctx = log.Enter(ctx, "EndCPUProfile")
 	pprof.StopCPUProfile()
 	return s.profile.Bytes(), nil
 }
 
 func (s *server) GetPerformanceCounters(ctx context.Context) ([]byte, error) {
+	ctx = log.Enter(ctx, "GetPerformanceCounters")
 	return json.Marshal(benchmark.GlobalCounters)
 }
 
 func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]byte, error) {
+	ctx = log.Enter(ctx, "GetProfile")
 	p := pprof.Lookup(name)
 	if p == nil {
 		return []byte{}, fmt.Errorf("Profile not found: %s", name)
