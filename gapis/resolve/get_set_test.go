@@ -52,7 +52,7 @@ type (
 
 	testStruct struct {
 		Str string
-		Ptr *testStruct
+		Ref *testStruct
 	}
 
 	testStructSlice []testStruct
@@ -62,7 +62,7 @@ type (
 	testAtom struct {
 		Str  string            `param:"Str"`
 		Sli  []bool            `param:"Sli"`
-		Ptr  *testStruct       `param:"Ptr"`
+		Ref  *testStruct       `param:"Ref"`
 		Map  stringːstring     `param:"Map"`
 		PMap intːtestStructPtr `param:"PMap"`
 	}
@@ -74,7 +74,7 @@ var (
 	atomA = &testAtom{
 		Str: "aaa",
 		Sli: []bool{true, false, true},
-		Ptr: &testStruct{Str: "ccc", Ptr: &testStruct{Str: "ddd"}},
+		Ref: &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}},
 		Map: stringːstring{"cat": "meow", "dog": "woof"},
 	}
 
@@ -93,7 +93,7 @@ var (
 		Parameters: []*service.Parameter{
 			{Name: "Str", Value: box.NewValue(atomA.Str)},
 			{Name: "Sli", Value: box.NewValue(atomA.Sli)},
-			{Name: "Ptr", Value: box.NewValue(atomA.Ptr)},
+			{Name: "Ref", Value: box.NewValue(atomA.Ref)},
 			{Name: "Map", Value: box.NewValue(atomA.Map)},
 			{Name: "PMap", Value: box.NewValue(atomA.PMap)},
 		},
@@ -105,7 +105,7 @@ var (
 		Parameters: []*service.Parameter{
 			{Name: "Str", Value: box.NewValue(atomB.Str)},
 			{Name: "Sli", Value: box.NewValue(atomB.Sli)},
-			{Name: "Ptr", Value: box.NewValue(atomB.Ptr)},
+			{Name: "Ref", Value: box.NewValue(atomB.Ref)},
 			{Name: "Map", Value: box.NewValue(atomB.Map)},
 			{Name: "PMap", Value: box.NewValue(atomB.PMap)},
 		},
@@ -126,7 +126,7 @@ func (m stringːstring) KeysSorted() []string {
 func (a testStructSlice) Len() int      { return len(a) }
 func (a testStructSlice) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a testStructSlice) Less(i, j int) bool {
-	return reflect.ValueOf(a[i].Ptr).Pointer() < reflect.ValueOf(a[j].Ptr).Pointer() && a[i].Str < a[j].Str
+	return reflect.ValueOf(a[i].Ref).Pointer() < reflect.ValueOf(a[j].Ref).Pointer() && a[i].Str < a[j].Str
 }
 
 func (m intːtestStructPtr) KeysSorted() []int {
@@ -197,7 +197,7 @@ func TestGet(t *testing.T) {
 		{p.Command(1), cmdB, nil},
 		{p.Command(1).Parameter("Str"), "xyz", nil},
 		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
-		{p.Command(0).Parameter("Ptr"), &testStruct{Str: "ccc", Ptr: &testStruct{Str: "ddd"}}, nil},
+		{p.Command(0).Parameter("Ref"), &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}}, nil},
 		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
 		{p.Command(1).Parameter("Sli").Slice(1, 3), []bool{true, false}, nil},
 		{p.Command(1).Parameter("Str").ArrayIndex(1), byte('y'), nil},
@@ -221,9 +221,9 @@ func TestGet(t *testing.T) {
 			Reason: messages.ErrParameterDoesNotExist("testAtom", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
-		{p.Command(1).Parameter("Ptr").Field("ccc"), nil, &service.ErrInvalidPath{
+		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrNilPointerDereference(),
-			Path:   p.Command(1).Parameter("Ptr").Field("ccc").Path(),
+			Path:   p.Command(1).Parameter("Ref").Field("ccc").Path(),
 		}},
 		{p.Command(1).Parameter("Sli").Field("ccc"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrFieldDoesNotExist("[]bool", "ccc"),
@@ -241,9 +241,9 @@ func TestGet(t *testing.T) {
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
 			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
 		}},
-		{p.Command(0).Parameter("Ptr").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		{p.Command(0).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrTypeNotArrayIndexable("ptr<testStruct>"),
-			Path:   p.Command(0).Parameter("Ptr").ArrayIndex(4).Path(),
+			Path:   p.Command(0).Parameter("Ref").ArrayIndex(4).Path(),
 		}},
 		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrIncorrectMapKeyType("float64", "string"),
@@ -253,9 +253,9 @@ func TestGet(t *testing.T) {
 			Reason: messages.ErrMapKeyDoesNotExist("rabbit"),
 			Path:   p.Command(1).Parameter("Map").MapIndex("rabbit").Path(),
 		}},
-		{p.Command(1).Parameter("Ptr").MapIndex("foo"), nil, &service.ErrInvalidPath{
+		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrTypeNotMapIndexable("ptr<testStruct>"),
-			Path:   p.Command(1).Parameter("Ptr").MapIndex("foo").Path(),
+			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 	} {
 		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
@@ -281,8 +281,8 @@ func TestSet(t *testing.T) {
 		{path: p.Command(0), val: cmdB},
 		{path: p.Command(0).Parameter("Str"), val: "bbb"},
 		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
-		{path: p.Command(0).Parameter("Ptr"), val: &testStruct{Str: "ddd"}},
-		{path: p.Command(0).Parameter("Ptr").Field("Str"), val: "purr"},
+		{path: p.Command(0).Parameter("Ref"), val: &testStruct{Str: "ddd"}},
+		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
 		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
 		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
 		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
@@ -297,9 +297,9 @@ func TestSet(t *testing.T) {
 			Reason: messages.ErrParameterDoesNotExist("testAtom", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
-		{p.Command(1).Parameter("Ptr").Field("ccc"), nil, &service.ErrInvalidPath{
+		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrNilPointerDereference(),
-			Path:   p.Command(1).Parameter("Ptr").Field("ccc").Path(),
+			Path:   p.Command(1).Parameter("Ref").Field("ccc").Path(),
 		}},
 		{p.Command(1).Parameter("Sli").Field("ccc"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrFieldDoesNotExist("[]bool", "ccc"),
@@ -313,17 +313,17 @@ func TestSet(t *testing.T) {
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
 			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Ptr").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		{p.Command(1).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrTypeNotArrayIndexable("ptr<testStruct>"),
-			Path:   p.Command(1).Parameter("Ptr").ArrayIndex(4).Path(),
+			Path:   p.Command(1).Parameter("Ref").ArrayIndex(4).Path(),
 		}},
 		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrIncorrectMapKeyType("float64", "string"),
 			Path:   p.Command(1).Parameter("Map").MapIndex(10.0).Path(),
 		}},
-		{p.Command(1).Parameter("Ptr").MapIndex("foo"), nil, &service.ErrInvalidPath{
+		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrTypeNotMapIndexable("ptr<testStruct>"),
-			Path:   p.Command(1).Parameter("Ptr").MapIndex("foo").Path(),
+			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 
 		// Test invalid sets
