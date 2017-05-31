@@ -308,6 +308,9 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 	api := c.Atoms[atomIdx].API()
+	if api == nil {
+		return nil, fmt.Errorf("Command has no API")
+	}
 	apiState := state.APIs[api]
 	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
 	root := &stn{
