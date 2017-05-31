@@ -743,14 +743,14 @@ func (l volatileMemoryLayout) ResolveObservedPointer(p value.ObservedPointer) (p
 	return protocol.Type_VolatilePointer, pointer
 }
 
-func (l volatileMemoryLayout) ResolvePointerIndex(i value.PointerIndex) value.VolatilePointer {
+func (l volatileMemoryLayout) ResolvePointerIndex(i value.PointerIndex) (protocol.Type, uint64) {
 	addr := uint64(i) * uint64(l.memoryLayout.GetPointer().GetSize())
 	bufferIdx := interval.IndexOf(l.pointerMemoryAsList, addr)
 	if bufferIdx < 0 {
 		// Pointer is not observed.
-		return unobservedPointer
+		return protocol.Type_AbsolutePointer, unobservedPointer
 	}
 	bufferStart := l.pointerMemory[bufferIdx].First()
 	pointer := l.pointerBases[bufferIdx] + addr - uint64(bufferStart)
-	return value.VolatilePointer(pointer)
+	return protocol.Type_VolatilePointer, pointer
 }

@@ -188,8 +188,8 @@ type PointerIndex uint64
 
 // Get returns TypeVolatilePointer and the volatile address of the pointer.
 func (p PointerIndex) Get(r PointerResolver) (ty protocol.Type, val uint64, onStack bool) {
-	val = uint64(r.ResolvePointerIndex(p))
-	return protocol.Type_VolatilePointer, val, false
+	ty, val = r.ResolvePointerIndex(p)
+	return ty, val, false
 }
 
 // Offset returns the sum of the pointer index with offset.

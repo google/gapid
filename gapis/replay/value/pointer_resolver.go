@@ -26,7 +26,7 @@ type PointerResolver interface {
 	// absolute address-space.
 	ResolveObservedPointer(ObservedPointer) (protocol.Type, uint64)
 
-	// ResolvePointerIndex returns the volatile pointer to the pointer with
-	// the specified index.
-	ResolvePointerIndex(PointerIndex) VolatilePointer
+	// ResolvePointerIndex returns the pointer to the pointer with the specified
+	// index.
+	ResolvePointerIndex(PointerIndex) (protocol.Type, uint64)
 }
