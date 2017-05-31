@@ -1038,6 +1038,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
+		case *GlFramebufferTextureMultiviewOVR:
+			{
+				// TODO: Support properly.
+				a := NewGlFramebufferTextureLayer(a.Target, a.Attachment, a.Texture, a.Level, a.BaseViewIndex)
+				out.MutateAndWrite(ctx, i, a)
+				return
+			}
+
 		case *GlLinkProgram:
 			{
 				out.MutateAndWrite(ctx, i, a)
