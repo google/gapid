@@ -354,7 +354,7 @@ public class MemoryView extends Composite
    * Bookkeeping of the current UI state.
    */
   private static class State {
-    public DataType dataType = DataType.Bytes;
+    public DataType dataType = DataType.Byte;
     public Path.Command atomPath;
     public int pool = -1;
     public long offset = -1;
@@ -410,35 +410,35 @@ public class MemoryView extends Composite
    * The memory data can be visualized as different atomic data types to ease buffer inspection.
    */
   private static enum DataType {
-    Bytes() {
+    Byte() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new BytesMemoryModel(memory);
+        return new ByteMemoryModel(memory);
       }
-    }, Shorts() {
+    }, Int16() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new ShortsMemoryModel(memory);
+        return new Int16MemoryModel(memory);
       }
-    }, Ints() {
+    }, Int32() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new IntsMemoryModel(memory);
+        return new Int32MemoryModel(memory);
       }
-    }, Longs() {
+    }, Int64() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new LongsMemoryModel(memory);
+        return new Int64MemoryModel(memory);
       }
-    }, Floats() {
+    }, Float32() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new FloatsMemoryModel(memory);
+        return new Float32MemoryModel(memory);
       }
-    }, Doubles() {
+    }, Float64() {
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
-        return new DoublesMemoryModel(memory);
+        return new Float64MemoryModel(memory);
       }
     };
 
@@ -1072,7 +1072,7 @@ public class MemoryView extends Composite
   /**
    * {@link MemoryModel} formatting the data as bytes.
    */
-  private static class BytesMemoryModel extends CharBufferMemoryModel {
+  private static class ByteMemoryModel extends CharBufferMemoryModel {
     private static final int CHARS_PER_BYTE = 2; // 2 hex chars per byte
 
     private static final int BYTE_SEPARATOR = 1;
@@ -1087,7 +1087,7 @@ public class MemoryView extends Composite
     private static final IntRange ASCII_RANGE =
         new IntRange(ADDRESS_CHARS + BYTES_CHARS + ASCII_SEPARATOR, CHARS_PER_ROW);
 
-    public BytesMemoryModel(MemoryDataModel data) {
+    public ByteMemoryModel(MemoryDataModel data) {
       super(data, CHARS_PER_ROW, BYTES_RANGE);
     }
 
@@ -1211,28 +1211,28 @@ public class MemoryView extends Composite
   }
 
   /**
-   * {@link IntegersMemoryModel} for 2 byte shorts.
+   * {@link IntegersMemoryModel} for 2 byte integers.
    */
-  private static class ShortsMemoryModel extends IntegersMemoryModel {
-    public ShortsMemoryModel(MemoryDataModel data) {
+  private static class Int16MemoryModel extends IntegersMemoryModel {
+    public Int16MemoryModel(MemoryDataModel data) {
       super(data, 2);
     }
   }
 
   /**
-   * {@link IntegersMemoryModel} for 4 byte ints.
+   * {@link IntegersMemoryModel} for 4 byte integers.
    */
-  private static class IntsMemoryModel extends IntegersMemoryModel {
-    public IntsMemoryModel(MemoryDataModel data) {
+  private static class Int32MemoryModel extends IntegersMemoryModel {
+    public Int32MemoryModel(MemoryDataModel data) {
       super(data, 4);
     }
   }
 
   /**
-   * {@link IntegersMemoryModel} for 4 byte longs.
+   * {@link IntegersMemoryModel} for 8 byte integers.
    */
-  private static class LongsMemoryModel extends IntegersMemoryModel {
-    public LongsMemoryModel(MemoryDataModel data) {
+  private static class Int64MemoryModel extends IntegersMemoryModel {
+    public Int64MemoryModel(MemoryDataModel data) {
       super(data, 8);
     }
   }
@@ -1240,7 +1240,7 @@ public class MemoryView extends Composite
   /**
    * {@link MemoryModel} displaying the data as 32bit floating point values.
    */
-  private static class FloatsMemoryModel extends CharBufferMemoryModel {
+  private static class Float32MemoryModel extends CharBufferMemoryModel {
     private static final int FLOATS_PER_ROW = BYTES_PER_ROW / 4;
     private static final int CHARS_PER_FLOAT = 15;
 
@@ -1252,7 +1252,7 @@ public class MemoryView extends Composite
     private static final IntRange FLOATS_RANGE =
         new IntRange(ADDRESS_CHARS + FLOAT_SEPARATOR, ADDRESS_CHARS + FLOATS_CHARS);
 
-    public FloatsMemoryModel(MemoryDataModel data) {
+    public Float32MemoryModel(MemoryDataModel data) {
       super(data.align(4), CHARS_PER_ROW, FLOATS_RANGE);
     }
 
@@ -1276,7 +1276,7 @@ public class MemoryView extends Composite
   /**
    * {@link MemoryModel} displaying the data as 64bit floating point values.
    */
-  private static class DoublesMemoryModel extends CharBufferMemoryModel {
+  private static class Float64MemoryModel extends CharBufferMemoryModel {
     private static final int DOUBLES_PER_ROW = BYTES_PER_ROW / 8;
     private static final int CHARS_PER_DOUBLE = 24;
 
@@ -1288,7 +1288,7 @@ public class MemoryView extends Composite
     private static final IntRange DOUBLES_RANGE =
         new IntRange(ADDRESS_CHARS + DOUBLE_SEPARATOR, ADDRESS_CHARS + DOUBLES_CHARS);
 
-    public DoublesMemoryModel(MemoryDataModel data) {
+    public Float64MemoryModel(MemoryDataModel data) {
       super(data.align(8), CHARS_PER_ROW, DOUBLES_RANGE);
     }
 
