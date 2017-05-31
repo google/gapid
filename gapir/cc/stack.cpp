@@ -241,7 +241,7 @@ const void* Stack::checkAndGetTopPointer(const char* what) {
             uint32_t offset = mStack[mTop].value<uint32_t>();
             const void* pointer = mMemoryManager->constantToAbsolute(offset);
             if (!mMemoryManager->isConstantAddress(pointer)) {
-                GAPID_WARNING("%s: Invalid constant address %p offset %u", what, pointer, offset);
+                GAPID_WARNING("%s: Invalid constant address %p offset 0x%x", what, pointer, offset);
                 mValid = false;
                 return nullptr;
             }
@@ -251,7 +251,7 @@ const void* Stack::checkAndGetTopPointer(const char* what) {
             uint32_t offset = mStack[mTop].value<uint32_t>();
             void* pointer = mMemoryManager->volatileToAbsolute(offset);
             if (!mMemoryManager->isVolatileAddress(pointer)) {
-                GAPID_WARNING("%s Invalid volatile address %p offset %u", what, pointer, offset);
+                GAPID_WARNING("%s Invalid volatile address %p offset 0x%x", what, pointer, offset);
                 mValid = false;
                 return nullptr;
             }
