@@ -552,6 +552,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			}
 		}
 
+	case *VkGetImageMemoryRequirements:
+		image := a.Image
+		addModify(&b, g, vulkanStateKey(image))
+
 	case *VkBindImageMemory:
 		image := a.Image
 		memory := a.Memory
@@ -1363,12 +1367,56 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addModify(&b, g, cmdbuf)
 
 	case *VkCmdPipelineBarrier:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
-		//TODO: handle the image and buffer memory barriers?
+		bufferBarrierCount := a.BufferMemoryBarrierCount
+		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
+		imageBarrierCount := a.ImageMemoryBarrierCount
+		imageBarriers := a.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
+		for i := uint64(0); i < uint64(bufferBarrierCount); i++ {
+			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, a, s, nil)
+			buffer := bufferBarrier.Buffer
+			// Getting the bindings for the whole buffer is conservative, as the
+			// barrier may only affect a region of the buffer specified by offset
+			// and size.
+			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+				bufferBindings, emptyMemoryBindings)
+		}
+		for i := uint64(0); i < uint64(imageBarrierCount); i++ {
+			imageBarrier := imageBarriers.Index(i, l).Read(ctx, a, s, nil)
+			image := imageBarrier.Image
+			// Getting the bindings for the whole image is conservative, as the
+			// barrier may only affect a region of the image specified by
+			// subresourceRange.
+			imageBindings := readImageHandleAndGetBindings(&b, image)
+			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+				imageBindings, emptyMemoryBindings)
+		}
 
 	case *RecreateCmdPipelineBarrier:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
-		//TODO: handle the image and buffer memory barriers?
+		bufferBarrierCount := a.BufferMemoryBarrierCount
+		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
+		imageBarrierCount := a.ImageMemoryBarrierCount
+		imageBarriers := a.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
+		for i := uint64(0); i < uint64(bufferBarrierCount); i++ {
+			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, a, s, nil)
+			buffer := bufferBarrier.Buffer
+			// Getting the bindings for the whole buffer is conservative, as the
+			// barrier may only affect a region of the buffer specified by offset
+			// and size.
+			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
+			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+				bufferBindings, emptyMemoryBindings)
+		}
+		for i := uint64(0); i < uint64(imageBarrierCount); i++ {
+			imageBarrier := imageBarriers.Index(i, l).Read(ctx, a, s, nil)
+			image := imageBarrier.Image
+			// Getting the bindings for the whole image is conservative, as the
+			// barrier may only affect a region of the image specified by
+			// subresourceRange.
+			imageBindings := readImageHandleAndGetBindings(&b, image)
+			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+				imageBindings, emptyMemoryBindings)
+		}
 
 	case *VkCmdBindPipeline:
 		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
