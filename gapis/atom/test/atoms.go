@@ -89,14 +89,13 @@ type (
 // Interface compliance checks
 var _ memory.Pointer = &Pointer{}
 
-func (p Pointer) String() string                                     { return memory.PointerToString(p) }
-func (p Pointer) Set(addr uint64, pool memory.PoolID) memory.Pointer { return Pointer{addr, pool} }
-func (p Pointer) IsNullptr() bool                                    { return p.addr == 0 && p.pool == memory.ApplicationPool }
-func (p Pointer) Address() uint64                                    { return p.addr }
-func (p Pointer) Pool() memory.PoolID                                { return p.pool }
-func (p Pointer) Offset(n uint64) memory.Pointer                     { panic("not implemented") }
-func (p Pointer) ElementSize(m *device.MemoryLayout) uint64          { return 1 }
-func (p Pointer) ElementType() reflect.Type                          { return reflect.TypeOf(byte(0)) }
+func (p Pointer) String() string                            { return memory.PointerToString(p) }
+func (p Pointer) IsNullptr() bool                           { return p.addr == 0 && p.pool == memory.ApplicationPool }
+func (p Pointer) Address() uint64                           { return p.addr }
+func (p Pointer) Pool() memory.PoolID                       { return p.pool }
+func (p Pointer) Offset(n uint64) memory.Pointer            { panic("not implemented") }
+func (p Pointer) ElementSize(m *device.MemoryLayout) uint64 { return 1 }
+func (p Pointer) ElementType() reflect.Type                 { return reflect.TypeOf(byte(0)) }
 func (p Pointer) ISlice(start, end uint64, m *device.MemoryLayout) memory.Slice {
 	panic("not implemented")
 }

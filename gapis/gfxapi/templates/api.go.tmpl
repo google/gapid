@@ -222,9 +222,6 @@
     return false
   }
 
-  // Set returns a new Pointer with the given address and pool.
-  func (p {{$ptr_ty}}) Set(addr uint64, pool ϟmem.PoolID) ϟmem.Pointer { return {{$ptr_ty}}{ addr, pool } }
-
   // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
   func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
 
