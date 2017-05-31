@@ -67,7 +67,7 @@ func (t *Texture) ResourceType(ctx context.Context) gfxapi.ResourceType {
 
 // ResourceData returns the resource data given the current state.
 func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
-	ctx = log.Enter(ctx, "Texture.Resource()")
+	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_2D:
 		levels := make([]*image.Info2D, len(t.Levels))
@@ -156,7 +156,7 @@ func (s *Shader) ResourceType(ctx context.Context) gfxapi.ResourceType {
 
 // ResourceData returns the resource data given the current state.
 func (s *Shader) ResourceData(ctx context.Context, t *gfxapi.State) (interface{}, error) {
-	ctx = log.Enter(ctx, "Shader.Resource()")
+	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty gfxapi.ShaderType
 	switch s.ShaderType {
 	case GLenum_GL_VERTEX_SHADER:
@@ -259,35 +259,42 @@ func (p *Program) ResourceType(ctx context.Context) gfxapi.ResourceType {
 
 // ResourceData returns the resource data given the current state.
 func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
-	ctx = log.Enter(ctx, "Program.Resource()")
+	ctx = log.Enter(ctx, "Program.ResourceData()")
 	state := GetState(s)
-	context := state.Contexts.Get(state.CurrentThread)
 
 	shaders := []*gfxapi.Shader{}
-	for shaderType, shaderID := range p.Shaders {
-		shader := context.SharedObjects.Shaders.Get(shaderID)
-		if shader == nil {
-			continue
+
+	// TODO: Using the current thread here is just wrong. We have a program that
+	// has bound shaders - this is not dependent on the current thread in any
+	// shape or form. The most sensible fix would be to change Program.Shaders
+	// from an map[Type]ID to map[Type]ref!Shader.
+	// See: https://github.com/google/gapid/issues/475
+	if context := state.Contexts.Get(state.CurrentThread); context != nil {
+		for shaderType, shaderID := range p.Shaders {
+			shader := context.SharedObjects.Shaders.Get(shaderID)
+			if shader == nil {
+				continue
+			}
+			var ty gfxapi.ShaderType
+			switch shaderType {
+			case GLenum_GL_VERTEX_SHADER:
+				ty = gfxapi.ShaderType_Vertex
+			case GLenum_GL_GEOMETRY_SHADER:
+				ty = gfxapi.ShaderType_Geometry
+			case GLenum_GL_TESS_CONTROL_SHADER:
+				ty = gfxapi.ShaderType_TessControl
+			case GLenum_GL_TESS_EVALUATION_SHADER:
+				ty = gfxapi.ShaderType_TessEvaluation
+			case GLenum_GL_FRAGMENT_SHADER:
+				ty = gfxapi.ShaderType_Fragment
+			case GLenum_GL_COMPUTE_SHADER:
+				ty = gfxapi.ShaderType_Compute
+			}
+			shaders = append(shaders, &gfxapi.Shader{
+				Type:   ty,
+				Source: shader.Source,
+			})
 		}
-		var ty gfxapi.ShaderType
-		switch shaderType {
-		case GLenum_GL_VERTEX_SHADER:
-			ty = gfxapi.ShaderType_Vertex
-		case GLenum_GL_GEOMETRY_SHADER:
-			ty = gfxapi.ShaderType_Geometry
-		case GLenum_GL_TESS_CONTROL_SHADER:
-			ty = gfxapi.ShaderType_TessControl
-		case GLenum_GL_TESS_EVALUATION_SHADER:
-			ty = gfxapi.ShaderType_TessEvaluation
-		case GLenum_GL_FRAGMENT_SHADER:
-			ty = gfxapi.ShaderType_Fragment
-		case GLenum_GL_COMPUTE_SHADER:
-			ty = gfxapi.ShaderType_Compute
-		}
-		shaders = append(shaders, &gfxapi.Shader{
-			Type:   ty,
-			Source: shader.Source,
-		})
 	}
 
 	uniforms := []*gfxapi.Uniform{}
