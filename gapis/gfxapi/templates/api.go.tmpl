@@ -192,6 +192,7 @@
   {{$el_is_ptr  := IsPointer ($p.To | Underlying | Unpack) }}
 
   var _ = ϟmem.Pointer({{$ptr_ty}}{})
+  var _ data.Assignable = &{{$ptr_ty}}{}
 
   // {{$ptr_ty}} is a pointer to a {{$el_ty}} element.
   {{if $el_is_ptr}}
@@ -211,6 +212,14 @@
       return {{$ptr_ty}}{  0, ϟmem.ApplicationPool }
     }
     return {{$ptr_ty}}{ p.Address(), p.Pool() }
+  }
+
+  func (p *{{$ptr_ty}}) Assign(o interface{}) bool {
+    if o, ok := o.(ϟmem.Pointer); ok {
+      *p = {{$ptr_ty}}{o.Address(), o.Pool()}
+      return true
+    }
+    return false
   }
 
   // Set returns a new Pointer with the given address and pool.

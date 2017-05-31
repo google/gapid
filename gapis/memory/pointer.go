@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -86,6 +87,16 @@ func (p ptr) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
 		panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", p, start, end))
 	}
 	return sli{root: p.addr, base: p.addr + start*p.ElementSize(m), count: end - start, pool: p.pool, elTy: p.elTy}
+}
+
+var _ data.Assignable = &ptr{}
+
+func (p *ptr) Assign(o interface{}) bool {
+	if o, ok := o.(Pointer); ok {
+		*p = ptr{o.Address(), o.Pool(), p.elTy}
+		return true
+	}
+	return false
 }
 
 // PointerToString returns a string representation of the pointer.
