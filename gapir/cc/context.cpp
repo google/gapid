@@ -124,6 +124,14 @@ bool Context::interpret() {
 
 void Context::onDebugMessage(int severity, const char* msg) {
     auto label = mInterpreter->getLabel();
+    std::string tmp;
+    if (msg != nullptr) {
+      auto len = strlen(msg);
+      if (len >= 1 && msg[len-1] == '\n') {
+        tmp = std::string(msg, len-1);
+        msg = tmp.data();
+      }
+    }
     switch (severity) {
     case LOG_LEVEL_ERROR:
         GAPID_ERROR("Renderer (%d): %s", label, msg);
