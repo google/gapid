@@ -246,7 +246,7 @@ public class AtomEditor {
 
       @Override
       public boolean update(Box.Value.Builder param) {
-        return false;
+        return true;
       }
     }
 
