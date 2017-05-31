@@ -68,8 +68,8 @@ bool Interpreter::run(const std::pair<const uint32_t*, uint32_t>& instructions) 
     for (uint32_t i = 0; i < instructions.second; ++i) {
         if (!interpret(instructions.first[i])) {
             GAPID_WARNING(
-                    "Interpreter stopped because of an interpretation error at opcode %u (%u)\n"
-                    "Last reached label: %d\n",
+                    "Interpreter stopped because of an interpretation error at opcode %u (%u). "
+                    "Last reached label: %d",
                     i, instructions.first[i], mLabel);
             return false;
         }
