@@ -144,110 +144,32 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the logic to decode the specified type and variable name.
+  Emits the logic to decode the specified type from the decoder d.
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Decode"}}
-  {{AssertType $.Type       "Type"        }}
-  {{AssertType $.Name       "string"      }}
+  {{AssertType $ "Type"}}
 
-  {{     if IsStaticArray $.Type}}ϟmem.Read(d, &{{$.Name}})
-  {{else if IsMap         $.Type}}ϟmem.Read(d, &{{$.Name}})
-  {{else if IsPointer     $.Type}}ϟmem.Read(d, &{{$.Name}})
-  {{else if IsClass       $.Type}}ϟmem.Read(d, &{{$.Name}})
-  {{else if IsPseudonym   $.Type}}
-    {{$ty := $.Type.To | Unpack}}
-    {{     if IsStaticArray $ty}}ϟmem.Read(d, &{{$.Name}})
-    {{else if IsMap         $ty}}ϟmem.Read(d, &{{$.Name}})
-    {{else if IsPointer     $ty}}ϟmem.Read(d, &{{$.Name}})
-    {{else if IsClass       $ty}}ϟmem.Read(d, &{{$.Name}})
-    {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "Cast" $.Type}}
-    {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "Cast" $.Type}}
-    {{end}}
-  {{else}}{{Template "Go.DecodePOD" "Type" $.Type "Name" $.Name}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the logic to decode the specified Plain-Old-Data type and variable name.
-  Cast can be used to cast the value type before assignment to Name.
--------------------------------------------------------------------------------
-*/}}
-{{define "Go.DecodePOD_cast"}}{{if $}}{{Template "Go.Type" $}}{{end}}{{end}}
-{{define "Go.DecodePOD"}}
-  {{AssertType $.Type       "Type"        }}
-  {{AssertType $.Name       "string"      }}
-  {{AssertType $.Cast       "Type"   "nil"}}
-
-  {{$cast      := Macro "Go.DecodePOD_cast" $.Cast}}
-  {{$int_size  := "ϟl.GetInteger().GetSize()*8"}}
-  {{$size_size := "ϟl.GetSize().GetSize()*8"}}
-
-  {{     if IsEnum        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}{{$.Type.Name}}{{end}}(d.U32())
-  {{else if IsBool        $.Type}}{{$.Name}} = {{$cast}}(d.Bool())
-  {{else if IsU8          $.Type}}{{$.Name}} = {{$cast}}(d.U8())
-  {{else if IsS8          $.Type}}{{$.Name}} = {{$cast}}(d.I8())
-  {{else if IsU16         $.Type}}{{$.Name}} = {{$cast}}(d.U16())
-  {{else if IsS16         $.Type}}{{$.Name}} = {{$cast}}(d.I16())
-  {{else if IsF32         $.Type}}{{$.Name}} = {{$cast}}(d.F32())
-  {{else if IsU32         $.Type}}{{$.Name}} = {{$cast}}(d.U32())
-  {{else if IsS32         $.Type}}{{$.Name}} = {{$cast}}(d.I32())
-  {{else if IsF64         $.Type}}{{$.Name}} = {{$cast}}(d.F64())
-  {{else if IsU64         $.Type}}{{$.Name}} = {{$cast}}(d.U64())
-  {{else if IsS64         $.Type}}{{$.Name}} = {{$cast}}(d.I64())
-  {{else if IsString      $.Type}}{{$.Name}} = {{$cast}}(d.String())
-  {{else if IsChar        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Char{{end}}(d.Char())
-  {{else if IsInt         $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Int{{end}}(d.Int()))
-  {{else if IsUint        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Uint{{end}}(d.Uint())
-  {{else if IsSize        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Size{{end}}(d.Size())
-  {{else if IsSlice       $.Type}}
-  {{else if IsReference   $.Type}}
-  {{else if IsVoid        $.Type}}
-  {{else}}{{Error "macro Go.DecodePOD '%v' called with unsupported type: %v" $.Name $.Type.Name}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the logic to encode the specified type and variable name.
--------------------------------------------------------------------------------
-*/}}
-{{define "Go.Encode"}}
-  {{AssertType $.Type       "Type"        }}
-  {{AssertType $.Name       "string"      }}
-
-  {{$ty        := $.Type | Underlying}}
-  {{$int_size  := "ϟl.GetInteger().GetSize()*8"}}
-  {{$size_size := "ϟl.GetSize().GetSize()*8"}}
-
-  {{     if IsStaticArray $ty}}if {{$.Name}}.Encode(ϟl, e)
-  {{else if IsMap         $ty}}if {{$.Name}}.Encode(ϟl, e)
-  {{else if IsClass       $ty}}if {{$.Name}}.Encode(ϟl, e)
-  {{else if IsPointer     $ty}}if {{$.Name}}.Encode(ϟl, e)
-  {{else if IsEnum        $ty}}if e.Uint32(uint32({{$.Name}}))
-  {{else if IsBool        $ty}}if e.Bool(bool({{$.Name}}))
-  {{else if IsChar        $ty}}if e.Uint8(uint8({{$.Name}}))
-  {{else if IsU8          $ty}}if e.Uint8(uint8({{$.Name}}))
-  {{else if IsS8          $ty}}if e.Int8(int8({{$.Name}}))
-  {{else if IsU16         $ty}}if e.Uint16(uint16({{$.Name}}))
-  {{else if IsS16         $ty}}if e.Int16(int16({{$.Name}}))
-  {{else if IsF32         $ty}}if e.Float32(float32({{$.Name}}))
-  {{else if IsU32         $ty}}if e.Uint32(uint32({{$.Name}}))
-  {{else if IsS32         $ty}}if e.Int32(int32({{$.Name}}))
-  {{else if IsF64         $ty}}if e.Float64(float64({{$.Name}}))
-  {{else if IsU64         $ty}}if e.Uint64(uint64({{$.Name}}))
-  {{else if IsS64         $ty}}if e.Int64(int64({{$.Name}}))
-  {{else if IsString      $ty}}if e.String(string({{$.Name}}))
-  {{else if IsInt         $ty}}if binary.WriteInt(e,  {{$int_size}},   int64({{$.Name}}))
-  {{else if IsUint        $ty}}if binary.WriteUint(e, {{$int_size}},  uint64({{$.Name}}))
-  {{else if IsSize        $ty}}if binary.WriteUint(e, {{$size_size}}, uint64({{$.Name}}))
-  {{else if IsSlice       $ty}}
-  {{else if IsReference   $ty}}
-  {{else if IsVoid        $ty}}
-  {{else}}{{Error "macro Go.Encode '%v' called with unsupported type: %v" $.Name $.Type.Name}}
+  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(d)
+  {{else if IsPseudonym   $}}Decode{{Macro "Go.Type" $ | Title}}(d)
+  {{else if IsEnum        $}}Decode{{Macro "Go.Type" $ | Title}}(d)
+  {{else if IsBool        $}}d.Bool()
+  {{else if IsU8          $}}d.U8()
+  {{else if IsS8          $}}d.I8()
+  {{else if IsU16         $}}d.U16()
+  {{else if IsS16         $}}d.I16()
+  {{else if IsF32         $}}d.F32()
+  {{else if IsU32         $}}d.U32()
+  {{else if IsS32         $}}d.I32()
+  {{else if IsF64         $}}d.F64()
+  {{else if IsU64         $}}d.U64()
+  {{else if IsS64         $}}d.I64()
+  {{else if IsString      $}}d.String()
+  {{else if IsChar        $}}d.Char()
+  {{else if IsInt         $}}d.Int()
+  {{else if IsUint        $}}d.Uint()
+  {{else if IsSize        $}}d.Size()
+  {{else}}{{Error "macro Go.Decode called with unsupported type: %v" $}}
   {{end}}
 {{end}}
 
