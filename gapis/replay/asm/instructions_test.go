@@ -35,8 +35,8 @@ func (testPtrResolver) ResolveTemporaryPointer(value.TemporaryPointer) value.Vol
 func (testPtrResolver) ResolveObservedPointer(ptr value.ObservedPointer) (protocol.Type, uint64) {
 	return protocol.Type_VolatilePointer, uint64(ptr)
 }
-func (testPtrResolver) ResolvePointerIndex(value.PointerIndex) value.VolatilePointer {
-	return 0
+func (testPtrResolver) ResolvePointerIndex(value.PointerIndex) (protocol.Type, uint64) {
+	return protocol.Type_VolatilePointer, 0
 }
 
 func test(ctx context.Context, Instructions []Instruction, expected ...interface{}) {
