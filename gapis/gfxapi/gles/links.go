@@ -36,7 +36,7 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 		}
 		return cmdPath.StateAfter().
 			Field("Contexts").
-			MapIndex(uint64(state.CurrentThread)).
+			MapIndex(state.CurrentThread).
 			Field("Objects"), context, nil
 	}
 	return nil, nil, nil
@@ -57,7 +57,7 @@ func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, err
 		}
 		return cmdPath.StateAfter().
 			Field("Contexts").
-			MapIndex(uint64(state.CurrentThread)).
+			MapIndex(state.CurrentThread).
 			Field("SharedObjects"), context, nil
 	}
 	return nil, nil, nil
@@ -76,9 +76,9 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 	}
 	return i.
 		Field("VertexArrays").
-		MapIndex(uint64(c.BoundVertexArray)).
+		MapIndex(c.BoundVertexArray).
 		Field("VertexAttributeArrays").
-		MapIndex(uint64(o)), nil
+		MapIndex(o), nil
 }
 
 // Link returns the link to the buffer object in the state block.
@@ -88,7 +88,7 @@ func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if i == nil || !c.SharedObjects.Buffers.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Buffers").MapIndex(int64(o)), nil
+	return i.Field("Buffers").MapIndex(o), nil
 }
 
 // Link returns the link to the framebuffer object in the state block.
@@ -98,7 +98,7 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 	if i == nil || !c.Objects.Framebuffers.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Framebuffers").MapIndex(int64(o)), nil
+	return i.Field("Framebuffers").MapIndex(o), nil
 }
 
 // Link returns the link to the program in the state block.
@@ -108,7 +108,7 @@ func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if i == nil || !c.SharedObjects.Programs.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Programs").MapIndex(int64(o)), nil
+	return i.Field("Programs").MapIndex(o), nil
 }
 
 // Link returns the link to the query object in the state block.
@@ -118,7 +118,7 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if i == nil || !c.Objects.Queries.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Queries").MapIndex(int64(o)), nil
+	return i.Field("Queries").MapIndex(o), nil
 }
 
 // Link returns the link to the renderbuffer object in the state block.
@@ -128,7 +128,7 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 	if i == nil || !c.SharedObjects.Renderbuffers.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Renderbuffers").MapIndex(int64(o)), nil
+	return i.Field("Renderbuffers").MapIndex(o), nil
 }
 
 // Link returns the link to the shader object in the state block.
@@ -138,7 +138,7 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if i == nil || !c.SharedObjects.Shaders.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Shaders").MapIndex(int64(o)), nil
+	return i.Field("Shaders").MapIndex(o), nil
 }
 
 // Link returns the link to the texture object in the state block.
@@ -148,7 +148,7 @@ func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	if i == nil || !c.SharedObjects.Textures.Contains(o) {
 		return nil, err
 	}
-	return i.Field("Textures").MapIndex(int64(o)), nil
+	return i.Field("Textures").MapIndex(o), nil
 }
 
 // Link returns the link to the uniform in the state block.
@@ -181,9 +181,9 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 
 	return i.
 		Field("Programs").
-		MapIndex(int64(program)).
+		MapIndex(program).
 		Field("Uniforms").
-		MapIndex(int64(o)), nil
+		MapIndex(o), nil
 }
 
 // Link returns the link to the vertex array in the state block.
@@ -193,5 +193,5 @@ func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error)
 	if i == nil || !c.Objects.VertexArrays.Contains(o) {
 		return nil, err
 	}
-	return i.Field("VertexArrays").MapIndex(int64(o)), nil
+	return i.Field("VertexArrays").MapIndex(o), nil
 }
