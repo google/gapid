@@ -41,6 +41,7 @@ import (
 	_ "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
+	"github.com/google/gapid/gapis/memory"
 )
 
 type (
@@ -61,6 +62,7 @@ type (
 		Str  string            `param:"Str"`
 		Sli  []bool            `param:"Sli"`
 		Ref  *testStruct       `param:"Ref"`
+		Ptr  memory.Pointer    `param:"Ptr"`
 		Map  stringːstring     `param:"Map"`
 		PMap intːtestStructPtr `param:"PMap"`
 	}
@@ -73,12 +75,14 @@ var (
 		Str: "aaa",
 		Sli: []bool{true, false, true},
 		Ref: &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}},
+		Ptr: memory.BytePtr(0x123, 0x456),
 		Map: stringːstring{"cat": "meow", "dog": "woof"},
 	}
 
 	atomB = &testAtom{
 		Str: "xyz",
 		Sli: []bool{false, true, false},
+		Ptr: memory.BytePtr(0x321, 0x654),
 		Map: stringːstring{"bird": "tweet", "fox": "?"},
 		PMap: intːtestStructPtr{
 			100: &testStruct{Str: "baldrick"},
@@ -92,6 +96,7 @@ var (
 			{Name: "Str", Value: box.NewValue(atomA.Str)},
 			{Name: "Sli", Value: box.NewValue(atomA.Sli)},
 			{Name: "Ref", Value: box.NewValue(atomA.Ref)},
+			{Name: "Ptr", Value: box.NewValue(atomA.Ptr)},
 			{Name: "Map", Value: box.NewValue(atomA.Map)},
 			{Name: "PMap", Value: box.NewValue(atomA.PMap)},
 		},
@@ -104,6 +109,7 @@ var (
 			{Name: "Str", Value: box.NewValue(atomB.Str)},
 			{Name: "Sli", Value: box.NewValue(atomB.Sli)},
 			{Name: "Ref", Value: box.NewValue(atomB.Ref)},
+			{Name: "Ptr", Value: box.NewValue(atomB.Ptr)},
 			{Name: "Map", Value: box.NewValue(atomB.Map)},
 			{Name: "PMap", Value: box.NewValue(atomB.PMap)},
 		},
@@ -168,6 +174,8 @@ func TestGet(t *testing.T) {
 		{p.Command(1).Parameter("Str"), "xyz", nil},
 		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
 		{p.Command(0).Parameter("Ref"), &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}}, nil},
+		{p.Command(0).Parameter("Ptr"), memory.BytePtr(0x123, 0x456), nil},
+		{p.Command(1).Parameter("Ptr"), memory.BytePtr(0x321, 0x654), nil},
 		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
 		{p.Command(1).Parameter("Sli").Slice(1, 3), []bool{true, false}, nil},
 		{p.Command(1).Parameter("Str").ArrayIndex(1), byte('y'), nil},
@@ -253,6 +261,8 @@ func TestSet(t *testing.T) {
 		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
 		{path: p.Command(0).Parameter("Ref"), val: &testStruct{Str: "ddd"}},
 		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
+		{path: p.Command(0).Parameter("Ptr"), val: memory.BytePtr(0x123, 0x456)},
+		{path: p.Command(1).Parameter("Ptr"), val: memory.BytePtr(0x321, 0x654)},
 		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
 		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
 		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
