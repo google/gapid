@@ -166,8 +166,12 @@ type markerGrouper struct {
 }
 
 func (g *markerGrouper) push(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
+	var name string
 	if l, ok := a.(atom.Labeled); ok {
-		g.stack = append(g.stack, group{start: id, name: l.Label(ctx, s)})
+		name = l.Label(ctx, s)
+	}
+	if len(name) > 0 {
+		g.stack = append(g.stack, group{start: id, name: name})
 	} else {
 		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("Marker %d", g.count)})
 		g.count++
