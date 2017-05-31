@@ -38,6 +38,7 @@ set(files
     registry.go
     resource.go
     service.go
+    service_test.go
     writer.go
 )
 set(dirs
