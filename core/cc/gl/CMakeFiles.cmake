@@ -20,7 +20,8 @@
 set(files
     formats.cpp
     formats.h
+    versions.h
 )
 set(dirs
-    
+
 )

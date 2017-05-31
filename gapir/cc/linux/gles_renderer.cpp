@@ -18,6 +18,7 @@
 #include "gapir/cc/gles_renderer.h"
 
 #include "core/cc/gl/formats.h"
+#include "core/cc/gl/versions.h"
 #include "core/cc/log.h"
 
 #include <cstring>
@@ -249,23 +250,9 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     if (glXCreateContextAttribsARB == nullptr) {
         GAPID_FATAL("Unable to get address of glXCreateContextAttribsARB");
     }
-    // Try to get the most recent version of OpenGL available.
-    // The implementation is always free to return a newer version.
-    // However some implementations will return the precise version,
-    // so if we request 3.2, we would get 3.2 even if new is available.
-    struct { int major; int minor; } gl_versions[] = {
-        {4, 5}, // Compatible with OpenGL ES 3.1
-        {4, 4},
-        {4, 3}, // Compatible with OpenGL ES 3.0
-        {4, 2},
-        {4, 1}, // Compatible with OpenGL ES 2.0
-        {4, 0},
-        {3, 3},
-        {3, 2}, // Introduces core profile
-    };
     // Prevent X from taking down the process if the GL version is not supported.
     auto oldHandler = XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
-    for (auto gl_version : gl_versions) {
+    for (auto gl_version : core::gl::sVersionSearchOrder) {
         // List of name-value pairs.
         const int contextAttribs[] = {
             GLX_RENDER_TYPE, GLX_RGBA_TYPE,

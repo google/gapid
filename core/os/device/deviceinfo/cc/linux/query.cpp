@@ -16,6 +16,8 @@
 
 #include "../query.h"
 
+#include "core/cc/gl/versions.h"
+
 #include <X11/Xresource.h>
 #include <GL/glx.h>
 #include <cstring>
@@ -120,11 +122,42 @@ bool createContext(void* platform_data) {
     }
 
     GLXFBConfig fbConfig = gContext.mFBConfigs[0];
-    gContext.mContext = glXCreateNewContext(gContext.mDisplay,
-                                            fbConfig,
-                                            GLX_RGBA_TYPE,
-                                            0,
-                                            True);
+
+    typedef GLXContext (*glXCreateContextAttribsARBProc)(
+            Display *dpy, GLXFBConfig config, GLXContext share_context,
+            Bool direct, const int *attrib_list);
+
+    glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
+        (glXCreateContextAttribsARBProc)glXGetProcAddress(
+            reinterpret_cast<const GLubyte*>("glXCreateContextAttribsARB"));
+    if (glXCreateContextAttribsARB == nullptr) {
+        gContext.mContext = glXCreateNewContext(gContext.mDisplay,
+                                                fbConfig,
+                                                GLX_RGBA_TYPE,
+                                                nullptr,
+                                                True);
+    } else {
+        // Prevent X from taking down the process if the GL version is not supported.
+        auto oldHandler = XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
+        for (auto gl_version : core::gl::sVersionSearchOrder) {
+            // List of name-value pairs.
+            const int contextAttribs[] = {
+                GLX_RENDER_TYPE, GLX_RGBA_TYPE,
+                GLX_CONTEXT_MAJOR_VERSION_ARB, gl_version.major,
+                GLX_CONTEXT_MINOR_VERSION_ARB, gl_version.minor,
+                GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
+                GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+                None,
+            };
+            gContext.mContext = glXCreateContextAttribsARB(
+                gContext.mDisplay, fbConfig, nullptr, /* direct */ True, contextAttribs);
+            if (gContext.mContext != nullptr) {
+                break;
+            }
+        }
+        XSetErrorHandler(oldHandler);
+    }
+
     if (!gContext.mContext) {
 		snprintf(gContext.mError, sizeof(gContext.mError),
 				 "glXCreateNewContext failed");
