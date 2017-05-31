@@ -17,6 +17,8 @@ package deep
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/google/gapid/core/data"
 )
 
 // Copy recursively copies all fields, map and slice elements from the value
@@ -45,6 +47,11 @@ func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect
 	if !d.CanSet() {
 		return fmt.Errorf("Cannot assign to %v", path)
 	}
+
+	if a, ok := d.Addr().Interface().(data.Assignable); ok && a.Assign(s.Interface()) {
+		return nil
+	}
+
 	switch d.Kind() {
 	case reflect.Struct:
 		for i, c := 0, d.Type().NumField(); i < c; i++ {
