@@ -18,9 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    testatom.pb.go
-    testatom.proto
+    test.pb.go
+    test.proto
 )
 set(dirs
-    
+
 )

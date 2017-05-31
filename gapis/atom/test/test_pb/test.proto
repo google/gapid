@@ -14,10 +14,10 @@
 
 syntax = "proto3";
 
-package testatom_pb;
+package test_pb;
 
 import "gapis/service/box/box.proto";
 
-message testAtom {
+message AtomX {
 	box.Value data = 1;
 }
