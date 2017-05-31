@@ -31,9 +31,6 @@ const bits32 = uint64(1) << 32
 
 // Pointer is the type representing a memory pointer.
 type Pointer interface {
-	// Set returns a new Pointer with the given address and pool.
-	Set(addr uint64, pool PoolID) Pointer
-
 	// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
 	IsNullptr() bool
 
@@ -75,7 +72,6 @@ type ptr struct {
 }
 
 func (p ptr) String() string                            { return PointerToString(p) }
-func (p ptr) Set(addr uint64, pool PoolID) Pointer      { return ptr{addr, pool, p.elTy} }
 func (p ptr) IsNullptr() bool                           { return p.addr == 0 && p.pool == ApplicationPool }
 func (p ptr) Address() uint64                           { return p.addr }
 func (p ptr) Pool() PoolID                              { return p.pool }

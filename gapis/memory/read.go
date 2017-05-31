@@ -17,6 +17,8 @@ package memory
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/google/gapid/core/data"
 )
 
 // Read reads the value pointed at p from the decoder d using C alignment rules.
@@ -41,8 +43,14 @@ func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
 	switch {
 	case t.Implements(tyPointer):
-		p := v.Interface().(Pointer).Set(d.Pointer(), ApplicationPool)
-		v.Set(reflect.ValueOf(p))
+		ptr := v.Addr().Interface()
+		if a, ok := ptr.(data.Assignable); ok {
+			if ok := a.Assign(BytePtr(d.Pointer(), ApplicationPool)); !ok {
+				panic(fmt.Errorf("Could not assign to %T", ptr))
+			}
+		} else {
+			panic(fmt.Errorf("Pointer type %T does not implement data.Assignable", ptr))
+		}
 	case t.Implements(tyCharTy):
 		deref(v).SetUint(uint64(d.Char()))
 	case t.Implements(tyIntTy):
