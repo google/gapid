@@ -94,19 +94,22 @@
 {{define "enum.go"}}
   {{template "Go.GeneratedHeader" (Global "OutputDir")}}
 
-  import (
-    "fmt"
+  {{if $.Enums}}
+    import (
+      "fmt"
 
-    "github.com/google/gapid/gapis/atom"
-    "github.com/google/gapid/gapis/gfxapi"
-    "github.com/google/gapid/core/log"
-    "github.com/google/gapid/gapis/memory"
-    "github.com/google/gapid/gapis/replay/builder"
-    "github.com/google/gapid/gapis/service"
-  )
+      "github.com/google/gapid/gapis/atom"
+      "github.com/google/gapid/gapis/gfxapi"
+      "github.com/google/gapid/core/log"
+      "github.com/google/gapid/gapis/memory"
+      "github.com/google/gapid/gapis/replay/builder"
+      "github.com/google/gapid/gapis/service"
 
-  {{range $e := $.Enums}}
-    {{template "Enum" $e}}
+      ϟmem "github.com/google/gapid/gapis/memory"
+    )
+    {{range $e := $.Enums}}
+      {{template "Enum" $e}}
+    {{end}}
   {{end}}
 {{end}}
 
@@ -129,23 +132,22 @@
     {{if IsSize $u}}
       // Dummy function to make {{$.Name}} implement SizeTy interface
       func ({{$.Name}}) IsMemorySize() {}
-
     {{end}}
     {{if IsChar $u}}
       // Dummy function to make {{$.Name}} implement CharTy interface
       func ({{$.Name}}) IsChar() {}
-
     {{end}}
     {{if IsInt $u}}
       // Dummy function to make {{$.Name}} implement IntTy interface
       func ({{$.Name}}) IsInt() {}
-
     {{end}}
     {{if IsUint $u}}
       // Dummy function to make {{$.Name}} implement UintTy interface
       func ({{$.Name}}) IsUint() {}
-
     {{end}}
+    func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
+      return {{$.Name}}({{Template "Go.Decode" $u}})
+    }
   {{end}}
 
   {{template "LabelsForLabeledType" $}}
@@ -171,6 +173,12 @@
       return ϟb.Buffer({{$.Size}})
     }
   {{end}}
+
+  func Decode{{$ty | Title}}(d *ϟmem.Decoder) {{$ty}} {
+    out := {{$ty}}{}
+    ϟmem.Read(d, &out)
+    return out
+  }
 {{end}}
 
 
@@ -348,18 +356,13 @@
         {{if GetAnnotation $f.Type "replay_remap"}}
           d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
           addr := value.ObservedPointer(s.base + d.Offset())
-          var v {{Macro "Go.Type" $f}}
-          {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
+          v := {{Template "Go.Decode" $f.Type}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
             ϟb.Store(addr)
           }
         {{else}}
-          var v {{Macro "Go.Type" $f}}
-          {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
-          _ = v
-          // We don't actually have to write the type here since we wrote
-          // the entire range, we just need to keep the decoder in sync.
+          {{Template "Go.Decode" $f.Type}}
         {{end}}
       {{end}}
     }
@@ -576,8 +579,7 @@
           {{/* Element type has explicitly stated it needs custom remapping */}}
           ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
           for i := uint64(0); i < s.count; i++ {
-            var v {{$el_ty}}
-            {{Template "Go.Decode" "Name" "v" "Type" $s.To}}
+            v := {{Template "Go.Decode" $s.To}}
             if key, remap := v.remap(ϟa, ϟs); remap {
               loadRemap(ϟb, key, {{Template "Go.Replay.Type" $s.To}}, {{Template "Go.Replay.Value" "Type" $s.To "Name" "v"}})
             } else {
@@ -607,8 +609,7 @@
         size := s.ElementSize(ϟl)
         ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
         for i := uint64(0); i < s.count; i++ {
-          var v {{$el_ty}}
-          {{Template "Go.Decode" "Name" "v" "Type" $s.To}}
+          v := {{Template "Go.Decode" $s.To}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             dst, found := ϟb.Remappings[key]
             if !found {
@@ -992,6 +993,10 @@
       {{end}}
     }
     return fmt.Sprintf("{{$.Name}}(%d)", e)
+  }
+
+  func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
+    return {{$.Name}}(d.U32())
   }
 {{end}}
 
