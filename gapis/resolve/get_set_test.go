@@ -17,8 +17,6 @@ package resolve
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -111,34 +109,6 @@ var (
 		},
 	}
 )
-
-func (m stringːstring) KeysSorted() []string {
-	s := make(sort.StringSlice, len(m))
-	i := 0
-	for k := range m {
-		s[i] = k
-		i++
-	}
-	sort.Sort(s)
-	return s
-}
-
-func (a testStructSlice) Len() int      { return len(a) }
-func (a testStructSlice) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a testStructSlice) Less(i, j int) bool {
-	return reflect.ValueOf(a[i].Ref).Pointer() < reflect.ValueOf(a[j].Ref).Pointer() && a[i].Str < a[j].Str
-}
-
-func (m intːtestStructPtr) KeysSorted() []int {
-	s := make([]int, len(m))
-	i := 0
-	for k := range m {
-		s[i] = k
-		i++
-	}
-	sort.Ints(s)
-	return s
-}
 
 func (testAPI) Name() string                 { return "foo" }
 func (testAPI) ID() gfxapi.ID                { return testAPIID }
