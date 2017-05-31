@@ -268,6 +268,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return StateTree(ctx, p)
 	case *path.StateTreeNode:
 		return StateTreeNode(ctx, p)
+	case *path.StateTreeNodeForPath:
+		return StateTreeNodeForPath(ctx, p)
 	case *path.Thumbnail:
 		return Thumbnail(ctx, p)
 	default:
