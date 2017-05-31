@@ -321,17 +321,10 @@
     // any pointer fields.
     ϟb.Write(s.Range(ϟs.MemoryLayout), s.ResourceID(ϟctx, ϟs))
     d := s.Decoder(ϟctx, ϟs)
-    base := value.ObservedPointer(s.base)
-    // If there are no members, then lets not have Go complain
-    // about unused variables.
-    _ = d
-    _ = base
-    offset := uint64(0)
-    _ = offset // Silence warnings for objects with no fields
+    for i := uint64(0); i < s.count; i++ {
+      {{Template "ReadStructFieldsWithRemapping" $}}
+    }
   {{end}}
-  for i := uint64(0); i < s.count; i++ {
-    {{Template "ReadStructFieldsWithRemapping" $}}
-  }
 {{end}}
 
 {{/*
@@ -341,42 +334,33 @@
 */}}
 {{define "ReadStructFieldsWithRemapping"}}
   {{AssertType $ "Class"}}
-  {{/* TODO: Handle member alignment here */}}
   {{range $f := $.Fields}}
-    {
-      required_alignment := {{Template "Go.AlignOf" (TypeOf $f)}}
-      if (offset % required_alignment != 0) {
-        extra_reads := required_alignment - (offset % required_alignment)
-        offset += extra_reads
-        d.Skip(extra_reads)
-        base += value.ObservedPointer(extra_reads)
-        if err := d.Error(); err != nil {
-          panic(err)
-        }
-      }
+    { // {{$f.Name}}
       {{if IsPointer ($f.Type | Underlying)}}
-          offset += {{Template "Go.SizeOf" (TypeOf $f)}}
-          v := {{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
-          ϟb.Push(v)
-          ϟb.Store(base)
-          base += value.ObservedPointer(ϟs.MemoryLayout.GetPointer().GetSize())
+        d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+        addr := value.ObservedPointer(s.base + d.Offset())
+        ϟb.Push({{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs))
+        ϟb.Store(addr)
       {{else if IsClass ($f.Type | Underlying)}}
-          {{Template "ReadStructFieldsWithRemapping" $f.Type}}
+        d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+        {{Template "ReadStructFieldsWithRemapping" $f.Type}}
       {{else}}
-        offset += {{Template "Go.SizeOf" (TypeOf $f)}}
-        var v {{Macro "Go.Type" $f}}
-        {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
         {{if GetAnnotation $f.Type "replay_remap"}}
+          d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+          addr := value.ObservedPointer(s.base + d.Offset())
+          var v {{Macro "Go.Type" $f}}
+          {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
-            ϟb.Store(base)
+            ϟb.Store(addr)
           }
         {{else}}
-          var _ = v
+          var v {{Macro "Go.Type" $f}}
+          {{Template "Go.Decode" "Name" "v" "Type" $f.Type}}
+          _ = v
           // We don't actually have to write the type here since we wrote
           // the entire range, we just need to keep the decoder in sync.
         {{end}}
-        base += value.ObservedPointer({{Template "Go.SizeOf" $f.Type}})
       {{end}}
     }
   {{end}}
