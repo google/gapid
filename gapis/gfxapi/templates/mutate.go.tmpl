@@ -600,7 +600,7 @@
         {{/* Apply the fenced-copy read */}}
         {{/* TODO: Unlike Slice.Copy, this does not optimise for non-pointer copies. */}}
         ϟdst, ϟsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
-        ϟcount := min(ϟdst.Count(), ϟsrc.Count())
+        ϟcount := u64.Min(ϟdst.Count(), ϟsrc.Count())
         ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount, ϟl), ϟsrc.Slice(0, ϟcount, ϟl)
         ϟsrcElems := ϟsrc.Read(ϟctx, ϟa, ϟs, ϟb)
       {{end}}

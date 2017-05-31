@@ -80,14 +80,6 @@
   func init() {
     gfxapi.Register(API())
   }
-
-  func min(a, b uint64) uint64 {
-    if a < b {
-      return a
-    } else {
-      return b
-    }
-  }
 {{end}}
 
 
@@ -515,7 +507,7 @@
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
-      count := min(s.count, uint64(len(src)))
+      count := u64.Min(s.count, uint64(len(src)))
       e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
@@ -526,7 +518,7 @@
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
     func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
-      count := min(dst.count, src.count)
+      count := u64.Min(dst.count, src.count)
       dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
     {{if $el_is_ptr}}
       if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
