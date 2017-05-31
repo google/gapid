@@ -110,11 +110,12 @@ var (
 	APIID = gfxapi.ID{1, 2, 3}
 
 	P = &AtomX{
-		Str: "aaa",
-		Sli: []bool{true, false, true},
-		Ref: &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
-		Ptr: memory.BytePtr(0x123, 0x456),
-		Map: stringːstring{"cat": "meow", "dog": "woof"},
+		Str:  "aaa",
+		Sli:  []bool{true, false, true},
+		Ref:  &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
+		Ptr:  memory.BytePtr(0x123, 0x456),
+		Map:  stringːstring{"cat": "meow", "dog": "woof"},
+		PMap: intːStructPtr{},
 	}
 
 	Q = &AtomX{
