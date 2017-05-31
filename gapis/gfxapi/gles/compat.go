@@ -858,8 +858,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlInsertEventMarkerEXT,
 			*GlPushGroupMarkerEXT,
-			*GlPopGroupMarkerEXT:
-			// GL_EXT_debug_marker may not be supported on the replay device.
+			*GlPopGroupMarkerEXT,
+			*GlPushDebugGroup,
+			*GlPopDebugGroup,
+			*GlPushDebugGroupKHR,
+			*GlPopDebugGroupKHR:
+			// Debug markers may not be supported on the replay device.
 			// As they do not affect rendering output, just drop them.
 			return
 
