@@ -1056,7 +1056,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
-		case *GlStartTilingQCOM, *GlEndTilingQCOM:
+		case *GlStartTilingQCOM, *GlEndTilingQCOM,
+			*EglCreateNativeClientBufferANDROID:
 			if !version.IsES {
 				// This extension is not applicable on desktop.
 				return
