@@ -343,17 +343,19 @@
 {{define "ReadStructFieldsWithRemapping"}}
   {{AssertType $ "Class"}}
   {{range $f := $.Fields}}
-    { // {{$f.Name}}
-      {{if IsPointer ($f.Type | Underlying)}}
+    {{if IsPointer ($f.Type | Underlying)}}
+      { // {{$.Name}}.{{$f.Name}}
         d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
         addr := value.ObservedPointer(s.base + d.Offset())
         ϟb.Push({{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs))
         ϟb.Store(addr)
-      {{else if IsClass ($f.Type | Underlying)}}
-        d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
-        {{Template "ReadStructFieldsWithRemapping" $f.Type}}
-      {{else}}
-        {{if GetAnnotation $f.Type "replay_remap"}}
+      }
+    {{else if IsClass ($f.Type | Underlying)}}
+      d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+      {{Template "ReadStructFieldsWithRemapping" $f.Type}}
+    {{else}}
+      {{if GetAnnotation $f.Type "replay_remap"}}
+        {
           d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
           addr := value.ObservedPointer(s.base + d.Offset())
           v := {{Template "Go.Decode" $f.Type}}
@@ -361,11 +363,11 @@
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
             ϟb.Store(addr)
           }
-        {{else}}
-          {{Template "Go.Decode" $f.Type}}
-        {{end}}
+        }
+      {{else}}
+        {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$f.Name}}
       {{end}}
-    }
+    {{end}}
   {{end}}
 {{end}}
 
