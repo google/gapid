@@ -646,7 +646,7 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     t := GetBoundTextureOrErrorInvalidEnum(target)
     sf := EGLSizedFormat2GLSizedFormat(info.Format)
     sfInfo := GetSizedFormatInfo(sf)
-    i := Image(
+    i := new!Image(
       Width:       as!GLsizei(info.Width),
       Height:      as!GLsizei(info.Height),
       SizedFormat: sf,
