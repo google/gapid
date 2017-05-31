@@ -992,6 +992,17 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
     }
     {
+      VkEventCreateInfo create_info {
+        VkStructureType::VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
+          nullptr,
+          0
+      };
+      for (auto& event : Events) {
+        RecreateEvent(observer, event.second->mDevice, &create_info,
+                      event.second->mSignaled, &event.second->mVulkanHandle);
+      }
+    }
+    {
         VkCommandPoolCreateInfo create_info = {
             VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             nullptr,
