@@ -29,9 +29,10 @@ func LoadSlice(ctx context.Context, s Slice, pools Pools, l *device.MemoryLayout
 	rng := s.Range(l)
 	ioR := pool.Slice(rng).NewReader(ctx)
 	binR := endian.Reader(ioR, l.GetEndian())
+	d := NewDecoder(binR, l)
 	count := int(s.Count())
 	sli := slice.New(reflect.SliceOf(s.ElementType()), count, count)
-	Read(binR, l, sli.Addr().Interface())
+	Read(d, sli.Addr().Interface())
 	if err := binR.Error(); err != nil {
 		return nil, err
 	}
@@ -43,8 +44,9 @@ func LoadPointer(ctx context.Context, p Pointer, pools Pools, l *device.MemoryLa
 	pool := pools[p.Pool()]
 	ioR := pool.At(p.Address()).NewReader(ctx)
 	binR := endian.Reader(ioR, l.GetEndian())
+	d := NewDecoder(binR, l)
 	elPtr := reflect.New(p.ElementType())
-	Read(binR, l, elPtr.Interface())
+	Read(d, elPtr.Interface())
 	if err := binR.Error(); err != nil {
 		return nil, err
 	}

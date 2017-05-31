@@ -75,9 +75,9 @@ func Blob(data []byte) Data {
 // NewData returns a read-only Slice that contains the encoding of data.
 func NewData(layout *device.MemoryLayout, data ...interface{}) Data {
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, layout.GetEndian())
+	e := NewEncoder(endian.Writer(buf, layout.GetEndian()), layout)
 	for _, d := range data {
-		Write(w, layout, d)
+		Write(e, d)
 	}
 	return Blob(buf.Bytes())
 }

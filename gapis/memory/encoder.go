@@ -157,3 +157,8 @@ func (e *Encoder) Bool(v bool) {
 	}
 	e.o++
 }
+
+// Error returns the error state of the underlying writer.
+func (e *Encoder) Error() error {
+	return e.w.Error()
+}

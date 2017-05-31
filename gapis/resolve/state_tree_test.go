@@ -179,7 +179,7 @@ func TestStateTreeNode(t *testing.T) {
 	// Write some data to 0x1000.
 	e := tree.state.MemoryEncoder(memory.ApplicationPool, memory.Range{Base: 0x1000, Size: 0x8000})
 	for i := 0; i < 0x1000; i++ {
-		e.Int64(int64(i * 10))
+		e.I64(int64(i * 10))
 	}
 
 	for _, test := range []struct {

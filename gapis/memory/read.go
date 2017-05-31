@@ -17,20 +17,17 @@ package memory
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/google/gapid/core/data/binary"
-	"github.com/google/gapid/core/os/device"
 )
 
-// Read reads the value pointed at p from the reader r using C alignment rules.
+// Read reads the value pointed at p from the decoder d using C alignment rules.
 // If v is an array or slice, then each of the elements will be read,
 // sequentially.
-func Read(r binary.Reader, m *device.MemoryLayout, p interface{}) {
+func Read(d *Decoder, p interface{}) {
 	v := reflect.ValueOf(p)
 	if v.Kind() != reflect.Ptr {
 		panic(fmt.Errorf("p must be pointer, got %T", p))
 	}
-	decode(NewDecoder(r, m), v)
+	decode(d, v)
 }
 
 func deref(v reflect.Value) reflect.Value {

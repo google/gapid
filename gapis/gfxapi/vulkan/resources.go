@@ -664,7 +664,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(writer, state.MemoryLayout, createInfo)
+	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewVkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
@@ -711,7 +711,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, data interface{}) gf
 	// memory.Write().
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(writer, state.MemoryLayout, createInfo)
+	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
 	newAtom := NewRecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 

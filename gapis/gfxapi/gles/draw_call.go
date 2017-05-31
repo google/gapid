@@ -57,10 +57,10 @@ func (a *GlDrawElements) getIndices(
 	indexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
 	size := uint64(a.IndicesCount) * indexSize
 
-	var decoder binary.Reader
+	var reader binary.Reader
 	if indexBufferID == 0 {
 		// Get the index buffer data from pointer
-		decoder = a.Indices.Slice(0, size, s.MemoryLayout).Decoder(ctx, s)
+		reader = a.Indices.Slice(0, size, s.MemoryLayout).Reader(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
 		indexBuffer := c.SharedObjects.Buffers[indexBufferID]
@@ -68,10 +68,10 @@ func (a *GlDrawElements) getIndices(
 			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
 		}
 		offset := a.Indices.addr
-		decoder = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Decoder(ctx, s)
+		reader = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Reader(ctx, s)
 	}
 
-	indices, err := decodeIndices(decoder, a.IndicesType)
+	indices, err := decodeIndices(reader, a.IndicesType)
 	return indices, a.DrawMode, err
 }
 

@@ -151,16 +151,16 @@
   {{AssertType $.Type       "Type"        }}
   {{AssertType $.Name       "string"      }}
 
-  {{     if IsStaticArray $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
-  {{else if IsMap         $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
-  {{else if IsPointer     $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
-  {{else if IsClass       $.Type}}ϟmem.Read(d, ϟl, &{{$.Name}})
+  {{     if IsStaticArray $.Type}}ϟmem.Read(d, &{{$.Name}})
+  {{else if IsMap         $.Type}}ϟmem.Read(d, &{{$.Name}})
+  {{else if IsPointer     $.Type}}ϟmem.Read(d, &{{$.Name}})
+  {{else if IsClass       $.Type}}ϟmem.Read(d, &{{$.Name}})
   {{else if IsPseudonym   $.Type}}
     {{$ty := $.Type.To | Unpack}}
-    {{     if IsStaticArray $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
-    {{else if IsMap         $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
-    {{else if IsPointer     $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
-    {{else if IsClass       $ty}}ϟmem.Read(d, ϟl, &{{$.Name}})
+    {{     if IsStaticArray $ty}}ϟmem.Read(d, &{{$.Name}})
+    {{else if IsMap         $ty}}ϟmem.Read(d, &{{$.Name}})
+    {{else if IsPointer     $ty}}ϟmem.Read(d, &{{$.Name}})
+    {{else if IsClass       $ty}}ϟmem.Read(d, &{{$.Name}})
     {{else if IsPseudonym   $ty}}{{Template "Go.DecodePOD" "Type" $ty.To "Name" $.Name "Cast" $.Type}}
     {{else}}{{Template "Go.DecodePOD" "Type" $ty "Name" $.Name "Cast" $.Type}}
     {{end}}
@@ -185,23 +185,23 @@
   {{$int_size  := "ϟl.GetInteger().GetSize()*8"}}
   {{$size_size := "ϟl.GetSize().GetSize()*8"}}
 
-  {{     if IsEnum        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}{{$.Type.Name}}{{end}}(d.Uint32())
+  {{     if IsEnum        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}{{$.Type.Name}}{{end}}(d.U32())
   {{else if IsBool        $.Type}}{{$.Name}} = {{$cast}}(d.Bool())
-  {{else if IsU8          $.Type}}{{$.Name}} = {{$cast}}(d.Uint8())
-  {{else if IsS8          $.Type}}{{$.Name}} = {{$cast}}(d.Int8())
-  {{else if IsU16         $.Type}}{{$.Name}} = {{$cast}}(d.Uint16())
-  {{else if IsS16         $.Type}}{{$.Name}} = {{$cast}}(d.Int16())
-  {{else if IsF32         $.Type}}{{$.Name}} = {{$cast}}(d.Float32())
-  {{else if IsU32         $.Type}}{{$.Name}} = {{$cast}}(d.Uint32())
-  {{else if IsS32         $.Type}}{{$.Name}} = {{$cast}}(d.Int32())
-  {{else if IsF64         $.Type}}{{$.Name}} = {{$cast}}(d.Float64())
-  {{else if IsU64         $.Type}}{{$.Name}} = {{$cast}}(d.Uint64())
-  {{else if IsS64         $.Type}}{{$.Name}} = {{$cast}}(d.Int64())
+  {{else if IsU8          $.Type}}{{$.Name}} = {{$cast}}(d.U8())
+  {{else if IsS8          $.Type}}{{$.Name}} = {{$cast}}(d.I8())
+  {{else if IsU16         $.Type}}{{$.Name}} = {{$cast}}(d.U16())
+  {{else if IsS16         $.Type}}{{$.Name}} = {{$cast}}(d.I16())
+  {{else if IsF32         $.Type}}{{$.Name}} = {{$cast}}(d.F32())
+  {{else if IsU32         $.Type}}{{$.Name}} = {{$cast}}(d.U32())
+  {{else if IsS32         $.Type}}{{$.Name}} = {{$cast}}(d.I32())
+  {{else if IsF64         $.Type}}{{$.Name}} = {{$cast}}(d.F64())
+  {{else if IsU64         $.Type}}{{$.Name}} = {{$cast}}(d.U64())
+  {{else if IsS64         $.Type}}{{$.Name}} = {{$cast}}(d.I64())
   {{else if IsString      $.Type}}{{$.Name}} = {{$cast}}(d.String())
-  {{else if IsChar        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Char{{end}}(d.Uint8())
-  {{else if IsInt         $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Int{{end}}(binary.ReadInt(d, {{$int_size}}))
-  {{else if IsUint        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Uint{{end}}(binary.ReadUint(d, {{$int_size}}))
-  {{else if IsSize        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Size{{end}}(binary.ReadUint(d, {{$size_size}}))
+  {{else if IsChar        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Char{{end}}(d.Char())
+  {{else if IsInt         $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Int{{end}}(d.Int()))
+  {{else if IsUint        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Uint{{end}}(d.Uint())
+  {{else if IsSize        $.Type}}{{$.Name}} = {{if $cast}}{{$cast}}{{else}}ϟmem.Size{{end}}(d.Size())
   {{else if IsSlice       $.Type}}
   {{else if IsReference   $.Type}}
   {{else if IsVoid        $.Type}}
