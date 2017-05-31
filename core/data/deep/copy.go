@@ -49,6 +49,9 @@ func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect
 	case reflect.Struct:
 		for i, c := 0, d.Type().NumField(); i < c; i++ {
 			f := d.Type().Field(i)
+			if f.PkgPath != "" {
+				continue // Unexported.
+			}
 			d, s := d.Field(i), s.FieldByName(f.Name)
 			if !s.IsValid() {
 				continue // Source is missing field
