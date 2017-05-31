@@ -67,7 +67,7 @@ class Texture {
 
 @internal
 class Level {
-  map!(GLint, Image) Layers
+  map!(GLint, ref!Image) Layers
 }
 
 @internal
@@ -318,11 +318,7 @@ sub void TexImage(TexImageFlags  flags,
   has3DModifier := Has3DModifier in flags
   hasMultisampleModifier := HasMultisampleModifier in flags
 
-  img := Image(Width: width,
-               Height: height,
-               SizedFormat: sized_format,
-               DataFormat: data_format,
-               DataType: data_type)
+  sfBox := Image(SizedFormat: sized_format)
 
   // Check target
   if hasMultisampleModifier {
@@ -382,7 +378,7 @@ sub void TexImage(TexImageFlags  flags,
     if isTexImageCmd && as!GLenum(sized_format) == data_format {
       sf := GetSizedFormatFromTuple(data_format, data_type)
       if sf == GL_NONE { glErrorInvalidOperation() } // Invalid combination of format and type
-      img.SizedFormat = sf // Legacy - sized format is inferred from data format and type
+      sfBox.SizedFormat = sf // Legacy - sized format is inferred from data format and type
     } else {
       sizedFormatInfo := GetSizedFormatInfoOrEnumError(sized_format)
       isCompressedFmt := sizedFormatInfo.Compression != Uncompressed
@@ -395,32 +391,100 @@ sub void TexImage(TexImageFlags  flags,
     }
   }
 
+  // We need to do all checks before we start modifying state.
+  cubemap_layer := CubemapFaceToLayer(target)
+  for l in (0 .. as!GLint(levels)) {
+    for z in (0 .. as!GLint(depth)) {
+      if hasSubModifier {
+        i := t.Levels[loffset + l].Layers[zoffset + z + cubemap_layer]
+        if (i == null) { glErrorInvalidOperation() }
+        if (as!GLsizei(xoffset) + width) > i.Width { glErrorInvalidValue() }
+        if (as!GLsizei(yoffset) + height) > i.Height { glErrorInvalidValue() }
+      }
+    }
+  }
+
   if isTexStorageCmd {
     t.Levels = Texture().Levels
     t.ImmutableFormat = GL_TRUE
   }
 
   ctx := GetContext()
-  if !hasSubModifier {
-    cubemap_face := CubemapFaceToLayer(target)
-    for l in (0 .. as!GLint(levels)) {
-      tmpLevel := t.Levels[loffset + l] // TODO: Update directly
-      for z in (0 .. as!GLint(depth)) {
-        tmpLevel.Layers[zoffset + z + cubemap_face] = img // Copy the image by value
+  for l in (0 .. as!GLint(levels)) {
+    tmpLevel := t.Levels[loffset + l]
+    // Depth decreases with each level for 3D textures, but not for arrays.
+    mipDepth := max!GLsizei(1, depth >> as!u32(l))
+    for z in (0 .. as!GLint(Select!GLsizei(target == GL_TEXTURE_3D, mipDepth, depth))) {
+      if !hasSubModifier {
+        // Initialize the image with the provided parameters
+        tmpLevel.Layers[zoffset + z + cubemap_layer] = new!Image(
+          Width: max!GLsizei(1, width >> as!u32(l)),
+          Height: max!GLsizei(1, height >> as!u32(l)),
+          SizedFormat: sfBox.SizedFormat,
+          DataFormat: data_format,
+          DataType: data_type)
       }
-      t.Levels[loffset + l] = tmpLevel
-      img.Width = img.Width / 2
-      img.Height = img.Height / 2
-    }
-  }
 
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    if isTexImageCmd {
-      pixel_size := uncompressedPixelSize(data_format, data_type)
-      read(data[0:width * height * depth * as!GLsizei(pixel_size)])
+      // Update the content of the image
+      img := tmpLevel.Layers[zoffset + z + cubemap_layer]
+      if isTexImageCmd {
+        src_skip_images := Select!GLint(has3DModifier, ctx.PixelStorage.UnpackSkipImages, 0) + z
+        UpdateImageData(img, xoffset, yoffset, width, height,
+                        src_skip_images, data_format, data_type, data)
+      } else if isCompressedTexImageCmd {
+        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+          // TODO: Implement sub-range updates
+          img.Data = clone(as!u8*(data)[0:data_size])
+        }
+      }
     }
-    if isCompressedTexImageCmd {
-      read(data[0:data_size])
+    t.Levels[loffset + l] = tmpLevel
+  }
+}
+
+sub void UpdateImageData(ref!Image      dst_image,
+                         GLint          dst_xoffset,
+                         GLint          dst_yoffset,
+                         GLsizei        width,
+                         GLsizei        height,
+                         GLint          src_skip_images,
+                         GLenum         format,
+                         GLenum         type,
+                         TexturePointer data) {
+  ctx := GetContext()
+  opt := ctx.PixelStorage
+  url := SelectNonZero!GLint(opt.UnpackRowLength, as!GLint(width))
+  pixel_size := as!GLint(uncompressedPixelSize(format, type))
+
+  src_row_size := Align!GLint(url * pixel_size, opt.UnpackAlignment)
+  src_image_size := SelectNonZero!GLint(opt.UnpackImageHeight, as!GLint(height)) * src_row_size
+  src_offset := (opt.UnpackSkipPixels * pixel_size) +
+                (opt.UnpackSkipRows * src_row_size) +
+                (src_skip_images * src_image_size)
+
+  dst_row_size := as!GLint(dst_image.Width) * pixel_size
+  dst_image_size := as!GLint(dst_image.Height) * dst_row_size
+  dst_offset := (dst_xoffset * pixel_size) + (dst_yoffset * dst_row_size)
+
+  // Initialize the buffer if we have not used the image before or
+  // if the format changed to one with different size per texel.
+  // TODO: Do this properly using data conversion.
+  if len(dst_image.Data) != as!s32(dst_image_size) {
+    dst_image.Data = make!u8(dst_image_size)
+  }
+  dst_image.DataFormat = format
+  dst_image.DataType = type
+
+  pbo := ctx.SharedObjects.Buffers[ctx.BoundBuffers.PixelUnpackBuffer]
+  copy_size := as!GLint(width) * pixel_size
+  for y in (0 .. as!GLint(height)) {
+    dst := dst_offset + (dst_row_size * y)
+    if pbo == null {
+      src := src_offset + (src_row_size * y)
+      copy(dst_image.Data[dst:dst + copy_size], as!u8*(data)[src:src + copy_size])
+    } else {
+      src := as!u64(data) + as!u64(src_offset + (src_row_size * y))
+      copy(dst_image.Data[dst:dst + copy_size], pbo.Data[src:src + as!u64(copy_size)])
     }
   }
 }
@@ -591,16 +655,6 @@ cmd void glCompressedTexImage2D(GLenum         target,
            level, 0, 0, 0, // Offsets
            1, width, height, 1, border, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
-
-  ctx := GetContext()
-  t := GetBoundTextureOrErrorInvalidEnum(target)
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    tmpLevel := t.Levels[level] // TODO: Update directly
-    tmpLayer := tmpLevel.Layers[0] // TODO: Update directly
-    tmpLayer.Data = clone(as!u8*(data)[0:image_size])
-    tmpLevel.Layers[0] = tmpLayer
-    t.Levels[level] = tmpLevel
-  }
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.0")
@@ -1429,17 +1483,6 @@ cmd void glTexImage2D(GLenum         target,
            level, 0, 0, 0, // Offsets
            1, width, height, 1, border, // Dimensions
            as!GLenum(internalformat), format, type, 0, data) // Format&data
-
-  ctx := GetContext()
-  t := GetBoundTextureOrErrorInvalidEnum(target)
-  if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
-    data_size := as!u32(width * height) * uncompressedPixelSize(format, type)
-    tmpLevel := t.Levels[level] // TODO: Update directly
-    tmpLayer := tmpLevel.Layers[0] // TODO: Update directly
-    tmpLayer.Data = clone(as!u8*(data)[0:data_size])
-    tmpLevel.Layers[0] = tmpLayer
-    t.Levels[level] = tmpLevel
-  }
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage3D.xhtml","OpenGL ES 3.0")
@@ -1763,49 +1806,6 @@ cmd void glTexSubImage2D(GLenum         target,
            level, xoffset, yoffset, 0, // Offsets
            1, width, height, 1, 0, // Dimensions
            GL_NONE, format, type, 0, data) // Format&data
-
-  ctx := GetContext()
-  t := GetBoundTextureOrErrorInvalidEnum(target)
-  layer := CubemapFaceToLayer(target)
-  image := t.Levels[level].Layers[layer]
-  if (as!GLsizei(xoffset) + width) > image.Width { glErrorInvalidValue() }
-  if (as!GLsizei(yoffset) + height) > image.Height { glErrorInvalidValue() }
-
-  // TODO: consider GL_UNPACK_ALIGNMENT, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS and GL_UNPACK_SKIP_IMAGES
-  pbo := ctx.BoundBuffers.PixelUnpackBuffer
-  url := ctx.PixelStorage.UnpackRowLength
-  src_width := switch (url == 0) {
-    case true:  as!u32(width)
-    case false: as!u32(url)
-  }
-  src_stride := uncompressedImageSize(as!GLsizei(src_width), 1, format, type)
-  src_size := src_stride * as!u32(height)
-  line_bytes := uncompressedImageSize(width, 1, format, type)
-  dst_stride := uncompressedImageSize(image.Width, 1, format, type)
-  dst_offset := uncompressedImageSize(as!GLsizei(xoffset), 1, format, type) + dst_stride * as!u32(yoffset)
-  src_data := switch (pbo == 0) {
-    case true:  as!u8*(data)[0:src_size]
-    case false: ctx.SharedObjects.Buffers[pbo].Data[as!u64(data):as!u64(data) + as!u64(src_size) + as!u64(line_bytes) - as!u64(src_stride)]
-  }
-
-  image.DataFormat = format
-  image.DataType = type
-  image_size := uncompressedImageSize(image.Width, image.Height, format, type)
-  // Initialize the buffer if we have not used the image before or
-  // if the format changed to one with different size per texel.
-  // TODO: Do this properly using data conversion.
-  if len(image.Data) != as!s32(image_size) {
-    image.Data = make!u8(image_size)
-  }
-  for y in (0 .. as!u32(height)) {
-    src := (src_stride * y)
-    dst := (dst_stride * y) + dst_offset
-    copy(image.Data[dst:dst + line_bytes], src_data[src:src + line_bytes])
-  }
-
-  tmpLevel := t.Levels[level]
-  tmpLevel.Layers[layer] = image
-  t.Levels[level] = tmpLevel
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml","OpenGL ES 3.0")

@@ -153,8 +153,12 @@ bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
             if (layer == level->second.mLayers.end()) {
                 return false;
             }
-            *width = uint32_t(layer->second.mWidth);
-            *height = uint32_t(layer->second.mHeight);
+            auto image = layer->second;
+            if (image == nullptr) {
+                return false;
+            }
+            *width = uint32_t(image->mWidth);
+            *height = uint32_t(image->mHeight);
             return true;
         }
         case GLenum::GL_RENDERBUFFER: {
