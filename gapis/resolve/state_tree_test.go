@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -171,7 +172,7 @@ func TestStateTreeNode(t *testing.T) {
 			value: reflect.ValueOf(testState),
 			path:  rootPath,
 		},
-		api:        &path.API{Id: path.NewID(id.ID(testAPIID))},
+		api:        &path.API{Id: path.NewID(id.ID(test.APIID))},
 		groupLimit: 10,
 	}
 	root := &path.StateTreeNode{Indices: []uint64{}}

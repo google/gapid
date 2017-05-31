@@ -18,9 +18,15 @@ package test
 import (
 	"context"
 
+	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/atom/test/test_pb"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/service/box"
 )
 
 type AtomA struct {
@@ -59,4 +65,79 @@ func (a *AtomC) AtomFlags() atom.Flags { return 0 }
 func (a *AtomC) Extras() *atom.Extras  { return nil }
 func (a *AtomC) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 	return nil
+}
+
+type (
+	stringːstring map[string]string
+
+	intːStructPtr map[int]*Struct
+
+	Struct struct {
+		Str string
+		Ref *Struct
+	}
+)
+
+type AtomX struct {
+	Str  string         `param:"Str"`
+	Sli  []bool         `param:"Sli"`
+	Ref  *Struct        `param:"Ref"`
+	Ptr  memory.Pointer `param:"Ptr"`
+	Map  stringːstring  `param:"Map"`
+	PMap intːStructPtr  `param:"PMap"`
+}
+
+func (AtomX) AtomName() string      { return "AtomX" }
+func (AtomX) API() gfxapi.API       { return gfxapi.Find(APIID) }
+func (AtomX) AtomFlags() atom.Flags { return 0 }
+func (AtomX) Extras() *atom.Extras  { return nil }
+func (AtomX) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
+	return nil
+}
+
+type API struct{}
+
+func (API) Name() string                 { return "foo" }
+func (API) ID() gfxapi.ID                { return APIID }
+func (API) Index() uint8                 { return 15 }
+func (API) ConstantSets() *constset.Pack { return nil }
+func (API) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (uint32, uint32, *image.Format, error) {
+	return 0, 0, nil, nil
+}
+func (API) Context(*gfxapi.State) gfxapi.Context { return nil }
+
+var (
+	APIID = gfxapi.ID{1, 2, 3}
+
+	P = &AtomX{
+		Str: "aaa",
+		Sli: []bool{true, false, true},
+		Ref: &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
+		Ptr: memory.BytePtr(0x123, 0x456),
+		Map: stringːstring{"cat": "meow", "dog": "woof"},
+	}
+
+	Q = &AtomX{
+		Str: "xyz",
+		Sli: []bool{false, true, false},
+		Ptr: memory.BytePtr(0x321, 0x654),
+		Map: stringːstring{"bird": "tweet", "fox": "?"},
+		PMap: intːStructPtr{
+			100: &Struct{Str: "baldrick"},
+		},
+	}
+)
+
+func init() {
+	gfxapi.Register(API{})
+	atom.Register(API{}, &AtomX{})
+	protoconv.Register(func(ctx context.Context, a *AtomX) (*test_pb.AtomX, error) {
+		return &test_pb.AtomX{Data: box.NewValue(a)}, nil
+	}, func(ctx context.Context, b *test_pb.AtomX) (*AtomX, error) {
+		var a AtomX
+		if err := b.Data.AssignTo(&a); err != nil {
+			return nil, err
+		}
+		return &a, nil
+	})
 }

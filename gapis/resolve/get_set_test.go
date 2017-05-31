@@ -21,16 +21,12 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/protoconv"
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
-	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/resolve/testatom_pb"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
@@ -40,97 +36,36 @@ import (
 
 	_ "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/memory"
 )
 
-type (
-	stringːstring map[string]string
-
-	intːtestStructPtr map[int]*testStruct
-
-	testStruct struct {
-		Str string
-		Ref *testStruct
-	}
-
-	testStructSlice []testStruct
-
-	testAPI struct{}
-
-	testAtom struct {
-		Str  string            `param:"Str"`
-		Sli  []bool            `param:"Sli"`
-		Ref  *testStruct       `param:"Ref"`
-		Ptr  memory.Pointer    `param:"Ptr"`
-		Map  stringːstring     `param:"Map"`
-		PMap intːtestStructPtr `param:"PMap"`
-	}
-)
-
 var (
-	testAPIID = gfxapi.ID{1, 2, 3}
-
-	atomA = &testAtom{
-		Str: "aaa",
-		Sli: []bool{true, false, true},
-		Ref: &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}},
-		Ptr: memory.BytePtr(0x123, 0x456),
-		Map: stringːstring{"cat": "meow", "dog": "woof"},
-	}
-
-	atomB = &testAtom{
-		Str: "xyz",
-		Sli: []bool{false, true, false},
-		Ptr: memory.BytePtr(0x321, 0x654),
-		Map: stringːstring{"bird": "tweet", "fox": "?"},
-		PMap: intːtestStructPtr{
-			100: &testStruct{Str: "baldrick"},
-		},
-	}
-
 	cmdA = &service.Command{
-		Name: "testAtom",
-		Api:  &path.API{Id: path.NewID(id.ID(testAPIID))},
+		Name: "AtomX",
+		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
 		Parameters: []*service.Parameter{
-			{Name: "Str", Value: box.NewValue(atomA.Str)},
-			{Name: "Sli", Value: box.NewValue(atomA.Sli)},
-			{Name: "Ref", Value: box.NewValue(atomA.Ref)},
-			{Name: "Ptr", Value: box.NewValue(atomA.Ptr)},
-			{Name: "Map", Value: box.NewValue(atomA.Map)},
-			{Name: "PMap", Value: box.NewValue(atomA.PMap)},
+			{Name: "Str", Value: box.NewValue(test.P.Str)},
+			{Name: "Sli", Value: box.NewValue(test.P.Sli)},
+			{Name: "Ref", Value: box.NewValue(test.P.Ref)},
+			{Name: "Ptr", Value: box.NewValue(test.P.Ptr)},
+			{Name: "Map", Value: box.NewValue(test.P.Map)},
+			{Name: "PMap", Value: box.NewValue(test.P.PMap)},
 		},
 	}
 
 	cmdB = &service.Command{
-		Name: "testAtom",
-		Api:  &path.API{Id: path.NewID(id.ID(testAPIID))},
+		Name: "AtomX",
+		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
 		Parameters: []*service.Parameter{
-			{Name: "Str", Value: box.NewValue(atomB.Str)},
-			{Name: "Sli", Value: box.NewValue(atomB.Sli)},
-			{Name: "Ref", Value: box.NewValue(atomB.Ref)},
-			{Name: "Ptr", Value: box.NewValue(atomB.Ptr)},
-			{Name: "Map", Value: box.NewValue(atomB.Map)},
-			{Name: "PMap", Value: box.NewValue(atomB.PMap)},
+			{Name: "Str", Value: box.NewValue(test.Q.Str)},
+			{Name: "Sli", Value: box.NewValue(test.Q.Sli)},
+			{Name: "Ref", Value: box.NewValue(test.Q.Ref)},
+			{Name: "Ptr", Value: box.NewValue(test.Q.Ptr)},
+			{Name: "Map", Value: box.NewValue(test.Q.Map)},
+			{Name: "PMap", Value: box.NewValue(test.Q.PMap)},
 		},
 	}
 )
-
-func (testAPI) Name() string                 { return "foo" }
-func (testAPI) ID() gfxapi.ID                { return testAPIID }
-func (testAPI) Index() uint8                 { return 15 }
-func (testAPI) ConstantSets() *constset.Pack { return nil }
-func (testAPI) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (uint32, uint32, *image.Format, error) {
-	return 0, 0, nil, nil
-}
-func (testAPI) Context(*gfxapi.State) gfxapi.Context { return nil }
-func (testAtom) AtomName() string                    { return "testAtom" }
-func (testAtom) API() gfxapi.API                     { return gfxapi.Find(testAPIID) }
-func (testAtom) AtomFlags() atom.Flags               { return 0 }
-func (testAtom) Extras() *atom.Extras                { return nil }
-func (testAtom) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
-	return nil
-}
 
 func newPathTest(ctx context.Context, a *atom.List) *path.Capture {
 	h := &capture.Header{Abi: device.WindowsX86_64}
@@ -141,27 +76,11 @@ func newPathTest(ctx context.Context, a *atom.List) *path.Capture {
 	return p
 }
 
-type boxedTestAtom struct{ box.Value }
-
-func init() {
-	gfxapi.Register(testAPI{})
-	atom.Register(testAPI{}, &testAtom{})
-	protoconv.Register(func(ctx context.Context, a *testAtom) (*testatom_pb.TestAtom, error) {
-		return &testatom_pb.TestAtom{Data: box.NewValue(a)}, nil
-	}, func(ctx context.Context, b *testatom_pb.TestAtom) (*testAtom, error) {
-		var a testAtom
-		if err := b.Data.AssignTo(&a); err != nil {
-			return nil, err
-		}
-		return &a, nil
-	})
-}
-
 func TestGet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	p := newPathTest(ctx, atom.NewList(atomA, atomB))
+	p := newPathTest(ctx, atom.NewList(test.P, test.Q))
 	ctx = capture.Put(ctx, p)
 
 	// Get tests
@@ -173,7 +92,7 @@ func TestGet(t *testing.T) {
 		{p.Command(1), cmdB, nil},
 		{p.Command(1).Parameter("Str"), "xyz", nil},
 		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
-		{p.Command(0).Parameter("Ref"), &testStruct{Str: "ccc", Ref: &testStruct{Str: "ddd"}}, nil},
+		{p.Command(0).Parameter("Ref"), &test.Struct{Str: "ccc", Ref: &test.Struct{Str: "ddd"}}, nil},
 		{p.Command(0).Parameter("Ptr"), memory.BytePtr(0x123, 0x456), nil},
 		{p.Command(1).Parameter("Ptr"), memory.BytePtr(0x321, 0x654), nil},
 		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
@@ -182,7 +101,7 @@ func TestGet(t *testing.T) {
 		{p.Command(1).Parameter("Str").Slice(1, 3), "yz", nil},
 		{p.Command(1).Parameter("Map").MapIndex("bird"), "tweet", nil},
 		{p.Command(1).Parameter("Map").MapIndex([]rune("bird")), "tweet", nil},
-		{p.Command(1).Parameter("PMap").MapIndex(100), &testStruct{Str: "baldrick"}, nil},
+		{p.Command(1).Parameter("PMap").MapIndex(100), &test.Struct{Str: "baldrick"}, nil},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
@@ -196,7 +115,7 @@ func TestGet(t *testing.T) {
 			Reason: messages.ErrStateUnavailable(),
 		}},
 		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("testAtom", "doesnotexist"),
+			Reason: messages.ErrParameterDoesNotExist("AtomX", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
 		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
@@ -220,7 +139,7 @@ func TestGet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
 		}},
 		{p.Command(0).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotArrayIndexable("ptr<testStruct>"),
+			Reason: messages.ErrTypeNotArrayIndexable("ptr<Struct>"),
 			Path:   p.Command(0).Parameter("Ref").ArrayIndex(4).Path(),
 		}},
 		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
@@ -232,7 +151,7 @@ func TestGet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Map").MapIndex("rabbit").Path(),
 		}},
 		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotMapIndexable("ptr<testStruct>"),
+			Reason: messages.ErrTypeNotMapIndexable("ptr<Struct>"),
 			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 	} {
@@ -246,7 +165,7 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	a := atom.NewList(atomA, atomB)
+	a := atom.NewList(test.P, test.Q)
 	p := newPathTest(ctx, a)
 	ctx = capture.Put(ctx, p)
 
@@ -259,7 +178,7 @@ func TestSet(t *testing.T) {
 		{path: p.Command(0), val: cmdB},
 		{path: p.Command(0).Parameter("Str"), val: "bbb"},
 		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
-		{path: p.Command(0).Parameter("Ref"), val: &testStruct{Str: "ddd"}},
+		{path: p.Command(0).Parameter("Ref"), val: &test.Struct{Str: "ddd"}},
 		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
 		{path: p.Command(0).Parameter("Ptr"), val: memory.BytePtr(0x123, 0x456)},
 		{path: p.Command(1).Parameter("Ptr"), val: memory.BytePtr(0x321, 0x654)},
@@ -274,7 +193,7 @@ func TestSet(t *testing.T) {
 		}},
 		{p.Command(1).StateAfter(), nil, fmt.Errorf("State can not currently be mutated")},
 		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("testAtom", "doesnotexist"),
+			Reason: messages.ErrParameterDoesNotExist("AtomX", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
 		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
@@ -294,7 +213,7 @@ func TestSet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
 		}},
 		{p.Command(1).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotArrayIndexable("ptr<testStruct>"),
+			Reason: messages.ErrTypeNotArrayIndexable("ptr<Struct>"),
 			Path:   p.Command(1).Parameter("Ref").ArrayIndex(4).Path(),
 		}},
 		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
@@ -302,7 +221,7 @@ func TestSet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Map").MapIndex(10.0).Path(),
 		}},
 		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotMapIndexable("ptr<testStruct>"),
+			Reason: messages.ErrTypeNotMapIndexable("ptr<Struct>"),
 			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 
