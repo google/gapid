@@ -40,6 +40,12 @@ func (d *Decoder) alignAndOffset(l *device.DataTypeLayout) {
 	d.o += uint64(l.GetSize())
 }
 
+// Offset returns the byte offset of the reader from the initial Decoder
+// creation.
+func (d *Decoder) Offset() uint64 {
+	return d.o
+}
+
 // Align skips bytes until the read position is a multiple of to.
 func (d *Decoder) Align(to uint64) {
 	alignment := u64.AlignUp(d.o, uint64(to))
