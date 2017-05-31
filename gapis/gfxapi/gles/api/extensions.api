@@ -210,21 +210,21 @@ cmd void glCopyBufferSubDataNV(GLenum     readTarget,
 }
 
 @Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_copy_image.txt", "GL_OES_copy_image")
-cmd void glCopyImageSubDataOES(GLuint  srcName,
-                               GLenum  srcTarget,
-                               GLint   srcLevel,
-                               GLint   srcX,
-                               GLint   srcY,
-                               GLint   srcZ,
-                               GLuint  dstName,
-                               GLenum  dstTarget,
-                               GLint   dstLevel,
-                               GLint   dstX,
-                               GLint   dstY,
-                               GLint   dstZ,
-                               GLsizei srcWidth,
-                               GLsizei srcHeight,
-                               GLsizei srcDepth) {
+cmd void glCopyImageSubDataOES(SrcImageId srcName,
+                               GLenum     srcTarget,
+                               GLint      srcLevel,
+                               GLint      srcX,
+                               GLint      srcY,
+                               GLint      srcZ,
+                               DstImageId dstName,
+                               GLenum     dstTarget,
+                               GLint      dstLevel,
+                               GLint      dstX,
+                               GLint      dstY,
+                               GLint      dstZ,
+                               GLsizei    srcWidth,
+                               GLsizei    srcHeight,
+                               GLsizei    srcDepth) {
   requiresExtension(GL_OES_copy_image)
   CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth)
 }

@@ -16,6 +16,7 @@ package gles
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
@@ -165,6 +166,46 @@ func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, r
 		p *Program
 		l UniformLocation
 	}{ctx.SharedObjects.Programs[program], i}, true
+}
+
+func (i SrcImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+	switch a := a.(type) {
+	case *GlCopyImageSubData:
+		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+	case *GlCopyImageSubDataEXT:
+		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+	case *GlCopyImageSubDataOES:
+		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+	default:
+		panic(fmt.Errorf("Remap of SrcImageId for unhandeled atom: %v", a))
+	}
+	return
+}
+
+func (i DstImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+	switch a := a.(type) {
+	case *GlCopyImageSubData:
+		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+	case *GlCopyImageSubDataEXT:
+		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+	case *GlCopyImageSubDataOES:
+		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+	default:
+		panic(fmt.Errorf("Remap of DstImageId for unhandeled atom: %v", a))
+	}
+	return
+}
+
+func remapImageId(name GLuint, target GLenum, s *gfxapi.State) (key interface{}, remap bool) {
+	ctx := GetContext(s)
+	if ctx != nil && name != 0 {
+		if target == GLenum_GL_RENDERBUFFER {
+			key, remap = objectKey{&ctx.SharedObjects.Renderbuffers, RenderbufferId(name)}, true
+		} else {
+			key, remap = objectKey{&ctx.SharedObjects.Textures, TextureId(name)}, true
+		}
+	}
+	return
 }
 
 func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {

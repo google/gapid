@@ -672,26 +672,26 @@ sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLin
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml","OpenGL ES 3.2")
-cmd void glCopyImageSubData(GLuint  srcName,
-                            GLenum  srcTarget,
-                            GLint   srcLevel,
-                            GLint   srcX,
-                            GLint   srcY,
-                            GLint   srcZ,
-                            GLuint  dstName,
-                            GLenum  dstTarget,
-                            GLint   dstLevel,
-                            GLint   dstX,
-                            GLint   dstY,
-                            GLint   dstZ,
-                            GLsizei srcWidth,
-                            GLsizei srcHeight,
-                            GLsizei srcDepth) {
+cmd void glCopyImageSubData(SrcImageId srcName,
+                            GLenum     srcTarget,
+                            GLint      srcLevel,
+                            GLint      srcX,
+                            GLint      srcY,
+                            GLint      srcZ,
+                            DstImageId dstName,
+                            GLenum     dstTarget,
+                            GLint      dstLevel,
+                            GLint      dstX,
+                            GLint      dstY,
+                            GLint      dstZ,
+                            GLsizei    srcWidth,
+                            GLsizei    srcHeight,
+                            GLsizei    srcDepth) {
   minRequiredVersion(3, 2)
   CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth)
 }
 
-sub void CopyImageSubData(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth) {
+sub void CopyImageSubData(SrcImageId  srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, DstImageId  dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth) {
   switch (srcTarget) {
     case GL_RENDERBUFFER, GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE,
         GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP,

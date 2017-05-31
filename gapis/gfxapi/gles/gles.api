@@ -301,6 +301,8 @@ type GLuint               AttributeIndex
 @replay_remap type GLuint PipelineId
 @replay_remap type GLuint UniformBlockId
 @replay_remap type GLuint TransformFeedbackId
+@replay_remap type GLuint SrcImageId
+@replay_remap type GLuint DstImageId
 
 @replay_custom_value type const void* IndicesPointer
 @replay_custom_value type const void* VertexPointer
