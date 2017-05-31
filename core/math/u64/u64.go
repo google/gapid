@@ -30,17 +30,6 @@ func Max(a, b uint64) uint64 {
 	return b
 }
 
-// AlignToNextAndReturnLargestAlignment returns value if value is aligned to 'alignment' or
-// the next larger number that is aligned to `alignment` if it is not.
-func AlignToNextAndReturnLargestAlignment(value uint64, alignment uint64, oldAlignment uint64) (uint64, uint64) {
-	nextAlignment := oldAlignment
-	if alignment > nextAlignment {
-		nextAlignment = alignment
-	}
-
-	return AlignUp(value, alignment), nextAlignment
-}
-
 // AlignUp returns the result of aligning up the given value to the given alignment.
 func AlignUp(value, alignment uint64) uint64 {
 	if value%alignment != 0 {
