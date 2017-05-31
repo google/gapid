@@ -19,9 +19,24 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/log"
 )
+
+var _ data.Assignable = &assignable{}
+
+type assignable struct{ hidden int }
+
+func (a *assignable) Assign(o interface{}) bool {
+	if o, ok := o.(assignable); ok {
+		*a = assignable{o.hidden}
+		return true
+	}
+	return false
+}
+
+type nonAssignable struct{ hidden int }
 
 func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
@@ -37,6 +52,8 @@ func TestCopy(t *testing.T) {
 		M map[int]StructB
 		S []bool
 		G interface{}
+		A assignable
+		N nonAssignable
 	}
 
 	cyclic := &StructB{F: 10}
@@ -49,6 +66,8 @@ func TestCopy(t *testing.T) {
 		{&StructA{}, StructA{I: 10}, StructA{I: 10}},
 		{&StructA{I: 20}, StructA{I: 10}, StructA{I: 10}},
 		{&StructA{}, StructA{I: 10, B: true, T: "meow"}, StructA{I: 10, B: true, T: "meow"}},
+		{&StructA{}, StructA{A: assignable{5}}, StructA{A: assignable{5}}},
+		{&StructA{}, StructA{N: nonAssignable{5}}, StructA{N: nonAssignable{0}}},
 		{
 			&StructA{},
 			StructA{

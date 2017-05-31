@@ -18,7 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    
+    assignable.go
 )
 set(dirs
     binary
