@@ -102,6 +102,23 @@ func StateTreeNode(ctx context.Context, p *path.StateTreeNode) (*service.StateTr
 	return stateTreeNode(ctx, boxed.(*stateTree), p)
 }
 
+// StateTreeNodeForPath returns the path to the StateTreeNode representing the
+// path p.
+func StateTreeNodeForPath(ctx context.Context, p *path.StateTreeNodeForPath) (*path.StateTreeNode, error) {
+	boxed, err := database.Resolve(ctx, p.Tree.ID())
+	if err != nil {
+		return nil, err
+	}
+	indices, err := stateTreeNodePath(ctx, boxed.(*stateTree), p.Member.Node())
+	if err != nil {
+		return nil, err
+	}
+	return &path.StateTreeNode{
+		Tree:    p.Tree,
+		Indices: indices,
+	}, nil
+}
+
 func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) (*service.StateTreeNode, error) {
 	node := tree.root
 	for i, idx64 := range p.Indices {
@@ -119,6 +136,33 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 	return node.service(ctx, tree), nil
 }
 
+// stateMemberPath returns the child path nodes of the *path.State in n.
+// If n does not contain a *path.State then nil is returned.
+func stateMemberPath(n path.Node) []path.Node {
+	p := path.ToList(n)
+	for i, n := range p {
+		if _, ok := n.(*path.State); ok {
+			return p[i+1:]
+		}
+	}
+	return nil
+}
+
+func stateTreeNodePath(ctx context.Context, tree *stateTree, p path.Node) ([]uint64, error) {
+	n := tree.root
+	indices := []uint64{}
+	for _, p := range stateMemberPath(p) {
+		ci := n.findByPath(ctx, p, tree)
+		if ci == nil {
+			break
+		}
+		for _, i := range ci {
+			n, indices = n.children[i], append(indices, i)
+		}
+	}
+	return indices, nil
+}
+
 type errIndexOOB struct {
 	idx, count uint64
 }
@@ -132,6 +176,7 @@ type stn struct {
 	path           path.Node
 	consts         *path.ConstantSet
 	children       []*stn
+	isSubgroup     bool
 	subgroupOffset uint64
 }
 
@@ -141,6 +186,41 @@ func (n *stn) index(ctx context.Context, i uint64, tree *stateTree) (*stn, error
 		return nil, errIndexOOB{i, count}
 	}
 	return n.children[i], nil
+}
+
+func (n *stn) findByPath(ctx context.Context, p path.Node, tree *stateTree) []uint64 {
+	n.buildChildren(ctx, tree)
+	for i, c := range n.children {
+		if shallowPathsEqual(p, c.path) {
+			return []uint64{uint64(i)}
+		}
+	}
+	for i, c := range n.children {
+		if c.isSubgroup {
+			if ci := c.findByPath(ctx, p, tree); ci != nil {
+				return append([]uint64{uint64(i)}, ci...)
+			}
+		}
+	}
+	return nil
+}
+
+func shallowPathsEqual(a, b path.Node) bool {
+	switch a := a.(type) {
+	case *path.Field:
+		if b, ok := b.(*path.Field); ok {
+			return a.Name == b.Name
+		}
+	case *path.MapIndex:
+		if b, ok := b.(*path.MapIndex); ok {
+			return a.KeyValue() == b.KeyValue()
+		}
+	case *path.ArrayIndex:
+		if b, ok := b.(*path.ArrayIndex); ok {
+			return a.Index == b.Index
+		}
+	}
+	return false
 }
 
 func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
@@ -163,6 +243,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 					value:          reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout)),
 					path:           n.path,
+					isSubgroup:     true,
 					subgroupOffset: n.subgroupOffset + s,
 				})
 			}
@@ -211,6 +292,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 						name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 						value:          v.Slice(int(s), int(e)),
 						path:           n.path,
+						isSubgroup:     true,
 						subgroupOffset: n.subgroupOffset + s,
 					})
 				}

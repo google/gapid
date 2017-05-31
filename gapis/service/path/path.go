@@ -84,6 +84,7 @@ func (n *Slice) Path() *Any                     { return &Any{&Any_Slice{n}} }
 func (n *State) Path() *Any                     { return &Any{&Any_State{n}} }
 func (n *StateTree) Path() *Any                 { return &Any{&Any_StateTree{n}} }
 func (n *StateTreeNode) Path() *Any             { return &Any{&Any_StateTreeNode{n}} }
+func (n *StateTreeNodeForPath) Path() *Any      { return &Any{&Any_StateTreeNodeForPath{n}} }
 func (n *Thumbnail) Path() *Any                 { return &Any{&Any_Thumbnail{n}} }
 
 func (n API) Parent() Node                       { return nil }
@@ -115,6 +116,7 @@ func (n Slice) Parent() Node                     { return oneOfNode(n.Array) }
 func (n State) Parent() Node                     { return n.After }
 func (n StateTree) Parent() Node                 { return n.After }
 func (n StateTreeNode) Parent() Node             { return nil }
+func (n StateTreeNodeForPath) Parent() Node      { return nil }
 func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
 
 func (n ArrayIndex) Text() string { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
@@ -159,6 +161,9 @@ func (n State) Text() string     { return fmt.Sprintf("%v.state-after", n.Parent
 func (n StateTree) Text() string { return fmt.Sprintf("%v.state-tree") }
 func (n StateTreeNode) Text() string {
 	return fmt.Sprintf("state-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
+}
+func (n StateTreeNodeForPath) Text() string {
+	return fmt.Sprintf("state-tree-for<%v, %v>", n.Tree, n.Member.Text())
 }
 func (n Thumbnail) Text() string { return fmt.Sprintf("%v.thumbnail", n.Parent().Text()) }
 

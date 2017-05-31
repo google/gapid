@@ -54,7 +54,8 @@ message Any {
     State state = 27;
     StateTree state_tree = 28;
     StateTreeNode state_tree_node = 29;
-    Thumbnail thumbnail = 30;
+    StateTreeNodeForPath state_tree_node_for_path = 30;
+    Thumbnail thumbnail = 31;
   }
 }
 
@@ -254,7 +255,7 @@ message CommandTreeNode {
 // CommandTreeNodeForCommand is a path to a command tree node, resolved from a
 // Command path and a CommandTree identifier. It is used to locate the
 // CommandTreeNode for a given command.
-// Resolves to a service.CommandTreeNode.
+// Resolves to a path.CommandTreeNode.
 message CommandTreeNodeForCommand {
     // Unique identifier of the command tree.
     ID tree = 1;
@@ -373,6 +374,17 @@ message StateTreeNode {
     ID tree = 1;
     // Descending child indices starting from the root StateTreeNode.
     repeated uint64 indices = 2;
+}
+
+// StateTreeNodeForPath is a path to a state tree node, resolved from another
+// path. It is used to locate the relevant StateTreeNode for a path to a state
+// member variable.
+// Resolves to a path.StateTreeNode.
+message StateTreeNodeForPath {
+    // Unique identifier of the state tree.
+    ID tree = 1;
+    // The path to the state member to look for.
+    Any member = 2;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.

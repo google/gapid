@@ -250,6 +250,14 @@ func (n *StateTreeNode) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *StateTreeNodeForPath) Validate() error {
+	return anyErr(
+		checkIsValid(n, n.Tree, "tree"),
+		checkNotNilAndValidate(n, n.Member.Node(), "path"),
+	)
+}
+
+// Validate checks the path is valid.
 func (n *Thumbnail) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Object), "object")
 }
