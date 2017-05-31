@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
@@ -592,8 +593,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// pooled buffer.
 					data := c.SharedObjects.Buffers[ib].Data
 					indexSize := DataTypeSize(a.IndicesType)
-					start := min(a.Indices.addr, data.count)                               // Clamp
-					end := min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
+					start := u64.Min(a.Indices.addr, data.count)                               // Clamp
+					end := u64.Min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
 					limits := e.calcIndexLimits(data.Slice(start, end, s.MemoryLayout), indexSize)
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}
