@@ -501,7 +501,7 @@ func setCubemapFace(img *image.Info2D, cubeMap *gfxapi.CubemapLevel, layerIndex 
 
 // ResourceData returns the resource data given the current state.
 func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (interface{}, error) {
-	ctx = log.Enter(ctx, "ImageObject.Resource()")
+	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 
 	vkFmt := t.Info.Format
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
