@@ -156,3 +156,8 @@ func (d *Decoder) Bool() bool {
 	d.o++
 	return d.r.Uint8() != 0
 }
+
+// Error returns the error state of the underlying reader.
+func (d *Decoder) Error() error {
+	return d.r.Error()
+}

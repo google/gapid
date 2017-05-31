@@ -36,8 +36,8 @@ func TestWriteOn32bitArch(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, arch.GetEndian())
-	Write(w, arch, values)
+	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)
+	Write(e, values)
 
 	got := buf.Bytes()
 	expected := []byte{
@@ -70,8 +70,8 @@ func TestWriteStructOn32bitArch(t *testing.T) {
 	}{0x12, BytePtr(0xdeadbeef, 0), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, arch.GetEndian())
-	Write(w, arch, values)
+	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)
+	Write(e, values)
 
 	got := buf.Bytes()
 	expected := []byte{
@@ -103,8 +103,8 @@ func TestWriteOn64bitArch(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, arch.GetEndian())
-	Write(w, arch, values)
+	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)
+	Write(e, values)
 
 	got := buf.Bytes()
 	expected := []byte{
@@ -137,8 +137,8 @@ func TestWriteStructOn64bitArch(t *testing.T) {
 	}{0x12, BytePtr(0xbeefdeaddeadbeef, 0), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, arch.GetEndian())
-	Write(w, arch, values)
+	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)
+	Write(e, values)
 
 	got := buf.Bytes()
 	expected := []byte{

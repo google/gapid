@@ -436,7 +436,7 @@ func (p *Program) ResourceData(ctx context.Context, s *gfxapi.State) (interface{
 }
 
 func uniformValue(ctx context.Context, s *gfxapi.State, kind gfxapi.UniformType, data U8ˢ) interface{} {
-	r := data.Decoder(ctx, s)
+	r := data.Reader(ctx, s)
 
 	switch kind {
 	case gfxapi.UniformType_Int32:

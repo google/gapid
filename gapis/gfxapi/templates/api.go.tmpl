@@ -257,7 +257,7 @@
       i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.pool].At(p.addr))
       for {
         i++
-        if b := d.Uint8(); b == 0 {
+        if b := d.U8(); b == 0 {
           return Charˢ(p.Slice(0, i, ϟs.MemoryLayout))
         }
       }
@@ -346,19 +346,17 @@
     {
       required_alignment := {{Template "Go.AlignOf" (TypeOf $f)}}
       if (offset % required_alignment != 0) {
-          extra_reads := required_alignment - (offset % required_alignment)
-          offset += extra_reads
-          for i := uint64(0); i < extra_reads; i++ {
-            if binary.ReadUint(d, 8); d.Error() != nil {
-              panic(d.Error())
-            }
-            base += value.ObservedPointer(1)
-          }
+        extra_reads := required_alignment - (offset % required_alignment)
+        offset += extra_reads
+        d.Skip(extra_reads)
+        base += value.ObservedPointer(extra_reads)
+        if err := d.Error(); err != nil {
+          panic(err)
+        }
       }
       {{if IsPointer ($f.Type | Underlying)}}
           offset += {{Template "Go.SizeOf" (TypeOf $f)}}
-          i := binary.ReadUint(d, ϟs.MemoryLayout.GetPointer().GetSize()*8)
-          v := {{Macro "Go.Type" $f}}{i, ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
+          v := {{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.Push(v)
           ϟb.Store(base)
           base += value.ObservedPointer(ϟs.MemoryLayout.GetPointer().GetSize())
@@ -482,13 +480,23 @@
     return id
   }
 
+  // Reader returns a binary reader for the slice.
+  func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟs *gfxapi.State) binary.Reader {
+    return ϟs.MemoryReader(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+  }
+
+  // Writer returns a binary writer for the slice.
+  func (s {{$slice_ty}}) Writer(ϟs *gfxapi.State) binary.Writer {
+    return ϟs.MemoryWriter(s.pool, s.Range(ϟs.MemoryLayout))
+  }
+
   // Decoder returns a memory decoder for the slice.
-  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) binary.Reader {
+  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *gfxapi.State) *ϟmem.Decoder {
     return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
   }
 
   // Encoder returns a memory encoder for the slice.
-  func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) binary.Writer {
+  func (s {{$slice_ty}}) Encoder(ϟs *gfxapi.State) *ϟmem.Encoder {
     return ϟs.MemoryEncoder(s.pool, s.Range(ϟs.MemoryLayout))
   }
 
@@ -511,7 +519,7 @@
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       res := make([]{{$el_ty}}, s.count)
       d := s.Decoder(ϟctx, ϟs)
-      ϟmem.Read(d, ϟs.MemoryLayout, &res)
+      ϟmem.Read(d, &res)
       return res
     }
 
@@ -520,7 +528,7 @@
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *gfxapi.State, ϟb *builder.Builder) uint64 {
       count := min(s.count, uint64(len(src)))
       e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
-      ϟmem.Write(e, ϟs.MemoryLayout, src[:count])
+      ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
       return count
     }
@@ -571,8 +579,7 @@
         d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
         for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          i := binary.ReadUint(d, ϟl.GetPointer().GetSize()*8)
-          ptr := {{$el_ty}}{i, ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
+          ptr := {{$el_ty}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
           ϟb.StorePointer(dst, ptr)
           dst++
         }

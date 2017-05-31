@@ -17,16 +17,13 @@ package memory
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/google/gapid/core/data/binary"
-	"github.com/google/gapid/core/os/device"
 )
 
-// Write writes the value v to the writer w using C alignment rules.
+// Write writes the value v to the encoder e using C alignment rules.
 // If v is an array or slice, then each of the elements will be written,
 // sequentially. Zeros are used as for paddinge.
-func Write(w binary.Writer, m *device.MemoryLayout, v interface{}) {
-	encode(NewEncoder(w, m), reflect.ValueOf(v))
+func Write(e *Encoder, v interface{}) {
+	encode(e, reflect.ValueOf(v))
 }
 
 func encode(e *Encoder, v reflect.Value) {

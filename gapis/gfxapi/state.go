@@ -96,15 +96,27 @@ func (s State) String() string {
 		s.MemoryLayout, strings.Join(mem, "\n"), strings.Join(apis, "\n"))
 }
 
-// MemoryDecoder returns an endian reader that uses the byte-order of the
-// capture device to decode from d.
-func (s State) MemoryDecoder(ctx context.Context, d memory.Data) binary.Reader {
+// MemoryReader returns a binary reader using the state's memory endianness to
+// read data from d.
+func (s State) MemoryReader(ctx context.Context, d memory.Data) binary.Reader {
 	return endian.Reader(d.NewReader(ctx), s.MemoryLayout.GetEndian())
 }
 
-// MemoryEncoder returns an endian reader that uses the byte-order of the
-// capture device to encode to the pool p, for the range rng.
-func (s State) MemoryEncoder(p memory.PoolID, rng memory.Range) binary.Writer {
+// MemoryWriter returns a binary writer using the state's memory endianness to
+// write data to the pool p, for the range rng.
+func (s State) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
 	bw := memory.Writer(s.Memory[p], rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
+}
+
+// MemoryDecoder returns a memory decoder using the state's memory layout to
+// decode data from d.
+func (s State) MemoryDecoder(ctx context.Context, d memory.Data) *memory.Decoder {
+	return memory.NewDecoder(s.MemoryReader(ctx, d), s.MemoryLayout)
+}
+
+// MemoryEncoder returns a memory encoder using the state's memory layout
+// to encode to the pool p, for the range rng.
+func (s State) MemoryEncoder(p memory.PoolID, rng memory.Range) *memory.Encoder {
+	return memory.NewEncoder(s.MemoryWriter(p, rng), s.MemoryLayout)
 }

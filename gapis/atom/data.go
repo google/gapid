@@ -29,10 +29,10 @@ import (
 // Data encodes and stores the value v to the database d, returning the
 // memory range and new resource identifier. Data can be used to as a helper
 // to AddRead and AddWrite methods on atoms.
-func Data(ctx context.Context, a *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
+func Data(ctx context.Context, l *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, a.GetEndian())
-	memory.Write(w, a, v)
+	e := memory.NewEncoder(endian.Writer(buf, l.GetEndian()), l)
+	memory.Write(e, v)
 	id, err := database.Store(ctx, buf.Bytes())
 	if err != nil {
 		panic(err)
@@ -86,8 +86,8 @@ func (r AllocResult) Address() uint64 {
 // database ID, pointer, and range.
 func AllocData(ctx context.Context, s *gfxapi.State, v ...interface{}) (AllocResult, error) {
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, s.MemoryLayout.GetEndian())
-	memory.Write(w, s.MemoryLayout, v)
+	e := memory.NewEncoder(endian.Writer(buf, s.MemoryLayout.GetEndian()), s.MemoryLayout)
+	memory.Write(e, v)
 	id, err := database.Store(ctx, buf.Bytes())
 	if err != nil {
 		return AllocResult{}, err
