@@ -36,7 +36,6 @@ import (
 
 	_ "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/memory"
 )
 
 var (
@@ -93,8 +92,8 @@ func TestGet(t *testing.T) {
 		{p.Command(1).Parameter("Str"), "xyz", nil},
 		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
 		{p.Command(0).Parameter("Ref"), &test.Struct{Str: "ccc", Ref: &test.Struct{Str: "ddd"}}, nil},
-		{p.Command(0).Parameter("Ptr"), memory.BytePtr(0x123, 0x456), nil},
-		{p.Command(1).Parameter("Ptr"), memory.BytePtr(0x321, 0x654), nil},
+		{p.Command(0).Parameter("Ptr"), test.P.Ptr, nil},
+		{p.Command(1).Parameter("Ptr"), test.Q.Ptr, nil},
 		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
 		{p.Command(1).Parameter("Sli").Slice(1, 3), []bool{true, false}, nil},
 		{p.Command(1).Parameter("Str").ArrayIndex(1), byte('y'), nil},
@@ -180,8 +179,8 @@ func TestSet(t *testing.T) {
 		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
 		{path: p.Command(0).Parameter("Ref"), val: &test.Struct{Str: "ddd"}},
 		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
-		{path: p.Command(0).Parameter("Ptr"), val: memory.BytePtr(0x123, 0x456)},
-		{path: p.Command(1).Parameter("Ptr"), val: memory.BytePtr(0x321, 0x654)},
+		{path: p.Command(0).Parameter("Ptr"), val: test.Q.Ptr},
+		{path: p.Command(1).Parameter("Ptr"), val: test.P.Ptr},
 		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
 		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
 		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
