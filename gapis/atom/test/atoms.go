@@ -17,9 +17,12 @@ package test
 
 import (
 	"context"
+	"reflect"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test/test_pb"
@@ -68,9 +71,14 @@ func (a *AtomC) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
 }
 
 type (
-	stringːstring map[string]string
+	Pointer struct {
+		addr uint64
+		pool memory.PoolID
+	}
 
-	intːStructPtr map[int]*Struct
+	StringːString map[string]string
+
+	IntːStructPtr map[int]*Struct
 
 	Struct struct {
 		Str string
@@ -78,13 +86,38 @@ type (
 	}
 )
 
+// Interface compliance checks
+var _ memory.Pointer = &Pointer{}
+
+func (p Pointer) String() string                                     { return memory.PointerToString(p) }
+func (p Pointer) Set(addr uint64, pool memory.PoolID) memory.Pointer { return Pointer{addr, pool} }
+func (p Pointer) IsNullptr() bool                                    { return p.addr == 0 && p.pool == memory.ApplicationPool }
+func (p Pointer) Address() uint64                                    { return p.addr }
+func (p Pointer) Pool() memory.PoolID                                { return p.pool }
+func (p Pointer) Offset(n uint64) memory.Pointer                     { panic("not implemented") }
+func (p Pointer) ElementSize(m *device.MemoryLayout) uint64          { return 1 }
+func (p Pointer) ElementType() reflect.Type                          { return reflect.TypeOf(byte(0)) }
+func (p Pointer) ISlice(start, end uint64, m *device.MemoryLayout) memory.Slice {
+	panic("not implemented")
+}
+
+var _ data.Assignable = &Pointer{}
+
+func (p *Pointer) Assign(o interface{}) bool {
+	if o, ok := o.(memory.Pointer); ok {
+		*p = Pointer{o.Address(), o.Pool()}
+		return true
+	}
+	return false
+}
+
 type AtomX struct {
-	Str  string         `param:"Str"`
-	Sli  []bool         `param:"Sli"`
-	Ref  *Struct        `param:"Ref"`
-	Ptr  memory.Pointer `param:"Ptr"`
-	Map  stringːstring  `param:"Map"`
-	PMap intːStructPtr  `param:"PMap"`
+	Str  string        `param:"Str"`
+	Sli  []bool        `param:"Sli"`
+	Ref  *Struct       `param:"Ref"`
+	Ptr  Pointer       `param:"Ptr"`
+	Map  StringːString `param:"Map"`
+	PMap IntːStructPtr `param:"PMap"`
 }
 
 func (AtomX) AtomName() string      { return "AtomX" }
@@ -113,17 +146,17 @@ var (
 		Str:  "aaa",
 		Sli:  []bool{true, false, true},
 		Ref:  &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
-		Ptr:  memory.BytePtr(0x123, 0x456),
-		Map:  stringːstring{"cat": "meow", "dog": "woof"},
-		PMap: intːStructPtr{},
+		Ptr:  Pointer{0x123, 0x456},
+		Map:  StringːString{"cat": "meow", "dog": "woof"},
+		PMap: IntːStructPtr{},
 	}
 
 	Q = &AtomX{
 		Str: "xyz",
 		Sli: []bool{false, true, false},
-		Ptr: memory.BytePtr(0x321, 0x654),
-		Map: stringːstring{"bird": "tweet", "fox": "?"},
-		PMap: intːStructPtr{
+		Ptr: Pointer{0x321, 0x654},
+		Map: StringːString{"bird": "tweet", "fox": "?"},
+		PMap: IntːStructPtr{
 			100: &Struct{Str: "baldrick"},
 		},
 	}
