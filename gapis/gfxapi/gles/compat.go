@@ -913,7 +913,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			*GlPushDebugGroup,
 			*GlPopDebugGroup,
 			*GlPushDebugGroupKHR,
-			*GlPopDebugGroupKHR:
+			*GlPopDebugGroupKHR,
+			*GlDebugMessageInsertKHR:
 			// Debug markers may not be supported on the replay device.
 			// As they do not affect rendering output, just drop them.
 			return
