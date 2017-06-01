@@ -29,7 +29,7 @@ type stringPoolRef struct {
 	idx uint32
 }
 
-const missingString = 0xffffffff
+const missingString = uint32(0xffffffff)
 
 var invalidStringPoolRef stringPoolRef = stringPoolRef{nil, missingString}
 
@@ -203,7 +203,7 @@ func (p *stringPool) ref(str string) stringPoolRef {
 func (p *stringPool) insertStringAtIndex(str string, index int) stringPoolRef {
 	p.strings = append(p.strings[0:index], append([]string{str}, p.strings[index:]...)...)
 	for i, ptr := range p.ptrs {
-		if ptr >= index && ptr != missingString {
+		if ptr >= index && uint32(ptr) != missingString {
 			p.ptrs[i] = ptr + 1
 		}
 	}
