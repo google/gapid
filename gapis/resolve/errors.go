@@ -26,3 +26,10 @@ func errPathOOB(val uint64, name string, min, max uint64, p path.Node) error {
 		Path:   p.Path(),
 	}
 }
+
+func errPathNoCapture(p path.Node) error {
+	return &service.ErrInvalidPath{
+		Reason: messages.ErrPathWithoutCapture(),
+		Path:   p.Path(),
+	}
+}

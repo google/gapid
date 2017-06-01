@@ -242,7 +242,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 				children = append(children, &stn{
 					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 					value:          reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout)),
-					path:           n.path,
+					path:           path.NewArrayIndex(n.subgroupOffset+s, n.path),
 					isSubgroup:     true,
 					subgroupOffset: n.subgroupOffset + s,
 				})
@@ -291,7 +291,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 					children = append(children, &stn{
 						name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 						value:          v.Slice(int(s), int(e)),
-						path:           n.path,
+						path:           path.NewArrayIndex(n.subgroupOffset+s, n.path),
 						isSubgroup:     true,
 						subgroupOffset: n.subgroupOffset + s,
 					})
