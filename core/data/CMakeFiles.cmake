@@ -18,17 +18,21 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    doc.go
-    limit.go
-    limit_test.go
-    line_number.go
-    line_number_test.go
-    writer.go
-    writer_test.go
+    
 )
 set(dirs
-    copyright
-    lingo
-    parse
-    reflow
+    binary
+    bitstream
+    compare
+    deep
+    endian
+    id
+    pack
+    pod
+    protoconv
+    protoutil
+    record
+    search
+    slice
+    stash
 )

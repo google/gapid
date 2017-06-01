@@ -31,6 +31,7 @@ func Clamp(x, min, max int) int {
 	return x
 }
 
+// Min returns the minimum value of a and b.
 func Min(a, b int) int {
 	if a < b {
 		return a
@@ -38,6 +39,7 @@ func Min(a, b int) int {
 	return b
 }
 
+// MinOf returns the minimum value of all the arguments.
 func MinOf(a int, b ...int) int {
 	v := a
 	for _, x := range b {
@@ -48,6 +50,7 @@ func MinOf(a int, b ...int) int {
 	return v
 }
 
+// Max returns the maximum value of a and b.
 func Max(a, b int) int {
 	if a > b {
 		return a
@@ -55,6 +58,7 @@ func Max(a, b int) int {
 	return b
 }
 
+// MaxOf returns the maximum value of all the arguments.
 func MaxOf(a int, b ...int) int {
 	v := a
 	for _, x := range b {
@@ -63,6 +67,22 @@ func MaxOf(a int, b ...int) int {
 		}
 	}
 	return v
+}
+
+// Log10 returns the log10(i), rounded down to a whole integer.
+// i must be positive.
+func Log10(i int) int {
+	if i < 0 {
+		panic("i must be positive")
+	}
+	o := 0
+	for {
+		i /= 10
+		if i == 0 {
+			return o
+		}
+		o++
+	}
 }
 
 func Byte(i int) byte {

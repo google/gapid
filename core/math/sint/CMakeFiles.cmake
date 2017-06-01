@@ -19,8 +19,8 @@
 
 set(files
     doc.go
-    utils.go
+    sint.go
 )
 set(dirs
-    
+
 )

@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -185,7 +186,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				msgs[i] = err.Error()
 			}
 			t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
-				kind, strings.Join(msgs, "\n"), shader.Source))
+				kind, strings.Join(msgs, "\n"), text.LineNumber(shader.Source)))
 		}
 
 	case *GlCompileShader:
@@ -232,7 +233,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 					if shader := c.SharedObjects.Shaders[a.Shader]; shader != nil {
 						originalSource = shader.Source
 					}
-					t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n", a.Shader, ntbs(infoLog), originalSource, ntbs(source)))
+					t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n",
+						a.Shader, ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
 				}
 				return r.Error()
 			})
@@ -270,7 +272,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 						logLevel = service.Severity_FatalLevel
 					}
 					t.onIssue(a, i, logLevel, fmt.Errorf("Program %d failed to link. Error:\n%v\n"+
-						"Vertex shader source:\n%sFragment shader source:\n%s", a.Program, ntbs(msg), vss, fss))
+						"Vertex shader source:\n%sFragment shader source:\n%s", a.Program, ntbs(msg),
+						text.LineNumber(vss), text.LineNumber(fss)))
 				}
 				return r.Error()
 			})

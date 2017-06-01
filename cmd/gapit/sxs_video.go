@@ -291,7 +291,7 @@ func getHistogram(videoFrames []*videoFrame) *image.NRGBA {
 		for bin := 0; bin < bins; bin++ {
 			for frame := 0; frame < w; frame++ {
 				v := float32(videoFrames[frame].histogramData[bin][c])
-				peak = f32.Maxf(peak, v)
+				peak = f32.MaxOf(peak, v)
 				f32s[frame+bin*w] = v
 			}
 		}
