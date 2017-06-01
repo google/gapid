@@ -491,7 +491,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    10,
 				Name:           "[10 - 19]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Slice(10, 19).Path(),
 				Preview:        box.NewValue([]int{10, 11, 12, 13}),
 				PreviewIsValue: false,
 			},
@@ -501,7 +501,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    0,
 				Name:           "12",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Array").ArrayIndex(12).Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Slice(10, 19).ArrayIndex(2).Path(),
 				Preview:        box.NewValue(12),
 				PreviewIsValue: true,
 			},
@@ -511,7 +511,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    4,
 				Name:           "[30 - 33]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Slice(30, 33).Path(),
 				Preview:        box.NewValue([]int{30, 31, 32, 33}),
 				PreviewIsValue: true,
 			},
@@ -521,7 +521,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    0,
 				Name:           "32",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Array").ArrayIndex(32).Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Array").Slice(30, 33).ArrayIndex(2).Path(),
 				Preview:        box.NewValue(32),
 				PreviewIsValue: true,
 			},
@@ -541,7 +541,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    10,
 				Name:           "[0 - 999]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Path(),
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1000, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
@@ -551,7 +551,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    10,
 				Name:           "[400 - 499]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Slice(400, 499).Path(),
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1C80, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
@@ -561,7 +561,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    10,
 				Name:           "[430 - 439]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Slice(400, 499).Slice(30, 39).Path(),
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1D70, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
@@ -571,7 +571,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    0,
 				Name:           "435",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").ArrayIndex(435).Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Slice(400, 499).Slice(30, 39).ArrayIndex(5).Path(),
 				Preview:        box.NewValue(memory.Int(4350)),
 				PreviewIsValue: true,
 			},
@@ -581,7 +581,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    5,
 				Name:           "[1000 - 1004]",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(1000, 1004).Path(),
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2F40, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
@@ -591,7 +591,7 @@ func TestStateTreeNode(t *testing.T) {
 			&service.StateTreeNode{
 				NumChildren:    0,
 				Name:           "1003",
-				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").ArrayIndex(1003).Path(),
+				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(1000, 1004).ArrayIndex(3).Path(),
 				Preview:        box.NewValue(memory.Int(10030)),
 				PreviewIsValue: true,
 			},
