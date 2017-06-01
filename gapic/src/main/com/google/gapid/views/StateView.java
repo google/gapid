@@ -20,6 +20,9 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiState;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -54,6 +57,8 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -237,19 +242,43 @@ public class StateView extends Composite
 
   @Override
   public void onStateSelected(Path.Any path) {
-    if (models.state.getData() == null) {
-      return;
+    if (!models.state.isLoaded()) {
+      return; // Once loaded, we'll call ourselves again.
     }
 
-    selectionHandler.updateSelectionFromModel(() -> {
-      TreePath result = null;
-      // TODO: resolve path on server and select the correct node.
-      // See https://github.com/google/gapid/issues/370
-      return result;
-    }, selection -> {
-      viewer.setSelection(new TreeSelection(selection), true);
-      viewer.setExpandedState(selection, true);
-    });
+    ApiState.Node root = models.state.getData();
+    selectionHandler.updateSelectionFromModel(
+        () -> Futures.transformAsync(
+            models.state.getResolvedSelectedPath(), nodePath -> getTreePath(root, nodePath)).get(),
+        selection -> {
+          viewer.refresh();
+          viewer.setSelection(new TreeSelection(selection), true);
+          viewer.setExpandedState(selection, true);
+        });
+  }
+
+  private ListenableFuture<TreePath> getTreePath(ApiState.Node root, Path.StateTreeNode nodePath) {
+    return getTreePath(root, Lists.newArrayList(), nodePath.getIndicesList().iterator());
+  }
+
+  private ListenableFuture<TreePath> getTreePath(
+      ApiState.Node node, List<Object> path, Iterator<Long> indices) {
+    ListenableFuture<ApiState.Node> load = models.state.load(node);
+    if (!indices.hasNext()) {
+      TreePath result = new TreePath(path.toArray());
+      // Ensure the last node in the path is loaded.
+      return (load == null) ? Futures.immediateFuture(result) :
+          Futures.transform(load, ignored -> result);
+    }
+    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
+        Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+  }
+
+  private ListenableFuture<TreePath> getTreePathForLoadedNode(
+      ApiState.Node node, List<Object> path, Iterator<Long> indices) {
+    ApiState.Node child = node.getChild(indices.next().intValue());
+    path.add(child);
+    return getTreePath(child, path, indices);
   }
 
   /*
