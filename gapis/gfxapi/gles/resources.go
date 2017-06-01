@@ -107,9 +107,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.Re
 				}
 			}
 		}
-		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture_Cubemap{
-			Cubemap: &gfxapi.Cubemap{Levels: levels},
-		})), nil
+		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Cubemap{Levels: levels})), nil
 
 	default:
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
