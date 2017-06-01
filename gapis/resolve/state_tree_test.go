@@ -182,15 +182,9 @@ func TestStateTreeNode(t *testing.T) {
 		e.I64(int64(i * 10))
 	}
 
-	const (
-		TestStateTreeNode     = 1
-		TestStateTreeNodePath = 2
-	)
-
 	for _, test := range []struct {
 		path     *path.StateTreeNode
 		expected *service.StateTreeNode
-		flags    int
 	}{
 		{
 			root,
@@ -199,7 +193,6 @@ func TestStateTreeNode(t *testing.T) {
 				Name:        "root",
 				ValuePath:   rootPath.Path(),
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(0), // 0
 			&service.StateTreeNode{
@@ -209,7 +202,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(true),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(1), // 1
 			&service.StateTreeNode{
@@ -219,7 +211,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(42),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(2), // 2
 			&service.StateTreeNode{
@@ -229,7 +220,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(float32(123.456)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(3), // 3
 			&service.StateTreeNode{
@@ -239,7 +229,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("meow"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		},
 		// testState.ReferenceA
 		{
@@ -249,7 +238,6 @@ func TestStateTreeNode(t *testing.T) {
 				Name:        "ReferenceA",
 				ValuePath:   rootPath.Field("ReferenceA").Path(),
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 0), // [4.0]
 			&service.StateTreeNode{
@@ -259,7 +247,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(true),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 1), // [4.1]
 			&service.StateTreeNode{
@@ -269,7 +256,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(7),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 2), // [4.2]
 			&service.StateTreeNode{
@@ -279,7 +265,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(float32(0.25)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 3), // [4.3]
 			&service.StateTreeNode{
@@ -289,7 +274,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("hello cat"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 4), // [4.4]
 			&service.StateTreeNode{
@@ -299,7 +283,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue((*TestStruct)(nil)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 5), // [4.5]
 			&service.StateTreeNode{
@@ -308,7 +291,6 @@ func TestStateTreeNode(t *testing.T) {
 				ValuePath:      rootPath.Field("ReferenceA").Field("Map").Path(),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 5, 0), // [4.5.0]
 			&service.StateTreeNode{
@@ -318,7 +300,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("one"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 5, 1), // [4.5.1]
 			&service.StateTreeNode{
@@ -328,7 +309,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("five"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 5, 2), // [4.5.2]
 			&service.StateTreeNode{
@@ -338,7 +318,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("nine"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 6), // [4.6]
 			&service.StateTreeNode{
@@ -348,7 +327,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue([]int{0, 10, 20, 30}),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 6, 3), // [4.6.3]
 			&service.StateTreeNode{
@@ -358,7 +336,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(30),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 7), // [4.7]
 			&service.StateTreeNode{
@@ -368,7 +345,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 7, 0), // [4.7.0]
 			&service.StateTreeNode{
@@ -378,7 +354,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.Int(0)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 7, 2), // [4.7.2]
 			&service.StateTreeNode{
@@ -388,7 +363,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.Int(20)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 7, 4), // [4.7.4]
 			&service.StateTreeNode{
@@ -398,7 +372,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.Int(40)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 8), // [4.8]
 			&service.StateTreeNode{
@@ -408,7 +381,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(4, 9), // [4.9]
 			&service.StateTreeNode{
@@ -416,7 +388,6 @@ func TestStateTreeNode(t *testing.T) {
 				Name:        "Interface",
 				ValuePath:   rootPath.Field("ReferenceA").Field("Interface").Path(),
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		},
 		// testState.ReferenceB
 		{
@@ -426,7 +397,6 @@ func TestStateTreeNode(t *testing.T) {
 				Name:        "ReferenceB",
 				ValuePath:   rootPath.Field("ReferenceB").Path(),
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 3), // [5.3]
 			&service.StateTreeNode{
@@ -436,7 +406,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("this is a really, really, really, really, really, really, reall…"),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 5), // [5.5]
 			&service.StateTreeNode{
@@ -445,7 +414,6 @@ func TestStateTreeNode(t *testing.T) {
 				ValuePath:      rootPath.Field("ReferenceB").Field("Map").Path(),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 5, 0), // [5.5.0]
 			&service.StateTreeNode{
@@ -455,7 +423,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("0.0"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 5, 5), // [5.5.5]
 			&service.StateTreeNode{
@@ -465,7 +432,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("0.5"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 5, 15), // [5.5.15]
 			&service.StateTreeNode{
@@ -475,7 +441,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue("1.5"),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 6), // [5.6]
 			&service.StateTreeNode{
@@ -485,7 +450,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue([]int{0, 1, 2, 3}),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 6, 1), // [5.6.1]
 			&service.StateTreeNode{
@@ -495,7 +459,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue([]int{10, 11, 12, 13}),
 				PreviewIsValue: false,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 6, 1, 2), // [5.6.1.2]
 			&service.StateTreeNode{
@@ -505,7 +468,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(12),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 6, 3), // [5.6.3]
 			&service.StateTreeNode{
@@ -515,7 +477,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue([]int{30, 31, 32, 33}),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 6, 3, 2), // [5.6.3.2]
 			&service.StateTreeNode{
@@ -525,7 +486,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(32),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 7), // [5.7]
 			&service.StateTreeNode{
@@ -535,7 +495,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 7, 0), // [5.7.0]
 			&service.StateTreeNode{
@@ -545,7 +504,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1000, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 7, 0, 4), // [5.7.0.4]
 			&service.StateTreeNode{
@@ -555,7 +513,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1C80, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 7, 0, 4, 3), // [5.7.0.4.3]
 			&service.StateTreeNode{
@@ -565,7 +522,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1D70, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 7, 0, 4, 3, 5), // [5.7.0.4.3.5]
 			&service.StateTreeNode{
@@ -575,7 +531,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.Int(4350)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		}, {
 			root.Index(5, 7, 1), // [5.7.1]
 			&service.StateTreeNode{
@@ -585,7 +540,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2F40, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode,
 		}, {
 			root.Index(5, 7, 1, 3), // [5.7.1.3]
 			&service.StateTreeNode{
@@ -595,7 +549,6 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue(memory.Int(10030)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		},
 		// testState.ReferenceC
 		{
@@ -607,27 +560,24 @@ func TestStateTreeNode(t *testing.T) {
 				Preview:        box.NewValue((*TestStruct)(nil)),
 				PreviewIsValue: true,
 			},
-			TestStateTreeNode | TestStateTreeNodePath,
 		},
 	} {
-		if test.flags&TestStateTreeNode != 0 {
-			node, err := stateTreeNode(ctx, tree, test.path)
-			if assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
-				ThatError(err).Succeeded() {
-				assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
-					That(node).DeepEquals(test.expected)
-			}
+
+		node, err := stateTreeNode(ctx, tree, test.path)
+		if assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
+			ThatError(err).Succeeded() {
+			assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
+				That(node).DeepEquals(test.expected)
 		}
 
-		if test.flags&TestStateTreeNodePath != 0 {
-			ctx := log.V{"path": test.path.Text()}.Bind(ctx)
-			p := test.expected.ValuePath.Node()
-			indices, err := stateTreeNodePath(ctx, tree, p)
-			if assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
-				ThatError(err).Succeeded() {
-				assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
-					ThatSlice(indices).Equals(test.path.Indices)
-			}
+
+		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
+		p := test.expected.ValuePath.Node()
+		indices, err := stateTreeNodePath(ctx, tree, p)
+		if assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
+			ThatError(err).Succeeded() {
+			assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
+				ThatSlice(indices).Equals(test.path.Indices)
 		}
 	}
 }
