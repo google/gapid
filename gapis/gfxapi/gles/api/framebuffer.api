@@ -56,6 +56,8 @@ class FramebufferAttachment {
   GLint            TextureLevel       = 0
   GLint            TextureLayer       = 0
   GLboolean        Layered            = GL_FALSE
+  // OVR_multiview
+  GLsizei          NumViews           = 1
 /* TODO
   GLenum ColorEncoding
   GLenum ComponentType

@@ -873,7 +873,17 @@ cmd void glFramebufferTextureMultiviewOVR(GLenum    target,
                                           GLint     level,
                                           GLint     baseViewIndex,
                                           GLsizei   numViews) {
-  // TODO
+  ctx := GetContext()
+  attachment_info := FramebufferAttachment()
+  if (texture != 0) {
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
+    attachment_info.Type = GL_TEXTURE
+    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
+    attachment_info.TextureLevel = level
+    attachment_info.TextureLayer = baseViewIndex
+    attachment_info.NumViews = numViews
+  }
+  SetFramebufferAttachment(target, attachment, attachment_info)
 }
 
 @if(Extension.GL_OES_geometry_shader)
