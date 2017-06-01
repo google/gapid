@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
@@ -28,11 +29,13 @@ import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
+import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.CopySources;
@@ -47,10 +50,13 @@ import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
@@ -105,22 +111,89 @@ public class StateView extends Composite
       }
     };
 
-    tree.addListener(SWT.MouseMove, e -> {
-      Point location = new Point(e.x, e.y);
-      //CanFollow follow = (CanFollow)labelProvider.getFollow(location);
-      Object follow = null;
-      setCursor((follow == null) ? null : e.display.getSystemCursor(SWT.CURSOR_HAND));
+    Widgets.Refresher treeRefresher = Widgets.withAsyncRefresh(viewer);
+    MouseAdapter mouseHandler = new MouseAdapter() {
+      // TODO - dedupe with code in AtomTree.
+      private TreeItem lastHovered;
+      private Follower.Prefetcher<Void> lastPrefetcher = nullPrefetcher();
 
-      if (follow != null) {
-        //models.follower.prepareFollow(getFollowPath(location));
+      @Override
+      public void mouseMove(MouseEvent e) {
+        updateHover(e.x, e.y);
       }
-    });
-    tree.addListener(SWT.MouseDown, e -> {
-      Point location = new Point(e.x, e.y);
-      if (labelProvider.getFollow(location) != null) {
-        //models.follower.follow(getFollowPath(location));
+
+      @Override
+      public void mouseScrolled(MouseEvent e) {
+        updateHover(e.x, e.y);
       }
-    });
+
+      @Override
+      public void widgetSelected(SelectionEvent e) {
+        // Scrollbar was moved / mouse wheel caused scrolling. This is required for systems with
+        // a touchpad with scrolling inertia, where the view keeps scrolling long after the mouse
+        // wheel event has been processed.
+        Display disp = getDisplay();
+        Point mouse = disp.map(null, tree, disp.getCursorLocation());
+        updateHover(mouse.x, mouse.y);
+      }
+
+      @Override
+      public void mouseDown(MouseEvent e) {
+        Point location = new Point(e.x, e.y);
+        Path.Any follow = (Path.Any)labelProvider.getFollow(location);
+        if (follow != null) {
+          models.follower.onFollow(follow);
+        }
+      }
+
+      @Override
+      public void mouseExit(MouseEvent e) {
+        hoverItem(null);
+      }
+
+      private void updateHover(int x, int y) {
+        TreeItem item = tree.getItem(new Point(x, y));
+        // When hovering over the far left of deep items, getItem returns null. Let's check a few
+        // more places to the right.
+        if (item == null) {
+          for (int testX = x + 20; item == null && testX < 300; testX += 20) {
+            item = tree.getItem(new Point(testX, y));
+          }
+        }
+
+        if (item != null && (item.getData() instanceof ApiState.Node)) {
+          hoverItem(item);
+          Path.Any follow = (Path.Any)labelProvider.getFollow(new Point(x, y));
+          setCursor((follow == null) ? null : getDisplay().getSystemCursor(SWT.CURSOR_HAND));
+        } else {
+          hoverItem(null);
+        }
+      }
+
+      private void hoverItem(TreeItem item) {
+        if (item != lastHovered) {
+          lastHovered = item;
+          lastPrefetcher.cancel();
+
+          ApiState.Node node = (item == null) ? null : (ApiState.Node)item.getData();
+          // TODO: if still loading, once loaded should update the hover data.
+          if (node == null || node.getData() == null || !node.getData().hasValuePath()) {
+            lastPrefetcher = nullPrefetcher();
+          } else {
+            lastPrefetcher = models.follower.prepare(node.getData().getValuePath(),
+                () -> Widgets.scheduleIfNotDisposed(tree, treeRefresher::refresh));
+          }
+
+          labelProvider.setHoveredItem(lastHovered, lastPrefetcher);
+          treeRefresher.refresh();
+        }
+      }
+    };
+    tree.addMouseListener(mouseHandler);
+    tree.addMouseTrackListener(mouseHandler);
+    tree.addMouseMoveListener(mouseHandler);
+    tree.addMouseWheelListener(mouseHandler);
+    tree.getVerticalBar().addSelectionListener(mouseHandler);
 
     Menu popup = new Menu(tree);
     Widgets.createMenuItem(popup, "&View Text", SWT.MOD1 + 'T', e -> {
@@ -281,47 +354,6 @@ public class StateView extends Composite
     return getTreePath(child, path, indices);
   }
 
-  /*
-  private Path.Any getFollowPath(Point location) {
-    TreeItem item = viewer.getTree().getItem(location);
-    return (item == null) ? null : getFollowPath(item).build();
-  }
-
-  private Paths.PathBuilder getFollowPath(TreeItem item) {
-    if (item == null) {
-      return new Paths.PathBuilder.State(models.state.getPath().getState());
-    }
-
-    Paths.PathBuilder parent = getFollowPath(item.getParentItem());
-    if (parent == null || parent == Paths.PathBuilder.INVALID_BUILDER) {
-      return Paths.PathBuilder.INVALID_BUILDER;
-    }
-
-    Element element = (Element)item.getData();
-    Object obj = element.key.value.getObject();
-    if (element.isMapKey) {
-      return parent.map(pod(obj, element.key.type));
-    } else if (obj instanceof Long) {
-      return parent.array((Long)obj);
-    } else if (obj instanceof String) {
-      return parent.field((String)obj);
-    } else {
-      LOG.log(WARNING, "Unexpected object type " + obj);
-      return Paths.PathBuilder.INVALID_BUILDER;
-    }
-  }
-
-  private static class Element {
-     private static boolean isMemorySliceInfo(Dynamic d) {
-      return d.getFieldCount() == 1 && d.getFieldValue(0) instanceof MemorySliceInfo;
-    }
-
-    public CanFollow canFollow() {
-      return CanFollow.fromSnippets(value.value.getSnippets());
-    }
-  }
-  */
-
   private static boolean canShowPopup(TreeItem item) {
     if (item == null || !(item.getData() instanceof ApiState.Node)) {
       return false;
@@ -368,10 +400,17 @@ public class StateView extends Composite
    */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider {
     private final ConstantSets constants;
+    private TreeItem hoveredItem;
+    private Follower.Prefetcher<Void> follower;
 
     public ViewLabelProvider(TreeViewer viewer, ConstantSets constants, Theme theme) {
       super(viewer, theme);
       this.constants = constants;
+    }
+
+    public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<Void> follower) {
+      this.hoveredItem = hoveredItem;
+      this.follower = follower;
     }
 
     @Override
@@ -383,23 +422,25 @@ public class StateView extends Composite
         string.append(data.getName(), string.defaultStyle());
         if (data.hasPreview()) {
          string.append(": ", string.structureStyle());
+         Path.Any follow = getFollower(item).canFollow(null);
+         string.startLink(follow);
          Formatter.format(data.getPreview(), constants.getConstants(data.getConstants()),
-             data.getPreviewIsValue(), string, string.defaultStyle());
+             data.getPreviewIsValue(), string,
+             (follow == null) ? string.defaultStyle() : string.linkStyle());
+         string.endLink();
         }
       }
       return string;
     }
 
+    private Follower.Prefetcher<Void> getFollower(Widget item) {
+      return (item == hoveredItem) ? follower : nullPrefetcher();
+    }
+
     @Override
     protected boolean isFollowable(Object element) {
-      /*
-      if (!(element instanceof Element)) {
-        return false;
-      }
-      Element e = (Element)element;
-      return e.isLeaf() && e.canFollow() != null;
-      */
-      return false;
+      ApiState.Node node = (ApiState.Node)element;
+      return node.getData() != null && node.getData().hasValuePath();
     }
   }
 }

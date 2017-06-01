@@ -408,15 +408,9 @@ public class Formatter {
       }
 
       ctx.unbox(type.getFields(i).getType()); // for back references
-
-      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Object follow = null;
-      Style paramStyle = (follow == null) ? style : string.linkStyle();
-      string.startLink(follow);
-      string.append(type.getFields(i).getName(), paramStyle);
-      string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
+      string.append(type.getFields(i).getName(), style);
+      string.append(":", string.structureStyle());
       format(struct.getFields(i), ctx, isComplete, string, style);
-      string.endLink();
     }
     string.append("}", string.structureStyle());
 
@@ -442,11 +436,6 @@ public class Formatter {
       Box.MapEntry e = map.getEntries(i);
       format(e.getKey(), ctx, isComplete, string, style);
       string.append("=", string.structureStyle());
-      //CanFollow follow = CanFollow.fromSnippets(paramValue.getSnippets());
-      Object follow = null;
-      string.startLink(follow);
-      format(e.getValue(), ctx, isComplete, string, (follow == null) ? style : string.linkStyle());
-      string.endLink();
     }
     if (!isComplete || map.getEntriesCount() > MAX_DISPLAY) {
       string.append(", ...", string.structureStyle());
