@@ -219,6 +219,10 @@ func shallowPathsEqual(a, b path.Node) bool {
 		if b, ok := b.(*path.ArrayIndex); ok {
 			return a.Index == b.Index
 		}
+	case *path.Slice:
+		if b, ok := b.(*path.Slice); ok {
+			return a.Start == b.Start && a.End == b.End
+		}
 	}
 	return false
 }
@@ -242,7 +246,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 				children = append(children, &stn{
 					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 					value:          reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout)),
-					path:           path.NewArrayIndex(n.subgroupOffset+s, n.path),
+					path:           path.NewSlice(s, e-1, n.path),
 					isSubgroup:     true,
 					subgroupOffset: n.subgroupOffset + s,
 				})
@@ -258,7 +262,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 				children = append(children, &stn{
 					name:  fmt.Sprint(n.subgroupOffset + i),
 					value: reflect.ValueOf(el),
-					path:  path.NewArrayIndex(n.subgroupOffset+i, n.path),
+					path:  path.NewArrayIndex(i, n.path),
 				})
 			}
 		}
@@ -291,7 +295,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 					children = append(children, &stn{
 						name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
 						value:          v.Slice(int(s), int(e)),
-						path:           path.NewArrayIndex(n.subgroupOffset+s, n.path),
+						path:           path.NewSlice(s, e-1, n.path),
 						isSubgroup:     true,
 						subgroupOffset: n.subgroupOffset + s,
 					})
@@ -301,7 +305,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 					children = append(children, &stn{
 						name:  fmt.Sprint(n.subgroupOffset + i),
 						value: deref(v.Index(int(i))),
-						path:  path.NewArrayIndex(n.subgroupOffset+i, n.path),
+						path:  path.NewArrayIndex(i, n.path),
 					})
 				}
 			}
