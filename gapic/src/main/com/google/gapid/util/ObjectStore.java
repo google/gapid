@@ -23,6 +23,13 @@ import java.util.Objects;
 public class ObjectStore<T> {
   private T value;
 
+  private ObjectStore() {
+  }
+
+  public static <T> ObjectStore<T> create() {
+    return new ObjectStore<T>();
+  }
+
   public boolean update(T newValue) {
     if (is(newValue)) {
       return false;
