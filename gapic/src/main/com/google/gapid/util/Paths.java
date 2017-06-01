@@ -163,6 +163,14 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any stateTree(Path.ID tree, Path.Any statePath) {
+    return Path.Any.newBuilder()
+        .setStateTreeNodeForPath(Path.StateTreeNodeForPath.newBuilder()
+            .setTree(tree)
+            .setMember(statePath))
+        .build();
+  }
+
   /*
   public static Path.Any memoryAfter(
       Path.Any atomsPath, AtomIndex atom, int pool, long address, long size) {

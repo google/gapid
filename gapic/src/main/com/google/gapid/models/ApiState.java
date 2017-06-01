@@ -141,6 +141,18 @@ public class ApiState
     return selection.get();
   }
 
+  public ListenableFuture<Path.StateTreeNode> getResolvedSelectedPath() {
+    Path.Any path = selection.get();
+    if (path == null || !isLoaded()) {
+      return Futures.immediateFuture(Path.StateTreeNode.getDefaultInstance());
+    } else if (path.getPathCase() == Path.Any.PathCase.STATE_TREE_NODE) {
+      return Futures.immediateFuture(path.getStateTreeNode());
+    }
+
+    return Futures.transform(client.get(Paths.stateTree(((RootNode)getData()).tree, path)),
+        value -> value.getPath().getStateTreeNode());
+  }
+
   public void selectPath(Path.Any path, boolean force) {
     if (selection.update(path) || force) {
       listeners.fire().onStateSelected(path);
