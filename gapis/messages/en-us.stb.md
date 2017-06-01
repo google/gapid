@@ -134,3 +134,7 @@ The requested command range does not contain any draw calls.
 # TAG_ATOM_NAME
 
 {{atom}}
+
+# ERR_PATH_WITHOUT_CAPTURE
+
+The request path does not contain the required capture identifier.

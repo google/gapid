@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -121,18 +122,39 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	a := reflect.ValueOf(obj)
-	switch a.Kind() {
-	case reflect.Array, reflect.Slice, reflect.String:
-		if count := uint64(a.Len()); p.Index >= count {
+	switch {
+	case box.IsMemorySlice(a.Type()):
+		cp := path.FindCapture(p)
+		if cp == nil {
+			return nil, errPathNoCapture(p)
+		}
+
+		c, err := capture.ResolveFromPath(ctx, cp)
+		if err != nil {
+			return nil, err
+		}
+
+		slice := box.AsMemorySlice(a)
+		if count := slice.Count(); p.Index >= count {
 			return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 		}
-		return a.Index(int(p.Index)).Interface(), nil
+		return slice.IIndex(p.Index, c.Header.Abi.MemoryLayout), nil
 
 	default:
-		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotArrayIndexable(typename(a.Type())),
-			Path:   p.Path(),
+		switch a.Kind() {
+		case reflect.Array, reflect.Slice, reflect.String:
+			if count := uint64(a.Len()); p.Index >= count {
+				return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
+			}
+			return a.Index(int(p.Index)).Interface(), nil
+
+		default:
+			return nil, &service.ErrInvalidPath{
+				Reason: messages.ErrTypeNotArrayIndexable(typename(a.Type())),
+				Path:   p.Path(),
+			}
 		}
 	}
 }
