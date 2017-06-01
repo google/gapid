@@ -3154,7 +3154,6 @@ cmd void vkGetImageMemoryRequirements(
     VkMemoryRequirements* pMemoryRequirements) {
   requirements := ?
   pMemoryRequirements[0] = requirements
-  Images[image].Size = pMemoryRequirements[0].size
 }
 
 @indirect("VkDevice")
@@ -5807,7 +5806,15 @@ sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOf
 sub void readCoherentMemoryInImage(ref!ImageObject image) {
   mem := image.BoundMemory
   if mem != null {
-    readCoherentMemory(mem, image.BoundMemoryOffset, image.Size)
+    // Host access to image memory is only well-defined for images created with
+    // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
+    // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
+    // VK_IMAGE_LAYOUT_GENERAL layout.
+    // TODO: Complete the layout tracking logic then update this if statement
+    // to check the layout of the underlying image.
+    if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
+      readCoherentMemory(mem, image.BoundMemoryOffset, inferImageSize(image))
+    }
   }
 }
 
@@ -6627,6 +6634,35 @@ sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region)
     case false: region.bufferImageHeight
   }
   return RowLengthAndImageHeight(rowLength, imageHeight)
+}
+
+@interal
+class MutableVkDeviceSize {
+  VkDeviceSize Val
+}
+
+sub VkDeviceSize inferImageSize(ref!ImageObject img) {
+  img_info := img.Info
+  img_size := MutableVkDeviceSize(0)
+  for m in (0 .. img_info.MipLevels) {
+    img_size.Val += inferImageLevelSize(img, m)
+  }
+  return img_size.Val
+}
+
+sub VkDeviceSize inferImageLevelSize(ref!ImageObject img, u32 level) {
+  img_info := img.Info
+  level_size := MutableVkDeviceSize(0)
+  if level < img_info.MipLevels {
+    block_info := getElementAndTexelBlockSize(img_info.Format)
+    width := getMipSize(img_info.Extent.Width, level)
+    height := getMipSize(img_info.Extent.Height, level)
+    depth := getMipSize(img_info.Extent.Depth, level)
+    width_in_blocks := roundUpTo(width, block_info.TexelBlockSize.Width)
+    height_in_blocks := roundUpTo(height, block_info.TexelBlockSize.Height)
+    level_size.Val += as!VkDeviceSize(width_in_blocks * height_in_blocks * depth * block_info.ElementSize * img_info.ArrayLayers)
+  }
+  return level_size.Val
 }
 
 @internal
@@ -7899,7 +7935,6 @@ cmd VkResult vkGetSwapchainImagesKHR(
         Device:              device,
         VulkanHandle:        images[i],
         BoundMemoryOffset:   0,
-        Size:                0,
         Info:                swapchainObject.Info,
         ImageAspect:         as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
       )
@@ -8684,7 +8719,6 @@ enum RecordingState {
   @unused ref!QueueObject       LastBoundQueue
   ref!DeviceMemoryObject        BoundMemory
   VkDeviceSize                  BoundMemoryOffset
-  VkDeviceSize                  Size
   @unused bool                  IsSwapchainImage
   VkImage                       VulkanHandle
   ImageInfo                     Info

@@ -342,7 +342,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		} else if imageObj.BoundMemory != nil {
 			boundMemory := imageObj.BoundMemory.VulkanHandle
 			offset := uint64(imageObj.BoundMemoryOffset)
-			size := uint64(uint64(imageObj.Size))
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, imageObj)
+			if err != nil {
+				log.E(ctx, "Error Image: %v: Cannot infer the size of the image", image)
+			}
+			size := uint64(infer_size)
 			return getOverlappingMemoryBindings(boundMemory, offset, size)
 		} else {
 			log.E(ctx, "Error Image: %v: Cannot get the bound memory for an image which has not been bound yet", image)
@@ -573,7 +577,12 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			// not allowed, execept for the vkCmdBeginRenderPass, whose target is
 			// always an image as a whole.
 			// TODO(qining) Fix this
-			size := uint64(GetState(s).Images.Get(image).Size)
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
+			if err != nil {
+				log.E(ctx, "Atom %v %v: %v", id, a, err)
+				return AtomBehaviour{Aborted: true}
+			}
+			size := uint64(infer_size)
 			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
@@ -597,7 +606,12 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
 			offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
-			size := uint64(GetState(s).Images.Get(image).Size)
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
+			if err != nil {
+				log.E(ctx, "Atom %v %v: %v", id, a, err)
+				return AtomBehaviour{Aborted: true}
+			}
+			size := uint64(infer_size)
 			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
