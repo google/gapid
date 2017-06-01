@@ -201,8 +201,10 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				img := boundTexture.Levels[0].Layers[0]
 				data := eglImageData[boundTexture.EGLImage]
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
+				sizedFormat := img.SizedFormat
+				textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(img.DataFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, data).Call(ctx, s, b)
+					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, data).Call(ctx, s, b)
 					return nil
 				}))
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, origUnpackAlignment))
