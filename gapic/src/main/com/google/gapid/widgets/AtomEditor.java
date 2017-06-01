@@ -161,9 +161,7 @@ public class AtomEditor {
     protected void okPressed() {
       Service.Command.Builder builder = atom.toBuilder();
       for (int i = atom.getParametersCount() - 1; i >= 0; i--) {
-        if (!editors.get(i).update(builder.getParametersBuilder(i).getValueBuilder())) {
-          builder.removeParameters(i);
-        }
+        editors.get(i).update(builder.getParametersBuilder(i).getValueBuilder());
       }
       newAtom = builder.build();
 
@@ -182,10 +180,7 @@ public class AtomEditor {
         this.control = control;
       }
 
-      /**
-       * @return {@code false} if the parameter should be removed.
-       */
-      public abstract boolean update(Box.Value.Builder param);
+      public abstract void update(Box.Value.Builder param);
 
       public static Editor<?> getFor(
           Composite parent, Service.Parameter param, Service.ConstantSet constants) {
@@ -245,8 +240,8 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
-        return true;
+      public void update(Box.Value.Builder param) {
+        // Do nothing.
       }
     }
 
@@ -271,10 +266,9 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         Pods.setConstant(param.getPodBuilder(),
             ((Service.Constant)viewer.getElementAt(control.getSelectionIndex())).getValue());
-        return true;
       }
     }
 
@@ -312,12 +306,11 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         ConstantValue value = lookup.get(control.getText().toLowerCase());
         if (value != null) { // TODO
           Pods.setConstant(param.getPodBuilder(), value.constant.getValue());
         }
-        return true;
       }
 
       private static class ConstantValue extends ContentProposal implements PrefixTree.Value {
@@ -353,7 +346,7 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         long value = 0;
         Control[] children = control.getChildren();
         for (int i = 0; i < children.length; i++) {
@@ -362,7 +355,6 @@ public class AtomEditor {
           }
         }
         Pods.setConstant(param.getPodBuilder(), value);
-        return true;
       }
     }
 
@@ -375,9 +367,8 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         param.getPodBuilder().setBool(control.getSelection());
-        return true;
       }
     }
 
@@ -390,9 +381,8 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         Pods.setInt(param.getPodBuilder(), control.getSelection());
-        return true;
       }
     }
 
@@ -405,13 +395,12 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         try {
           Pods.setLong(param.getPodBuilder(), Long.parseLong(control.getText()));
         } catch (NumberFormatException e) {
           // TODO.
         }
-        return true;
       }
     }
 
@@ -424,13 +413,12 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         try {
           Pods.setFloat(param.getPodBuilder(), Double.parseDouble(control.getText()));
         } catch (NumberFormatException e) {
           // TODO.
         }
-        return true;
       }
     }
 
@@ -443,9 +431,8 @@ public class AtomEditor {
       }
 
       @Override
-      public boolean update(Box.Value.Builder param) {
+      public void update(Box.Value.Builder param) {
         param.getPodBuilder().setString(control.getText());
-        return true;
       }
     }
   }
