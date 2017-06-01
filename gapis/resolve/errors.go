@@ -27,6 +27,13 @@ func errPathOOB(val uint64, name string, min, max uint64, p path.Node) error {
 	}
 }
 
+func errPathSliceOOB(start, end, length uint64, p path.Node) error {
+	return &service.ErrInvalidPath{
+		Reason: messages.ErrSliceOutOfBounds(start, end, "Start", "End", uint64(0), length-1),
+		Path:   p.Path(),
+	}
+}
+
 func errPathNoCapture(p path.Node) error {
 	return &service.ErrInvalidPath{
 		Reason: messages.ErrPathWithoutCapture(),

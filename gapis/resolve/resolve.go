@@ -126,12 +126,7 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 	a := reflect.ValueOf(obj)
 	switch {
 	case box.IsMemorySlice(a.Type()):
-		cp := path.FindCapture(p)
-		if cp == nil {
-			return nil, errPathNoCapture(p)
-		}
-
-		c, err := capture.ResolveFromPath(ctx, cp)
+		ml, err := memoryLayout(ctx, p)
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +135,7 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 		if count := slice.Count(); p.Index >= count {
 			return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 		}
-		return slice.IIndex(p.Index, c.Header.Abi.MemoryLayout), nil
+		return slice.IIndex(p.Index, ml), nil
 
 	default:
 		switch a.Kind() {
@@ -166,22 +161,49 @@ func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 		return nil, err
 	}
 	a := reflect.ValueOf(obj)
-	switch a.Kind() {
-	case reflect.Array, reflect.Slice, reflect.String:
-		if int(p.Start) >= a.Len() || int(p.End) > a.Len() {
+	switch {
+	case box.IsMemorySlice(a.Type()):
+		ml, err := memoryLayout(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+
+		slice := box.AsMemorySlice(a)
+		if p.Start >= slice.Count() || p.End > slice.Count() {
+			return nil, errPathSliceOOB(p.Start, p.End, slice.Count(), p)
+		}
+		return slice.ISlice(p.Start, p.End, ml), nil
+
+	default:
+		switch a.Kind() {
+		case reflect.Array, reflect.Slice, reflect.String:
+			if int(p.Start) >= a.Len() || int(p.End) > a.Len() {
+				return nil, errPathSliceOOB(p.Start, p.End, uint64(a.Len()), p)
+			}
+			return a.Slice(int(p.Start), int(p.End)).Interface(), nil
+
+		default:
 			return nil, &service.ErrInvalidPath{
-				Reason: messages.ErrSliceOutOfBounds(p.Start, p.End, "Start", "End", uint64(0), uint64(a.Len()-1)),
+				Reason: messages.ErrTypeNotSliceable(typename(a.Type())),
 				Path:   p.Path(),
 			}
 		}
-		return a.Slice(int(p.Start), int(p.End)).Interface(), nil
-
-	default:
-		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotSliceable(typename(a.Type())),
-			Path:   p.Path(),
-		}
 	}
+}
+
+// memoryLayout resolves the memory layout for the capture of the given path.
+func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error) {
+	cp := path.FindCapture(p)
+	if cp == nil {
+		return nil, errPathNoCapture(p)
+	}
+
+	c, err := capture.ResolveFromPath(ctx, cp)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.Header.Abi.MemoryLayout, nil
 }
 
 // MapIndex resolves and returns the map value from the path p.
