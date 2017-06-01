@@ -16,8 +16,8 @@ package f64
 
 import "math"
 
-// Minf returns the minimum value of all the arguments.
-func Minf(a float64, b ...float64) float64 {
+// MinOf returns the minimum value of all the arguments.
+func MinOf(a float64, b ...float64) float64 {
 	v := a
 	for _, x := range b {
 		if x < v {
@@ -27,8 +27,8 @@ func Minf(a float64, b ...float64) float64 {
 	return v
 }
 
-// Maxf returns the maximum value of all the arguments.
-func Maxf(a float64, b ...float64) float64 {
+// MaxOf returns the maximum value of all the arguments.
+func MaxOf(a float64, b ...float64) float64 {
 	v := a
 	for _, x := range b {
 		if x > v {

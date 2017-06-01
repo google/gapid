@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
@@ -283,7 +284,7 @@ func glslCompat(
 		return "", err
 	}
 	if len(r.Errors) > 0 {
-		return "", fmt.Errorf("Failed to parse shader source:\n%s\n%s", src, r.Errors)
+		return "", fmt.Errorf("Failed to parse shader source:\n%s\n%s", text.LineNumber(src), r.Errors)
 	}
 
 	devGL := device.Configuration.Drivers.OpenGL

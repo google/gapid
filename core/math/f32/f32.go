@@ -16,8 +16,8 @@ package f32
 
 import "math"
 
-// Minf returns the minimum value of all the arguments.
-func Minf(a float32, b ...float32) float32 {
+// MinOf returns the minimum value of all the arguments.
+func MinOf(a float32, b ...float32) float32 {
 	v := a
 	for _, x := range b {
 		if x < v {
@@ -27,8 +27,8 @@ func Minf(a float32, b ...float32) float32 {
 	return v
 }
 
-// Maxf returns the maximum value of all the arguments.
-func Maxf(a float32, b ...float32) float32 {
+// MaxOf returns the maximum value of all the arguments.
+func MaxOf(a float32, b ...float32) float32 {
 	v := a
 	for _, x := range b {
 		if x > v {
