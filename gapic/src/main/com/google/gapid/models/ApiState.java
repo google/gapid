@@ -51,7 +51,7 @@ public class ApiState
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   private final ConstantSets constants;
-  private final ObjectStore<Path.Any> selection = new ObjectStore<Path.Any>();
+  private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
   public ApiState(
       Shell shell, Client client, Follower follower, AtomStream atoms, ConstantSets constants) {

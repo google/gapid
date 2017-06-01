@@ -49,7 +49,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
   private final Logger log;
   protected final Shell shell;
   protected final Client client;
-  private final ObjectStore<S> sourceStore = new ObjectStore<S>();
+  private final ObjectStore<S> sourceStore = ObjectStore.create();
   protected final FutureController rpcController = new SingleInFlight();
   protected final Events.ListenerCollection<L> listeners;
   private T data;
