@@ -352,6 +352,7 @@ public class Paths {
       case STATE: return path.getState();
       case FIELD: return findState(path.getField());
       case ARRAY_INDEX: return findState(path.getArrayIndex());
+      case SLICE: return findState(path.getSlice());
       case MAP_INDEX: return findState(path.getMapIndex());
       default: return null;
     }
@@ -362,6 +363,7 @@ public class Paths {
       case STATE: return path.getState();
       case FIELD: return findState(path.getField());
       case ARRAY_INDEX: return findState(path.getArrayIndex());
+      case SLICE: return findState(path.getSlice());
       case MAP_INDEX: return findState(path.getMapIndex());
       default: return null;
     }
@@ -371,6 +373,17 @@ public class Paths {
     switch (path.getArrayCase()) {
       case FIELD: return findState(path.getField());
       case ARRAY_INDEX: return findState(path.getArrayIndex());
+      case SLICE: return findState(path.getSlice());
+      case MAP_INDEX: return findState(path.getMapIndex());
+      default: return null;
+    }
+  }
+
+  public static Path.State findState(Path.Slice path) {
+    switch (path.getArrayCase()) {
+      case FIELD: return findState(path.getField());
+      case ARRAY_INDEX: return findState(path.getArrayIndex());
+      case SLICE: return findState(path.getSlice());
       case MAP_INDEX: return findState(path.getMapIndex());
       default: return null;
     }
@@ -381,6 +394,7 @@ public class Paths {
       case STATE: return path.getState();
       case FIELD: return findState(path.getField());
       case ARRAY_INDEX: return findState(path.getArrayIndex());
+      case SLICE: return findState(path.getSlice());
       case MAP_INDEX: return findState(path.getMapIndex());
       default: return null;
     }
