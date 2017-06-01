@@ -22,9 +22,9 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.path.Path.Any;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
@@ -34,13 +34,16 @@ import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
+import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
+import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -72,17 +75,19 @@ public class Follower {
     LazyMap<String, Path.Any> paths = new LazyMap<String, Path.Any>();
     for (Service.Parameter p : atom.getParametersList()) {
       Path.Any follow = Paths.atomField(path, p.getName());
-      Futures.addCallback(client.follow(follow), callback(paths, follow, p.getName(), onResult));
+      Futures.addCallback(
+          client.follow(follow), callback(follow, v -> paths.put(p.getName(), v), onResult));
     }
 
     if (atom.hasResult()) {
       Path.Any follow = Paths.atomResult(path);
-      Futures.addCallback(client.follow(follow), callback(paths, follow, RESULT_NAME, onResult));
+      Futures.addCallback(
+          client.follow(follow), callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
     }
 
     return new Prefetcher<String>() {
       @Override
-      public Any canFollow(String follow) {
+      public Path.Any canFollow(String follow) {
         return paths.get(follow);
       }
 
@@ -93,12 +98,38 @@ public class Follower {
     };
   }
 
+  /**
+   * Prefetches the follow path for the path.
+   */
+  public Prefetcher<Void> prepare(Path.Any path, Runnable onResult) {
+    System.err.println(ProtoDebugTextFormat.shortDebugString(path));
+    ObjectStore<Path.Any> result = ObjectStore.create();
+    ListenableFuture<Path.Any> future = client.follow(path);
+    Futures.addCallback(future, callback(path, v -> {
+      synchronized(result) {
+        result.update(v);
+      }
+    }, onResult));
+
+    return new Prefetcher<Void>() {
+      @Override
+      public Path.Any canFollow(Void ignored) {
+        return result.get();
+      }
+
+      @Override
+      public void cancel() {
+        future.cancel(true);
+      }
+    };
+  }
+
   private static FutureCallback<Path.Any> callback(
-      LazyMap<String, Path.Any> paths, Path.Any follow, String name, Runnable onResult) {
+      Path.Any follow, Consumer<Path.Any> store, Runnable onResult) {
     return new FutureCallback<Path.Any>() {
       @Override
       public void onSuccess(Path.Any result) {
-        paths.put(name, result);
+        store.accept(result);
         onResult.run();
 
         if (logFollowRequests.get()) {
