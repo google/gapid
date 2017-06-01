@@ -695,17 +695,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 // TODO(awoloszyn): Handle multisampled images here.
                 //                  Figure out how we are supposed to get the data BACK into a MS image (shader?)
                 // TODO(awoloszyn): Handle depth stencil images
-
-                auto block_info = subGetElementAndTexelBlockSize(nullptr, nullptr, info.mFormat);
-
-                for (size_t i = 0; i < info.mMipLevels; ++i) {
-                    const size_t width = subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, i);
-                    const size_t height = subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, i);
-                    const size_t depth = subGetMipSize(nullptr, nullptr, info.mExtent.mDepth, i);
-                    const size_t width_in_blocks = subRoundUpTo(nullptr, nullptr, width, block_info.mTexelBlockSize.mWidth);
-                    const size_t height_in_blocks = subRoundUpTo(nullptr, nullptr, height, block_info.mTexelBlockSize.mHeight);
-                    data_size += width_in_blocks * height_in_blocks * depth * block_info.mElementSize * info.mArrayLayers;
-                }
+                data_size = subInferImageSize(nullptr, nullptr, image.second);
 
                 need_to_clean_up_temps = true;
 
@@ -799,8 +789,6 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     const size_t width = subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, i);
                     const size_t height = subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, i);
                     const size_t depth = subGetMipSize(nullptr, nullptr, info.mExtent.mDepth, i);
-                    const size_t width_in_blocks = subRoundUpTo(nullptr, nullptr, width, block_info.mTexelBlockSize.mWidth);
-                    const size_t height_in_blocks = subRoundUpTo(nullptr, nullptr, height, block_info.mTexelBlockSize.mHeight);
                     image_copies[i] = {
                         static_cast<uint64_t>(buffer_offset),
                         0, // bufferRowLength << tightly packed
@@ -817,7 +805,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                           static_cast<uint32_t>(depth) }
                     };
 
-                    buffer_offset += width_in_blocks * height_in_blocks * depth * block_info.mElementSize * info.mArrayLayers;
+                    buffer_offset += subInferImageLevelSize(nullptr, nullptr, image.second, i);
                 }
 
 
