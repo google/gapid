@@ -526,9 +526,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxap
 					}
 				}
 			}
-			return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture_Cubemap{
-				Cubemap: &gfxapi.Cubemap{Levels: cubeMapLevels},
-			})), nil
+			return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Cubemap{Levels: cubeMapLevels})), nil
 		}
 
 		levels := make([]*image.Info2D, len(t.Layers[0].Levels))
