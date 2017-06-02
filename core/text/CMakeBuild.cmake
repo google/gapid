@@ -13,4 +13,3 @@
 # limitations under the License.
 
 build_subdirectory(copyright)
-build_subdirectory(lingo)

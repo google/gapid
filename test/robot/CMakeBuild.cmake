@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+build_subdirectory(lingo)
 build_subdirectory(search)
 build_subdirectory(web)

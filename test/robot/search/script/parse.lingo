@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/gapid/test/robot/search/query"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/lingo"
+	"github.com/google/gapid/test/robot/lingo"
 )
 
 // Parse takes a string containing a search expression and returns the Query object representation of it.
