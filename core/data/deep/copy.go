@@ -21,6 +21,16 @@ import (
 	"github.com/google/gapid/core/data"
 )
 
+// Clone makes a deep copy of v.
+func Clone(v interface{}) (interface{}, error) {
+	s := reflect.ValueOf(v)
+	d := reflect.New(s.Type())
+	if err := reflectCopy(d.Elem(), s, "val", map[reflect.Value]reflect.Value{}); err != nil {
+		return nil, err
+	}
+	return d.Elem().Interface(), nil
+}
+
 // Copy recursively copies all fields, map and slice elements from the value
 // src to the pointer dst.
 func Copy(dst, src interface{}) error {
