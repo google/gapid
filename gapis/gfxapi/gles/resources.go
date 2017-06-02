@@ -203,15 +203,15 @@ func (shader *Shader) SetResourceData(
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j].Indices[0] // TODO: Subcommands
 		if a, ok := c.Atoms[i].(*GlShaderSource); ok {
-			edits(uint64(i), a.Replace(ctx, data))
+			edits(uint64(i), a.Replace(ctx, c, data))
 			return nil
 		}
 	}
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *GlShaderSource) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
-	state := capture.NewState(ctx)
+func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *gfxapi.ResourceData) interface{} {
+	state := c.NewState()
 	shader := data.GetShader()
 	source := shader.Source
 	src, _ := atom.AllocData(ctx, state, source)

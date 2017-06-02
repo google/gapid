@@ -57,7 +57,10 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	s := capture.NewState(ctx)
+	s, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range list.Atoms[:atomIdx+1] {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
@@ -92,7 +95,10 @@ func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{
 	if api == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
-	s := capture.NewState(ctx)
+	s, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range atoms[:atomIdx+1] {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err

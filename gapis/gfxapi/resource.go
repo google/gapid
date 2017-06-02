@@ -55,15 +55,8 @@ type ResourceMeta struct {
 	IDMap    ResourceMap // Map for resolved resources to ids.
 }
 
-// ResourceAtom describes atoms which should be replaced with resource data.
-// TODO: Remove it and use atom.Atom itself (which is impossible for now because of a dependency cycle).
-type ResourceAtom interface {
-	// Replace clones an atom and sets new data.
-	Replace(ctx context.Context, data *ResourceData) ResourceAtom
-}
-
 // ReplaceCallback is called from SetResourceData to propagate changes to current atom stream.
-type ReplaceCallback func(where uint64, with ResourceAtom)
+type ReplaceCallback func(where uint64, with interface{})
 
 // Interface compliance check
 var _ = image.Convertable((*ResourceData)(nil))

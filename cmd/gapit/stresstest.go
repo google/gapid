@@ -19,9 +19,8 @@ import (
 	"flag"
 	"math/rand"
 	"path/filepath"
-	"time"
-
 	"sync"
+	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"

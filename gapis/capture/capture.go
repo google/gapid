@@ -77,12 +77,12 @@ func New(ctx context.Context, name string, header *Header, atoms []atom.Atom) (*
 
 // NewState returns a new, default-initialized State object built for the
 // capture held by the context.
-func NewState(ctx context.Context) *gfxapi.State {
+func NewState(ctx context.Context) (*gfxapi.State, error) {
 	c, err := Resolve(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return c.NewState()
+	return c.NewState(), nil
 }
 
 // NewState returns a new, default-initialized State object built for the

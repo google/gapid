@@ -80,7 +80,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		list := oldList.Clone()
-		replaceAtoms := func(where uint64, with gfxapi.ResourceAtom) {
+		replaceAtoms := func(where uint64, with interface{}) {
 			list.Atoms[where] = with.(atom.Atom)
 		}
 

@@ -15,6 +15,7 @@
 package gles_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
 	"github.com/google/gapid/gapis/memory"
@@ -42,6 +44,14 @@ func p(addr uint64) memory.Pointer {
 }
 
 type glShaderSourceCompatTest glslCompatTest
+
+func newState(ctx context.Context) *gfxapi.State {
+	s, err := capture.NewState(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
 
 func (c glShaderSourceCompatTest) run(t *testing.T) {
 	ctx := log.Testing(t)
@@ -74,7 +84,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 		shaderType = gles.GLenum_GL_FRAGMENT_SHADER
 	}
 
-	mw := &test.MockAtomWriter{S: capture.NewState(ctx)}
+	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 
 	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
@@ -113,7 +123,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 		return
 	}
 
-	s := capture.NewState(ctx)
+	s := newState(ctx)
 	for _, a := range mw.Atoms {
 		a.Mutate(ctx, s, nil)
 	}
@@ -159,7 +169,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
-	mw := &test.MockAtomWriter{S: capture.NewState(ctx)}
+	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
@@ -176,7 +186,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	}
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
-	s := capture.NewState(ctx)
+	s := newState(ctx)
 	for _, a := range mw.Atoms {
 		err := a.Mutate(ctx, s, nil)
 		ctx := log.V{"atom": fmt.Sprintf("%T", a)}.Bind(ctx)
