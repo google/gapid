@@ -19,7 +19,6 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -29,6 +28,7 @@ import (
 	"github.com/google/gapid/test/robot/monitor"
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
+	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"github.com/google/gapid/test/robot/subject"
 	"github.com/google/gapid/test/robot/trace"
 	"github.com/google/gapid/test/robot/web"
@@ -68,6 +68,9 @@ func doWebStart(ctx context.Context, flags flag.FlagSet) error {
 			},
 		}
 		w, err := web.Create(ctx, config)
+		if err != nil {
+			return err
+		}
 		m := master.NewClient(ctx, config.Master)
 		restart := false
 		go func() {
