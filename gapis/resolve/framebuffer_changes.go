@@ -65,7 +65,9 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 	s := c.NewState()
 	for i, a := range c.Atoms {
 		id = atom.ID(i)
-		a.Mutate(ctx, s, nil /* no builder, just mutate */)
+		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 		api := a.API()
 		for _, att := range allFramebufferAttachments {
 			info := framebufferAttachmentInfo{after: uint64(i)}

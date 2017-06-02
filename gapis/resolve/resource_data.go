@@ -72,7 +72,9 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	for i, a := range list.Atoms[:atomIdx+1] {
 		currentAtomResourceCount = 0
 		currentAtomIndex = uint64(i)
-		a.Mutate(ctx, state, nil /* no builder, just mutate */)
+		if err := a.Mutate(ctx, state, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 	}
 
 	resourceData := make(map[id.ID]interface{})

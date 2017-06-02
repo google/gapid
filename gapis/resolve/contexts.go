@@ -79,7 +79,10 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	s := c.NewState()
 	for i, a := range c.Atoms {
 		currentAtomIndex, currentAtom = i, a
-		a.Mutate(ctx, s, nil)
+
+		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 
 		api := a.API()
 		if api == nil {

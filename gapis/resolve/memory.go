@@ -41,7 +41,9 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 
 	s := capture.NewState(ctx)
 	for _, a := range list.Atoms[:atomIdx] {
-		a.Mutate(ctx, s, nil /* no builder, just mutate */)
+		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 	}
 
 	pool, ok := s.Memory[memory.PoolID(p.Pool)]

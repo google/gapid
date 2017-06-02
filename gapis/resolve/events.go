@@ -39,7 +39,9 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 
 	s := c.NewState()
 	for i, a := range c.Atoms {
-		a.Mutate(ctx, s, nil)
+		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 		// TODO: Add event generation to the API files.
 		if !filter(a, s) {
 			continue
