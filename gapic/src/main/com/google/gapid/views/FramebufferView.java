@@ -110,6 +110,8 @@ public class FramebufferView extends Composite
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     imagePanel.createToolbar(toolBar, widgets.theme, true);
+    // Work around for https://bugs.eclipse.org/bugs/show_bug.cgi?id=517480
+    Widgets.createSeparator(toolBar);
 
     models.capture.addListener(this);
     models.devices.addListener(this);
