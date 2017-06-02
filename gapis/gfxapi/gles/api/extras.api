@@ -77,15 +77,3 @@ sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
     }
   }
 }
-
-// DeviceInfo is an atom extra used to describe information about the device producing the trace.
-@internal @serialize @unused
-class DeviceInfo {
-  string ProductManufacturer
-  string ProductModel
-  string BuildDescription
-  string BuildVersionRelease
-  string BuildVersionSdk
-  string Debuggable
-  string AbiList
-}
