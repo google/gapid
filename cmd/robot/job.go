@@ -38,29 +38,28 @@ import (
 )
 
 func init() {
-	deviceSearch := &app.Verb{
+	searchVerb.Add(&app.Verb{
 		Name:       "device",
 		ShortHelp:  "List the devices",
 		ShortUsage: "<query>",
-		Run:        doDeviceSearch,
-	}
-	searchVerb.Add(deviceSearch)
-	workerSearch := &app.Verb{
+		Auto:       &deviceSearchFlags{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "worker",
 		ShortHelp:  "List the workers",
 		ShortUsage: "<query>",
-		Run:        doWorkerSearch,
-	}
-	searchVerb.Add(workerSearch)
-	workerStart := &app.Verb{
+		Auto:       &workerSearchFlags{},
+	})
+	startVerb.Add(&app.Verb{
 		Name:      "worker",
 		ShortHelp: "Starts a robot worker",
-		Run:       doWorkerStart,
-	}
-	startVerb.Add(workerStart)
+		Auto:      &workerStartFlags{},
+	})
 }
 
-func doDeviceSearch(ctx context.Context, flags flag.FlagSet) error {
+type deviceSearchFlags struct{}
+
+func (v *deviceSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
@@ -76,7 +75,9 @@ func doDeviceSearch(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func doWorkerSearch(ctx context.Context, flags flag.FlagSet) error {
+type workerSearchFlags struct{}
+
+func (v *workerSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
@@ -92,7 +93,9 @@ func doWorkerSearch(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func doWorkerStart(ctx context.Context, flags flag.FlagSet) error {
+type workerStartFlags struct{}
+
+func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	tempName, err := ioutil.TempDir("", "robot")
 	if err != nil {
 		return err

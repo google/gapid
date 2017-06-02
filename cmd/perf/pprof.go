@@ -28,13 +28,15 @@ func init() {
 	verb := &app.Verb{
 		Name:       "pprof",
 		ShortHelp:  "Runs pprof",
-		Run:        pprofVerb,
 		ShortUsage: "<perfz> [[benchmark]:[link]]",
+		Auto:       &pprofVerb{},
 	}
 	app.AddVerb(verb)
 }
 
-func pprofVerb(ctx context.Context, flags flag.FlagSet) error {
+type pprofVerb struct{}
+
+func (v *pprofVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected, got %d", flags.NArg())
 		return nil

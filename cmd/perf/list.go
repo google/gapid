@@ -23,16 +23,17 @@ import (
 )
 
 func init() {
-	verb := &app.Verb{
+	app.AddVerb(&app.Verb{
 		Name:       "list",
 		ShortHelp:  "Lists benchmarks and associated data in .perfz",
-		Run:        listVerb,
 		ShortUsage: "<perfz>",
-	}
-	app.AddVerb(verb)
+		Auto:       &listVerb{},
+	})
 }
 
-func listVerb(ctx context.Context, flags flag.FlagSet) error {
+type listVerb struct{}
+
+func (v *listVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "One argument expected, got %d", flags.NArg())
 		return nil

@@ -29,10 +29,11 @@ func init() {
 	verb := &app.Verb{
 		Name:       "redo",
 		ShortHelp:  "Runs all benchmarks in the source .perfz and saves the output to a new file",
-		Run:        redoVerb,
 		ShortUsage: "<source> <destination>",
+		Auto: &redoVerb{
+			Output: "-",
+		},
 	}
-	verb.Flags.Raw.StringVar(&flagTextualOutput, "json", "-", "output results in JSON format")
 	app.AddVerb(verb)
 }
 
@@ -57,7 +58,11 @@ func clonePerfzInputs(p *Perfz) (*Perfz, error) {
 	return result, nil
 }
 
-func redoVerb(ctx context.Context, flags flag.FlagSet) error {
+type redoVerb struct {
+	Output string `help:"output results in JSON format"`
+}
+
+func (v *redoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 2 {
 		app.Usage(ctx, "Two arguments expected, got %d", flags.NArg())
 		return nil
@@ -85,7 +90,7 @@ func redoVerb(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "outputPerfz.WriteTo")
 	}
 
-	return writeAllFn(flagTextualOutput, func(w io.Writer) error {
+	return writeAllFn(v.Output, func(w io.Writer) error {
 		_, err := w.Write([]byte(outputPerfz.String()))
 		return err
 	})

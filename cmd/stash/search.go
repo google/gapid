@@ -26,25 +26,26 @@ import (
 	"github.com/google/gapid/test/robot/stash"
 )
 
-var monitor = false
-
 func init() {
 	verb := &app.Verb{
 		Name:      "search",
 		ShortHelp: "Prints information about stash entries",
-		Run:       doInfo,
+		Auto:      &infoVerb{},
 	}
-	verb.Flags.Raw.BoolVar(&monitor, "monitor", monitor, "Monitor for changes")
 	app.AddVerb(verb)
 }
 
-func doInfo(ctx context.Context, flags flag.FlagSet) error {
+type infoVerb struct {
+	Monitor bool `help:"Monitor for changes"`
+}
+
+func (v *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return withStore(ctx, false, func(ctx context.Context, client *stash.Client) error {
-		return getInfo(ctx, client, strings.Join(flags.Args(), " "))
+		return getInfo(ctx, client, strings.Join(flags.Args(), " "), v.Monitor)
 	})
 }
 
-func getInfo(ctx context.Context, client *stash.Client, expression string) error {
+func getInfo(ctx context.Context, client *stash.Client, expression string, monitor bool) error {
 	expr, err := script.Parse(ctx, expression)
 	if err != nil {
 		return log.Err(ctx, err, "Malformed search query")

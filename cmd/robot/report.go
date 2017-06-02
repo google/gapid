@@ -30,16 +30,17 @@ import (
 )
 
 func init() {
-	reportSearch := &app.Verb{
+	searchVerb.Add(&app.Verb{
 		Name:       "report",
 		ShortHelp:  "List build reports in the server",
 		ShortUsage: "<query>",
-		Run:        doReportSearch,
-	}
-	searchVerb.Add(reportSearch)
+		Auto:       &reportSearchFlags{},
+	})
 }
 
-func doReportSearch(ctx context.Context, flags flag.FlagSet) error {
+type reportSearchFlags struct{}
+
+func (v *reportSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		reports := report.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")

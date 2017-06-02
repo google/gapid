@@ -31,28 +31,31 @@ import (
 )
 
 func init() {
-	stashUpload := &app.Verb{
+	uploadVerb.Add(&app.Verb{
 		Name:       "stash",
 		ShortHelp:  "Upload a file to the stash",
 		ShortUsage: "<filenames>",
-		Run:        doUpload(stashUploader{}),
-	}
-	uploadVerb.Add(stashUpload)
-	stashSearch := &app.Verb{
+		Auto:       &stashUploadVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "stash",
 		ShortHelp:  "List entries in the stash",
 		ShortUsage: "<query>",
-		Run:        doStashSearch,
-	}
-	searchVerb.Add(stashSearch)
+		Auto:       &stashSearchVerb{},
+	})
 }
 
-type stashUploader struct{}
+type stashUploadVerb struct{}
 
-func (stashUploader) prepare(context.Context, *grpc.ClientConn) error { return nil }
-func (stashUploader) process(context.Context, string) error           { return nil }
+func (v *stashUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return upload(ctx, flags, v)
+}
+func (stashUploadVerb) prepare(context.Context, *grpc.ClientConn) error { return nil }
+func (stashUploadVerb) process(context.Context, string) error           { return nil }
 
-func doStashSearch(ctx context.Context, flags flag.FlagSet) error {
+type stashSearchVerb struct{}
+
+func (v *stashSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		store, err := stashgrpc.Connect(ctx, conn)
 		if err != nil {

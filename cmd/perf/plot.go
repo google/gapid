@@ -54,26 +54,27 @@ plot {{if .ShowMinMax}}'$dataset1' using 1:4:5 with filledcurves title 'min..max
      {{end}}'$dataset2' using 1:3 with lp lt 5 pt 7 ps 0.5 lw 1 title 'median:{{.Name2}}'{{end}}
 `
 
-var (
-	flagShowMinMax          bool
-	flagShowAverage         bool
-	flagRunGnuplot          bool
-	flagBenchmarkNameToPlot string
-)
-
 func init() {
 	verb := &app.Verb{
 		Name:       "plot",
 		ShortHelp:  "Plots samples from a benchmark out of one or two perfz files",
-		Run:        plotVerb,
 		ShortUsage: "<perfz> [perfz]",
+		Auto: &plotVerb{
+			ShowMinMax:  true,
+			ShowAverage: true,
+			RunGnuplot:  true,
+			Output:      "-",
+		},
 	}
-	verb.Flags.Raw.StringVar(&flagBenchmarkNameToPlot, "b", "", "benchmark name")
-	verb.Flags.Raw.StringVar(&flagTextualOutput, "o", "-", "output file")
-	verb.Flags.Raw.BoolVar(&flagShowMinMax, "mm", true, "show min and max")
-	verb.Flags.Raw.BoolVar(&flagShowAverage, "avg", true, "show average")
-	verb.Flags.Raw.BoolVar(&flagRunGnuplot, "run-gnuplot", true, "run gnuplot")
 	app.AddVerb(verb)
+}
+
+type plotVerb struct {
+	ShowMinMax          bool   `help:"show min and max"`
+	ShowAverage         bool   `help:"show average"`
+	RunGnuplot          bool   `help:"run gnuplot"`
+	Output              string `help:"output file"`
+	BenchmarkNameToPlot string `help:"benchmark name"`
 }
 
 func getPlotData(ctx context.Context, perfzFile string, benchmarkName string) (IndexedMultisamples, string, error) {
@@ -88,7 +89,7 @@ func getPlotData(ctx context.Context, perfzFile string, benchmarkName string) (I
 	return bench.Samples.IndexedMultisamples(), bench.Input.Name, nil
 }
 
-func plotVerb(ctx context.Context, flags flag.FlagSet) error {
+func (v *plotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected.")
 		return nil
@@ -106,18 +107,18 @@ func plotVerb(ctx context.Context, flags flag.FlagSet) error {
 	}{
 		Name1:       flags.Arg(0),
 		Name2:       flags.Arg(1),
-		ShowAverage: flagShowAverage,
-		ShowMinMax:  flagShowMinMax,
+		ShowAverage: v.ShowAverage,
+		ShowMinMax:  v.ShowMinMax,
 		Extra: func() string {
-			if flagRunGnuplot && flagTextualOutput != "-" {
-				return fmt.Sprintf(`set output "%s"`, flagTextualOutput)
+			if v.RunGnuplot && v.Output != "-" {
+				return fmt.Sprintf(`set output "%s"`, v.Output)
 			}
 			return ""
 		}(),
 	}
 
 	var err error
-	args.First, args.BenchName, err = getPlotData(ctx, args.Name1, flagBenchmarkNameToPlot)
+	args.First, args.BenchName, err = getPlotData(ctx, args.Name1, v.BenchmarkNameToPlot)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func plotVerb(ctx context.Context, flags flag.FlagSet) error {
 		return tmpl.Execute(w, args)
 	}
 
-	if flagRunGnuplot {
+	if v.RunGnuplot {
 		fn, _, err := FuncDataSource(writeScript).DiskFile()
 		if err != nil {
 			return err
@@ -147,8 +148,6 @@ func plotVerb(ctx context.Context, flags flag.FlagSet) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
-	} else {
-		return writeAllFn(flagTextualOutput, writeScript)
 	}
-
+	return writeAllFn(v.Output, writeScript)
 }

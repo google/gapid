@@ -31,41 +31,39 @@ import (
 	"google.golang.org/grpc"
 )
 
-var subjectTraceTime = 0 * time.Second
-
 func init() {
-	subjectUpload := &app.Verb{
+	uploadVerb.Add(&app.Verb{
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Run:        doUpload(&subjectUploader{}),
-	}
-	subjectUpload.Flags.Raw.DurationVar(&subjectTraceTime, "tracetime", subjectTraceTime, "trace time override (if non-zero)")
-	uploadVerb.Add(subjectUpload)
-	subjectSearch := &app.Verb{
+		Auto:       &subjectUploadVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "subject",
 		ShortHelp:  "List traceable applications in the server",
 		ShortUsage: "<query>",
-		Run:        doSubjectSearch,
-	}
-	searchVerb.Add(subjectSearch)
+		Auto:       &subjectSearchVerb{},
+	})
 }
 
-type subjectUploader struct {
-	subjects subject.Subjects
+type subjectUploadVerb struct {
+	TraceTime time.Duration `help:"trace time override (if non-zero)"`
+	subjects  subject.Subjects
 }
 
-func (u *subjectUploader) prepare(ctx context.Context, conn *grpc.ClientConn) error {
-	u.subjects = subject.NewRemote(ctx, conn)
+func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return upload(ctx, flags, v)
+}
+func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+	v.subjects = subject.NewRemote(ctx, conn)
 	return nil
 }
-
-func (u *subjectUploader) process(ctx context.Context, id string) error {
+func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 	var hints *subject.Hints
-	if subjectTraceTime != 0 {
-		hints = &subject.Hints{TraceTime: ptypes.DurationProto(subjectTraceTime)}
+	if v.TraceTime != 0 {
+		hints = &subject.Hints{TraceTime: ptypes.DurationProto(v.TraceTime)}
 	}
-	subject, created, err := u.subjects.Add(ctx, id, hints)
+	subject, created, err := v.subjects.Add(ctx, id, hints)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing subject")
 	}
@@ -79,7 +77,9 @@ func (u *subjectUploader) process(ctx context.Context, id string) error {
 	return nil
 }
 
-func doSubjectSearch(ctx context.Context, flags flag.FlagSet) error {
+type subjectSearchVerb struct{}
+
+func (v *subjectSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		subjects := subject.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")

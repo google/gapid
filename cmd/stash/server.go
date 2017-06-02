@@ -31,12 +31,14 @@ func init() {
 	verb := &app.Verb{
 		Name:      "server",
 		ShortHelp: "Starts a stash server",
-		Run:       doServer,
+		Auto:      &serverVerb{},
 	}
 	app.AddVerb(verb)
 }
 
-func doServer(ctx context.Context, flags flag.FlagSet) error {
+type serverVerb struct{}
+
+func (v *serverVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	serveAt := ""
 	switch flags.NArg() {
 	case 0:

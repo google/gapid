@@ -31,36 +31,38 @@ import (
 )
 
 func init() {
-	traceUpload := &app.Verb{
+	uploadVerb.Add(&app.Verb{
 		Name:       "trace",
 		ShortHelp:  "Upload a gfx trace to the server",
 		ShortUsage: "<filenames>",
-		Run:        doUpload(&traceUploader{}),
-	}
-	uploadVerb.Add(traceUpload)
-	traceSearch := &app.Verb{
+		Auto:       &traceUploadVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "trace",
 		ShortHelp:  "List build traces in the server",
 		ShortUsage: "<query>",
-		Run:        doTraceSearch,
-	}
-	searchVerb.Add(traceSearch)
+		Auto:       &traceSearchVerb{},
+	})
 }
 
-type traceUploader struct {
+type traceUploadVerb struct {
 	traces trace.Manager
 }
 
-func (u *traceUploader) prepare(ctx context.Context, conn *grpc.ClientConn) error {
-	u.traces = trace.NewRemote(ctx, conn)
+func (v *traceUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return upload(ctx, flags, v)
+}
+func (v *traceUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+	v.traces = trace.NewRemote(ctx, conn)
 	return nil
 }
-
-func (u *traceUploader) process(ctx context.Context, id string) error {
-	return u.traces.Update(ctx, "", job.Succeeded, &trace.Output{Trace: id})
+func (v *traceUploadVerb) process(ctx context.Context, id string) error {
+	return v.traces.Update(ctx, "", job.Succeeded, &trace.Output{Trace: id})
 }
 
-func doTraceSearch(ctx context.Context, flags flag.FlagSet) error {
+type traceSearchVerb struct{}
+
+func (v *traceSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		traces := trace.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")

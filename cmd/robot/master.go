@@ -42,38 +42,40 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	baseAddr     = file.Abs(".")
-	stashAddr    = ""
-	shelfAddr    = ""
-	startWorkers = true
-	startWeb     = true
-)
+type masterVerb struct {
+	BaseAddr     file.Path `help:"The base path for all robot files"`
+	StashAddr    string    `help:"The address of the stash, defaults to a directory below base"`
+	ShelfAddr    string    `help:"The path to the persisted data, defaults to a directory below base"`
+	StartWorkers bool      `help:"Enables local workers"`
+	StartWeb     bool      `help:"Enables serving the web client"`
+	Port         int       `help:"The port to serve the website on"`
+	Root         file.Path `help:"The directory to use as the root of static content"`
+}
+
+type masterSearchVerb struct{}
 
 func init() {
-	verb := &app.Verb{
+	startVerb.Add(&app.Verb{
 		Name:      "master",
 		ShortHelp: "Starts a robot master server",
-		Run:       doMasterStart,
-	}
-	verb.Flags.Raw.Var(&baseAddr, "base", "The base path for all robot files")
-	verb.Flags.Raw.StringVar(&stashAddr, "stash", stashAddr, "The address of the stash, defaults to a directory below base")
-	verb.Flags.Raw.StringVar(&shelfAddr, "shelf", shelfAddr, "The path to the persisted data, defaults to a directory below base")
-	verb.Flags.Raw.BoolVar(&startWorkers, "worker", startWorkers, "Enables local workers")
-	verb.Flags.Raw.BoolVar(&startWeb, "web", startWeb, "Enables serving the web client")
-	verb.Flags.Raw.IntVar(&port, "port", port, "The port to serve the website on")
-	verb.Flags.Raw.Var(&root, "root", "The directory to use as the root of static content")
-	startVerb.Add(verb)
-	masterSearch := &app.Verb{
+		Auto: &masterVerb{
+			BaseAddr:     file.Abs("."),
+			StashAddr:    "",
+			ShelfAddr:    "",
+			StartWorkers: true,
+			StartWeb:     true,
+			Port:         8081,
+		},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "master",
 		ShortHelp:  "List satellites registered with the master",
 		ShortUsage: "<query>",
-		Run:        doMasterSearch,
-	}
-	searchVerb.Add(masterSearch)
+		Auto:       &masterSearchVerb{},
+	})
 }
 
-func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
+func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	tempName, err := ioutil.TempDir("", "robot")
 	if err != nil {
 		return err
@@ -83,20 +85,20 @@ func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
 	err = grpcutil.Serve(ctx, serverAddress, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		managers := monitor.Managers{}
 		err := error(nil)
-		if stashAddr == "" {
-			stashAddr = baseAddr.Join("stash").System()
+		if v.StashAddr == "" {
+			v.StashAddr = v.BaseAddr.Join("stash").System()
 		}
-		if shelfAddr == "" {
-			shelfAddr = baseAddr.Join("shelf").System()
+		if v.ShelfAddr == "" {
+			v.ShelfAddr = v.BaseAddr.Join("shelf").System()
 		}
 		library := record.NewLibrary(ctx)
-		shelf, err := record.NewShelf(ctx, shelfAddr)
+		shelf, err := record.NewShelf(ctx, v.ShelfAddr)
 		if err != nil {
-			return log.Errf(ctx, err, "Could not open shelf: %v", shelfAddr)
+			return log.Errf(ctx, err, "Could not open shelf: %v", v.ShelfAddr)
 		}
 		library.Add(ctx, shelf)
-		if managers.Stash, err = stash.Dial(ctx, stashAddr); err != nil {
-			return log.Errf(ctx, err, "Could not open stash: %v", stashAddr)
+		if managers.Stash, err = stash.Dial(ctx, v.StashAddr); err != nil {
+			return log.Errf(ctx, err, "Could not open stash: %v", v.StashAddr)
 		}
 		managers.Master = master.NewLocal(ctx)
 		if managers.Subject, err = subject.NewLocal(ctx, library, managers.Stash); err != nil {
@@ -120,7 +122,7 @@ func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
 		if err := serveAll(ctx, server, managers); err != nil {
 			return err
 		}
-		if startWorkers {
+		if v.StartWorkers {
 			if err := startAllWorkers(ctx, managers, tempDir); err != nil {
 				return err
 			}
@@ -131,10 +133,10 @@ func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
 			}
 		}()
 
-		if startWeb {
+		if v.StartWeb {
 			config := web.Config{
-				Port:       port,
-				StaticRoot: root,
+				Port:       v.Port,
+				StaticRoot: v.Root,
 				Managers:   managers,
 			}
 			w, err := web.Create(ctx, config)
@@ -147,8 +149,8 @@ func doMasterStart(ctx context.Context, flags flag.FlagSet) error {
 		c := master.NewClient(ctx, managers.Master)
 		services := master.ServiceList{
 			Master: true,
-			Worker: startWorkers,
-			Web:    startWeb,
+			Worker: v.StartWorkers,
+			Web:    v.StartWeb,
 		}
 		go func() {
 			shutdown, err := c.Orbit(ctx, services)
@@ -202,7 +204,7 @@ func serveAll(ctx context.Context, server *grpc.Server, managers monitor.Manager
 	return nil
 }
 
-func doMasterSearch(ctx context.Context, flags flag.FlagSet) error {
+func (v *masterSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		m := master.NewRemoteMaster(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")

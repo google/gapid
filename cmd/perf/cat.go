@@ -24,16 +24,17 @@ import (
 )
 
 func init() {
-	verb := &app.Verb{
+	app.AddVerb(&app.Verb{
 		Name:       "cat",
 		ShortHelp:  "Prints data out of a .perfz file",
-		Run:        catVerb,
 		ShortUsage: "<perfz> [[benchmark]:[link]]",
-	}
-	app.AddVerb(verb)
+		Auto:       &catVerb{},
+	})
 }
 
-func catVerb(ctx context.Context, flags flag.FlagSet) error {
+type catVerb struct{}
+
+func (v *catVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected, got %d", flags.NArg())
 		return nil
@@ -48,11 +49,10 @@ func catVerb(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() == 1 {
 		fmt.Println(perfz.String())
 		return nil
-	} else {
-		_, link, err := selectLink(perfz, flags.Arg(1), nil)
-		if err != nil {
-			return err
-		}
-		return link.Get().WriteTo(os.Stdout)
 	}
+	_, link, err := selectLink(perfz, flags.Arg(1), nil)
+	if err != nil {
+		return err
+	}
+	return link.Get().WriteTo(os.Stdout)
 }

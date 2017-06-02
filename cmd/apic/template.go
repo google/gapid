@@ -31,33 +31,27 @@ import (
 	"github.com/google/gapid/gapil/template"
 )
 
-var (
-	dir        string
-	tracer     string
-	deps       string
-	cmake      string
-	gopath     string
-	globalList flags.Strings
-	searchPath file.PathList
-)
-
 func init() {
-	verb := &app.Verb{
+	app.AddVerb(&app.Verb{
 		Name:      "template",
 		ShortHelp: "Passes the ast to a template for code generation",
-	}
-	verb.Flags.Raw.Var(&globalList, "G", "A global value setting for the template")
-	verb.Flags.Raw.Var(&searchPath, "search", "The set of paths to search for includes")
-	verb.Flags.Raw.StringVar(&dir, "dir", cwd(), "The output directory")
-	verb.Flags.Raw.StringVar(&tracer, "t", "", "The template function trace expression")
-	verb.Flags.Raw.StringVar(&deps, "deps", "", "The dependancies file to generate")
-	verb.Flags.Raw.StringVar(&cmake, "cmake", "", "The cmake dependancies file to generate")
-	verb.Flags.Raw.StringVar(&gopath, "gopath", "", "the go path to use when looking up packages")
-	verb.Run = doTemplate
-	app.AddVerb(verb)
+		Auto: &templateVerb{
+			Dir: cwd(),
+		},
+	})
 }
 
-func doTemplate(ctx context.Context, flags flag.FlagSet) error {
+type templateVerb struct {
+	Dir        string        `help:"The output directory"`
+	Tracer     string        `help:"The template function trace expression"`
+	Deps       string        `help:"The dependancies file to generate"`
+	Cmake      string        `help:"The cmake dependancies file to generate"`
+	Gopath     string        `help:"the go path to use when looking up packages"`
+	GlobalList flags.Strings `help:"A global value setting for the template"`
+	Search     file.PathList `help:"The set of paths to search for includes"`
+}
+
+func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
@@ -68,14 +62,14 @@ func doTemplate(ctx context.Context, flags flag.FlagSet) error {
 		app.Usage(ctx, "Missing template file")
 		return nil
 	}
-	if gopath != "" {
-		build.Default.GOPATH = filepath.FromSlash(gopath)
+	if v.Gopath != "" {
+		build.Default.GOPATH = filepath.FromSlash(v.Gopath)
 	}
 	mainTemplate := args[1]
 	log.D(ctx, "Reading %v", apiName)
 	processor := gapil.NewProcessor()
-	if len(searchPath) > 0 {
-		processor.Loader = gapil.NewSearchLoader(searchPath)
+	if len(v.Search) > 0 {
+		processor.Loader = gapil.NewSearchLoader(v.Search)
 	}
 	compiled, errs := processor.Resolve(apiName)
 	for path := range processor.Parsed {
@@ -85,11 +79,11 @@ func doTemplate(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 	options := template.Options{
-		Dir:     dir,
+		Dir:     v.Dir,
 		APIFile: apiName,
 		Loader:  ioutil.ReadFile,
-		Globals: globalList.Strings(),
-		Tracer:  tracer,
+		Globals: v.GlobalList.Strings(),
+		Tracer:  v.Tracer,
 	}
 	f, err := template.NewFunctions(ctx, compiled, processor.Mappings, options)
 	if err != nil {
@@ -98,8 +92,8 @@ func doTemplate(ctx context.Context, flags flag.FlagSet) error {
 	if err := f.Include(mainTemplate); err != nil {
 		return fmt.Errorf("%s: %s\n", mainTemplate, err)
 	}
-	writeDeps(ctx)
-	writeCMake(ctx)
+	v.writeDeps(ctx)
+	v.writeCMake(ctx)
 	return nil
 }
 
@@ -108,12 +102,12 @@ func cwd() string {
 	return p
 }
 
-func writeDeps(ctx context.Context) error {
-	if len(deps) == 0 {
+func (v *templateVerb) writeDeps(ctx context.Context) error {
+	if len(v.Deps) == 0 {
 		return nil
 	}
-	log.D(ctx, "Writing deps %v", deps)
-	file, err := os.Create(deps)
+	log.D(ctx, "Writing deps %v", v.Deps)
+	file, err := os.Create(v.Deps)
 	if err != nil {
 		return err
 	}
@@ -122,12 +116,12 @@ func writeDeps(ctx context.Context) error {
 	return file.Close()
 }
 
-func writeCMake(ctx context.Context) error {
-	if len(cmake) == 0 {
+func (v *templateVerb) writeCMake(ctx context.Context) error {
+	if len(v.Cmake) == 0 {
 		return nil
 	}
-	log.D(ctx, "Writing cmake %v", cmake)
-	file, err := os.Create(cmake)
+	log.D(ctx, "Writing cmake %v", v.Cmake)
+	file, err := os.Create(v.Cmake)
 	if err != nil {
 		return err
 	}

@@ -27,14 +27,17 @@ func init() {
 	verb := &app.Verb{
 		Name:       "rm",
 		ShortHelp:  "Removes a benchmark from a .perfz file",
-		Run:        rmVerb,
 		ShortUsage: "<perfz> <benchmark>",
+		Auto:       &rmVerb{},
 	}
-	verb.Flags.Raw.StringVar(&flagPerfzOutput, "o", "", "output .perfz file, same as input if empty")
 	app.AddVerb(verb)
 }
 
-func rmVerb(ctx context.Context, flags flag.FlagSet) error {
+type rmVerb struct {
+	Output string `help:"output .perfz file, same as input if empty"`
+}
+
+func (v *rmVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 2 {
 		app.Usage(ctx, "Two arguments expected, got %d", flags.NArg())
 		return nil
@@ -54,11 +57,11 @@ func rmVerb(ctx context.Context, flags flag.FlagSet) error {
 
 	delete(perfz.Benchmarks, benchmarkName)
 
-	if flagPerfzOutput == "" {
-		flagPerfzOutput = perfzFile
+	if v.Output == "" {
+		v.Output = perfzFile
 	}
 
-	err = perfz.WriteTo(ctx, flagPerfzOutput)
+	err = perfz.WriteTo(ctx, v.Output)
 	if err != nil {
 		return log.Err(ctx, err, "perfz.WriteTo")
 	}

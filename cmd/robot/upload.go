@@ -19,10 +19,10 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
+	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"google.golang.org/grpc"
 )
 
@@ -31,29 +31,27 @@ type uploader interface {
 	process(context.Context, string) error
 }
 
-func doUpload(u uploader) func(context.Context, flag.FlagSet) error {
-	return func(ctx context.Context, flags flag.FlagSet) error {
-		if flags.NArg() == 0 {
-			app.Usage(ctx, "No files given")
-			return nil
+func upload(ctx context.Context, flags flag.FlagSet, u uploader) error {
+	if flags.NArg() == 0 {
+		app.Usage(ctx, "No files given")
+		return nil
+	}
+	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+		client, err := stashgrpc.Connect(ctx, conn)
+		if err != nil {
+			return err
 		}
-		return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
-			client, err := stashgrpc.Connect(ctx, conn)
+		u.prepare(ctx, conn)
+		for _, partial := range flags.Args() {
+			id, err := client.UploadFile(ctx, file.Abs(partial))
 			if err != nil {
+				return log.Err(ctx, err, "Failed calling Upload")
+			}
+			log.I(ctx, "Uploaded %s", id)
+			if err := u.process(ctx, id); err != nil {
 				return err
 			}
-			u.prepare(ctx, conn)
-			for _, partial := range flags.Args() {
-				id, err := client.UploadFile(ctx, file.Abs(partial))
-				if err != nil {
-					return log.Err(ctx, err, "Failed calling Upload")
-				}
-				log.I(ctx, "Uploaded %s", id)
-				if err := u.process(ctx, id); err != nil {
-					return err
-				}
-			}
-			return nil
-		}, grpc.WithInsecure())
-	}
+		}
+		return nil
+	}, grpc.WithInsecure())
 }
