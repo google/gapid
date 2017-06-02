@@ -20,7 +20,7 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/text/lingo/generator"
+	"github.com/google/gapid/test/robot/lingo/generator"
 )
 
 var (

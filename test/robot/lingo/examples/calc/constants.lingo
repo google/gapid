@@ -17,7 +17,7 @@ package main
 import (
 	"regexp"
 
-	"github.com/google/gapid/core/text/lingo"
+	"github.com/google/gapid/test/robot/lingo"
 )
 
 type _ lingo.Scanner

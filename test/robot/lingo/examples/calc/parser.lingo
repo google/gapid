@@ -19,7 +19,7 @@ import (
 	"strconv"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/lingo"
+	"github.com/google/gapid/test/robot/lingo"
 )
 
 func Parse(ctx context.Context, name string, input string) (Expression, error) {

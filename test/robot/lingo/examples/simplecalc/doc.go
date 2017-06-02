@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The cstcalc command implements a simple calculator.
-// This is an example of using the lingo system to parse, ignoring the
-// parsed nodes, and then directly evaluating the cst.
-// This example is more about showing how to use the cst, it would be very
-// unusual to actually use the parser in this way.
+// The simplecalc command implements a very simple calculator.
+// This is an example of using the lingo system to parse and evaluate in a single pass.
+// No AST or CST is ever built, the return of parsing is the calculated result.
+// This pattern is fairly unusual, only the simplest of parsers where speed and
+// simplicity matters would follow this approach.
 
 package main
 
@@ -25,5 +25,5 @@ package main
 import (
 	_ "github.com/google/gapid/core/app"
 	_ "github.com/google/gapid/core/log"
-	_ "github.com/google/gapid/core/text/lingo"
+	_ "github.com/google/gapid/test/robot/lingo"
 )

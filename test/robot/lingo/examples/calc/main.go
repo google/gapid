@@ -27,7 +27,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	_ "github.com/google/gapid/core/text/lingo"
+	_ "github.com/google/gapid/test/robot/lingo"
 )
 
 func main() {

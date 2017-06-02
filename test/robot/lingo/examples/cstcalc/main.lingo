@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/lingo"
+	"github.com/google/gapid/test/robot/lingo"
 )
 
 func main() {
@@ -40,6 +40,8 @@ type (
 	Digits     string
 	Operator   string
 	Bracket    string
+
+	Structural struct{}
 )
 
 const (
@@ -64,68 +66,114 @@ func run(ctx context.Context) error {
 		app.Usage(ctx, "Missing expression")
 		return nil
 	}
-	input := strings.Join(args, " ")
-	s := lingo.NewStringScanner(ctx, "command_line", input, nil)
-	value, err := expression(s)
+	r := lingo.Records{}
+	s := lingo.NewStringScanner(ctx, "command_line", strings.Join(args, " "), &r)
+	_, err := expression(s)
 	if err != nil {
 		return err
 	}
 	if !s.EOF() {
 		return log.Err(ctx, nil, "Input not consumed")
 	}
-	fmt.Fprintf(os.Stdout, "%s = %d\n", input, value)
+	cst := r.ToCST()
+	result := eval(ctx, cst)
+	fmt.Fprintf(os.Stderr, "%v = %d\n", cst, result.value)
 	return nil
 }
 
-func expression(s *lingo.Scanner) (int, error) {
-	return addition(s)
+type Eval struct {
+	hasValue bool
+	value    int
+	op       Operator
 }
 
-func parenthesised(s *lingo.Scanner) (int, error) {
+func eval(ctx context.Context, node *lingo.Node) Eval {
+	result := Eval{}
+	switch obj := node.Object.(type) {
+	case int:
+		result.hasValue = true
+		result.value = obj
+	case Operator:
+		result.op = obj
+	}
+	for _, child := range node.Children {
+		got := eval(ctx, child)
+		if got.hasValue {
+			if !result.hasValue {
+				result.value = got.value
+			} else {
+				switch result.op {
+				case opAdd:
+					result.value += got.value
+				case opSubtract:
+					result.value -= got.value
+				case opMultiply:
+					result.value *= got.value
+				case opDivide:
+					result.value /= got.value
+				default:
+					log.F(ctx, "Cannot combine values without operator")
+				}
+			}
+			result.hasValue = true
+		}
+		if got.op != "" {
+			result.op = got.op
+		}
+	}
+	return result
+}
+
+func expression(s *lingo.Scanner) (Structural, error) {
+	addition(s)
+	return Structural{}, nil
+}
+
+func parenthesised(s *lingo.Scanner) (Structural, error) {
 	openParenthesis(s)
-	value := expression(s)
+	expression(s)
 	closeParenthesis(s)
-	return value, nil
+	return Structural{}, nil
 }
 
-func addition(s *lingo.Scanner) (int, error) {
-	value := multiplication(s)
+func addition(s *lingo.Scanner) (Structural, error) {
+	multiplication(s)
 	for {
 		space(s)
 		switch {
 		case opAdd(s):
-			value += multiplication(s)
+			multiplication(s)
 		case opSubtract(s):
-			value -= multiplication(s)
+			multiplication(s)
 		default:
-			return value, nil
+			return Structural{}, nil
 		}
 	}
 }
 
-func multiplication(s *lingo.Scanner) (int, error) {
-	value := numeral(s)
+func multiplication(s *lingo.Scanner) (Structural, error) {
+	numeral(s)
 	for {
 		space(s)
 		switch {
 		case opMultiply(s):
-			value *= numeral(s)
+			numeral(s)
 		case opDivide(s):
-			value /= numeral(s)
+			numeral(s)
 		default:
-			return value, nil
+			return Structural{}, nil
 		}
 	}
 }
 
-func numeral(s *lingo.Scanner) (int, error) {
-	if value, err := parenthesised(s); err == nil {
-		return value, err
+func numeral(s *lingo.Scanner) (Structural, error) {
+	switch {
+	case parenthesised(s):
+	case number(s):
+	default:
+		return Structural{}, s.Error(nil, ErrorParenOrNumber)
 	}
-	if value, err := number(s); err == nil {
-		return value, err
-	}
-	return 0, s.Error(nil, ErrorParenOrNumber)
+	return Structural{}, nil
 }
 
 func number(s *lingo.Scanner) (int, error) {
