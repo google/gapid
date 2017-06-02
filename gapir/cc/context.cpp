@@ -385,6 +385,18 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             return false;
         }
     });
+
+    interpreter->registerBuiltin(Builtins::ReplayGetEventStatus,
+                                 [this, interpreter](Stack* stack, bool push_return) {
+        GAPID_INFO("ReplayGetEventStatus()");
+        if (mBoundVulkanRenderer != nullptr) {
+            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+            return api->replayGetEventStatus(stack, push_return);
+        } else {
+            GAPID_WARNING("ReplayGetEventStatus called without a bound Vulkan renderer");
+            return false;
+        }
+    });
 }
 
 bool Context::loadResource(Stack* stack) {

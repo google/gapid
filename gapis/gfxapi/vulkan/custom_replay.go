@@ -1034,6 +1034,14 @@ func (a *VkGetFenceStatus) Mutate(ctx context.Context, s *gfxapi.State, b *build
 	return NewReplayGetFenceStatus(a.Device, a.Fence, a.Result, a.Result).Mutate(ctx, s, b)
 }
 
+func (a *VkGetEventStatus) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	err := a.mutate(ctx, s, b)
+	if b == nil || err != nil {
+		return err
+	}
+	return NewReplayGetEventStatus(a.Device, a.Event, a.Result, a.Result).Mutate(ctx, s, b)
+}
+
 func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := a.mutate(ctx, s, b); err != nil {
 		return err

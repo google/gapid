@@ -75,8 +75,21 @@ bool replayRegisterVkCommandBuffers(Stack* stack);
 // - number of command buffers.
 bool replayUnregisterVkCommandBuffers(Stack* stack);
 
+// Builtin function for setting the virtual swapchain to
+// always returns the requsted swapchain imge.
 bool toggleVirtualSwapchainReturnAcquiredImage(Stack* stack);
 
+// Builtin function for replaying vkGetFenceStatus. If the return of
+// vkGetFenceStatus is VK_SUCCESS, this function makes sure the replay will not
+// proceed until VK_SUCCESS is returned from vkGetFenceStatus in the replay
+// side.
 bool replayGetFenceStatus(Stack* stack, bool pushReturn);
 
+// Builtin function for replaying vkGetEventStatus. This function makes sure
+// the replay will not proceed until the expected return code is returned from
+// vkGetEventStatus on replay end.
+bool replayGetEventStatus(Stack* stack, bool pushReturn);
+
+// Builtin function for getting image memory requirement and allocating
+// corresponding memory for a image on the replay side.
 bool replayAllocateImageMemory(Stack* stack, bool pushReturn);

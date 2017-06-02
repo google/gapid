@@ -377,6 +377,32 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
     }
 }
 ¶
+bool Vulkan::replayGetEventStatus(Stack* stack, bool pushReturn) {
+    auto expected = gapir::Vulkan::VkResult(stack->pop<uint32_t>());
+    auto event = stack->pop<uint64_t>();
+    auto device = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+        GAPID_INFO("vkGetEventStatus(%" PRIsize ", %" PRIu64 ")", device, event);
+        if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
+        mVkDeviceFunctionStubs[device].vkGetEventStatus) {
+            VkResult return_value;
+            do {
+                return_value = mVkDeviceFunctionStubs[device].vkGetEventStatus(device, event);
+            } while (return_value != expected);
+            GAPID_INFO("Returned: %u", return_value);
+            if (pushReturn) {
+                stack->push<VkResult>(return_value);
+            }
+        } else {
+            GAPID_WARNING("Attempted to call unsupported function vkGetEventStatus");
+        }
+        return true;
+    } else {
+        GAPID_WARNING("Error during calling function vkGetEventStatus");
+        return false;
+    }
+}
+¶
   »}  // namespace gapir
 ¶
 {{end}}

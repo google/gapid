@@ -100,6 +100,14 @@ cmd VkResult replayGetFenceStatus(
 }
 
 @synthetic
+cmd VkResult replayGetEventStatus(
+    VkDevice device,
+    VkEvent  event,
+    VkResult expected) {
+  return ?
+}
+
+@synthetic
 @custom
 cmd VkResult replayAllocateImageMemory(VkDevice device, VkPhysicalDeviceMemoryProperties* pPhysicalDeviceMemoryProperties, VkImage image, VkDeviceMemory* pMemory) {
   _ = pPhysicalDeviceMemoryProperties[0]
