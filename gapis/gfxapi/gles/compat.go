@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/u64"
@@ -271,16 +272,17 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// TODO(dsrbecky): This might make some atoms valid for replay which were invalid on trace.
 			scs := FindStaticContextState(a.Extras())
 			if scs != nil && !version.IsES && scs.Constants.MajorVersion < 3 {
-				clone := *a
-				for i, e := range clone.extras.All() {
+				clone, err := deep.Clone(a)
+				if err != nil {
+					panic(err)
+				}
+				a = clone.(*EglMakeCurrent)
+				for _, e := range a.extras.All() {
 					if cs, ok := e.(*StaticContextState); ok {
-						scs := *cs
-						scs.Constants.MajorVersion = 3
-						scs.Constants.MinorVersion = 0
-						clone.extras[i] = &scs
+						cs.Constants.MajorVersion = 3
+						cs.Constants.MinorVersion = 0
 					}
 				}
-				a = &clone
 			}
 
 			// Mutate to set the context, Version and Extensions strings.
@@ -893,6 +895,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// depending on their ability to eliminate dead code. In particular,
 			// dead code in pixel shader can allow code removal in the vertex shader.
 			// As these should have no side-effects, just drop them.
+			return
+
+		case *GlGetProgramInterfaceiv:
+			// Introduced as core in 4.3, but macOS caps out at 4.1.
+			// As this should have no side-effects, just drop them.
 			return
 
 		case *GlLabelObjectEXT,
