@@ -17,7 +17,7 @@ syntax = "proto3";
 package subject;
 
 import "core/os/android/apk/apk.proto";
-import "core/data/search/search.proto";
+import "test/robot/search/search.proto";
 import "google/protobuf/duration.proto";
 
 // Subject is the information we know about a given subject.

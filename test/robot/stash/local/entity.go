@@ -19,11 +19,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/search/eval"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/search/eval"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 var entityClass = reflect.TypeOf(&stash.Entity{})

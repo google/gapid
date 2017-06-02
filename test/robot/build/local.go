@@ -17,9 +17,9 @@ package build
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/record"
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/stash"
+	"github.com/google/gapid/test/robot/record"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 type local struct {

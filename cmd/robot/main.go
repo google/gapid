@@ -18,8 +18,8 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	_ "github.com/google/gapid/core/data/stash/grpc"
-	_ "github.com/google/gapid/core/data/stash/local"
+	_ "github.com/google/gapid/test/robot/stash/grpc"
+	_ "github.com/google/gapid/test/robot/stash/local"
 )
 
 var serverAddress = "localhost:8081"

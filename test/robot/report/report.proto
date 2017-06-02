@@ -18,7 +18,7 @@ package report;
 
 import "test/robot/job/job.proto";
 import "test/robot/job/worker/worker.proto";
-import "core/data/search/search.proto";
+import "test/robot/search/search.proto";
 
 // Input describes the inputs to a report action.
 message Input{

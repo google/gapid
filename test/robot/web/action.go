@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/gapid/core/data/search/query"
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
+	"github.com/google/gapid/test/robot/search/query"
 	"github.com/google/gapid/test/robot/trace"
 )
 

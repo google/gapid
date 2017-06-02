@@ -19,9 +19,9 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 func init() {

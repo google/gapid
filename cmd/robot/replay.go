@@ -22,10 +22,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/search/script"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/test/robot/replay"
+	"github.com/google/gapid/test/robot/search/script"
 	"google.golang.org/grpc"
 )
 

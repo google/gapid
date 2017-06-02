@@ -18,10 +18,10 @@ import (
 	"context"
 	"io"
 
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/stash"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )

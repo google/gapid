@@ -22,7 +22,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
@@ -30,6 +29,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/stash"
 
 	_ "github.com/google/gapid/gapidapk"
 )

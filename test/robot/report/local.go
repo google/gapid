@@ -17,11 +17,11 @@ package report
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/record"
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/job/worker"
+	"github.com/google/gapid/test/robot/record"
+	"github.com/google/gapid/test/robot/search"
 )
 
 type local struct {

@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 type fileStore struct {

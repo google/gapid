@@ -17,8 +17,8 @@ package replay
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/test/robot/job/worker"
+	"github.com/google/gapid/test/robot/search"
 	"google.golang.org/grpc"
 
 	xctx "golang.org/x/net/context"

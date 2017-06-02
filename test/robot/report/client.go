@@ -19,12 +19,12 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 type client struct {

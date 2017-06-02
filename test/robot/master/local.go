@@ -21,9 +21,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/search/eval"
 )
 
 const masterName = "Master"

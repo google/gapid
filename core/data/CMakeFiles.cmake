@@ -31,8 +31,5 @@ set(dirs
     pod
     protoconv
     protoutil
-    record
-    search
     slice
-    stash
 )

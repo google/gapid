@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/gapid/core/data/search/query"
 	"github.com/google/gapid/test/robot/master"
+	"github.com/google/gapid/test/robot/search/query"
 )
 
 func (s *Server) handleSatellites(w http.ResponseWriter, r *http.Request) {

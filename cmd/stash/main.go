@@ -19,9 +19,9 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/stash"
-	_ "github.com/google/gapid/core/data/stash/grpc"
-	_ "github.com/google/gapid/core/data/stash/local"
+	"github.com/google/gapid/test/robot/stash"
+	_ "github.com/google/gapid/test/robot/stash/grpc"
+	_ "github.com/google/gapid/test/robot/stash/local"
 )
 
 var (

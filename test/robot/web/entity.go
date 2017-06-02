@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/gapid/core/data/stash"
+	"github.com/google/gapid/test/robot/stash"
 )
 
 var entitiesPathPattern = regexp.MustCompile("^/entities/([a-fA-F0-9]+)/?$")

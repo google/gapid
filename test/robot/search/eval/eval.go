@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/search"
 )
 
 type eval func(context.Context, interface{}) interface{}

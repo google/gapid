@@ -17,7 +17,7 @@ syntax = "proto3";
 package build;
 
 import "core/os/device/device.proto";
-import "core/data/search/search.proto";
+import "test/robot/search/search.proto";
 
 // Type represents a build type.
 enum Type {

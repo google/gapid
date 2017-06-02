@@ -17,9 +17,9 @@ package worker
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/record"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/record"
 )
 
 // Manager is a helper for writing local manager implementation of worker types (such as trace and replay).
