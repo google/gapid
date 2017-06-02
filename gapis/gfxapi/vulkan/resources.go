@@ -620,19 +620,19 @@ func (shader *ShaderModuleObject) SetResourceData(
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j].Indices[0] // TODO: Subcommands
 		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
-			edits(uint64(i), a.Replace(ctx, data))
+			edits(uint64(i), a.Replace(ctx, c, data))
 			return nil
 		} else if a, ok := c.Atoms[i].(*RecreateShaderModule); ok {
-			edits(uint64(i), a.Replace(ctx, data))
+			edits(uint64(i), a.Replace(ctx, c, data))
 			return nil
 		}
 	}
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *VkCreateShaderModule) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
+func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *gfxapi.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
-	state := capture.NewState(ctx)
+	state := c.NewState()
 	a.Mutate(ctx, state, nil)
 
 	shader := data.GetShader()
@@ -679,9 +679,9 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, data *gfxapi.Resourc
 	return newAtom
 }
 
-func (a *RecreateShaderModule) Replace(ctx context.Context, data *gfxapi.ResourceData) gfxapi.ResourceAtom {
+func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *gfxapi.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
-	state := capture.NewState(ctx)
+	state := c.NewState()
 	a.Mutate(ctx, state, nil)
 
 	shader := data.GetShader()

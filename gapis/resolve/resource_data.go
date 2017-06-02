@@ -55,7 +55,10 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	state := capture.NewState(ctx)
+	state, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var currentAtomIndex uint64
 	var currentAtomResourceCount int
 	idMap := gfxapi.ResourceMap{}

@@ -165,8 +165,12 @@ func TestStateTreeNode(t *testing.T) {
 	}
 	ctx = capture.Put(ctx, c)
 	rootPath := c.Command(0).StateAfter()
+	state, err := capture.NewState(ctx)
+	if err != nil {
+		panic(err)
+	}
 	tree := &stateTree{
-		state: capture.NewState(ctx),
+		state: state,
 		root: &stn{
 			name:  "root",
 			value: reflect.ValueOf(testState),
@@ -570,7 +574,6 @@ func TestStateTreeNode(t *testing.T) {
 			assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
 				That(node).DeepEquals(test.expected)
 		}
-
 
 		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
 		p := test.expected.ValuePath.Node()

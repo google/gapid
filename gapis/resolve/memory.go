@@ -39,7 +39,10 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
-	s := capture.NewState(ctx)
+	s, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range list.Atoms[:atomIdx] {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err

@@ -120,7 +120,7 @@ func (a api) Replay(
 		case issuesRequest:
 			optimize = false
 			if issues == nil {
-				issues = newFindIssues(ctx, device)
+				issues = newFindIssues(ctx, capture, device)
 			}
 			issues.reportTo(rr.Result)
 

@@ -120,7 +120,7 @@ func (m *Manager) execute(
 	builder := builder.New(replayABI.MemoryLayout)
 
 	out := &adapter{
-		state:   capture.NewState(ctx),
+		state:   c.NewState(),
 		builder: builder,
 	}
 
