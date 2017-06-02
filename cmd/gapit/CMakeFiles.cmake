@@ -30,6 +30,7 @@ set(files
     packages.go
     report.go
     state.go
+    stresstest.go
     sxs_video.go
     trace.go
     video.go

@@ -143,6 +143,10 @@ type (
 		Gapir GapirFlags
 		At    int `help:"command index to get the state after."`
 	}
+	StressTestFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+	}
 	TraceFlags struct {
 		Gapii GapiiFlags
 		For   time.Duration `help:"duration to trace for"`
