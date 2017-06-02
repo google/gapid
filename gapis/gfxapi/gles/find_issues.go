@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl"
 	"github.com/google/gapid/gapis/gfxapi/gles/glsl/ast"
@@ -167,26 +168,28 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 
 	switch a := a.(type) {
 	case *GlShaderSource:
-		shader := c.SharedObjects.Shaders[a.Shader]
-		var errs []error
-		var kind string
-		switch shader.Type {
-		case GLenum_GL_VERTEX_SHADER:
-			_, _, _, errs = glsl.Parse(shader.Source, ast.LangVertexShader)
-			kind = "vertex"
-		case GLenum_GL_FRAGMENT_SHADER:
-			_, _, _, errs = glsl.Parse(shader.Source, ast.LangFragmentShader)
-			kind = "fragment"
-		default:
-			t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Unknown shader type %v", shader.Type))
-		}
-		if len(errs) > 0 {
-			msgs := make([]string, len(errs))
-			for i, err := range errs {
-				msgs[i] = err.Error()
+		if !config.UseGlslang { // TODO: Verify shader with glslang
+			shader := c.SharedObjects.Shaders[a.Shader]
+			var errs []error
+			var kind string
+			switch shader.Type {
+			case GLenum_GL_VERTEX_SHADER:
+				_, _, _, errs = glsl.Parse(shader.Source, ast.LangVertexShader)
+				kind = "vertex"
+			case GLenum_GL_FRAGMENT_SHADER:
+				_, _, _, errs = glsl.Parse(shader.Source, ast.LangFragmentShader)
+				kind = "fragment"
+			default:
+				t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Unknown shader type %v", shader.Type))
 			}
-			t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
-				kind, strings.Join(msgs, "\n"), text.LineNumber(shader.Source)))
+			if len(errs) > 0 {
+				msgs := make([]string, len(errs))
+				for i, err := range errs {
+					msgs[i] = err.Error()
+				}
+				t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
+					kind, strings.Join(msgs, "\n"), text.LineNumber(shader.Source)))
+			}
 		}
 
 	case *GlCompileShader:
