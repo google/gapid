@@ -376,7 +376,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private void processSearchResult(Service.FindResponse found) {
     ListenableFuture<TreePath> path = getTreePath(models.atoms.getData(), Lists.newArrayList(),
-        found.getCommandTreeNode().getIndicesList().iterator(), false);
+        found.getCommandTreeNode().getIndicesList().iterator());
     Rpc.listen(path, searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
       @Override
       protected TreePath onRpcThread(Result<TreePath> result)
@@ -466,12 +466,27 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private ListenableFuture<TreePath> getTreePath(AtomIndex index) {
-    return getTreePath(models.atoms.getData(), Lists.newArrayList(),
-        index.getNode().getIndicesList().iterator(), index.isGroup());
+    AtomStream.Node root = models.atoms.getData();
+    ListenableFuture<TreePath> result = getTreePath(root, Lists.newArrayList(root),
+        index.getNode().getIndicesList().iterator());
+    if (index.isGroup()) {
+      // Find the deepest group/node in the path that is not the last child of its parent.
+      result = Futures.transform(result, path -> {
+        while (path.getSegmentCount() > 0) {
+          AtomStream.Node node = (AtomStream.Node)path.getLastSegment();
+          if (!node.isLastChild()) {
+            break;
+          }
+          path = path.getParentPath();
+        }
+        return path;
+      });
+    }
+    return result;
   }
 
   private ListenableFuture<TreePath> getTreePath(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices, boolean group) {
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
     ListenableFuture<AtomStream.Node> load = models.atoms.load(node);
     if (!indices.hasNext()) {
       TreePath result = new TreePath(path.toArray());
@@ -479,21 +494,17 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       return (load == null) ? Futures.immediateFuture(result) :
           Futures.transform(load, ignored -> result);
     }
-    return (load == null) ? getTreePathForLoadedNode(node, path, indices, group) :
-        Futures.transformAsync(
-            load, loaded -> getTreePathForLoadedNode(loaded, path, indices, group));
+    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
+        Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
   }
 
   private ListenableFuture<TreePath> getTreePathForLoadedNode(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices, boolean group) {
+      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
     int index = indices.next().intValue();
-    if (group && index == node.getChildCount() - 1) {
-      return Futures.immediateFuture(new TreePath(path.toArray()));
-    }
 
     AtomStream.Node child = node.getChild(index);
     path.add(child);
-    return getTreePath(child, path, indices, group);
+    return getTreePath(child, path, indices);
   }
 
   /**

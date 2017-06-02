@@ -20,6 +20,7 @@ import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
+import static java.util.logging.Level.FINE;
 
 import com.google.common.base.Objects;
 import com.google.common.util.concurrent.Futures;
@@ -52,7 +53,7 @@ import java.util.logging.Logger;
  */
 public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStream.Listener>
     implements ApiContext.Listener, Capture.Listener {
-  private static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
+  protected static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
 
   private final Capture capture;
   private final ApiContext context;
@@ -240,7 +241,9 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       @Override
       protected Path.CommandTreeNode onRpcThread(Result<Value> result)
           throws RpcException, ExecutionException {
-        return result.get().getPath().getCommandTreeNode();
+        Service.Value value = result.get();
+        LOG.log(FINE, "Resolved selection to {0}", value);
+        return value.getPath().getCommandTreeNode();
       }
 
       @Override
@@ -450,6 +453,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         node = children[child] = new Node(this, child);
       }
       return node;
+    }
+
+    public boolean isLastChild() {
+      return parent == null || (parent.getChildCount() - 1 == index);
     }
 
     public CommandTreeNode getData() {
