@@ -31,15 +31,16 @@ import (
 )
 
 func init() {
-	verb := &app.Verb{
+	app.AddVerb(&app.Verb{
 		Name:      "validate",
 		ShortHelp: "Validates an api file for correctness",
-		Run:       doValidate,
-	}
-	app.AddVerb(verb)
+		Auto:      &validateVerb{},
+	})
 }
 
-func doValidate(ctx context.Context, flags flag.FlagSet) error {
+type validateVerb struct{}
+
+func (v *validateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")

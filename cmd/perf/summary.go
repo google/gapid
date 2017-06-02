@@ -36,10 +36,11 @@ func init() {
 	verb := &app.Verb{
 		Name:       "summary",
 		ShortHelp:  "Summarizes metrics from a perfz file or compares two perfz files",
-		Run:        summaryVerb,
 		ShortUsage: "<perfz> [perfz]",
+		Auto: &summaryVerb{
+			Level: 1,
+		},
 	}
-	verb.Flags.Raw.Int64Var(&flagLevel, "level", 1, "amount of information to show [1..3]")
 	app.AddVerb(verb)
 }
 
@@ -130,29 +131,26 @@ func diff(diffLevel int64, a reflect.Value, b reflect.Value, differs []interface
 		bi := b.Interface()
 		if reflect.DeepEqual(ai, bi) {
 			return ai, nil
-		} else {
-			return map[string]interface{}{
-				"left":  ai,
-				"right": bi,
-			}, nil
 		}
+		return map[string]interface{}{
+			"left":  ai,
+			"right": bi,
+		}, nil
 	}
 }
 
 func diffLinks(a *Link, b *Link) interface{} {
 	if a.Key == b.Key {
 		return a
-	} else {
-		return fmt.Sprintf("'%v' != '%v'", a.Key, b.Key)
 	}
+	return fmt.Sprintf("'%v' != '%v'", a.Key, b.Key)
 }
 
 func diffTimes(a time.Time, b time.Time) interface{} {
 	if a == b {
 		return a
-	} else {
-		return fmt.Sprintf("%v . . . %v (%v difference)", a, b, b.Sub(a))
 	}
+	return fmt.Sprintf("%v . . . %v (%v difference)", a, b, b.Sub(a))
 }
 
 func diffAnnotatedSamples(a Sample, b Sample) interface{} {
@@ -183,7 +181,11 @@ func diffSamplers(a Multisample, b Multisample) interface{} {
 	}
 }
 
-func summaryVerb(ctx context.Context, flags flag.FlagSet) error {
+type summaryVerb struct {
+	Level int `help:"amount of information to show [1..3]"`
+}
+
+func (v *summaryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() < 1 {
 		app.Usage(ctx, "At least one argument expected.")
 		return nil

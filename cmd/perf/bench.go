@@ -171,14 +171,14 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 }
 
 func (s *session) maybeBeginProfile() error {
-	if s.bench.Input.EnableCpuProfile {
+	if s.bench.Input.EnableCPUProfile {
 		return s.client.BeginCPUProfile(s.ctx)
 	}
 	return nil
 }
 
 func (s *session) maybeSaveProfileData() error {
-	if s.bench.Input.EnableCpuProfile {
+	if s.bench.Input.EnableCPUProfile {
 		data, err := s.client.EndCPUProfile(s.ctx)
 		if err != nil {
 			return err

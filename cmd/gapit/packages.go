@@ -30,16 +30,15 @@ import (
 type packagesVerb struct{ PackagesFlags }
 
 func init() {
-	verb := &packagesVerb{
-		PackagesFlags{
-			Icons:       false,
-			IconDensity: 1.0,
-		},
-	}
 	app.AddVerb(&app.Verb{
 		Name:      "packages",
 		ShortHelp: "Prints information about packages installed on a device",
-		Auto:      verb,
+		Auto: &packagesVerb{
+			PackagesFlags{
+				Icons:       false,
+				IconDensity: 1.0,
+			},
+		},
 	})
 }
 

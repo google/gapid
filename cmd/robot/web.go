@@ -35,27 +35,26 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	port = 8080
-	root = file.Path{}
-)
-
-func init() {
-	webStart := &app.Verb{
-		Name:      "web",
-		ShortHelp: "Starts a robot web server",
-		Run:       doWebStart,
-	}
-	webStart.Flags.Raw.IntVar(&port, "port", port, "The port to serve the website on")
-	webStart.Flags.Raw.Var(&root, "root", "The directory to use as the root of static content")
-	startVerb.Add(webStart)
+type webVerb struct {
+	Port int       `help:"The port to serve the website on"`
+	Root file.Path `help:"The directory to use as the root of static content"`
 }
 
-func doWebStart(ctx context.Context, flags flag.FlagSet) error {
+func init() {
+	startVerb.Add(&app.Verb{
+		Name:      "web",
+		ShortHelp: "Starts a robot web server",
+		Auto: &webVerb{
+			Port: 8080,
+		},
+	})
+}
+
+func (v *webVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		config := web.Config{
-			Port:       port,
-			StaticRoot: root,
+			Port:       v.Port,
+			StaticRoot: v.Root,
 			Managers: monitor.Managers{
 				Master:  master.NewRemoteMaster(ctx, conn),
 				Stash:   stashgrpc.MustConnect(ctx, conn),

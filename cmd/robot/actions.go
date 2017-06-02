@@ -29,16 +29,6 @@ var (
 		Name:      "start",
 		ShortHelp: "Start a server",
 	}
-	stopVerb = &app.Verb{
-		Name:      "stop",
-		ShortHelp: "Stop a server",
-		Run:       doStop,
-	}
-	restartVerb = &app.Verb{
-		Name:      "restart",
-		ShortHelp: "Restart a server",
-		Run:       doRestart,
-	}
 	searchVerb = &app.Verb{
 		Name:      "search",
 		ShortHelp: "Search for content in the server",
@@ -51,32 +41,44 @@ var (
 		Name:      "set",
 		ShortHelp: "Sets a value in a server",
 	}
-
-	stopNow = false
 )
 
 func init() {
 	app.AddVerb(startVerb)
-	app.AddVerb(stopVerb)
-	app.AddVerb(restartVerb)
 	app.AddVerb(searchVerb)
 	app.AddVerb(uploadVerb)
 	app.AddVerb(setVerb)
 
-	stopVerb.Flags.Raw.BoolVar(&stopNow, "now", false, "Immediate shutdown")
+	app.AddVerb(&app.Verb{
+		Name:      "stop",
+		ShortHelp: "Stop a server",
+		Auto:      &stopVerb{},
+	})
+	app.AddVerb(&app.Verb{
+		Name:      "restart",
+		ShortHelp: "Restart a server",
+		Auto:      &restartVerb{},
+	})
 }
 
-func doStop(ctx context.Context, flags flag.FlagSet) error {
+type stopVerb struct {
+	Now bool `help:"Immediate shutdown"`
+}
+
+func (v *stopVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
-		if stopNow {
+		if v.Now {
 			return client.Kill(ctx, flags.Args()...)
 		}
 		return client.Shutdown(ctx, flags.Args()...)
 	}, grpc.WithInsecure())
 }
 
-func doRestart(ctx context.Context, flags flag.FlagSet) error {
+type restartVerb struct {
+}
+
+func (v *restartVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		return client.Restart(ctx, flags.Args()...)

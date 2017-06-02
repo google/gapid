@@ -74,7 +74,7 @@ type BenchmarkInput struct {
 	Seed              int64
 	BenchmarkType     string
 	SampleOrder       string
-	EnableCpuProfile  bool
+	EnableCPUProfile  bool
 	EnableHeapProfile bool
 	MaxFrameWidth     int
 	MaxFrameHeight    int

@@ -94,6 +94,9 @@ func (s *Set) Bind(name string, value interface{}, help string) {
 	t := e.Type()
 	for i := 0; i < e.NumField(); i++ {
 		tf := t.Field(i)
+		if tf.PkgPath != "" {
+			continue // Unexported.
+		}
 		field := e.Field(i)
 		if !field.CanSet() {
 			panic(fmt.Sprintf("Unsettable field %q : %v", tf.Name, field.Type()))

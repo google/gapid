@@ -30,16 +30,17 @@ import (
 )
 
 func init() {
-	replaySearch := &app.Verb{
+	searchVerb.Add(&app.Verb{
 		Name:       "replay",
 		ShortHelp:  "List build replays in the server",
 		ShortUsage: "<query>",
-		Run:        doReplaySearch,
-	}
-	searchVerb.Add(replaySearch)
+		Auto:       &replaySearchFlags{},
+	})
 }
 
-func doReplaySearch(ctx context.Context, flags flag.FlagSet) error {
+type replaySearchFlags struct{}
+
+func (v *replaySearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		replays := replay.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")

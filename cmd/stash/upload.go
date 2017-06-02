@@ -28,12 +28,14 @@ func init() {
 	verb := &app.Verb{
 		Name:      "upload",
 		ShortHelp: "Upload a file to the stash",
-		Run:       doUpload,
+		Auto:      &uploadVerb{},
 	}
 	app.AddVerb(verb)
 }
 
-func doUpload(ctx context.Context, flags flag.FlagSet) error {
+type uploadVerb struct{}
+
+func (v *uploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() == 0 {
 		app.Usage(ctx, "No files to upload given")
 		return nil

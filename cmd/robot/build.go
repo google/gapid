@@ -32,69 +32,55 @@ import (
 	"google.golang.org/grpc"
 )
 
-var buildFlags struct {
-	// upload flags
-	tag         string
-	cl          string
-	branch      string
-	description string
-	uploader    string
-	name        string
-	pkg         string
-}
-
 func init() {
-	buildUpload := &app.Verb{
+	uploadVerb.Add(&app.Verb{
 		Name:       "build",
 		ShortHelp:  "Upload a build to the server",
 		ShortUsage: "<filenames>",
-		Run:        doUpload(&buildUploader{}),
-	}
-	buildUpload.Flags.Raw.StringVar(&buildFlags.tag, "tag", "", "The optional build tag")
-	buildUpload.Flags.Raw.StringVar(&buildFlags.cl, "cl", "", "The build CL, will be guessed if not set")
-	buildUpload.Flags.Raw.StringVar(&buildFlags.branch, "branch", "", "The build branch, will be guessed if not set")
-	buildUpload.Flags.Raw.StringVar(&buildFlags.description, "description", "", "An optional build description")
-	buildUpload.Flags.Raw.StringVar(&buildFlags.uploader, "uploader", "", "The uploading entity, will be guessed if not set")
-	uploadVerb.Add(buildUpload)
-	artifactSearch := &app.Verb{
+		Auto:       &buildUploadVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
 		ShortHelp:  "List build artifacts in the server",
 		ShortUsage: "<query>",
-		Run:        doArtifactSearch,
-	}
-	searchVerb.Add(artifactSearch)
-	packageSearch := &app.Verb{
+		Auto:       &artifactSearchVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "package",
 		ShortHelp:  "List build packages in the server",
 		ShortUsage: "<query>",
-		Run:        doPackageSearch,
-	}
-	searchVerb.Add(packageSearch)
-	trackSearch := &app.Verb{
+		Auto:       &packageSearchVerb{},
+	})
+	searchVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "List build tracks in the server",
 		ShortUsage: "<query>",
-		Run:        doTrackSearch,
-	}
-	searchVerb.Add(trackSearch)
-	trackSet := &app.Verb{
+		Auto:       &trackSearchVerb{},
+	})
+	setVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "Sets values on a track",
 		ShortUsage: "<id or name>",
-		Run:        doTrackUpdate,
-	}
-	trackSet.Flags.Raw.StringVar(&buildFlags.name, "name", "", "The new name for the track")
-	trackSet.Flags.Raw.StringVar(&buildFlags.description, "description", "", "A description of the track")
-	trackSet.Flags.Raw.StringVar(&buildFlags.pkg, "package", "", "The id of the package at the head of the track")
-	setVerb.Add(trackSet)
+		Auto:       &trackUpdateVerb{},
+	})
 }
 
-type buildUploader struct {
+type buildUploadVerb struct {
+	CL          string `help:"The build CL, will be guessed if not set"`
+	Description string `help:"An optional build description"`
+	Tag         string `help:"The optional build tag"`
+	Branch      string `help:"The build branch, will be guessed if not set"`
+	Uploader    string `help:"The uploading entity, will be guessed if not set"`
+
 	store build.Store
 	info  *build.Information
 }
 
-func (u *buildUploader) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return upload(ctx, flags, v)
+}
+
+func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	// see if we can find a git cl in the cwd
 	typ := build.BuildBot
 	if g, err := git.New("."); err != nil {
@@ -104,15 +90,15 @@ func (u *buildUploader) prepare(ctx context.Context, conn *grpc.ClientConn) erro
 		if cl, err := g.HeadCL(ctx); err != nil {
 			log.E(ctx, "CL failed. Error: %v", err)
 		} else {
-			if buildFlags.cl == "" {
+			if v.CL == "" {
 				// guess cl from git
-				buildFlags.cl = cl.SHA.String()
-				log.I(ctx, "Detected CL %s", buildFlags.cl)
+				v.CL = cl.SHA.String()
+				log.I(ctx, "Detected CL %s", v.CL)
 			}
-			if buildFlags.description == "" {
+			if v.Description == "" {
 				// guess description from git
-				buildFlags.description = cl.Subject
-				log.I(ctx, "Detected description %s", buildFlags.description)
+				v.Description = cl.Subject
+				log.I(ctx, "Detected description %s", v.Description)
 			}
 		}
 		if status, err := g.Status(ctx); err != nil {
@@ -122,40 +108,40 @@ func (u *buildUploader) prepare(ctx context.Context, conn *grpc.ClientConn) erro
 				typ = build.Local
 			}
 		}
-		if buildFlags.branch == "" {
+		if v.Branch == "" {
 			// guess branch from git
 			if branch, err := g.CurrentBranch(ctx); err != nil {
 				log.E(ctx, "Branch failed. Error: %v", err)
 			} else {
-				buildFlags.branch = branch
-				log.I(ctx, "Dectected branch %s", buildFlags.branch)
+				v.Branch = branch
+				log.I(ctx, "Dectected branch %s", v.Branch)
 			}
 		}
 	}
-	if buildFlags.uploader == "" {
+	if v.Uploader == "" {
 		// guess uploader from environment
 		if user, err := user.Current(); err == nil {
-			buildFlags.uploader = user.Username
-			log.I(ctx, "Dectected uploader %s", buildFlags.uploader)
+			v.Uploader = user.Username
+			log.I(ctx, "Dectected uploader %s", v.Uploader)
 		}
 	}
 	log.I(ctx, "Dectected build type %s", typ)
-	u.store = build.NewRemote(ctx, conn)
+	v.store = build.NewRemote(ctx, conn)
 	host := host.Instance(ctx)
-	u.info = &build.Information{
+	v.info = &build.Information{
 		Type:        typ,
-		Branch:      buildFlags.branch,
-		Cl:          buildFlags.cl,
-		Tag:         buildFlags.tag,
-		Description: buildFlags.description,
+		Branch:      v.Branch,
+		Cl:          v.CL,
+		Tag:         v.Tag,
+		Description: v.Description,
 		Builder:     host,
-		Uploader:    buildFlags.uploader,
+		Uploader:    v.Uploader,
 	}
 	return nil
 }
 
-func (u *buildUploader) process(ctx context.Context, id string) error {
-	id, merged, err := u.store.Add(ctx, id, u.info)
+func (v *buildUploadVerb) process(ctx context.Context, id string) error {
+	id, merged, err := v.store.Add(ctx, id, v.info)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing build")
 	}
@@ -167,7 +153,9 @@ func (u *buildUploader) process(ctx context.Context, id string) error {
 	return nil
 }
 
-func doArtifactSearch(ctx context.Context, flags flag.FlagSet) error {
+type artifactSearchVerb struct{}
+
+func (v *artifactSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
@@ -183,7 +171,9 @@ func doArtifactSearch(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func doPackageSearch(ctx context.Context, flags flag.FlagSet) error {
+type packageSearchVerb struct{}
+
+func (v *packageSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
@@ -199,7 +189,9 @@ func doPackageSearch(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-func doTrackSearch(ctx context.Context, flags flag.FlagSet) error {
+type trackSearchVerb struct{}
+
+func (v *trackSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
@@ -215,18 +207,22 @@ func doTrackSearch(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-var (
-	idOrName = script.MustParse("Id == $ or Name == $").Using("$")
-)
+var idOrName = script.MustParse("Id == $ or Name == $").Using("$")
 
-func doTrackUpdate(ctx context.Context, flags flag.FlagSet) error {
+type trackUpdateVerb struct {
+	Name        string `help:"The new name for the track"`
+	Description string `help:"A description of the track"`
+	Pkg         string `help:"The id of the package at the head of the track"`
+}
+
+func (v *trackUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		args := flags.Args()
 		track := &build.Track{
-			Name:        buildFlags.name,
-			Description: buildFlags.description,
-			Head:        buildFlags.pkg,
+			Name:        v.Name,
+			Description: v.Description,
+			Head:        v.Pkg,
 		}
 		if len(args) != 0 {
 			// Updating an existing track, find it first

@@ -32,15 +32,16 @@ import (
 )
 
 func init() {
-	verb := &app.Verb{
+	app.AddVerb(&app.Verb{
 		Name:      "format",
 		ShortHelp: "Formats an api file",
-		Run:       doFormat,
-	}
-	app.AddVerb(verb)
+		Auto:      &formatVerb{},
+	})
 }
 
-func doFormat(ctx context.Context, flags flag.FlagSet) error {
+type formatVerb struct{}
+
+func (v *formatVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	args := flags.Args()
 	if len(args) < 1 {
 		app.Usage(ctx, "Missing api file")
