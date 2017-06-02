@@ -25,6 +25,10 @@ cd %DO_DIR%..\..\..\..\
 SET GOPATH=%DO_DIR%third_party;%CD%
 popd
 
+REM -- Do some env cleanup.
+SET LIB=
+SET LIBPATH=
+
 pushd .
 cd %DO_DIR%
 go run %DO_GO_FILES% %*
