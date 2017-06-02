@@ -17,9 +17,9 @@ package report
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/search"
 )
 
 // ActionHandler is a function that handles a stream of Actions.

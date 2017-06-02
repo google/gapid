@@ -27,12 +27,12 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/stash"
-	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
-	"github.com/google/gapid/core/data/stash/local"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
+	"github.com/google/gapid/test/robot/stash"
+	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
+	"github.com/google/gapid/test/robot/stash/local"
 	"google.golang.org/grpc"
 )
 

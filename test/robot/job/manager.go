@@ -17,8 +17,8 @@ package job
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/test/robot/search"
 )
 
 // DeviceHandler is a function used to consume a stream of Devices.

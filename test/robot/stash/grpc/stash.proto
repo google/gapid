@@ -16,8 +16,8 @@ syntax = "proto3";
 
 package grpc;
 
-import "core/data/stash/stash.proto";
-import "core/data/search/search.proto";
+import "test/robot/stash/stash.proto";
+import "test/robot/search/search.proto";
 
 // UploadChunk represents a chunk of data to upload a new entity to the stash.
 // The first entity in an upload chunk stream must be an Upload entry.

@@ -20,11 +20,11 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/record"
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/search/eval"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/test/robot/record"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/search/eval"
 )
 
 var packageClass = reflect.TypeOf(&Package{})

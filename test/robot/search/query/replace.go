@@ -16,7 +16,7 @@ package query
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/test/robot/search"
 )
 
 // Replace substitues expr for match in the expression tree.

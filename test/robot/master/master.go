@@ -17,7 +17,7 @@ package master
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/test/robot/search"
 )
 
 type SatelliteHandler func(context.Context, *Satellite) error

@@ -20,14 +20,14 @@ import (
 	"io/ioutil"
 	"net/url"
 
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/search/script"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/search/script"
+	"github.com/google/gapid/test/robot/stash"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )

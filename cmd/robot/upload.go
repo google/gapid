@@ -19,7 +19,7 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
-	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
+	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"

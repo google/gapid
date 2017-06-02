@@ -17,10 +17,10 @@ package job
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/test/robot/search"
 	"google.golang.org/grpc"
 )
 

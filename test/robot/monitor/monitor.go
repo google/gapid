@@ -18,13 +18,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/google/gapid/core/data/search"
-	"github.com/google/gapid/core/data/stash"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/master"
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/stash"
 	"github.com/google/gapid/test/robot/subject"
 	"github.com/google/gapid/test/robot/trace"
 )

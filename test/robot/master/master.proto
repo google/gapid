@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package master;
 
-import "core/data/search/search.proto";
+import "test/robot/search/search.proto";
 
 // Satellite is the set of information the master knows about a connected satellite.
 message Satellite {

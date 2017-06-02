@@ -17,7 +17,7 @@ package subject
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/test/robot/search"
 )
 
 // Handler is a function that handles a stream of Subjects.

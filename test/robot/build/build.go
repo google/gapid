@@ -17,7 +17,7 @@ package build
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/search"
+	"github.com/google/gapid/test/robot/search"
 )
 
 // ArtifactHandler is a function used to consume a stream of Artifacts.

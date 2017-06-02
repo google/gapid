@@ -23,8 +23,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/data/search/script"
-	stashgrpc "github.com/google/gapid/core/data/stash/grpc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -33,6 +31,8 @@ import (
 	"github.com/google/gapid/test/robot/monitor"
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
+	"github.com/google/gapid/test/robot/search/script"
+	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"github.com/google/gapid/test/robot/trace"
 	"google.golang.org/grpc"
 )

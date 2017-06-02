@@ -23,7 +23,7 @@ package script
 // The following are the imports that generated source files pull in when present
 // Having these here helps out tools that can't cope with missing dependancies
 import (
-	_ "github.com/google/gapid/core/data/search/query"
 	_ "github.com/google/gapid/core/log"
 	_ "github.com/google/gapid/core/text/lingo"
+	_ "github.com/google/gapid/test/robot/search/query"
 )

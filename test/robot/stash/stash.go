@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/test/robot/search"
 )
 
 const (

@@ -14,7 +14,7 @@
 
 package query
 
-import "github.com/google/gapid/core/data/search"
+import "github.com/google/gapid/test/robot/search"
 
 func exprBool(value bool) *search.Expression {
 	return &search.Expression{Is: &search.Expression_Boolean{

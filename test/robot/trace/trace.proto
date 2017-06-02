@@ -19,7 +19,7 @@ package trace;
 import "test/robot/job/job.proto";
 import "test/robot/job/worker/worker.proto";
 import "test/robot/subject/subject.proto";
-import "core/data/search/search.proto";
+import "test/robot/search/search.proto";
 import "core/os/device/device.proto";
 
 // Input describes the inputs to a trace action.

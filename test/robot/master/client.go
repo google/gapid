@@ -18,8 +18,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/google/gapid/core/data/search"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/search"
 	"github.com/pkg/errors"
 )
 

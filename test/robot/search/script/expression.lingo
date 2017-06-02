@@ -16,7 +16,7 @@ package script
 
 import (
 	"github.com/google/gapid/core/text/lingo"
-	"github.com/google/gapid/core/data/search/query"
+	"github.com/google/gapid/test/robot/search/query"
 )
 
 func expression(s *lingo.Scanner) (query.Builder, error) {

@@ -14,7 +14,7 @@
 
 package query
 
-import "github.com/google/gapid/core/data/search"
+import "github.com/google/gapid/test/robot/search"
 
 // Builder is the type used to allow fluent construction of search queries.
 type Builder struct {

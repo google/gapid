@@ -13,7 +13,6 @@
 # limitations under the License.
 
 build_subdirectory(cc)
-build_subdirectory(data)
 build_subdirectory(image)
 build_subdirectory(memory_tracker)
 build_subdirectory(os)
