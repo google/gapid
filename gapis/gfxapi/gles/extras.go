@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/gfxapi/gles/gles_pb"
@@ -63,7 +64,11 @@ func FindErrorState(extras *atom.Extras) *ErrorState {
 func FindStaticContextState(extras *atom.Extras) *StaticContextState {
 	for _, e := range extras.All() {
 		if cs, ok := e.(*StaticContextState); ok {
-			return cs
+			clone, err := deep.Clone(cs)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*StaticContextState)
 		}
 	}
 	return nil
@@ -74,18 +79,11 @@ func FindStaticContextState(extras *atom.Extras) *StaticContextState {
 func FindDynamicContextState(extras *atom.Extras) *DynamicContextState {
 	for _, e := range extras.All() {
 		if cs, ok := e.(*DynamicContextState); ok {
-			return cs
-		}
-	}
-	return nil
-}
-
-// FindDeviceInfo searches for the DeviceInfo in the extras,
-// returning the DeviceInfo if found, otherwise nil.
-func FindDeviceInfo(extras *atom.Extras) *DeviceInfo {
-	for _, e := range extras.All() {
-		if di, ok := e.(*DeviceInfo); ok {
-			return di
+			clone, err := deep.Clone(cs)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*DynamicContextState)
 		}
 	}
 	return nil
@@ -96,7 +94,11 @@ func FindDeviceInfo(extras *atom.Extras) *DeviceInfo {
 func FindAndroidNativeBufferExtra(extras *atom.Extras) *AndroidNativeBufferExtra {
 	for _, e := range extras.All() {
 		if di, ok := e.(*AndroidNativeBufferExtra); ok {
-			return di
+			clone, err := deep.Clone(di)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*AndroidNativeBufferExtra)
 		}
 	}
 	return nil
