@@ -258,7 +258,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
 	for i, a := range c.Atoms {
-		a.Mutate(ctx, s, nil)
+		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
 		if filter(a, s) {
 			for _, g := range groupers {
 				g.process(ctx, atom.ID(i), a, s)

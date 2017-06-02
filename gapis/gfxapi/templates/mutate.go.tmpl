@@ -156,7 +156,7 @@
       ϟo.ApplyReads(ϟs.Memory[ϟmem.ApplicationPool])
       {{Template "Block" $.Block}}
 
-      return nil
+      return task.StopReason(ϟctx)
     }
 
     {{if $r}}
