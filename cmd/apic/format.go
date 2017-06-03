@@ -35,7 +35,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "format",
 		ShortHelp: "Formats an api file",
-		Auto:      &formatVerb{},
+		Action:    &formatVerb{},
 	})
 }
 

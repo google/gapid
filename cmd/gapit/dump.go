@@ -33,7 +33,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "dump",
 		ShortHelp: "Dump a textual representation of a .gfxtrace file",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

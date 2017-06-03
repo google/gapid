@@ -28,7 +28,7 @@ func init() {
 		Name:       "rm",
 		ShortHelp:  "Removes a benchmark from a .perfz file",
 		ShortUsage: "<perfz> <benchmark>",
-		Auto:       &rmVerb{},
+		Action:     &rmVerb{},
 	}
 	app.AddVerb(verb)
 }

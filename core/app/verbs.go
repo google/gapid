@@ -25,44 +25,33 @@ import (
 
 // Verb holds information about a runnable api command.
 type Verb struct {
-	Name       string                                              // The name of the command
-	Run        func(ctx context.Context, flags flag.FlagSet) error // the action for the command
-	Auto       AutoVerb                                            // If set, the Run and Flags will be automatically filled from this.
-	ShortHelp  string                                              // Help for the purpose of the command
-	ShortUsage string                                              // Help for how to use the command
-	Flags      flags.Set                                           // The command line flags it accepts
+	Name       string    // The name of the command
+	ShortHelp  string    // Help for the purpose of the command
+	ShortUsage string    // Help for how to use the command
+	Flags      flags.Set // The command line flags it accepts
+	Action     Action    // The verb's action. Must be set.
 	verbs      []*Verb
 	selected   *Verb
 }
 
-// AutoVerb is the interface for objects that want to
-// automatically configure a verb.
-type AutoVerb interface {
-	// Run is the method to perform the action associated with a verb.
-	// See Verb.Run for more details.
+// Action is the interface for verb actions that can be run.
+type Action interface {
+	// Run executes the action.
 	Run(ctx context.Context, flags flag.FlagSet) error
 }
 
-var (
-	globalVerbs Verb
-)
+var globalVerbs Verb
 
 // Add adds a new verb to the supported set, it will panic if a
 // duplicate name is encountered.
 func (v *Verb) Add(child *Verb) {
-	if child.Auto != nil {
-		child.Flags.Bind("", child.Auto, "")
-		if child.Run == nil {
-			child.Run = child.Auto.Run
-		}
+	if child.Action != nil {
+		child.Flags.Bind("", child.Action, "")
 	}
 	if len(v.Filter(child.Name)) != 0 {
 		panic(fmt.Errorf("Duplicate verb name %s", child.Name))
 	}
 	v.verbs = append(v.verbs, child)
-	if v.Run == nil {
-		v.Run = v.run
-	}
 }
 
 // Filter returns the filtered list of verbs who's names match the specified prefix.
@@ -94,7 +83,10 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 	case 1:
 		v.selected = matches[0]
 		v.selected.Flags.Parse(args[1:]...)
-		return v.selected.Run(ctx, v.selected.Flags.Raw)
+		if v.selected.Action != nil {
+			return v.selected.Action.Run(ctx, v.selected.Flags.Raw)
+		}
+		return v.selected.Invoke(ctx, v.selected.Flags.Raw.Args())
 	case 0:
 		if verb == "help" {
 			autoHelp(ctx, args[1:]...)
@@ -105,10 +97,6 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 		Usage(ctx, "Verb '%s' is ambiguous", verb)
 	}
 	return nil
-}
-
-func (v *Verb) run(ctx context.Context, flags flag.FlagSet) error {
-	return v.Invoke(ctx, flags.Args())
 }
 
 // AddVerb adds a new verb to the supported set, it will panic if a

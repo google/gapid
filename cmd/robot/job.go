@@ -42,18 +42,18 @@ func init() {
 		Name:       "device",
 		ShortHelp:  "List the devices",
 		ShortUsage: "<query>",
-		Auto:       &deviceSearchFlags{},
+		Action:     &deviceSearchFlags{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "worker",
 		ShortHelp:  "List the workers",
 		ShortUsage: "<query>",
-		Auto:       &workerSearchFlags{},
+		Action:     &workerSearchFlags{},
 	})
 	startVerb.Add(&app.Verb{
 		Name:      "worker",
 		ShortHelp: "Starts a robot worker",
-		Auto:      &workerStartFlags{},
+		Action:    &workerStartFlags{},
 	})
 }
 

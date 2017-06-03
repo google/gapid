@@ -61,7 +61,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "video",
 		ShortHelp: "Produce a video or sequence of frames from a .gfxtrace file",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

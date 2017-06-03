@@ -33,7 +33,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "devices",
 		ShortHelp: "Lists the devices available",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

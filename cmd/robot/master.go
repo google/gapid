@@ -58,7 +58,7 @@ func init() {
 	startVerb.Add(&app.Verb{
 		Name:      "master",
 		ShortHelp: "Starts a robot master server",
-		Auto: &masterVerb{
+		Action: &masterVerb{
 			BaseAddr:     file.Abs("."),
 			StashAddr:    "",
 			ShelfAddr:    "",
@@ -71,7 +71,7 @@ func init() {
 		Name:       "master",
 		ShortHelp:  "List satellites registered with the master",
 		ShortUsage: "<query>",
-		Auto:       &masterSearchVerb{},
+		Action:     &masterSearchVerb{},
 	})
 }
 

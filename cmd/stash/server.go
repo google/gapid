@@ -31,7 +31,7 @@ func init() {
 	verb := &app.Verb{
 		Name:      "server",
 		ShortHelp: "Starts a stash server",
-		Auto:      &serverVerb{},
+		Action:    &serverVerb{},
 	}
 	app.AddVerb(verb)
 }

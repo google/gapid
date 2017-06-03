@@ -34,7 +34,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "stress-test",
 		ShortHelp: "Performs evil things on GAPIS to try to break it",
-		Auto:      &stresstestVerb{},
+		Action:    &stresstestVerb{},
 	})
 }
 

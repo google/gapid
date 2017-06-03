@@ -34,7 +34,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "validate",
 		ShortHelp: "Validates an api file for correctness",
-		Auto:      &validateVerb{},
+		Action:    &validateVerb{},
 	})
 }
 

@@ -35,13 +35,13 @@ func init() {
 		Name:       "stash",
 		ShortHelp:  "Upload a file to the stash",
 		ShortUsage: "<filenames>",
-		Auto:       &stashUploadVerb{},
+		Action:     &stashUploadVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "stash",
 		ShortHelp:  "List entries in the stash",
 		ShortUsage: "<query>",
-		Auto:       &stashSearchVerb{},
+		Action:     &stashSearchVerb{},
 	})
 }
 

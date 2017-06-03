@@ -33,7 +33,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "info",
 		ShortHelp: "Prints information about a gfx trace capture file",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

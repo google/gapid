@@ -31,7 +31,7 @@ func init() {
 		Name:       "run",
 		ShortHelp:  "Runs a single benchmark and adds the results to the passed perfz file",
 		ShortUsage: "<perfz> <trace>",
-		Auto: &runVerb{
+		Action: &runVerb{
 			Timeout:       -1,
 			BenchmarkName: "default",
 			SampleLimit:   50,

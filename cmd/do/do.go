@@ -144,52 +144,52 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "init",
 		ShortHelp: "initialise all pre-requisites to build gapid",
-		Auto:      &initVerb{InitOptions: InitOptions{Force: true}},
+		Action:    &initVerb{InitOptions: InitOptions{Force: true}},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "config",
 		ShortHelp: "set configuration parameters",
-		Auto:      &configVerb{ConfigOptions: ConfigOptions{Interactive: true}},
+		Action:    &configVerb{ConfigOptions: ConfigOptions{Interactive: true}},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "build",
 		ShortHelp: "start a build of the optional target",
-		Auto:      &buildVerb{},
+		Action:    &buildVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "glob",
 		ShortHelp: "update CMakeFiles.cmake",
-		Auto:      &globVerb{},
+		Action:    &globVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "clean",
 		ShortHelp: "delete the output directory",
-		Auto:      &cleanVerb{},
+		Action:    &cleanVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "run",
 		ShortHelp: "build and run a target",
-		Auto:      &runVerb{},
+		Action:    &runVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "gapit",
 		ShortHelp: "build and run gapit",
-		Auto:      &gapitVerb{},
+		Action:    &gapitVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "robot",
 		ShortHelp: "build and run robot",
-		Auto:      &robotVerb{},
+		Action:    &robotVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "upload",
 		ShortHelp: "build gapid package and upload to robot",
-		Auto:      &uploadVerb{},
+		Action:    &uploadVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "go",
 		ShortHelp: "run the go tool with the correct environment",
-		Auto:      &goVerb{},
+		Action:    &goVerb{},
 	})
 }
 

@@ -34,7 +34,7 @@ func init() {
 		Name:       "replay",
 		ShortHelp:  "List build replays in the server",
 		ShortUsage: "<query>",
-		Auto:       &replaySearchFlags{},
+		Action:     &replaySearchFlags{},
 	})
 }
 

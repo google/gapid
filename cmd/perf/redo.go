@@ -30,7 +30,7 @@ func init() {
 		Name:       "redo",
 		ShortHelp:  "Runs all benchmarks in the source .perfz and saves the output to a new file",
 		ShortUsage: "<source> <destination>",
-		Auto: &redoVerb{
+		Action: &redoVerb{
 			Output: "-",
 		},
 	}

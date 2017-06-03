@@ -59,7 +59,7 @@ func init() {
 		Name:       "plot",
 		ShortHelp:  "Plots samples from a benchmark out of one or two perfz files",
 		ShortUsage: "<perfz> [perfz]",
-		Auto: &plotVerb{
+		Action: &plotVerb{
 			ShowMinMax:  true,
 			ShowAverage: true,
 			RunGnuplot:  true,

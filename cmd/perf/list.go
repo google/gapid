@@ -27,7 +27,7 @@ func init() {
 		Name:       "list",
 		ShortHelp:  "Lists benchmarks and associated data in .perfz",
 		ShortUsage: "<perfz>",
-		Auto:       &listVerb{},
+		Action:     &listVerb{},
 	})
 }
 

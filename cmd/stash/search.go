@@ -30,7 +30,7 @@ func init() {
 	verb := &app.Verb{
 		Name:      "search",
 		ShortHelp: "Prints information about stash entries",
-		Auto:      &infoVerb{},
+		Action:    &infoVerb{},
 	}
 	app.AddVerb(verb)
 }

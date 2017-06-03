@@ -34,7 +34,7 @@ func init() {
 		Name:       "report",
 		ShortHelp:  "List build reports in the server",
 		ShortUsage: "<query>",
-		Auto:       &reportSearchFlags{},
+		Action:     &reportSearchFlags{},
 	})
 }
 
