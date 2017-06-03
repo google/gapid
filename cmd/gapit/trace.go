@@ -45,7 +45,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "trace",
 		ShortHelp: "Captures a gfx trace from an application",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

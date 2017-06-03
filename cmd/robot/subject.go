@@ -36,13 +36,13 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Auto:       &subjectUploadVerb{},
+		Action:     &subjectUploadVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
 		ShortHelp:  "List traceable applications in the server",
 		ShortUsage: "<query>",
-		Auto:       &subjectSearchVerb{},
+		Action:     &subjectSearchVerb{},
 	})
 }
 

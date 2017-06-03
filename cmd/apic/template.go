@@ -35,7 +35,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "template",
 		ShortHelp: "Passes the ast to a template for code generation",
-		Auto: &templateVerb{
+		Action: &templateVerb{
 			Dir: cwd(),
 		},
 	})

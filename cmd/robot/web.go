@@ -44,7 +44,7 @@ func init() {
 	startVerb.Add(&app.Verb{
 		Name:      "web",
 		ShortHelp: "Starts a robot web server",
-		Auto: &webVerb{
+		Action: &webVerb{
 			Port: 8080,
 		},
 	})

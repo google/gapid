@@ -28,7 +28,7 @@ func init() {
 		Name:       "cat",
 		ShortHelp:  "Prints data out of a .perfz file",
 		ShortUsage: "<perfz> [[benchmark]:[link]]",
-		Auto:       &catVerb{},
+		Action:     &catVerb{},
 	})
 }
 

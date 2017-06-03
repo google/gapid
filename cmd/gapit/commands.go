@@ -37,7 +37,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "commands",
 		ShortHelp: "Prints the command tree for a .gfxtrace file",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

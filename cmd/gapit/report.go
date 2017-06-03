@@ -35,7 +35,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "report",
 		ShortHelp: "Check a capture replays without issues",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

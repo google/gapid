@@ -37,7 +37,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "dump_resources",
 		ShortHelp: "Dump all shaders at a particular atom from a .gfxtrace",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

@@ -37,31 +37,31 @@ func init() {
 		Name:       "build",
 		ShortHelp:  "Upload a build to the server",
 		ShortUsage: "<filenames>",
-		Auto:       &buildUploadVerb{},
+		Action:     &buildUploadVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
 		ShortHelp:  "List build artifacts in the server",
 		ShortUsage: "<query>",
-		Auto:       &artifactSearchVerb{},
+		Action:     &artifactSearchVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "package",
 		ShortHelp:  "List build packages in the server",
 		ShortUsage: "<query>",
-		Auto:       &packageSearchVerb{},
+		Action:     &packageSearchVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "List build tracks in the server",
 		ShortUsage: "<query>",
-		Auto:       &trackSearchVerb{},
+		Action:     &trackSearchVerb{},
 	})
 	setVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "Sets values on a track",
 		ShortUsage: "<id or name>",
-		Auto:       &trackUpdateVerb{},
+		Action:     &trackUpdateVerb{},
 	})
 }
 

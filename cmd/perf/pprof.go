@@ -29,7 +29,7 @@ func init() {
 		Name:       "pprof",
 		ShortHelp:  "Runs pprof",
 		ShortUsage: "<perfz> [[benchmark]:[link]]",
-		Auto:       &pprofVerb{},
+		Action:     &pprofVerb{},
 	}
 	app.AddVerb(verb)
 }

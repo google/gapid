@@ -41,7 +41,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "state",
 		ShortHelp: "Prints the state tree for a point in a .gfxtrace file",
-		Auto:      verb,
+		Action:    verb,
 	})
 }
 

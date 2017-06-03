@@ -33,7 +33,7 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "packages",
 		ShortHelp: "Prints information about packages installed on a device",
-		Auto: &packagesVerb{
+		Action: &packagesVerb{
 			PackagesFlags{
 				Icons:       false,
 				IconDensity: 1.0,

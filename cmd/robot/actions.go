@@ -52,12 +52,12 @@ func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "stop",
 		ShortHelp: "Stop a server",
-		Auto:      &stopVerb{},
+		Action:    &stopVerb{},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "restart",
 		ShortHelp: "Restart a server",
-		Auto:      &restartVerb{},
+		Action:    &restartVerb{},
 	})
 }
 

@@ -35,13 +35,13 @@ func init() {
 		Name:       "trace",
 		ShortHelp:  "Upload a gfx trace to the server",
 		ShortUsage: "<filenames>",
-		Auto:       &traceUploadVerb{},
+		Action:     &traceUploadVerb{},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "trace",
 		ShortHelp:  "List build traces in the server",
 		ShortUsage: "<query>",
-		Auto:       &traceSearchVerb{},
+		Action:     &traceSearchVerb{},
 	})
 }
 

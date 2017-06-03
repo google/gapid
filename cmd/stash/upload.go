@@ -28,7 +28,7 @@ func init() {
 	verb := &app.Verb{
 		Name:      "upload",
 		ShortHelp: "Upload a file to the stash",
-		Auto:      &uploadVerb{},
+		Action:    &uploadVerb{},
 	}
 	app.AddVerb(verb)
 }

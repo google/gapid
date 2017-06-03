@@ -37,7 +37,7 @@ func init() {
 		Name:       "summary",
 		ShortHelp:  "Summarizes metrics from a perfz file or compares two perfz files",
 		ShortUsage: "<perfz> [perfz]",
-		Auto: &summaryVerb{
+		Action: &summaryVerb{
 			Level: 1,
 		},
 	}
