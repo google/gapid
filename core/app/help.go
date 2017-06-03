@@ -72,7 +72,7 @@ func verbShorthelp(raw io.Writer, v *Verb, verbose bool) {
 
 func verbUsage(raw io.Writer, v *Verb, verbose bool) {
 	fmt.Fprintf(raw, " %s", v.Name)
-	if v.Flags.HasVisibleFlags(verbose) {
+	if v.flags.HasVisibleFlags(verbose) {
 		fmt.Fprintf(raw, " [%s-flags]", v.Name)
 	}
 	if v.selected != nil {
@@ -90,10 +90,10 @@ func verbUsage(raw io.Writer, v *Verb, verbose bool) {
 }
 
 func verbHelp(raw io.Writer, v *Verb, verbose bool) {
-	if v.Flags.HasVisibleFlags(verbose) {
+	if v.flags.HasVisibleFlags(verbose) {
 		fmt.Fprintf(raw, "%s-flags:", v.Name)
 		fmt.Fprintln(raw)
-		fmt.Fprint(raw, v.Flags.Usage(verbose))
+		fmt.Fprint(raw, v.flags.Usage(verbose))
 		fmt.Fprintln(raw)
 	}
 	if v.selected != nil {

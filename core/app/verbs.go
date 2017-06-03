@@ -28,13 +28,15 @@ type Verb struct {
 	Name       string    // The name of the command
 	ShortHelp  string    // Help for the purpose of the command
 	ShortUsage string    // Help for how to use the command
-	Flags      flags.Set // The command line flags it accepts
 	Action     Action    // The verb's action. Must be set.
+	flags      flags.Set // The command line flags it accepts
 	verbs      []*Verb
 	selected   *Verb
 }
 
 // Action is the interface for verb actions that can be run.
+// Exported fields will be exposed as flags for the verb.
+// Use the `help` tag to expose a flag description.
 type Action interface {
 	// Run executes the action.
 	Run(ctx context.Context, flags flag.FlagSet) error
@@ -46,7 +48,7 @@ var globalVerbs Verb
 // duplicate name is encountered.
 func (v *Verb) Add(child *Verb) {
 	if child.Action != nil {
-		child.Flags.Bind("", child.Action, "")
+		child.flags.Bind("", child.Action, "")
 	}
 	if len(v.Filter(child.Name)) != 0 {
 		panic(fmt.Errorf("Duplicate verb name %s", child.Name))
@@ -82,11 +84,11 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 	switch len(matches) {
 	case 1:
 		v.selected = matches[0]
-		v.selected.Flags.Parse(args[1:]...)
+		v.selected.flags.Parse(args[1:]...)
 		if v.selected.Action != nil {
-			return v.selected.Action.Run(ctx, v.selected.Flags.Raw)
+			return v.selected.Action.Run(ctx, v.selected.flags.Raw)
 		}
-		return v.selected.Invoke(ctx, v.selected.Flags.Raw.Args())
+		return v.selected.Invoke(ctx, v.selected.flags.Raw.Args())
 	case 0:
 		if verb == "help" {
 			autoHelp(ctx, args[1:]...)
@@ -113,13 +115,13 @@ func FilterVerbs(prefix string) (result []*Verb) {
 
 // VerbMain is a task that can be handed to Run to invoke the verb handling system.
 func VerbMain(ctx context.Context) error {
-	return globalVerbs.Invoke(ctx, globalVerbs.Flags.Args())
+	return globalVerbs.Invoke(ctx, globalVerbs.flags.Args())
 }
 
 func verbMainPrepare(flags *AppFlags) {
 	globalVerbs.Name = Name
 	globalVerbs.ShortHelp = ShortHelp
 	globalVerbs.ShortUsage = ShortUsage
-	globalVerbs.Flags.Raw = *flag.CommandLine
-	globalVerbs.Flags.Bind("", flags, "")
+	globalVerbs.flags.Raw = *flag.CommandLine
+	globalVerbs.flags.Bind("", flags, "")
 }

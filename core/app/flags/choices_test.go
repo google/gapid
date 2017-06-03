@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/assert"
 )
@@ -100,11 +99,11 @@ func TestChoiceParsing(t *testing.T) {
 		{[]string{"-villain", "Harley Quinn"}, true, 0, HarleyQuinn, ""},
 	} {
 		verb := &struct{ MyVerbFlags }{}
-		appVerb := &app.Verb{}
-		appVerb.Flags.Raw.Usage = func() {}
-		appVerb.Flags.Raw.SetOutput(ioutil.Discard)
-		appVerb.Flags.Bind("", verb, "")
-		err := appVerb.Flags.Raw.Parse(cs.args)
+		flags := flags.Set{}
+		flags.Raw.Usage = func() {}
+		flags.Raw.SetOutput(ioutil.Discard)
+		flags.Bind("", verb, "")
+		err := flags.Raw.Parse(cs.args)
 		if cs.ok {
 			assert.With(ctx).ThatError(err).Succeeded()
 			assert.With(ctx).ThatString(verb.Str).Equals(cs.s)
