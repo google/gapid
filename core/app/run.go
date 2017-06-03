@@ -98,11 +98,11 @@ func Run(main task.Task) {
 	// parse the command line
 	flag.CommandLine.Usage = func() { Usage(ctx, "") }
 	verbMainPrepare(flags)
-	globalVerbs.Flags.Parse(os.Args[1:]...)
+	globalVerbs.flags.Parse(os.Args[1:]...)
 	// Force the global verb's flags back into the default location for
 	// main programs that still look in flag.Args()
 	//TODO: We need to stop doing this
-	globalVerbs.Flags.ForceCommandLine()
+	globalVerbs.flags.ForceCommandLine()
 	// apply the flags
 	if flags.Version {
 		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
