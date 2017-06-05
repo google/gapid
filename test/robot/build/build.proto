@@ -83,6 +83,12 @@ message ToolSet {
   string gapit = 6;
   // The stash id of the gapid.apk
   string gapid_apk = 7;
+  // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
+  // library.
+  string virtual_swap_chain_lib = 8;
+  // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
+  // json file.
+  string virtual_swap_chain_json = 9;
 }
 
 // Package represents an entry in a build track.

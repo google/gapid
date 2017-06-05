@@ -48,10 +48,12 @@ func (s schedule) doReplay(ctx context.Context, t *monitor.Trace) error {
 		return nil
 	}
 	input := &replay.Input{
-		Trace: t.Action.Output.Trace,
-		Gapit: hostTools.Gapit,
-		Gapis: hostTools.Gapis,
-		Gapir: targetTools.Gapir,
+		Trace:                t.Action.Output.Trace,
+		Gapit:                hostTools.Gapit,
+		Gapis:                hostTools.Gapis,
+		Gapir:                targetTools.Gapir,
+		VirtualSwapChainLib:  targetTools.VirtualSwapChainLib,
+		VirtualSwapChainJson: targetTools.VirtualSwapChainJson,
 	}
 	action := &replay.Action{
 		Input:  input,

@@ -30,6 +30,12 @@ message Input {
   string gapis = 3;
   // Gapir is the stash id of the graphics replay daemon to use.
   string gapir = 4;
+  // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
+  // library.
+  string virtual_swap_chain_lib = 5;
+  // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
+  // json file.
+  string virtual_swap_chain_json = 6;
 }
 
 // Output holds the outputs of a replay action.

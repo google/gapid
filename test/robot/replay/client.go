@@ -71,6 +71,14 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	if err != nil {
 		return nil, err
 	}
+	vscLib, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain)
+	if err != nil {
+		return nil, err
+	}
+	vscJson, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain)
+	if err != nil {
+		return nil, err
+	}
 
 	defer func() {
 		file.Remove(tracefile)
@@ -78,18 +86,26 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		file.RemoveAll(extractedDir)
 	}()
 
+	for _, file := range []struct {
+		in  string
+		out file.Path
+	}{
+		{in.Trace, tracefile},
+		{in.Gapit, gapit},
+		{in.Gapis, gapis},
+		{in.Gapir, gapir},
+		{in.VirtualSwapChainLib, vscLib},
+		{in.VirtualSwapChainJson, vscJson},
+	} {
+		if err := store.GetFile(ctx, file.in, file.out); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := store.GetFile(ctx, in.Trace, tracefile); err != nil {
 		return nil, err
 	}
-	if err := store.GetFile(ctx, in.Gapit, gapit); err != nil {
-		return nil, err
-	}
-	if err := store.GetFile(ctx, in.Gapis, gapis); err != nil {
-		return nil, err
-	}
-	if err := store.GetFile(ctx, in.Gapir, gapir); err != nil {
-		return nil, err
-	}
+
 	params := []string{
 		"video",
 		"-out", videofile.System(),
