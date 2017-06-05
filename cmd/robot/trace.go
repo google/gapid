@@ -35,22 +35,23 @@ func init() {
 		Name:       "trace",
 		ShortHelp:  "Upload a gfx trace to the server",
 		ShortUsage: "<filenames>",
-		Action:     &traceUploadVerb{},
+		Action:     &traceUploadVerb{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "trace",
 		ShortHelp:  "List build traces in the server",
 		ShortUsage: "<query>",
-		Action:     &traceSearchVerb{},
+		Action:     &traceSearchVerb{ServerAddress: defaultMasterAddress},
 	})
 }
 
 type traceUploadVerb struct {
-	traces trace.Manager
+	ServerAddress string `help:"The master server address"`
+	traces        trace.Manager
 }
 
 func (v *traceUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v)
+	return upload(ctx, flags, v.ServerAddress, v)
 }
 func (v *traceUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	v.traces = trace.NewRemote(ctx, conn)
@@ -60,10 +61,12 @@ func (v *traceUploadVerb) process(ctx context.Context, id string) error {
 	return v.traces.Update(ctx, "", job.Succeeded, &trace.Output{Trace: id})
 }
 
-type traceSearchVerb struct{}
+type traceSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *traceSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		traces := trace.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout

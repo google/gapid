@@ -34,14 +34,16 @@ func init() {
 		Name:       "replay",
 		ShortHelp:  "List build replays in the server",
 		ShortUsage: "<query>",
-		Action:     &replaySearchFlags{},
+		Action:     &replaySearchFlags{ServerAddress: defaultMasterAddress},
 	})
 }
 
-type replaySearchFlags struct{}
+type replaySearchFlags struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *replaySearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		replays := replay.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout

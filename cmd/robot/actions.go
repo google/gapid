@@ -25,48 +25,44 @@ import (
 )
 
 var (
-	startVerb = &app.Verb{
+	startVerb = app.AddVerb(&app.Verb{
 		Name:      "start",
 		ShortHelp: "Start a server",
-	}
-	searchVerb = &app.Verb{
+	})
+	searchVerb = app.AddVerb(&app.Verb{
 		Name:      "search",
 		ShortHelp: "Search for content in the server",
-	}
-	uploadVerb = &app.Verb{
+	})
+	uploadVerb = app.AddVerb(&app.Verb{
 		Name:      "upload",
 		ShortHelp: "Upload a file to a server",
-	}
-	setVerb = &app.Verb{
+	})
+	setVerb = app.AddVerb(&app.Verb{
 		Name:      "set",
 		ShortHelp: "Sets a value in a server",
-	}
+	})
 )
 
 func init() {
-	app.AddVerb(startVerb)
-	app.AddVerb(searchVerb)
-	app.AddVerb(uploadVerb)
-	app.AddVerb(setVerb)
-
 	app.AddVerb(&app.Verb{
 		Name:      "stop",
 		ShortHelp: "Stop a server",
-		Action:    &stopVerb{},
+		Action:    &stopVerb{ServerAddress: defaultMasterAddress},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "restart",
 		ShortHelp: "Restart a server",
-		Action:    &restartVerb{},
+		Action:    &restartVerb{ServerAddress: defaultMasterAddress},
 	})
 }
 
 type stopVerb struct {
-	Now bool `help:"Immediate shutdown"`
+	ServerAddress string `help:"The master server address"`
+	Now           bool   `help:"Immediate shutdown"`
 }
 
 func (v *stopVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		if v.Now {
 			return client.Kill(ctx, flags.Args()...)
@@ -76,10 +72,11 @@ func (v *stopVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 type restartVerb struct {
+	ServerAddress string `help:"The master server address"`
 }
 
 func (v *restartVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		client := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		return client.Restart(ctx, flags.Args()...)
 	}, grpc.WithInsecure())

@@ -37,47 +37,48 @@ func init() {
 		Name:       "build",
 		ShortHelp:  "Upload a build to the server",
 		ShortUsage: "<filenames>",
-		Action:     &buildUploadVerb{},
+		Action:     &buildUploadVerb{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
 		ShortHelp:  "List build artifacts in the server",
 		ShortUsage: "<query>",
-		Action:     &artifactSearchVerb{},
+		Action:     &artifactSearchVerb{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "package",
 		ShortHelp:  "List build packages in the server",
 		ShortUsage: "<query>",
-		Action:     &packageSearchVerb{},
+		Action:     &packageSearchVerb{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "List build tracks in the server",
 		ShortUsage: "<query>",
-		Action:     &trackSearchVerb{},
+		Action:     &trackSearchVerb{ServerAddress: defaultMasterAddress},
 	})
 	setVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "Sets values on a track",
 		ShortUsage: "<id or name>",
-		Action:     &trackUpdateVerb{},
+		Action:     &trackUpdateVerb{ServerAddress: defaultMasterAddress},
 	})
 }
 
 type buildUploadVerb struct {
-	CL          string `help:"The build CL, will be guessed if not set"`
-	Description string `help:"An optional build description"`
-	Tag         string `help:"The optional build tag"`
-	Branch      string `help:"The build branch, will be guessed if not set"`
-	Uploader    string `help:"The uploading entity, will be guessed if not set"`
+	CL            string `help:"The build CL, will be guessed if not set"`
+	Description   string `help:"An optional build description"`
+	Tag           string `help:"The optional build tag"`
+	Branch        string `help:"The build branch, will be guessed if not set"`
+	Uploader      string `help:"The uploading entity, will be guessed if not set"`
+	ServerAddress string `help:"The master server address"`
 
 	store build.Store
 	info  *build.Information
 }
 
 func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v)
+	return upload(ctx, flags, v.ServerAddress, v)
 }
 
 func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
@@ -153,10 +154,12 @@ func (v *buildUploadVerb) process(ctx context.Context, id string) error {
 	return nil
 }
 
-type artifactSearchVerb struct{}
+type artifactSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *artifactSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
@@ -171,10 +174,12 @@ func (v *artifactSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	}, grpc.WithInsecure())
 }
 
-type packageSearchVerb struct{}
+type packageSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *packageSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
@@ -189,10 +194,12 @@ func (v *packageSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-type trackSearchVerb struct{}
+type trackSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *trackSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
@@ -210,13 +217,14 @@ func (v *trackSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 var idOrName = script.MustParse("Id == $ or Name == $").Using("$")
 
 type trackUpdateVerb struct {
-	Name        string `help:"The new name for the track"`
-	Description string `help:"A description of the track"`
-	Pkg         string `help:"The id of the package at the head of the track"`
+	Name          string `help:"The new name for the track"`
+	Description   string `help:"A description of the track"`
+	Pkg           string `help:"The id of the package at the head of the track"`
+	ServerAddress string `help:"The master server address"`
 }
 
 func (v *trackUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		b := build.NewRemote(ctx, conn)
 		args := flags.Args()
 		track := &build.Track{

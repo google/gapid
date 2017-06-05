@@ -34,14 +34,16 @@ func init() {
 		Name:       "report",
 		ShortHelp:  "List build reports in the server",
 		ShortUsage: "<query>",
-		Action:     &reportSearchFlags{},
+		Action:     &reportSearchFlags{ServerAddress: defaultMasterAddress},
 	})
 }
 
-type reportSearchFlags struct{}
+type reportSearchFlags struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *reportSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		reports := report.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
