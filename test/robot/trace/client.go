@@ -144,7 +144,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 
 	traceTime, err := ptypes.Duration(in.GetHints().GetTraceTime())
 	if err != nil {
-		traceTime = 10 * time.Second // TODO: support Robot-wide override
+		traceTime = time.Minute // TODO: support Robot-wide override
 	}
 
 	defer func() {
