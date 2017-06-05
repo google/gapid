@@ -7552,10 +7552,40 @@ sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
   for _ , _ , v in LastDrawInfo.Framebuffer.ImageAttachments {
     v.Image.LastBoundQueue = LastBoundQueue
   }
+  subpass := LastDrawInfo.RenderPass.SubpassDescriptions[0]
+  for _, _, a in subpass.InputAttachments {
+    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+  }
+  for _, _, a in subpass.ColorAttachments {
+    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+  }
+  for _, _, a in subpass.ResolveAttachments {
+    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+  }
+  if subpass.DepthStencilAttachment != null {
+    dsRef := subpass.DepthStencilAttachment
+    LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+  }
 }
 
 sub void doCmdNextSubpass(u32 Unused) {
   LastDrawInfo.LastSubpass += 1
+  if LastDrawInfo.LastSubpass < len(LastDrawInfo.RenderPass.SubpassDescriptions) {
+  subpass := LastDrawInfo.RenderPass.SubpassDescriptions[LastDrawInfo.LastSubpass]
+    for _, _, a in subpass.InputAttachments {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    for _, _, a in subpass.ColorAttachments {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    for _, _, a in subpass.ResolveAttachments {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    if subpass.DepthStencilAttachment != null {
+      dsRef := subpass.DepthStencilAttachment
+      LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+    }
+  }
 }
 
 @internal class
