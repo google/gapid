@@ -487,3 +487,20 @@ func Underlying(ty Type) Type {
 		}
 	}
 }
+
+// TypeOf returns the resolved semantic type of the Type, Field or Expression.
+func TypeOf(v Node) (Type, error) {
+	if v == nil {
+		return VoidType, nil
+	}
+	switch e := v.(type) {
+	case Type:
+		return e, nil
+	case *Field:
+		return e.Type, nil
+	case Expression:
+		return e.ExpressionType(), nil
+	default:
+		return nil, fmt.Errorf("Type \"%T\" is not an expression", v)
+	}
+}

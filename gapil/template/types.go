@@ -150,20 +150,8 @@ func initNodeTypes(f *Functions) {
 }
 
 // Returns the resolved semantic type of an expression node.
-func (*Functions) TypeOf(v interface{}) (semantic.Type, error) {
-	if v == nil {
-		return semantic.VoidType, nil
-	}
-	switch e := v.(type) {
-	case semantic.Type:
-		return e, nil
-	case *semantic.Field:
-		return e.Type, nil
-	case semantic.Expression:
-		return e.ExpressionType(), nil
-	default:
-		return nil, fmt.Errorf("Type \"%T\" is not an expression", v)
-	}
+func (*Functions) TypeOf(v semantic.Node) (semantic.Type, error) {
+	return semantic.TypeOf(v)
 }
 
 // Returns true if v is one of the primitive numeric value types.
