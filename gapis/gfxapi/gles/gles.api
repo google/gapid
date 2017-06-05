@@ -64,9 +64,9 @@ sub void supportsBits(GLbitfield seenBits, GLbitfield validBits) {
   if (seenBits & validBits) != seenBits { glErrorInvalidValue() }
 }
 
-sub void requiresExtension(ExtensionId ext) { }
-sub void requiresExtension2(ExtensionId ext, ExtensionId ext2) { }
-sub void requiresExtension3(ExtensionId ext, ExtensionId ext2, ExtensionId ext3) { }
+sub void requiresExtension(DeclaringApi ext) { }
+sub void requiresExtension2(DeclaringApi ext, DeclaringApi ext2) { }
+sub void requiresExtension3(DeclaringApi ext, DeclaringApi ext2, DeclaringApi ext3) { }
 sub void glErrorInvalidEnum(GLenum param) {
   onGlError(GL_INVALID_ENUM)
   // TODO: be more specific in callers
@@ -103,7 +103,13 @@ sub T max!T(T a, T b) {
   }
 }
 
-enum ExtensionId {
+enum DeclaringApi {
+  GLES10 = 1010,
+  GLES20 = 1020,
+  GLES30 = 1030,
+  GLES31 = 1031,
+  GLES32 = 1032,
+
   GL_AMD_compressed_ATC_texture                   = 1,
   GL_AMD_performance_monitor                      = 2,
   GL_ANGLE_framebuffer_blit                       = 3,

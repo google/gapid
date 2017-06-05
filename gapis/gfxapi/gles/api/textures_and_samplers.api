@@ -489,10 +489,10 @@ sub void UpdateImageData(ref!Image      dst_image,
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glActiveTexture.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glActiveTexture.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glActiveTexture.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glActiveTexture.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glActiveTexture.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glActiveTexture.xhtml", GLES32)
 cmd void glActiveTexture(GLenum unit) {
   minRequiredVersion(1, 0)
   // TODO: Tidy this. This switch case is preserved for the snippet system.
@@ -514,8 +514,8 @@ cmd void glActiveTexture(GLenum unit) {
   ctx.ActiveTextureUnit = unit
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindImageTexture.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindImageTexture.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindImageTexture.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindImageTexture.xhtml", GLES32)
 cmd void glBindImageTexture(GLuint    unit,
                             TextureId texture,
                             GLint     level,
@@ -552,9 +552,9 @@ cmd void glBindImageTexture(GLuint    unit,
   )
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindSampler.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindSampler.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindSampler.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindSampler.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml", GLES32)
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   minRequiredVersion(3, 0)
   ctx := GetContext()
@@ -562,10 +562,10 @@ cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx.TextureUnits[unit].SamplerBinding = sampler
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml", GLES32)
 cmd void glBindTexture(GLenum target, TextureId texture) {
   minRequiredVersion(1, 0)
   ctx := GetContext()
@@ -638,10 +638,10 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage2D.xhtml", GLES32)
 cmd void glCompressedTexImage2D(GLenum         target,
                                 GLint          level,
                                 GLenum         internalformat,
@@ -657,9 +657,9 @@ cmd void glCompressedTexImage2D(GLenum         target,
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage3D.xhtml", GLES32)
 cmd void glCompressedTexImage3D(GLenum         target,
                                 GLint          level,
                                 GLenum         internalformat,
@@ -680,10 +680,10 @@ sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat,
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexSubImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexSubImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage2D.xhtml", GLES32)
 cmd void glCompressedTexSubImage2D(GLenum         target,
                                    GLint          level,
                                    GLint          xoffset,
@@ -700,9 +700,9 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage3D.xhtml", GLES32)
 cmd void glCompressedTexSubImage3D(GLenum         target,
                                    GLint          level,
                                    GLint          xoffset,
@@ -725,7 +725,7 @@ sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLin
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml", GLES32)
 cmd void glCopyImageSubData(SrcImageId srcName,
                             GLenum     srcTarget,
                             GLint      srcLevel,
@@ -782,10 +782,10 @@ sub void CopyImageSubData(SrcImageId  srcName, GLenum srcTarget, GLint srcLevel,
   _ = srcDepth // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexImage2D.xhtml", GLES32)
 cmd void glCopyTexImage2D(GLenum  target,
                           GLint   level,
                           GLenum  internalformat,
@@ -801,10 +801,10 @@ cmd void glCopyTexImage2D(GLenum  target,
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexSubImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexSubImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage2D.xhtml", GLES32)
 cmd void glCopyTexSubImage2D(GLenum  target,
                              GLint   level,
                              GLint   xoffset,
@@ -820,9 +820,9 @@ cmd void glCopyTexSubImage2D(GLenum  target,
            GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage3D.xhtml", GLES32)
 cmd void glCopyTexSubImage3D(GLenum  target,
                              GLint   level,
                              GLint   xoffset,
@@ -845,9 +845,9 @@ sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoff
   _ = y // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSamplers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSamplers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml", GLES32)
 cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
   minRequiredVersion(3, 0)
 
@@ -861,10 +861,10 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteTextures.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteTextures.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteTextures.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteTextures.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   minRequiredVersion(1, 0)
 
@@ -880,9 +880,9 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenSamplers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenSamplers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml", GLES32)
 cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   minRequiredVersion(3, 0)
 
@@ -895,10 +895,10 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenTextures.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenTextures.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenTextures.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenTextures.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml", GLES32)
 cmd void glGenTextures(GLsizei count, TextureId* textures) {
   minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -912,10 +912,10 @@ cmd void glGenTextures(GLsizei count, TextureId* textures) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenerateMipmap.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenerateMipmap.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenerateMipmap.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenerateMipmap.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenerateMipmap.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenerateMipmap.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenerateMipmap.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenerateMipmap.xhtml", GLES32)
 cmd void glGenerateMipmap(GLenum target) {
   minRequiredVersion(2, 0)
   switch (target) {
@@ -967,7 +967,7 @@ sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", GLES32)
 cmd void glGetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) {
   minRequiredVersion(3, 2)
   GetSamplerParameterIiv(sampler, pname, params)
@@ -977,7 +977,7 @@ sub void GetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) 
   GetSamplerParameterv!GLint(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", GLES32)
 cmd void glGetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params) {
   minRequiredVersion(3, 2)
   GetSamplerParameterIuiv(sampler, pname, params)
@@ -987,24 +987,24 @@ sub void GetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params
   GetSamplerParameterv!GLuint(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", GLES32)
 cmd void glGetSamplerParameterfv(SamplerId sampler, GLenum pname, GLfloat* params) {
   minRequiredVersion(3, 0)
   GetSamplerParameterv!GLfloat(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", GLES32)
 cmd void glGetSamplerParameteriv(SamplerId sampler, GLenum pname, GLint* params) {
   minRequiredVersion(3, 0)
   GetSamplerParameterv!GLint(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml", GLES32)
 cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfloat* params) {
   minRequiredVersion(3, 1)
   switch (target) {
@@ -1040,8 +1040,8 @@ cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfl
   params[0] = ?
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml", GLES32)
 cmd void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint* params) {
   minRequiredVersion(3, 1)
   switch (target) {
@@ -1193,7 +1193,7 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", GLES32)
 cmd void glGetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
   minRequiredVersion(3, 2)
   GetTexParameterIiv(target, pname, params)
@@ -1203,7 +1203,7 @@ sub void GetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
   GetTexParameter!GLint(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", GLES32)
 cmd void glGetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
   minRequiredVersion(3, 2)
   GetTexParameterIuiv(target, pname, params)
@@ -1213,27 +1213,27 @@ sub void GetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
   GetTexParameter!GLuint(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", GLES32)
 cmd void glGetTexParameterfv(GLenum target, GLenum parameter, GLfloat* values) {
   minRequiredVersion(1, 0)
   GetTexParameter!GLfloat(target, parameter, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", GLES32)
 cmd void glGetTexParameteriv(GLenum target, GLenum parameter, GLint* values) {
   minRequiredVersion(1, 0)
   GetTexParameter!GLint(target, parameter, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSampler.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSampler.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSampler.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSampler.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSampler.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSampler.xhtml", GLES32)
 cmd GLboolean glIsSampler(SamplerId sampler) {
   minRequiredVersion(3, 0)
 
@@ -1241,10 +1241,10 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
   return as!GLboolean(sampler in ctx.SharedObjects.Samplers)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsTexture.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsTexture.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsTexture.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTexture.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsTexture.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsTexture.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsTexture.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTexture.xhtml", GLES32)
 cmd GLboolean glIsTexture(TextureId texture) {
   minRequiredVersion(1, 0)
 
@@ -1252,10 +1252,10 @@ cmd GLboolean glIsTexture(TextureId texture) {
   return as!GLboolean(texture in ctx.SharedObjects.Textures)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPixelStorei.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPixelStorei.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPixelStorei.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPixelStorei.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPixelStorei.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPixelStorei.xhtml", GLES32)
 cmd void glPixelStorei(GLenum parameter, GLint value) {
   minRequiredVersion(1, 0)
   if value < 0 { glErrorInvalidValue() }
@@ -1347,7 +1347,7 @@ sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param) {
   minRequiredVersion(3, 2)
   SamplerParameterIiv(sampler, pname, param)
@@ -1357,7 +1357,7 @@ sub void SamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param
   SamplerParameterv!(const GLint*)(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* param) {
   minRequiredVersion(3, 2)
   SamplerParameterIuiv(sampler, pname, param)
@@ -1367,41 +1367,41 @@ sub void SamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* par
   SamplerParameterv!(const GLuint*)(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameterf(SamplerId sampler, GLenum pname, GLfloat param) {
   minRequiredVersion(3, 0)
   params := Vec1f(param)
   SamplerParameterv!Vec1f(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameterfv(SamplerId sampler, GLenum pname, const GLfloat* param) {
   minRequiredVersion(3, 0)
   SamplerParameterv!(const GLfloat*)(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameteri(SamplerId sampler, GLenum pname, GLint param) {
   minRequiredVersion(3, 0)
   params := Vec1i(param)
   SamplerParameterv!Vec1i(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", GLES32)
 cmd void glSamplerParameteriv(SamplerId sampler, GLenum pname, const GLint* param) {
   minRequiredVersion(3, 0)
   SamplerParameterv!(const GLint*)(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBuffer.xhtml", GLES32)
 cmd void glTexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
   minRequiredVersion(3, 2)
   TexBuffer(target, internalformat, buffer)
@@ -1430,7 +1430,7 @@ sub void TexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
   _ = buffer // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBufferRange.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBufferRange.xhtml", GLES32)
 cmd void glTexBufferRange(GLenum     target,
                           GLenum     internalformat,
                           BufferId   buffer,
@@ -1465,10 +1465,10 @@ sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, G
   _ = size // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage2D.xhtml", GLES32)
 cmd void glTexImage2D(GLenum         target,
                       GLint          level,
                       GLint          internalformat,
@@ -1485,9 +1485,9 @@ cmd void glTexImage2D(GLenum         target,
            as!GLenum(internalformat), format, type, 0, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage3D.xhtml", GLES32)
 cmd void glTexImage3D(GLenum         target,
                       GLint          level,
                       GLint          internalformat,
@@ -1647,7 +1647,7 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
   minRequiredVersion(3, 2)
   TexParameterIiv(target, pname, params)
@@ -1657,7 +1657,7 @@ sub void TexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
   TexParameterv!(const GLint*)(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
   minRequiredVersion(3, 2)
   TexParameterIuiv(target, pname, params)
@@ -1667,10 +1667,10 @@ sub void TexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
   TexParameterv!(const GLuint*)(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameterf(GLenum target, GLenum parameter, GLfloat value) {
   minRequiredVersion(1, 0)
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
@@ -1678,19 +1678,19 @@ cmd void glTexParameterf(GLenum target, GLenum parameter, GLfloat value) {
   TexParameterv!Vec1f(target, parameter, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameterfv(GLenum target, GLenum pname, const GLfloat* params) {
   minRequiredVersion(1, 0)
   TexParameterv!(const GLfloat*)(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameteri(GLenum target, GLenum parameter, GLint value) {
   minRequiredVersion(1, 0)
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
@@ -1698,18 +1698,18 @@ cmd void glTexParameteri(GLenum target, GLenum parameter, GLint value) {
   TexParameterv!Vec1i(target, parameter, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", GLES32)
 cmd void glTexParameteriv(GLenum target, GLenum pname, const GLint* params) {
   minRequiredVersion(1, 0)
   TexParameterv!(const GLint*)(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2D.xhtml", GLES32)
 cmd void glTexStorage2D(GLenum  target,
                         GLsizei levels,
                         GLenum  internalformat,
@@ -1730,8 +1730,8 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2DMultisample.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2DMultisample.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2DMultisample.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2DMultisample.xhtml", GLES32)
 cmd void glTexStorage2DMultisample(GLenum    target,
                                    GLsizei   samples,
                                    GLenum    internalformat,
@@ -1747,9 +1747,9 @@ cmd void glTexStorage2DMultisample(GLenum    target,
   _ = fixedsamplelocations // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3D.xhtml", GLES32)
 cmd void glTexStorage3D(GLenum  target,
                         GLsizei levels,
                         GLenum  internalformat,
@@ -1767,7 +1767,7 @@ sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3DMultisample.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3DMultisample.xhtml", GLES32)
 cmd void glTexStorage3DMultisample(GLenum    target,
                                    GLsizei   samples,
                                    GLenum    internalformat,
@@ -1788,10 +1788,10 @@ sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internal
   _ = fixedsamplelocations // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexSubImage2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexSubImage2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage2D.xhtml", GLES32)
 cmd void glTexSubImage2D(GLenum         target,
                          GLint          level,
                          GLint          xoffset,
@@ -1808,9 +1808,9 @@ cmd void glTexSubImage2D(GLenum         target,
            GL_NONE, format, type, 0, data) // Format&data
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage3D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage3D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage3D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage3D.xhtml", GLES32)
 cmd void glTexSubImage3D(GLenum         target,
                          GLint          level,
                          GLint          xoffset,
