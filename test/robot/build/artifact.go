@@ -81,29 +81,36 @@ func (a *artifacts) search(ctx context.Context, query *search.Query, handler Art
 }
 
 var toolPatterns = []*ToolSet{{
-	Abi:      device.AndroidARMv7a,
-	GapidApk: "android/armeabi-v7a/gapid.apk",
+	Abi:                 device.AndroidARMv7a,
+	GapidApk:            "android/armeabi-v7a/gapid.apk",
+	VirtualSwapChainLib: "android/armeabi-v7a/libVkLayer_VirtualSwapchain.so",
 }, {
-	Abi:      device.AndroidARM64v8a,
-	GapidApk: "android/arm64-v8a/gapid.apk",
+	Abi:                 device.AndroidARM64v8a,
+	GapidApk:            "android/arm64-v8a/gapid.apk",
+	VirtualSwapChainLib: "android/arm64-v8a/libVkLayer_VirtualSwapchain.so",
 }, {
-	Abi:      device.AndroidX86_64,
-	GapidApk: "android/x86/gapid.apk",
+	Abi:                 device.AndroidX86_64,
+	GapidApk:            "android/x86/gapid.apk",
+	VirtualSwapChainLib: "android/x86/libVkLayer_VirtualSwapchain.so",
 }, {
-	Abi:   device.LinuxX86_64,
-	Gapir: "linux/x86_64/gapir",
-	Gapis: "linux/x86_64/gapis",
-	Gapit: "linux/x86_64/gapit",
+	Abi:                  device.LinuxX86_64,
+	Gapir:                "linux/x86_64/gapir",
+	Gapis:                "linux/x86_64/gapis",
+	Gapit:                "linux/x86_64/gapit",
+	VirtualSwapChainLib:  "linux/x86_64/libVkLayer_VirtualSwapchain.so",
+	VirtualSwapChainJson: "linux/x86_64/VirtualSwapchainLayer.json",
 }, {
 	Abi:   device.OSXX86_64,
 	Gapir: "osx/x86_64/gapir",
 	Gapis: "osx/x86_64/gapis",
 	Gapit: "osx/x86_64/gapit",
 }, {
-	Abi:   device.WindowsX86_64,
-	Gapir: "windows/x86_64/gapir",
-	Gapis: "windows/x86_64/gapis",
-	Gapit: "windows/x86_64/gapit",
+	Abi:                  device.WindowsX86_64,
+	Gapir:                "windows/x86_64/gapir",
+	Gapis:                "windows/x86_64/gapis",
+	Gapit:                "windows/x86_64/gapit",
+	VirtualSwapChainLib:  "windows/x86_64/libVkLayer_VirtualSwapchain.so",
+	VirtualSwapChainJson: "windows/x86_64/VirtualSwapchainLayer.json",
 }}
 
 type zipEntry struct {
@@ -173,7 +180,9 @@ func toolIsEmpty(t *ToolSet) bool {
 		t.Gapii == "" &&
 		t.Gapir == "" &&
 		t.Gapis == "" &&
-		t.Gapit == ""
+		t.Gapit == "" &&
+		t.VirtualSwapChainLib == "" &&
+		t.VirtualSwapChainJson == ""
 }
 
 func (a *artifacts) matchTool(ctx context.Context, z *zipEntry, pattern string, target *string) {
@@ -193,6 +202,8 @@ func (a *artifacts) matchTools(ctx context.Context, z *zipEntry, pattern *ToolSe
 	a.matchTool(ctx, z, pattern.Gapis, &target.Gapis)
 	a.matchTool(ctx, z, pattern.Gapit, &target.Gapit)
 	a.matchTool(ctx, z, pattern.GapidApk, &target.GapidApk)
+	a.matchTool(ctx, z, pattern.VirtualSwapChainLib, &target.VirtualSwapChainLib)
+	a.matchTool(ctx, z, pattern.VirtualSwapChainJson, &target.VirtualSwapChainJson)
 }
 
 func (a *artifacts) get(ctx context.Context, id string) (*Artifact, error) {
