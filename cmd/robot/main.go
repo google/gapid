@@ -15,18 +15,10 @@
 package main
 
 import (
-	"flag"
-
 	"github.com/google/gapid/core/app"
 	_ "github.com/google/gapid/test/robot/stash/grpc"
 	_ "github.com/google/gapid/test/robot/stash/local"
 )
-
-var serverAddress = "localhost:8081"
-
-func init() {
-	flag.StringVar(&serverAddress, "server", serverAddress, "The address of the server")
-}
 
 func main() {
 	app.ShortHelp = "Robot is a command line tool for interacting with gapid automatic test servers."

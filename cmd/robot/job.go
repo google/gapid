@@ -42,25 +42,27 @@ func init() {
 		Name:       "device",
 		ShortHelp:  "List the devices",
 		ShortUsage: "<query>",
-		Action:     &deviceSearchFlags{},
+		Action:     &deviceSearchFlags{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "worker",
 		ShortHelp:  "List the workers",
 		ShortUsage: "<query>",
-		Action:     &workerSearchFlags{},
+		Action:     &workerSearchFlags{ServerAddress: defaultMasterAddress},
 	})
 	startVerb.Add(&app.Verb{
 		Name:      "worker",
 		ShortHelp: "Starts a robot worker",
-		Action:    &workerStartFlags{},
+		Action:    &workerStartFlags{ServerAddress: defaultMasterAddress},
 	})
 }
 
-type deviceSearchFlags struct{}
+type deviceSearchFlags struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *deviceSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
@@ -75,10 +77,12 @@ func (v *deviceSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-type workerSearchFlags struct{}
+type workerSearchFlags struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *workerSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		w := job.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
@@ -93,7 +97,9 @@ func (v *workerSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	}, grpc.WithInsecure())
 }
 
-type workerStartFlags struct{}
+type workerStartFlags struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 	tempName, err := ioutil.TempDir("", "robot")
@@ -101,7 +107,7 @@ func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 	tempDir := file.Abs(tempName)
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		m := master.NewClient(ctx, master.NewRemoteMaster(ctx, conn))
 		managers := monitor.Managers{
 			Stash:  stashgrpc.MustConnect(ctx, conn),

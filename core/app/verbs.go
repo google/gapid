@@ -103,8 +103,10 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 
 // AddVerb adds a new verb to the supported set, it will panic if a
 // duplicate name is encountered.
-func AddVerb(v *Verb) {
+// v is returned so the function can be used in a fluent-style.
+func AddVerb(v *Verb) *Verb {
 	globalVerbs.Add(v)
+	return v
 }
 
 // FilterVerbs returns the filtered list of verbs who's names match the specified

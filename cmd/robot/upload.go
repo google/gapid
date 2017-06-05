@@ -31,7 +31,7 @@ type uploader interface {
 	process(context.Context, string) error
 }
 
-func upload(ctx context.Context, flags flag.FlagSet, u uploader) error {
+func upload(ctx context.Context, flags flag.FlagSet, serverAddress string, u uploader) error {
 	if flags.NArg() == 0 {
 		app.Usage(ctx, "No files given")
 		return nil

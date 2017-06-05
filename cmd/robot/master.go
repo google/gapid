@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -42,17 +43,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type masterVerb struct {
-	BaseAddr     file.Path `help:"The base path for all robot files"`
-	StashAddr    string    `help:"The address of the stash, defaults to a directory below base"`
-	ShelfAddr    string    `help:"The path to the persisted data, defaults to a directory below base"`
-	StartWorkers bool      `help:"Enables local workers"`
-	StartWeb     bool      `help:"Enables serving the web client"`
-	Port         int       `help:"The port to serve the website on"`
-	Root         file.Path `help:"The directory to use as the root of static content"`
-}
+const defaultMasterPort = 8081
 
-type masterSearchVerb struct{}
+var defaultMasterAddress = fmt.Sprintf("localhost:%v", defaultMasterPort)
 
 func init() {
 	startVerb.Add(&app.Verb{
@@ -62,17 +55,29 @@ func init() {
 			BaseAddr:     file.Abs("."),
 			StashAddr:    "",
 			ShelfAddr:    "",
+			Port:         defaultMasterPort,
 			StartWorkers: true,
 			StartWeb:     true,
-			Port:         8081,
+			WebPort:      8080,
 		},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "master",
 		ShortHelp:  "List satellites registered with the master",
 		ShortUsage: "<query>",
-		Action:     &masterSearchVerb{},
+		Action:     &masterSearchVerb{ServerAddress: defaultMasterAddress},
 	})
+}
+
+type masterVerb struct {
+	BaseAddr     file.Path `help:"The base path for all robot files"`
+	StashAddr    string    `help:"The address of the stash, defaults to a directory below base"`
+	ShelfAddr    string    `help:"The path to the persisted data, defaults to a directory below base"`
+	Port         int       `help:"The port to serve the master on"`
+	StartWorkers bool      `help:"Enables local workers"`
+	StartWeb     bool      `help:"Enables serving the web client"`
+	WebPort      int       `help:"The port to serve the website on"`
+	Root         file.Path `help:"The directory to use as the root of static content"`
 }
 
 func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -82,6 +87,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	tempDir := file.Abs(tempName)
 	restart := false
+	serverAddress := fmt.Sprintf("localhost:%v", v.Port)
 	err = grpcutil.Serve(ctx, serverAddress, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		managers := monitor.Managers{}
 		err := error(nil)
@@ -135,7 +141,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 		if v.StartWeb {
 			config := web.Config{
-				Port:       v.Port,
+				Port:       v.WebPort,
 				StaticRoot: v.Root,
 				Managers:   managers,
 			}
@@ -204,8 +210,12 @@ func serveAll(ctx context.Context, server *grpc.Server, managers monitor.Manager
 	return nil
 }
 
+type masterSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
+
 func (v *masterSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		m := master.NewRemoteMaster(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		expr, err := script.Parse(ctx, expression)

@@ -36,23 +36,24 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Action:     &subjectUploadVerb{},
+		Action:     &subjectUploadVerb{ServerAddress: defaultMasterAddress},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
 		ShortHelp:  "List traceable applications in the server",
 		ShortUsage: "<query>",
-		Action:     &subjectSearchVerb{},
+		Action:     &subjectSearchVerb{ServerAddress: defaultMasterAddress},
 	})
 }
 
 type subjectUploadVerb struct {
-	TraceTime time.Duration `help:"trace time override (if non-zero)"`
-	subjects  subject.Subjects
+	TraceTime     time.Duration `help:"trace time override (if non-zero)"`
+	ServerAddress string        `help:"The master server address"`
+	subjects      subject.Subjects
 }
 
 func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v)
+	return upload(ctx, flags, v.ServerAddress, v)
 }
 func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	v.subjects = subject.NewRemote(ctx, conn)
@@ -77,10 +78,12 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 	return nil
 }
 
-type subjectSearchVerb struct{}
+type subjectSearchVerb struct {
+	ServerAddress string `help:"The master server address"`
+}
 
 func (v *subjectSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return grpcutil.Client(ctx, serverAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
 		subjects := subject.NewRemote(ctx, conn)
 		expression := strings.Join(flags.Args(), " ")
 		out := os.Stdout
