@@ -44,7 +44,7 @@ func layout(ctx context.Context) (out FileLayout) {
 		//  ├─── build.properties
 		//  ├─── strings
 		//  │     └─── en-us.stb
-		//  ├─── gapid-<abi>.ak
+		//  ├─── gapid-<abi>.apk
 		//  ├─── gapir
 		//  ├─── gapis
 		//  ├─── gapit
@@ -69,6 +69,11 @@ func layout(ctx context.Context) (out FileLayout) {
 			if dir.Join(abiDirName).Exists() {
 				return binLayout{dir}
 			}
+		}
+		// We're possibly dealing with a sparse-build, as used by robot.
+		// gapis always has to exist.
+		if _, err := file.FindExecutable(dir.Join("gapis").System()); err == nil {
+			return binLayout{dir}
 		}
 	}
 	return unknownLayout{}
