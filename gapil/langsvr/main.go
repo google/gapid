@@ -579,6 +579,9 @@ func findAPIs(root string) []string {
 func possibleValues(da *docAnalysis, pos ls.Position) (analysis.Value, *analysis.Results) {
 	for _, n := range da.walkUp(da.doc.Body().Offset(pos)) {
 		for _, root := range da.full.roots {
+			if root.results == nil {
+				continue
+			}
 			switch sem := n.sem.(type) {
 			case *semantic.Global:
 				if val, ok := root.results.Globals[sem]; ok {
