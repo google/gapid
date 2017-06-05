@@ -168,8 +168,10 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
   }
 
   // Create the buffer if need (after checking whether the enum is valid)
-  if !(buffer in ctx.SharedObjects.Buffers) {
-    ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+  if buffer != 0 {
+    if !(buffer in ctx.SharedObjects.Buffers) {
+      ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+    }
   }
 }
 
@@ -236,8 +238,10 @@ sub void BindBufferRange(GLenum     target,
   }
 
   // Create the buffer if need (after checking whether the enum is valid)
-  if !(buffer in ctx.SharedObjects.Buffers) {
-    ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+  if buffer != 0 {
+    if !(buffer in ctx.SharedObjects.Buffers) {
+      ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+    }
   }
 }
 
