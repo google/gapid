@@ -102,10 +102,6 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		}
 	}
 
-	if err := store.GetFile(ctx, in.Trace, tracefile); err != nil {
-		return nil, err
-	}
-
 	params := []string{
 		"video",
 		"-out", videofile.System(),
