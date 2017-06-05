@@ -18,7 +18,7 @@ class AndroidNativeBufferExtra {
   u32                                 Width
   u32                                 Height
   @unused u32                         Stride
-  @unused AndroidGraphicsBufferFormat Format
+  AndroidGraphicsBufferFormat         Format
   @unused AndroidGraphicsBufferUsage  Usage
 }
 

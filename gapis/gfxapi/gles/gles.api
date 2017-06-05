@@ -379,7 +379,7 @@ class BufferBindings {
 
 @internal
 class Context {
-  @unused ContextID                                     Identifier
+  ContextID                                             Identifier
   ContextCreationInfo                                   Info
   DebugState                                            Debug
   RasterizationState                                    Rasterization

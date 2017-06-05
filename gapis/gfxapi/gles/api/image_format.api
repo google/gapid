@@ -14,12 +14,12 @@
 
 @internal
 class UnsizedFormatInfo {
-  u32    Count
-  GLenum Channel0
-  GLenum Channel1
-  GLenum Channel2
-  GLenum Channel3
-  bool   Integer
+  u32            Count
+  @unused GLenum Channel0
+  @unused GLenum Channel1
+  @unused GLenum Channel2
+  @unused GLenum Channel3
+  @unused bool   Integer
 }
 
 sub UnsizedFormatInfo GetUnsizedFormatInfo(GLenum uf) {
@@ -79,7 +79,7 @@ sub UnsizedFormatInfo GetUnsizedFormatInfo(GLenum uf) {
 class SizedFormatInfo {
   // "Internal format" with explicit memory size. Includes compressed formats.
   // (RGB565, RGBA8, R16UI, DEPTH24_STENCIL8, COMPRESSED_SRGB8_ETC2, ...)
-  GLenum SizedFormat
+  @unused GLenum SizedFormat
 
   // "Base format" which specifies just the channels. Includes the _INTEGER suffix.
   // This must be just the {R,G,B,A,D,S,INTEGER} part of the sized format above.
@@ -97,13 +97,13 @@ class SizedFormatInfo {
   // will generally contain sRGB content even if this flag is off.
   // Thus, this flag just allows sRGB conscious developer to save a few
   // fragment shader instructions by doing the conversion in texture unit.
-  bool SRGB
+  @unused bool SRGB
 
   // Information about the compression algorithm
   CompressionAlgorithm Compression
-  u32                  BlockWidth
-  u32                  BlockHeight
-  u32                  BlockSize
+  @unused u32          BlockWidth
+  @unused u32          BlockHeight
+  @unused u32          BlockSize
 }
 
 @internal

@@ -30,7 +30,7 @@ class TextureUnit {
 @internal
 @resource
 class Texture {
-  @unused TextureId         ID
+  TextureId                 ID
   GLenum                    Kind
   map!(GLint, Level)        Levels
 
@@ -76,7 +76,7 @@ class Image {
   GLsizei        Height
   // GPU format of the texture including bit-sizes of the channels.
   // This is unrelated to the format of the data passed to the API.
-  GLenum         SizedFormat
+  @unused GLenum SizedFormat
 
   @internal u8[] Data
   // Tuple of (format, type) describing the Data field above.
@@ -230,6 +230,7 @@ sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum targ
   }
 }
 
+@ignore_unreachables
 sub GLenum GetTextureTargetFromSamplerType(GLenum samplerType) {
 	return switch (samplerType) {
 	case GL_INT_SAMPLER_2D, GL_SAMPLER_2D, GL_UNSIGNED_INT_SAMPLER_2D, GL_SAMPLER_2D_SHADOW:
@@ -263,6 +264,7 @@ sub SizedFormatInfo GetSizedFormatInfoOrEnumError(GLenum internalformat) {
   return info
 }
 
+@ignore_unreachables
 sub SizedFormatInfo GetSizedFormatInfoOrValueError(GLint internalformat) {
   info := GetSizedFormatInfo(as!GLenum(internalformat))
   if info.UnsizedFormat == GL_NONE {
