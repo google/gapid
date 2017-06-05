@@ -31,7 +31,7 @@ class Shader {
 @resource
 class Program {
   @unused ProgramId                       ID
-  map!(GLenum, ShaderId)                  Shaders
+  map!(GLenum, ref!Shader)                Shaders
   @unused GLboolean                       LinkStatus
   @unused string                          InfoLog
   @unused bool                            Precompiled
@@ -262,9 +262,9 @@ sub void checkProgram(ref!Context ctx, ProgramId program) {
   }
 }
 
-sub void reapShader(ref!Context ctx, ShaderId shaderId, ref!Shader shader) {
+sub void reapShader(ref!Context ctx, ref!Shader shader) {
   if (shader.DeleteStatus && shader.RefCount == 0) {
-    delete(ctx.SharedObjects.Shaders, shaderId)
+    delete(ctx.SharedObjects.Shaders, shader.ID)
   }
 }
 
@@ -272,10 +272,9 @@ sub void reapProgram(ref!Context ctx, ProgramId program) {
   if (program != 0) {
     p := ctx.SharedObjects.Programs[program]
     if (p.DeleteStatus) {
-      for _ , _ , v in p.Shaders {
-        s := ctx.SharedObjects.Shaders[v]
+      for _ , _ , s in p.Shaders {
         s.RefCount -= 1
-        reapShader(ctx, v, s)
+        reapShader(ctx, s)
       }
       delete(ctx.SharedObjects.Programs, program)
     }
@@ -323,7 +322,7 @@ cmd void glAttachShader(ProgramId program, ShaderId shader) {
   p := ctx.SharedObjects.Programs[program]
   s := ctx.SharedObjects.Shaders[shader]
   if s.Type in p.Shaders { glErrorInvalidOperation() } // shader already attached
-  p.Shaders[s.Type] = shader
+  p.Shaders[s.Type] = s
   s.RefCount += 1
 }
 
@@ -466,7 +465,7 @@ cmd void glDeleteShader(ShaderId shader) {
     if shader in ctx.SharedObjects.Shaders { // TODO: Remove once we have go aborts.
       s := ctx.SharedObjects.Shaders[shader]
       s.DeleteStatus = true
-      reapShader(ctx, shader, s)
+      reapShader(ctx, s)
     }
   }
 }
@@ -485,10 +484,10 @@ cmd void glDetachShader(ProgramId program, ShaderId shader) {
 
   s := ctx.SharedObjects.Shaders[shader]
   p := ctx.SharedObjects.Programs[program]
-  if (!(s.Type in p.Shaders)) || (p.Shaders[s.Type] != shader) { glErrorInvalidOperation() }
+  if (!(s.Type in p.Shaders)) || (p.Shaders[s.Type] != s) { glErrorInvalidOperation() }
   delete(p.Shaders, s.Type)
   s.RefCount -= 1
-  reapShader(ctx, shader, s)
+  reapShader(ctx, s)
 }
 
 @Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDispatchCompute.xhtml","OpenGL ES 3.1")
@@ -646,7 +645,7 @@ cmd void glGetAttachedShaders(ProgramId program,
   s := shaders[0:l]
   for i , _ , v in p.Shaders {
     if i < l {
-      s[i] = v
+      s[i] = v.ID
     }
   }
 }

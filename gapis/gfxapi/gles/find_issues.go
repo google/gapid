@@ -262,10 +262,10 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				if res != uint32(GLboolean_GL_TRUE) {
 					vss, fss := "<unknown>", "<unknown>"
 					if program := c.SharedObjects.Programs[a.Program]; program != nil {
-						if shader := c.SharedObjects.Shaders[program.Shaders[GLenum_GL_VERTEX_SHADER]]; shader != nil {
+						if shader := program.Shaders[GLenum_GL_VERTEX_SHADER]; shader != nil {
 							vss = shader.Source
 						}
-						if shader := c.SharedObjects.Shaders[program.Shaders[GLenum_GL_FRAGMENT_SHADER]]; shader != nil {
+						if shader := program.Shaders[GLenum_GL_FRAGMENT_SHADER]; shader != nil {
 							fss = shader.Source
 						}
 					}
