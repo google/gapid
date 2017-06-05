@@ -85,9 +85,15 @@ bool toggleVirtualSwapchainReturnAcquiredImage(Stack* stack);
 // side.
 bool replayGetFenceStatus(Stack* stack, bool pushReturn);
 
-// Builtin function for replaying vkGetEventStatus. This function makes sure
-// the replay will not proceed until the expected return code is returned from
-// vkGetEventStatus on replay end.
+// Builtin function for replaying vkGetEventStatus.  The traced return of
+// vkGetEventStatus can be used to block this function if and only if the
+// traced return matches with the global state mutation result.  For example:
+// Call vkQueueSubmit a queue with vkCmdSetEvent in the command buffer first,
+// then call vkGetEventStatus. In the trace, the return of vkGetEventStatus
+// might be 'unsignaled', but after the mutation of the state, the record in
+// the global state should be 'signaled'. In such a case, waiting for the
+// vkGetEventStatus returns 'unsignaled' on the replay may cause an infinite
+// long waiting.
 bool replayGetEventStatus(Stack* stack, bool pushReturn);
 
 // Builtin function for getting image memory requirement and allocating

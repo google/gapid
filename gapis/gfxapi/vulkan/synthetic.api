@@ -103,7 +103,8 @@ cmd VkResult replayGetFenceStatus(
 cmd VkResult replayGetEventStatus(
     VkDevice device,
     VkEvent  event,
-    VkResult expected) {
+    VkResult expected,
+    bool     wait) {
   return ?
 }
 

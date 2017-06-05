@@ -1039,7 +1039,17 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, s *gfxapi.State, b *build
 	if b == nil || err != nil {
 		return err
 	}
-	return NewReplayGetEventStatus(a.Device, a.Event, a.Result, a.Result).Mutate(ctx, s, b)
+	var wait bool
+	switch a.Result {
+	case VkResult_VK_EVENT_SET:
+		wait = GetState(s).Events.Get(a.Event).Signaled == true
+	case VkResult_VK_EVENT_RESET:
+		wait = GetState(s).Events.Get(a.Event).Signaled == false
+	default:
+		wait = false
+	}
+
+	return NewReplayGetEventStatus(a.Device, a.Event, a.Result, wait, a.Result).Mutate(ctx, s, b)
 }
 
 func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
