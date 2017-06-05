@@ -113,8 +113,11 @@ func toolFieldMerger(field string, entries []interface{}) enum {
 	// TODO(valbulescu): maybe parse into the actual protos instead of using JSON
 	result := enum{}
 	for _, it := range entries {
-		tool := (it.(map[string]interface{}))["tool"].([]interface{})
-		for _, t := range tool {
+		tool := (it.(map[string]interface{}))["tool"]
+		if tool == nil {
+			continue
+		}
+		for _, t := range tool.([]interface{}) {
 			fieldVal, ok := (t.(map[string]interface{}))[field]
 			if ok {
 				result = append(result, item{id: fieldVal.(string)})
