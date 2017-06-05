@@ -26,55 +26,55 @@ sub GLenum EGLSizedFormat2GLSizedFormat(AndroidGraphicsBufferFormat eglSizedForm
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glActiveShaderProgramEXT(PipelineId pipeline, ProgramId program) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_alpha_test.txt", "GL_QCOM_alpha_test")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_alpha_test.txt", GL_QCOM_alpha_test)
 cmd void glAlphaFuncQCOM(GLenum func, GLclampf ref) {
   requiresExtension(GL_QCOM_alpha_test)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/framebuffer_CMAA.txt", "GL_INTEL_framebuffer_CMAA")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/framebuffer_CMAA.txt", GL_INTEL_framebuffer_CMAA)
 cmd void glApplyFramebufferAttachmentCMAAINTEL() {
   requiresExtension(GL_INTEL_framebuffer_CMAA)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/conditional_render.txt", "GL_NV_conditional_render")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/conditional_render.txt", GL_NV_conditional_render)
 cmd void glBeginConditionalRenderNV(GLuint id, GLenum mode) {
   requiresExtension(GL_NV_conditional_render)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glBeginPerfMonitorAMD(GLuint monitor) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glBeginPerfQueryINTEL(GLuint queryHandle) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glBeginQueryEXT(GLenum target, QueryId query) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", "GL_EXT_blend_func_extended")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", GL_EXT_blend_func_extended)
 cmd void glBindFragDataLocationEXT(ProgramId program, GLuint color, string name) {
   requiresExtension(GL_EXT_blend_func_extended)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", "GL_EXT_blend_func_extended")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", GL_EXT_blend_func_extended)
 cmd void glBindFragDataLocationIndexedEXT(ProgramId program,
                                           GLuint    colorNumber,
                                           GLuint    index,
@@ -82,37 +82,37 @@ cmd void glBindFragDataLocationIndexedEXT(ProgramId program,
   requiresExtension(GL_EXT_blend_func_extended)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glBindProgramPipelineEXT(PipelineId pipeline) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", "GL_OES_vertex_array_object")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", GL_OES_vertex_array_object)
 cmd void glBindVertexArrayOES(VertexArrayId array) {
   requiresExtension(GL_OES_vertex_array_object)
   BindVertexArray(array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/blend_equation_advanced.txt", "GL_NV_blend_equation_advanced")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/blend_equation_advanced.txt", GL_NV_blend_equation_advanced)
 cmd void glBlendBarrierNV() {
   requiresExtension(GL_NV_blend_equation_advanced)
   BlendBarrier()
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
 cmd void glBlendEquationSeparateiOES(DrawBufferIndex buf, GLenum modeRGB, GLenum modeAlpha) {
   requiresExtension(GL_OES_draw_buffers_indexed)
   BlendEquationSeparatei(buf, modeRGB, modeAlpha)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
 cmd void glBlendEquationiOES(DrawBufferIndex buf, GLenum mode) {
   requiresExtension(GL_OES_draw_buffers_indexed)
   BlendEquationi(buf, mode)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
 cmd void glBlendFuncSeparateiOES(DrawBufferIndex buf,
                                  GLenum          srcRGB,
                                  GLenum          dstRGB,
@@ -122,19 +122,19 @@ cmd void glBlendFuncSeparateiOES(DrawBufferIndex buf,
   BlendFuncSeparatei(buf, srcRGB, dstRGB, srcAlpha, dstAlpha)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
 cmd void glBlendFunciOES(DrawBufferIndex buf, GLenum src, GLenum dst) {
   requiresExtension(GL_OES_draw_buffers_indexed)
   BlendFunci(buf, src, dst)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/blend_equation_advanced.txt", "GL_NV_blend_equation_advanced")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/blend_equation_advanced.txt", GL_NV_blend_equation_advanced)
 cmd void glBlendParameteriNV(GLenum pname, GLint value) {
   requiresExtension(GL_NV_blend_equation_advanced)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_framebuffer_blit.txt", "GL_ANGLE_framebuffer_blit")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_framebuffer_blit.txt", GL_ANGLE_framebuffer_blit)
 cmd void glBlitFramebufferANGLE(GLint      srcX0,
                                 GLint      srcY0,
                                 GLint      srcX1,
@@ -149,7 +149,7 @@ cmd void glBlitFramebufferANGLE(GLint      srcX0,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_framebuffer_blit.txt", "GL_NV_framebuffer_blit")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_framebuffer_blit.txt", GL_NV_framebuffer_blit)
 cmd void glBlitFramebufferNV(GLint      srcX0,
                              GLint      srcY0,
                              GLint      srcX1,
@@ -164,26 +164,26 @@ cmd void glBlitFramebufferNV(GLint      srcX0,
   BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_buffer_storage.txt", "GL_EXT_buffer_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_buffer_storage.txt", GL_EXT_buffer_storage)
 cmd void glBufferStorageEXT(GLenum target, GLsizeiptr size, const void* data, GLbitfield flag) {
   requiresExtension(GL_EXT_buffer_storage)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd GLenum glClientWaitSyncAPPLE(GLsync sync, GLbitfield flag, GLuint64 timeout) {
   requiresExtension(GL_APPLE_sync)
   ClientWaitSync(sync, flag, timeout)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
 cmd void glColorMaskiOES(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
   requiresExtension(GL_OES_draw_buffers_indexed)
   ColorMaski(index, r, g, b, a)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glCompressedTexImage3DOES(GLenum         target,
                                    GLint          level,
                                    GLenum         internalformat,
@@ -197,7 +197,7 @@ cmd void glCompressedTexImage3DOES(GLenum         target,
   CompressedTexImage3D(target, level, internalformat, width, height, depth, border, image_size, data)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glCompressedTexSubImage3DOES(GLenum         target,
                                       GLint          level,
                                       GLint          xoffset,
@@ -213,7 +213,7 @@ cmd void glCompressedTexSubImage3DOES(GLenum         target,
   CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, image_size, data)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_copy_buffer.txt", "GL_NV_copy_buffer")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_copy_buffer.txt", GL_NV_copy_buffer)
 cmd void glCopyBufferSubDataNV(GLenum     readTarget,
                                GLenum     writeTarget,
                                GLintptr   readOffset,
@@ -223,7 +223,7 @@ cmd void glCopyBufferSubDataNV(GLenum     readTarget,
   CopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_copy_image.txt", "GL_OES_copy_image")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_copy_image.txt", GL_OES_copy_image)
 cmd void glCopyImageSubDataOES(SrcImageId srcName,
                                GLenum     srcTarget,
                                GLint      srcLevel,
@@ -243,13 +243,13 @@ cmd void glCopyImageSubDataOES(SrcImageId srcName,
   CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glCopyPathNV(GLuint resultPath, GLuint srcPath) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glCopyTexSubImage3DOES(GLenum  target,
                                 GLint   level,
                                 GLint   xoffset,
@@ -263,7 +263,7 @@ cmd void glCopyTexSubImage3DOES(GLenum  target,
   CopyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_copy_texture_levels.txt", "GL_APPLE_copy_texture_levels")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_copy_texture_levels.txt", GL_APPLE_copy_texture_levels)
 cmd void glCopyTextureLevelsAPPLE(GLuint  destinationTexture,
                                   GLuint  sourceTexture,
                                   GLint   sourceBaseLevel,
@@ -272,7 +272,7 @@ cmd void glCopyTextureLevelsAPPLE(GLuint  destinationTexture,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glCoverFillPathInstancedNV(GLsizei        numPaths,
                                     GLenum         pathNameType,
                                     const void*    paths,
@@ -284,13 +284,13 @@ cmd void glCoverFillPathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glCoverFillPathNV(GLuint path, GLenum coverMode) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glCoverStrokePathInstancedNV(GLsizei        numPaths,
                                       GLenum         pathNameType,
                                       const void*    paths,
@@ -302,81 +302,81 @@ cmd void glCoverStrokePathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glCoverStrokePathNV(GLuint path, GLenum coverMode) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/EGL_NV_coverage_sample.txt", "GL_NV_coverage_sample")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/EGL_NV_coverage_sample.txt", GL_NV_coverage_sample)
 cmd void glCoverageMaskNV(GLboolean mask) {
   requiresExtension(GL_NV_coverage_sample)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", "GL_NV_framebuffer_mixed_samples")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", GL_NV_framebuffer_mixed_samples)
 cmd void glCoverageModulationNV(GLenum components) {
   requiresExtension(GL_NV_framebuffer_mixed_samples)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", "GL_NV_framebuffer_mixed_samples")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", GL_NV_framebuffer_mixed_samples)
 cmd void glCoverageModulationTableNV(GLsizei n, const GLfloat* v) {
   requiresExtension(GL_NV_framebuffer_mixed_samples)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/EGL_NV_coverage_sample.txt", "GL_NV_coverage_sample")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/EGL_NV_coverage_sample.txt", GL_NV_coverage_sample)
 cmd void glCoverageOperationNV(GLenum operation) {
   requiresExtension(GL_NV_coverage_sample)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glCreatePerfQueryINTEL(GLuint queryId, GLuint* queryHandle) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd GLuint glCreateShaderProgramvEXT(GLenum type, GLsizei count, const GLchar** strings) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd void glDeleteFencesNV(GLsizei n, const GLuint* fences) {
   requiresExtension(GL_NV_fence)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glDeletePathsNV(GLuint path, GLsizei range) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glDeletePerfMonitorsAMD(GLsizei n, GLuint* monitors) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glDeletePerfQueryINTEL(GLuint queryHandle) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glDeleteProgramPipelinesEXT(GLsizei n, const PipelineId* pipelines) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glDeleteQueriesEXT(GLsizei count, const QueryId* queries) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
@@ -390,50 +390,50 @@ cmd void glDeleteQueriesEXT(GLsizei count, const QueryId* queries) {
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd void glDeleteSyncAPPLE(GLsync sync) {
   requiresExtension(GL_APPLE_sync)
   DeleteSync(sync)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", "GL_OES_vertex_array_object")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", GL_OES_vertex_array_object)
 cmd void glDeleteVertexArraysOES(GLsizei count, const VertexArrayId* arrays) {
   requiresExtension(GL_OES_vertex_array_object)
   DeleteVertexArrays(count, arrays)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glDepthRangeArrayfvNV(GLuint first, GLsizei count, const GLfloat* v) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glDepthRangeIndexedfNV(GLuint index, GLfloat n, GLfloat f) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", "GL_QCOM_driver_control")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", GL_QCOM_driver_control)
 cmd void glDisableDriverControlQCOM(GLuint driverControl) {
   requiresExtension(GL_QCOM_driver_control)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glDisableiNV(GLenum target, GLuint index) {
   requiresExtension(GL_NV_viewport_array)
   Disablei(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glDisableiOES(GLenum target, GLuint index) {
   requiresExtension2(GL_OES_draw_buffers_indexed, GL_OES_viewport_array)
   Disablei(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_discard_framebuffer.txt", "GL_EXT_discard_framebuffer")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_discard_framebuffer.txt", GL_EXT_discard_framebuffer)
 cmd void glDiscardFramebufferEXT(GLenum        target,
                                  GLsizei       numAttachments,
                                  const GLenum* attachments) {
@@ -442,14 +442,14 @@ cmd void glDiscardFramebufferEXT(GLenum        target,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", "GL_ANGLE_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", GL_ANGLE_instanced_arrays)
 cmd void glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount) {
   requiresExtension(GL_ANGLE_instanced_arrays)
   DrawArraysInstanced(mode, first, count, primcount)
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", "GL_EXT_base_instance")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", GL_EXT_base_instance)
 cmd void glDrawArraysInstancedBaseInstanceEXT(GLenum  mode,
                                               GLint   first,
                                               GLsizei count,
@@ -460,40 +460,40 @@ cmd void glDrawArraysInstancedBaseInstanceEXT(GLenum  mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/draw_instanced.txt", "GL_EXT_draw_instanced")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", "GL_EXT_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/draw_instanced.txt", GL_EXT_draw_instanced)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", GL_EXT_instanced_arrays)
 cmd void glDrawArraysInstancedEXT(GLenum mode, GLint start, GLsizei count, GLsizei primcount) {
   requiresExtension2(GL_EXT_draw_instanced, GL_EXT_instanced_arrays)
   DrawArraysInstanced(mode, start, count, primcount)
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", "GL_NV_draw_instanced")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", GL_NV_draw_instanced)
 cmd void glDrawArraysInstancedNV(GLenum mode, GLint first, GLsizei count, GLsizei primcount) {
   requiresExtension(GL_NV_draw_instanced)
   DrawArraysInstanced(mode, first, count, primcount)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_buffers.txt", "GL_EXT_draw_buffers")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_buffers.txt", GL_EXT_draw_buffers)
 cmd void glDrawBuffersEXT(GLsizei n, const GLenum* bufs) {
   requiresExtension(GL_EXT_draw_buffers)
   DrawBuffers(n, bufs)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", "GL_EXT_multiview_draw_buffers")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", GL_EXT_multiview_draw_buffers)
 cmd void glDrawBuffersIndexedEXT(GLint n, const GLenum* location, const GLint* indices) {
   requiresExtension(GL_EXT_multiview_draw_buffers)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_buffers.txt", "GL_NV_draw_buffers")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_buffers.txt", GL_NV_draw_buffers)
 cmd void glDrawBuffersNV(GLsizei n, const GLenum* bufs) {
   requiresExtension(GL_NV_draw_buffers)
   DrawBuffers(n, bufs)
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", "GL_EXT_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", GL_EXT_draw_elements_base_vertex)
 cmd void glDrawElementsBaseVertexEXT(GLenum         mode,
                                      GLsizei        count,
                                      GLenum         type,
@@ -504,7 +504,7 @@ cmd void glDrawElementsBaseVertexEXT(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", "GL_OES_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", GL_OES_draw_elements_base_vertex)
 cmd void glDrawElementsBaseVertexOES(GLenum         mode,
                                      GLsizei        count,
                                      GLenum         type,
@@ -515,7 +515,7 @@ cmd void glDrawElementsBaseVertexOES(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", "GL_ANGLE_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", GL_ANGLE_instanced_arrays)
 cmd void glDrawElementsInstancedANGLE(GLenum         mode,
                                       GLsizei        count,
                                       GLenum         type,
@@ -526,7 +526,7 @@ cmd void glDrawElementsInstancedANGLE(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", "GL_EXT_base_instance")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", GL_EXT_base_instance)
 cmd void glDrawElementsInstancedBaseInstanceEXT(GLenum      mode,
                                                 GLsizei     count,
                                                 GLenum      type,
@@ -538,7 +538,7 @@ cmd void glDrawElementsInstancedBaseInstanceEXT(GLenum      mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", "GL_EXT_base_instance")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", GL_EXT_base_instance)
 cmd void glDrawElementsInstancedBaseVertexBaseInstanceEXT(GLenum      mode,
                                                           GLsizei     count,
                                                           GLenum      type,
@@ -551,7 +551,7 @@ cmd void glDrawElementsInstancedBaseVertexBaseInstanceEXT(GLenum      mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", "GL_EXT_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", GL_EXT_draw_elements_base_vertex)
 cmd void glDrawElementsInstancedBaseVertexEXT(GLenum         mode,
                                               GLsizei        count,
                                               GLenum         type,
@@ -563,7 +563,7 @@ cmd void glDrawElementsInstancedBaseVertexEXT(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", "GL_OES_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", GL_OES_draw_elements_base_vertex)
 cmd void glDrawElementsInstancedBaseVertexOES(GLenum         mode,
                                               GLsizei        count,
                                               GLenum         type,
@@ -575,8 +575,8 @@ cmd void glDrawElementsInstancedBaseVertexOES(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/draw_instanced.txt", "GL_EXT_draw_instanced")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", "GL_EXT_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/draw_instanced.txt", GL_EXT_draw_instanced)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", GL_EXT_instanced_arrays)
 cmd void glDrawElementsInstancedEXT(GLenum         mode,
                                     GLsizei        count,
                                     GLenum         type,
@@ -587,7 +587,7 @@ cmd void glDrawElementsInstancedEXT(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", "GL_NV_draw_instanced")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", GL_NV_draw_instanced)
 cmd void glDrawElementsInstancedNV(GLenum         mode,
                                    GLsizei        count,
                                    GLenum         type,
@@ -598,7 +598,7 @@ cmd void glDrawElementsInstancedNV(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", "GL_EXT_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", GL_EXT_draw_elements_base_vertex)
 cmd void glDrawRangeElementsBaseVertexEXT(GLenum         mode,
                                           GLuint         start,
                                           GLuint         end,
@@ -611,7 +611,7 @@ cmd void glDrawRangeElementsBaseVertexEXT(GLenum         mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", "GL_OES_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", GL_OES_draw_elements_base_vertex)
 cmd void glDrawRangeElementsBaseVertexOES(GLenum         mode,
                                           GLuint         start,
                                           GLuint         end,
@@ -623,14 +623,14 @@ cmd void glDrawRangeElementsBaseVertexOES(GLenum         mode,
   DrawRangeElementsBaseVertex(mode, start, end, count, type, indices, basevertex)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", "GL_OES_EGL_image")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", GL_OES_EGL_image)
 cmd void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image) {
   requiresExtension(GL_OES_EGL_image)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", "GL_OES_EGL_image")
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image_external.txt", "GL_OES_EGL_image_external")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", GL_OES_EGL_image)
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image_external.txt", GL_OES_EGL_image_external)
 cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
   requiresExtension2(GL_OES_EGL_image, GL_OES_EGL_image_external)
   switch (target) {
@@ -660,69 +660,69 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", "GL_QCOM_driver_control")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", GL_QCOM_driver_control)
 cmd void glEnableDriverControlQCOM(GLuint driverControl) {
   requiresExtension(GL_QCOM_driver_control)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glEnableiNV(GLenum target, GLuint index) {
   requiresExtension(GL_NV_viewport_array)
   Enablei(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glEnableiOES(GLenum target, GLuint index) {
   requiresExtension2(GL_OES_draw_buffers_indexed, GL_OES_viewport_array)
   Enablei(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/conditional_render.txt", "GL_NV_conditional_render")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/conditional_render.txt", GL_NV_conditional_render)
 cmd void glEndConditionalRenderNV() {
   requiresExtension(GL_NV_conditional_render)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glEndPerfMonitorAMD(GLuint monitor) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glEndPerfQueryINTEL(GLuint queryHandle) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glEndQueryEXT(GLenum target) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_tiled_rendering.txt", "GL_QCOM_tiled_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_tiled_rendering.txt", GL_QCOM_tiled_rendering)
 cmd void glEndTilingQCOM(GLbitfield preserve_mask) {
   requiresExtension(GL_QCOM_tiled_rendering)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetBufferPointervQCOM(GLenum target, void** params) {
   requiresExtension(GL_QCOM_extended_get)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetBuffersQCOM(BufferId* buffers, GLint maxBuffers, GLint* numBuffers) {
   requiresExtension(GL_QCOM_extended_get)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetFramebuffersQCOM(FramebufferId* framebuffers,
                                   GLint          maxFramebuffers,
                                   GLint*         numFramebuffers) {
@@ -730,7 +730,7 @@ cmd void glExtGetFramebuffersQCOM(FramebufferId* framebuffers,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", "GL_QCOM_extended_get2")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", GL_QCOM_extended_get2)
 cmd void glExtGetProgramBinarySourceQCOM(ProgramId program,
                                          GLenum    shadertype,
                                          GLchar*   source,
@@ -739,13 +739,13 @@ cmd void glExtGetProgramBinarySourceQCOM(ProgramId program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", "GL_QCOM_extended_get2")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", GL_QCOM_extended_get2)
 cmd void glExtGetProgramsQCOM(ProgramId* programs, GLint maxPrograms, GLint* numPrograms) {
   requiresExtension(GL_QCOM_extended_get2)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetRenderbuffersQCOM(RenderbufferId* renderbuffers,
                                    GLint           maxRenderbuffers,
                                    GLint*          numRenderbuffers) {
@@ -753,13 +753,13 @@ cmd void glExtGetRenderbuffersQCOM(RenderbufferId* renderbuffers,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", "GL_QCOM_extended_get2")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", GL_QCOM_extended_get2)
 cmd void glExtGetShadersQCOM(ShaderId* shaders, GLint maxShaders, GLint* numShaders) {
   requiresExtension(GL_QCOM_extended_get2)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetTexLevelParameterivQCOM(TextureId texture,
                                          GLenum    face,
                                          GLint     level,
@@ -769,7 +769,7 @@ cmd void glExtGetTexLevelParameterivQCOM(TextureId texture,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetTexSubImageQCOM(GLenum  target,
                                  GLint   level,
                                  GLint   xoffset,
@@ -785,26 +785,26 @@ cmd void glExtGetTexSubImageQCOM(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtGetTexturesQCOM(TextureId* textures, GLint maxTextures, GLint* numTextures) {
   requiresExtension(GL_QCOM_extended_get)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", "GL_QCOM_extended_get2")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get2.txt", GL_QCOM_extended_get2)
 cmd GLboolean glExtIsProgramBinaryQCOM(ProgramId program) {
   requiresExtension(GL_QCOM_extended_get2)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", "GL_QCOM_extended_get")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_extended_get.txt", GL_QCOM_extended_get)
 cmd void glExtTexObjectStateOverrideiQCOM(GLenum target, GLenum pname, GLint param) {
   requiresExtension(GL_QCOM_extended_get)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd GLsync glFenceSyncAPPLE(GLenum condition, GLbitfield flag) {
   requiresExtension(GL_APPLE_sync)
   sync := ?
@@ -812,25 +812,25 @@ cmd GLsync glFenceSyncAPPLE(GLenum condition, GLbitfield flag) {
   return sync
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd void glFinishFenceNV(GLuint fence) {
   requiresExtension(GL_NV_fence)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_map_buffer_range.txt", "GL_EXT_map_buffer_range")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_map_buffer_range.txt", GL_EXT_map_buffer_range)
 cmd void glFlushMappedBufferRangeEXT(GLenum target, GLintptr offset, GLsizeiptr length) {
   requiresExtension(GL_EXT_map_buffer_range)
   FlushMappedBufferRange(target, offset, length)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fragment_coverage_to_color.txt", "GL_NV_fragment_coverage_to_color")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fragment_coverage_to_color.txt", GL_NV_fragment_coverage_to_color)
 cmd void glFragmentCoverageColorNV(GLuint color) {
   requiresExtension(GL_NV_fragment_coverage_to_color)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", "GL_NV_sample_locations")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", GL_NV_sample_locations)
 cmd void glFramebufferSampleLocationsfvNV(GLenum         target,
                                           GLuint         start,
                                           GLsizei        count,
@@ -839,7 +839,7 @@ cmd void glFramebufferSampleLocationsfvNV(GLenum         target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multisampled_render_to_texture.txt", "GL_EXT_multisampled_render_to_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multisampled_render_to_texture.txt", GL_EXT_multisampled_render_to_texture)
 cmd void glFramebufferTexture2DMultisampleEXT(GLenum    target,
                                               GLenum    attachment,
                                               GLenum    textarget,
@@ -851,7 +851,7 @@ cmd void glFramebufferTexture2DMultisampleEXT(GLenum    target,
   FramebufferTexture2D(target, attachment, textarget, texture, level)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_multisampled_render_to_texture.txt", "GL_IMG_multisampled_render_to_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_multisampled_render_to_texture.txt", GL_IMG_multisampled_render_to_texture)
 cmd void glFramebufferTexture2DMultisampleIMG(GLenum    target,
                                               GLenum    attachment,
                                               GLenum    textarget,
@@ -862,7 +862,7 @@ cmd void glFramebufferTexture2DMultisampleIMG(GLenum    target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glFramebufferTexture3DOES(GLenum    target,
                                    GLenum    attachment,
                                    GLenum    textarget,
@@ -873,7 +873,7 @@ cmd void glFramebufferTexture3DOES(GLenum    target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OVR/multiview.txt", "GL_OVR_multiview")
+@doc("https://www.khronos.org/registry/gles/extensions/OVR/multiview.txt", GL_OVR_multiview)
 cmd void glFramebufferTextureMultiviewOVR(GLenum    target,
                                           GLenum    attachment,
                                           TextureId texture,
@@ -884,39 +884,39 @@ cmd void glFramebufferTextureMultiviewOVR(GLenum    target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_geometry_shader.txt", "GL_OES_geometry_shader")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_geometry_shader.txt", GL_OES_geometry_shader)
 cmd void glFramebufferTextureOES(GLenum target, GLenum attachment, TextureId texture, GLint level) {
   requiresExtension(GL_OES_geometry_shader)
   FramebufferTexture(target, attachment, texture, level)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd void glGenFencesNV(GLsizei n, GLuint* fences) {
   requiresExtension(GL_NV_fence)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLuint glGenPathsNV(GLsizei range) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGenPerfMonitorsAMD(GLsizei n, GLuint* monitors) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glGenProgramPipelinesEXT(GLsizei n, PipelineId* pipelines) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glGenQueriesEXT(GLsizei count, QueryId* queries) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
@@ -929,25 +929,25 @@ cmd void glGenQueriesEXT(GLsizei count, QueryId* queries) {
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", "GL_OES_vertex_array_object")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", GL_OES_vertex_array_object)
 cmd void glGenVertexArraysOES(GLsizei count, VertexArrayId* arrays) {
   requiresExtension(GL_OES_vertex_array_object)
   GenVertexArrays(count, arrays)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", "GL_OES_mapbuffer")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", GL_OES_mapbuffer)
 cmd void glGetBufferPointervOES(GLenum target, GLenum pname, void** params) {
   requiresExtension(GL_OES_mapbuffer)
   GetBufferPointerv(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", "GL_NV_framebuffer_mixed_samples")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", GL_NV_framebuffer_mixed_samples)
 cmd void glGetCoverageModulationTableNV(GLsizei bufsize, GLfloat* v) {
   requiresExtension(GL_NV_framebuffer_mixed_samples)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", "GL_QCOM_driver_control")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", GL_QCOM_driver_control)
 cmd void glGetDriverControlStringQCOM(GLuint   driverControl,
                                       GLsizei  bufSize,
                                       GLsizei* length,
@@ -956,51 +956,51 @@ cmd void glGetDriverControlStringQCOM(GLuint   driverControl,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", "GL_QCOM_driver_control")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_driver_control.txt", GL_QCOM_driver_control)
 cmd void glGetDriverControlsQCOM(GLint* num, GLsizei size, GLuint* driverControls) {
   requiresExtension(GL_QCOM_driver_control)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd void glGetFenceivNV(GLuint fence, GLenum pname, GLint* params) {
   requiresExtension(GL_NV_fence)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetFirstPerfQueryIdINTEL(GLuint* queryId) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glGetFloati_vNV(GLenum target, GLuint index, GLfloat* data) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", "GL_EXT_blend_func_extended")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", GL_EXT_blend_func_extended)
 cmd GLint glGetFragDataIndexEXT(ProgramId program, string name) {
   requiresExtension(GL_EXT_blend_func_extended)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", "GL_EXT_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", GL_EXT_robustness)
 cmd GLenum glGetGraphicsResetStatusEXT() {
   requiresExtension(GL_EXT_robustness)
 
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", "GL_KHR_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", GL_KHR_robustness)
 cmd GLenum glGetGraphicsResetStatusKHR() {
   requiresExtension(GL_KHR_robustness)
   GetGraphicsResetStatus()
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd GLuint64 glGetImageHandleNV(TextureId texture,
                                 GLint     level,
                                 GLboolean layered,
@@ -1011,19 +1011,19 @@ cmd GLuint64 glGetImageHandleNV(TextureId texture,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd void glGetInteger64vAPPLE(GLenum pname, GLint64* params) {
   requiresExtension(GL_APPLE_sync)
   GetInteger64v(pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", "GL_EXT_multiview_draw_buffers")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", GL_EXT_multiview_draw_buffers)
 cmd void glGetIntegeri_vEXT(GLenum target, GLuint index, GLint* data) {
   requiresExtension(GL_EXT_multiview_draw_buffers)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/internalformat_sample_query.txt", "GL_NV_internalformat_sample_query")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/internalformat_sample_query.txt", GL_NV_internalformat_sample_query)
 cmd void glGetInternalformatSampleivNV(GLenum  target,
                                        GLenum  internalformat,
                                        GLsizei samples,
@@ -1034,13 +1034,13 @@ cmd void glGetInternalformatSampleivNV(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetNextPerfQueryIdINTEL(GLuint queryId, GLuint* nextQueryId) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_label.txt", "GL_EXT_debug_label")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_label.txt", GL_EXT_debug_label)
 cmd void glGetObjectLabelEXT(GLenum   type,
                              GLuint   object,
                              GLsizei  bufSize,
@@ -1064,32 +1064,32 @@ cmd void glGetObjectLabelEXT(GLenum   type,
   writeString(bufSize, length, label)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathCommandsNV(GLuint path, GLubyte* commands) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathCoordsNV(GLuint path, GLfloat* coords) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathDashArrayNV(GLuint path, GLfloat* dashArray) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLfloat glGetPathLengthNV(GLuint path, GLsizei startSegment, GLsizei numSegments) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathMetricRangeNV(GLbitfield metricQueryMask,
                                 GLuint     firstPathName,
                                 GLsizei    numPaths,
@@ -1099,7 +1099,7 @@ cmd void glGetPathMetricRangeNV(GLbitfield metricQueryMask,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathMetricsNV(GLbitfield  metricQueryMask,
                             GLsizei     numPaths,
                             GLenum      pathNameType,
@@ -1111,19 +1111,19 @@ cmd void glGetPathMetricsNV(GLbitfield  metricQueryMask,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathParameterfvNV(GLuint path, GLenum pname, GLfloat* value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathParameterivNV(GLuint path, GLenum pname, GLint* value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetPathSpacingNV(GLenum      pathListMode,
                             GLsizei     numPaths,
                             GLenum      pathNameType,
@@ -1137,7 +1137,7 @@ cmd void glGetPathSpacingNV(GLenum      pathListMode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetPerfCounterInfoINTEL(GLuint    queryId,
                                    GLuint    counterId,
                                    GLuint    counterNameLength,
@@ -1153,7 +1153,7 @@ cmd void glGetPerfCounterInfoINTEL(GLuint    queryId,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorCounterDataAMD(GLuint  monitor,
                                         GLenum  pname,
                                         GLsizei dataSize,
@@ -1163,13 +1163,13 @@ cmd void glGetPerfMonitorCounterDataAMD(GLuint  monitor,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorCounterInfoAMD(GLuint group, GLuint counter, GLenum pname, void* data) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorCounterStringAMD(GLuint   group,
                                           GLuint   counter,
                                           GLsizei  bufSize,
@@ -1179,7 +1179,7 @@ cmd void glGetPerfMonitorCounterStringAMD(GLuint   group,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorCountersAMD(GLuint  group,
                                      GLint*  numCounters,
                                      GLint*  maxActiveCounters,
@@ -1189,7 +1189,7 @@ cmd void glGetPerfMonitorCountersAMD(GLuint  group,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorGroupStringAMD(GLuint   group,
                                         GLsizei  bufSize,
                                         GLsizei* length,
@@ -1198,13 +1198,13 @@ cmd void glGetPerfMonitorGroupStringAMD(GLuint   group,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glGetPerfMonitorGroupsAMD(GLint* numGroups, GLsizei groupsSize, GLuint* groups) {
   requiresExtension(GL_AMD_performance_monitor)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetPerfQueryDataINTEL(GLuint  queryHandle,
                                  GLuint  flag,
                                  GLsizei dataSize,
@@ -1214,13 +1214,13 @@ cmd void glGetPerfQueryDataINTEL(GLuint  queryHandle,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetPerfQueryIdByNameINTEL(GLchar* queryName, GLuint* queryId) {
   requiresExtension(GL_INTEL_performance_query)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", "GL_INTEL_performance_query")
+@doc("https://www.khronos.org/registry/gles/extensions/INTEL/performance_query.txt", GL_INTEL_performance_query)
 cmd void glGetPerfQueryInfoINTEL(GLuint  queryId,
                                  GLuint  queryNameLength,
                                  GLchar* queryName,
@@ -1232,7 +1232,7 @@ cmd void glGetPerfQueryInfoINTEL(GLuint  queryId,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_get_program_binary.txt", "GL_OES_get_program_binary")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_get_program_binary.txt", GL_OES_get_program_binary)
 cmd void glGetProgramBinaryOES(ProgramId program,
                                GLsizei   buffer_size,
                                GLsizei*  bytes_written,
@@ -1242,7 +1242,7 @@ cmd void glGetProgramBinaryOES(ProgramId program,
   GetProgramBinary(program, buffer_size, bytes_written, binary_format, binary)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glGetProgramPipelineInfoLogEXT(PipelineId pipeline,
                                         GLsizei    bufSize,
                                         GLsizei*   length,
@@ -1251,13 +1251,13 @@ cmd void glGetProgramPipelineInfoLogEXT(PipelineId pipeline,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glGetProgramPipelineivEXT(PipelineId pipeline, GLenum pname, GLint* params) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", "GL_EXT_blend_func_extended")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", GL_EXT_blend_func_extended)
 cmd GLint glGetProgramResourceLocationIndexEXT(ProgramId program,
                                                GLenum    programInterface,
                                                string    name) {
@@ -1265,7 +1265,7 @@ cmd GLint glGetProgramResourceLocationIndexEXT(ProgramId program,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glGetProgramResourcefvNV(ProgramId     program,
                                   GLenum        programInterface,
                                   GLuint        index,
@@ -1278,56 +1278,56 @@ cmd void glGetProgramResourcefvNV(ProgramId     program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
 cmd void glGetQueryObjecti64vEXT(QueryId query, GLenum parameter, GLint64* value) {
   requiresExtension(GL_EXT_disjoint_timer_query)
 
   value[0] = ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
 cmd void glGetQueryObjectivEXT(QueryId query, GLenum parameter, GLint* value) {
   requiresExtension(GL_EXT_disjoint_timer_query)
 
   value[0] = ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
 cmd void glGetQueryObjectui64vEXT(QueryId query, GLenum parameter, GLuint64* value) {
   requiresExtension(GL_EXT_disjoint_timer_query)
 
   value[0] = ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glGetQueryObjectuivEXT(QueryId query, GLenum parameter, GLuint* value) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
   value[0] = ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd void glGetQueryivEXT(GLenum target, GLenum parameter, GLint* value) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
   value[0] = ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glGetSamplerParameterIivOES(SamplerId sampler, GLenum pname, GLint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   GetSamplerParameterIiv(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glGetSamplerParameterIuivOES(SamplerId sampler, GLenum pname, GLuint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   GetSamplerParameterIuiv(sampler, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd void glGetSyncivAPPLE(GLsync   sync,
                           GLenum   pname,
                           GLsizei  bufSize,
@@ -1337,33 +1337,33 @@ cmd void glGetSyncivAPPLE(GLsync   sync,
   GetSynciv(sync, pname, bufSize, length, values)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glGetTexParameterIivOES(GLenum target, GLenum pname, GLint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   GetTexParameterIiv(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glGetTexParameterIuivOES(GLenum target, GLenum pname, GLuint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   GetTexParameterIuiv(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd GLuint64 glGetTextureHandleNV(TextureId texture) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd GLuint64 glGetTextureSamplerHandleNV(TextureId texture, SamplerId sampler) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_translated_shader_source.txt", "GL_ANGLE_translated_shader_source")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_translated_shader_source.txt", GL_ANGLE_translated_shader_source)
 cmd void glGetTranslatedShaderSourceANGLE(ShaderId shader,
                                           GLsizei  bufsize,
                                           GLsizei* length,
@@ -1372,7 +1372,7 @@ cmd void glGetTranslatedShaderSourceANGLE(ShaderId shader,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", "GL_EXT_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", GL_EXT_robustness)
 cmd void glGetnUniformfvEXT(ProgramId       program,
                             UniformLocation location,
                             GLsizei         bufSize,
@@ -1381,7 +1381,7 @@ cmd void glGetnUniformfvEXT(ProgramId       program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", "GL_KHR_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", GL_KHR_robustness)
 cmd void glGetnUniformfvKHR(ProgramId       program,
                             UniformLocation location,
                             GLsizei         bufSize,
@@ -1390,7 +1390,7 @@ cmd void glGetnUniformfvKHR(ProgramId       program,
   GetnUniformfv!GLfloat*(program, location, bufSize, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", "GL_EXT_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", GL_EXT_robustness)
 cmd void glGetnUniformivEXT(ProgramId       program,
                             UniformLocation location,
                             GLsizei         bufSize,
@@ -1399,7 +1399,7 @@ cmd void glGetnUniformivEXT(ProgramId       program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", "GL_KHR_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", GL_KHR_robustness)
 cmd void glGetnUniformivKHR(ProgramId       program,
                             UniformLocation location,
                             GLsizei         bufSize,
@@ -1408,7 +1408,7 @@ cmd void glGetnUniformivKHR(ProgramId       program,
   GetnUniformiv(program, location, bufSize, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", "GL_KHR_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", GL_KHR_robustness)
 cmd void glGetnUniformuivKHR(ProgramId       program,
                              UniformLocation location,
                              GLsizei         bufSize,
@@ -1418,7 +1418,7 @@ cmd void glGetnUniformuivKHR(ProgramId       program,
 }
 
 @UserMarker
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", "GL_EXT_debug_marker")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", GL_EXT_debug_marker)
 cmd void glInsertEventMarkerEXT(GLsizei length, const GLchar* marker) {
   requiresExtension(GL_EXT_debug_marker)
 
@@ -1430,69 +1430,69 @@ cmd void glInsertEventMarkerEXT(GLsizei length, const GLchar* marker) {
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glInterpolatePathsNV(GLuint resultPath, GLuint pathA, GLuint pathB, GLfloat weight) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd GLboolean glIsEnablediNV(GLenum target, GLuint index) {
   requiresExtension(GL_NV_viewport_array)
   return IsEnabledi(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", "GL_OES_draw_buffers_indexed")
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_buffers_indexed.txt", GL_OES_draw_buffers_indexed)
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd GLboolean glIsEnablediOES(GLenum target, GLuint index) {
   requiresExtension2(GL_OES_draw_buffers_indexed, GL_OES_viewport_array)
   return IsEnabledi(target, index)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd GLboolean glIsFenceNV(GLuint fence) {
   requiresExtension(GL_NV_fence)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd GLboolean glIsImageHandleResidentNV(GLuint64 handle) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLboolean glIsPathNV(GLuint path) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLboolean glIsPointInFillPathNV(GLuint path, GLuint mask, GLfloat x, GLfloat y) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLboolean glIsPointInStrokePathNV(GLuint path, GLfloat x, GLfloat y) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd GLboolean glIsProgramPipelineEXT(PipelineId pipeline) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", "GL_EXT_occlusion_query_boolean")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", GL_EXT_occlusion_query_boolean)
 cmd GLboolean glIsQueryEXT(QueryId query) {
   requiresExtension2(GL_EXT_disjoint_timer_query, GL_EXT_occlusion_query_boolean)
 
@@ -1500,26 +1500,26 @@ cmd GLboolean glIsQueryEXT(QueryId query) {
   return as!GLboolean(query in ctx.Objects.Queries)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd GLboolean glIsSyncAPPLE(GLsync sync) {
   requiresExtension(GL_APPLE_sync)
   return IsSync(sync)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd GLboolean glIsTextureHandleResidentNV(GLuint64 handle) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", "GL_OES_vertex_array_object")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_vertex_array_object.txt", GL_OES_vertex_array_object)
 cmd GLboolean glIsVertexArrayOES(VertexArrayId array) {
   requiresExtension(GL_OES_vertex_array_object)
   return IsVertexArray(array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_label.txt", "GL_EXT_debug_label")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_label.txt", GL_EXT_debug_label)
 cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLchar* label) {
   requiresExtension(GL_EXT_debug_label)
 
@@ -1589,31 +1589,31 @@ cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLch
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glMakeImageHandleNonResidentNV(GLuint64 handle) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glMakeImageHandleResidentNV(GLuint64 handle, GLenum access) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glMakeTextureHandleNonResidentNV(GLuint64 handle) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glMakeTextureHandleResidentNV(GLuint64 handle) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", "GL_OES_mapbuffer")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", GL_OES_mapbuffer)
 cmd void* glMapBufferOES(GLenum target, GLenum access) {
   requiresExtension(GL_OES_mapbuffer)
   ptr := ?
@@ -1621,7 +1621,7 @@ cmd void* glMapBufferOES(GLenum target, GLenum access) {
   return ptr
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_map_buffer_range.txt", "GL_EXT_map_buffer_range")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_map_buffer_range.txt", GL_EXT_map_buffer_range)
 cmd void* glMapBufferRangeEXT(GLenum     target,
                               GLintptr   offset,
                               GLsizeiptr length,
@@ -1632,43 +1632,43 @@ cmd void* glMapBufferRangeEXT(GLenum     target,
   return ptr
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixLoad3x2fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixLoad3x3fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixLoadTranspose3x3fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixMult3x2fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixMult3x3fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glMatrixMultTranspose3x3fNV(GLenum matrixMode, const GLfloat* m) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/multi_draw_arrays.txt", "GL_EXT_multi_draw_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/multi_draw_arrays.txt", GL_EXT_multi_draw_arrays)
 cmd void glMultiDrawArraysEXT(GLenum         mode,
                               const GLint*   first,
                               const GLsizei* count,
@@ -1677,7 +1677,7 @@ cmd void glMultiDrawArraysEXT(GLenum         mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multi_draw_indirect.txt", "GL_EXT_multi_draw_indirect")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multi_draw_indirect.txt", GL_EXT_multi_draw_indirect)
 cmd void glMultiDrawArraysIndirectEXT(GLenum      mode,
                                       const void* indirect,
                                       GLsizei     drawcount,
@@ -1686,7 +1686,7 @@ cmd void glMultiDrawArraysIndirectEXT(GLenum      mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", "GL_EXT_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", GL_EXT_draw_elements_base_vertex)
 cmd void glMultiDrawElementsBaseVertexEXT(GLenum             mode,
                                           const GLsizei*     count,
                                           GLenum             type,
@@ -1697,7 +1697,7 @@ cmd void glMultiDrawElementsBaseVertexEXT(GLenum             mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", "GL_OES_draw_elements_base_vertex")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", GL_OES_draw_elements_base_vertex)
 cmd void glMultiDrawElementsBaseVertexOES(GLenum             mode,
                                           const GLsizei*     count,
                                           GLenum             type,
@@ -1708,7 +1708,7 @@ cmd void glMultiDrawElementsBaseVertexOES(GLenum             mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/multi_draw_arrays.txt", "GL_EXT_multi_draw_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/multi_draw_arrays.txt", GL_EXT_multi_draw_arrays)
 cmd void glMultiDrawElementsEXT(GLenum             mode,
                                 const GLsizei*     count,
                                 GLenum             type,
@@ -1718,7 +1718,7 @@ cmd void glMultiDrawElementsEXT(GLenum             mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multi_draw_indirect.txt", "GL_EXT_multi_draw_indirect")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multi_draw_indirect.txt", GL_EXT_multi_draw_indirect)
 cmd void glMultiDrawElementsIndirectEXT(GLenum      mode,
                                         GLenum      type,
                                         const void* indirect,
@@ -1728,7 +1728,7 @@ cmd void glMultiDrawElementsIndirectEXT(GLenum      mode,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", "GL_NV_sample_locations")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", GL_NV_sample_locations)
 cmd void glNamedFramebufferSampleLocationsfvNV(FramebufferId  framebuffer,
                                                GLuint         start,
                                                GLsizei        count,
@@ -1737,13 +1737,13 @@ cmd void glNamedFramebufferSampleLocationsfvNV(FramebufferId  framebuffer,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_tessellation_shader.txt", "GL_OES_tessellation_shader")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_tessellation_shader.txt", GL_OES_tessellation_shader)
 cmd void glPatchParameteriOES(GLenum pname, GLint value) {
   requiresExtension(GL_OES_tessellation_shader)
   PatchParameteri(pname, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathCommandsNV(GLuint         path,
                           GLsizei        numCommands,
                           const GLubyte* commands,
@@ -1754,25 +1754,25 @@ cmd void glPathCommandsNV(GLuint         path,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathCoordsNV(GLuint path, GLsizei numCoords, GLenum coordType, const void* coords) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathCoverDepthFuncNV(GLenum func) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathDashArrayNV(GLuint path, GLsizei dashCount, const GLfloat* dashArray) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLenum glPathGlyphIndexArrayNV(GLuint      firstPathName,
                                    GLenum      fontTarget,
                                    const void* fontName,
@@ -1786,7 +1786,7 @@ cmd GLenum glPathGlyphIndexArrayNV(GLuint      firstPathName,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLenum glPathGlyphIndexRangeNV(GLenum      fontTarget,
                                    const void* fontName,
                                    GLbitfield  fontStyle,
@@ -1798,7 +1798,7 @@ cmd GLenum glPathGlyphIndexRangeNV(GLenum      fontTarget,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathGlyphRangeNV(GLuint      firstPathName,
                             GLenum      fontTarget,
                             const void* fontName,
@@ -1812,7 +1812,7 @@ cmd void glPathGlyphRangeNV(GLuint      firstPathName,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathGlyphsNV(GLuint      firstPathName,
                         GLenum      fontTarget,
                         const void* fontName,
@@ -1827,7 +1827,7 @@ cmd void glPathGlyphsNV(GLuint      firstPathName,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLenum glPathMemoryGlyphIndexArrayNV(GLuint      firstPathName,
                                          GLenum      fontTarget,
                                          GLsizeiptr  fontSize,
@@ -1842,49 +1842,49 @@ cmd GLenum glPathMemoryGlyphIndexArrayNV(GLuint      firstPathName,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathParameterfNV(GLuint path, GLenum pname, GLfloat value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathParameterfvNV(GLuint path, GLenum pname, const GLfloat* value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathParameteriNV(GLuint path, GLenum pname, GLint value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathParameterivNV(GLuint path, GLenum pname, const GLint* value) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathStencilDepthOffsetNV(GLfloat factor, GLfloat units) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathStencilFuncNV(GLenum func, GLint ref, GLuint mask) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathStringNV(GLuint path, GLenum format, GLsizei length, const void* pathString) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathSubCommandsNV(GLuint         path,
                              GLsizei        commandStart,
                              GLsizei        commandsToDelete,
@@ -1897,7 +1897,7 @@ cmd void glPathSubCommandsNV(GLuint         path,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glPathSubCoordsNV(GLuint      path,
                            GLsizei     coordStart,
                            GLsizei     numCoords,
@@ -1907,7 +1907,7 @@ cmd void glPathSubCoordsNV(GLuint      path,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd GLboolean glPointAlongPathNV(GLuint   path,
                                  GLsizei  startSegment,
                                  GLsizei  numSegments,
@@ -1921,19 +1921,19 @@ cmd GLboolean glPointAlongPathNV(GLuint   path,
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_polygon_mode.txt", "GL_NV_polygon_mode")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_polygon_mode.txt", GL_NV_polygon_mode)
 cmd void glPolygonModeNV(GLenum face, GLenum mode) {
   requiresExtension(GL_NV_polygon_mode)
   // TODO
 }
 
 @PopUserMarker
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", "GL_EXT_debug_marker")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", GL_EXT_debug_marker)
 cmd void glPopGroupMarkerEXT() {
   requiresExtension(GL_EXT_debug_marker)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_primitive_bounding_box.txt", "GL_OES_primitive_bounding_box")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_primitive_bounding_box.txt", GL_OES_primitive_bounding_box)
 cmd void glPrimitiveBoundingBoxOES(GLfloat minX,
                                    GLfloat minY,
                                    GLfloat minZ,
@@ -1947,7 +1947,7 @@ cmd void glPrimitiveBoundingBoxOES(GLfloat minX,
 }
 
 @custom
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_get_program_binary.txt", "GL_OES_get_program_binary")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_get_program_binary.txt", GL_OES_get_program_binary)
 cmd void glProgramBinaryOES(ProgramId   program,
                             GLenum      binary_format,
                             const void* binary,
@@ -1957,13 +1957,13 @@ cmd void glProgramBinaryOES(ProgramId   program,
   ProgramBinary(program, binary_format, binary, as!GLsizei(binary_size))
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramParameteriEXT(ProgramId program, GLenum pname, GLint value) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramParameteri(program, pname, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glProgramPathFragmentInputGenNV(ProgramId      program,
                                          GLint          location,
                                          GLenum         genMode,
@@ -1973,13 +1973,13 @@ cmd void glProgramPathFragmentInputGenNV(ProgramId      program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1fEXT(ProgramId program, UniformLocation location, GLfloat v0) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramUniform1f(program, location, v0)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1fvEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -1988,13 +1988,13 @@ cmd void glProgramUniform1fvEXT(ProgramId       program,
   ProgramUniform1fv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1iEXT(ProgramId program, UniformLocation location, GLint v0) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramUniform1i(program, location, v0)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1ivEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2003,13 +2003,13 @@ cmd void glProgramUniform1ivEXT(ProgramId       program,
   ProgramUniform1iv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1uiEXT(ProgramId program, UniformLocation location, GLuint v0) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramUniform1ui(program, location, v0)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform1uivEXT(ProgramId       program,
                                  UniformLocation location,
                                  GLsizei         count,
@@ -2018,7 +2018,7 @@ cmd void glProgramUniform1uivEXT(ProgramId       program,
   ProgramUniform1uiv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2fEXT(ProgramId       program,
                                UniformLocation location,
                                GLfloat         v0,
@@ -2027,7 +2027,7 @@ cmd void glProgramUniform2fEXT(ProgramId       program,
   ProgramUniform2f(program, location, v0, v1)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2fvEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2036,13 +2036,13 @@ cmd void glProgramUniform2fvEXT(ProgramId       program,
   ProgramUniform2fv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2iEXT(ProgramId program, UniformLocation location, GLint v0, GLint v1) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramUniform2i(program, location, v0, v1)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2ivEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2051,13 +2051,13 @@ cmd void glProgramUniform2ivEXT(ProgramId       program,
   ProgramUniform2iv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2uiEXT(ProgramId program, UniformLocation location, GLuint v0, GLuint v1) {
   requiresExtension(GL_EXT_separate_shader_objects)
   ProgramUniform2ui(program, location, v0, v1)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform2uivEXT(ProgramId       program,
                                  UniformLocation location,
                                  GLsizei         count,
@@ -2066,7 +2066,7 @@ cmd void glProgramUniform2uivEXT(ProgramId       program,
   ProgramUniform2uiv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3fEXT(ProgramId       program,
                                UniformLocation location,
                                GLfloat         v0,
@@ -2076,7 +2076,7 @@ cmd void glProgramUniform3fEXT(ProgramId       program,
   ProgramUniform3f(program, location, v0, v1, v2)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3fvEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2085,7 +2085,7 @@ cmd void glProgramUniform3fvEXT(ProgramId       program,
   ProgramUniform3fv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3iEXT(ProgramId       program,
                                UniformLocation location,
                                GLint           v0,
@@ -2095,7 +2095,7 @@ cmd void glProgramUniform3iEXT(ProgramId       program,
   ProgramUniform3i(program, location, v0, v1, v2)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3ivEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2104,7 +2104,7 @@ cmd void glProgramUniform3ivEXT(ProgramId       program,
   ProgramUniform3iv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3uiEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLuint          v0,
@@ -2114,7 +2114,7 @@ cmd void glProgramUniform3uiEXT(ProgramId       program,
   ProgramUniform3ui(program, location, v0, v1, v2)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform3uivEXT(ProgramId       program,
                                  UniformLocation location,
                                  GLsizei         count,
@@ -2123,7 +2123,7 @@ cmd void glProgramUniform3uivEXT(ProgramId       program,
   ProgramUniform3uiv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4fEXT(ProgramId       program,
                                UniformLocation location,
                                GLfloat         v0,
@@ -2134,7 +2134,7 @@ cmd void glProgramUniform4fEXT(ProgramId       program,
   ProgramUniform4f(program, location, v0, v1, v2, v3)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4fvEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2143,7 +2143,7 @@ cmd void glProgramUniform4fvEXT(ProgramId       program,
   ProgramUniform4fv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4iEXT(ProgramId       program,
                                UniformLocation location,
                                GLint           v0,
@@ -2154,7 +2154,7 @@ cmd void glProgramUniform4iEXT(ProgramId       program,
   ProgramUniform4i(program, location, v0, v1, v2, v3)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4ivEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLsizei         count,
@@ -2163,7 +2163,7 @@ cmd void glProgramUniform4ivEXT(ProgramId       program,
   ProgramUniform4iv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4uiEXT(ProgramId       program,
                                 UniformLocation location,
                                 GLuint          v0,
@@ -2174,7 +2174,7 @@ cmd void glProgramUniform4uiEXT(ProgramId       program,
   ProgramUniform4ui(program, location, v0, v1, v2, v3)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniform4uivEXT(ProgramId       program,
                                  UniformLocation location,
                                  GLsizei         count,
@@ -2183,13 +2183,13 @@ cmd void glProgramUniform4uivEXT(ProgramId       program,
   ProgramUniform4uiv(program, location, count, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glProgramUniformHandleui64NV(ProgramId program, UniformLocation location, GLuint64 value) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glProgramUniformHandleui64vNV(ProgramId       program,
                                        UniformLocation location,
                                        GLsizei         count,
@@ -2198,7 +2198,7 @@ cmd void glProgramUniformHandleui64vNV(ProgramId       program,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix2fvEXT(ProgramId       program,
                                       UniformLocation location,
                                       GLsizei         count,
@@ -2208,7 +2208,7 @@ cmd void glProgramUniformMatrix2fvEXT(ProgramId       program,
   ProgramUniformMatrix2fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix2x3fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2218,7 +2218,7 @@ cmd void glProgramUniformMatrix2x3fvEXT(ProgramId       program,
   ProgramUniformMatrix2x3fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix2x4fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2228,7 +2228,7 @@ cmd void glProgramUniformMatrix2x4fvEXT(ProgramId       program,
   ProgramUniformMatrix2x4fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix3fvEXT(ProgramId       program,
                                       UniformLocation location,
                                       GLsizei         count,
@@ -2238,7 +2238,7 @@ cmd void glProgramUniformMatrix3fvEXT(ProgramId       program,
   ProgramUniformMatrix3fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix3x2fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2248,7 +2248,7 @@ cmd void glProgramUniformMatrix3x2fvEXT(ProgramId       program,
   ProgramUniformMatrix3x2fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix3x4fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2258,7 +2258,7 @@ cmd void glProgramUniformMatrix3x4fvEXT(ProgramId       program,
   ProgramUniformMatrix3x4fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix4fvEXT(ProgramId       program,
                                       UniformLocation location,
                                       GLsizei         count,
@@ -2268,7 +2268,7 @@ cmd void glProgramUniformMatrix4fvEXT(ProgramId       program,
   ProgramUniformMatrix4fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix4x2fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2278,7 +2278,7 @@ cmd void glProgramUniformMatrix4x2fvEXT(ProgramId       program,
   ProgramUniformMatrix4x2fv(program, location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glProgramUniformMatrix4x3fvEXT(ProgramId       program,
                                         UniformLocation location,
                                         GLsizei         count,
@@ -2289,7 +2289,7 @@ cmd void glProgramUniformMatrix4x3fvEXT(ProgramId       program,
 }
 
 @PushUserMarker
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", "GL_EXT_debug_marker")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", GL_EXT_debug_marker)
 cmd void glPushGroupMarkerEXT(GLsizei length, const GLchar* marker) {
   requiresExtension(GL_EXT_debug_marker)
 
@@ -2300,33 +2300,33 @@ cmd void glPushGroupMarkerEXT(GLsizei length, const GLchar* marker) {
   }
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", "GL_EXT_disjoint_timer_query")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", GL_EXT_disjoint_timer_query)
 cmd void glQueryCounterEXT(QueryId query, GLenum target) {
   requiresExtension(GL_EXT_disjoint_timer_query)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/raster_multisample.txt", "GL_EXT_raster_multisample")
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/texture_filter_minmax.txt", "GL_EXT_texture_filter_minmax")
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", "GL_NV_framebuffer_mixed_samples")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/raster_multisample.txt", GL_EXT_raster_multisample)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/texture_filter_minmax.txt", GL_EXT_texture_filter_minmax)
+@doc("https://www.khronos.org/registry/gles/extensions/NV/framebuffer_mixed_samples.txt", GL_NV_framebuffer_mixed_samples)
 cmd void glRasterSamplesEXT(GLuint samples, GLboolean fixedsamplelocations) {
   requiresExtension3(GL_EXT_raster_multisample, GL_EXT_texture_filter_minmax, GL_NV_framebuffer_mixed_samples)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", "GL_EXT_multiview_draw_buffers")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multiview_draw_buffers.txt", GL_EXT_multiview_draw_buffers)
 cmd void glReadBufferIndexedEXT(GLenum src, GLint index) {
   requiresExtension(GL_EXT_multiview_draw_buffers)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_read_buffer.txt", "GL_NV_read_buffer")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_read_buffer.txt", GL_NV_read_buffer)
 cmd void glReadBufferNV(GLenum mode) {
   requiresExtension(GL_NV_read_buffer)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", "GL_EXT_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_robustness.txt", GL_EXT_robustness)
 cmd void glReadnPixelsEXT(GLint   x,
                           GLint   y,
                           GLsizei width,
@@ -2339,7 +2339,7 @@ cmd void glReadnPixelsEXT(GLint   x,
   ReadnPixels(x, y, width, height, format, type, bufSize, data)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", "GL_KHR_robustness")
+@doc("https://www.khronos.org/registry/gles/extensions/KHR/robustness.txt", GL_KHR_robustness)
 cmd void glReadnPixelsKHR(GLint   x,
                           GLint   y,
                           GLsizei width,
@@ -2352,7 +2352,7 @@ cmd void glReadnPixelsKHR(GLint   x,
   ReadnPixels(x, y, width, height, format, type, bufSize, data)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_framebuffer_multisample.txt", "GL_ANGLE_framebuffer_multisample")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_framebuffer_multisample.txt", GL_ANGLE_framebuffer_multisample)
 cmd void glRenderbufferStorageMultisampleANGLE(GLenum  target,
                                                GLsizei samples,
                                                GLenum  internalformat,
@@ -2362,7 +2362,7 @@ cmd void glRenderbufferStorageMultisampleANGLE(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_framebuffer_multisample.txt", "GL_APPLE_framebuffer_multisample")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_framebuffer_multisample.txt", GL_APPLE_framebuffer_multisample)
 cmd void glRenderbufferStorageMultisampleAPPLE(GLenum  target,
                                                GLsizei samples,
                                                GLenum  internalformat,
@@ -2372,7 +2372,7 @@ cmd void glRenderbufferStorageMultisampleAPPLE(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multisampled_render_to_texture.txt", "GL_EXT_multisampled_render_to_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multisampled_render_to_texture.txt", GL_EXT_multisampled_render_to_texture)
 cmd void glRenderbufferStorageMultisampleEXT(GLenum  target,
                                              GLsizei samples,
                                              GLenum  internalformat,
@@ -2382,7 +2382,7 @@ cmd void glRenderbufferStorageMultisampleEXT(GLenum  target,
   RenderbufferStorageMultisample(target, samples, internalformat, width, height)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_multisampled_render_to_texture.txt", "GL_IMG_multisampled_render_to_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_multisampled_render_to_texture.txt", GL_IMG_multisampled_render_to_texture)
 cmd void glRenderbufferStorageMultisampleIMG(GLenum  target,
                                              GLsizei samples,
                                              GLenum  internalformat,
@@ -2392,7 +2392,7 @@ cmd void glRenderbufferStorageMultisampleIMG(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_framebuffer_multisample.txt", "GL_NV_framebuffer_multisample")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_framebuffer_multisample.txt", GL_NV_framebuffer_multisample)
 cmd void glRenderbufferStorageMultisampleNV(GLenum  target,
                                             GLsizei samples,
                                             GLenum  internalformat,
@@ -2402,49 +2402,49 @@ cmd void glRenderbufferStorageMultisampleNV(GLenum  target,
   RenderbufferStorageMultisample(target, samples, internalformat, width, height)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", "GL_NV_sample_locations")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/sample_locations.txt", GL_NV_sample_locations)
 cmd void glResolveDepthValuesNV() {
   requiresExtension(GL_NV_sample_locations)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_framebuffer_multisample.txt", "GL_APPLE_framebuffer_multisample")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_framebuffer_multisample.txt", GL_APPLE_framebuffer_multisample)
 cmd void glResolveMultisampleFramebufferAPPLE() {
   requiresExtension(GL_APPLE_framebuffer_multisample)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glSamplerParameterIivOES(SamplerId sampler, GLenum pname, const GLint* param) {
   requiresExtension(GL_OES_texture_border_clamp)
   SamplerParameterIiv(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glSamplerParameterIuivOES(SamplerId sampler, GLenum pname, const GLuint* param) {
   requiresExtension(GL_OES_texture_border_clamp)
   SamplerParameterIuiv(sampler, pname, param)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glScissorArrayvNV(GLuint first, GLsizei count, const GLint* v) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glScissorIndexedNV(GLuint index, GLint left, GLint bottom, GLsizei width, GLsizei height) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glScissorIndexedvNV(GLuint index, const GLint* v) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", "GL_AMD_performance_monitor")
+@doc("https://www.khronos.org/registry/gles/extensions/AMD/performance_monitor.txt", GL_AMD_performance_monitor)
 cmd void glSelectPerfMonitorCountersAMD(GLuint    monitor,
                                         GLboolean enable,
                                         GLuint    group,
@@ -2454,13 +2454,13 @@ cmd void glSelectPerfMonitorCountersAMD(GLuint    monitor,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd void glSetFenceNV(GLuint fence, GLenum condition) {
   requiresExtension(GL_NV_fence)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_tiled_rendering.txt", "GL_QCOM_tiled_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/QCOM/QCOM_tiled_rendering.txt", GL_QCOM_tiled_rendering)
 cmd void glStartTilingQCOM(GLuint     x,
                            GLuint     y,
                            GLuint     width,
@@ -2470,7 +2470,7 @@ cmd void glStartTilingQCOM(GLuint     x,
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilFillPathInstancedNV(GLsizei        numPaths,
                                       GLenum         pathNameType,
                                       const void*    paths,
@@ -2483,13 +2483,13 @@ cmd void glStencilFillPathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilFillPathNV(GLuint path, GLenum fillMode, GLuint mask) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilStrokePathInstancedNV(GLsizei        numPaths,
                                         GLenum         pathNameType,
                                         const void*    paths,
@@ -2502,13 +2502,13 @@ cmd void glStencilStrokePathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilStrokePathNV(GLuint path, GLint reference, GLuint mask) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilThenCoverFillPathInstancedNV(GLsizei        numPaths,
                                                GLenum         pathNameType,
                                                const void*    paths,
@@ -2522,13 +2522,13 @@ cmd void glStencilThenCoverFillPathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilThenCoverFillPathNV(GLuint path, GLenum fillMode, GLuint mask, GLenum coverMode) {
   requiresExtension(GL_NV_path_rendering)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilThenCoverStrokePathInstancedNV(GLsizei        numPaths,
                                                  GLenum         pathNameType,
                                                  const void*    paths,
@@ -2542,7 +2542,7 @@ cmd void glStencilThenCoverStrokePathInstancedNV(GLsizei        numPaths,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glStencilThenCoverStrokePathNV(GLuint path,
                                         GLint  reference,
                                         GLuint mask,
@@ -2551,26 +2551,26 @@ cmd void glStencilThenCoverStrokePathNV(GLuint path,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/conservative_raster.txt", "GL_NV_conservative_raster")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/conservative_raster.txt", GL_NV_conservative_raster)
 cmd void glSubpixelPrecisionBiasNV(GLuint xbits, GLuint ybits) {
   requiresExtension(GL_NV_conservative_raster)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", "GL_NV_fence")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/fence.txt", GL_NV_fence)
 cmd GLboolean glTestFenceNV(GLuint fence) {
   requiresExtension(GL_NV_fence)
   // TODO
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_buffer.txt", "GL_OES_texture_buffer")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_buffer.txt", GL_OES_texture_buffer)
 cmd void glTexBufferOES(GLenum target, GLenum internalformat, BufferId buffer) {
   requiresExtension(GL_OES_texture_buffer)
   TexBuffer(target, internalformat, buffer)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_buffer.txt", "GL_OES_texture_buffer")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_buffer.txt", GL_OES_texture_buffer)
 cmd void glTexBufferRangeOES(GLenum     target,
                              GLenum     internalformat,
                              BufferId   buffer,
@@ -2580,7 +2580,7 @@ cmd void glTexBufferRangeOES(GLenum     target,
   TexBufferRange(target, internalformat, buffer, offset, size)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glTexImage3DOES(GLenum         target,
                          GLint          level,
                          GLenum         internalformat,
@@ -2596,7 +2596,7 @@ cmd void glTexImage3DOES(GLenum         target,
   TexImage3D(target, level, as!GLint(internalformat), width, height, depth, border, format, type, pixels)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_sparse_texture.txt", "GL_EXT_sparse_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_sparse_texture.txt", GL_EXT_sparse_texture)
 cmd void glTexPageCommitmentEXT(GLenum    target,
                                 GLint     level,
                                 GLint     xoffset,
@@ -2610,25 +2610,25 @@ cmd void glTexPageCommitmentEXT(GLenum    target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glTexParameterIivOES(GLenum target, GLenum pname, const GLint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   TexParameterIiv(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", "GL_OES_texture_border_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_border_clamp.txt", GL_OES_texture_border_clamp)
 cmd void glTexParameterIuivOES(GLenum target, GLenum pname, const GLuint* params) {
   requiresExtension(GL_OES_texture_border_clamp)
   TexParameterIuiv(target, pname, params)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTexStorage1DEXT(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
   requiresExtension(GL_EXT_texture_storage)
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTexStorage2DEXT(GLenum  target,
                            GLsizei levels,
                            GLenum  internalformat,
@@ -2638,7 +2638,7 @@ cmd void glTexStorage2DEXT(GLenum  target,
   TexStorage2D(target, levels, internalformat, width, height)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTexStorage3DEXT(GLenum  target,
                            GLsizei levels,
                            GLenum  internalformat,
@@ -2649,7 +2649,7 @@ cmd void glTexStorage3DEXT(GLenum  target,
   TexStorage3D(target, levels, internalformat, width, height, depth)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", "GL_OES_texture_3D")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_3D.txt", GL_OES_texture_3D)
 cmd void glTexSubImage3DOES(GLenum         target,
                             GLint          level,
                             GLint          xoffset,
@@ -2665,7 +2665,7 @@ cmd void glTexSubImage3DOES(GLenum         target,
   TexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTextureStorage1DEXT(TextureId texture,
                                GLenum    target,
                                GLsizei   levels,
@@ -2675,7 +2675,7 @@ cmd void glTextureStorage1DEXT(TextureId texture,
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTextureStorage2DEXT(TextureId texture,
                                GLenum    target,
                                GLsizei   levels,
@@ -2686,7 +2686,7 @@ cmd void glTextureStorage2DEXT(TextureId texture,
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", "GL_EXT_texture_storage")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_storage.txt", GL_EXT_texture_storage)
 cmd void glTextureStorage3DEXT(TextureId texture,
                                GLenum    target,
                                GLsizei   levels,
@@ -2698,7 +2698,7 @@ cmd void glTextureStorage3DEXT(TextureId texture,
 
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_view.txt", "GL_EXT_texture_view")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_texture_view.txt", GL_EXT_texture_view)
 cmd void glTextureViewEXT(TextureId texture,
                           GLenum    target,
                           GLuint    origtexture,
@@ -2711,7 +2711,7 @@ cmd void glTextureViewEXT(TextureId texture,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_view.txt", "GL_OES_texture_view")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_texture_view.txt", GL_OES_texture_view)
 cmd void glTextureViewOES(TextureId texture,
                           GLenum    target,
                           GLuint    origtexture,
@@ -2724,7 +2724,7 @@ cmd void glTextureViewOES(TextureId texture,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glTransformPathNV(GLuint         resultPath,
                            GLuint         srcPath,
                            GLenum         transformType,
@@ -2733,19 +2733,19 @@ cmd void glTransformPathNV(GLuint         resultPath,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glUniformHandleui64NV(UniformLocation location, GLuint64 value) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", "GL_NV_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/bindless_texture.txt", GL_NV_bindless_texture)
 cmd void glUniformHandleui64vNV(UniformLocation location, GLsizei count, const GLuint64* value) {
   requiresExtension(GL_NV_bindless_texture)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix2x3fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2754,7 +2754,7 @@ cmd void glUniformMatrix2x3fvNV(UniformLocation location,
   UniformMatrix2x3fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix2x4fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2763,7 +2763,7 @@ cmd void glUniformMatrix2x4fvNV(UniformLocation location,
   UniformMatrix2x4fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix3x2fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2772,7 +2772,7 @@ cmd void glUniformMatrix3x2fvNV(UniformLocation location,
   UniformMatrix3x2fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix3x4fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2781,7 +2781,7 @@ cmd void glUniformMatrix3x4fvNV(UniformLocation location,
   UniformMatrix3x4fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix4x2fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2790,7 +2790,7 @@ cmd void glUniformMatrix4x2fvNV(UniformLocation location,
   UniformMatrix4x2fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", "GL_NV_non_square_matrices")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_non_square_matrices.txt", GL_NV_non_square_matrices)
 cmd void glUniformMatrix4x3fvNV(UniformLocation location,
                                 GLsizei         count,
                                 GLboolean       transpose,
@@ -2799,68 +2799,68 @@ cmd void glUniformMatrix4x3fvNV(UniformLocation location,
   UniformMatrix4x3fv(location, count, transpose, value)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", "GL_OES_mapbuffer")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_mapbuffer.txt", GL_OES_mapbuffer)
 cmd GLboolean glUnmapBufferOES(GLenum target) {
   requiresExtension(GL_OES_mapbuffer)
   UnmapBuffer(target)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glUseProgramStagesEXT(PipelineId pipeline, GLbitfield stages, ProgramId program) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", "GL_EXT_separate_shader_objects")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", GL_EXT_separate_shader_objects)
 cmd void glValidateProgramPipelineEXT(PipelineId pipeline) {
   requiresExtension(GL_EXT_separate_shader_objects)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", "GL_ANGLE_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", GL_ANGLE_instanced_arrays)
 cmd void glVertexAttribDivisorANGLE(AttributeLocation index, GLuint divisor) {
   requiresExtension(GL_ANGLE_instanced_arrays)
   VertexAttribDivisor(index, divisor)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", "GL_EXT_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", GL_EXT_instanced_arrays)
 cmd void glVertexAttribDivisorEXT(AttributeLocation index, GLuint divisor) {
   requiresExtension(GL_EXT_instanced_arrays)
   VertexAttribDivisor(index, divisor)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_instanced_arrays.txt", "GL_NV_instanced_arrays")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_instanced_arrays.txt", GL_NV_instanced_arrays)
 cmd void glVertexAttribDivisorNV(AttributeLocation index, GLuint divisor) {
   requiresExtension(GL_NV_instanced_arrays)
   VertexAttribDivisor(index, divisor)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glViewportArrayvNV(GLuint first, GLsizei count, const GLfloat* v) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glViewportIndexedfNV(GLuint index, GLfloat x, GLfloat y, GLfloat w, GLfloat h) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", "GL_NV_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/NV_viewport_array.txt", GL_NV_viewport_array)
 cmd void glViewportIndexedfvNV(GLuint index, const GLfloat* v) {
   requiresExtension(GL_NV_viewport_array)
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", "GL_APPLE_sync")
+@doc("https://www.khronos.org/registry/gles/extensions/APPLE/APPLE_sync.txt", GL_APPLE_sync)
 cmd void glWaitSyncAPPLE(GLsync sync, GLbitfield flag, GLuint64 timeout) {
   requiresExtension(GL_APPLE_sync)
   WaitSync(sync, flag, timeout)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", "GL_NV_path_rendering")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/path_rendering.txt", GL_NV_path_rendering)
 cmd void glWeightPathsNV(GLuint         resultPath,
                          GLsizei        numPaths,
                          const GLuint*  paths,
@@ -2869,317 +2869,317 @@ cmd void glWeightPathsNV(GLuint         resultPath,
   // TODO
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", "GL_EXT_shader_pixel_local_storage2")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", GL_EXT_shader_pixel_local_storage2)
 cmd void glClearPixelLocalStorageuiEXT(GLsizei offset, GLsizei n, const GLuint* values) {
   requiresExtension(GL_EXT_shader_pixel_local_storage2)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_clear_texture.txt", "GL_EXT_clear_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_clear_texture.txt", GL_EXT_clear_texture)
 cmd void glClearTexImageEXT(GLuint texture, GLint level, GLenum format, GLenum type, const void* data) {
   requiresExtension(GL_EXT_clear_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_clear_texture.txt", "GL_EXT_clear_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_clear_texture.txt", GL_EXT_clear_texture)
 cmd void glClearTexSubImageEXT(GLuint texture, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* data) {
   requiresExtension(GL_EXT_clear_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/conservative_raster_pre_snap_triangles.txt", "GL_NV_conservative_raster_pre_snap_triangles")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/conservative_raster_pre_snap_triangles.txt", GL_NV_conservative_raster_pre_snap_triangles)
 cmd void glConservativeRasterParameteriNV(GLenum pname, GLint param) {
   requiresExtension(GL_NV_conservative_raster_pre_snap_triangles)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glDepthRangeArrayfvOES(GLuint first, GLsizei count, const GLfloat* v) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glDepthRangeIndexedfOES(GLuint index, GLfloat n, GLfloat f) {
   requiresExtension(GL_OES_viewport_array)
 }
 
 // TODO: @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", "GL_EXT_draw_transform_feedback")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackEXT(GLenum mode, GLuint id) {
   requiresExtension(GL_EXT_draw_transform_feedback)
 }
 
 // TODO: @DrawCall
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", "GL_EXT_draw_transform_feedback")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackInstancedEXT(GLenum mode, GLuint id, GLsizei instancecount) {
   requiresExtension(GL_EXT_draw_transform_feedback)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", "GL_EXT_shader_pixel_local_storage2")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", GL_EXT_shader_pixel_local_storage2)
 cmd void glFramebufferPixelLocalStorageSizeEXT(GLuint target, GLsizei size) {
   requiresExtension(GL_EXT_shader_pixel_local_storage2)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_framebuffer_downsample.txt", "GL_IMG_framebuffer_downsample")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_framebuffer_downsample.txt", GL_IMG_framebuffer_downsample)
 cmd void glFramebufferTexture2DDownsampleIMG(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLint xscale, GLint yscale) {
   requiresExtension(GL_IMG_framebuffer_downsample)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_framebuffer_downsample.txt", "GL_IMG_framebuffer_downsample")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_framebuffer_downsample.txt", GL_IMG_framebuffer_downsample)
 cmd void glFramebufferTextureLayerDownsampleIMG(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer, GLint xscale, GLint yscale) {
   requiresExtension(GL_IMG_framebuffer_downsample)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OVR/multiview_multisampled_render_to_texture.txt", "GL_OVR_multiview_multisampled_render_to_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/OVR/multiview_multisampled_render_to_texture.txt", GL_OVR_multiview_multisampled_render_to_texture)
 cmd void glFramebufferTextureMultisampleMultiviewOVR(GLenum target, GLenum attachment, GLuint texture, GLint level, GLsizei samples, GLint baseViewIndex, GLsizei numViews) {
   requiresExtension(GL_OVR_multiview_multisampled_render_to_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glGetFloati_vOES(GLenum target, GLuint index, GLfloat* data) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", "GL_EXT_shader_pixel_local_storage2")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage2.txt", GL_EXT_shader_pixel_local_storage2)
 cmd GLsizei glGetFramebufferPixelLocalStorageSizeEXT(GLuint target) {
   requiresExtension(GL_EXT_shader_pixel_local_storage2)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd GLuint64 glGetTextureHandleIMG(GLuint texture) {
   requiresExtension(GL_IMG_bindless_texture)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd GLuint64 glGetTextureSamplerHandleIMG(GLuint texture, GLuint sampler) {
   requiresExtension(GL_IMG_bindless_texture)
   return ?
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glGetUniformi64vNV(GLuint program, GLint location, GLint64EXT* params) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/polygon_offset_clamp.txt", "GL_EXT_polygon_offset_clamp")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/polygon_offset_clamp.txt", GL_EXT_polygon_offset_clamp)
 cmd void glPolygonOffsetClampEXT(GLfloat factor, GLfloat units, GLfloat clamp) {
   requiresExtension(GL_EXT_polygon_offset_clamp)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform1i64NV(GLuint program, GLint location, GLint64EXT x) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform1i64vNV(GLuint program, GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform1ui64NV(GLuint program, GLint location, GLuint64EXT x) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform1ui64vNV(GLuint program, GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform2i64NV(GLuint program, GLint location, GLint64EXT x, GLint64EXT y) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform2i64vNV(GLuint program, GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform2ui64NV(GLuint program, GLint location, GLuint64EXT x, GLuint64EXT y) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform2ui64vNV(GLuint program, GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform3i64NV(GLuint program, GLint location, GLint64EXT x, GLint64EXT y, GLint64EXT z) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform3i64vNV(GLuint program, GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform3ui64NV(GLuint program, GLint location, GLuint64EXT x, GLuint64EXT y, GLuint64EXT z) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform3ui64vNV(GLuint program, GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform4i64NV(GLuint program, GLint location, GLint64EXT x, GLint64EXT y, GLint64EXT z, GLint64EXT w) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform4i64vNV(GLuint program, GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform4ui64NV(GLuint program, GLint location, GLuint64EXT x, GLuint64EXT y, GLuint64EXT z, GLuint64EXT w) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glProgramUniform4ui64vNV(GLuint program, GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd void glProgramUniformHandleui64IMG(GLuint program, GLint location, GLuint64 value) {
   requiresExtension(GL_IMG_bindless_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd void glProgramUniformHandleui64vIMG(GLuint program, GLint location, GLsizei count, const GLuint64* values) {
   requiresExtension(GL_IMG_bindless_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glScissorArrayvOES(GLuint first, GLsizei count, const GLint* v) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glScissorIndexedOES(GLuint index, GLint left, GLint bottom, GLsizei width, GLsizei height) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glScissorIndexedvOES(GLuint index, const GLint* v) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform1i64NV(GLint location, GLint64EXT x) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform1i64vNV(GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform1ui64NV(GLint location, GLuint64EXT x) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform1ui64vNV(GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform2i64NV(GLint location, GLint64EXT x, GLint64EXT y) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform2i64vNV(GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform2ui64NV(GLint location, GLuint64EXT x, GLuint64EXT y) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform2ui64vNV(GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform3i64NV(GLint location, GLint64EXT x, GLint64EXT y, GLint64EXT z) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform3i64vNV(GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform3ui64NV(GLint location, GLuint64EXT x, GLuint64EXT y, GLuint64EXT z) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform3ui64vNV(GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform4i64NV(GLint location, GLint64EXT x, GLint64EXT y, GLint64EXT z, GLint64EXT w) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform4i64vNV(GLint location, GLsizei count, const GLint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform4ui64NV(GLint location, GLuint64EXT x, GLuint64EXT y, GLuint64EXT z, GLuint64EXT w) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", "GL_NV_gpu_shader5")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/gpu_shader5.txt", GL_NV_gpu_shader5)
 cmd void glUniform4ui64vNV(GLint location, GLsizei count, const GLuint64EXT* value) {
   requiresExtension(GL_NV_gpu_shader5)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd void glUniformHandleui64IMG(GLint location, GLuint64 value) {
   requiresExtension(GL_IMG_bindless_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", "GL_IMG_bindless_texture")
+@doc("https://www.khronos.org/registry/gles/extensions/IMG/IMG_bindless_texture.txt", GL_IMG_bindless_texture)
 cmd void glUniformHandleui64vIMG(GLint location, GLsizei count, const GLuint64* value) {
   requiresExtension(GL_IMG_bindless_texture)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glViewportArrayvOES(GLuint first, GLsizei count, const GLfloat* v) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glViewportIndexedfOES(GLuint index, GLfloat x, GLfloat y, GLfloat w, GLfloat h) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", "GL_OES_viewport_array")
+@doc("https://www.khronos.org/registry/gles/extensions/OES/OES_viewport_array.txt", GL_OES_viewport_array)
 cmd void glViewportIndexedfvOES(GLuint index, const GLfloat* v) {
   requiresExtension(GL_OES_viewport_array)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/NV/viewport_swizzle.txt", "GL_NV_viewport_swizzle")
+@doc("https://www.khronos.org/registry/gles/extensions/NV/viewport_swizzle.txt", GL_NV_viewport_swizzle)
 cmd void glViewportSwizzleNV(GLuint index, GLenum swizzlex, GLenum swizzley, GLenum swizzlez, GLenum swizzlew) {
   requiresExtension(GL_NV_viewport_swizzle)
 }
 
-@Doc("https://www.khronos.org/registry/gles/extensions/EXT/window_rectangles.txt", "GL_EXT_window_rectangles")
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/window_rectangles.txt", GL_EXT_window_rectangles)
 cmd void glWindowRectanglesEXT(GLenum mode, GLsizei count, const GLint* box) {
   requiresExtension(GL_EXT_window_rectangles)
 }

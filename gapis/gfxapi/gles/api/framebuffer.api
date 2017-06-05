@@ -168,10 +168,10 @@ sub void SetFramebufferAttachment(GLenum                framebuffer_target,
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindFramebuffer.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindFramebuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindFramebuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindFramebuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindFramebuffer.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindFramebuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindFramebuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindFramebuffer.xhtml", GLES32)
 cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
   minRequiredVersion(2, 0)
   ctx := GetContext()
@@ -198,10 +198,10 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindRenderbuffer.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindRenderbuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindRenderbuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindRenderbuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindRenderbuffer.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindRenderbuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindRenderbuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindRenderbuffer.xhtml", GLES32)
 cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
   minRequiredVersion(2, 0)
   ctx := GetContext()
@@ -219,9 +219,9 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlitFramebuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlitFramebuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlitFramebuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlitFramebuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlitFramebuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlitFramebuffer.xhtml", GLES32)
 cmd void glBlitFramebuffer(GLint      srcX0,
                            GLint      srcY0,
                            GLint      srcX1,
@@ -262,10 +262,10 @@ sub void BlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLi
   _ = dstY1 // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCheckFramebufferStatus.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCheckFramebufferStatus.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCheckFramebufferStatus.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCheckFramebufferStatus.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCheckFramebufferStatus.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCheckFramebufferStatus.xhtml", GLES32)
 cmd GLenum glCheckFramebufferStatus(GLenum target) {
   minRequiredVersion(2, 0)
   switch (target) {
@@ -283,10 +283,10 @@ cmd GLenum glCheckFramebufferStatus(GLenum target) {
   return ?
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClear.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClear.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClear.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClear.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClear.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClear.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClear.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClear.xhtml", GLES32)
 cmd void glClear(GLbitfield mask) {
   minRequiredVersion(1, 0)
   supportsBits(mask, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
@@ -305,9 +305,9 @@ cmd void glClear(GLbitfield mask) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", GLES32)
 cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil) {
   minRequiredVersion(3, 0)
   switch (buffer) {
@@ -320,9 +320,9 @@ cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint s
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", GLES32)
 cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) {
   minRequiredVersion(3, 0)
   switch (buffer) {
@@ -341,9 +341,9 @@ cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) 
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", GLES32)
 cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
   minRequiredVersion(3, 0)
   switch (buffer) {
@@ -362,9 +362,9 @@ cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", GLES32)
 cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) {
   minRequiredVersion(3, 0)
   switch (buffer) {
@@ -379,10 +379,10 @@ cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) 
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearColor.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearColor.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearColor.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearColor.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearColor.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearColor.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearColor.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearColor.xhtml", GLES32)
 cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
   minRequiredVersion(1, 0)
 
@@ -390,10 +390,10 @@ cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
   ctx.Framebuffer.ColorClearValue = Vec4f(r, g, b, a)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearDepthf.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearDepthf.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearDepthf.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearDepthf.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearDepthf.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearDepthf.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearDepthf.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearDepthf.xhtml", GLES32)
 cmd void glClearDepthf(GLfloat depth) {
   minRequiredVersion(1, 0)
 
@@ -401,10 +401,10 @@ cmd void glClearDepthf(GLfloat depth) {
   ctx.Framebuffer.DepthClearValue = depth
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearStencil.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearStencil.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearStencil.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearStencil.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearStencil.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearStencil.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearStencil.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearStencil.xhtml", GLES32)
 cmd void glClearStencil(GLint stencil) {
   minRequiredVersion(1, 0)
 
@@ -412,10 +412,10 @@ cmd void glClearStencil(GLint stencil) {
   ctx.Framebuffer.StencilClearValue = stencil
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glColorMask.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glColorMask.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glColorMask.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glColorMask.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glColorMask.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glColorMask.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml", GLES32)
 cmd void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
   minRequiredVersion(1, 0)
   ctx := GetContext()
@@ -424,7 +424,7 @@ cmd void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean a
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml", GLES32)
 cmd void glColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
   minRequiredVersion(3, 2)
   ColorMaski(index, r, g, b, a)
@@ -435,10 +435,10 @@ sub void ColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b
   ctx.Framebuffer.ColorWritemask[index] = Vec4b(r, g, b, a)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteFramebuffers.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteFramebuffers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteFramebuffers.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteFramebuffers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteFramebuffers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteFramebuffers.xhtml", GLES32)
 cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) {
   minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -459,10 +459,10 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteRenderbuffers.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteRenderbuffers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteRenderbuffers.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteRenderbuffers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteRenderbuffers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteRenderbuffers.xhtml", GLES32)
 cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffers) {
   minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -477,10 +477,10 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthMask.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthMask.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthMask.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthMask.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthMask.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthMask.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthMask.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthMask.xhtml", GLES32)
 cmd void glDepthMask(GLboolean enabled) {
   minRequiredVersion(1, 0)
 
@@ -488,9 +488,9 @@ cmd void glDepthMask(GLboolean enabled) {
   ctx.Framebuffer.DepthWritemask = enabled
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawBuffers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawBuffers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawBuffers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawBuffers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawBuffers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawBuffers.xhtml", GLES32)
 cmd void glDrawBuffers(GLsizei n, const GLenum* bufs) {
   minRequiredVersion(3, 0)
   DrawBuffers(n, bufs)
@@ -508,8 +508,8 @@ sub void DrawBuffers(GLsizei n, const GLenum* buffers) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferParameteri.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferParameteri.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferParameteri.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferParameteri.xhtml", GLES32)
 cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
   minRequiredVersion(3, 1)
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
@@ -537,10 +537,10 @@ cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferRenderbuffer.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferRenderbuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferRenderbuffer.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferRenderbuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferRenderbuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferRenderbuffer.xhtml", GLES32)
 cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
                                    GLenum         framebuffer_attachment,
                                    GLenum         renderbuffer_target,
@@ -559,7 +559,7 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture.xhtml", GLES32)
 cmd void glFramebufferTexture(GLenum target, GLenum attachment, TextureId texture, GLint level) {
   minRequiredVersion(3, 2)
   FramebufferTexture(target, attachment, texture, level)
@@ -578,10 +578,10 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   SetFramebufferAttachment(target, attachment, attachment_info)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferTexture2D.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture2D.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferTexture2D.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTexture2D.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTexture2D.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture2D.xhtml", GLES32)
 cmd void glFramebufferTexture2D(GLenum    framebuffer_target,
                                 GLenum    framebuffer_attachment,
                                 GLenum    texture_target,
@@ -640,9 +640,9 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTextureLayer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTextureLayer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTextureLayer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTextureLayer.xhtml", GLES32)
 cmd void glFramebufferTextureLayer(GLenum    target,
                                    GLenum    attachment,
                                    TextureId texture,
@@ -661,10 +661,10 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   SetFramebufferAttachment(target, attachment, attachment_info)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenFramebuffers.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenFramebuffers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenFramebuffers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenFramebuffers.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenFramebuffers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenFramebuffers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml", GLES32)
 cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -678,10 +678,10 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenRenderbuffers.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenRenderbuffers.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenRenderbuffers.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenRenderbuffers.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenRenderbuffers.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenRenderbuffers.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml", GLES32)
 cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -695,10 +695,10 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetFramebufferAttachmentParameteriv.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferAttachmentParameteriv.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetFramebufferAttachmentParameteriv.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetFramebufferAttachmentParameteriv.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferAttachmentParameteriv.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferAttachmentParameteriv.xhtml", GLES32)
 cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
                                                GLenum attachment,
                                                GLenum parameter,
@@ -770,8 +770,8 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferParameteriv.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferParameteriv.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferParameteriv.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferParameteriv.xhtml", GLES32)
 cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params) {
   minRequiredVersion(3, 1)
   switch (pname) {
@@ -798,10 +798,10 @@ cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params)
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetRenderbufferParameteriv.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetRenderbufferParameteriv.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetRenderbufferParameteriv.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetRenderbufferParameteriv.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetRenderbufferParameteriv.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetRenderbufferParameteriv.xhtml", GLES32)
 cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* values) {
   minRequiredVersion(2, 0)
   switch (target) {
@@ -844,9 +844,9 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateFramebuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateFramebuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateFramebuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateFramebuffer.xhtml", GLES32)
 cmd void glInvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attachments) {
   minRequiredVersion(3, 0)
   InvalidateFramebuffer(target, count, attachments)
@@ -880,9 +880,9 @@ sub void InvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attac
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateSubFramebuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateSubFramebuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateSubFramebuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateSubFramebuffer.xhtml", GLES32)
 cmd void glInvalidateSubFramebuffer(GLenum        target,
                                     GLsizei       numAttachments,
                                     const GLenum* attachments,
@@ -904,10 +904,10 @@ cmd void glInvalidateSubFramebuffer(GLenum        target,
   read(attachments[0:numAttachments])
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsFramebuffer.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsFramebuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsFramebuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsFramebuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsFramebuffer.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsFramebuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsFramebuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsFramebuffer.xhtml", GLES32)
 cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
   minRequiredVersion(2, 0)
 
@@ -915,10 +915,10 @@ cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
   return as!GLboolean(framebuffer in ctx.Objects.Framebuffers)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsRenderbuffer.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsRenderbuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsRenderbuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsRenderbuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsRenderbuffer.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsRenderbuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsRenderbuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsRenderbuffer.xhtml", GLES32)
 cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
   minRequiredVersion(2, 0)
 
@@ -926,9 +926,9 @@ cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
   return as!GLboolean(renderbuffer in ctx.SharedObjects.Renderbuffers)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadBuffer.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadBuffer.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadBuffer.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadBuffer.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadBuffer.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadBuffer.xhtml", GLES32)
 cmd void glReadBuffer(GLenum src) {
   minRequiredVersion(3, 0)
   switch (src) {
@@ -986,10 +986,10 @@ sub void checkReadPixels(GLsizei width,
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glReadPixels.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadPixels.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadPixels.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glReadPixels.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadPixels.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadPixels.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml", GLES32)
 cmd void glReadPixels(GLint   x,
                       GLint   y,
                       GLsizei width,
@@ -1007,7 +1007,7 @@ cmd void glReadPixels(GLint   x,
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml", GLES32)
 cmd void glReadnPixels(GLint   x,
                        GLint   y,
                        GLsizei width,
@@ -1035,18 +1035,18 @@ sub void ReadnPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum for
   _ = height // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glRenderbufferStorage.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorage.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorage.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorage.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glRenderbufferStorage.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorage.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorage.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorage.xhtml", GLES32)
 cmd void glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
   minRequiredVersion(2, 0)
   RenderbufferStorageMultisample(target, 0 /* samples */, internalformat, width, height)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorageMultisample.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorageMultisample.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorageMultisample.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorageMultisample.xhtml", GLES32)
 cmd void glRenderbufferStorageMultisample(GLenum  target,
                                           GLsizei samples,
                                           GLenum  internalformat,
@@ -1088,10 +1088,10 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   _ = samples // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMask.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMask.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMask.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMask.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMask.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMask.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMask.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMask.xhtml", GLES32)
 cmd void glStencilMask(GLuint mask) {
   minRequiredVersion(1, 0)
 
@@ -1100,10 +1100,10 @@ cmd void glStencilMask(GLuint mask) {
   ctx.Framebuffer.StencilBackWritemask = mask
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMaskSeparate.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMaskSeparate.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMaskSeparate.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMaskSeparate.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMaskSeparate.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMaskSeparate.xhtml", GLES32)
 cmd void glStencilMaskSeparate(GLenum face, GLuint mask) {
   minRequiredVersion(2, 0)
   ctx := GetContext()

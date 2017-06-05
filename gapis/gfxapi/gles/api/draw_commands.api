@@ -45,10 +45,10 @@ sub void checkIndicesType(GLenum indices_type) {
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawArrays.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArrays.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArrays.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawArrays.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArrays.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArrays.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml", GLES32)
 cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
   minRequiredVersion(1, 0)
   checkPrimitiveType(draw_mode)
@@ -59,8 +59,8 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml", GLES32)
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   minRequiredVersion(3, 1)
   checkPrimitiveType(draw_mode)
@@ -72,9 +72,9 @@ cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysInstanced.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArraysInstanced.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysInstanced.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysInstanced.xhtml", GLES32)
 cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
   minRequiredVersion(3, 0)
   DrawArraysInstanced(draw_mode, first_index, indices_count, instance_count)
@@ -132,10 +132,10 @@ sub void DrawElements(ref!Context    ctx,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawElements.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElements.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElements.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElements.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawElements.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElements.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElements.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElements.xhtml", GLES32)
 cmd void glDrawElements(GLenum         draw_mode,
                         GLsizei        indices_count,
                         GLenum         indices_type,
@@ -146,7 +146,7 @@ cmd void glDrawElements(GLenum         draw_mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsBaseVertex.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsBaseVertex.xhtml", GLES32)
 cmd void glDrawElementsBaseVertex(GLenum         draw_mode,
                                   GLsizei        indices_count,
                                   GLenum         indices_type,
@@ -162,8 +162,8 @@ sub void DrawElementsBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum 
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml", GLES32)
 cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const void* indirect) {
   minRequiredVersion(3, 1)
   checkPrimitiveType(draw_mode)
@@ -178,9 +178,9 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstanced.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElementsInstanced.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsInstanced.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstanced.xhtml", GLES32)
 cmd void glDrawElementsInstanced(GLenum         draw_mode,
                                  GLsizei        indices_count,
                                  GLenum         indices_type,
@@ -196,7 +196,7 @@ sub void DrawElementsInstanced(GLenum draw_mode, GLsizei indices_count, GLenum i
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstancedBaseVertex.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstancedBaseVertex.xhtml", GLES32)
 cmd void glDrawElementsInstancedBaseVertex(GLenum         draw_mode,
                                            GLsizei        indices_count,
                                            GLenum         indices_type,
@@ -213,9 +213,9 @@ sub void DrawElementsInstancedBaseVertex(GLenum draw_mode, GLsizei indices_count
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawRangeElements.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawRangeElements.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElements.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawRangeElements.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawRangeElements.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElements.xhtml", GLES32)
 cmd void glDrawRangeElements(GLenum         draw_mode,
                              GLuint         start,
                              GLuint         end,
@@ -229,7 +229,7 @@ cmd void glDrawRangeElements(GLenum         draw_mode,
 }
 
 @DrawCall
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElementsBaseVertex.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElementsBaseVertex.xhtml", GLES32)
 cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
                                        GLuint         start,
                                        GLuint         end,
@@ -247,7 +247,7 @@ sub void DrawRangeElementsBaseVertex(GLenum draw_mode, GLuint start, GLuint end,
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPatchParameteri.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPatchParameteri.xhtml", GLES32)
 cmd void glPatchParameteri(GLenum pname, GLint value) {
   minRequiredVersion(3, 2)
   PatchParameteri(pname, value)
@@ -260,7 +260,7 @@ sub void PatchParameteri(GLenum pname, GLint value) {
   ctx.Miscellaneous.PatchVertices = value
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPrimitiveBoundingBox.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPrimitiveBoundingBox.xhtml", GLES32)
 cmd void glPrimitiveBoundingBox(GLfloat minX,
                                 GLfloat minY,
                                 GLfloat minZ,

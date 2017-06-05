@@ -22,9 +22,9 @@ class SyncObject {
 // string ObjectPtrLabel
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClientWaitSync.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClientWaitSync.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClientWaitSync.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClientWaitSync.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClientWaitSync.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClientWaitSync.xhtml", GLES32)
 cmd GLenum glClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   minRequiredVersion(3, 0)
   ClientWaitSync(sync, syncFlags, timeout)
@@ -40,9 +40,9 @@ sub void ClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   _ = timeout // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSync.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSync.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSync.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSync.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSync.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSync.xhtml", GLES32)
 cmd void glDeleteSync(GLsync sync) {
   minRequiredVersion(3, 0)
   DeleteSync(sync)
@@ -56,9 +56,9 @@ sub void DeleteSync(GLsync sync) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFenceSync.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFenceSync.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFenceSync.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFenceSync.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFenceSync.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFenceSync.xhtml", GLES32)
 cmd GLsync glFenceSync(GLenum condition, GLbitfield syncFlags) {
   minRequiredVersion(3, 0)
   sync := as!GLsync(?)
@@ -75,9 +75,9 @@ sub void FenceSync(GLenum condition, GLbitfield syncFlags, GLsync sync) {
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSynciv.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSynciv.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSynciv.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSynciv.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSynciv.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSynciv.xhtml", GLES32)
 cmd void glGetSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei* length, GLint* values) {
   minRequiredVersion(3, 0)
   GetSynciv(sync, pname, bufSize, length, values)
@@ -101,9 +101,9 @@ sub void GetSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei* length, 
   }
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSync.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSync.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSync.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSync.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSync.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSync.xhtml", GLES32)
 cmd GLboolean glIsSync(GLsync sync) {
   minRequiredVersion(3, 0)
   return IsSync(sync)
@@ -114,9 +114,9 @@ sub GLboolean IsSync(GLsync sync) {
   return as!GLboolean(sync in ctx.SharedObjects.SyncObjects)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glWaitSync.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glWaitSync.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glWaitSync.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glWaitSync.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glWaitSync.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glWaitSync.xhtml", GLES32)
 cmd void glWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   minRequiredVersion(3, 0)
   WaitSync(sync, syncFlags, timeout)

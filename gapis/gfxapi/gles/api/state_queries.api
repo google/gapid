@@ -18,42 +18,42 @@ sub bool VersionGreaterOrEqual(ref!Context ctx, GLint major, GLint minor) {
   return (ctx.Constants.MajorVersion > major) || ((ctx.Constants.MajorVersion == major) && (ctx.Constants.MinorVersion >= minor))
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetBooleani_v(GLenum param, GLuint index, GLboolean* values) {
   minRequiredVersion(3, 1)
   GetStateVariable!GLboolean(param, true, index, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetBooleanv(GLenum param, GLboolean* values) {
   minRequiredVersion(1, 0)
   GetStateVariable!GLboolean(param, false, 0, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetFloatv(GLenum param, GLfloat* values) {
   minRequiredVersion(1, 0)
   GetStateVariable!GLfloat(param, false, 0, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetInteger64i_v(GLenum param, GLuint index, GLint64* values) {
   minRequiredVersion(3, 0)
   GetStateVariable!GLint64(param, true, index, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetInteger64v(GLenum param, GLint64* values) {
   minRequiredVersion(3, 0)
   GetInteger64v(param, values)
@@ -63,26 +63,26 @@ sub void GetInteger64v(GLenum param, GLint64* values) {
   GetStateVariable!GLint64(param, false, 0, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetIntegeri_v(GLenum param, GLuint index, GLint* values) {
   minRequiredVersion(3, 0)
   GetStateVariable!GLint(param, true, index, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGet.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGet.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", GLES32)
 cmd void glGetIntegerv(GLenum param, GLint* values) {
   minRequiredVersion(1, 0)
   GetStateVariable!GLint(param, false, 0, values)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetInternalformativ.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetInternalformativ.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetInternalformativ.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetInternalformativ.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetInternalformativ.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetInternalformativ.xhtml", GLES32)
 cmd void glGetInternalformativ(GLenum  target,
                                GLenum  internalformat,
                                GLenum  pname,
@@ -132,10 +132,10 @@ cmd void glGetInternalformativ(GLenum  target,
   // TODO
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetString.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetString.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml", GLES32)
 cmd const GLubyte* glGetString(GLenum param) {
   minRequiredVersion(1, 0)
   switch (param) {
@@ -152,9 +152,9 @@ cmd const GLubyte* glGetString(GLenum param) {
   return ret
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetString.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetString.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetString.xhtml", GLES32)
 cmd const GLubyte* glGetStringi(GLenum name, GLuint index) {
   minRequiredVersion(3, 0)
   switch (name) {
@@ -171,16 +171,16 @@ cmd const GLubyte* glGetStringi(GLenum name, GLuint index) {
   return ret
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsEnabled.xml","OpenGL ES 2.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsEnabled.xhtml","OpenGL ES 3.0")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsEnabled.xhtml","OpenGL ES 3.1")
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsEnabled.xml", GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsEnabled.xhtml", GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsEnabled.xhtml", GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml", GLES32)
 cmd GLboolean glIsEnabled(GLenum capability) {
   minRequiredVersion(1, 0)
   return GetCapability(capability, 0)
 }
 
-@Doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml","OpenGL ES 3.2")
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsEnabled.xhtml", GLES32)
 cmd GLboolean glIsEnabledi(GLenum capability, GLuint index) {
   minRequiredVersion(3, 2)
   return IsEnabledi(capability, index)
