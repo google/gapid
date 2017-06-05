@@ -282,7 +282,7 @@ func nodename(node interface{}) string {
 	return nt.Name()
 }
 
-func (f *Functions) node(writer io.Writer, prefix string, node interface{}, arguments ...interface{}) error {
+func (f *Functions) node(writer io.Writer, prefix string, node semantic.Node, arguments ...interface{}) error {
 	// Collect the arguments to the template
 	args, err := f.buildArgs(arguments...)
 	if err != nil {
@@ -325,14 +325,14 @@ func (f *Functions) node(writer io.Writer, prefix string, node interface{}, argu
 // See Args for how the arguments are processed, in addition the Node arg will
 // be added in and have the value of node, and if the node had a type
 // discovered, the Type arg will be added in as well.
-func (f *Functions) Node(prefix string, node interface{}, arguments ...interface{}) (string, error) {
+func (f *Functions) Node(prefix string, node semantic.Node, arguments ...interface{}) (string, error) {
 	return "", f.node(nil, prefix, node, arguments...)
 }
 
 // SNode dispatches to the template that matches the node best, capturing the
 // result and returning it.
 // See Node for the dispatch rules used.
-func (f *Functions) SNode(prefix string, node interface{}, arguments ...interface{}) (string, error) {
+func (f *Functions) SNode(prefix string, node semantic.Node, arguments ...interface{}) (string, error) {
 	buf := &bytes.Buffer{}
 	err := f.node(buf, prefix, node, arguments...)
 	return buf.String(), err

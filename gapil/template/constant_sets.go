@@ -202,7 +202,12 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 	}
 	// Create constant sets for all the nodes.
 	for n, l := range nl.nodes {
-		isBitfield := false // TODO
+		isBitfield := false
+		if ty, err := semantic.TypeOf(n); err == nil {
+			if enum, ok := ty.(*semantic.Enum); ok {
+				isBitfield = enum.IsBitfield
+			}
+		}
 		constsets[n] = b.addLabels(l, isBitfield)
 	}
 
