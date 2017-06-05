@@ -451,7 +451,6 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     ctx.Constants = staticState.Constants
 
     ctx.Objects.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
-    ctx.SharedObjects.Buffers[0] = new!Buffer()
     ctx.SharedObjects.Renderbuffers[0] = new!Renderbuffer(ID:0)
     ctx.Objects.TransformFeedbacks[0] = new!TransformFeedback()
     ctx.Objects.VertexArrays[0] = NewVertexArray(ctx)
