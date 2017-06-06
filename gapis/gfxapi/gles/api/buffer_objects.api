@@ -336,6 +336,7 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!BufferId(?)
+    assert(id != 0)
     ctx.SharedObjects.Buffers[id] = new!Buffer()
     b[i] = id
   }
