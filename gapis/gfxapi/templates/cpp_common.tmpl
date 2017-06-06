@@ -708,7 +708,7 @@
 */}}
 {{define "C++.Dereference"}}
   {{if (IsReference (TypeOf $))}}
-    checkNotNull({{Template "C++.Read" $}}).
+    ({{Template "C++.Read" $}})->
   {{else}}
     {{Template "C++.Read" $}}.
   {{end}}

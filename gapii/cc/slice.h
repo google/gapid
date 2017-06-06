@@ -79,7 +79,7 @@ inline Slice<T>::Slice() : mBase(nullptr), mCount(0) {}
 template<typename T>
 inline Slice<T>::Slice(T* base, uint64_t count, const std::shared_ptr<Pool>& pool)
     : mBase(base), mCount(count), mPool(pool) {
-    gapii::spyAssert(mBase != nullptr || count == 0, "Slice: null pointer");
+    GAPID_ASSERT(mBase != nullptr || count == 0 /* Slice: null pointer */);
 }
 
 template<typename T>
@@ -104,15 +104,15 @@ inline bool Slice<T>::contains(const T& value) const {
 
 template<typename T>
 inline Slice<T> Slice<T>::operator()(uint64_t start, uint64_t end) const {
-    gapii::spyAssert(start <= end, "Slice: start > end");
-    gapii::spyAssert(end <= mCount, "Slice: index out of bounds");
-    gapii::spyAssert(mBase != nullptr || (start == end), "Slice: null pointer");
+    GAPID_ASSERT(start <= end /* Slice: start > end */);
+    GAPID_ASSERT(end <= mCount /* Slice: index out of bounds */);
+    GAPID_ASSERT(mBase != nullptr || (start == end) /* Slice: null pointer */);
     return Slice<T>(mBase+start, end-start, mPool);
 }
 
 template<typename T>
 inline T& Slice<T>::operator[](uint64_t index) const {
-    gapii::spyAssert(index >= 0 && index < mCount, "Slice: index out of bounds");
+    GAPID_ASSERT(index >= 0 && index < mCount /* Slice: index out of bounds */);
     return mBase[index];
 }
 
@@ -137,8 +137,8 @@ inline void Slice<T>::copy(const Slice<T>& dst, uint64_t start, uint64_t cnt, ui
     if(cnt == 0) {
         return;
     }
-    gapii::spyAssert((start < mCount) && (start + cnt <= mCount), "Slice: start index out of bounds");
-    gapii::spyAssert((dstStart < dst.mCount) && (dstStart + cnt <= dst.mCount), "Slice: dst index out of bounds");
+    GAPID_ASSERT((start < mCount) && (start + cnt <= mCount) /* Slice: start index out of bounds */);
+    GAPID_ASSERT((dstStart < dst.mCount) && (dstStart + cnt <= dst.mCount) /* Slice: dst index out of bounds */);
     for(size_t i = 0; i < cnt; ++i) {
         dst.mBase[dstStart + i] = mBase[start + i];
     }
@@ -149,8 +149,8 @@ inline void Slice<uint8_t>::copy(const Slice<uint8_t>& dst, uint64_t start, uint
     if(cnt == 0) {
         return;
     }
-    gapii::spyAssert((start < mCount) && (start + cnt <= mCount), "Slice: start u8 index out of bounds");
-    gapii::spyAssert((dstStart < dst.mCount) && (dstStart + cnt <= dst.mCount), "Slice: dst u8 index out of bounds");
+    GAPID_ASSERT((start < mCount) && (start + cnt <= mCount) /* Slice: start u8 index out of bounds */);
+    GAPID_ASSERT((dstStart < dst.mCount) && (dstStart + cnt <= dst.mCount) /* Slice: dst u8 index out of bounds */);
     memmove(&dst.mBase[dstStart], &mBase[start], cnt);
 }
 

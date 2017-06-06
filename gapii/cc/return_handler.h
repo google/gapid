@@ -38,8 +38,7 @@ class ReturnHandler {
   template <typename T> T getAndClearReturnValue() {
     auto tid = std::type_index(typeid(T));
     auto it = mReturnValues.find(tid);
-    spyAssert(it != mReturnValues.end(),
-              "getAndClassReturnValue called, but hasReturnValue is false");
+    GAPID_ASSERT(it != mReturnValues.end() /* getAndClassReturnValue called, but hasReturnValue is false */);
     T returnVal{};
     T* val = static_cast<T*>(it->second);
     std::swap(*val, returnVal);

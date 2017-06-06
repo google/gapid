@@ -23,6 +23,7 @@
 #include "return_handler.h"
 #include "slice.h"
 
+#include "core/cc/assert.h"
 #include "core/cc/scratch_allocator.h"
 #include "core/cc/encoder.h"
 #include "core/cc/null_encoder.h"
@@ -66,12 +67,6 @@ public:
     // writes do not change the memory contents. If false, then
     // no-observations are made and writes change the application memory.
     inline void setObserveApplicationPool(bool observeApplicationPool);
-
-    // Set whether to just pass forward the calls directly from the
-    // interceptor to the underlying driver. If false, the default, then
-    // API state logic is run and an atom is emitted to the trace stream.
-    // If true, the spy is just a trampoline.
-    inline void setPassthrough(bool passthrough);
 
     // Set the handler to use when handle() is called with an abort
     // exception. This allows different treatment for different
@@ -156,10 +151,6 @@ protected:
     // abort signals that the atom should stop execution immediately.
     void abort();
 
-    // handle is called in the abort exception catch. Used to allow
-    // customization of abort handling.
-    inline void handleAbort(CallObserver* observer, const AbortException& e);
-
     // onPostDrawCall is after any command annotated with @DrawCall
     inline virtual void onPostDrawCall(uint8_t) {}
 
@@ -172,9 +163,6 @@ protected:
     // onPostFence is called immediately after the driver call.
     inline virtual void onPostFence(CallObserver* observer) {}
 
-    // Abort handler used when if no other handler has been specified
-    void defaultAbortHandler(CallObserver* observer, const AbortException& e);
-
     // Returns true if the current thread is currently "in" the spy, where
     // "in" is defined as "the time between a true return of try_to_enter and
     // a matching call to exit".
@@ -184,9 +172,6 @@ protected:
 
     // The output stream encoder.
     PackEncoder::SPtr mEncoder;
-
-    // If true the interceptor calls the underlying function directly.
-    bool mPassthrough;
 
     // A counter that is incremented each time a graphics command starts or
     // ends. The first command start gets a value of 0 for its starting command
@@ -270,7 +255,7 @@ inline void SpyBase::setReturnHandler(std::shared_ptr<ReturnHandler> handler) {
 
 template <typename T>
 void SpyBase::setExpectedReturn(const T& t) {
-    spyAssert(shouldComputeExpectedReturn(), "setExpectedReturn called, but shouldComputeExpectedReturn is false");
+    GAPID_ASSERT(shouldComputeExpectedReturn() /* setExpectedReturn called, but shouldComputeExpectedReturn is false */);
     mReturnHandler->setReturnValue(t);
 }
 
@@ -283,20 +268,8 @@ inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
     mObserveApplicationPool = observeApplicationPool;
 }
 
-inline void SpyBase::setPassthrough(bool passthrough) {
-    mPassthrough = passthrough;
-}
-
 inline void SpyBase::setHandler(AbortHandler handler) {
     mAbortHandler = handler;
-}
-
-inline void SpyBase::handleAbort(CallObserver* observer, const AbortException& e) {
-    if (mAbortHandler == nullptr) {
-        defaultAbortHandler(observer, e);
-    } else {
-        mAbortHandler(observer, e);
-    }
 }
 
 template<typename T>

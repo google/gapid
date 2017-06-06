@@ -39,20 +39,6 @@ void GlesNull::onThreadSwitched(CallObserver* observer, uint64_t threadID) {
     CoreSpy::switchThread(observer, threadID);
 }
 
-static void abortHandler(CallObserver*, const AbortException& e) {
-  switch (e.category()) {
-    case AbortException::NORMAL: {
-      GAPID_DEBUG("normal abort handled; no action taken");
-      return;
-    }
-    case AbortException::ASSERT:  // fallthrough
-    default: {
-      GAPID_WARNING("assert handled; stopping the world");
-      std::abort();
-    }
-  }
-}
-
 GlesNull::GlesNull() :
         mImportedGetIntegerv(nullptr),
         mReturnHandler(new ReturnHandler()) {
