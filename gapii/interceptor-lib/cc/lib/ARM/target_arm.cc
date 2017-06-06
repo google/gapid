@@ -181,7 +181,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
     case llvm::ARM::STRD_PRE:
     case llvm::ARM::STR_POST_REG:
     case llvm::ARM::STR_PRE_IMM:
-    case llvm::ARM::VSTMDDB_UPD:
+    case llvm::ARM::SUBri:
     case llvm::ARM::tADDi3:
     case llvm::ARM::tADDi8:
     case llvm::ARM::tADDrSP:
@@ -212,7 +212,8 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
     case llvm::ARM::t2STRDi8:
     case llvm::ARM::t2STRD_PRE:
     case llvm::ARM::t2STRD_POST:
-    case llvm::ARM::t2SUBri: {
+    case llvm::ARM::t2SUBri:
+    case llvm::ARM::VSTMDDB_UPD: {
       if (hasPcOperand(inst))
         return Error(
             "Instruction not handled yet when one of the operand is PC");
