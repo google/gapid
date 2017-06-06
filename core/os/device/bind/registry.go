@@ -23,7 +23,14 @@ import (
 	"github.com/google/gapid/core/log"
 )
 
-type registryKeyTy string
+type (
+	registryKeyTy string
+
+	propertyKey struct {
+		d Device
+		k interface{}
+	}
+)
 
 const registryKey = registryKeyTy("registryKeyID")
 
@@ -46,14 +53,16 @@ func GetRegistry(ctx context.Context) *Registry {
 // listening for devices that are added to and removed from the device.
 type Registry struct {
 	sync.Mutex
-	devices   []Device
-	listeners map[DeviceListener]struct{}
+	devices    []Device
+	properties map[propertyKey]interface{}
+	listeners  map[DeviceListener]struct{}
 }
 
 // NewRegistry returns a newly constructed Registry.
 func NewRegistry() *Registry {
 	return &Registry{
-		listeners: make(map[DeviceListener]struct{}),
+		listeners:  make(map[DeviceListener]struct{}),
+		properties: make(map[propertyKey]interface{}),
 	}
 }
 
@@ -172,4 +181,23 @@ func (r *Registry) RemoveDevice(ctx context.Context, d Device) {
 			}
 		}
 	}
+}
+
+// DeviceProperty returns the property with the key k for the device d,
+// previously set with SetDeviceProperty. If the property for the device does
+// not exist then nil is returned.
+func (r *Registry) DeviceProperty(ctx context.Context, d Device, k interface{}) interface{} {
+	r.Lock()
+	defer r.Unlock()
+	return r.properties[propertyKey{d, k}]
+}
+
+// SetDeviceProperty sets the property with the key k to the value v for the
+// device d. This property can be retrieved with DeviceProperty.
+// Properties will persist in the registry even when the device has not been
+// added or has been removed.
+func (r *Registry) SetDeviceProperty(ctx context.Context, d Device, k, v interface{}) {
+	r.Lock()
+	defer r.Unlock()
+	r.properties[propertyKey{d, k}] = v
 }
