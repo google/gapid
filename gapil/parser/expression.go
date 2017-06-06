@@ -15,8 +15,8 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/ast"
 )
 
 // lhs { extend }
@@ -202,9 +202,11 @@ func switch_(p *parse.Parser, cst *parse.Branch) *ast.Switch {
 		requireKeyword(ast.KeywordSwitch, p, cst)
 		e.Value = requireExpression(p, cst)
 		requireOperator(ast.OpBlockStart, p, cst)
+		annotations := &ast.Annotations{}
+		parseAnnotations(annotations, p, cst)
 		for peekKeyword(ast.KeywordCase, p) {
 			p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-				entry := &ast.Case{}
+				entry := &ast.Case{Annotations: *annotations}
 				p.SetCST(entry, cst)
 				requireKeyword(ast.KeywordCase, p, cst)
 				for !operator(ast.OpInitialise, p, cst) {
@@ -216,6 +218,8 @@ func switch_(p *parse.Parser, cst *parse.Branch) *ast.Switch {
 				entry.Block = requireBlock(p, cst)
 				e.Cases = append(e.Cases, entry)
 			})
+			annotations = &ast.Annotations{}
+			parseAnnotations(annotations, p, cst)
 		}
 		if peekKeyword(ast.KeywordDefault, p) {
 			p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {

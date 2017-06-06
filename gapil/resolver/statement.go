@@ -242,6 +242,7 @@ func case_(rv *resolver, in *ast.Case, vt semantic.Type) *semantic.Case {
 			}
 		}
 	})
+	out.Annotations = annotations(rv, in.Annotations)
 	out.Block = block(rv, in.Block, out)
 	rv.mappings.add(in, out)
 	return out
