@@ -48,6 +48,8 @@ public class GapisProcess extends ChildProcess<Integer> {
   private static final int AUTH_TOKEN_LENGTH = 8;
 
   private static final int SERVER_LAUNCH_TIMEOUT_MS = 10000;
+  private static final int HEARTBEAT_RATE_MS = 1000;
+  private static final int IDLE_TIMEOUT_MS = 10000;
   private static final String SERVER_HOST = "localhost";
 
   private final ListenableFuture<GapisConnection> connection;
@@ -60,9 +62,7 @@ public class GapisProcess extends ChildProcess<Integer> {
     this.listener = (listener == null) ? Listener.NULL : listener;
     connection = Futures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
-      return GapisConnection.create(SERVER_HOST + ":" + port, authToken, con -> {
-        shutdown();
-      });
+      return GapisConnection.create(SERVER_HOST + ":" + port, authToken, HEARTBEAT_RATE_MS, con -> shutdown());
     });
   }
 
@@ -95,6 +95,9 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     args.add("--gapis-auth-token");
     args.add(authToken);
+
+    args.add("--idle-timeout");
+    args.add(IDLE_TIMEOUT_MS + "ms");
 
     pb.command(args);
     return null;

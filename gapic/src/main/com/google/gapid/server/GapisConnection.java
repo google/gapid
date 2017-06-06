@@ -27,6 +27,9 @@ import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.okhttp.OkHttpChannelProvider;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A connection to a running Graphics API Server (GAPIS).
@@ -55,12 +58,8 @@ public abstract class GapisConnection implements Closeable {
     this.listener = listener;
   }
 
-  public static GapisConnection create(String target, String authToken) {
-    return create(target, authToken, con -> { /* ignore */ });
-  }
-
-  public static GapisConnection create(String target, String authToken, CloseListener listener) {
-    return new GRpcGapisConnection(listener, target, authToken);
+  public static GapisConnection create(String target, String authToken, int heartbeatRateMS, CloseListener listener) {
+    return new GRpcGapisConnection(listener, target, authToken, heartbeatRateMS);
   }
 
   @Override
@@ -85,8 +84,9 @@ public abstract class GapisConnection implements Closeable {
 
     private final ManagedChannel baseChannel;
     private final Channel channel;
+    private final int heartbeatRateMS;
 
-    public GRpcGapisConnection(CloseListener listener, String target, String authToken) {
+    public GRpcGapisConnection(CloseListener listener, String target, String authToken, int heartbeatRateMS) {
       super(listener);
 
       // Us OkHTTP as netty deadlocks a lot with the go server.
@@ -98,6 +98,8 @@ public abstract class GapisConnection implements Closeable {
 
       channel = authToken.isEmpty() ? baseChannel :
         intercept(baseChannel, newAttachHeadersInterceptor(getAuthHeader(authToken)));
+
+      this.heartbeatRateMS = heartbeatRateMS;
     }
 
     private static Metadata getAuthHeader(String authToken) {
@@ -115,14 +117,44 @@ public abstract class GapisConnection implements Closeable {
     public GapidClient createGapidClient(boolean caching) throws IOException {
       GapidGrpc.GapidFutureStub futureStub = GapidGrpc.newFutureStub(channel);
       GapidGrpc.GapidStub stub = GapidGrpc.newStub(channel);
-      return caching ? new GapidClientCache(futureStub, stub) :
+      GapidClient client = caching ? new GapidClientCache(futureStub, stub) :
           new GapidClientGrpc(futureStub, stub);
+      if (heartbeatRateMS > 0) {
+        new Heartbeat(client, heartbeatRateMS).start();
+      }
+      return client;
     }
 
     @Override
     public void close() {
       baseChannel.shutdown();
       super.close();
+    }
+
+    /**
+     * Heartbeat is a thread that calls {@link GapidClient#ping()} at regular intervals to prevent
+     * the server from exiting due to the --idle-timeout.
+     */
+    protected static class Heartbeat extends Thread {
+      private final GapidClient client;
+      private final int rateMS;
+
+      Heartbeat(GapidClient client, int rateMS) {
+        this.client = client;
+        this.rateMS = rateMS;
+      }
+
+      @Override
+      public void run() {
+        while (true) {
+          try {
+            client.ping().get(rateMS, TimeUnit.MILLISECONDS);
+            Thread.sleep(rateMS);
+          } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            return; // If the connection failed, the error will appear on another thread.
+          }
+        }
+      }
     }
   }
 }
