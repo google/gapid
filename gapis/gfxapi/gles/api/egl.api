@@ -355,6 +355,7 @@ cmd EGLBoolean eglWaitNative(EGLint engine) {
   return ? // TODO
 }
 
+@if(Extension.EGL_KHR_image_base)
 @doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", Extension.EGL_KHR_image_base)
 @no_replay
 cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
@@ -362,7 +363,6 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
                                   EGLenum         target,
                                   EGLClientBuffer buffer,
                                   const EGLint*   attrib_list) {
-  requiresExtension(EGL_KHR_image_base)
   ObserveAttribList(attrib_list)
   img := ?
   if target == EGL_NATIVE_BUFFER_ANDROID {
@@ -372,17 +372,17 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
   return img
 }
 
+@if(Extension.EGL_KHR_image_base)
 @doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", Extension.EGL_KHR_image_base)
 @no_replay
 cmd EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR image) {
-  requiresExtension(EGL_KHR_image_base)
   // TODO
   return ?
 }
 
+@if(Extension.EGL_ANDROID_create_native_client_buffer)
 @doc("https://www.khronos.org/registry/egl/extensions/ANDROID/EGL_ANDROID_create_native_client_buffer.txt", Extension.EGL_ANDROID_create_native_client_buffer)
 cmd EGLClientBuffer eglCreateNativeClientBufferANDROID(const EGLint* attrib_list) {
-  requiresExtension(EGL_ANDROID_create_native_client_buffer)
   ObserveAttribList(attrib_list)
   // TODO
   return ?

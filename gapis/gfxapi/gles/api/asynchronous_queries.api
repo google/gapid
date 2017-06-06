@@ -20,18 +20,18 @@ class Query {
   @unused string Label
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBeginQuery.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBeginQuery.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBeginQuery.xhtml", Version.GLES32)
 cmd void glBeginQuery(GLenum target, QueryId query) {
-  minRequiredVersion(3, 0)
   switch (target) {
     case GL_ANY_SAMPLES_PASSED, GL_ANY_SAMPLES_PASSED_CONSERVATIVE,
         GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN: {
       // version 3.0
     }
+    @if(Version.GLES32)
     case GL_PRIMITIVES_GENERATED: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -41,11 +41,11 @@ cmd void glBeginQuery(GLenum target, QueryId query) {
   ctx.ActiveQueries[target] = query
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteQueries.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteQueries.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteQueries.xhtml", Version.GLES32)
 cmd void glDeleteQueries(GLsizei count, const QueryId* queries) {
-  minRequiredVersion(3, 0)
 
   q := queries[0:count]
   ctx := GetContext()
@@ -57,18 +57,18 @@ cmd void glDeleteQueries(GLsizei count, const QueryId* queries) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBeginQuery.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBeginQuery.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBeginQuery.xhtml", Version.GLES32)
 cmd void glEndQuery(GLenum target) {
-  minRequiredVersion(3, 0)
   switch (target) {
     case GL_ANY_SAMPLES_PASSED, GL_ANY_SAMPLES_PASSED_CONSERVATIVE,
         GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN: {
       // version 3.0
     }
+    @if(Version.GLES32)
     case GL_PRIMITIVES_GENERATED: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -78,11 +78,11 @@ cmd void glEndQuery(GLenum target) {
   delete(ctx.ActiveQueries, target)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenQueries.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenQueries.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenQueries.xhtml", Version.GLES32)
 cmd void glGenQueries(GLsizei count, QueryId* queries) {
-  minRequiredVersion(3, 0)
 
   q := queries[0:count]
   ctx := GetContext()
@@ -94,11 +94,11 @@ cmd void glGenQueries(GLsizei count, QueryId* queries) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetQueryObjectuiv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetQueryObjectuiv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetQueryObjectuiv.xhtml", Version.GLES32)
 cmd void glGetQueryObjectuiv(QueryId query, GLenum parameter, GLuint* value) {
-  minRequiredVersion(3, 0)
   switch (parameter) {
     case GL_QUERY_RESULT, GL_QUERY_RESULT_AVAILABLE: {
       // version 3.0
@@ -111,21 +111,21 @@ cmd void glGetQueryObjectuiv(QueryId query, GLenum parameter, GLuint* value) {
   value[0] = ?
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetQueryiv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetQueryiv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetQueryiv.xhtml", Version.GLES32)
 cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
-  minRequiredVersion(3, 0)
   switch (target) {
     case GL_ANY_SAMPLES_PASSED, GL_ANY_SAMPLES_PASSED_CONSERVATIVE,
         GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN: {
       // version 3.0
     }
+    @if(Version.GLES32)
     case GL_PRIMITIVES_GENERATED: {
-      minRequiredVersion(3, 2)
     }
+    @if(Extension.GL_EXT_disjoint_timer_query)
     case GL_TIMESTAMP_EXT: {
-      requiresExtension(GL_EXT_disjoint_timer_query)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -141,8 +141,8 @@ cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
         value[0] = 0
       }
     }
+    @if(Extension.GL_EXT_disjoint_timer_query)
     case GL_QUERY_COUNTER_BITS_EXT: {
-      requiresExtension(GL_EXT_disjoint_timer_query)
       value[0] = ?
     }
     default: {
@@ -151,11 +151,11 @@ cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsQuery.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsQuery.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsQuery.xhtml", Version.GLES32)
 cmd GLboolean glIsQuery(QueryId query) {
-  minRequiredVersion(3, 0)
 
   ctx := GetContext()
   return as!GLboolean(query in ctx.Objects.Queries)

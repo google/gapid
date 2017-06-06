@@ -72,9 +72,9 @@ class FragmentOperationsState {
   GLboolean FramebufferSrgb = GL_TRUE
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendBarrier.xhtml", Version.GLES32)
 cmd void glBlendBarrier() {
-  minRequiredVersion(3, 2)
   BlendBarrier()
 }
 
@@ -82,39 +82,39 @@ sub void BlendBarrier() {
   // TODO
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendColor.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendColor.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendColor.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendColor.xhtml", Version.GLES32)
 cmd void glBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   ctx.FragmentOperations.BlendColor = Color(red, green, blue, alpha)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendEquation.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendEquation.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendEquation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquation.xhtml", Version.GLES32)
 cmd void glBlendEquation(GLenum equation) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   SetBlendEquation(0, len(ctx.FragmentOperations.Blend), equation, equation)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendEquationSeparate.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendEquationSeparate.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendEquationSeparate.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquationSeparate.xhtml", Version.GLES32)
 cmd void glBlendEquationSeparate(GLenum rgb, GLenum alpha) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   SetBlendEquation(0, len(ctx.FragmentOperations.Blend), rgb, alpha)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquationSeparate.xhtml", Version.GLES32)
 cmd void glBlendEquationSeparatei(DrawBufferIndex buf, GLenum modeRGB, GLenum modeAlpha) {
-  minRequiredVersion(3, 2)
   BlendEquationSeparatei(buf, modeRGB, modeAlpha)
 }
 
@@ -122,9 +122,9 @@ sub void BlendEquationSeparatei(DrawBufferIndex buf, GLenum modeRGB, GLenum mode
   SetBlendEquation(buf, 1, modeRGB, modeAlpha)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquation.xhtml", Version.GLES32)
 cmd void glBlendEquationi(DrawBufferIndex buf, GLenum mode) {
-  minRequiredVersion(3, 2)
   BlendEquationi(buf, mode)
 }
 
@@ -134,11 +134,11 @@ sub void BlendEquationi(DrawBufferIndex buf, GLenum mode) {
 
 sub void CheckBlendEquation(GLenum equation) {
   switch (equation) {
+    @if(Version.GLES20)
     case GL_FUNC_ADD, GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_SUBTRACT: {
-      minRequiredVersion(2, 0)
     }
+    @if(Version.GLES30)
     case GL_MAX, GL_MIN: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(equation)
@@ -158,16 +158,17 @@ sub void SetBlendEquation(DrawBufferIndex first_buffer, s32 buffer_count, GLenum
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendFunc.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendFunc.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendFunc.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFunc.xhtml", Version.GLES32)
 cmd void glBlendFunc(GLenum src_factor, GLenum dst_factor) {
-  minRequiredVersion(1, 0)
   ctx := GetContext()
   SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor, dst_factor, src_factor, dst_factor)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBlendFuncSeparate.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlendFuncSeparate.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlendFuncSeparate.xhtml", Version.GLES31)
@@ -176,18 +177,17 @@ cmd void glBlendFuncSeparate(GLenum src_factor_rgb,
                              GLenum dst_factor_rgb,
                              GLenum src_factor_alpha,
                              GLenum dst_factor_alpha) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor_rgb, dst_factor_rgb, src_factor_alpha, dst_factor_alpha)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFuncSeparate.xhtml", Version.GLES32)
 cmd void glBlendFuncSeparatei(DrawBufferIndex buf,
                               GLenum          srcRGB,
                               GLenum          dstRGB,
                               GLenum          srcAlpha,
                               GLenum          dstAlpha) {
-  minRequiredVersion(3, 2)
   BlendFuncSeparatei(buf, srcRGB, dstRGB, srcAlpha, dstAlpha)
 }
 
@@ -195,9 +195,9 @@ sub void BlendFuncSeparatei(DrawBufferIndex buf, GLenum srcRGB, GLenum dstRGB, G
   SetBlendFunc(buf, 1, srcRGB, dstRGB, srcAlpha, dstAlpha)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFunc.xhtml", Version.GLES32)
 cmd void glBlendFunci(DrawBufferIndex buf, GLenum src, GLenum dst) {
-  minRequiredVersion(3, 2)
   BlendFunci(buf, src, dst)
 }
 
@@ -207,11 +207,11 @@ sub void BlendFunci(DrawBufferIndex buf, GLenum src, GLenum dst) {
 
 sub void CheckBlendFunc(GLenum factor) {
   switch (factor) {
+    @if(Version.GLES20)
     case GL_CONSTANT_ALPHA, GL_CONSTANT_COLOR, GL_DST_ALPHA, GL_DST_COLOR, GL_ONE,
         GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_COLOR, GL_ONE_MINUS_DST_ALPHA,
         GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR, GL_SRC_ALPHA,
         GL_SRC_ALPHA_SATURATE, GL_SRC_COLOR, GL_ZERO: {
-      minRequiredVersion(2, 0)
     }
     default: {
       glErrorInvalidEnum(factor)
@@ -236,12 +236,12 @@ sub void SetBlendFunc(DrawBufferIndex first_buffer, s32    buffer_count,
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthFunc.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthFunc.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthFunc.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthFunc.xhtml", Version.GLES32)
 cmd void glDepthFunc(GLenum function) {
-  minRequiredVersion(1, 0)
   switch (function) {
     case GL_ALWAYS, GL_EQUAL, GL_GEQUAL, GL_GREATER, GL_LEQUAL, GL_LESS, GL_NEVER, GL_NOTEQUAL: {
       // version 2.0
@@ -256,12 +256,12 @@ cmd void glDepthFunc(GLenum function) {
 }
 
 // TODO: Move to rasterization?
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glSampleCoverage.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSampleCoverage.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSampleCoverage.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSampleCoverage.xhtml", Version.GLES32)
 cmd void glSampleCoverage(GLfloat value, GLboolean invert) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Rasterization.SampleCoverageValue = value
@@ -269,40 +269,40 @@ cmd void glSampleCoverage(GLfloat value, GLboolean invert) {
 }
 
 // TODO: Move to rasterization?
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSampleMaski.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSampleMaski.xhtml", Version.GLES32)
 cmd void glSampleMaski(GLuint maskNumber, GLbitfield mask) {
-  minRequiredVersion(3, 1)
   ctx := GetContext()
   ctx.Rasterization.SampleMaskValue[maskNumber] = mask
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glScissor.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glScissor.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glScissor.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glScissor.xhtml", Version.GLES32)
 cmd void glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-  minRequiredVersion(1, 0)
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
   ctx := GetContext()
   ctx.FragmentOperations.Scissor.Box = Rect(x, y, width, height)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilFunc.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilFunc.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilFunc.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilFunc.xhtml", Version.GLES32)
 cmd void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
-  minRequiredVersion(1, 0)
   StencilFuncSeparate(GL_FRONT_AND_BACK, func, ref, mask)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilFuncSeparate.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilFuncSeparate.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilFuncSeparate.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilFuncSeparate.xhtml", Version.GLES32)
 cmd void glStencilFuncSeparate(GLenum face, GLenum function, GLint reference_value, GLuint mask) {
-  minRequiredVersion(2, 0)
   StencilFuncSeparate(face, function, reference_value, mask)
 }
 
@@ -336,15 +336,16 @@ sub void StencilFuncSeparate(GLenum face, GLenum function, GLint reference_value
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilOp.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilOp.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilOp.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilOp.xhtml", Version.GLES32)
 cmd void glStencilOp(GLenum fail, GLenum zfail, GLenum zpass) {
-  minRequiredVersion(1, 0)
   StencilOpSeparate(GL_FRONT_AND_BACK, fail, zfail, zpass)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilOpSeparate.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilOpSeparate.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilOpSeparate.xhtml", Version.GLES31)
@@ -353,7 +354,6 @@ cmd void glStencilOpSeparate(GLenum face,
                              GLenum stencil_fail,
                              GLenum stencil_pass_depth_fail,
                              GLenum stencil_pass_depth_pass) {
-  minRequiredVersion(2, 0)
   StencilOpSeparate(face, stencil_fail, stencil_pass_depth_fail, stencil_pass_depth_pass)
 }
 

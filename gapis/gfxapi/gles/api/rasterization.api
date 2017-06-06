@@ -46,12 +46,12 @@ class BoundingBox {
   @unused Vec4f Max = Vec4f(1, 1, 1, 1)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCullFace.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCullFace.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCullFace.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCullFace.xhtml", Version.GLES32)
 cmd void glCullFace(GLenum mode) {
-  minRequiredVersion(1, 0)
   switch (mode) {
     case GL_BACK, GL_FRONT, GL_FRONT_AND_BACK: {
       // version 2.0
@@ -65,23 +65,23 @@ cmd void glCullFace(GLenum mode) {
   ctx.Rasterization.CullFaceMode = mode
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthRangef.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthRangef.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthRangef.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthRangef.xhtml", Version.GLES32)
 cmd void glDepthRangef(GLfloat near, GLfloat far) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Rasterization.DepthRange = Vec2f(near, far)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFrontFace.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFrontFace.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFrontFace.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFrontFace.xhtml", Version.GLES32)
 cmd void glFrontFace(GLenum orientation) {
-  minRequiredVersion(1, 0)
   switch (orientation) {
     case GL_CCW, GL_CW: {
       // version 2.0
@@ -95,10 +95,10 @@ cmd void glFrontFace(GLenum orientation) {
   ctx.Rasterization.FrontFace = orientation
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetMultisamplefv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetMultisamplefv.xhtml", Version.GLES32)
 cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
-  minRequiredVersion(3, 1)
   switch (pname) {
     case GL_SAMPLE_POSITION: {
       // version 3.1
@@ -111,20 +111,20 @@ cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
   read(val[0:2])
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glLineWidth.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glLineWidth.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLineWidth.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLineWidth.xhtml", Version.GLES32)
 cmd void glLineWidth(GLfloat width) {
-  minRequiredVersion(1, 0)
   if (width <= 0.0) { glErrorInvalidValue() }
   ctx := GetContext()
   ctx.Rasterization.LineWidth = width
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMinSampleShading.xhtml", Version.GLES32)
 cmd void glMinSampleShading(GLfloat value) {
-  minRequiredVersion(3, 2)
   MinSampleShading(value)
 }
 
@@ -133,24 +133,24 @@ sub void MinSampleShading(GLfloat value) {
   ctx.Rasterization.MinSampleShadingValue = value
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPolygonOffset.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPolygonOffset.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPolygonOffset.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPolygonOffset.xhtml", Version.GLES32)
 cmd void glPolygonOffset(GLfloat scale_factor, GLfloat units) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Rasterization.PolygonOffsetUnits = units
   ctx.Rasterization.PolygonOffsetFactor = scale_factor
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glViewport.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glViewport.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glViewport.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glViewport.xhtml", Version.GLES32)
 cmd void glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
-  minRequiredVersion(1, 0)
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
   ctx := GetContext()
   ctx.Rasterization.Viewport = Rect(x, y, width, height)

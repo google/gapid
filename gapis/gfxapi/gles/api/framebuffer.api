@@ -111,11 +111,11 @@ class FramebufferDependentValues {
 sub ref!Framebuffer GetBoundFramebufferOrErrorInvalidEnum(GLenum framebuffer_target) {
   // TODO: Merge this switch with the one below.
   switch (framebuffer_target) {
+    @if(Version.GLES20)
     case GL_FRAMEBUFFER: {
-      minRequiredVersion(2, 0)
     }
+    @if(Version.GLES30)
     case GL_DRAW_FRAMEBUFFER, GL_READ_FRAMEBUFFER: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(framebuffer_target)
@@ -148,17 +148,17 @@ sub void SetFramebufferAttachment(GLenum                framebuffer_target,
       framebuffer.DepthAttachment = attachment
     case GL_STENCIL_ATTACHMENT:
       framebuffer.StencilAttachment = attachment
+    @if(Version.GLES30)
     case GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12,
         GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15, GL_COLOR_ATTACHMENT2,
         GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6,
         GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9: {
-      minRequiredVersion(3, 0)
       i := as!GLint(framebuffer_attachment - GL_COLOR_ATTACHMENT0)
       if (i < 0) || (i >= ctx.Constants.MaxColorAttachments) { glErrorInvalidOperation() }
       framebuffer.ColorAttachments[i] = attachment
     }
+    @if(Version.GLES30)
     case GL_DEPTH_STENCIL_ATTACHMENT: {
-      minRequiredVersion(3, 0)
       framebuffer.DepthAttachment = attachment
       framebuffer.StencilAttachment = attachment
     }
@@ -168,12 +168,12 @@ sub void SetFramebufferAttachment(GLenum                framebuffer_target,
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindFramebuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindFramebuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindFramebuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindFramebuffer.xhtml", Version.GLES32)
 cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   switch (target) {
     case GL_FRAMEBUFFER: {
@@ -181,12 +181,12 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
       ctx.BoundReadFramebuffer = framebuffer
       ctx.BoundDrawFramebuffer = framebuffer
     }
+    @if(Version.GLES30)
     case GL_READ_FRAMEBUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundReadFramebuffer = framebuffer
     }
+    @if(Version.GLES30)
     case GL_DRAW_FRAMEBUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundDrawFramebuffer = framebuffer
     }
     default: {
@@ -198,12 +198,12 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindRenderbuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindRenderbuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindRenderbuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindRenderbuffer.xhtml", Version.GLES32)
 cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   switch (target) {
     case GL_RENDERBUFFER: {
@@ -219,6 +219,7 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBlitFramebuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBlitFramebuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlitFramebuffer.xhtml", Version.GLES32)
@@ -232,7 +233,6 @@ cmd void glBlitFramebuffer(GLint      srcX0,
                            GLint      dstY1,
                            GLbitfield mask,
                            GLenum     filter) {
-  minRequiredVersion(3, 0)
   BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
 }
 
@@ -262,18 +262,18 @@ sub void BlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLi
   _ = dstY1 // TODO
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCheckFramebufferStatus.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCheckFramebufferStatus.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCheckFramebufferStatus.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCheckFramebufferStatus.xhtml", Version.GLES32)
 cmd GLenum glCheckFramebufferStatus(GLenum target) {
-  minRequiredVersion(2, 0)
   switch (target) {
     case GL_FRAMEBUFFER: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_DRAW_FRAMEBUFFER, GL_READ_FRAMEBUFFER: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -283,12 +283,12 @@ cmd GLenum glCheckFramebufferStatus(GLenum target) {
   return ?
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClear.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClear.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClear.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClear.xhtml", Version.GLES32)
 cmd void glClear(GLbitfield mask) {
-  minRequiredVersion(1, 0)
   supportsBits(mask, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
   if (GL_COLOR_BUFFER_BIT in mask) {
   }
@@ -305,11 +305,11 @@ cmd void glClear(GLbitfield mask) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil) {
-  minRequiredVersion(3, 0)
   switch (buffer) {
     case GL_DEPTH_STENCIL: {
       if drawbuffer != 0 { glErrorInvalidValue() }
@@ -320,11 +320,11 @@ cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint s
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) {
-  minRequiredVersion(3, 0)
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -341,11 +341,11 @@ cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) 
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
-  minRequiredVersion(3, 0)
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -362,11 +362,11 @@ cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) {
-  minRequiredVersion(3, 0)
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -379,54 +379,54 @@ cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) 
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearColor.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearColor.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearColor.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearColor.xhtml", Version.GLES32)
 cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Framebuffer.ColorClearValue = Vec4f(r, g, b, a)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearDepthf.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearDepthf.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearDepthf.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearDepthf.xhtml", Version.GLES32)
 cmd void glClearDepthf(GLfloat depth) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Framebuffer.DepthClearValue = depth
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClearStencil.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearStencil.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearStencil.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearStencil.xhtml", Version.GLES32)
 cmd void glClearStencil(GLint stencil) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Framebuffer.StencilClearValue = stencil
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glColorMask.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glColorMask.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glColorMask.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml", Version.GLES32)
 cmd void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
-  minRequiredVersion(1, 0)
   ctx := GetContext()
   for i in (0 .. as!DrawBufferIndex(len(ctx.Framebuffer.ColorWritemask))) {
     ctx.Framebuffer.ColorWritemask[i] = Vec4b(red, green, blue, alpha)
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glColorMask.xhtml", Version.GLES32)
 cmd void glColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
-  minRequiredVersion(3, 2)
   ColorMaski(index, r, g, b, a)
 }
 
@@ -435,12 +435,12 @@ sub void ColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b
   ctx.Framebuffer.ColorWritemask[index] = Vec4b(r, g, b, a)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteFramebuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteFramebuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteFramebuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteFramebuffers.xhtml", Version.GLES32)
 cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) {
-  minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
 
   f := framebuffers[0:count]
@@ -459,12 +459,12 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteRenderbuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteRenderbuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteRenderbuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteRenderbuffers.xhtml", Version.GLES32)
 cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffers) {
-  minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
 
   r := renderbuffers[0:count]
@@ -477,22 +477,22 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthMask.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthMask.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthMask.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthMask.xhtml", Version.GLES32)
 cmd void glDepthMask(GLboolean enabled) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Framebuffer.DepthWritemask = enabled
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawBuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawBuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawBuffers.xhtml", Version.GLES32)
 cmd void glDrawBuffers(GLsizei n, const GLenum* bufs) {
-  minRequiredVersion(3, 0)
   DrawBuffers(n, bufs)
 }
 
@@ -508,10 +508,10 @@ sub void DrawBuffers(GLsizei n, const GLenum* buffers) {
   }
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferParameteri.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferParameteri.xhtml", Version.GLES32)
 cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
-  minRequiredVersion(3, 1)
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
   if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
   switch (pname) {
@@ -527,8 +527,8 @@ cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
     case GL_FRAMEBUFFER_DEFAULT_WIDTH: {
       framebuffer.DefaultWidth = param
     }
+    @if(Version.GLES32)
     case GL_FRAMEBUFFER_DEFAULT_LAYERS: {
-      minRequiredVersion(3, 2)
       framebuffer.DefaultLayers = param
     }
     default: {
@@ -537,6 +537,7 @@ cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferRenderbuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferRenderbuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferRenderbuffer.xhtml", Version.GLES31)
@@ -545,7 +546,6 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
                                    GLenum         framebuffer_attachment,
                                    GLenum         renderbuffer_target,
                                    RenderbufferId renderbuffer) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
   // SPEC: Only PDF spec mentions this:
@@ -559,9 +559,9 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTexture.xhtml", Version.GLES32)
 cmd void glFramebufferTexture(GLenum target, GLenum attachment, TextureId texture, GLint level) {
-  minRequiredVersion(3, 2)
   FramebufferTexture(target, attachment, texture, level)
 }
 
@@ -578,6 +578,7 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   SetFramebufferAttachment(target, attachment, attachment_info)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFramebufferTexture2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTexture2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTexture2D.xhtml", Version.GLES31)
@@ -587,7 +588,6 @@ cmd void glFramebufferTexture2D(GLenum    framebuffer_target,
                                 GLenum    texture_target,
                                 TextureId texture,
                                 GLint     level) {
-  minRequiredVersion(2, 0)
   FramebufferTexture2D(framebuffer_target, framebuffer_attachment, texture_target, texture, level)
 }
 
@@ -603,16 +603,14 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
         GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
       // version 2.0
     }
+    @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      minRequiredVersion(3, 1)
     }
     default: {
       glErrorInvalidEnum(texture_target)
     }
   }
-  if level != 0 {
-    minRequiredVersion(3, 0)
-  }
+  // TODO: Level must be 0 in GLES20
 
   ctx := GetContext()
   attachment := FramebufferAttachment()
@@ -640,6 +638,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFramebufferTextureLayer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFramebufferTextureLayer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferTextureLayer.xhtml", Version.GLES32)
@@ -648,7 +647,6 @@ cmd void glFramebufferTextureLayer(GLenum    target,
                                    TextureId texture,
                                    GLint     level,
                                    GLint     layer) {
-  minRequiredVersion(3, 0)
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
@@ -661,12 +659,12 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   SetFramebufferAttachment(target, attachment, attachment_info)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenFramebuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenFramebuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenFramebuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml", Version.GLES32)
 cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
-  minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
 
   f := framebuffers[0:count]
@@ -678,12 +676,12 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenRenderbuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenRenderbuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenRenderbuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml", Version.GLES32)
 cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
-  minRequiredVersion(2, 0)
   if count < 0 { glErrorInvalidValue() }
 
   r := renderbuffers[0:count]
@@ -695,6 +693,7 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetFramebufferAttachmentParameteriv.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetFramebufferAttachmentParameteriv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferAttachmentParameteriv.xhtml", Version.GLES31)
@@ -703,7 +702,6 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
                                                GLenum attachment,
                                                GLenum parameter,
                                                GLint* value) {
-  minRequiredVersion(2, 0)
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(framebuffer_target)
   a := switch (attachment) {
     case GL_COLOR_ATTACHMENT0, GL_BACK:
@@ -712,16 +710,16 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
       framebuffer.DepthAttachment
     case GL_STENCIL_ATTACHMENT:
       framebuffer.StencilAttachment
+    @if(Version.GLES30)
     case GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11,
         GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15,
         GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5,
         GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9: {
-      // TODO: minRequiredVersion(3, 0)
       // TODO: if i < 0 || i >= ctx.Constants.MaxColorAttachments { glErrorInvalidOperation() }
       framebuffer.ColorAttachments[as!GLint(attachment - GL_COLOR_ATTACHMENT0)]
     }
+    @if(Version.GLES30)
     case GL_DEPTH_STENCIL_ATTACHMENT: {
-      // TODO: minRequiredVersion(3, 0)
       // TODO: check framebuffer.DepthAttachment == framebuffer.StencilAttachment
       framebuffer.DepthAttachment
     }
@@ -735,15 +733,15 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
         GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE, GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE,
         GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
         GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE,
         GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
         GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER: {
-      minRequiredVersion(3, 0)
     }
+    @if(Version.GLES32)
     case GL_FRAMEBUFFER_ATTACHMENT_LAYERED: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(parameter)
@@ -770,17 +768,17 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
   }
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFramebufferParameteriv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFramebufferParameteriv.xhtml", Version.GLES32)
 cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params) {
-  minRequiredVersion(3, 1)
   switch (pname) {
     case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS, GL_FRAMEBUFFER_DEFAULT_HEIGHT,
         GL_FRAMEBUFFER_DEFAULT_SAMPLES, GL_FRAMEBUFFER_DEFAULT_WIDTH: {
       // version 3.1
     }
+    @if(Version.GLES32)
     case GL_FRAMEBUFFER_DEFAULT_LAYERS: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(pname)
@@ -798,12 +796,12 @@ cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params)
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetRenderbufferParameteriv.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetRenderbufferParameteriv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetRenderbufferParameteriv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetRenderbufferParameteriv.xhtml", Version.GLES32)
 cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* values) {
-  minRequiredVersion(2, 0)
   switch (target) {
     case GL_RENDERBUFFER: {
       // version 2.0
@@ -818,8 +816,8 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
         GL_RENDERBUFFER_RED_SIZE, GL_RENDERBUFFER_STENCIL_SIZE, GL_RENDERBUFFER_WIDTH: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_RENDERBUFFER_SAMPLES: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(parameter)
@@ -844,11 +842,11 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateFramebuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateFramebuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateFramebuffer.xhtml", Version.GLES32)
 cmd void glInvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attachments) {
-  minRequiredVersion(3, 0)
   InvalidateFramebuffer(target, count, attachments)
 }
 
@@ -880,6 +878,7 @@ sub void InvalidateFramebuffer(GLenum target, GLsizei count, const GLenum* attac
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glInvalidateSubFramebuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glInvalidateSubFramebuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glInvalidateSubFramebuffer.xhtml", Version.GLES32)
@@ -890,7 +889,6 @@ cmd void glInvalidateSubFramebuffer(GLenum        target,
                                     GLint         y,
                                     GLsizei       width,
                                     GLsizei       height) {
-  minRequiredVersion(3, 0)
   switch (target) {
     case GL_FRAMEBUFFER: {
       // version 3.0
@@ -904,33 +902,33 @@ cmd void glInvalidateSubFramebuffer(GLenum        target,
   read(attachments[0:numAttachments])
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsFramebuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsFramebuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsFramebuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsFramebuffer.xhtml", Version.GLES32)
 cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
-  minRequiredVersion(2, 0)
 
   ctx := GetContext()
   return as!GLboolean(framebuffer in ctx.Objects.Framebuffers)
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsRenderbuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsRenderbuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsRenderbuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsRenderbuffer.xhtml", Version.GLES32)
 cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
-  minRequiredVersion(2, 0)
 
   ctx := GetContext()
   return as!GLboolean(renderbuffer in ctx.SharedObjects.Renderbuffers)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadBuffer.xhtml", Version.GLES32)
 cmd void glReadBuffer(GLenum src) {
-  minRequiredVersion(3, 0)
   switch (src) {
     case GL_BACK, GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT10,
         GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14,
@@ -955,8 +953,8 @@ sub void checkReadPixels(GLsizei width,
     case GL_ALPHA, GL_RGB, GL_RGBA: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_RED, GL_RED_INTEGER, GL_RG, GL_RG_INTEGER, GL_RGB_INTEGER, GL_LUMINANCE_ALPHA, GL_LUMINANCE: {
-      minRequiredVersion(3, 0) // TODO: or GL_EXT_texture_rg
     }
     default: {
       glErrorInvalidEnum(format)
@@ -974,10 +972,10 @@ sub void checkReadPixels(GLsizei width,
     case GL_UNSIGNED_BYTE: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_FLOAT, GL_INT, GL_UNSIGNED_INT, GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_UNSIGNED_INT_5_9_9_9_REV: {
       // TODO(dsrbecky) - implement additional 'type compatible with format'
       // validation. PDF spec contains a table with for these.
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(type)
@@ -986,6 +984,7 @@ sub void checkReadPixels(GLsizei width,
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glReadPixels.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glReadPixels.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glReadPixels.xhtml", Version.GLES31)
@@ -997,7 +996,6 @@ cmd void glReadPixels(GLint   x,
                       GLenum  format,
                       GLenum  type,
                       void*   data) {
-  minRequiredVersion(1, 0)
   checkReadPixels(width, height, format, type)
 
   ctx := GetContext()
@@ -1007,6 +1005,7 @@ cmd void glReadPixels(GLint   x,
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glReadPixels.xhtml", Version.GLES32)
 cmd void glReadnPixels(GLint   x,
                        GLint   y,
@@ -1016,7 +1015,6 @@ cmd void glReadnPixels(GLint   x,
                        GLenum  type,
                        GLsizei bufSize,
                        void*   data) {
-  minRequiredVersion(3, 2)
   ReadnPixels(x, y, width, height, format, type, bufSize, data)
 }
 
@@ -1035,15 +1033,16 @@ sub void ReadnPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum for
   _ = height // TODO
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glRenderbufferStorage.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorage.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorage.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorage.xhtml", Version.GLES32)
 cmd void glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
-  minRequiredVersion(2, 0)
   RenderbufferStorageMultisample(target, 0 /* samples */, internalformat, width, height)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glRenderbufferStorageMultisample.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glRenderbufferStorageMultisample.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glRenderbufferStorageMultisample.xhtml", Version.GLES32)
@@ -1052,7 +1051,6 @@ cmd void glRenderbufferStorageMultisample(GLenum  target,
                                           GLenum  internalformat,
                                           GLsizei width,
                                           GLsizei height) {
-  minRequiredVersion(3, 0)
   RenderbufferStorageMultisample(target, samples, internalformat, width, height)
 }
 
@@ -1088,24 +1086,24 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   _ = samples // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMask.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMask.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMask.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMask.xhtml", Version.GLES32)
 cmd void glStencilMask(GLuint mask) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   ctx.Framebuffer.StencilWritemask = mask
   ctx.Framebuffer.StencilBackWritemask = mask
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glStencilMaskSeparate.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glStencilMaskSeparate.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glStencilMaskSeparate.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glStencilMaskSeparate.xhtml", Version.GLES32)
 cmd void glStencilMaskSeparate(GLenum face, GLuint mask) {
-  minRequiredVersion(2, 0)
   ctx := GetContext()
   switch (face) {
     case GL_BACK:

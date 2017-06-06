@@ -24,9 +24,9 @@ class DebugState {
   GLboolean Output // TODO: init
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDebugMessageCallback.xhtml", Version.GLES32)
 cmd void glDebugMessageCallback(GLDEBUGPROC callback, const void* userParam) {
-  minRequiredVersion(3, 2)
   DebugMessageCallback(callback, userParam)
 }
 
@@ -36,6 +36,7 @@ sub void DebugMessageCallback(GLDEBUGPROC callback, const void* userParam) {
   ctx.Debug.CallbackUserParam = userParam
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDebugMessageControl.xhtml", Version.GLES32)
 cmd void glDebugMessageControl(GLenum        source,
                                GLenum        type,
@@ -43,7 +44,6 @@ cmd void glDebugMessageControl(GLenum        source,
                                GLsizei       count,
                                const GLuint* ids,
                                GLboolean     enabled) {
-  minRequiredVersion(3, 2)
   DebugMessageControl(source, type, severity, count, ids, enabled)
 }
 
@@ -82,6 +82,7 @@ sub void DebugMessageControl(GLenum source, GLenum type, GLenum severity, GLsize
   read(ids[0:count])
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDebugMessageInsert.xhtml", Version.GLES32)
 cmd void glDebugMessageInsert(GLenum        source,
                               GLenum        type,
@@ -89,7 +90,6 @@ cmd void glDebugMessageInsert(GLenum        source,
                               GLenum        severity,
                               GLsizei       length,
                               const GLchar* message) {
-  minRequiredVersion(3, 2)
   DebugMessageInsert(source, type, id, severity, length, message)
 }
 
@@ -155,6 +155,7 @@ sub void GetDebugMessageLog(GLuint   count,
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetDebugMessageLog.xhtml", Version.GLES32)
 cmd GLuint glGetDebugMessageLog(GLuint   count,
                                 GLsizei  bufSize,
@@ -164,19 +165,18 @@ cmd GLuint glGetDebugMessageLog(GLuint   count,
                                 GLenum*  severities,
                                 GLsizei* lengths,
                                 GLchar*  messageLog) {
-  minRequiredVersion(3, 2)
   l := ?
   GetDebugMessageLog(count, bufSize, sources, types, ids, severities, lengths, messageLog, l)
   return l
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetObjectLabel.xhtml", Version.GLES32)
 cmd void glGetObjectLabel(GLenum   identifier,
                           GLuint   name,
                           GLsizei  bufSize,
                           GLsizei* length,
                           GLchar*  label) {
-  minRequiredVersion(3, 2)
   GetObjectLabel(identifier, name, bufSize, length, label)
 }
 
@@ -194,9 +194,9 @@ sub void GetObjectLabel(GLenum identifier, GLuint name, GLsizei bufSize, GLsizei
   writeString(bufSize, length, label)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetObjectPtrLabel.xhtml", Version.GLES32)
 cmd void glGetObjectPtrLabel(const void* ptr, GLsizei bufSize, GLsizei* length, GLchar* label) {
-  minRequiredVersion(3, 2)
   GetObjectPtrLabel(ptr, bufSize, length, label)
 }
 
@@ -205,9 +205,9 @@ sub void GetObjectPtrLabel(const void* ptr, GLsizei bufSize, GLsizei* length, GL
   writeString(bufSize, length, label)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetPointerv.xhtml", Version.GLES32)
 cmd void glGetPointerv(GLenum pname, void** params) {
-  minRequiredVersion(1, 0)
   GetPointerv(pname, params)
 }
 
@@ -224,9 +224,9 @@ sub void GetPointerv(GLenum pname, void** params) {
   write(params[0:1])
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glObjectLabel.xhtml", Version.GLES32)
 cmd void glObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLchar* label) {
-  minRequiredVersion(3, 2)
   ObjectLabel(identifier, name, length, label)
 }
 
@@ -296,9 +296,9 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glObjectPtrLabel.xhtml", Version.GLES32)
 cmd void glObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
-  minRequiredVersion(3, 2)
   ObjectPtrLabel(ptr, length, label)
 }
 
@@ -307,10 +307,10 @@ sub void ObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
   readString(length, label)
 }
 
+@if(Version.GLES32)
 @PopUserMarker
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPopDebugGroup.xhtml", Version.GLES32)
 cmd void glPopDebugGroup() {
-  minRequiredVersion(3, 2)
   PopDebugGroup()
 }
 
@@ -318,10 +318,10 @@ sub void PopDebugGroup() {
   // TODO
 }
 
+@if(Version.GLES32)
 @PushUserMarker
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPushDebugGroup.xhtml", Version.GLES32)
 cmd void glPushDebugGroup(GLenum source, GLuint id, GLsizei length, const GLchar* message) {
-  minRequiredVersion(3, 2)
   PushDebugGroup(source, id, length, message)
 }
 

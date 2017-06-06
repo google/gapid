@@ -46,8 +46,8 @@ class MiscellaneousState {
 sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolean enabled) {
   ctx := GetContext()
   switch (capability) {
+    @if(Version.GLES20)
     case GL_BLEND: {
-      minRequiredVersion(2, 0)
       // TODO: Remove the temporary variables once we fix bug 28858106
       if isIndexed {
         blend := ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)]
@@ -61,64 +61,64 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
         }
       }
     }
+    @if(Version.GLES20)
     case GL_CULL_FACE: {
-      minRequiredVersion(2, 0)
       ctx.Rasterization.CullFace = enabled
     }
+    @if(Version.GLES20)
     case GL_DEPTH_TEST: {
-      minRequiredVersion(2, 0)
       ctx.FragmentOperations.Depth.Test = enabled
     }
+    @if(Version.GLES20)
     case GL_DITHER: {
-      minRequiredVersion(2, 0)
       ctx.FragmentOperations.Dither = enabled
     }
+    @if(Version.GLES20)
     case GL_POLYGON_OFFSET_FILL: {
-      minRequiredVersion(2, 0)
       ctx.Rasterization.PolygonOffsetFill = enabled
     }
+    @if(Version.GLES20)
     case GL_SAMPLE_ALPHA_TO_COVERAGE: {
-      minRequiredVersion(2, 0)
       ctx.Rasterization.SampleAlphaToCoverage = enabled
     }
+    @if(Version.GLES20)
     case GL_SAMPLE_COVERAGE: {
-      minRequiredVersion(2, 0)
       ctx.Rasterization.SampleCoverage = enabled
     }
+    @if(Version.GLES20)
     case GL_SCISSOR_TEST: {
-      minRequiredVersion(2, 0)
       ctx.FragmentOperations.Scissor.Test = enabled
     }
+    @if(Version.GLES20)
     case GL_STENCIL_TEST: {
-      minRequiredVersion(2, 0)
       ctx.FragmentOperations.Stencil.Test = enabled
     }
+    @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
-      minRequiredVersion(3, 0)
       ctx.Miscellaneous.PrimitiveRestartFixedIndex = enabled
     }
+    @if(Version.GLES30)
     case GL_RASTERIZER_DISCARD: {
-      minRequiredVersion(3, 0)
       ctx.Rasterization.RasterizerDiscard = enabled
     }
+    @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
-      minRequiredVersion(3, 1)
       ctx.Rasterization.SampleMask = enabled
     }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
-      minRequiredVersion(3, 2)
       ctx.Debug.Output = enabled
     }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      minRequiredVersion(3, 2)
       ctx.Debug.OutputSynchronous = enabled
     }
+    @if(Extension.GL_QCOM_alpha_test)
     case GL_ALPHA_TEST_QCOM: {
-      requiresExtension(GL_QCOM_alpha_test)
       // TODO: Set state.
     }
+    @if(Extension.GL_EXT_sRGB_write_control)
     case GL_FRAMEBUFFER_SRGB_EXT: {
-      requiresExtension(GL_EXT_sRGB_write_control)
       ctx.FragmentOperations.FramebufferSrgb = enabled
     }
     default: {
@@ -131,9 +131,10 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   ctx := GetContext()
   // TODO: Add back the version checks.
   switch (capability) {
+    @if(Version.GLES20)
     case GL_BLEND: {
-      // minRequiredVersion(2, 0)
     }
+    @if(Version.GLES20)
     case GL_CULL_FACE,
         GL_DEPTH_TEST,
         GL_DITHER,
@@ -142,20 +143,19 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
         GL_SAMPLE_COVERAGE,
         GL_SCISSOR_TEST,
         GL_STENCIL_TEST: {
-      // minRequiredVersion(2, 0)
       if index > 0 { glErrorInvalidValue() }
     }
+    @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX,
         GL_RASTERIZER_DISCARD: {
-      // minRequiredVersion(3, 0)
       if index > 0 { glErrorInvalidValue() }
     }
+    @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
-      // minRequiredVersion(3, 1) // TODO: Check version.
       if index > 0 { glErrorInvalidValue() }
     }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT, GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      // minRequiredVersion(3, 2)
       if index > 0 { glErrorInvalidValue() }
     }
     default: {
@@ -164,68 +164,68 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   }
 
   return switch (capability) {
+    @if(Version.GLES20)
     case GL_BLEND: {
-      // minRequiredVersion(2, 0)
       ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)].Enabled
     }
+    @if(Version.GLES20)
     case GL_CULL_FACE: {
-      // minRequiredVersion(2, 0)
       ctx.Rasterization.CullFace
     }
+    @if(Version.GLES20)
     case GL_DEPTH_TEST: {
-      // minRequiredVersion(2, 0)
       ctx.FragmentOperations.Depth.Test
     }
+    @if(Version.GLES20)
     case GL_DITHER: {
-      // minRequiredVersion(2, 0)
       ctx.FragmentOperations.Dither
     }
+    @if(Version.GLES20)
     case GL_POLYGON_OFFSET_FILL: {
-      // minRequiredVersion(2, 0)
       ctx.Rasterization.PolygonOffsetFill
     }
+    @if(Version.GLES20)
     case GL_SAMPLE_ALPHA_TO_COVERAGE: {
-      // minRequiredVersion(2, 0)
       ctx.Rasterization.SampleAlphaToCoverage
     }
+    @if(Version.GLES20)
     case GL_SAMPLE_COVERAGE: {
-      // minRequiredVersion(2, 0)
       ctx.Rasterization.SampleCoverage
     }
+    @if(Version.GLES20)
     case GL_SCISSOR_TEST: {
-      // minRequiredVersion(2, 0)
       ctx.FragmentOperations.Scissor.Test
     }
+    @if(Version.GLES20)
     case GL_STENCIL_TEST: {
-      // minRequiredVersion(2, 0)
       ctx.FragmentOperations.Stencil.Test
     }
+    @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
-      // minRequiredVersion(3, 0)
       ctx.Miscellaneous.PrimitiveRestartFixedIndex
     }
+    @if(Version.GLES30)
     case GL_RASTERIZER_DISCARD: {
-      // minRequiredVersion(3, 0)
       ctx.Rasterization.RasterizerDiscard
     }
+    @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
-      // minRequiredVersion(3, 1) // TODO: Check version.
       ctx.Rasterization.SampleMask
     }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
-      // minRequiredVersion(3, 2)
       ctx.Debug.Output
     }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      // minRequiredVersion(3, 2)
       ctx.Debug.OutputSynchronous
     }
+    @if(Extension.GL_QCOM_alpha_test)
     case GL_ALPHA_TEST_QCOM: {
-      // requiresExtension(GL_QCOM_alpha_test)
       GL_FALSE // TODO: Get state.
     }
+    @if(Extension.GL_EXT_sRGB_write_control)
     case GL_FRAMEBUFFER_SRGB_EXT: {
-      // requiresExtension(GL_EXT_sRGB_write_control)
       ctx.FragmentOperations.FramebufferSrgb
     }
     default: {
@@ -235,18 +235,18 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glDisable(GLenum capability) {
-  minRequiredVersion(1, 0)
   SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_FALSE)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glDisablei(GLenum capability, GLuint index) {
-  minRequiredVersion(3, 2)
   Disablei(capability, index)
 }
 
@@ -254,18 +254,18 @@ sub void Disablei(GLenum capability, GLuint index) {
   SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_FALSE)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glEnable(GLenum capability) {
-  minRequiredVersion(1, 0)
   SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_TRUE)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glEnablei(GLenum capability, GLuint index) {
-  minRequiredVersion(3, 2)
   Enablei(capability, index)
 }
 
@@ -273,38 +273,38 @@ sub void Enablei(GLenum capability, GLuint index) {
   SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_TRUE)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFinish.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFinish.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFinish.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFinish.xhtml", Version.GLES32)
 cmd void glFinish() {
-  minRequiredVersion(1, 0)
 
 }
 
+@if(Version.GLES10)
 @EndOfFrame // For daydream.  TODO: Use gvr-specific api call instead?
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFlush.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlush.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlush.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlush.xhtml", Version.GLES32)
 cmd void glFlush() {
-  minRequiredVersion(1, 0)
 
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetError.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetError.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetError.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetError.xhtml", Version.GLES32)
 cmd GLenum glGetError() {
-  minRequiredVersion(1, 0)
 
   return ?
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetGraphicsResetStatus.xhtml", Version.GLES32)
 cmd GLenum glGetGraphicsResetStatus() {
-  minRequiredVersion(3, 2)
   GetGraphicsResetStatus()
   return ?
 }
@@ -313,12 +313,12 @@ sub void GetGraphicsResetStatus() {
   // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glHint.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glHint.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glHint.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glHint.xhtml", Version.GLES32)
 cmd void glHint(GLenum target, GLenum mode) {
-  minRequiredVersion(1, 0)
   switch (mode) {
     case GL_DONT_CARE, GL_FASTEST, GL_NICEST: {
       // version 2.0
@@ -329,12 +329,12 @@ cmd void glHint(GLenum target, GLenum mode) {
   }
   ctx := GetContext()
   switch (target) {
+    @if(Version.GLES20)
     case GL_GENERATE_MIPMAP_HINT: {
-      minRequiredVersion(2, 0)
       ctx.Miscellaneous.GenerateMipmapHint = mode
     }
+    @if(Version.GLES30)
     case GL_FRAGMENT_SHADER_DERIVATIVE_HINT: {
-      minRequiredVersion(3, 0)
       ctx.Miscellaneous.FragmentShaderDerivativeHint = mode
     }
     default: {
