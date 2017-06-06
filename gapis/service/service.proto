@@ -106,6 +106,9 @@ message Value {
   }
 }
 
+message PingRequest {}
+message PingResponse {}
+
 message GetServerInfoRequest {}
 message GetServerInfoResponse {
   oneof res {
@@ -293,6 +296,11 @@ message FindResponse {
 
 // Gapid is the RPC service to the GAPIS server.
 service Gapid {
+  // Ping is a no-op function that returns immediately.
+  // It can be used to measure connection latency or to keep the
+  // process alive if started with the "idle-timeout" command line flag.
+  rpc Ping(PingRequest) returns(PingResponse) {}
+
   // GetServerInfo returns information about the running server.
   rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
 

@@ -31,6 +31,11 @@ import (
 )
 
 type Service interface {
+	// Ping is a no-op function that returns immediately.
+	// It can be used to measure connection latency or to keep the
+	// process alive if started with the "idle-timeout" command line flag.
+	Ping(ctx context.Context) error
+
 	// GetServerInfo returns information about the running server.
 	GetServerInfo(ctx context.Context) (*ServerInfo, error)
 

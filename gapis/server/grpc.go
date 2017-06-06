@@ -70,6 +70,14 @@ type grpcServer struct {
 	bindCtx func(context.Context) context.Context
 }
 
+func (s *grpcServer) Ping(ctx xctx.Context, req *service.PingRequest) (*service.PingResponse, error) {
+	err := s.handler.Ping(s.bindCtx(ctx))
+	if err := service.NewError(err); err != nil {
+		return &service.PingResponse{}, nil
+	}
+	return &service.PingResponse{}, nil
+}
+
 func (s *grpcServer) GetServerInfo(ctx xctx.Context, req *service.GetServerInfoRequest) (*service.GetServerInfoResponse, error) {
 	info, err := s.handler.GetServerInfo(s.bindCtx(ctx))
 	if err := service.NewError(err); err != nil {
