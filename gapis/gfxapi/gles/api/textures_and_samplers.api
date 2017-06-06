@@ -482,8 +482,10 @@ sub void UpdateImageData(ref!Image      dst_image,
   for y in (0 .. as!GLint(height)) {
     dst := dst_offset + (dst_row_size * y)
     if pbo == null {
-      src := src_offset + (src_row_size * y)
-      copy(dst_image.Data[dst:dst + copy_size], as!u8*(data)[src:src + copy_size])
+      if data != null {
+        src := src_offset + (src_row_size * y)
+        copy(dst_image.Data[dst:dst + copy_size], as!u8*(data)[src:src + copy_size])
+      }
     } else {
       src := as!u64(data) + as!u64(src_offset + (src_row_size * y))
       assert((src + as!u64(copy_size)) <= len(pbo.Data))
