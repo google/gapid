@@ -75,6 +75,10 @@ type server struct {
 	profile        bytes.Buffer
 }
 
+func (s *server) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
 	ctx = log.Enter(ctx, "GetServerInfo")
 	return s.info, nil

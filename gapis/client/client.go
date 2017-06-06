@@ -53,6 +53,11 @@ type client struct {
 
 func (c *client) Close() error { return c.close() }
 
+func (c *client) Ping(ctx context.Context) error {
+	_, err := c.client.Ping(ctx, &service.PingRequest{})
+	return err
+}
+
 func (c *client) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
 	res, err := c.client.GetServerInfo(ctx, &service.GetServerInfoRequest{})
 	if err != nil {
