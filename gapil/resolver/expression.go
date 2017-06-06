@@ -238,6 +238,7 @@ func choice(rv *resolver, in *ast.Case, vt semantic.Type) *semantic.Choice {
 		out.Expression = semantic.Invalid{}
 		return out
 	}
+	out.Annotations = annotations(rv, in.Annotations)
 	out.Expression = expression(rv, in.Block.Statements[0])
 	rv.mappings.add(in, out)
 	return out

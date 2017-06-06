@@ -33,9 +33,10 @@ func (s *Select) ExpressionType() Type { return s.Type }
 
 // Choice represents a possible choice in a select
 type Choice struct {
-	AST        *ast.Case    // the underlying syntax node this was built from
-	Conditions []Expression // the set of expressions to match the select value against
-	Expression Expression   // the expression to use if a condition matches
+	AST         *ast.Case    // the underlying syntax node this was built from
+	Annotations              // the annotations applied to the choice
+	Conditions  []Expression // the set of expressions to match the select value against
+	Expression  Expression   // the expression to use if a condition matches
 }
 
 func (*Choice) isNode() {}

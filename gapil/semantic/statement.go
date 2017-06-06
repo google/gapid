@@ -91,9 +91,10 @@ func (*Switch) isStatement() {}
 
 // Case represents a possible choice in a switch.
 type Case struct {
-	AST        *ast.Case    // the underlying syntax node this was built from
-	Conditions []Expression // the set of expressions to match the switch value against
-	Block      *Block       // the block to use if a condition matches
+	AST         *ast.Case    // the underlying syntax node this was built from
+	Annotations              // the annotations applied to the case
+	Conditions  []Expression // the set of expressions to match the switch value against
+	Block       *Block       // the block to use if a condition matches
 }
 
 func (*Case) isNode()      {}

@@ -15,8 +15,8 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/ast"
 )
 
 // { annotation } 'class' identifer '{' { field } '}'

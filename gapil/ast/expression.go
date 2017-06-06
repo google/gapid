@@ -67,8 +67,9 @@ func (Switch) isNode() {}
 // The conditions are a comma separated list of expressions the switch statement
 // value will be compared against.
 type Case struct {
-	Conditions []Node // the set of conditions that would select this case
-	Block      *Block // the block to run if this case is selected
+	Annotations Annotations // the annotations applied to this case
+	Conditions  []Node      // the set of conditions that would select this case
+	Block       *Block      // the block to run if this case is selected
 }
 
 func (Case) isNode() {}
