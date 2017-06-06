@@ -95,12 +95,12 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		dID := id.Derived()
 		t := newTweaker(ctx, out, dID)
 
-		t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
+		t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
 
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
-		if c.BoundDrawFramebuffer == 0 {
+		if c.Bound.DrawFramebuffer == c.Objects.Default.Framebuffer {
 			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we

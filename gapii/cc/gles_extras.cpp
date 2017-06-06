@@ -132,13 +132,13 @@ bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
       return false;
     }
 
-    auto framebuffer = ctx->mObjects.mFramebuffers.find(ctx->mBoundReadFramebuffer);
-    if (framebuffer == ctx->mObjects.mFramebuffers.end()) {
+    auto framebuffer = ctx->mBound.mReadFramebuffer;
+    if (framebuffer == nullptr) {
         return false;
     }
 
-    auto attachment = framebuffer->second->mColorAttachments.find(0);
-    if (attachment == framebuffer->second->mColorAttachments.end()) {
+    auto attachment = framebuffer->mColorAttachments.find(0);
+    if (attachment == framebuffer->mColorAttachments.end()) {
         return false;
     }
 

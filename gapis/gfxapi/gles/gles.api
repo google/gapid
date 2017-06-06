@@ -300,6 +300,7 @@ class Rect {
 type GLuint               UniformIndex
 type GLuint               AttributeLocation
 type GLuint               AttributeIndex
+type GLuint               TextureUnitId
 @replay_remap type GLuint SamplerId
 @replay_remap type GLuint PipelineId
 @replay_remap type GLuint UniformBlockId
@@ -313,22 +314,25 @@ type GLuint               AttributeIndex
 @replay_custom_value type const void* BufferDataPointer
 
 @internal
-class DefaultTextureObjects {
-  ref!Texture Texture2d
-  ref!Texture Texture2dArray
-  ref!Texture Texture2dMultisample
-  ref!Texture Texture2dMultisampleArray
-  ref!Texture Texture3d
-  ref!Texture TextureBuffer
-  ref!Texture TextureCubeMap
-  ref!Texture TextureCubeMapArray
-  ref!Texture TextureExternalOes
+class DefaultObjects {
+  ref!Framebuffer       Framebuffer
+  ref!VertexArray       VertexArray
+  ref!TransformFeedback TransformFeedback
+  ref!Texture           Texture2d
+  ref!Texture           Texture2dArray
+  ref!Texture           Texture2dMultisample
+  ref!Texture           Texture2dMultisampleArray
+  ref!Texture           Texture3d
+  ref!Texture           TextureBuffer
+  ref!Texture           TextureCubeMap
+  ref!Texture           TextureCubeMapArray
+  ref!Texture           TextureExternalOes
 }
 
 // Objects which are never shared between contexts.
 @internal
 class Objects {
-  DefaultTextureObjects                            DefaultTextures
+  DefaultObjects                                   Default
   ref!SharedObjects                                Shared
   map!(FramebufferId, ref!Framebuffer)             Framebuffers
   @unused map!(PipelineId, ref!Pipeline)           Pipelines
@@ -341,13 +345,13 @@ class Objects {
 // See: Chapter 5 - "Shared Objects and Multiple Contexts"
 @internal
 class SharedObjects {
-  map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
-  map!(TextureId, ref!Texture)                     Textures
-  map!(BufferId, ref!Buffer)                       Buffers
-  map!(SamplerId, ref!Sampler)                     Samplers
-  map!(ShaderId, ref!Shader)                       Shaders
-  map!(ProgramId, ref!Program)                     Programs
-  map!(GLsync, ref!SyncObject)                     SyncObjects
+  map!(RenderbufferId, ref!Renderbuffer) Renderbuffers
+  map!(TextureId, ref!Texture)           Textures
+  map!(BufferId, ref!Buffer)             Buffers
+  map!(SamplerId, ref!Sampler)           Samplers
+  map!(ShaderId, ref!Shader)             Shaders
+  map!(ProgramId, ref!Program)           Programs
+  map!(GLsync, ref!SyncObject)           SyncObjects
 }
 
 @internal type s32 ContextID
@@ -360,43 +364,50 @@ class ContextCreationInfo {
 }
 
 @internal
-class BufferBindings {
-  BufferId                    ArrayBuffer
-  BufferId                    AtomicCounterBuffer
+class Bindings {
+  ref!Buffer                  ArrayBuffer
+  ref!Buffer                  AtomicCounterBuffer
   map!(GLuint, BufferBinding) AtomicCounterBuffers
-  BufferId                    CopyReadBuffer
-  BufferId                    CopyWriteBuffer
-  BufferId                    DispatchIndirectBuffer
-  BufferId                    DrawIndirectBuffer
-  BufferId                    PixelPackBuffer
-  BufferId                    PixelUnpackBuffer
-  BufferId                    ShaderStorageBuffer
+  ref!Buffer                  CopyReadBuffer
+  ref!Buffer                  CopyWriteBuffer
+  ref!Buffer                  DispatchIndirectBuffer
+  ref!Framebuffer             DrawFramebuffer
+  ref!Buffer                  DrawIndirectBuffer
+  ref!Buffer                  PixelPackBuffer
+  ref!Buffer                  PixelUnpackBuffer
+  ref!Program                 Program
+  ref!Framebuffer             ReadFramebuffer
+  ref!Renderbuffer            Renderbuffer
+  ref!Buffer                  ShaderStorageBuffer
   map!(GLuint, BufferBinding) ShaderStorageBuffers
-  BufferId                    TextureBuffer
-  BufferId                    TransformFeedbackBuffer
-  BufferId                    UniformBuffer
+  ref!Buffer                  TextureBuffer
+  ref!TransformFeedback       TransformFeedback
+  ref!Buffer                  TransformFeedbackBuffer
+  ref!Buffer                  UniformBuffer
   map!(GLuint, BufferBinding) UniformBuffers
+  ref!VertexArray             VertexArray
+}
+
+@internal
+class BufferBinding {
+  ref!Buffer Binding
+  GLintptr   Start
+  GLsizeiptr Size
 }
 
 @internal
 class Context {
   ContextID                                             Identifier
   ContextCreationInfo                                   Info
+  Bindings                                              Bound
   DebugState                                            Debug
   RasterizationState                                    Rasterization
   FragmentOperationsState                               FragmentOperations
   FramebufferState                                      Framebuffer
-  FramebufferId                                         BoundReadFramebuffer
-  FramebufferId                                         BoundDrawFramebuffer
-  RenderbufferId                                        BoundRenderbuffer
-  BufferBindings                                        BoundBuffers
-  ProgramId                                             BoundProgram
-  TransformFeedbackId                                   BoundTransformFeedback
-  VertexArrayId                                         BoundVertexArray
   @unused map!(AttributeLocation, VertexAttributeValue) VertexAttributes
   map!(GLenum, ref!TextureUnit)                         TextureUnits
   map!(GLuint, ImageUnit)                               ImageUnits
-  GLenum                                                ActiveTextureUnit      = GL_TEXTURE0
+  GLenum                                                ActiveTextureUnit  = GL_TEXTURE0
   PixelStorageState                                     PixelStorage
   MiscellaneousState                                    Miscellaneous
   map!(GLenum, QueryId)                                 ActiveQueries
@@ -428,8 +439,7 @@ sub ref!Context CreateContext(ref!Context sharedContext) {
   identifier := NextContextID
   NextContextID = NextContextID + 1
 
-  ctx := new!Context()
-  ctx.Identifier = identifier
+  ctx := new!Context(Identifier: identifier)
 
   if sharedContext != null {
     ctx.Info.SharedContext = sharedContext.Identifier
@@ -452,21 +462,30 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     // First initialization for the context.
     ctx.Constants = staticState.Constants
 
-    ctx.Objects.Framebuffers[0] = new!Framebuffer(ReadBuffer: GL_BACK)
-    ctx.Objects.Shared.Renderbuffers[0] = new!Renderbuffer(ID:0)
-    ctx.Objects.TransformFeedbacks[0] = new!TransformFeedback()
-    ctx.Objects.VertexArrays[0] = NewVertexArray(ctx)
-    ctx.TextureUnits[GL_TEXTURE0] = new!TextureUnit()
+    ctx.Objects.Default.Framebuffer = new!Framebuffer(ID: 0, ReadBuffer: GL_BACK)
+    ctx.Objects.Framebuffers[0] = ctx.Objects.Default.Framebuffer
+    ctx.Bound.DrawFramebuffer = ctx.Objects.Default.Framebuffer
+    ctx.Bound.ReadFramebuffer = ctx.Objects.Default.Framebuffer
 
-    ctx.Objects.DefaultTextures.Texture2d = new!Texture(Kind: GL_TEXTURE_2D)
-    ctx.Objects.DefaultTextures.Texture2dArray = new!Texture(Kind: GL_TEXTURE_2D_ARRAY)
-    ctx.Objects.DefaultTextures.Texture2dMultisample = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE)
-    ctx.Objects.DefaultTextures.Texture2dMultisampleArray = new!Texture(Kind: GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
-    ctx.Objects.DefaultTextures.Texture3d = new!Texture(Kind: GL_TEXTURE_3D)
-    ctx.Objects.DefaultTextures.TextureBuffer = new!Texture(Kind: GL_TEXTURE_BUFFER)
-    ctx.Objects.DefaultTextures.TextureCubeMap = new!Texture(Kind: GL_TEXTURE_CUBE_MAP)
-    ctx.Objects.DefaultTextures.TextureCubeMapArray = new!Texture(Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
-    ctx.Objects.DefaultTextures.TextureExternalOes = new!Texture(Kind: GL_TEXTURE_EXTERNAL_OES)
+    ctx.Objects.Default.TransformFeedback = new!TransformFeedback(ID: 0)
+    ctx.Objects.TransformFeedbacks[0] = ctx.Objects.Default.TransformFeedback
+    ctx.Bound.TransformFeedback = ctx.Objects.Default.TransformFeedback
+
+    ctx.Objects.Default.VertexArray = NewVertexArray(0)
+    ctx.Objects.VertexArrays[0] = ctx.Objects.Default.VertexArray
+    ctx.Bound.VertexArray = ctx.Objects.Default.VertexArray
+
+    ctx.TextureUnits[GL_TEXTURE0] = NewTextureUnit(0)
+
+    ctx.Objects.Default.Texture2d = new!Texture(ID: 0, Kind: GL_TEXTURE_2D)
+    ctx.Objects.Default.Texture2dArray = new!Texture(ID: 0, Kind: GL_TEXTURE_2D_ARRAY)
+    ctx.Objects.Default.Texture2dMultisample = new!Texture(ID: 0, Kind: GL_TEXTURE_2D_MULTISAMPLE)
+    ctx.Objects.Default.Texture2dMultisampleArray = new!Texture(ID: 0, Kind: GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+    ctx.Objects.Default.Texture3d = new!Texture(ID: 0, Kind: GL_TEXTURE_3D)
+    ctx.Objects.Default.TextureBuffer = new!Texture(ID: 0, Kind: GL_TEXTURE_BUFFER)
+    ctx.Objects.Default.TextureCubeMap = new!Texture(ID: 0, Kind: GL_TEXTURE_CUBE_MAP)
+    ctx.Objects.Default.TextureCubeMapArray = new!Texture(ID: 0, Kind: GL_TEXTURE_CUBE_MAP_ARRAY)
+    ctx.Objects.Default.TextureExternalOes = new!Texture(ID: 0, Kind: GL_TEXTURE_EXTERNAL_OES)
 
     ctx.Objects.Shared.Renderbuffers[color_id] = new!Renderbuffer(ID: color_id)
     ctx.Objects.Shared.Renderbuffers[depth_id] = new!Renderbuffer(ID: depth_id)
@@ -488,9 +507,6 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
       Renderbuffer:        ctx.Objects.Shared.Renderbuffers[stencil_id],
     )
 
-    ctx.BoundDrawFramebuffer = 0
-    ctx.BoundReadFramebuffer = 0
-
     for i in 0 .. as!AttributeLocation(staticState.Constants.MaxVertexAttribs) {
       v := make!Vec4f(1)
       v[0] = Vec4f(0.0, 0.0, 0.0, 1.0)
@@ -499,7 +515,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     for i in 0 .. staticState.Constants.MaxCombinedTextureImageUnits {
       name := GL_TEXTURE0 + as!GLenum(i)
-      ctx.TextureUnits[name] = new!TextureUnit()
+      ctx.TextureUnits[name] = NewTextureUnit(as!TextureUnitId(i))
     }
 
     for i in 0 .. as!GLuint(staticState.Constants.MaxImageUnits) {

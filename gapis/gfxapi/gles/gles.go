@@ -27,6 +27,54 @@ func GetContext(s *gfxapi.State) *Context {
 	return GetState(s).getContext()
 }
 
+func (b *Buffer) GetID() BufferId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
+func (b *Framebuffer) GetID() FramebufferId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
+func (b *Renderbuffer) GetID() RenderbufferId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
+func (b *Program) GetID() ProgramId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
+func (b *VertexArray) GetID() VertexArrayId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
+func (b *Texture) GetID() TextureId {
+	if b != nil {
+		return b.ID
+	} else {
+		return 0
+	}
+}
+
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
 func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
 	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(attachment)
