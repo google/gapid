@@ -38,11 +38,6 @@ import (
 	"github.com/google/gapid/gapis/replay/protocol"
 )
 
-var (
-	// LogPath is the full filepath of the logfile new instances of gapir should write to.
-	LogPath string
-)
-
 const sessionTimeout = time.Second * 10
 
 type session struct {
@@ -57,12 +52,12 @@ func newSession(d bind.Device) *session {
 	return &session{device: d, inited: make(chan struct{})}
 }
 
-func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI) error {
+func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) error {
 	defer close(s.inited)
 
 	var err error
 	if host.Instance(ctx).SameAs(d.Instance()) {
-		err = s.newHost(ctx, d)
+		err = s.newHost(ctx, d, launchArgs)
 	} else if d, ok := d.(adb.Device); ok {
 		err = s.newADB(ctx, d, abi)
 	} else {
@@ -78,16 +73,13 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI) erro
 }
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...string) error {
+func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []string) error {
 	authToken := auth.GenToken()
 	args := []string{
 		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
 		"--auth-token", string(authToken),
 	}
-	args = append(args, gapirArgs...)
-	if LogPath != "" {
-		args = append(args, "--log", LogPath)
-	}
+	args = append(args, launchArgs...)
 
 	gapir, err := layout.Gapir(ctx)
 	if err != nil {
@@ -126,6 +118,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, gapirArgs ...strin
 		defer stderr.Close()
 	}
 
+	log.I(ctx, "Starting gapir on host: %v %v", gapir.System(), args)
 	port, err := process.Start(ctx, gapir.System(), process.StartOptions{
 		Env:    env,
 		Args:   args,
