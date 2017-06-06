@@ -43,56 +43,56 @@ sub ref!Buffer GetBoundBufferOrError(GLenum target) {
   // TODO: The error conditions are not spelled out for all commands in the spec.
   // TODO: Add back version checks.
   id := switch (target) {
+    @if(Version.GLES20)
     case GL_ARRAY_BUFFER: {
-      // minRequiredVersion(2, 0)
       ctx.BoundBuffers.ArrayBuffer
     }
+    @if(Version.GLES20)
     case GL_ELEMENT_ARRAY_BUFFER: {
-      // minRequiredVersion(2, 0)
       ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
     }
+    @if(Version.GLES30)
     case GL_COPY_READ_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.CopyReadBuffer
     }
+    @if(Version.GLES30)
     case GL_COPY_WRITE_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.CopyWriteBuffer
     }
+    @if(Version.GLES30)
     case GL_PIXEL_PACK_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.PixelPackBuffer
     }
+    @if(Version.GLES30)
     case GL_PIXEL_UNPACK_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.PixelUnpackBuffer
     }
+    @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.TransformFeedbackBuffer
     }
+    @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      // minRequiredVersion(3, 0)
       ctx.BoundBuffers.UniformBuffer
     }
+    @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      // minRequiredVersion(3, 1)
       ctx.BoundBuffers.AtomicCounterBuffer
     }
+    @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER: {
-      // minRequiredVersion(3, 1)
       ctx.BoundBuffers.DispatchIndirectBuffer
     }
+    @if(Version.GLES31)
     case GL_DRAW_INDIRECT_BUFFER: {
-      // minRequiredVersion(3, 1)
       ctx.BoundBuffers.DrawIndirectBuffer
     }
+    @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      // minRequiredVersion(3, 1)
       ctx.BoundBuffers.ShaderStorageBuffer
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      // minRequiredVersion(3, 2)
       ctx.BoundBuffers.TextureBuffer
     }
     default: {
@@ -104,12 +104,12 @@ sub ref!Buffer GetBoundBufferOrError(GLenum target) {
   return ctx.SharedObjects.Buffers[id]
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindBuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBuffer.xhtml", Version.GLES32)
 cmd void glBindBuffer(GLenum target, BufferId buffer) {
-  minRequiredVersion(1, 0)
   ctx := GetContext()
   switch (target) {
     case GL_ARRAY_BUFFER: {
@@ -118,48 +118,48 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
     case GL_ELEMENT_ARRAY_BUFFER: {
       ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_COPY_READ_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.CopyReadBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_COPY_WRITE_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.CopyWriteBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_PIXEL_PACK_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.PixelPackBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_PIXEL_UNPACK_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.PixelUnpackBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.TransformFeedbackBuffer = buffer
     }
+    @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.UniformBuffer = buffer
     }
+    @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.AtomicCounterBuffer = buffer
     }
+    @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.DispatchIndirectBuffer = buffer
     }
+    @if(Version.GLES31)
     case GL_DRAW_INDIRECT_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.DrawIndirectBuffer = buffer
     }
+    @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.ShaderStorageBuffer = buffer
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      minRequiredVersion(3, 2)
       ctx.BoundBuffers.TextureBuffer = buffer
     }
     default: {
@@ -175,11 +175,11 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferBase.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferBase.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferBase.xhtml", Version.GLES32)
 cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
-  minRequiredVersion(3, 0)
   ctx := GetContext()
   size := switch (buffer in ctx.SharedObjects.Buffers) {
     case true:  ctx.SharedObjects.Buffers[buffer].Size
@@ -188,6 +188,7 @@ cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
   BindBufferRange(target, index, buffer, 0, size)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferRange.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferRange.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferRange.xhtml", Version.GLES32)
@@ -196,7 +197,6 @@ cmd void glBindBufferRange(GLenum     target,
                            BufferId   buffer,
                            GLintptr   offset,
                            GLsizeiptr size) {
-  minRequiredVersion(3, 0)
   BindBufferRange(target, index, buffer, offset, size)
 }
 
@@ -212,23 +212,23 @@ sub void BindBufferRange(GLenum     target,
     Size:    size
   )
   switch (target) {
+    @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.TransformFeedbackBuffer = buffer
       GetBoundTransformFeedback().Buffers[index] = bufferBinding
     }
+    @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      minRequiredVersion(3, 0)
       ctx.BoundBuffers.UniformBuffer = buffer
       ctx.BoundBuffers.UniformBuffers[index] = bufferBinding
     }
+    @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.AtomicCounterBuffer = buffer
       ctx.BoundBuffers.AtomicCounterBuffers[index] = bufferBinding
     }
+    @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      minRequiredVersion(3, 1)
       ctx.BoundBuffers.ShaderStorageBuffer = buffer
       ctx.BoundBuffers.ShaderStorageBuffers[index] = bufferBinding
     }
@@ -245,20 +245,20 @@ sub void BindBufferRange(GLenum     target,
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferData.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferData.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferData.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferData.xhtml", Version.GLES32)
 cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GLenum usage) {
-  minRequiredVersion(1, 0)
   b := GetBoundBufferOrError(target)
   switch (usage) {
     case GL_DYNAMIC_DRAW, GL_STATIC_DRAW, GL_STREAM_DRAW: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_DYNAMIC_COPY, GL_DYNAMIC_READ, GL_STATIC_COPY, GL_STATIC_READ, GL_STREAM_COPY,
         GL_STREAM_READ: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(usage)
@@ -274,18 +274,19 @@ cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GL
   b.Usage = usage
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferSubData.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferSubData.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferSubData.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferSubData.xhtml", Version.GLES32)
 cmd void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, BufferDataPointer data) {
-  minRequiredVersion(1, 0)
   b := GetBoundBufferOrError(target)
   if (offset < 0) || (size < 0) { glErrorInvalidValue() }
   if (as!GLsizeiptr(offset) + size) > b.Size { glErrorInvalidValue() }
   copy(b.Data[offset:as!GLsizeiptr(offset) + size], as!u8*(data)[0:size])
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyBufferSubData.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyBufferSubData.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyBufferSubData.xhtml", Version.GLES32)
@@ -294,7 +295,6 @@ cmd void glCopyBufferSubData(GLenum     readTarget,
                              GLintptr   readOffset,
                              GLintptr   writeOffset,
                              GLsizeiptr size) {
-  minRequiredVersion(3, 0)
   CopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size)
 }
 
@@ -306,12 +306,12 @@ sub void CopyBufferSubData(GLenum readTarget, GLenum writeTarget, GLintptr readO
   _ = size // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteBuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteBuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteBuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteBuffers.xhtml", Version.GLES32)
 cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
-  minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
 
   b := buffers[0:count]
@@ -324,12 +324,12 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenBuffers.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenBuffers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenBuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenBuffers.xhtml", Version.GLES32)
 cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
-  minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
 
   b := buffers[0:count]
@@ -342,48 +342,48 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", Version.GLES32)
 cmd void glGetBufferParameteri64v(GLenum target, GLenum parameter, GLint64* value) {
-  minRequiredVersion(3, 0)
   GetBufferParameter!GLint64(target, parameter, value)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetBufferParameteriv.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", Version.GLES32)
 cmd void glGetBufferParameteriv(GLenum target, GLenum parameter, GLint* value) {
-  minRequiredVersion(1, 0)
   GetBufferParameter!GLint(target, parameter, value)
 }
 
 sub void GetBufferParameter!T(GLenum target, GLenum parameter, T* value) {
   b := GetBoundBufferOrError(target)
   switch (parameter) {
+    @if(Version.GLES20)
     case GL_BUFFER_SIZE: {
-      minRequiredVersion(2, 0)
       value[0] = as!T(b.Size)
     }
+    @if(Version.GLES20)
     case GL_BUFFER_USAGE: {
-      minRequiredVersion(2, 0)
       value[0] = as!T(b.Usage)
     }
+    @if(Version.GLES30)
     case GL_BUFFER_ACCESS_FLAGS: {
-      minRequiredVersion(3, 0)
       value[0] = as!T(b.AccessFlags)
     }
+    @if(Version.GLES30)
     case GL_BUFFER_MAPPED: {
-      minRequiredVersion(3, 0)
       value[0] = as!T(b.Mapped)
     }
+    @if(Version.GLES30)
     case GL_BUFFER_MAP_LENGTH: {
-      minRequiredVersion(3, 0)
       value[0] = as!T(b.MapLength)
     }
+    @if(Version.GLES30)
     case GL_BUFFER_MAP_OFFSET: {
-      minRequiredVersion(3, 0)
       value[0] = as!T(b.MapOffset)
     }
     default: {
@@ -392,11 +392,11 @@ sub void GetBufferParameter!T(GLenum target, GLenum parameter, T* value) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferPointerv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferPointerv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferPointerv.xhtml", Version.GLES32)
 cmd void glGetBufferPointerv(GLenum target, GLenum pname, void** params) {
-  minRequiredVersion(3, 0)
   GetBufferPointerv(target, pname, params)
 }
 
@@ -407,9 +407,9 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
         GL_UNIFORM_BUFFER: {
       // version 3.0
     }
+    @if(Version.GLES32)
     case GL_ATOMIC_COUNTER_BUFFER, GL_DISPATCH_INDIRECT_BUFFER, GL_DRAW_INDIRECT_BUFFER,
         GL_SHADER_STORAGE_BUFFER, GL_TEXTURE_BUFFER: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -428,12 +428,12 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
   write(params[0:1])
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsBuffer.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsBuffer.xhtml", Version.GLES32)
 cmd GLboolean glIsBuffer(BufferId buffer) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   return as!GLboolean(buffer in ctx.SharedObjects.Buffers)
@@ -456,11 +456,11 @@ sub void MapBuffer(GLenum target, GLenum access, u8* ptr) {
   MapBufferRange(target, 0 /* offset */, b.Size, accessBits, as!u8*(ptr))
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", Version.GLES32)
 cmd void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) {
-  minRequiredVersion(3, 0)
   ptr := ?
   MapBufferRange(target, offset, length, access, as!u8*(ptr))
   return ptr
@@ -484,11 +484,11 @@ sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbit
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", Version.GLES32)
 cmd GLboolean glUnmapBuffer(GLenum target) {
-  minRequiredVersion(3, 0)
   UnmapBuffer(target)
   return ?
 }
@@ -508,11 +508,11 @@ sub void UnmapBuffer(GLenum target) {
   b.MapLength = 0
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlushMappedBufferRange.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlushMappedBufferRange.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlushMappedBufferRange.xhtml", Version.GLES32)
 cmd void glFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
-  minRequiredVersion(3, 0)
   FlushMappedBufferRange(target, offset, length)
 }
 

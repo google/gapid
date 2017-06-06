@@ -49,24 +49,10 @@ extern void unmapMemory(u8[] slice)
 
 extern void onGlError(GLenum v)
 
-sub void minRequiredVersion(GLint requiredMajor, GLint requiredMinor) {
-  ctx := GetContext()
-  major := ctx.Constants.MajorVersion
-  minor := ctx.Constants.MinorVersion
-  if (major < requiredMajor) || ((major == requiredMajor) && (minor < requiredMinor)) {
-    // TODO: We might need to trigger different errors depending on the circumstances.
-    glErrorInvalidOperationMsg(new!ERR_WRONG_CONTEXT_VERSION(
-        reqmajor: as!u32(requiredMajor),reqminor:  as!u32(requiredMinor),
-        major:    as!u32(major),minor:             as!u32(minor)))
-  }
-}
 sub void supportsBits(GLbitfield seenBits, GLbitfield validBits) {
   if (seenBits & validBits) != seenBits { glErrorInvalidValue() }
 }
 
-sub void requiresExtension(DeclaringApi ext) { }
-sub void requiresExtension2(DeclaringApi ext, DeclaringApi ext2) { }
-sub void requiresExtension3(DeclaringApi ext, DeclaringApi ext2, DeclaringApi ext3) { }
 sub void glErrorInvalidEnum(GLenum param) {
   onGlError(GL_INVALID_ENUM)
   // TODO: be more specific in callers
@@ -101,146 +87,6 @@ sub T max!T(T a, T b) {
     case true:  a
     case false: b
   }
-}
-
-enum DeclaringApi {
-  GLES10 = 1010,
-  GLES20 = 1020,
-  GLES30 = 1030,
-  GLES31 = 1031,
-  GLES32 = 1032,
-
-  GL_AMD_compressed_ATC_texture                   = 1,
-  GL_AMD_performance_monitor                      = 2,
-  GL_ANGLE_framebuffer_blit                       = 3,
-  GL_ANGLE_framebuffer_multisample                = 4,
-  GL_ANGLE_instanced_arrays                       = 5,
-  GL_ANGLE_translated_shader_source               = 6,
-  GL_APPLE_copy_texture_levels                    = 7,
-  GL_APPLE_framebuffer_multisample                = 8,
-  GL_APPLE_sync                                   = 9,
-  GL_EXT_base_instance                            = 10,
-  GL_EXT_blend_func_extended                      = 11,
-  GL_EXT_buffer_storage                           = 12,
-  GL_EXT_copy_image                               = 13,
-  GL_EXT_debug_label                              = 14,
-  GL_EXT_debug_marker                             = 15,
-  GL_EXT_discard_framebuffer                      = 16,
-  GL_EXT_disjoint_timer_query                     = 17,
-  GL_EXT_draw_buffers                             = 18,
-  GL_EXT_draw_buffers_indexed                     = 19,
-  GL_EXT_draw_elements_base_vertex                = 20,
-  GL_EXT_draw_instanced                           = 21,
-  GL_EXT_geometry_shader                          = 22,
-  GL_EXT_instanced_arrays                         = 23,
-  GL_EXT_map_buffer_range                         = 24,
-  GL_EXT_multi_draw_arrays                        = 25,
-  GL_EXT_multi_draw_indirect                      = 26,
-  GL_EXT_multisampled_render_to_texture           = 27,
-  GL_EXT_multiview_draw_buffers                   = 28,
-  GL_EXT_occlusion_query_boolean                  = 29,
-  GL_EXT_primitive_bounding_box                   = 30,
-  GL_EXT_raster_multisample                       = 31,
-  GL_EXT_robustness                               = 32,
-  GL_EXT_separate_shader_objects                  = 33,
-  GL_EXT_sparse_texture                           = 34,
-  GL_EXT_tessellation_shader                      = 35,
-  GL_EXT_texture_border_clamp                     = 36,
-  GL_EXT_texture_buffer                           = 37,
-  GL_EXT_texture_filter_minmax                    = 38,
-  GL_EXT_texture_storage                          = 39,
-  GL_EXT_texture_view                             = 40,
-  GL_IMG_multisampled_render_to_texture           = 41,
-  GL_IMG_user_clip_plane                          = 42,
-  GL_INTEL_framebuffer_CMAA                       = 43,
-  GL_INTEL_performance_query                      = 44,
-  GL_KHR_blend_equation_advanced                  = 45,
-  GL_KHR_debug                                    = 46,
-  GL_KHR_robustness                               = 47,
-  GL_NV_bindless_texture                          = 48,
-  GL_NV_blend_equation_advanced                   = 49,
-  GL_NV_conditional_render                        = 50,
-  GL_NV_conservative_raster                       = 51,
-  GL_NV_copy_buffer                               = 52,
-  GL_NV_coverage_sample                           = 53,
-  GL_NV_draw_buffers                              = 54,
-  GL_NV_draw_instanced                            = 55,
-  GL_NV_fence                                     = 56,
-  GL_NV_fragment_coverage_to_color                = 57,
-  GL_NV_framebuffer_blit                          = 58,
-  GL_NV_framebuffer_mixed_samples                 = 59,
-  GL_NV_framebuffer_multisample                   = 60,
-  GL_NV_instanced_arrays                          = 61,
-  GL_NV_internalformat_sample_query               = 62,
-  GL_NV_non_square_matrices                       = 63,
-  GL_NV_path_rendering                            = 64,
-  GL_NV_polygon_mode                              = 65,
-  GL_NV_read_buffer                               = 66,
-  GL_NV_sample_locations                          = 67,
-  GL_NV_viewport_array                            = 68,
-  GL_OES_blend_equation_separate                  = 69,
-  GL_OES_blend_func_separate                      = 70,
-  GL_OES_blend_subtract                           = 71,
-  GL_OES_copy_image                               = 72,
-  GL_OES_draw_buffers_indexed                     = 73,
-  GL_OES_draw_elements_base_vertex                = 74,
-  GL_OES_draw_texture                             = 75,
-  GL_OES_EGL_image                                = 76,
-  GL_OES_fixed_point                              = 77,
-  GL_OES_framebuffer_object                       = 78,
-  GL_OES_geometry_shader                          = 79,
-  GL_OES_get_program_binary                       = 80,
-  GL_OES_mapbuffer                                = 81,
-  GL_OES_matrix_palette                           = 82,
-  GL_OES_point_size_array                         = 83,
-  GL_OES_primitive_bounding_box                   = 84,
-  GL_OES_query_matrix                             = 85,
-  GL_OES_sample_shading                           = 86,
-  GL_OES_single_precision                         = 87,
-  GL_OES_tessellation_shader                      = 88,
-  GL_OES_texture_3D                               = 89,
-  GL_OES_texture_border_clamp                     = 90,
-  GL_OES_texture_buffer                           = 91,
-  GL_OES_texture_cube_map                         = 92,
-  GL_OES_texture_half_float                       = 93,
-  GL_OES_texture_storage_multisample_2d_array     = 94,
-  GL_OES_texture_view                             = 95,
-  GL_OES_vertex_array_object                      = 96,
-  GL_OES_vertex_half_float                        = 97,
-  GL_OVR_multiview                                = 98,
-  GL_QCOM_alpha_test                              = 99,
-  GL_QCOM_driver_control                          = 100,
-  GL_QCOM_extended_get                            = 101,
-  GL_QCOM_extended_get2                           = 102,
-  GL_QCOM_tiled_rendering                         = 103,
-  GL_OES_compressed_ETC1_RGB8_texture             = 104,
-  GL_EXT_texture_filter_anisotropic               = 105,
-  GL_EXT_texture_norm16                           = 106,
-  GL_EXT_texture_sRGB_decode                      = 107,
-  GL_OES_depth_texture                            = 108,
-  GL_EXT_sRGB_write_control                       = 109,
-  GL_EXT_texture_rg                               = 110,
-  GL_EXT_texture_compression_s3tc                 = 111,
-  GL_OES_packed_depth_stencil                     = 112,
-  GL_EXT_texture_format_BGRA8888                  = 113,
-  GL_OES_viewport_array                           = 114,
-  GL_EXT_shader_pixel_local_storage2              = 115,
-  GL_EXT_clear_texture                            = 116,
-  GL_NV_conservative_raster_pre_snap_triangles    = 118,
-  GL_EXT_draw_transform_feedback                  = 119,
-  GL_IMG_framebuffer_downsample                   = 123,
-  GL_OVR_multiview_multisampled_render_to_texture = 124,
-  GL_IMG_bindless_texture                         = 125,
-  GL_NV_gpu_shader5                               = 126,
-  GL_EXT_polygon_offset_clamp                     = 127,
-  GL_NV_viewport_swizzle                          = 128,
-  GL_EXT_window_rectangles                        = 129,
-  GL_OES_EGL_image_external                       = 130,
-
-  EGL_KHR_image_base                      = 400,
-  EGL_ANDROID_create_native_client_buffer = 401,
-
-  ANDROID_image_native_buffer = 500,
 }
 
 // Flags which are set if the context supports given GLES version
@@ -298,6 +144,7 @@ class Extensions {
   bool GL_EXT_sRGB_write_control                       = true
   bool GL_EXT_separate_shader_objects                  = true
   bool GL_EXT_shader_pixel_local_storage2              = true
+  bool GL_EXT_shadow_samplers                          = true
   bool GL_EXT_sparse_texture                           = true
   bool GL_EXT_tessellation_shader                      = true
   bool GL_EXT_texture_border_clamp                     = true
@@ -310,6 +157,7 @@ class Extensions {
   bool GL_EXT_texture_rg                               = true
   bool GL_EXT_texture_sRGB_decode                      = true
   bool GL_EXT_texture_storage                          = true
+  bool GL_EXT_texture_type_2_10_10_10_REV              = true
   bool GL_EXT_texture_view                             = true
   bool GL_EXT_window_rectangles                        = true
   bool GL_IMG_bindless_texture                         = true
@@ -373,7 +221,9 @@ class Extensions {
   bool GL_OES_texture_border_clamp                     = true
   bool GL_OES_texture_buffer                           = true
   bool GL_OES_texture_cube_map                         = true
+  bool GL_OES_texture_float                            = true
   bool GL_OES_texture_half_float                       = true
+  bool GL_OES_texture_stencil8                         = true
   bool GL_OES_texture_storage_multisample_2d_array     = true
   bool GL_OES_texture_view                             = true
   bool GL_OES_vertex_array_object                      = true

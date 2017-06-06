@@ -26,11 +26,11 @@ sub ref!TransformFeedback GetBoundTransformFeedback() {
   return ctx.Objects.TransformFeedbacks[ctx.BoundTransformFeedback]
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBeginTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBeginTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBeginTransformFeedback.xhtml", Version.GLES32)
 cmd void glBeginTransformFeedback(GLenum primitiveMode) {
-  minRequiredVersion(3, 0)
   switch (primitiveMode) {
     case GL_LINES, GL_POINTS, GL_TRIANGLES: {
       // version 3.0
@@ -42,11 +42,11 @@ cmd void glBeginTransformFeedback(GLenum primitiveMode) {
   GetBoundTransformFeedback().Active = 1
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTransformFeedback.xhtml", Version.GLES32)
 cmd void glBindTransformFeedback(GLenum target, TransformFeedbackId id) {
-  minRequiredVersion(3, 0)
   switch (target) {
     case GL_TRANSFORM_FEEDBACK: {
       // version 3.0
@@ -62,11 +62,11 @@ cmd void glBindTransformFeedback(GLenum target, TransformFeedbackId id) {
   ctx.BoundTransformFeedback = id
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteTransformFeedbacks.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTransformFeedbacks.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTransformFeedbacks.xhtml", Version.GLES32)
 cmd void glDeleteTransformFeedbacks(GLsizei n, const TransformFeedbackId* ids) {
-  minRequiredVersion(3, 0)
   tfs := ids[0:n]
   ctx := GetContext()
   for i in (0 .. n) {
@@ -77,20 +77,20 @@ cmd void glDeleteTransformFeedbacks(GLsizei n, const TransformFeedbackId* ids) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBeginTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBeginTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBeginTransformFeedback.xhtml", Version.GLES32)
 cmd void glEndTransformFeedback() {
-  minRequiredVersion(3, 0)
   GetBoundTransformFeedback().Paused = 0
   GetBoundTransformFeedback().Active = 0
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenTransformFeedbacks.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTransformFeedbacks.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTransformFeedbacks.xhtml", Version.GLES32)
 cmd void glGenTransformFeedbacks(GLsizei n, TransformFeedbackId* ids) {
-  minRequiredVersion(3, 0)
   tfs := ids[0:n]
   ctx := GetContext()
   for i in (0 .. n) {
@@ -100,6 +100,7 @@ cmd void glGenTransformFeedbacks(GLsizei n, TransformFeedbackId* ids) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTransformFeedbackVarying.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTransformFeedbackVarying.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTransformFeedbackVarying.xhtml", Version.GLES32)
@@ -110,38 +111,38 @@ cmd void glGetTransformFeedbackVarying(ProgramId program,
                                        GLsizei*  size,
                                        GLenum*   type,
                                        GLchar*   name) {
-  minRequiredVersion(3, 0)
   // TODO
   writeString(bufSize, length, name)
   size[0] = ?
   type[0] = ?
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTransformFeedback.xhtml", Version.GLES32)
 cmd GLboolean glIsTransformFeedback(TransformFeedbackId id) {
-  minRequiredVersion(3, 0)
   ctx := GetContext()
   return as!GLboolean(id in ctx.Objects.TransformFeedbacks)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPauseTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPauseTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPauseTransformFeedback.xhtml", Version.GLES32)
 cmd void glPauseTransformFeedback() {
-  minRequiredVersion(3, 0)
   GetBoundTransformFeedback().Paused = 1
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glResumeTransformFeedback.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glResumeTransformFeedback.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glResumeTransformFeedback.xhtml", Version.GLES32)
 cmd void glResumeTransformFeedback() {
-  minRequiredVersion(3, 0)
   GetBoundTransformFeedback().Paused = 0
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTransformFeedbackVaryings.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTransformFeedbackVaryings.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTransformFeedbackVaryings.xhtml", Version.GLES32)
@@ -149,7 +150,6 @@ cmd void glTransformFeedbackVaryings(ProgramId            program,
                                      GLsizei              count,
                                      const GLchar* const* varyings,
                                      GLenum               bufferMode) {
-  minRequiredVersion(3, 0)
   switch (bufferMode) {
     case GL_INTERLEAVED_ATTRIBS, GL_SEPARATE_ATTRIBS: {
       // version 3.0

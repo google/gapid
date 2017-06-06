@@ -160,64 +160,64 @@ sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum targ
   // TODO: Add back version checks.
   tu := ctx.TextureUnits[unit]
   return switch (target) {
+    @if(Version.GLES20)
     case GL_TEXTURE_2D: {
-      // minRequiredVersion(2, 0)
       switch (tu.Binding2d != 0) {
         case true:  ctx.SharedObjects.Textures[tu.Binding2d]
         case false: ctx.Objects.DefaultTextures.Texture2d
       }
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_EXTERNAL_OES: {
-      // minRequiredVersion(2, 0)
       switch (tu.BindingExternalOes != 0) {
         case true:  ctx.SharedObjects.Textures[tu.BindingExternalOes]
         case false: ctx.Objects.DefaultTextures.TextureExternalOes
       }
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY: {
-      // minRequiredVersion(3, 0)
       switch (tu.Binding2dArray != 0) {
         case true:  ctx.SharedObjects.Textures[tu.Binding2dArray]
         case false: ctx.Objects.DefaultTextures.Texture2dArray
       }
     }
+    @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      // minRequiredVersion(3, 1)
       switch (tu.Binding2dMultisample != 0) {
         case true:  ctx.SharedObjects.Textures[tu.Binding2dMultisample]
         case false: ctx.Objects.DefaultTextures.Texture2dMultisample
       }
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
-      // minRequiredVersion(3, 2)
       switch (tu.Binding2dMultisampleArray != 0) {
         case true:  ctx.SharedObjects.Textures[tu.Binding2dMultisampleArray]
         case false: ctx.Objects.DefaultTextures.Texture2dMultisampleArray
       }
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_3D: {
-      // minRequiredVersion(3, 0)
       switch (tu.Binding3d != 0) {
         case true:  ctx.SharedObjects.Textures[tu.Binding3d]
         case false: ctx.Objects.DefaultTextures.Texture3d
       }
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      // minRequiredVersion(3, 2)
       switch (tu.BindingBuffer != 0) {
         case true:  ctx.SharedObjects.Textures[tu.BindingBuffer]
         case false: ctx.Objects.DefaultTextures.TextureBuffer
       }
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      // minRequiredVersion(2, 0)
       switch (tu.BindingCubeMap != 0) {
         case true:  ctx.SharedObjects.Textures[tu.BindingCubeMap]
         case false: ctx.Objects.DefaultTextures.TextureCubeMap
       }
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      // minRequiredVersion(3, 2)
       switch (tu.BindingCubeMapArray != 0) {
         case true:  ctx.SharedObjects.Textures[tu.BindingCubeMapArray]
         case false: ctx.Objects.DefaultTextures.TextureCubeMapArray
@@ -490,12 +490,12 @@ sub void UpdateImageData(ref!Image      dst_image,
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glActiveTexture.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glActiveTexture.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glActiveTexture.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glActiveTexture.xhtml", Version.GLES32)
 cmd void glActiveTexture(GLenum unit) {
-  minRequiredVersion(1, 0)
   // TODO: Tidy this. This switch case is preserved for the snippet system.
   switch (unit) {
     case GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE10, GL_TEXTURE11, GL_TEXTURE12, GL_TEXTURE13,
@@ -515,6 +515,7 @@ cmd void glActiveTexture(GLenum unit) {
   ctx.ActiveTextureUnit = unit
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindImageTexture.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindImageTexture.xhtml", Version.GLES32)
 cmd void glBindImageTexture(GLuint    unit,
@@ -524,7 +525,6 @@ cmd void glBindImageTexture(GLuint    unit,
                             GLint     layer,
                             GLenum    access,
                             GLenum    format) {
-  minRequiredVersion(3, 1)
   switch (access) {
     case GL_READ_ONLY, GL_READ_WRITE, GL_WRITE_ONLY: {
       // version 3.1
@@ -553,22 +553,22 @@ cmd void glBindImageTexture(GLuint    unit,
   )
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindSampler.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindSampler.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml", Version.GLES32)
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
-  minRequiredVersion(3, 0)
   ctx := GetContext()
   unit := as!GLenum(index + as!GLuint(GL_TEXTURE0))
   ctx.TextureUnits[unit].SamplerBinding = sampler
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml", Version.GLES32)
 cmd void glBindTexture(GLenum target, TextureId texture) {
-  minRequiredVersion(1, 0)
   ctx := GetContext()
 
   // TODO: Do not initialize if the enum is not valid.
@@ -597,40 +597,40 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
 
   tu := ctx.TextureUnits[ctx.ActiveTextureUnit]
   switch (target) {
+    @if(Version.GLES20)
     case GL_TEXTURE_2D: {
-      minRequiredVersion(2, 0)
       tu.Binding2d = texture
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_EXTERNAL_OES: {
-      minRequiredVersion(2, 0)
       tu.BindingExternalOes = texture
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY: {
-      minRequiredVersion(3, 0)
       tu.Binding2dArray = texture
     }
+    @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      minRequiredVersion(3, 1)
       tu.Binding2dMultisample = texture
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
-      minRequiredVersion(3, 2)
       tu.Binding2dMultisampleArray = texture
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_3D: {
-      minRequiredVersion(3, 0)
       tu.Binding3d = texture
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      minRequiredVersion(3, 2)
       tu.BindingBuffer = texture
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_CUBE_MAP: {
-      minRequiredVersion(2, 0)
       tu.BindingCubeMap = texture
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
       tu.BindingCubeMapArray = texture
     }
     default: {
@@ -639,6 +639,7 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage2D.xhtml", Version.GLES31)
@@ -651,13 +652,13 @@ cmd void glCompressedTexImage2D(GLenum         target,
                                 GLint          border,
                                 GLsizei        image_size,
                                 TexturePointer data) {
-  minRequiredVersion(1, 0)
   TexImage(IsCompressedTexImageCmd, target,
            level, 0, 0, 0, // Offsets
            1, width, height, 1, border, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexImage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexImage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexImage3D.xhtml", Version.GLES32)
@@ -670,7 +671,6 @@ cmd void glCompressedTexImage3D(GLenum         target,
                                 GLint          border,
                                 GLsizei        image_size,
                                 TexturePointer data) {
-  minRequiredVersion(3, 0)
   CompressedTexImage3D(target, level, internalformat, width, height, depth, border, image_size, data)
 }
 
@@ -681,6 +681,7 @@ sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat,
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCompressedTexSubImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage2D.xhtml", Version.GLES31)
@@ -694,13 +695,13 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
                                    GLenum         internalformat,
                                    GLsizei        image_size,
                                    TexturePointer data) {
-  minRequiredVersion(1, 0)
   TexImage(IsCompressedTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
            1, width, height, 1, 0, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCompressedTexSubImage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompressedTexSubImage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompressedTexSubImage3D.xhtml", Version.GLES32)
@@ -715,7 +716,6 @@ cmd void glCompressedTexSubImage3D(GLenum         target,
                                    GLenum         internalformat,
                                    GLsizei        image_size,
                                    TexturePointer data) {
-  minRequiredVersion(3, 0)
   CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, internalformat, image_size, data)
 }
 
@@ -726,6 +726,7 @@ sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLin
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyImageSubData.xhtml", Version.GLES32)
 cmd void glCopyImageSubData(SrcImageId srcName,
                             GLenum     srcTarget,
@@ -742,7 +743,6 @@ cmd void glCopyImageSubData(SrcImageId srcName,
                             GLsizei    srcWidth,
                             GLsizei    srcHeight,
                             GLsizei    srcDepth) {
-  minRequiredVersion(3, 2)
   CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth)
 }
 
@@ -783,6 +783,7 @@ sub void CopyImageSubData(SrcImageId  srcName, GLenum srcTarget, GLint srcLevel,
   _ = srcDepth // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexImage2D.xhtml", Version.GLES31)
@@ -795,13 +796,13 @@ cmd void glCopyTexImage2D(GLenum  target,
                           GLsizei width,
                           GLsizei height,
                           GLint   border) {
-  minRequiredVersion(1, 0)
   TexImage(IsCopyTexImageCmd, target,
            level, 0, 0, 0, // Offsets
            1, width, height, 1, border, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCopyTexSubImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage2D.xhtml", Version.GLES31)
@@ -814,13 +815,13 @@ cmd void glCopyTexSubImage2D(GLenum  target,
                              GLint   y,
                              GLsizei width,
                              GLsizei height) {
-  minRequiredVersion(1, 0)
   TexImage(IsCopyTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
            1, width, height, 1, 0, // Dimensions
            GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyTexSubImage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyTexSubImage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyTexSubImage3D.xhtml", Version.GLES32)
@@ -833,7 +834,6 @@ cmd void glCopyTexSubImage3D(GLenum  target,
                              GLint   y,
                              GLsizei width,
                              GLsizei height) {
-  minRequiredVersion(3, 0)
   CopyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height)
 }
 
@@ -846,11 +846,11 @@ sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoff
   _ = y // TODO
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteSamplers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml", Version.GLES32)
 cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
-  minRequiredVersion(3, 0)
 
   s := samplers[0:count]
   ctx := GetContext()
@@ -862,12 +862,12 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteTextures.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteTextures.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", Version.GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
-  minRequiredVersion(1, 0)
 
   if count < 0 { glErrorInvalidValue() }
   t := textures[0:count]
@@ -881,11 +881,11 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   }
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenSamplers.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml", Version.GLES32)
 cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
-  minRequiredVersion(3, 0)
 
   s := samplers[0:count]
   ctx := GetContext()
@@ -896,12 +896,12 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   }
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenTextures.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenTextures.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml", Version.GLES32)
 cmd void glGenTextures(GLsizei count, TextureId* textures) {
-  minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
 
   t := textures[0:count]
@@ -913,21 +913,21 @@ cmd void glGenTextures(GLsizei count, TextureId* textures) {
   }
 }
 
+@if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenerateMipmap.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenerateMipmap.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenerateMipmap.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenerateMipmap.xhtml", Version.GLES32)
 cmd void glGenerateMipmap(GLenum target) {
-  minRequiredVersion(2, 0)
   switch (target) {
     case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      minRequiredVersion(3, 0)
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -949,8 +949,8 @@ sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
     case GL_TEXTURE_WRAP_R:       params[0] = as!T(s.WrapR)
     case GL_TEXTURE_WRAP_S:       params[0] = as!T(s.WrapS)
     case GL_TEXTURE_WRAP_T:       params[0] = as!T(s.WrapT)
+    @if(Version.GLES32)
     case GL_TEXTURE_BORDER_COLOR: {
-      minRequiredVersion(3, 2)
       // TODO: Different behaviour based on the I suffix.
       p := params[0:4]
       p[0] = as!T(s.BorderColor[0])
@@ -958,8 +958,8 @@ sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
       p[2] = as!T(s.BorderColor[2])
       p[3] = as!T(s.BorderColor[3])
     }
+    @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
-      requiresExtension(GL_EXT_texture_filter_anisotropic)
       params[0] = as!T(s.MaxAnisotropy)
     }
     default: {
@@ -968,9 +968,9 @@ sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", Version.GLES32)
 cmd void glGetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) {
-  minRequiredVersion(3, 2)
   GetSamplerParameterIiv(sampler, pname, params)
 }
 
@@ -978,9 +978,9 @@ sub void GetSamplerParameterIiv(SamplerId sampler, GLenum pname, GLint* params) 
   GetSamplerParameterv!GLint(sampler, pname, params)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", Version.GLES32)
 cmd void glGetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params) {
-  minRequiredVersion(3, 2)
   GetSamplerParameterIuiv(sampler, pname, params)
 }
 
@@ -988,26 +988,26 @@ sub void GetSamplerParameterIuiv(SamplerId sampler, GLenum pname, GLuint* params
   GetSamplerParameterv!GLuint(sampler, pname, params)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", Version.GLES32)
 cmd void glGetSamplerParameterfv(SamplerId sampler, GLenum pname, GLfloat* params) {
-  minRequiredVersion(3, 0)
   GetSamplerParameterv!GLfloat(sampler, pname, params)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetSamplerParameter.xhtml", Version.GLES32)
 cmd void glGetSamplerParameteriv(SamplerId sampler, GLenum pname, GLint* params) {
-  minRequiredVersion(3, 0)
   GetSamplerParameterv!GLint(sampler, pname, params)
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml", Version.GLES32)
 cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfloat* params) {
-  minRequiredVersion(3, 1)
   switch (target) {
     case GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_3D,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
@@ -1015,8 +1015,8 @@ cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfl
         GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
       // version 3.1
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_BUFFER, GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -1030,8 +1030,8 @@ cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfl
         GL_TEXTURE_SAMPLES, GL_TEXTURE_SHARED_SIZE, GL_TEXTURE_STENCIL_SIZE, GL_TEXTURE_WIDTH: {
       // version 3.1
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER_DATA_STORE_BINDING, GL_TEXTURE_BUFFER_OFFSET, GL_TEXTURE_BUFFER_SIZE: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(pname)
@@ -1041,10 +1041,10 @@ cmd void glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfl
   params[0] = ?
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexLevelParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexLevelParameter.xhtml", Version.GLES32)
 cmd void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint* params) {
-  minRequiredVersion(3, 1)
   switch (target) {
     case GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_3D,
         GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
@@ -1052,8 +1052,8 @@ cmd void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLin
         GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z: {
       // version 3.1
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_BUFFER, GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -1067,8 +1067,8 @@ cmd void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLin
         GL_TEXTURE_SAMPLES, GL_TEXTURE_SHARED_SIZE, GL_TEXTURE_STENCIL_SIZE, GL_TEXTURE_WIDTH: {
       // version 3.1
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BUFFER_DATA_STORE_BINDING, GL_TEXTURE_BUFFER_OFFSET, GL_TEXTURE_BUFFER_SIZE: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(pname)
@@ -1084,14 +1084,14 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
     case GL_TEXTURE_2D, GL_TEXTURE_CUBE_MAP: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY, GL_TEXTURE_3D: {
-      minRequiredVersion(3, 0)
     }
+    @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      minRequiredVersion(3, 1)
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_CUBE_MAP_ARRAY: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -1099,84 +1099,84 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
   }
   t := GetBoundTextureOrErrorInvalidEnum(target)
   switch (parameter) {
+    @if(Version.GLES20)
     case GL_TEXTURE_MAG_FILTER: {
-      minRequiredVersion(2, 0)
       params[0] = as!T(t.MagFilter)
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_MIN_FILTER: {
-      minRequiredVersion(2, 0)
       params[0] = as!T(t.MinFilter)
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_WRAP_S: {
-      minRequiredVersion(2, 0)
       params[0] = as!T(t.WrapS)
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_WRAP_T: {
-      minRequiredVersion(2, 0)
       params[0] = as!T(t.WrapT)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_BASE_LEVEL: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.BaseLevel)
     }
+    @if(Version.GLES30 || Extension.GL_EXT_shadow_samplers)
     case GL_TEXTURE_COMPARE_FUNC: {
-      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
       params[0] = as!T(t.CompareFunc)
     }
+    @if(Version.GLES30 || Extension.GL_EXT_shadow_samplers)
     case GL_TEXTURE_COMPARE_MODE: {
-      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
       params[0] = as!T(t.CompareMode)
     }
+    @if(Version.GLES30 || Extension.GL_EXT_texture_storage)
     case GL_TEXTURE_IMMUTABLE_FORMAT: {
-      // TODO: minRequiredVersion(3, 0) or GL_EXT_texture_storage
       params[0] = as!T(t.ImmutableFormat)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MAX_LEVEL: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.MaxLevel)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MAX_LOD: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.MaxLod)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MIN_LOD: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.MinLod)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_A: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.SwizzleA)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_B: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.SwizzleB)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_G: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.SwizzleG)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_R: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.SwizzleR)
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_WRAP_R: {
-      minRequiredVersion(3, 0)
       params[0] = as!T(t.WrapR)
     }
+    @if(Version.GLES31)
     case GL_DEPTH_STENCIL_TEXTURE_MODE: {
-      minRequiredVersion(3, 1)
       params[0] = as!T(t.DepthStencilTextureMode)
     }
+    @if(Version.GLES31)
     case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE: {
-      minRequiredVersion(3, 1)
       params[0] = ? // TODO
     }
+    @if(Version.GLES31)
     case GL_TEXTURE_IMMUTABLE_LEVELS: {
-      minRequiredVersion(3, 1)
       params[0] = as!T(t.ImmutableLevels)
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BORDER_COLOR: {
-      minRequiredVersion(3, 2)
       // TODO: Depends on the I suffix
       p := params[0:4]
       p[0] = as!T(t.BorderColor[0])
@@ -1184,8 +1184,8 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
       p[2] = as!T(t.BorderColor[2])
       p[3] = as!T(t.BorderColor[3])
     }
+    @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
-      requiresExtension(GL_EXT_texture_filter_anisotropic)
       params[0] = as!T(t.MaxAnisotropy)
     }
     default: {
@@ -1194,9 +1194,9 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", Version.GLES32)
 cmd void glGetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
-  minRequiredVersion(3, 2)
   GetTexParameterIiv(target, pname, params)
 }
 
@@ -1204,9 +1204,9 @@ sub void GetTexParameterIiv(GLenum target, GLenum pname, GLint* params) {
   GetTexParameter!GLint(target, pname, params)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", Version.GLES32)
 cmd void glGetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
-  minRequiredVersion(3, 2)
   GetTexParameterIuiv(target, pname, params)
 }
 
@@ -1214,102 +1214,102 @@ sub void GetTexParameterIuiv(GLenum target, GLenum pname, GLuint* params) {
   GetTexParameter!GLuint(target, pname, params)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", Version.GLES32)
 cmd void glGetTexParameterfv(GLenum target, GLenum parameter, GLfloat* values) {
-  minRequiredVersion(1, 0)
   GetTexParameter!GLfloat(target, parameter, values)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetTexParameter.xhtml", Version.GLES32)
 cmd void glGetTexParameteriv(GLenum target, GLenum parameter, GLint* values) {
-  minRequiredVersion(1, 0)
   GetTexParameter!GLint(target, parameter, values)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsSampler.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsSampler.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsSampler.xhtml", Version.GLES32)
 cmd GLboolean glIsSampler(SamplerId sampler) {
-  minRequiredVersion(3, 0)
 
   ctx := GetContext()
   return as!GLboolean(sampler in ctx.SharedObjects.Samplers)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsTexture.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsTexture.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsTexture.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTexture.xhtml", Version.GLES32)
 cmd GLboolean glIsTexture(TextureId texture) {
-  minRequiredVersion(1, 0)
 
   ctx := GetContext()
   return as!GLboolean(texture in ctx.SharedObjects.Textures)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPixelStorei.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPixelStorei.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPixelStorei.xhtml", Version.GLES32)
 cmd void glPixelStorei(GLenum parameter, GLint value) {
-  minRequiredVersion(1, 0)
   if value < 0 { glErrorInvalidValue() }
   ctx := GetContext()
   switch (parameter) {
+    @if(Version.GLES20)
     case GL_PACK_ALIGNMENT: {
-      minRequiredVersion(2, 0)
       if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
       ctx.PixelStorage.PackAlignment = value
     }
+    @if(Version.GLES30)
     case GL_PACK_IMAGE_HEIGHT: {
-      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
       ctx.PixelStorage.PackImageHeight = value
     }
+    @if(Version.GLES30)
     case GL_PACK_ROW_LENGTH: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.PackRowLength = value
     }
+    @if(Version.GLES30)
     case GL_PACK_SKIP_IMAGES: {
-      minRequiredVersion(3, 0) // SPEC: Missing from online man pages
       ctx.PixelStorage.PackSkipImages = value
     }
+    @if(Version.GLES30)
     case GL_PACK_SKIP_PIXELS: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.PackSkipPixels = value
     }
+    @if(Version.GLES30)
     case GL_PACK_SKIP_ROWS: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.PackSkipRows = value
     }
+    @if(Version.GLES20)
     case GL_UNPACK_ALIGNMENT: {
-      minRequiredVersion(2, 0)
       if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
       ctx.PixelStorage.UnpackAlignment = value
     }
+    @if(Version.GLES30)
     case GL_UNPACK_IMAGE_HEIGHT: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.UnpackImageHeight = value
     }
+    @if(Version.GLES30)
     case GL_UNPACK_ROW_LENGTH: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.UnpackRowLength = value
     }
+    @if(Version.GLES30)
     case GL_UNPACK_SKIP_IMAGES: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.UnpackSkipImages = value
     }
+    @if(Version.GLES30)
     case GL_UNPACK_SKIP_PIXELS: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.UnpackSkipPixels = value
     }
+    @if(Version.GLES30)
     case GL_UNPACK_SKIP_ROWS: {
-      minRequiredVersion(3, 0)
       ctx.PixelStorage.UnpackSkipRows = value
     }
     default: {
@@ -1331,12 +1331,12 @@ sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
     case GL_TEXTURE_WRAP_R:       s.WrapR = as!GLenum(params[0])
     case GL_TEXTURE_WRAP_S:       s.WrapS = as!GLenum(params[0])
     case GL_TEXTURE_WRAP_T:       s.WrapT = as!GLenum(params[0])
+    @if(Version.GLES32)
     case GL_TEXTURE_BORDER_COLOR: {
-      minRequiredVersion(3, 2)
       // TODO: Handle - has different behaviour based on the I suffix.
     }
+    @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
-      requiresExtension(GL_EXT_texture_filter_anisotropic)
       // This use case is not explicitly mentioned in the extension (presumably
       // because it is written for GLES2, but samplers were introduced in GLES3).
       // However, it is used and supported in practice (which is reasonable).
@@ -1348,9 +1348,9 @@ sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param) {
-  minRequiredVersion(3, 2)
   SamplerParameterIiv(sampler, pname, param)
 }
 
@@ -1358,9 +1358,9 @@ sub void SamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param
   SamplerParameterv!(const GLint*)(sampler, pname, param)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* param) {
-  minRequiredVersion(3, 2)
   SamplerParameterIuiv(sampler, pname, param)
 }
 
@@ -1368,43 +1368,43 @@ sub void SamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* par
   SamplerParameterv!(const GLuint*)(sampler, pname, param)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameterf(SamplerId sampler, GLenum pname, GLfloat param) {
-  minRequiredVersion(3, 0)
   params := Vec1f(param)
   SamplerParameterv!Vec1f(sampler, pname, params)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameterfv(SamplerId sampler, GLenum pname, const GLfloat* param) {
-  minRequiredVersion(3, 0)
   SamplerParameterv!(const GLfloat*)(sampler, pname, param)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameteri(SamplerId sampler, GLenum pname, GLint param) {
-  minRequiredVersion(3, 0)
   params := Vec1i(param)
   SamplerParameterv!Vec1i(sampler, pname, params)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glSamplerParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameteriv(SamplerId sampler, GLenum pname, const GLint* param) {
-  minRequiredVersion(3, 0)
   SamplerParameterv!(const GLint*)(sampler, pname, param)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBuffer.xhtml", Version.GLES32)
 cmd void glTexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
-  minRequiredVersion(3, 2)
   TexBuffer(target, internalformat, buffer)
 }
 
@@ -1431,13 +1431,13 @@ sub void TexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
   _ = buffer // TODO
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexBufferRange.xhtml", Version.GLES32)
 cmd void glTexBufferRange(GLenum     target,
                           GLenum     internalformat,
                           BufferId   buffer,
                           GLintptr   offset,
                           GLsizeiptr size) {
-  minRequiredVersion(3, 2)
   TexBufferRange(target, internalformat, buffer, offset, size)
 }
 
@@ -1466,6 +1466,7 @@ sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, G
   _ = size // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage2D.xhtml", Version.GLES31)
@@ -1479,13 +1480,13 @@ cmd void glTexImage2D(GLenum         target,
                       GLenum         format,
                       GLenum         type,
                       TexturePointer data) {
-  minRequiredVersion(1, 0)
   TexImage(IsTexImageCmd, target,
            level, 0, 0, 0, // Offsets
            1, width, height, 1, border, // Dimensions
            as!GLenum(internalformat), format, type, 0, data) // Format&data
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexImage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexImage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexImage3D.xhtml", Version.GLES32)
@@ -1499,7 +1500,6 @@ cmd void glTexImage3D(GLenum         target,
                       GLenum         format,
                       GLenum         type,
                       TexturePointer data) {
-  minRequiredVersion(3, 0)
   TexImage3D(target, level, internalformat, width, height, depth, border, format, type, data)
 }
 
@@ -1546,8 +1546,8 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
 
   t := GetBoundTextureOrErrorInvalidEnum(target)
   switch pname {
+    @if(Version.GLES20)
     case GL_TEXTURE_MAG_FILTER: {
-      minRequiredVersion(2, 0)
       magFilter := as!GLenum(params[0])
       switch (magFilter) {
         case GL_NEAREST, GL_LINEAR: { /* fine */ }
@@ -1557,8 +1557,8 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
       }
       t.MagFilter = magFilter
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_MIN_FILTER: {
-      minRequiredVersion(2, 0)
       minFilter := as!GLenum(params[0])
       switch (minFilter) {
         case GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_NEAREST,
@@ -1570,76 +1570,76 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
       }
       t.MinFilter = minFilter
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_WRAP_S: {
-      minRequiredVersion(2, 0)
       t.WrapS = checkWrapParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES20)
     case GL_TEXTURE_WRAP_T: {
-      minRequiredVersion(2, 0)
       t.WrapT = checkWrapParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_BASE_LEVEL: {
-      minRequiredVersion(3, 0)
       baseLevel := as!GLint(params[0])
       if baseLevel < 0 { glErrorInvalidValue() }
       t.BaseLevel = baseLevel
     }
+    @if(Version.GLES30 || Extension.GL_EXT_shadow_samplers)
     case GL_TEXTURE_COMPARE_FUNC: {
-      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
       t.CompareFunc = as!GLenum(params[0])
     }
+    @if(Version.GLES30 || Extension.GL_EXT_shadow_samplers)
     case GL_TEXTURE_COMPARE_MODE: {
-      // TODO: minRequiredVersion(3, 0) or GL_EXT_shadow_samplers
       t.CompareMode = as!GLenum(params[0])
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MAX_LEVEL: {
-      minRequiredVersion(3, 0)
       maxLevel := as!GLint(params[0])
       if maxLevel < 0 { glErrorInvalidValue() }
       t.MaxLevel = maxLevel
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MAX_LOD: {
-      minRequiredVersion(3, 0)
       t.MaxLod = as!GLfloat(params[0])
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_MIN_LOD: {
-      minRequiredVersion(3, 0)
       t.MinLod = as!GLfloat(params[0])
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_A: {
-      minRequiredVersion(3, 0)
       t.SwizzleA = checkSwizzleParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_B: {
-      minRequiredVersion(3, 0)
       t.SwizzleB = checkSwizzleParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_G: {
-      minRequiredVersion(3, 0)
       t.SwizzleG = checkSwizzleParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_SWIZZLE_R: {
-      minRequiredVersion(3, 0)
       t.SwizzleR = checkSwizzleParam(as!GLenum(params[0]))
     }
+    @if(Version.GLES30)
     case GL_TEXTURE_WRAP_R: {
-      minRequiredVersion(3, 0)
       t.WrapR = as!GLenum(params[0])
     }
+    @if(Version.GLES31)
     case GL_DEPTH_STENCIL_TEXTURE_MODE: {
-      minRequiredVersion(3, 1)
       t.DepthStencilTextureMode = as!GLenum(params[0])
     }
+    @if(Version.GLES32)
     case GL_TEXTURE_BORDER_COLOR: {
-      minRequiredVersion(3, 2)
       // TODO: Handle - has different behaviour based on the I suffix.
     }
+    @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
-      requiresExtension(GL_EXT_texture_filter_anisotropic)
       t.MaxAnisotropy = as!GLfloat(params[0])
     }
+    @if(Extension.GL_EXT_texture_sRGB_decode)
     case GL_TEXTURE_SRGB_DECODE_EXT: {
-      requiresExtension(GL_EXT_texture_sRGB_decode)
       // TODO: DECODE_EXT, SKIP_DECODE_EXT
     }
     default: {
@@ -1648,9 +1648,9 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
   }
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
-  minRequiredVersion(3, 2)
   TexParameterIiv(target, pname, params)
 }
 
@@ -1658,9 +1658,9 @@ sub void TexParameterIiv(GLenum target, GLenum pname, const GLint* params) {
   TexParameterv!(const GLint*)(target, pname, params)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
-  minRequiredVersion(3, 2)
   TexParameterIuiv(target, pname, params)
 }
 
@@ -1668,46 +1668,47 @@ sub void TexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
   TexParameterv!(const GLuint*)(target, pname, params)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameterf(GLenum target, GLenum parameter, GLfloat value) {
-  minRequiredVersion(1, 0)
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
   params := Vec1f(value)
   TexParameterv!Vec1f(target, parameter, params)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameterfv(GLenum target, GLenum pname, const GLfloat* params) {
-  minRequiredVersion(1, 0)
   TexParameterv!(const GLfloat*)(target, pname, params)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameteri(GLenum target, GLenum parameter, GLint value) {
-  minRequiredVersion(1, 0)
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
   params := Vec1i(value)
   TexParameterv!Vec1i(target, parameter, params)
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexParameter.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameteriv(GLenum target, GLenum pname, const GLint* params) {
-  minRequiredVersion(1, 0)
   TexParameterv!(const GLint*)(target, pname, params)
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2D.xhtml", Version.GLES32)
@@ -1716,7 +1717,6 @@ cmd void glTexStorage2D(GLenum  target,
                         GLenum  internalformat,
                         GLsizei width,
                         GLsizei height) {
-  minRequiredVersion(3, 0)
   TexStorage2D(target, levels, internalformat, width, height)
 }
 
@@ -1731,6 +1731,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
+@if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage2DMultisample.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage2DMultisample.xhtml", Version.GLES32)
 cmd void glTexStorage2DMultisample(GLenum    target,
@@ -1739,7 +1740,6 @@ cmd void glTexStorage2DMultisample(GLenum    target,
                                    GLsizei   width,
                                    GLsizei   height,
                                    GLboolean fixedsamplelocations) {
-  minRequiredVersion(3, 1)
   TexImage(IsTexStorageCmd | HasMultisampleModifier, target,
            0, 0, 0, 0, // Offsets
            1, width, height, 1, 0, // Dimensions
@@ -1748,6 +1748,7 @@ cmd void glTexStorage2DMultisample(GLenum    target,
   _ = fixedsamplelocations // TODO
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexStorage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexStorage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3D.xhtml", Version.GLES32)
@@ -1757,7 +1758,6 @@ cmd void glTexStorage3D(GLenum  target,
                         GLsizei width,
                         GLsizei height,
                         GLsizei depth) {
-  minRequiredVersion(3, 0)
   TexStorage3D(target, levels, internalformat, width, height, depth)
 }
 
@@ -1768,6 +1768,7 @@ sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexStorage3DMultisample.xhtml", Version.GLES32)
 cmd void glTexStorage3DMultisample(GLenum    target,
                                    GLsizei   samples,
@@ -1776,7 +1777,6 @@ cmd void glTexStorage3DMultisample(GLenum    target,
                                    GLsizei   height,
                                    GLsizei   depth,
                                    GLboolean fixedsamplelocations) {
-  minRequiredVersion(3, 2)
   TexStorage3DMultisample(target, samples, internalformat, width, height, depth, fixedsamplelocations)
 }
 
@@ -1789,6 +1789,7 @@ sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internal
   _ = fixedsamplelocations // TODO
 }
 
+@if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexSubImage2D.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage2D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage2D.xhtml", Version.GLES31)
@@ -1802,13 +1803,13 @@ cmd void glTexSubImage2D(GLenum         target,
                          GLenum         format,
                          GLenum         type,
                          TexturePointer data) {
-  minRequiredVersion(1, 0)
   TexImage(IsTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
            1, width, height, 1, 0, // Dimensions
            GL_NONE, format, type, 0, data) // Format&data
 }
 
+@if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glTexSubImage3D.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glTexSubImage3D.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexSubImage3D.xhtml", Version.GLES32)
@@ -1823,7 +1824,6 @@ cmd void glTexSubImage3D(GLenum         target,
                          GLenum         format,
                          GLenum         type,
                          TexturePointer data) {
-  minRequiredVersion(3, 0)
   TexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data)
 }
 

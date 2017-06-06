@@ -20,9 +20,9 @@ sub void checkPrimitiveType(GLenum draw_mode) {
         GL_TRIANGLE_STRIP: {
       // version 2.0
     }
+    @if(Version.GLES32)
     case GL_LINES_ADJACENCY, GL_LINE_STRIP_ADJACENCY, GL_PATCHES, GL_TRIANGLES_ADJACENCY,
         GL_TRIANGLE_STRIP_ADJACENCY: {
-      minRequiredVersion(3, 2)
     }
     default: {
       glErrorInvalidEnum(draw_mode)
@@ -35,8 +35,8 @@ sub void checkIndicesType(GLenum indices_type) {
     case GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT: {
       // version 2.0
     }
+    @if(Version.GLES30)
     case GL_UNSIGNED_INT: {
-      minRequiredVersion(3, 0)
     }
     default: {
       glErrorInvalidEnum(indices_type)
@@ -44,13 +44,13 @@ sub void checkIndicesType(GLenum indices_type) {
   }
 }
 
+@if(Version.GLES10)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawArrays.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArrays.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArrays.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml", Version.GLES32)
 cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
-  minRequiredVersion(1, 0)
   checkPrimitiveType(draw_mode)
   if first_index < 0 { glErrorInvalidValue() } // "Recommended behaviour"
   if indices_count < 0 { glErrorInvalidValue() }
@@ -58,11 +58,11 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
 }
 
+@if(Version.GLES31)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml", Version.GLES32)
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
-  minRequiredVersion(3, 1)
   checkPrimitiveType(draw_mode)
   ctx := GetContext()
   if ctx.BoundVertexArray == 0 { glErrorInvalidOperation() } // SPEC: missing in html
@@ -71,12 +71,12 @@ cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
 }
 
+@if(Version.GLES30)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArraysInstanced.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysInstanced.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysInstanced.xhtml", Version.GLES32)
 cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
-  minRequiredVersion(3, 0)
   DrawArraysInstanced(draw_mode, first_index, indices_count, instance_count)
 }
 
@@ -131,6 +131,7 @@ sub void DrawElements(ref!Context    ctx,
   }
 }
 
+@if(Version.GLES10)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawElements.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElements.xhtml", Version.GLES30)
@@ -140,11 +141,11 @@ cmd void glDrawElements(GLenum         draw_mode,
                         GLsizei        indices_count,
                         GLenum         indices_type,
                         IndicesPointer indices) {
-  minRequiredVersion(1, 0)
   ctx := GetContext()
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, 0)
 }
 
+@if(Version.GLES32)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawElementsBaseVertex(GLenum         draw_mode,
@@ -152,7 +153,6 @@ cmd void glDrawElementsBaseVertex(GLenum         draw_mode,
                                   GLenum         indices_type,
                                   IndicesPointer indices,
                                   GLint          base_vertex) {
-  minRequiredVersion(3, 2)
   DrawElementsBaseVertex(draw_mode, indices_count, indices_type, indices, base_vertex)
 }
 
@@ -161,11 +161,11 @@ sub void DrawElementsBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum 
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
 }
 
+@if(Version.GLES31)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml", Version.GLES32)
 cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const void* indirect) {
-  minRequiredVersion(3, 1)
   checkPrimitiveType(draw_mode)
   checkIndicesType(indices_type)
 
@@ -177,6 +177,7 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
 }
 
+@if(Version.GLES30)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElementsInstanced.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsInstanced.xhtml", Version.GLES31)
@@ -186,7 +187,6 @@ cmd void glDrawElementsInstanced(GLenum         draw_mode,
                                  GLenum         indices_type,
                                  IndicesPointer indices,
                                  GLsizei        instance_count) {
-  minRequiredVersion(3, 0)
   DrawElementsInstanced(draw_mode, indices_count, indices_type, indices, instance_count)
 }
 
@@ -195,6 +195,7 @@ sub void DrawElementsInstanced(GLenum draw_mode, GLsizei indices_count, GLenum i
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, instance_count, 0)
 }
 
+@if(Version.GLES32)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstancedBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawElementsInstancedBaseVertex(GLenum         draw_mode,
@@ -203,7 +204,6 @@ cmd void glDrawElementsInstancedBaseVertex(GLenum         draw_mode,
                                            IndicesPointer indices,
                                            GLsizei        instance_count,
                                            GLint          base_vertex) {
-  minRequiredVersion(3, 2)
   DrawElementsInstancedBaseVertex(draw_mode, indices_count, indices_type, indices, instance_count, base_vertex)
 }
 
@@ -212,6 +212,7 @@ sub void DrawElementsInstancedBaseVertex(GLenum draw_mode, GLsizei indices_count
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, instance_count, base_vertex)
 }
 
+@if(Version.GLES30)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawRangeElements.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawRangeElements.xhtml", Version.GLES31)
@@ -222,12 +223,12 @@ cmd void glDrawRangeElements(GLenum         draw_mode,
                              GLsizei        indices_count,
                              GLenum         indices_type,
                              IndicesPointer indices) {
-  minRequiredVersion(3, 0)
   if end < start { glErrorInvalidValue() }
   ctx := GetContext()
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, 0)
 }
 
+@if(Version.GLES32)
 @DrawCall
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElementsBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
@@ -237,7 +238,6 @@ cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
                                        GLenum         indices_type,
                                        IndicesPointer indices,
                                        GLint          base_vertex) {
-  minRequiredVersion(3, 2)
   DrawRangeElementsBaseVertex(draw_mode, start, end, indices_count, indices_type, indices, base_vertex)
 }
 
@@ -247,9 +247,9 @@ sub void DrawRangeElementsBaseVertex(GLenum draw_mode, GLuint start, GLuint end,
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPatchParameteri.xhtml", Version.GLES32)
 cmd void glPatchParameteri(GLenum pname, GLint value) {
-  minRequiredVersion(3, 2)
   PatchParameteri(pname, value)
 }
 
@@ -260,6 +260,7 @@ sub void PatchParameteri(GLenum pname, GLint value) {
   ctx.Miscellaneous.PatchVertices = value
 }
 
+@if(Version.GLES32)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPrimitiveBoundingBox.xhtml", Version.GLES32)
 cmd void glPrimitiveBoundingBox(GLfloat minX,
                                 GLfloat minY,
@@ -269,7 +270,6 @@ cmd void glPrimitiveBoundingBox(GLfloat minX,
                                 GLfloat maxY,
                                 GLfloat maxZ,
                                 GLfloat maxW) {
-  minRequiredVersion(3, 2)
   PrimitiveBoundingBox(minX, minY, minZ, minW, maxX, maxY, maxZ, maxW)
 }
 
