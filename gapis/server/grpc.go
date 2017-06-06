@@ -18,13 +18,16 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/gapis/service"
+
 	"google.golang.org/grpc"
 
 	xctx "golang.org/x/net/context"
@@ -40,34 +43,58 @@ func Listen(ctx context.Context, addr string, cfg Config) error {
 	return NewWithListener(ctx, listener, cfg, nil)
 }
 
+// NewWithListener starts a new GRPC server listening on l.
+// This is a blocking call.
 func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan chan<- *grpc.Server) error {
-	s := NewGapidServer(ctx, cfg)
+	keepAlive := make(chan struct{}, 1)
+	s := &grpcServer{
+		handler: New(ctx, cfg),
+		bindCtx: func(c context.Context) context.Context {
+			// Write to keepAlive if it has no pending signal.
+			select {
+			case keepAlive <- struct{}{}:
+			default:
+			}
+			return keys.Clone(c, ctx)
+		},
+	}
 	return grpcutil.ServeWithListener(ctx, l, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		if addr, ok := listener.Addr().(*net.TCPAddr); ok {
 			// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
 			fmt.Printf("Bound on port '%d'\n", addr.Port)
 		}
 		service.RegisterGapidServer(server, s)
-
 		if srvChan != nil {
 			srvChan <- server
+		}
+		if cfg.IdleTimeout != 0 {
+			go s.stopIfIdle(ctx, server, keepAlive, cfg.IdleTimeout)
 		}
 		return nil
 	}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
 }
 
-// NewGapidServer returns a GapidServer interface to a new server instace.
-func NewGapidServer(ctx context.Context, cfg Config) service.GapidServer {
-	outer := ctx
-	return &grpcServer{
-		handler: New(ctx, cfg),
-		bindCtx: func(ctx context.Context) context.Context { return keys.Clone(ctx, outer) },
-	}
-}
-
 type grpcServer struct {
 	handler Server
 	bindCtx func(context.Context) context.Context
+}
+
+// stopIfIdle calls GracefulStop on server if there are no writes the the
+// keepAlive chan within idleTimeout.
+// This function blocks until there's an idle timeout, or ctx is cancelled.
+func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, keepAlive <-chan struct{}, idleTimeout time.Duration) {
+	defer server.GracefulStop()
+	for {
+		select {
+		case <-task.ShouldStop(ctx):
+			return
+		case <-time.After(idleTimeout):
+			log.W(ctx, fmt.Sprintf("Stopping GAPIS server as it has been idle for more than %v (--idle-timeout)", idleTimeout))
+			time.Sleep(time.Second * 3) // Wait a little in the hope this message makes its way to the client(s).
+			return
+		case <-keepAlive:
+		}
+	}
 }
 
 func (s *grpcServer) Ping(ctx xctx.Context, req *service.PingRequest) (*service.PingResponse, error) {

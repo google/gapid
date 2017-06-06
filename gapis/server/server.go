@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"runtime/pprof"
+	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
@@ -49,6 +50,7 @@ type Config struct {
 	AuthToken      auth.Token
 	DeviceScanDone task.Signal
 	LogBroadcaster *log.Broadcaster
+	IdleTimeout    time.Duration
 }
 
 // Server is the server interface to GAPIS.

@@ -47,6 +47,7 @@ var (
 	gapirArgStr     = flag.String("gapir-args", "", `"The arguments to be passed to the host-run gapir"`)
 	scanAndroidDevs = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
 	addLocalDevice  = flag.Bool("add-local-device", true, "Server will create a new local replay device")
+	idleTimeout     = flag.Duration("idle-timeout", 0, "Closes GAPIS if the server is not repeatedly pinged within this duration")
 )
 
 func main() {
@@ -108,6 +109,7 @@ func run(ctx context.Context) error {
 		AuthToken:      auth.Token(*gapisAuthToken),
 		DeviceScanDone: deviceScanDone,
 		LogBroadcaster: logBroadcaster,
+		IdleTimeout:    *idleTimeout,
 	})
 }
 
