@@ -25,6 +25,7 @@ import java.util.function.Consumer;
  * The public API to communicate with the server.
  */
 public interface GapidClient {
+  public ListenableFuture<Void> ping();
   public ListenableFuture<Service.GetServerInfoResponse> getServerInfo(
       Service.GetServerInfoRequest request);
   public ListenableFuture<Service.GetResponse> get(Service.GetRequest request);

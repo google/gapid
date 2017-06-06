@@ -15,12 +15,14 @@
  */
 package com.google.gapid.server;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 
+import com.google.gapid.proto.service.Service.PingRequest;
 import java.util.function.Consumer;
 
 import io.grpc.stub.StreamObserver;
@@ -29,12 +31,18 @@ import io.grpc.stub.StreamObserver;
  * A {@link GapidClient} based on a gRPC service.
  */
 public class GapidClientGrpc implements GapidClient {
+  private static final PingRequest PING_REQUEST = Service.PingRequest.newBuilder().build();
   private final GapidGrpc.GapidFutureStub client;
   private final GapidGrpc.GapidStub stub;
 
   public GapidClientGrpc(GapidGrpc.GapidFutureStub client, GapidGrpc.GapidStub stub) {
     this.client = client;
     this.stub = stub;
+  }
+
+  @Override
+  public ListenableFuture<Void> ping() {
+    return Futures.transform(client.ping(PING_REQUEST), ignored -> null);
   }
 
   @Override

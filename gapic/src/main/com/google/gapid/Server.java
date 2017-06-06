@@ -109,7 +109,7 @@ public class Server {
       return new GapisProcess(listener).connect();
     } else {
       return GapisConnection.create(
-          gapis.get(), gapisAuthToken.get(), con -> listener.onServerExit(-1, null));
+          gapis.get(), gapisAuthToken.get(), 0, con -> listener.onServerExit(-1, null));
     }
   }
 
