@@ -18,7 +18,7 @@ set(FORCE_GLOB OFF CACHE BOOL "Force regeneration of glob files" FORCE)
 
 set(GLOB_EXTENSIONS
     .go .pb.go
-    .cxx .cpp .h .c
+    .cxx .cpp .h .c .cc
     .mm
     .lingo
     .proto
@@ -115,6 +115,7 @@ function(_glob globpath)
             else()
                 get_filename_component(type ${child} EXT)
                 foreach(test ${GLOB_EXTENSIONS})
+                    message("type:${type} -- test:${test}")
                     if(type STREQUAL ${test})
                         list(APPEND files ${child})
                     endif()
