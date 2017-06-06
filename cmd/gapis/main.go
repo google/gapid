@@ -29,6 +29,8 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/server"
@@ -42,7 +44,7 @@ var (
 	persist         = flag.Bool("persist", false, "Server will keep running even when no connections remain")
 	gapisAuthToken  = flag.String("gapis-auth-token", "", "The connection authorization token for gapis")
 	gapirAuthToken  = flag.String("gapir-auth-token", "", "The connection authorization token for gapir")
-	gapirArgStr     = flag.String("gapir-args", "", `"<The arguments to be passed to gapir>"`)
+	gapirArgStr     = flag.String("gapir-args", "", `"The arguments to be passed to the host-run gapir"`)
 	scanAndroidDevs = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
 	addLocalDevice  = flag.Bool("add-local-device", true, "Server will create a new local replay device")
 )
@@ -90,7 +92,9 @@ func run(ctx context.Context) error {
 	}
 
 	if *addLocalDevice {
-		r.AddDevice(ctx, bind.Host(ctx))
+		host := bind.Host(ctx)
+		r.AddDevice(ctx, host)
+		r.SetDeviceProperty(ctx, host, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 	}
 
 	return server.Listen(ctx, *rpc, server.Config{

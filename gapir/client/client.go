@@ -25,6 +25,12 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 )
 
+type tyLaunchArgsKey string
+
+// LaunchArgsKey is the bind device property key used to control the command
+// line arguments when launching GAPIR. The property must be of type []string.
+const LaunchArgsKey tyLaunchArgsKey = "<gapir-launch-args>"
+
 // Client is interface used to connect to GAPIR instances on devices.
 type Client struct {
 	mutex    sync.Mutex
@@ -51,7 +57,8 @@ func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (i
 	}
 
 	if isNew {
-		if err := s.init(ctx, d, abi); err != nil {
+		launchArgs, _ := bind.GetRegistry(ctx).DeviceProperty(ctx, d, LaunchArgsKey).([]string)
+		if err := s.init(ctx, d, abi, launchArgs); err != nil {
 			return nil, err
 		}
 	}
