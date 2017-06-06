@@ -243,6 +243,152 @@ enum DeclaringApi {
   ANDROID_image_native_buffer = 500,
 }
 
+// Flags which are set if the context supports given GLES version
+@internal
+class Versions {
+  bool GLES10                                          = true
+  bool GLES20                                          = true
+  bool GLES30                                          = true
+  bool GLES31                                          = true
+  bool GLES32                                          = true
+}
+Versions Version
+
+// Flags which are set if the context supports given GLES extension
+@internal
+class Extensions {
+  bool EGL_ANDROID_create_native_client_buffer         = true
+  bool EGL_ANDROID_image_native_buffer                 = true
+  bool EGL_KHR_image_base                              = true
+  bool GL_AMD_compressed_ATC_texture                   = true
+  bool GL_AMD_performance_monitor                      = true
+  bool GL_ANGLE_framebuffer_blit                       = true
+  bool GL_ANGLE_framebuffer_multisample                = true
+  bool GL_ANGLE_instanced_arrays                       = true
+  bool GL_ANGLE_translated_shader_source               = true
+  bool GL_APPLE_copy_texture_levels                    = true
+  bool GL_APPLE_framebuffer_multisample                = true
+  bool GL_APPLE_sync                                   = true
+  bool GL_EXT_base_instance                            = true
+  bool GL_EXT_blend_func_extended                      = true
+  bool GL_EXT_buffer_storage                           = true
+  bool GL_EXT_clear_texture                            = true
+  bool GL_EXT_copy_image                               = true
+  bool GL_EXT_debug_label                              = true
+  bool GL_EXT_debug_marker                             = true
+  bool GL_EXT_discard_framebuffer                      = true
+  bool GL_EXT_disjoint_timer_query                     = true
+  bool GL_EXT_draw_buffers                             = true
+  bool GL_EXT_draw_buffers_indexed                     = true
+  bool GL_EXT_draw_elements_base_vertex                = true
+  bool GL_EXT_draw_instanced                           = true
+  bool GL_EXT_draw_transform_feedback                  = true
+  bool GL_EXT_geometry_shader                          = true
+  bool GL_EXT_instanced_arrays                         = true
+  bool GL_EXT_map_buffer_range                         = true
+  bool GL_EXT_multi_draw_arrays                        = true
+  bool GL_EXT_multi_draw_indirect                      = true
+  bool GL_EXT_multisampled_render_to_texture           = true
+  bool GL_EXT_multiview_draw_buffers                   = true
+  bool GL_EXT_occlusion_query_boolean                  = true
+  bool GL_EXT_polygon_offset_clamp                     = true
+  bool GL_EXT_primitive_bounding_box                   = true
+  bool GL_EXT_raster_multisample                       = true
+  bool GL_EXT_robustness                               = true
+  bool GL_EXT_sRGB_write_control                       = true
+  bool GL_EXT_separate_shader_objects                  = true
+  bool GL_EXT_shader_pixel_local_storage2              = true
+  bool GL_EXT_sparse_texture                           = true
+  bool GL_EXT_tessellation_shader                      = true
+  bool GL_EXT_texture_border_clamp                     = true
+  bool GL_EXT_texture_buffer                           = true
+  bool GL_EXT_texture_compression_s3tc                 = true
+  bool GL_EXT_texture_filter_anisotropic               = true
+  bool GL_EXT_texture_filter_minmax                    = true
+  bool GL_EXT_texture_format_BGRA8888                  = true
+  bool GL_EXT_texture_norm16                           = true
+  bool GL_EXT_texture_rg                               = true
+  bool GL_EXT_texture_sRGB_decode                      = true
+  bool GL_EXT_texture_storage                          = true
+  bool GL_EXT_texture_view                             = true
+  bool GL_EXT_window_rectangles                        = true
+  bool GL_IMG_bindless_texture                         = true
+  bool GL_IMG_framebuffer_downsample                   = true
+  bool GL_IMG_multisampled_render_to_texture           = true
+  bool GL_IMG_user_clip_plane                          = true
+  bool GL_INTEL_framebuffer_CMAA                       = true
+  bool GL_INTEL_performance_query                      = true
+  bool GL_KHR_blend_equation_advanced                  = true
+  bool GL_KHR_debug                                    = true
+  bool GL_KHR_robustness                               = true
+  bool GL_NV_bindless_texture                          = true
+  bool GL_NV_blend_equation_advanced                   = true
+  bool GL_NV_conditional_render                        = true
+  bool GL_NV_conservative_raster                       = true
+  bool GL_NV_conservative_raster_pre_snap_triangles    = true
+  bool GL_NV_copy_buffer                               = true
+  bool GL_NV_coverage_sample                           = true
+  bool GL_NV_draw_buffers                              = true
+  bool GL_NV_draw_instanced                            = true
+  bool GL_NV_fence                                     = true
+  bool GL_NV_fragment_coverage_to_color                = true
+  bool GL_NV_framebuffer_blit                          = true
+  bool GL_NV_framebuffer_mixed_samples                 = true
+  bool GL_NV_framebuffer_multisample                   = true
+  bool GL_NV_gpu_shader5                               = true
+  bool GL_NV_instanced_arrays                          = true
+  bool GL_NV_internalformat_sample_query               = true
+  bool GL_NV_non_square_matrices                       = true
+  bool GL_NV_path_rendering                            = true
+  bool GL_NV_polygon_mode                              = true
+  bool GL_NV_read_buffer                               = true
+  bool GL_NV_sample_locations                          = true
+  bool GL_NV_viewport_array                            = true
+  bool GL_NV_viewport_swizzle                          = true
+  bool GL_OES_EGL_image                                = true
+  bool GL_OES_EGL_image_external                       = true
+  bool GL_OES_blend_equation_separate                  = true
+  bool GL_OES_blend_func_separate                      = true
+  bool GL_OES_blend_subtract                           = true
+  bool GL_OES_compressed_ETC1_RGB8_texture             = true
+  bool GL_OES_copy_image                               = true
+  bool GL_OES_depth_texture                            = true
+  bool GL_OES_draw_buffers_indexed                     = true
+  bool GL_OES_draw_elements_base_vertex                = true
+  bool GL_OES_draw_texture                             = true
+  bool GL_OES_fixed_point                              = true
+  bool GL_OES_framebuffer_object                       = true
+  bool GL_OES_geometry_shader                          = true
+  bool GL_OES_get_program_binary                       = true
+  bool GL_OES_mapbuffer                                = true
+  bool GL_OES_matrix_palette                           = true
+  bool GL_OES_packed_depth_stencil                     = true
+  bool GL_OES_point_size_array                         = true
+  bool GL_OES_primitive_bounding_box                   = true
+  bool GL_OES_query_matrix                             = true
+  bool GL_OES_sample_shading                           = true
+  bool GL_OES_single_precision                         = true
+  bool GL_OES_tessellation_shader                      = true
+  bool GL_OES_texture_3D                               = true
+  bool GL_OES_texture_border_clamp                     = true
+  bool GL_OES_texture_buffer                           = true
+  bool GL_OES_texture_cube_map                         = true
+  bool GL_OES_texture_half_float                       = true
+  bool GL_OES_texture_storage_multisample_2d_array     = true
+  bool GL_OES_texture_view                             = true
+  bool GL_OES_vertex_array_object                      = true
+  bool GL_OES_vertex_half_float                        = true
+  bool GL_OES_viewport_array                           = true
+  bool GL_OVR_multiview                                = true
+  bool GL_OVR_multiview_multisampled_render_to_texture = true
+  bool GL_QCOM_alpha_test                              = true
+  bool GL_QCOM_driver_control                          = true
+  bool GL_QCOM_extended_get                            = true
+  bool GL_QCOM_extended_get2                           = true
+  bool GL_QCOM_tiled_rendering                         = true
+}
+Extensions Extension
+
 sub s32 min(s32 a, s32 b) {
   return switch (a < b) {
     case true:  a
