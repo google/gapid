@@ -104,10 +104,10 @@ sub ref!Buffer GetBoundBufferOrError(GLenum target) {
   return ctx.SharedObjects.Buffers[id]
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindBuffer.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBuffer.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBuffer.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBuffer.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindBuffer.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBuffer.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBuffer.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBuffer.xhtml", Version.GLES32)
 cmd void glBindBuffer(GLenum target, BufferId buffer) {
   minRequiredVersion(1, 0)
   ctx := GetContext()
@@ -175,9 +175,9 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferBase.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferBase.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferBase.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferBase.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferBase.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferBase.xhtml", Version.GLES32)
 cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
   minRequiredVersion(3, 0)
   ctx := GetContext()
@@ -188,9 +188,9 @@ cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
   BindBufferRange(target, index, buffer, 0, size)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferRange.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferRange.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferRange.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindBufferRange.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindBufferRange.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferRange.xhtml", Version.GLES32)
 cmd void glBindBufferRange(GLenum     target,
                            GLuint     index,
                            BufferId   buffer,
@@ -245,10 +245,10 @@ sub void BindBufferRange(GLenum     target,
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferData.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferData.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferData.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferData.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferData.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferData.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferData.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferData.xhtml", Version.GLES32)
 cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GLenum usage) {
   minRequiredVersion(1, 0)
   b := GetBoundBufferOrError(target)
@@ -274,10 +274,10 @@ cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GL
   b.Usage = usage
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferSubData.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferSubData.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferSubData.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferSubData.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBufferSubData.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBufferSubData.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBufferSubData.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferSubData.xhtml", Version.GLES32)
 cmd void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, BufferDataPointer data) {
   minRequiredVersion(1, 0)
   b := GetBoundBufferOrError(target)
@@ -286,9 +286,9 @@ cmd void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, Buffer
   copy(b.Data[offset:as!GLsizeiptr(offset) + size], as!u8*(data)[0:size])
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyBufferSubData.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyBufferSubData.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyBufferSubData.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCopyBufferSubData.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCopyBufferSubData.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCopyBufferSubData.xhtml", Version.GLES32)
 cmd void glCopyBufferSubData(GLenum     readTarget,
                              GLenum     writeTarget,
                              GLintptr   readOffset,
@@ -306,10 +306,10 @@ sub void CopyBufferSubData(GLenum readTarget, GLenum writeTarget, GLintptr readO
   _ = size // TODO
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteBuffers.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteBuffers.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteBuffers.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteBuffers.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDeleteBuffers.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDeleteBuffers.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteBuffers.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteBuffers.xhtml", Version.GLES32)
 cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -324,10 +324,10 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenBuffers.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenBuffers.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenBuffers.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenBuffers.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGenBuffers.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGenBuffers.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenBuffers.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenBuffers.xhtml", Version.GLES32)
 cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   minRequiredVersion(1, 0)
   if count < 0 { glErrorInvalidValue() }
@@ -342,18 +342,18 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", Version.GLES32)
 cmd void glGetBufferParameteri64v(GLenum target, GLenum parameter, GLint64* value) {
   minRequiredVersion(3, 0)
   GetBufferParameter!GLint64(target, parameter, value)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetBufferParameteriv.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetBufferParameteriv.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferParameter.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferParameter.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferParameter.xhtml", Version.GLES32)
 cmd void glGetBufferParameteriv(GLenum target, GLenum parameter, GLint* value) {
   minRequiredVersion(1, 0)
   GetBufferParameter!GLint(target, parameter, value)
@@ -392,9 +392,9 @@ sub void GetBufferParameter!T(GLenum target, GLenum parameter, T* value) {
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferPointerv.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferPointerv.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferPointerv.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetBufferPointerv.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetBufferPointerv.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetBufferPointerv.xhtml", Version.GLES32)
 cmd void glGetBufferPointerv(GLenum target, GLenum pname, void** params) {
   minRequiredVersion(3, 0)
   GetBufferPointerv(target, pname, params)
@@ -428,10 +428,10 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
   write(params[0:1])
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsBuffer.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsBuffer.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsBuffer.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsBuffer.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glIsBuffer.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glIsBuffer.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsBuffer.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsBuffer.xhtml", Version.GLES32)
 cmd GLboolean glIsBuffer(BufferId buffer) {
   minRequiredVersion(1, 0)
 
@@ -456,9 +456,9 @@ sub void MapBuffer(GLenum target, GLenum access, u8* ptr) {
   MapBufferRange(target, 0 /* offset */, b.Size, accessBits, as!u8*(ptr))
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", Version.GLES32)
 cmd void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) {
   minRequiredVersion(3, 0)
   ptr := ?
@@ -484,9 +484,9 @@ sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbit
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glMapBufferRange.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glMapBufferRange.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMapBufferRange.xhtml", Version.GLES32)
 cmd GLboolean glUnmapBuffer(GLenum target) {
   minRequiredVersion(3, 0)
   UnmapBuffer(target)
@@ -508,9 +508,9 @@ sub void UnmapBuffer(GLenum target) {
   b.MapLength = 0
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlushMappedBufferRange.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlushMappedBufferRange.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlushMappedBufferRange.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlushMappedBufferRange.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlushMappedBufferRange.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlushMappedBufferRange.xhtml", Version.GLES32)
 cmd void glFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
   minRequiredVersion(3, 0)
   FlushMappedBufferRange(target, offset, length)

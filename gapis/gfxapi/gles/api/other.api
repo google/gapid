@@ -235,16 +235,16 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   }
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glDisable(GLenum capability) {
   minRequiredVersion(1, 0)
   SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_FALSE)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glDisablei(GLenum capability, GLuint index) {
   minRequiredVersion(3, 2)
   Disablei(capability, index)
@@ -254,16 +254,16 @@ sub void Disablei(GLenum capability, GLuint index) {
   SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_FALSE)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glEnable(GLenum capability) {
   minRequiredVersion(1, 0)
   SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_TRUE)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
 cmd void glEnablei(GLenum capability, GLuint index) {
   minRequiredVersion(3, 2)
   Enablei(capability, index)
@@ -273,36 +273,36 @@ sub void Enablei(GLenum capability, GLuint index) {
   SetCapability(capability, /* isIndexed */ true, index, /* enabled */ GL_TRUE)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFinish.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFinish.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFinish.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFinish.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFinish.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFinish.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFinish.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFinish.xhtml", Version.GLES32)
 cmd void glFinish() {
   minRequiredVersion(1, 0)
 
 }
 
 @EndOfFrame // For daydream.  TODO: Use gvr-specific api call instead?
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFlush.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlush.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlush.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlush.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFlush.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlush.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlush.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFlush.xhtml", Version.GLES32)
 cmd void glFlush() {
   minRequiredVersion(1, 0)
 
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetError.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetError.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetError.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetError.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetError.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetError.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetError.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetError.xhtml", Version.GLES32)
 cmd GLenum glGetError() {
   minRequiredVersion(1, 0)
 
   return ?
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetGraphicsResetStatus.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetGraphicsResetStatus.xhtml", Version.GLES32)
 cmd GLenum glGetGraphicsResetStatus() {
   minRequiredVersion(3, 2)
   GetGraphicsResetStatus()
@@ -313,10 +313,10 @@ sub void GetGraphicsResetStatus() {
   // TODO
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glHint.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glHint.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glHint.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glHint.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glHint.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glHint.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glHint.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glHint.xhtml", Version.GLES32)
 cmd void glHint(GLenum target, GLenum mode) {
   minRequiredVersion(1, 0)
   switch (mode) {

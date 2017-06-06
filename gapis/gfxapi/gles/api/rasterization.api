@@ -46,10 +46,10 @@ class BoundingBox {
   @unused Vec4f Max = Vec4f(1, 1, 1, 1)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCullFace.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCullFace.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCullFace.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCullFace.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glCullFace.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glCullFace.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCullFace.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCullFace.xhtml", Version.GLES32)
 cmd void glCullFace(GLenum mode) {
   minRequiredVersion(1, 0)
   switch (mode) {
@@ -65,10 +65,10 @@ cmd void glCullFace(GLenum mode) {
   ctx.Rasterization.CullFaceMode = mode
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthRangef.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthRangef.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthRangef.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthRangef.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDepthRangef.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDepthRangef.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDepthRangef.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDepthRangef.xhtml", Version.GLES32)
 cmd void glDepthRangef(GLfloat near, GLfloat far) {
   minRequiredVersion(1, 0)
 
@@ -76,10 +76,10 @@ cmd void glDepthRangef(GLfloat near, GLfloat far) {
   ctx.Rasterization.DepthRange = Vec2f(near, far)
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFrontFace.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFrontFace.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFrontFace.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFrontFace.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFrontFace.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFrontFace.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFrontFace.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFrontFace.xhtml", Version.GLES32)
 cmd void glFrontFace(GLenum orientation) {
   minRequiredVersion(1, 0)
   switch (orientation) {
@@ -95,8 +95,8 @@ cmd void glFrontFace(GLenum orientation) {
   ctx.Rasterization.FrontFace = orientation
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetMultisamplefv.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetMultisamplefv.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetMultisamplefv.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetMultisamplefv.xhtml", Version.GLES32)
 cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
   minRequiredVersion(3, 1)
   switch (pname) {
@@ -111,10 +111,10 @@ cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
   read(val[0:2])
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glLineWidth.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glLineWidth.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLineWidth.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLineWidth.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glLineWidth.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glLineWidth.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLineWidth.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLineWidth.xhtml", Version.GLES32)
 cmd void glLineWidth(GLfloat width) {
   minRequiredVersion(1, 0)
   if (width <= 0.0) { glErrorInvalidValue() }
@@ -122,7 +122,7 @@ cmd void glLineWidth(GLfloat width) {
   ctx.Rasterization.LineWidth = width
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMinSampleShading.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glMinSampleShading.xhtml", Version.GLES32)
 cmd void glMinSampleShading(GLfloat value) {
   minRequiredVersion(3, 2)
   MinSampleShading(value)
@@ -133,10 +133,10 @@ sub void MinSampleShading(GLfloat value) {
   ctx.Rasterization.MinSampleShadingValue = value
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPolygonOffset.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPolygonOffset.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPolygonOffset.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPolygonOffset.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glPolygonOffset.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glPolygonOffset.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPolygonOffset.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPolygonOffset.xhtml", Version.GLES32)
 cmd void glPolygonOffset(GLfloat scale_factor, GLfloat units) {
   minRequiredVersion(1, 0)
 
@@ -145,10 +145,10 @@ cmd void glPolygonOffset(GLfloat scale_factor, GLfloat units) {
   ctx.Rasterization.PolygonOffsetFactor = scale_factor
 }
 
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glViewport.xml", GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glViewport.xhtml", GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glViewport.xhtml", GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glViewport.xhtml", GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glViewport.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glViewport.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glViewport.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glViewport.xhtml", Version.GLES32)
 cmd void glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
   minRequiredVersion(1, 0)
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
