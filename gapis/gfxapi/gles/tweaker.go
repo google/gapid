@@ -164,7 +164,7 @@ func (t *tweaker) makeVertexArray(enabledLocations ...AttributeLocation) {
 		}
 	} else {
 		// GLES 2.0 does not have Vertex Array Objects, but the state is fairly simple.
-		vao := t.c.Objects.VertexArrays[t.c.BoundVertexArray]
+		vao := t.c.Bound.VertexArray
 		// Disable all vertex attribute arrays
 		for location, origVertexAttrib := range vao.VertexAttributeArrays {
 			if origVertexAttrib.Enabled == GLboolean_GL_TRUE {
@@ -174,7 +174,7 @@ func (t *tweaker) makeVertexArray(enabledLocations ...AttributeLocation) {
 			}
 		}
 		// Enable and save state for the attribute arrays that we will use
-		origArrayBufferID := t.c.BoundBuffers.ArrayBuffer
+		origArrayBufferID := t.c.Bound.ArrayBuffer.GetID()
 		for _, location := range enabledLocations {
 			location := location
 			t.doAndUndo(
@@ -291,7 +291,7 @@ func (t *tweaker) glScissor(x, y GLint, w, h GLsizei) {
 }
 
 func (t *tweaker) GlBindBuffer_ArrayBuffer(id BufferId) {
-	if o := t.c.BoundBuffers.ArrayBuffer; o != id {
+	if o := t.c.Bound.ArrayBuffer.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, id),
 			NewGlBindBuffer(GLenum_GL_ARRAY_BUFFER, o))
@@ -299,8 +299,8 @@ func (t *tweaker) GlBindBuffer_ArrayBuffer(id BufferId) {
 }
 
 func (t *tweaker) GlBindBuffer_ElementArrayBuffer(id BufferId) {
-	vao := t.c.Objects.VertexArrays[t.c.BoundVertexArray]
-	if o := vao.ElementArrayBuffer; o != id {
+	vao := t.c.Bound.VertexArray
+	if o := vao.ElementArrayBuffer.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, id),
 			NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, o))
@@ -308,7 +308,7 @@ func (t *tweaker) GlBindBuffer_ElementArrayBuffer(id BufferId) {
 }
 
 func (t *tweaker) glBindFramebuffer_Draw(id FramebufferId) {
-	if o := t.c.BoundDrawFramebuffer; o != id {
+	if o := t.c.Bound.DrawFramebuffer.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, id),
 			NewGlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, o))
@@ -316,7 +316,7 @@ func (t *tweaker) glBindFramebuffer_Draw(id FramebufferId) {
 }
 
 func (t *tweaker) glBindFramebuffer_Read(id FramebufferId) {
-	if o := t.c.BoundReadFramebuffer; o != id {
+	if o := t.c.Bound.ReadFramebuffer.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, id),
 			NewGlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, o))
@@ -324,7 +324,7 @@ func (t *tweaker) glBindFramebuffer_Read(id FramebufferId) {
 }
 
 func (t *tweaker) glReadBuffer(id GLenum) {
-	fb := t.c.Objects.Framebuffers[t.c.BoundReadFramebuffer]
+	fb := t.c.Bound.ReadFramebuffer
 	if o := fb.ReadBuffer; o != id {
 		t.doAndUndo(
 			NewGlReadBuffer(id),
@@ -333,7 +333,7 @@ func (t *tweaker) glReadBuffer(id GLenum) {
 }
 
 func (t *tweaker) glBindRenderbuffer(id RenderbufferId) {
-	if o := t.c.BoundRenderbuffer; o != id {
+	if o := t.c.Bound.Renderbuffer.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindRenderbuffer(GLenum_GL_RENDERBUFFER, id),
 			NewGlBindRenderbuffer(GLenum_GL_RENDERBUFFER, o))
@@ -341,7 +341,7 @@ func (t *tweaker) glBindRenderbuffer(id RenderbufferId) {
 }
 
 func (t *tweaker) glBindTexture_2D(id TextureId) {
-	if o := t.c.TextureUnits[t.c.ActiveTextureUnit].Binding2d; o != id {
+	if o := t.c.TextureUnits[t.c.ActiveTextureUnit].Binding2d.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindTexture(GLenum_GL_TEXTURE_2D, id),
 			NewGlBindTexture(GLenum_GL_TEXTURE_2D, o))
@@ -349,7 +349,7 @@ func (t *tweaker) glBindTexture_2D(id TextureId) {
 }
 
 func (t *tweaker) glBindVertexArray(id VertexArrayId) {
-	if o := t.c.BoundVertexArray; o != id {
+	if o := t.c.Bound.VertexArray.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindVertexArray(id),
 			NewGlBindVertexArray(o))
@@ -357,7 +357,7 @@ func (t *tweaker) glBindVertexArray(id VertexArrayId) {
 }
 
 func (t *tweaker) glUseProgram(id ProgramId) {
-	if o := t.c.BoundProgram; o != id {
+	if o := t.c.Bound.Program.GetID(); o != id {
 		t.doAndUndo(
 			NewGlUseProgram(id),
 			NewGlUseProgram(o))
@@ -382,12 +382,12 @@ func (t *tweaker) setPixelStorage(state PixelStorageState, packBufferId, unpackB
 				NewGlPixelStorei(name, o))
 		}
 	})
-	if o := t.c.BoundBuffers.PixelPackBuffer; o != packBufferId {
+	if o := t.c.Bound.PixelPackBuffer.GetID(); o != packBufferId {
 		t.doAndUndo(
 			NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, packBufferId),
 			NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, o))
 	}
-	if o := t.c.BoundBuffers.PixelUnpackBuffer; o != unpackBufferId {
+	if o := t.c.Bound.PixelUnpackBuffer.GetID(); o != unpackBufferId {
 		t.doAndUndo(
 			NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, unpackBufferId),
 			NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, o))

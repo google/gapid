@@ -924,7 +924,7 @@ cmd void glGenQueriesEXT(GLsizei count, QueryId* queries) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!QueryId(?)
-    ctx.Objects.Queries[id] = new!Query()
+    ctx.Objects.Queries[id] = new!Query(ID: id)
     q[i] = id
   }
 }

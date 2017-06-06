@@ -84,7 +84,7 @@ func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 
 func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
-	program := ctx.BoundProgram
+	program := ctx.Bound.Program.GetID()
 	switch a := a.(type) {
 	case *GlGetActiveUniformBlockName:
 		program = a.Program
@@ -155,7 +155,7 @@ func (i TransformFeedbackId) remap(a atom.Atom, s *gfxapi.State) (key interface{
 
 func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
-	program := ctx.BoundProgram
+	program := ctx.Bound.Program.GetID()
 	switch a := a.(type) {
 	case *GlGetActiveUniform:
 		program = a.Program
@@ -210,7 +210,7 @@ func remapImageId(name GLuint, target GLenum, s *gfxapi.State) (key interface{},
 
 func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
 	c := GetContext(s)
-	if c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer != 0 {
+	if c.Bound.VertexArray.ElementArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
 		return value.ObservedPointer(i.addr)
@@ -218,7 +218,8 @@ func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) 
 }
 
 func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	if GetContext(s).BoundBuffers.ArrayBuffer != 0 {
+	c := GetContext(s)
+	if c.Bound.ArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
 		return value.ObservedPointer(i.addr)
@@ -226,7 +227,7 @@ func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) v
 }
 
 func (i TexturePointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	if i.addr == 0 || GetContext(s).BoundBuffers.PixelUnpackBuffer != 0 {
+	if i.addr == 0 || GetContext(s).Bound.PixelUnpackBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
 		return value.ObservedPointer(i.addr)

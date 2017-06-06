@@ -242,49 +242,54 @@ sub void writeString(GLsizei  buffer_size,
   }
 }
 
-sub void checkShader(ref!Context ctx, ShaderId shader) {
-  if (!shader in ctx.Objects.Shared.Shaders) {
+sub ref!Shader GetShaderOrError(ShaderId shader) {
+  ctx := GetContext()
+  s := ctx.Objects.Shared.Shaders[shader]
+  if s == null {
     if (!as!ProgramId(shader) in ctx.Objects.Shared.Programs) {
       glErrorInvalidValue()
     } else {
       glErrorInvalidOperation()
     }
   }
+  return s
 }
 
-sub void checkProgram(ref!Context ctx, ProgramId program) {
-  if (!program in ctx.Objects.Shared.Programs) {
+sub ref!Program GetProgramOrError(ProgramId program) {
+  ctx := GetContext()
+  p := ctx.Objects.Shared.Programs[program]
+  if p == null {
     if (!as!ShaderId(program) in ctx.Objects.Shared.Shaders) {
       glErrorInvalidValue()
     } else {
       glErrorInvalidOperation()
     }
   }
+  return p
 }
 
-sub void reapShader(ref!Context ctx, ref!Shader shader) {
+sub void reapShader(ref!Shader shader) {
+  ctx := GetContext()
   if (shader.DeleteStatus && shader.RefCount == 0) {
     delete(ctx.Objects.Shared.Shaders, shader.ID)
   }
 }
 
-sub void reapProgram(ref!Context ctx, ProgramId program) {
-  if (program != 0) {
-    p := ctx.Objects.Shared.Programs[program]
+sub void reapProgram(ref!Program p) {
+  ctx := GetContext()
+  if (p != null) {
     if (p.DeleteStatus) {
       for _ , _ , s in p.Shaders {
         s.RefCount -= 1
-        reapShader(ctx, s)
+        reapShader(s)
       }
-      delete(ctx.Objects.Shared.Programs, program)
+      delete(ctx.Objects.Shared.Programs, p.ID)
     }
   }
 }
 
-sub void SetProgramUniform(ProgramId program, UniformLocation location, u8[] value, GLenum type) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
-  p := ctx.Objects.Shared.Programs[program]
+sub void SetProgramUniform(ref!Program p, UniformLocation location, u8[] value, GLenum type) {
+  if p == null { glErrorInvalidOperation() }
   if location != -1 { // -1 is silently ignored.
     if !(location in p.Uniforms) { glErrorInvalidOperation() }
     // TODO: Remove the temporary.
@@ -316,8 +321,8 @@ cmd void glActiveShaderProgram(PipelineId pipeline, ProgramId program) {
 cmd void glAttachShader(ProgramId program, ShaderId shader) {
 
   ctx := GetContext()
-  checkShader(ctx, shader)
-  checkProgram(ctx, program)
+  _ = GetShaderOrError(shader)
+  _ = GetProgramOrError(program)
 
   p := ctx.Objects.Shared.Programs[program]
   s := ctx.Objects.Shared.Shaders[shader]
@@ -335,7 +340,7 @@ cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, str
   n := as!char[](name)
   if (len(n) > 2) && (as!string(n[0:3]) == "gl_") { glErrorInvalidOperation() }
   ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   if location >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   p := ctx.Objects.Shared.Programs[program]
   p.AttributeBindings[name] = location
@@ -355,8 +360,7 @@ cmd void glBindProgramPipeline(PipelineId pipeline) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompileShader.xhtml", Version.GLES32)
 cmd void glCompileShader(ShaderId shader) {
 
-  ctx := GetContext()
-  checkShader(ctx, shader)
+  _ = GetShaderOrError(shader)
 
   // TODO: shader.Binary < ?
 }
@@ -397,7 +401,7 @@ cmd ShaderId glCreateShader(GLenum type) {
 
   ctx := GetContext()
   id := ?
-  ctx.Objects.Shared.Shaders[id] = new!Shader(ID: id,ShaderType:  type)
+  ctx.Objects.Shared.Shaders[id] = new!Shader(ID: id, ShaderType:  type)
   s := ctx.Objects.Shared.Shaders[id]
   s.Type = type
   return id
@@ -435,11 +439,12 @@ cmd void glDeleteProgram(ProgramId program) {
 
   if program != 0 {
     ctx := GetContext()
-    checkProgram(ctx, program)
-    ctx.Objects.Shared.Programs[program].DeleteStatus = true
+    p := GetProgramOrError(program)
+    p.DeleteStatus = true
     // Do not reap while the program is in use.
-    if ctx.BoundProgram != program {
-      reapProgram(ctx, program)
+    // TODO: Programs can be shared between contexts so this does not quite work
+    if ctx.Bound.Program != p {
+      reapProgram(p)
     }
   }
 }
@@ -460,13 +465,9 @@ cmd void glDeleteProgramPipelines(GLsizei n, const PipelineId* pipelines) {
 cmd void glDeleteShader(ShaderId shader) {
 
   if shader != 0 {
-    ctx := GetContext()
-    checkShader(ctx, shader)
-    if shader in ctx.Objects.Shared.Shaders { // TODO: Remove once we have go aborts.
-      s := ctx.Objects.Shared.Shaders[shader]
-      s.DeleteStatus = true
-      reapShader(ctx, s)
-    }
+    s := GetShaderOrError(shader)
+    s.DeleteStatus = true
+    reapShader(s)
   }
 }
 
@@ -477,17 +478,13 @@ cmd void glDeleteShader(ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDetachShader.xhtml", Version.GLES32)
 cmd void glDetachShader(ProgramId program, ShaderId shader) {
 
-  ctx := GetContext()
+  s := GetShaderOrError(shader)
+  p := GetProgramOrError(program)
 
-  checkShader(ctx, shader)
-  checkProgram(ctx, program)
-
-  s := ctx.Objects.Shared.Shaders[shader]
-  p := ctx.Objects.Shared.Programs[program]
   if (!(s.Type in p.Shaders)) || (p.Shaders[s.Type] != s) { glErrorInvalidOperation() }
   delete(p.Shaders, s.Type)
   s.RefCount -= 1
-  reapShader(ctx, s)
+  reapShader(s)
 }
 
 @if(Version.GLES31)
@@ -528,7 +525,7 @@ cmd void glGetActiveAttrib(ProgramId      program,
   if buffer_size < 0 { glErrorInvalidValue() }
 
   ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   p := ctx.Objects.Shared.Programs[program]
   if !(index in p.ActiveAttributes) { glErrorInvalidValue() }
 
@@ -552,7 +549,7 @@ cmd void glGetActiveUniform(ProgramId    program,
                             GLchar*      name) {
 
   ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   if buffer_size < 0 { glErrorInvalidValue() }
   p := ctx.Objects.Shared.Programs[program]
   if !(index in p.ActiveUniforms) { glErrorInvalidValue() }
@@ -634,7 +631,7 @@ cmd void glGetAttachedShaders(ProgramId program,
                               ShaderId* shaders) {
 
   ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   if buffer_length < 0 { glErrorInvalidValue() }
   p := ctx.Objects.Shared.Programs[program]
   l := min(as!s32(buffer_length), len(p.Shaders))
@@ -656,9 +653,8 @@ cmd void glGetAttachedShaders(ProgramId program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetAttribLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetAttribLocation.xhtml", Version.GLES32)
 cmd GLint glGetAttribLocation(ProgramId program, string name) {
-  ctx := GetContext()
   // The HTML and PDF give different error codes. This matches the PDF.
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   return ?
 }
 
@@ -667,8 +663,7 @@ cmd GLint glGetAttribLocation(ProgramId program, string name) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFragDataLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFragDataLocation.xhtml", Version.GLES32)
 cmd GLint glGetFragDataLocation(ProgramId program, string name) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   return ?
 }
 
@@ -705,8 +700,7 @@ cmd void glGetProgramInfoLog(ProgramId program,
                              GLsizei   buffer_length,
                              GLsizei*  string_length_written,
                              GLchar*   info) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   if buffer_length < 0 { glErrorInvalidValue() }
   writeString(buffer_length, string_length_written, info)
 }
@@ -894,8 +888,7 @@ cmd void glGetProgramiv(ProgramId program, GLenum parameter, GLint* value) {
       glErrorInvalidEnum(parameter)
     }
   }
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
 
   value[0] = ?
 }
@@ -909,8 +902,7 @@ cmd void glGetShaderInfoLog(ShaderId shader,
                             GLsizei  buffer_length,
                             GLsizei* string_length_written,
                             GLchar*  info) {
-  ctx := GetContext()
-  checkShader(ctx, shader)
+  _ = GetShaderOrError(shader)
   if buffer_length < 0 { glErrorInvalidValue() }
   writeString(buffer_length, string_length_written, info)
 }
@@ -954,8 +946,7 @@ cmd void glGetShaderSource(ShaderId shader,
                            GLsizei  buffer_length,
                            GLsizei* string_length_written,
                            GLchar*  source) {
-  ctx := GetContext()
-  checkShader(ctx, shader)
+  _ = GetShaderOrError(shader)
   if buffer_length < 0 { glErrorInvalidValue() }
   // TODO: Handle properly. Mind the null-terminator.
   writeString(buffer_length, string_length_written, source)
@@ -978,7 +969,7 @@ cmd void glGetShaderiv(ShaderId shader, GLenum parameter, GLint* value) {
   }
 
   ctx := GetContext()
-  checkShader(ctx, shader)
+  _ = GetShaderOrError(shader)
   s := ctx.Objects.Shared.Shaders[shader]
   value[0] = switch (parameter) {
     case GL_SHADER_TYPE:          as!GLint(s.Type)
@@ -1020,14 +1011,12 @@ cmd void glGetUniformIndices(ProgramId            program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetUniformLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetUniformLocation.xhtml", Version.GLES32)
 cmd UniformLocation glGetUniformLocation(ProgramId program, string name) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   return ?
 }
 
 sub void GetUniformv!T(ProgramId program, UniformLocation location, T values) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   // TODO: Determine size based on uniform type.
   _ = program // TODO
   _ = location // TODO
@@ -1141,8 +1130,7 @@ cmd GLboolean glIsShader(ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLinkProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLinkProgram.xhtml", Version.GLES32)
 cmd void glLinkProgram(ProgramId program) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
 
   ApplyProgramInfoExtra(program, GetProgramInfoExtra(program))
 }
@@ -1233,7 +1221,7 @@ cmd void glProgramBinary(ProgramId   program,
 
 sub void ProgramBinary(ProgramId program, GLenum binaryFormat, const void* binary, GLsizei length) {
   ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
   p := ctx.Objects.Shared.Programs[program]
   switch (binaryFormat) {
     case GL_Z400_BINARY_AMD: {
@@ -1276,7 +1264,7 @@ sub void ProgramUniformv!T(ProgramId       program,
                            UniformLocation location,
                            T               values,
                            GLenum          type) {
-  SetProgramUniform(program, location, as!u8[](values), type)
+  SetProgramUniform(GetProgramOrError(program), location, as!u8[](values), type)
 }
 
 @if(Version.GLES31)
@@ -1648,7 +1636,7 @@ sub void ProgramUniformMatrixv!T(ProgramId       program,
                                  T               values,
                                  GLenum          type) {
   _ = transpose // TODO: transpose values if the flag is set
-  SetProgramUniform(program, location, as!u8[](values), type)
+  SetProgramUniform(GetProgramOrError(program), location, as!u8[](values), type)
 }
 
 @if(Version.GLES31)
@@ -1840,7 +1828,7 @@ cmd void glShaderSource(ShaderId             shader,
 
   sources := source[0:count]
   ctx := GetContext()
-  checkShader(ctx, shader)
+  _ = GetShaderOrError(shader)
 
   s := ctx.Objects.Shared.Shaders[shader]
   s.Source = as!string(null)
@@ -1862,7 +1850,7 @@ cmd void glShaderSource(ShaderId             shader,
 
 sub void Uniformv!T(UniformLocation location, T values, GLenum type) {
   ctx := GetContext()
-  SetProgramUniform(ctx.BoundProgram, location, as!u8[](values), type)
+  SetProgramUniform(ctx.Bound.Program, location, as!u8[](values), type)
 }
 
 @if(Version.GLES20)
@@ -2134,7 +2122,7 @@ sub void UniformMatrixv!T(UniformLocation location,
                           GLenum          type) {
   _ = transpose // TODO: Transpose if the flag is set.
   ctx := GetContext()
-  SetProgramUniform(ctx.BoundProgram, location, as!u8[](values), type)
+  SetProgramUniform(ctx.Bound.Program, location, as!u8[](values), type)
 }
 
 @if(Version.GLES20)
@@ -2281,19 +2269,16 @@ cmd void glUseProgram(ProgramId program) {
 
   ctx := GetContext()
   if program != 0 {
-    checkProgram(ctx, program)
+    _ = GetProgramOrError(program)
+  }
+  p := ctx.Objects.Shared.Programs[program]
+
+  // Lazy delete. See glDeleteProgram.
+  if ctx.Bound.Program != p {
+    reapProgram(ctx.Bound.Program)
   }
 
-  // TODO: Remove the check once we have go aborts.
-  if (program == 0) || (program in ctx.Objects.Shared.Programs) {
-
-    // Lazy delete. See glDeleteProgram.
-    if (ctx.BoundProgram != program) {
-      reapProgram(ctx, ctx.BoundProgram)
-    }
-
-    ctx.BoundProgram = program
-  }
+  ctx.Bound.Program = p
 }
 
 @if(Version.GLES31)
@@ -2318,8 +2303,7 @@ cmd void glUseProgramStages(PipelineId pipeline, GLbitfield stages, ProgramId pr
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glValidateProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glValidateProgram.xhtml", Version.GLES32)
 cmd void glValidateProgram(ProgramId program) {
-  ctx := GetContext()
-  checkProgram(ctx, program)
+  _ = GetProgramOrError(program)
 }
 
 @if(Version.GLES31)
