@@ -54,19 +54,15 @@ func (a *GlDrawElements) getIndices(
 		GLenum_GL_UNSIGNED_SHORT: 2,
 		GLenum_GL_UNSIGNED_INT:   4,
 	}[a.IndicesType]
-	indexBufferID := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
+	indexBuffer := c.Bound.VertexArray.ElementArrayBuffer
 	size := uint64(a.IndicesCount) * indexSize
 
 	var reader binary.Reader
-	if indexBufferID == 0 {
+	if indexBuffer == nil {
 		// Get the index buffer data from pointer
 		reader = a.Indices.Slice(0, size, s.MemoryLayout).Reader(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
-		indexBuffer := c.Objects.Shared.Buffers[indexBufferID]
-		if indexBuffer == nil {
-			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
-		}
 		offset := a.Indices.addr
 		reader = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Reader(ctx, s)
 	}

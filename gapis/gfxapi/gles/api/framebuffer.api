@@ -29,6 +29,8 @@ class FramebufferState {
 
 @internal
 class Framebuffer {
+  FramebufferId ID
+
   map!(GLint, FramebufferAttachment) ColorAttachments
   FramebufferAttachment DepthAttachment
   FramebufferAttachment StencilAttachment
@@ -109,25 +111,13 @@ class FramebufferDependentValues {
 */
 
 sub ref!Framebuffer GetBoundFramebufferOrErrorInvalidEnum(GLenum framebuffer_target) {
-  // TODO: Merge this switch with the one below.
-  switch (framebuffer_target) {
-    @if(Version.GLES20)
-    case GL_FRAMEBUFFER: {
-    }
-    @if(Version.GLES30)
-    case GL_DRAW_FRAMEBUFFER, GL_READ_FRAMEBUFFER: {
-    }
-    default: {
-      glErrorInvalidEnum(framebuffer_target)
-    }
-  }
   ctx := GetContext()
-  framebufferId := switch (framebuffer_target) {
-    case GL_FRAMEBUFFER:      ctx.BoundDrawFramebuffer
-    case GL_DRAW_FRAMEBUFFER: ctx.BoundDrawFramebuffer
-    case GL_READ_FRAMEBUFFER: ctx.BoundReadFramebuffer
+  return switch (framebuffer_target) {
+    @if(Version.GLES20) case GL_FRAMEBUFFER: ctx.Bound.DrawFramebuffer
+    @if(Version.GLES30) case GL_DRAW_FRAMEBUFFER: ctx.Bound.DrawFramebuffer
+    @if(Version.GLES30) case GL_READ_FRAMEBUFFER: ctx.Bound.ReadFramebuffer
+    default: ctx.Bound.DrawFramebuffer // TODO: glErrorInvalidEnum(framebuffer_target)
   }
-  return ctx.Objects.Framebuffers[framebufferId]
 }
 
 sub bool IsDefaultFramebuffer(ref!Framebuffer framebuffer) {
@@ -178,24 +168,30 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
   switch (target) {
     case GL_FRAMEBUFFER: {
       // version 2.0
-      ctx.BoundReadFramebuffer = framebuffer
-      ctx.BoundDrawFramebuffer = framebuffer
+      fb := GetOrCreateFramebuffer(framebuffer)
+      ctx.Bound.ReadFramebuffer = fb
+      ctx.Bound.DrawFramebuffer = fb
     }
     @if(Version.GLES30)
     case GL_READ_FRAMEBUFFER: {
-      ctx.BoundReadFramebuffer = framebuffer
+      ctx.Bound.ReadFramebuffer = GetOrCreateFramebuffer(framebuffer)
     }
     @if(Version.GLES30)
     case GL_DRAW_FRAMEBUFFER: {
-      ctx.BoundDrawFramebuffer = framebuffer
+      ctx.Bound.DrawFramebuffer = GetOrCreateFramebuffer(framebuffer)
     }
     default: {
       glErrorInvalidEnum(target)
     }
   }
-  if !(framebuffer in ctx.Objects.Framebuffers) {
-    ctx.Objects.Framebuffers[framebuffer] = new!Framebuffer()
+}
+
+sub ref!Framebuffer GetOrCreateFramebuffer(FramebufferId id) {
+  ctx := GetContext()
+  if (id != 0) && (ctx.Objects.Framebuffers[id] == null) {
+    ctx.Objects.Framebuffers[id] = new!Framebuffer(ID: id)
   }
+  return ctx.Objects.Framebuffers[id]
 }
 
 @if(Version.GLES20)
@@ -207,16 +203,20 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
   ctx := GetContext()
   switch (target) {
     case GL_RENDERBUFFER: {
-      // version 2.0
-      ctx.BoundRenderbuffer = renderbuffer
+      ctx.Bound.Renderbuffer = GetOrCreateRenderbuffer(renderbuffer)
     }
     default: {
       glErrorInvalidEnum(target)
     }
   }
-  if !(renderbuffer in ctx.Objects.Shared.Renderbuffers) {
-    ctx.Objects.Shared.Renderbuffers[renderbuffer] = new!Renderbuffer(ID: renderbuffer)
+}
+
+sub ref!Renderbuffer GetOrCreateRenderbuffer(RenderbufferId id) {
+  ctx := GetContext()
+  if (id != 0) && (ctx.Objects.Shared.Renderbuffers[id] == null) {
+    ctx.Objects.Shared.Renderbuffers[id] = new!Renderbuffer(ID: id)
   }
+  return ctx.Objects.Shared.Renderbuffers[id]
 }
 
 @if(Version.GLES30)
@@ -449,11 +449,11 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
     id := f[i]
     if id != 0 {
       delete(ctx.Objects.Framebuffers, id)
-      if id == ctx.BoundReadFramebuffer {
-        ctx.BoundReadFramebuffer = 0
+      if id == ctx.Bound.ReadFramebuffer.ID {
+        ctx.Bound.ReadFramebuffer = ctx.Objects.Framebuffers[0]
       }
-      if id == ctx.BoundDrawFramebuffer {
-        ctx.BoundDrawFramebuffer = 0
+      if id == ctx.Bound.DrawFramebuffer.ID {
+        ctx.Bound.DrawFramebuffer = ctx.Objects.Framebuffers[0]
       }
     }
   }
@@ -671,7 +671,7 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!FramebufferId(?)
-    ctx.Objects.Framebuffers[id] = new!Framebuffer()
+    ctx.Objects.Framebuffers[id] = new!Framebuffer(ID: id)
     f[i] = id
   }
 }
@@ -825,9 +825,8 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   }
 
   ctx := GetContext()
-  id := ctx.BoundRenderbuffer
-  if id == 0 { glErrorInvalidOperation() } // PDF spec
-  rb := ctx.Objects.Shared.Renderbuffers[id]
+  rb := ctx.Bound.Renderbuffer
+  if rb == null { glErrorInvalidOperation() }
   values[0] = switch (parameter) {
     case GL_RENDERBUFFER_WIDTH:           as!GLint(rb.Width)
     case GL_RENDERBUFFER_HEIGHT:          as!GLint(rb.Height)
@@ -999,7 +998,7 @@ cmd void glReadPixels(GLint   x,
   checkReadPixels(width, height, format, type)
 
   ctx := GetContext()
-  if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
+  if (ctx.Bound.PixelPackBuffer == null) && (data != null) {
     requiredSize := uncompressedImageSize(width, height, format, type)
     write(data[0:requiredSize])
   }
@@ -1021,7 +1020,7 @@ cmd void glReadnPixels(GLint   x,
 sub void ReadnPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLsizei bufSize, void* data) {
   checkReadPixels(width, height, format, type)
   ctx := GetContext()
-  if (ctx.BoundBuffers.PixelPackBuffer == 0) && (data != null) {
+  if (ctx.Bound.PixelPackBuffer == null) && (data != null) {
     requiredSize := uncompressedImageSize(width, height, format, type)
     if as!GLsizei(requiredSize) > bufSize { glErrorInvalidOperation() }
     write(data[0:requiredSize])
@@ -1076,9 +1075,8 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
     glErrorInvalidValue()
   }
 
-  id := ctx.BoundRenderbuffer
-  if id == 0 { glErrorInvalidOperation() }
-  rb := ctx.Objects.Shared.Renderbuffers[id]
+  rb := ctx.Bound.Renderbuffer
+  if rb == null { glErrorInvalidOperation() }
   rb.InternalFormat = internalformat
   rb.Width = width
   rb.Height = height

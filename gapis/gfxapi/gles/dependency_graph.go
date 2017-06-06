@@ -167,32 +167,28 @@ func (b *AtomBehaviour) write(g *DependencyGraph, state stateKey) {
 }
 
 type uniformKey struct {
-	context  *Context
-	program  ProgramId
+	program  *Program
 	location UniformLocation
 	count    GLsizei
 }
 
-func (k uniformKey) Parent() stateKey { return uniformGroupKey{k.context, k.program} }
+func (k uniformKey) Parent() stateKey { return uniformGroupKey{k.program} }
 
 type uniformGroupKey struct {
-	context *Context
-	program ProgramId
+	program *Program
 }
 
 func (k uniformGroupKey) Parent() stateKey { return nil }
 
 type vertexAttribKey struct {
-	context     *Context
-	vertexArray VertexArrayId
+	vertexArray *VertexArray
 	location    AttributeLocation
 }
 
-func (k vertexAttribKey) Parent() stateKey { return vertexAttribGroupKey{k.context, k.vertexArray} }
+func (k vertexAttribKey) Parent() stateKey { return vertexAttribGroupKey{k.vertexArray} }
 
 type vertexAttribGroupKey struct {
-	context     *Context
-	vertexArray VertexArrayId
+	vertexArray *VertexArray
 }
 
 func (k vertexAttribGroupKey) Parent() stateKey { return nil }
@@ -266,12 +262,12 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			b.write(g, renderbufferDataKey{depth})
 			b.write(g, renderbufferDataKey{stencil})
 		} else if a.AtomFlags().IsDrawCall() {
-			b.read(g, uniformGroupKey{c, c.BoundProgram})
-			b.read(g, vertexAttribGroupKey{c, c.BoundVertexArray})
+			b.read(g, uniformGroupKey{c.Bound.Program})
+			b.read(g, vertexAttribGroupKey{c.Bound.VertexArray})
 			for _, stateKey := range getAllUsedTextureData(ctx, a, s, c) {
 				b.read(g, stateKey)
 			}
-			fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
+			fb := c.Bound.DrawFramebuffer
 			for _, att := range fb.ColorAttachments {
 				b.modify(g, getAttachmentData(g, c, att))
 			}
@@ -281,7 +277,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		} else {
 			switch a := a.(type) {
 			case *GlClear:
-				fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
+				fb := c.Bound.DrawFramebuffer
 				if (a.Mask & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
 					for _, att := range fb.ColorAttachments {
 						b.read(g, getAttachmentSize(g, c, att))
@@ -320,17 +316,17 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				texData, _ := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
 				b.modify(g, texData)
 			case *GlUniform1fv:
-				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
+				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
 			case *GlUniform2fv:
-				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
+				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
 			case *GlUniform3fv:
-				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
+				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
 			case *GlUniform4fv:
-				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
+				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
 			case *GlUniformMatrix4fv:
-				b.write(g, uniformKey{c, c.BoundProgram, a.Location, a.Count})
+				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
 			case *GlVertexAttribPointer:
-				b.write(g, vertexAttribKey{c, c.BoundVertexArray, a.Location})
+				b.write(g, vertexAttribKey{c.Bound.VertexArray, a.Location})
 			default:
 				// Force all unhandled atoms to be kept alive.
 				b.KeepAlive = true
@@ -348,7 +344,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
 	// Look for samplers used by the current program.
-	if prog, ok := c.Objects.Shared.Programs[c.BoundProgram]; ok {
+	if prog := c.Bound.Program; prog != nil {
 		for _, activeUniform := range prog.ActiveUniforms {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {

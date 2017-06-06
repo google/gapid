@@ -220,7 +220,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	// If EGLImage is bound to current framebuffer, make a copy of its data.
 	// TODO: Share the data properly between contexts in replay.
 	resolveEglImageData := func(ctx context.Context, i atom.ID, a atom.Atom, c *Context, out transform.Writer) {
-		fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
+		fb := c.Bound.DrawFramebuffer
 		if !isEglImageDirty[fb] {
 			return
 		}
@@ -233,7 +233,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					dID := i.Derived()
 					t := newTweaker(ctx, out, dID)
 					s := out.State()
-					t.glBindFramebuffer_Read(c.BoundDrawFramebuffer)
+					t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
 					t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
 					t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
 					img := tex.Levels[0].Layers[0]
@@ -327,8 +327,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		}
 
 		if a.AtomFlags().IsDrawCall() {
-			fb := c.Objects.Framebuffers[c.BoundDrawFramebuffer]
-			isEglImageDirty[fb] = true
+			isEglImageDirty[c.Bound.DrawFramebuffer] = true
 		}
 
 		switch a := a.(type) {
@@ -407,7 +406,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 
 				// Bind the scratch buffer to GL_COPY_WRITE_BUFFER
-				origCopyWriteBuffer := c.BoundBuffers.CopyWriteBuffer
+				origCopyWriteBuffer := c.Bound.CopyWriteBuffer
 				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, buffer.id))
 
 				if buffer.size < a.Size {
@@ -426,14 +425,13 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				out.MutateAndWrite(ctx, i, NewGlBindBufferRange(a.Target, a.Index, buffer.id, 0, a.Size))
 
 				// Restore old GL_COPY_WRITE_BUFFER binding.
-				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, origCopyWriteBuffer))
+				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, origCopyWriteBuffer.GetID()))
 
 				return
 			}
 
 		case *GlDisableVertexAttribArray:
-			vao := c.Objects.VertexArrays[c.BoundVertexArray]
-			if vao.VertexAttributeArrays[a.Location].Enabled == GLboolean_GL_FALSE {
+			if c.Bound.VertexArray.VertexAttributeArrays[a.Location].Enabled == GLboolean_GL_FALSE {
 				// Ignore the call if it is redundant (i.e. it is already disabled).
 				// Some applications iterate over all arrays and explicitly disable them.
 				// This is a problem if the target supports fewer arrays than the capture.
@@ -527,8 +525,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Convert GL_HALF_FLOAT_OES to GL_HALF_FLOAT_ARB.
 				a = NewGlVertexAttribPointer(a.Location, a.Size, GLenum_GL_HALF_FLOAT_ARB, a.Normalized, a.Stride, memory.Pointer(a.Data))
 			}
-			vaa := c.Objects.VertexArrays[c.BoundVertexArray].VertexAttributeArrays[a.Location]
-			if target.vertexArrayObjects == required && c.BoundBuffers.ArrayBuffer == 0 {
+			vaa := c.Bound.VertexArray.VertexAttributeArrays[a.Location]
+			if target.vertexArrayObjects == required && c.Bound.ArrayBuffer == nil {
 				// Client-pointers are not supported, we need to copy this data to a buffer.
 				// However, we can't do this now as the observation only happens at the draw call.
 				clientVAs[vaa] = a
@@ -555,8 +553,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				t := newTweaker(ctx, out, dID)
 				defer t.revert()
 
-				ib := c.Objects.VertexArrays[c.BoundVertexArray].ElementArrayBuffer
-				clientIB := ib == 0
+				ib := c.Bound.VertexArray.ElementArrayBuffer
+				clientIB := ib == nil
 				clientVB := clientVAsBound(c, clientVAs)
 				if clientIB {
 					// The indices for the glDrawElements call is in client memory.
@@ -595,7 +593,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// client memory and we need to move this into temporary buffer(s).
 					// The indices are server-side, so can just be read from the internal
 					// pooled buffer.
-					data := c.Objects.Shared.Buffers[ib].Data
+					data := ib.Data
 					indexSize := DataTypeSize(a.IndicesType)
 					start := u64.Min(a.Indices.addr, data.count)                               // Clamp
 					end := u64.Min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
@@ -936,7 +934,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlEnable:
 			if a.Capability == GLenum_GL_FRAMEBUFFER_SRGB &&
 				target.framebufferSrgb == required && contexts[c].framebufferSrgb != required &&
-				c.BoundDrawFramebuffer == 0 {
+				c.Bound.DrawFramebuffer.GetID() == 0 {
 				// Ignore enabling of FRAMEBUFFER_SRGB if the capture device did not
 				// support an SRGB default framebuffer, but the replay device does. This
 				// is only done if the current bound draw framebuffer is the default
@@ -1107,8 +1105,7 @@ func canUsePrecompiledShader(c *Context, d *device.OpenGLDriver) bool {
 // clientVAsBound returns true if there are any vertex attribute arrays enabled
 // with pointers to client-side memory.
 func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer) bool {
-	va := c.Objects.VertexArrays[c.BoundVertexArray]
-	for _, arr := range va.VertexAttributeArrays {
+	for _, arr := range c.Bound.VertexArray.VertexAttributeArrays {
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if _, ok := clientVAs[arr]; ok {
 				return true
@@ -1139,7 +1136,7 @@ func moveClientVBsToVAs(
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.
-	va := c.Objects.VertexArrays[c.BoundVertexArray]
+	va := c.Bound.VertexArray
 	for _, arr := range va.VertexAttributeArrays {
 		if arr.Enabled == GLboolean_GL_TRUE {
 			vb := va.VertexBufferBindings[arr.Binding]

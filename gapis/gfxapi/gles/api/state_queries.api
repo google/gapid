@@ -18,6 +18,13 @@ sub bool VersionGreaterOrEqual(ref!Context ctx, GLint major, GLint minor) {
   return (ctx.Constants.MajorVersion > major) || ((ctx.Constants.MajorVersion == major) && (ctx.Constants.MinorVersion >= minor))
 }
 
+sub ID GetID!(ID,OBJ)(ref!OBJ o) {
+  return switch o != null {
+    case true: as!ID(o.ID)
+    case false: as!ID(0)
+  }
+}
+
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGet.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGet.xhtml", Version.GLES32)
@@ -215,20 +222,20 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_ARRAY_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.ArrayBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.ArrayBuffer)
     }
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER_BINDING: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Binding)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.AtomicCounterBuffers[index].Binding)
       } else {
-        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffer)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.AtomicCounterBuffer)
       }
     }
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER_SIZE: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Size)
+        v[0] = as!T(ctx.Bound.AtomicCounterBuffers[index].Size)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -236,7 +243,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER_START: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.AtomicCounterBuffers[index].Start)
+        v[0] = as!T(ctx.Bound.AtomicCounterBuffers[index].Start)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -322,11 +329,11 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_COPY_READ_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.CopyReadBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.CopyReadBuffer)
     }
     @if(Version.GLES30)
     case GL_COPY_WRITE_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.CopyWriteBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.CopyWriteBuffer)
     }
     @if(Version.GLES20)
     case GL_CULL_FACE: {
@@ -338,7 +345,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_CURRENT_PROGRAM: {
-      v[0] = as!T(ctx.BoundProgram)
+      v[0] = GetID!(T,Program)(ctx.Bound.Program)
     }
     @if(Version.GLES32)
     case GL_DEBUG_GROUP_STACK_DEPTH: {
@@ -380,7 +387,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.DispatchIndirectBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.DispatchIndirectBuffer)
     }
     @if(Version.GLES20)
     case GL_DITHER: {
@@ -400,11 +407,11 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DRAW_FRAMEBUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundDrawFramebuffer)
+      v[0] = GetID!(T,Framebuffer)(ctx.Bound.DrawFramebuffer)
     }
     @if(Version.GLES20)
     case GL_ELEMENT_ARRAY_BUFFER_BINDING: {
-      v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.VertexArray.ElementArrayBuffer)
     }
     @if(Version.GLES32)
     case GL_FRAGMENT_INTERPOLATION_OFFSET_BITS: {
@@ -1076,11 +1083,11 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_PIXEL_PACK_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.PixelPackBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.PixelPackBuffer)
     }
     @if(Version.GLES30)
     case GL_PIXEL_UNPACK_BUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundBuffers.PixelUnpackBuffer)
+      v[0] = GetID!(T,Buffer)(ctx.Bound.PixelUnpackBuffer)
     }
     @if(Version.GLES20)
     case GL_POLYGON_OFFSET_FACTOR: {
@@ -1123,7 +1130,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_READ_FRAMEBUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundReadFramebuffer)
+      v[0] = GetID!(T,Framebuffer)(ctx.Bound.ReadFramebuffer)
     }
     @if(Version.GLES20)
     case GL_RED_BITS: {
@@ -1131,7 +1138,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_RENDERBUFFER_BINDING: {
-      v[0] = as!T(ctx.BoundRenderbuffer)
+      v[0] = GetID!(T,Renderbuffer)(ctx.Bound.Renderbuffer)
     }
     @if(Version.GLES32 || Extension.GL_EXT_robustness)
     case GL_RESET_NOTIFICATION_STRATEGY: {
@@ -1195,9 +1202,9 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER_BINDING: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Binding)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.ShaderStorageBuffers[index].Binding)
       } else {
-        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffer)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.ShaderStorageBuffer)
       }
     }
     @if(Version.GLES31)
@@ -1207,7 +1214,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER_SIZE: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Size)
+        v[0] = as!T(ctx.Bound.ShaderStorageBuffers[index].Size)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1215,7 +1222,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER_START: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.ShaderStorageBuffers[index].Start)
+        v[0] = as!T(ctx.Bound.ShaderStorageBuffers[index].Start)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1294,39 +1301,39 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_2D: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2d)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2d)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_EXTERNAL_OES: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingExternalOes)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingExternalOes)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_BINDING_2D_ARRAY: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dArray)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dArray)
     }
     @if(Version.GLES31)
     case GL_TEXTURE_BINDING_2D_MULTISAMPLE: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisample)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisample)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisampleArray)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisampleArray)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_BINDING_3D: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding3d)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding3d)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_BUFFER: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingBuffer)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingBuffer)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_CUBE_MAP: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMap)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMap)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_CUBE_MAP_ARRAY: {
-      v[0] = as!T(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMapArray)
+      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMapArray)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER_BINDING: {
@@ -1338,24 +1345,24 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_ACTIVE: {
-      v[0] = as!T(GetBoundTransformFeedback().Active)
+      v[0] = as!T(ctx.Bound.TransformFeedback.Active)
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BINDING: {
-      v[0] = as!T(ctx.BoundTransformFeedback)
+      v[0] = GetID!(T,TransformFeedback)(ctx.Bound.TransformFeedback)
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER_BINDING: {
       if isIndexed {
-        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Binding)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.TransformFeedback.Buffers[index].Binding)
       } else {
-        v[0] = as!T(ctx.BoundBuffers.TransformFeedbackBuffer)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.TransformFeedbackBuffer)
       }
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER_SIZE: {
       if isIndexed {
-        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Size)
+        v[0] = as!T(ctx.Bound.TransformFeedback.Buffers[index].Size)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1363,21 +1370,21 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER_START: {
       if isIndexed {
-        v[0] = as!T(GetBoundTransformFeedback().Buffers[index].Start)
+        v[0] = as!T(ctx.Bound.TransformFeedback.Buffers[index].Start)
       } else {
         glErrorInvalidEnum(name)
       }
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_PAUSED: {
-      v[0] = as!T(GetBoundTransformFeedback().Paused)
+      v[0] = as!T(ctx.Bound.TransformFeedback.Paused)
     }
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER_BINDING: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Binding)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.UniformBuffers[index].Binding)
       } else {
-        v[0] = as!T(ctx.BoundBuffers.UniformBuffer)
+        v[0] = GetID!(T,Buffer)(ctx.Bound.UniformBuffer)
       }
     }
     @if(Version.GLES30)
@@ -1387,7 +1394,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER_SIZE: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Size)
+        v[0] = as!T(ctx.Bound.UniformBuffers[index].Size)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1395,7 +1402,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER_START: {
       if isIndexed {
-        v[0] = as!T(ctx.BoundBuffers.UniformBuffers[index].Start)
+        v[0] = as!T(ctx.Bound.UniformBuffers[index].Start)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1426,13 +1433,13 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_VERTEX_ARRAY_BINDING: {
-      v[0] = as!T(ctx.BoundVertexArray)
+      v[0] = GetID!(T,VertexArray)(ctx.Bound.VertexArray)
     }
     @if(Version.GLES31)
     case GL_VERTEX_BINDING_DIVISOR: {
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Divisor)
+        v[0] = as!T(ctx.Bound.VertexArray.VertexBufferBindings[i].Divisor)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1441,7 +1448,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     case GL_VERTEX_BINDING_OFFSET: {
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Offset)
+        v[0] = as!T(ctx.Bound.VertexArray.VertexBufferBindings[i].Offset)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -1450,7 +1457,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     case GL_VERTEX_BINDING_STRIDE: {
       if isIndexed {
         i := as!VertexBufferBindingIndex(index)
-        v[0] = as!T(ctx.Objects.VertexArrays[ctx.BoundVertexArray].VertexBufferBindings[i].Stride)
+        v[0] = as!T(ctx.Bound.VertexArray.VertexBufferBindings[i].Stride)
       } else {
         glErrorInvalidEnum(name)
       }

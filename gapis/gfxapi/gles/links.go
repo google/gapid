@@ -71,13 +71,12 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 	if i == nil {
 		return nil, err
 	}
-	va, ok := c.Objects.VertexArrays[c.BoundVertexArray]
-	if !ok || !va.VertexAttributeArrays.Contains(o) {
+	if !c.Bound.VertexArray.VertexAttributeArrays.Contains(o) {
 		return nil, nil
 	}
 	return i.
 		Field("VertexArrays").
-		MapIndex(c.BoundVertexArray).
+		MapIndex(c.Bound.VertexArray.GetID()).
 		Field("VertexAttributeArrays").
 		MapIndex(o), nil
 }
@@ -172,7 +171,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 	case *GlGetUniformLocation:
 		program = atom.Program
 	default:
-		program = c.BoundProgram
+		program = c.Bound.Program.GetID()
 	}
 
 	prog, ok := c.Objects.Shared.Programs[program]
@@ -195,4 +194,14 @@ func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error)
 		return nil, err
 	}
 	return i.Field("VertexArrays").MapIndex(o), nil
+}
+
+// Link returns the link to the transform feedback in the state block.
+// If nil, nil is returned then the path cannot be followed.
+func (o TransformFeedbackId) Link(ctx context.Context, p path.Node) (path.Node, error) {
+	i, c, err := objects(ctx, p)
+	if i == nil || !c.Objects.TransformFeedbacks.Contains(o) {
+		return nil, err
+	}
+	return i.Field("TransformFeedbacks").MapIndex(o), nil
 }

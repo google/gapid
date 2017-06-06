@@ -14,6 +14,8 @@
 
 @internal
 class Buffer {
+  BufferId ID
+
   @internal u8[] Data
 
   // Table 21.5: Buffer Object State
@@ -27,80 +29,76 @@ class Buffer {
   @unused string Label
 }
 
-@internal
-class BufferBinding {
-  // Table 21.32: Atomic Counter Buffer Binding State
-  // Table 21.34: Shader Storage Buffer Binding State
-  // Table 21.35: Transform Feedback State
-  // Table 21.36: Uniform Buffer Binding State
-  BufferId   Binding
-  GLintptr   Start
-  GLsizeiptr Size
-}
-
 sub ref!Buffer GetBoundBufferOrError(GLenum target) {
   ctx := GetContext()
   // TODO: The error conditions are not spelled out for all commands in the spec.
-  // TODO: Add back version checks.
-  id := switch (target) {
+  b := switch (target) {
     @if(Version.GLES20)
     case GL_ARRAY_BUFFER: {
-      ctx.BoundBuffers.ArrayBuffer
+      ctx.Bound.ArrayBuffer
     }
     @if(Version.GLES20)
     case GL_ELEMENT_ARRAY_BUFFER: {
-      ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
+      ctx.Bound.VertexArray.ElementArrayBuffer
     }
     @if(Version.GLES30)
     case GL_COPY_READ_BUFFER: {
-      ctx.BoundBuffers.CopyReadBuffer
+      ctx.Bound.CopyReadBuffer
     }
     @if(Version.GLES30)
     case GL_COPY_WRITE_BUFFER: {
-      ctx.BoundBuffers.CopyWriteBuffer
+      ctx.Bound.CopyWriteBuffer
     }
     @if(Version.GLES30)
     case GL_PIXEL_PACK_BUFFER: {
-      ctx.BoundBuffers.PixelPackBuffer
+      ctx.Bound.PixelPackBuffer
     }
     @if(Version.GLES30)
     case GL_PIXEL_UNPACK_BUFFER: {
-      ctx.BoundBuffers.PixelUnpackBuffer
+      ctx.Bound.PixelUnpackBuffer
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      ctx.BoundBuffers.TransformFeedbackBuffer
+      ctx.Bound.TransformFeedbackBuffer
     }
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      ctx.BoundBuffers.UniformBuffer
+      ctx.Bound.UniformBuffer
     }
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      ctx.BoundBuffers.AtomicCounterBuffer
+      ctx.Bound.AtomicCounterBuffer
     }
     @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER: {
-      ctx.BoundBuffers.DispatchIndirectBuffer
+      ctx.Bound.DispatchIndirectBuffer
     }
     @if(Version.GLES31)
     case GL_DRAW_INDIRECT_BUFFER: {
-      ctx.BoundBuffers.DrawIndirectBuffer
+      ctx.Bound.DrawIndirectBuffer
     }
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      ctx.BoundBuffers.ShaderStorageBuffer
+      ctx.Bound.ShaderStorageBuffer
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      ctx.BoundBuffers.TextureBuffer
+      ctx.Bound.TextureBuffer
     }
     default: {
-      // glErrorInvalidEnum(target)
-      as!BufferId(0)
+      // TODO: glErrorInvalidEnum(target)
+      as!ref!Buffer(null)
     }
   }
-  if id == 0 { glErrorInvalidOperation() }
+  if b == null { glErrorInvalidOperation() }
+  return b
+}
+
+sub ref!Buffer GetOrCreateBuffer(BufferId id) {
+  ctx := GetContext()
+  if (id != 0) && (ctx.Objects.Shared.Buffers[id] == null) {
+    ctx.Objects.Shared.Buffers[id] = new!Buffer(ID: id)
+  }
   return ctx.Objects.Shared.Buffers[id]
 }
 
@@ -113,64 +111,57 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
   ctx := GetContext()
   switch (target) {
     case GL_ARRAY_BUFFER: {
-      ctx.BoundBuffers.ArrayBuffer = buffer
+      ctx.Bound.ArrayBuffer = GetOrCreateBuffer(buffer)
     }
     case GL_ELEMENT_ARRAY_BUFFER: {
-      ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer = buffer
+      ctx.Bound.VertexArray.ElementArrayBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_COPY_READ_BUFFER: {
-      ctx.BoundBuffers.CopyReadBuffer = buffer
+      ctx.Bound.CopyReadBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_COPY_WRITE_BUFFER: {
-      ctx.BoundBuffers.CopyWriteBuffer = buffer
+      ctx.Bound.CopyWriteBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_PIXEL_PACK_BUFFER: {
-      ctx.BoundBuffers.PixelPackBuffer = buffer
+      ctx.Bound.PixelPackBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_PIXEL_UNPACK_BUFFER: {
-      ctx.BoundBuffers.PixelUnpackBuffer = buffer
+      ctx.Bound.PixelUnpackBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      ctx.BoundBuffers.TransformFeedbackBuffer = buffer
+      ctx.Bound.TransformFeedbackBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      ctx.BoundBuffers.UniformBuffer = buffer
+      ctx.Bound.UniformBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      ctx.BoundBuffers.AtomicCounterBuffer = buffer
+      ctx.Bound.AtomicCounterBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER: {
-      ctx.BoundBuffers.DispatchIndirectBuffer = buffer
+      ctx.Bound.DispatchIndirectBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES31)
     case GL_DRAW_INDIRECT_BUFFER: {
-      ctx.BoundBuffers.DrawIndirectBuffer = buffer
+      ctx.Bound.DrawIndirectBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      ctx.BoundBuffers.ShaderStorageBuffer = buffer
+      ctx.Bound.ShaderStorageBuffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      ctx.BoundBuffers.TextureBuffer = buffer
+      ctx.Bound.TextureBuffer = GetOrCreateBuffer(buffer)
     }
     default: {
       glErrorInvalidEnum(target)
-    }
-  }
-
-  // Create the buffer if need (after checking whether the enum is valid)
-  if buffer != 0 {
-    if !(buffer in ctx.Objects.Shared.Buffers) {
-      ctx.Objects.Shared.Buffers[buffer] = new!Buffer()
     }
   }
 }
@@ -206,41 +197,33 @@ sub void BindBufferRange(GLenum     target,
                          GLintptr   offset,
                          GLsizeiptr size) {
   ctx := GetContext()
-  bufferBinding := BufferBinding(
-    Binding: buffer,
-    Start:   offset,
-    Size:    size
-  )
   switch (target) {
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      ctx.BoundBuffers.TransformFeedbackBuffer = buffer
-      GetBoundTransformFeedback().Buffers[index] = bufferBinding
+      b := GetOrCreateBuffer(buffer)
+      ctx.Bound.TransformFeedbackBuffer = b
+      ctx.Bound.TransformFeedback.Buffers[index] = BufferBinding(b, offset, size)
     }
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
-      ctx.BoundBuffers.UniformBuffer = buffer
-      ctx.BoundBuffers.UniformBuffers[index] = bufferBinding
+      b := GetOrCreateBuffer(buffer)
+      ctx.Bound.UniformBuffer = b
+      ctx.Bound.UniformBuffers[index] = BufferBinding(b, offset, size)
     }
     @if(Version.GLES31)
     case GL_ATOMIC_COUNTER_BUFFER: {
-      ctx.BoundBuffers.AtomicCounterBuffer = buffer
-      ctx.BoundBuffers.AtomicCounterBuffers[index] = bufferBinding
+      b := GetOrCreateBuffer(buffer)
+      ctx.Bound.AtomicCounterBuffer = b
+      ctx.Bound.AtomicCounterBuffers[index] = BufferBinding(b, offset, size)
     }
     @if(Version.GLES31)
     case GL_SHADER_STORAGE_BUFFER: {
-      ctx.BoundBuffers.ShaderStorageBuffer = buffer
-      ctx.BoundBuffers.ShaderStorageBuffers[index] = bufferBinding
+      b := GetOrCreateBuffer(buffer)
+      ctx.Bound.ShaderStorageBuffer = b
+      ctx.Bound.ShaderStorageBuffers[index] = BufferBinding(b, offset, size)
     }
     default: {
       glErrorInvalidEnum(target)
-    }
-  }
-
-  // Create the buffer if need (after checking whether the enum is valid)
-  if buffer != 0 {
-    if !(buffer in ctx.Objects.Shared.Buffers) {
-      ctx.Objects.Shared.Buffers[buffer] = new!Buffer()
     }
   }
 }
@@ -337,7 +320,7 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   for i in (0 .. count) {
     id := as!BufferId(?)
     assert(id != 0)
-    ctx.Objects.Shared.Buffers[id] = new!Buffer()
+    ctx.Objects.Shared.Buffers[id] = new!Buffer(ID: id)
     b[i] = id
   }
 }

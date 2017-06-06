@@ -14,23 +14,42 @@
 
 @internal
 class TextureUnit {
+  TextureUnitId ID
+
   // Table 21.9: Textures (selector; state per texture unit)
-  TextureId         Binding2d                 = 0
-  TextureId         Binding3d                 = 0
-  TextureId         Binding2dArray            = 0
-  TextureId         BindingBuffer             = 0
-  TextureId         BindingCubeMap            = 0
-  TextureId         BindingCubeMapArray       = 0
-  TextureId         Binding2dMultisample      = 0
-  TextureId         Binding2dMultisampleArray = 0
-  TextureId         BindingExternalOes        = 0 // OES_EGL_image_external
+  ref!Texture       Binding2d                 = null
+  ref!Texture       Binding3d                 = null
+  ref!Texture       Binding2dArray            = null
+  ref!Texture       BindingBuffer             = null
+  ref!Texture       BindingCubeMap            = null
+  ref!Texture       BindingCubeMapArray       = null
+  ref!Texture       Binding2dMultisample      = null
+  ref!Texture       Binding2dMultisampleArray = null
+  ref!Texture       BindingExternalOes        = null // OES_EGL_image_external
   @unused SamplerId SamplerBinding            = 0
+}
+
+sub ref!TextureUnit NewTextureUnit(TextureUnitId id) {
+  ctx := GetContext()
+  return new!TextureUnit(
+    ID:                         id,
+    Binding2d:                  ctx.Objects.Default.Texture2d,
+    Binding2dArray:             ctx.Objects.Default.Texture2dArray,
+    Binding2dMultisample:       ctx.Objects.Default.Texture2dMultisample,
+    Binding2dMultisampleArray:  ctx.Objects.Default.Texture2dMultisampleArray,
+    Binding3d:                  ctx.Objects.Default.Texture3d,
+    BindingBuffer:              ctx.Objects.Default.TextureBuffer,
+    BindingCubeMap:             ctx.Objects.Default.TextureCubeMap,
+    BindingCubeMapArray:        ctx.Objects.Default.TextureCubeMapArray,
+    BindingExternalOes:         ctx.Objects.Default.TextureExternalOes,
+  )
 }
 
 @internal
 @resource
 class Texture {
   TextureId                 ID
+
   GLenum                    Kind
   map!(GLint, Level)        Levels
 
@@ -93,6 +112,8 @@ class Image {
 
 @internal
 class Sampler {
+  SamplerId ID
+
   // Table 21.12: Textures (state per sampler object)
   @unused Vec4f  BorderColor = Vec4f(0.0, 0.0, 0.0, 0.0)
   GLenum         MinFilter   = GL_NEAREST_MIPMAP_LINEAR
@@ -157,75 +178,47 @@ sub ref!Texture GetBoundTextureOrErrorInvalidEnum(GLenum target) {
 }
 
 sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum target) {
-  // TODO: Add back version checks.
   tu := ctx.TextureUnits[unit]
   return switch (target) {
     @if(Version.GLES20)
     case GL_TEXTURE_2D: {
-      switch (tu.Binding2d != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.Binding2d]
-        case false: ctx.Objects.DefaultTextures.Texture2d
-      }
+      tu.Binding2d
     }
     @if(Version.GLES20)
     case GL_TEXTURE_EXTERNAL_OES: {
-      switch (tu.BindingExternalOes != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.BindingExternalOes]
-        case false: ctx.Objects.DefaultTextures.TextureExternalOes
-      }
+      tu.BindingExternalOes
     }
     @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY: {
-      switch (tu.Binding2dArray != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.Binding2dArray]
-        case false: ctx.Objects.DefaultTextures.Texture2dArray
-      }
+      tu.Binding2dArray
     }
     @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      switch (tu.Binding2dMultisample != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.Binding2dMultisample]
-        case false: ctx.Objects.DefaultTextures.Texture2dMultisample
-      }
+      tu.Binding2dMultisample
     }
     @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
-      switch (tu.Binding2dMultisampleArray != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.Binding2dMultisampleArray]
-        case false: ctx.Objects.DefaultTextures.Texture2dMultisampleArray
-      }
+      tu.Binding2dMultisampleArray
     }
     @if(Version.GLES30)
     case GL_TEXTURE_3D: {
-      switch (tu.Binding3d != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.Binding3d]
-        case false: ctx.Objects.DefaultTextures.Texture3d
-      }
+      tu.Binding3d
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      switch (tu.BindingBuffer != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.BindingBuffer]
-        case false: ctx.Objects.DefaultTextures.TextureBuffer
-      }
+      tu.BindingBuffer
     }
     @if(Version.GLES20)
     case GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      switch (tu.BindingCubeMap != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.BindingCubeMap]
-        case false: ctx.Objects.DefaultTextures.TextureCubeMap
-      }
+      tu.BindingCubeMap
     }
     @if(Version.GLES32)
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      switch (tu.BindingCubeMapArray != 0) {
-        case true:  ctx.Objects.Shared.Textures[tu.BindingCubeMapArray]
-        case false: ctx.Objects.DefaultTextures.TextureCubeMapArray
-      }
+      tu.BindingCubeMapArray
     }
     default: {
-      // glErrorInvalidEnum(target)
-      ctx.Objects.DefaultTextures.Texture2d
+      // TODO: glErrorInvalidEnum(target)
+      tu.Binding2d
     }
   }
 }
@@ -434,7 +427,7 @@ sub void TexImage(TexImageFlags  flags,
         UpdateImageData(img, xoffset, yoffset, width, height,
                         src_skip_images, data_format, data_type, data)
       } else if isCompressedTexImageCmd {
-        if (ctx.BoundBuffers.PixelUnpackBuffer == 0) && (data != null) {
+        if (ctx.Bound.PixelUnpackBuffer == null) && (data != null) {
           // TODO: Implement sub-range updates
           img.Data = clone(as!u8*(data)[0:data_size])
         }
@@ -477,7 +470,7 @@ sub void UpdateImageData(ref!Image      dst_image,
   dst_image.DataFormat = format
   dst_image.DataType = type
 
-  pbo := ctx.Objects.Shared.Buffers[ctx.BoundBuffers.PixelUnpackBuffer]
+  pbo := ctx.Bound.PixelUnpackBuffer
   copy_size := as!GLint(width) * pixel_size
   for y in (0 .. as!GLint(height)) {
     dst := dst_offset + (dst_row_size * y)
@@ -567,17 +560,11 @@ cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx.TextureUnits[unit].SamplerBinding = sampler
 }
 
-@if(Version.GLES10)
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml", Version.GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml", Version.GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml", Version.GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml", Version.GLES32)
-cmd void glBindTexture(GLenum target, TextureId texture) {
+sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture defaultTexture) {
   ctx := GetContext()
-
-  // TODO: Do not initialize if the enum is not valid.
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) {
+    // Create the texture if it does not exist already
+    if (ctx.Objects.Shared.Textures[texture] == null) {
       if target == GL_TEXTURE_EXTERNAL_OES {
         ctx.Objects.Shared.Textures[texture] = new!Texture(
           ID:         texture,
@@ -585,12 +572,11 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
           WrapT:      GL_CLAMP_TO_EDGE,
           MinFilter:  GL_LINEAR)
       } else {
-        ctx.Objects.Shared.Textures[texture] = new!Texture(
-          ID: texture,
-        )
+        ctx.Objects.Shared.Textures[texture] = new!Texture(ID: texture)
       }
     }
 
+    // Set or check the kind of the texture
     t := ctx.Objects.Shared.Textures[texture]
     if t.Kind == as!GLenum(0) {
       t.Kind = target
@@ -598,44 +584,53 @@ cmd void glBindTexture(GLenum target, TextureId texture) {
       if t.Kind != target { glErrorInvalidOperation() }
     }
   }
+  return Select!ref!Texture(texture != 0, ctx.Objects.Shared.Textures[texture], defaultTexture)
+}
 
+@if(Version.GLES10)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glBindTexture.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindTexture.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindTexture.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml", Version.GLES32)
+cmd void glBindTexture(GLenum target, TextureId texture) {
+  ctx := GetContext()
   tu := ctx.TextureUnits[ctx.ActiveTextureUnit]
   switch (target) {
     @if(Version.GLES20)
     case GL_TEXTURE_2D: {
-      tu.Binding2d = texture
+      tu.Binding2d = GetOrCreateTexture(target, texture, ctx.Objects.Default.Texture2d)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_EXTERNAL_OES: {
-      tu.BindingExternalOes = texture
+      tu.BindingExternalOes = GetOrCreateTexture(target, texture, ctx.Objects.Default.TextureExternalOes)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_2D_ARRAY: {
-      tu.Binding2dArray = texture
+      tu.Binding2dArray = GetOrCreateTexture(target, texture, ctx.Objects.Default.Texture2dArray)
     }
     @if(Version.GLES31)
     case GL_TEXTURE_2D_MULTISAMPLE: {
-      tu.Binding2dMultisample = texture
+      tu.Binding2dMultisample = GetOrCreateTexture(target, texture, ctx.Objects.Default.Texture2dMultisample)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: {
-      tu.Binding2dMultisampleArray = texture
+      tu.Binding2dMultisampleArray = GetOrCreateTexture(target, texture, ctx.Objects.Default.Texture2dMultisampleArray)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_3D: {
-      tu.Binding3d = texture
+      tu.Binding3d = GetOrCreateTexture(target, texture, ctx.Objects.Default.Texture3d)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER: {
-      tu.BindingBuffer = texture
+      tu.BindingBuffer = GetOrCreateTexture(target, texture, ctx.Objects.Default.TextureBuffer)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_CUBE_MAP: {
-      tu.BindingCubeMap = texture
+      tu.BindingCubeMap = GetOrCreateTexture(target, texture, ctx.Objects.Default.TextureCubeMap)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      tu.BindingCubeMapArray = texture
+      tu.BindingCubeMapArray = GetOrCreateTexture(target, texture, ctx.Objects.Default.TextureCubeMapArray)
     }
     default: {
       glErrorInvalidEnum(target)
@@ -895,7 +890,7 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!SamplerId(?)
-    ctx.Objects.Shared.Samplers[id] = new!Sampler()
+    ctx.Objects.Shared.Samplers[id] = new!Sampler(ID: id)
     s[i] = id
   }
 }

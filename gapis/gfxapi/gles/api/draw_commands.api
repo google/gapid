@@ -65,8 +65,8 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   checkPrimitiveType(draw_mode)
   ctx := GetContext()
-  if ctx.BoundVertexArray == 0 { glErrorInvalidOperation() } // SPEC: missing in html
-  if ctx.BoundBuffers.DrawIndirectBuffer == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
 }
@@ -102,10 +102,10 @@ sub void DrawElements(ref!Context    ctx,
   if instance_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
   if indices_count > 0 {
     count := as!u32(indices_count)
-    id := ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
-    if (id != 0) {
+    index_buffer := ctx.Bound.VertexArray.ElementArrayBuffer
+    if (index_buffer != null) {
       // Element array buffer bound - indices is an offset on the buffer.
-      index_data := ctx.Objects.Shared.Buffers[id].Data
+      index_data := index_buffer.Data
       offset := as!s32(as!u64(indices))
 
       // Read the vertices
@@ -170,9 +170,9 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
   checkIndicesType(indices_type)
 
   ctx := GetContext()
-  if ctx.BoundVertexArray == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
   // TODO: Error if enabled array is not bound or is mapped.
-  if ctx.BoundBuffers.DrawIndirectBuffer == 0 { glErrorInvalidOperation() } // SPEC: missing in html
+  if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
 }
