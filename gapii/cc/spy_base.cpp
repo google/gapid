@@ -29,7 +29,6 @@ namespace gapii {
 
 SpyBase::SpyBase()
     : mObserveApplicationPool(true)
-    , mPassthrough(false)
     , mCommandStartEndCounter(0)
     , mExpectedNextCommandStartCounterValue(0)
     , mNullEncoder(PackEncoder::noop())
@@ -45,15 +44,13 @@ void SpyBase::init(CallObserver* observer, PackEncoder::SPtr encoder) {
     auto threadID = core::Thread::current().id();
     mEncoder = encoder;
     mObserveApplicationPool = true;
-    mPassthrough = false;
-    mAbortHandler = nullptr;
     mCurrentThread = threadID;
     mIsSuspended = false;
     onThreadSwitched(observer, threadID);
 }
 
 bool SpyBase::try_to_enter() {
-  if (mPassthrough || mReentrantFlag.get() != 0) {
+  if (mReentrantFlag.get() != 0) {
     return false;
   }
   mReentrantFlag.set(1u);
@@ -81,26 +78,7 @@ void SpyBase::unlock() {
 }
 
 void SpyBase::abort() {
-    throw AbortException(AbortException::NORMAL, "");
-}
-
-void SpyBase::defaultAbortHandler(CallObserver* observer, const AbortException& e) {
-    switch (e.category()) {
-        case AbortException::NORMAL: {
-            GAPID_DEBUG("normal abort handled; no action taken");
-            return;
-        }
-        case AbortException::ASSERT:  // fallthrough
-        default: {
-            GAPID_WARNING("assert handled; switching to passthrough mode %s", e.message().c_str());
-            mPassthrough = true;
-        }
-    }
-    // Record the abort as an extra.
-    auto aborted = new atom_pb::Aborted();
-    aborted->set_isassert(e.category() == AbortException::ASSERT);
-    aborted->set_reason(e.message());
-    observer->addExtra(aborted);
+    throw AbortException();
 }
 
 }  // namespace gapii

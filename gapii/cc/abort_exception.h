@@ -24,34 +24,7 @@
 
 namespace gapii {
 
-class AbortException : public std::exception {
- public:
-  enum Category {
-    NORMAL, // Stop processing of the current atom as dictated by the spec.
-    ASSERT, // Internal error - there is a problem that we need to address.
-  };
-
-  AbortException(Category cat, const std::string&& message) : mCat(cat), mMsg(message) {}
-  Category category() const { return mCat; }
-  const std::string message() const { return mMsg; }
-
-  const char* what() const throw() { return "gapii::AbortException"; }
- private:
-  Category mCat;
-  std::string mMsg;
-};
-
-inline void spyAssert(bool cond, const char* message) {
-  if (UNLIKELY(!cond)) {
-    throw gapii::AbortException(AbortException::ASSERT, message);
-  }
-}
-
-template <typename Ptr>
-auto checkNotNull(Ptr ptr) -> decltype(*ptr) {
-  spyAssert(ptr != nullptr, "Null pointer");
-  return *ptr;
-}
+class AbortException : public std::exception {};
 
 }  // namespace gapii
 

@@ -238,7 +238,7 @@ inline Slice<T> CallObserver::make(uint64_t count) const {
 }
 
 inline std::string CallObserver::string(const char* str) {
-    checkNotNull(str);
+    GAPID_ASSERT(str != nullptr);
     for (uint64_t i = 0;; i++) {
         if (str[i] == 0) {
             read(str, i + 1);

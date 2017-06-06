@@ -231,7 +231,6 @@
         if (!called) {
           call(); // abort() was called before the fence.
         }
-        handleAbort(observer, e);
       }
       uint64_t counter_at_end = mCommandStartEndCounter++;
 ¶
