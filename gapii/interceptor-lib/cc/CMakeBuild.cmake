@@ -20,19 +20,38 @@ if(NOT CMAKE_HOST_WIN32)
     endif()
 endif()
 
+function(llvm_abi android_abi out)
+    if (${android_abi} STREQUAL "aarch64")
+        set(${out} "AArch64" PARENT_SCOPE)
+    elseif(${android_abi} STREQUAL "armeabi")
+        set(${out} "ARM" PARENT_SCOPE)
+    elseif(${android_abi} STREQUAL "x86")
+        set(${out} "X86" PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "Unsupported architecture for building LLVM: ${android_abi}")
+    endif()
+endfunction()
+
 if(ANDROID_ABI)
+    llvm_abi(ANDROID_ABI target_arch)
+    glob(sources
+        PATH "lib" "lib/${target_arch}"
+        INCLUDE ".h$" ".cc$"
+    )
+
     if (ANDROID_ABI STREQUAL "aarch64")
-        set(LLVM_TARGET_ARCH "AArch64")
+        set(LLVM_TARGET_ARCH "${target_arch}")
         set(LLVM_HOST_TRIPLE "aarch64-unknown-linux-android")
     elseif(ANDROID_ABI STREQUAL "armeabi")
-        set(LLVM_TARGET_ARCH "ARM")
+        set(LLVM_TARGET_ARCH "${target_arch}")
         set(LLVM_HOST_TRIPLE "armv8.2a-unknown-linux-android")
     elseif(ANDROID_ABI STREQUAL "x86")
-        set(LLVM_TARGET_ARCH "X86")
+        set(LLVM_TARGET_ARCH "${target_arch}")
         set(LLVM_HOST_TRIPLE "i386-unknown-linux-android")
     else()
-        message(FATAL_ERROR "Unsupported architecture for building LLVM")
+        message(FATAL_ERROR "Unsupported architecture for building LLVM: ${LLVM_TARGET_ARCH}")
     endif()
+
 
     get_target_property(STL_INCLUDES STL::Lib INTERFACE_INCLUDE_DIRECTORIES)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake.in toolchain.cmake @ONLY)
@@ -56,6 +75,11 @@ if(ANDROID_ABI)
 else()
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake.in toolchain.cmake @ONLY)
 
+    glob(sources
+        PATH "lib" "lib/AArch64" "lib/ARM" "lib/X86"
+        INCLUDE ".h$" ".cc$"
+    )
+
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llvm")
     add_cmake(llvm "${CMAKE_SOURCE_DIR}/third_party/llvm"
         "-DCMAKE_TOOLCHAIN_FILE:STRING=${CMAKE_CURRENT_BINARY_DIR}/toolchain.cmake"
@@ -70,6 +94,13 @@ endif()
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
+
+    llvm_abi(${abi} target_arch)
+    glob(sources
+        PATH "lib" "lib/${target_arch}"
+        INCLUDE ".h$" ".cc$"
+    )
+
     add_cmake_target(${abi} llvm-interceptor ${dst} "libinterceptor.so"
         DEPENDS ${sources} llvm-llvm-tblgen
         SOURCE_PATH "llvm/src/llvm-build/lib/libinterceptor.so"
