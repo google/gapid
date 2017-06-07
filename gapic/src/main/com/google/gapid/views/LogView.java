@@ -20,6 +20,7 @@ import static com.google.gapid.widgets.Widgets.createTree;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Pods;
+import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import com.google.protobuf.Timestamp;
@@ -90,6 +91,14 @@ public class LogView extends Composite implements Tab {
       }
     });
     addListener(SWT.Dispose, e -> Logging.setListener(null));
+
+    CopySources.registerTreeAsCopySource(widgets.copypaste, tree, item -> {
+      String[] result = new String[Column.values().length];
+      for (int i = 0; i < result.length; i++) {
+        result[i] = item.getText(i);
+      }
+      return result;
+    }, false);
   }
 
   private void updateTree() {

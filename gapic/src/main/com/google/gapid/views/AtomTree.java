@@ -355,7 +355,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         return new String[] { result.toString() };
       }
       return new String[] { String.valueOf(object) };
-    });
+    }, true);
   }
 
   private void search(String text, boolean regex) {

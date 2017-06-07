@@ -22,8 +22,10 @@ import com.google.gapid.widgets.CopyPaste.CopySource;
 
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -35,26 +37,32 @@ public class CopySources {
   }
 
   public static void registerTreeAsCopySource(
-      CopyPaste cp, TreeViewer tree, ColumnTextProvider columnProvider) {
-    cp.registerCopySource(tree.getControl(), new CopySource() {
+      CopyPaste cp, TreeViewer tree, ColumnTextProvider<Object> columnProvider, boolean align) {
+    registerTreeAsCopySource(
+        cp, tree.getTree(), item -> columnProvider.getColumns(item.getData()), align);
+  }
+
+  public static void registerTreeAsCopySource(
+      CopyPaste cp, Tree tree, ColumnTextProvider<TreeItem> columnProvider, boolean align) {
+    cp.registerCopySource(tree, new CopySource() {
       @Override
       public boolean hasCopyData() {
-        return !tree.getSelection().isEmpty();
+        return tree.getSelection().length > 0;
       }
 
       @Override
       public CopyData[] getCopyData() {
         // Create rows from all the paths.
         List<Node> roots = Lists.newArrayList();
-        Map<TreePath, Node> pathToNode = Maps.newHashMap();
-        for (TreePath path : tree.getStructuredSelection().getPaths()) {
-          createNode(path, columnProvider, pathToNode, roots);
+        Map<TreeItem, Node> pathToNode = Maps.newHashMap();
+        for (TreeItem item : tree.getSelection()) {
+          createNode(item, columnProvider, pathToNode, roots);
         }
 
         // Measure the column widths.
-        List<Integer> maxColumnWidths = new ArrayList<>(2);
+        List<Integer> maxColumnWidths = Lists.newArrayList();
         for (Node node : roots) {
-          node.measure(maxColumnWidths, 0);
+          node.measure(maxColumnWidths, 0, align);
         }
 
         // Print each of the roots and their children.
@@ -66,7 +74,7 @@ public class CopySources {
         return new CopyData[] { CopyData.text(plainBuf.toString()) };
       }
     });
-    tree.addSelectionChangedListener(e -> cp.updateCopyState());
+    tree.addListener(SWT.Selection, e -> cp.updateCopyState());
   }
 
   /**
@@ -77,18 +85,18 @@ public class CopySources {
    *
    * @return the newly created node.
    */
-  protected static Node createNode(TreePath path, ColumnTextProvider columnProvider,
-      Map<TreePath, Node> pathToNode, List<Node> roots) {
-    Node node = pathToNode.get(path);
+  protected static Node createNode(TreeItem item, ColumnTextProvider<TreeItem> columnProvider,
+      Map<TreeItem, Node> itemToNode, List<Node> roots) {
+    Node node = itemToNode.get(item);
     if (node != null) {
       return node;
     }
 
-    node = new Node(columnProvider.getColumns(path.getLastSegment()));
-    pathToNode.put(path, node);
-    TreePath parent = path.getParentPath();
-    if (parent != null && parent != TreePath.EMPTY) {
-      createNode(parent, columnProvider, pathToNode, roots).addChild(node);
+    node = new Node(columnProvider.getColumns(item));
+    itemToNode.put(item, node);
+    TreeItem parent = item.getParentItem();
+    if (parent != null) {
+      createNode(parent, columnProvider, itemToNode, roots).addChild(node);
     } else {
       roots.add(node);
     }
@@ -98,11 +106,11 @@ public class CopySources {
   /**
    * Provides text representations of the copy data from the tree.
    */
-  public static interface ColumnTextProvider {
+  public static interface ColumnTextProvider<T> {
     /**
      * @return text representation of the columns for the given tree element.
      */
-    public String[] getColumns(Object element);
+    public String[] getColumns(T element);
   }
 
   /**
@@ -133,22 +141,24 @@ public class CopySources {
      * of this node and all descendants.
      * @param indent the indentation of this node in number of characters.
      */
-    public void measure(List<Integer> maxColumnWidths, int indent) {
+    public void measure(List<Integer> maxColumnWidths, int indent, boolean align) {
       // Grow maxColumnWidths to at least as big as columns.
       while (maxColumnWidths.size() < columns.length) {
         maxColumnWidths.add(0);
       }
-      for (int i = 0, c = columns.length; i < c; i++) {
-        int width = columns[i].length();
-        // Consider the tree as part of the first column.
-        if (i == 0) { width += indent; }
-        // Padding between columns.
-        if (i < c - 1) { width += 1; }
-        maxColumnWidths.set(i, Math.max(width, maxColumnWidths.get(i)));
+      if (align) {
+        for (int i = 0, c = columns.length; i < c; i++) {
+          int width = columns[i].length();
+          // Consider the tree as part of the first column.
+          if (i == 0) { width += indent; }
+          // Padding between columns.
+          if (i < c - 1) { width += 1; }
+          maxColumnWidths.set(i, Math.max(width, maxColumnWidths.get(i)));
+        }
       }
       // Now measure all the children.
       for (Node child : children) {
-        child.measure(maxColumnWidths, indent + INDENT_SIZE);
+        child.measure(maxColumnWidths, indent + INDENT_SIZE, align);
       }
     }
 
