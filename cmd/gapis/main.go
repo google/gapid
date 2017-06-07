@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
@@ -48,6 +49,7 @@ var (
 	scanAndroidDevs = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
 	addLocalDevice  = flag.Bool("add-local-device", true, "Server will create a new local replay device")
 	idleTimeout     = flag.Duration("idle-timeout", 0, "Closes GAPIS if the server is not repeatedly pinged within this duration")
+	adbPath         = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
 )
 
 func main() {
@@ -76,6 +78,10 @@ func run(ctx context.Context) error {
 	logBroadcaster := log.Broadcast()
 	addFallbackLogHandler(logBroadcaster, log.GetHandler(ctx))
 	ctx = log.PutHandler(ctx, logBroadcaster)
+
+	if *adbPath != "" {
+		adb.ADB = file.Abs(*adbPath)
+	}
 
 	r := bind.NewRegistry()
 	ctx = bind.PutRegistry(ctx, r)
