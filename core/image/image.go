@@ -26,61 +26,66 @@ import (
 )
 
 // Interface compliance check
-var _ = Convertable((*Info2D)(nil))
+var _ = Convertable((*Info)(nil))
 
 // ConvertTo implements the Convertable interface. It directly calls Convert.
-func (i *Info2D) ConvertTo(ctx context.Context, f *Format) (interface{}, error) {
+func (i *Info) ConvertTo(ctx context.Context, f *Format) (interface{}, error) {
 	return i.Convert(ctx, f)
 }
 
 // Convert returns this image Info converted to the format f.
-func (i *Info2D) Convert(ctx context.Context, f *Format) (*Info2D, error) {
+func (i *Info) Convert(ctx context.Context, f *Format) (*Info, error) {
 	id, err := database.Store(ctx, &ConvertResolvable{
-		Data:       i.Data,
+		Bytes:      i.Bytes,
 		Width:      i.Width,
 		Height:     i.Height,
+		Depth:      i.Depth,
 		FormatFrom: i.Format,
 		FormatTo:   f,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to convert ImageInfo to format %v: %v", f, err)
 	}
-	return &Info2D{
+	return &Info{
 		Format: f,
 		Width:  i.Width,
 		Height: i.Height,
-		Data:   NewID(id),
+		Depth:  i.Depth,
+		Bytes:  NewID(id),
 	}, nil
 }
 
 // Resize returns this image Info resized to the specified dimensions.
-func (i *Info2D) Resize(ctx context.Context, w, h uint32) (*Info2D, error) {
+func (i *Info) Resize(ctx context.Context, w, h, d uint32) (*Info, error) {
 	id, err := database.Store(ctx, &ResizeResolvable{
-		Data:      i.Data,
+		Bytes:     i.Bytes,
 		Format:    i.Format,
 		SrcWidth:  i.Width,
 		SrcHeight: i.Height,
+		SrcDepth:  i.Depth,
 		DstWidth:  w,
 		DstHeight: h,
+		DstDepth:  d,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to resize ImageInfo to %v x %v: %v", w, h, err)
 	}
-	return &Info2D{
+	return &Info{
 		Format: i.Format,
 		Width:  w,
 		Height: h,
-		Data:   NewID(id),
+		Depth:  d,
+		Bytes:  NewID(id),
 	}, nil
 }
 
-// Convert returns the Image converted to the format to.
-func (i *Image2D) Convert(to *Format) (*Image2D, error) {
-	data, err := Convert(i.Data, int(i.Width), int(i.Height), i.Format, to)
+// Convert returns the Data converted to the format to.
+func (b *Data) Convert(to *Format) (*Data, error) {
+	bytes, err := Convert(b.Bytes, int(b.Width), int(b.Height), int(b.Depth), b.Format, to)
 	if err != nil {
 		return nil, err
 	}
-	return &Image2D{Data: data, Width: i.Width, Height: i.Height, Format: to}, nil
+	return &Data{Bytes: bytes, Width: b.Width, Height: b.Height, Depth: b.Depth, Format: to}, nil
 }
 
 // Difference returns the normalized square error between the two images.
@@ -88,7 +93,7 @@ func (i *Image2D) Convert(to *Format) (*Image2D, error) {
 // a complete mismatch (black vs white).
 // Only channels that are found in both in a and b are compared. However, if
 // there are no common channels then an error is returned.
-func Difference(a, b *Image2D) (float32, error) {
+func Difference(a, b *Data) (float32, error) {
 	if a.Width != b.Width || a.Height != b.Height {
 		return 1, fmt.Errorf("Image dimensions are not identical. %dx%d vs %dx%d",
 			a.Width, a.Height, b.Width, b.Height)
@@ -135,8 +140,8 @@ func Difference(a, b *Image2D) (float32, error) {
 		return 1, err
 	}
 
-	p := endian.Reader(bytes.NewReader(a.Data), device.LittleEndian)
-	q := endian.Reader(bytes.NewReader(b.Data), device.LittleEndian)
+	p := endian.Reader(bytes.NewReader(a.Bytes), device.LittleEndian)
+	q := endian.Reader(bytes.NewReader(b.Bytes), device.LittleEndian)
 	sqrErr := float32(0)
 	c := a.Width * a.Height * uint32(len(channels))
 	for i := uint32(0); i < c; i++ {

@@ -58,7 +58,7 @@ type QueryFramebufferAttachment interface {
 		width, height uint32,
 		attachment gfxapi.FramebufferAttachment,
 		wireframeMode WireframeMode,
-		hints *service.UsageHints) (*image.Image2D, error)
+		hints *service.UsageHints) (*image.Data, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.

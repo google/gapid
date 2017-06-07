@@ -263,7 +263,7 @@ message CommandTreeNodeForCommand {
     Command command = 2;
 }
 
-// ImageInfo is a path that refers to a image.Info2D.
+// ImageInfo is a path that refers to a image.Info.
 message ImageInfo {
     image.ID id = 1; // The ImageInfo's unique identifier.
 }

@@ -338,10 +338,10 @@ func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *
 	}
 	iio, err := client.Get(ctx, iip.Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Get frame image.Info2D failed")
+		return nil, log.Errf(ctx, err, "Get frame image.Info failed")
 	}
-	ii := iio.(*img.Info2D)
-	dataO, err := client.Get(ctx, path.NewBlob(ii.Data.ID()).Path())
+	ii := iio.(*img.Info)
+	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image data failed")
 	}
@@ -355,7 +355,7 @@ func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *
 	if ii.Width == 0 || ii.Height == 0 {
 		return nil, log.Err(ctx, nil, "Framebuffer has zero dimensions")
 	}
-	data, err = img.Convert(data, w, h, ii.Format, img.RGBA_U8_NORM)
+	data, err = img.Convert(data, w, h, 1, ii.Format, img.RGBA_U8_NORM)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to convert frame to RGBA")
 	}

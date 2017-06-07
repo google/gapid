@@ -205,7 +205,7 @@ func p(addr uint64) memory.Pointer {
 	return memory.BytePtr(addr, memory.ApplicationPool)
 }
 
-func checkImage(ctx context.Context, name string, got *image.Image2D, threshold float64) {
+func checkImage(ctx context.Context, name string, got *image.Data, threshold float64) {
 	if *generateReferenceImages != "" {
 		storeReferenceImage(ctx, *generateReferenceImages, name, got)
 	} else {

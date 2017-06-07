@@ -1045,7 +1045,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *gfxapi.State,
 	imageWidth := imageObject.Layers.Get(0).Levels.Get(0).Width
 	imageHeight := imageObject.Layers.Get(0).Levels.Get(0).Height
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info.Format)
-	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight)))
+	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
 	memoryObject := &DeviceMemoryObject{
 		Device:          a.Device,
 		VulkanHandle:    memory,

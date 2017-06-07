@@ -148,7 +148,7 @@ message Mesh {
 // Texture2D represents a two-dimensional texture resource.
 message Texture2D {
 	// The mip-map levels.
-	repeated image.Info2D levels = 1;
+	repeated image.Info levels = 1;
 }
 
 // Cubemap represents a cube-map texture resource.
@@ -167,10 +167,10 @@ message Cubemap {
 //     :.......:
 //
 message CubemapLevel {
-	image.Info2D negative_x = 1;
-	image.Info2D positive_x = 2;
-	image.Info2D negative_y = 3;
-	image.Info2D positive_y = 4;
-	image.Info2D negative_z = 5;
-	image.Info2D positive_z = 6;
+	image.Info negative_x = 1;
+	image.Info positive_x = 2;
+	image.Info negative_y = 3;
+	image.Info positive_y = 4;
+	image.Info negative_z = 5;
+	image.Info positive_z = 6;
 }

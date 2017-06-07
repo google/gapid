@@ -100,7 +100,7 @@ message Value {
     gfxapi.ResourceData resource_data = 30;
     gfxapi.Mesh mesh = 31;
 
-    image.Info2D image_info_2d = 40;
+    image.Info image_info = 40;
 
     box.Value box = 50;
   }

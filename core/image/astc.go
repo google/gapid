@@ -28,14 +28,14 @@ func NewASTC(name string, blockWidth, blockHeight uint32, srgb bool) *Format {
 func (f *FmtASTC) key() interface{} {
 	return f.String()
 }
-func (f *FmtASTC) size(w, h int) int {
+func (f *FmtASTC) size(w, h, d int) int {
 	bw, bh := int(f.BlockWidth), int(f.BlockHeight)
 	return (16 * sint.AlignUp(w, bw) * sint.AlignUp(h, bh)) / (bw * bh)
 }
-func (f *FmtASTC) check(d []byte, w, h int) error {
-	if actual, expected := len(d), f.size(w, h); expected != actual {
-		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%d",
-			actual, expected, w, h)
+func (f *FmtASTC) check(data []byte, w, h, d int) error {
+	if actual, expected := len(data), f.size(w, h, d); expected != actual {
+		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%dx%d",
+			actual, expected, w, h, d)
 	}
 	return nil
 }

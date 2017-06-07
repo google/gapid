@@ -221,10 +221,11 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}
 
-	src := image.Info2D{
-		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
+	src := image.Info{
+		Bytes:  image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
+		Depth:  1,
 		Format: getImageFormatOrPanic(a.Internalformat, 0),
 	}
 	dst, err := src.Convert(ctx, image.RGBA_U8_NORM)
@@ -245,7 +246,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 		GLenum_GL_RGBA,
 		GLenum_GL_UNSIGNED_BYTE,
 		tmp.Ptr(),
-	).AddRead(tmp.Range(), dst.Data.ID()))
+	).AddRead(tmp.Range(), dst.Bytes.ID()))
 	tmp.Free()
 
 	return nil
@@ -268,10 +269,11 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}
 
-	src := image.Info2D{
-		Data:   image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
+	src := image.Info{
+		Bytes:  image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
+		Depth:  1,
 		Format: getImageFormatOrPanic(a.Internalformat, 0),
 	}
 	dst, err := src.Convert(ctx, image.RGBA_U8_NORM)
@@ -292,7 +294,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 		GLenum_GL_RGBA,
 		GLenum_GL_UNSIGNED_BYTE,
 		tmp.Ptr(),
-	).AddRead(tmp.Range(), dst.Data.ID()))
+	).AddRead(tmp.Range(), dst.Bytes.ID()))
 	tmp.Free()
 
 	return nil

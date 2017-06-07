@@ -24,28 +24,28 @@ import (
 )
 
 func init() {
-	RegisterConverter(S3_DXT1_RGB, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
+	RegisterConverter(S3_DXT1_RGB, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decode4x4Blocks(src, w, h, d, func(r binary.Reader, dst []pixel) {
 			decodeDXT1(r, dst, func(p *pixel) {
 				p.setToBlackRGB()
 			})
 		})
 	})
-	RegisterConverter(S3_DXT1_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
+	RegisterConverter(S3_DXT1_RGBA, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decode4x4Blocks(src, w, h, d, func(r binary.Reader, dst []pixel) {
 			decodeDXT1(r, dst, func(p *pixel) {
 				p.setToBlackRGBA()
 			})
 		})
 	})
-	RegisterConverter(S3_DXT3_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
+	RegisterConverter(S3_DXT3_RGBA, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decode4x4Blocks(src, w, h, d, func(r binary.Reader, dst []pixel) {
 			decodeAlphaDXT3(r, dst)
 			decodeColorDXT3_5(r, dst)
 		})
 	})
-	RegisterConverter(S3_DXT5_RGBA, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decode(src, width, height, func(r binary.Reader, dst []pixel) {
+	RegisterConverter(S3_DXT5_RGBA, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decode4x4Blocks(src, w, h, d, func(r binary.Reader, dst []pixel) {
 			decodeAlphaDXT5(r, dst)
 			decodeColorDXT3_5(r, dst)
 		})
@@ -80,14 +80,17 @@ func (p *pixel) setToMix3(c0, c1 pixel) {
 	p.b = (2*c0.b + c1.b) / 3
 }
 
-func decode(src []byte, width, height int, decoder func(r binary.Reader, dst []pixel)) ([]byte, error) {
-	dst := make([]byte, width*height*4)
+func decode4x4Blocks(src []byte, width, height, depth int, decodeBlock func(r binary.Reader, dst []pixel)) ([]byte, error) {
+	dst := make([]byte, width*height*depth*4)
 	block := make([]pixel, 16)
 	r := endian.Reader(bytes.NewReader(src), device.LittleEndian)
-	for y := 0; y < height; y += 4 {
-		for x := 0; x < width; x += 4 {
-			decoder(r, block)
-			copyToDest(block, dst, x, y, width, height)
+	for z := 0; z < depth; z++ {
+		dst := dst[z*width*height*4:]
+		for y := 0; y < height; y += 4 {
+			for x := 0; x < width; x += 4 {
+				decodeBlock(r, block)
+				copyToDest(block, dst, x, y, width, height)
+			}
 		}
 	}
 	return dst, nil

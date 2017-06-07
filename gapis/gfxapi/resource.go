@@ -76,10 +76,10 @@ func (r *ResourceData) ConvertTo(ctx context.Context, f *image.Format) (interfac
 }
 
 // Thumbnail returns the image that most closely matches the desired size.
-func (r *ResourceData) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
+func (r *ResourceData) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
 	data := protoutil.OneOf(r.Data)
 	if t, ok := data.(image.Thumbnailer); ok {
-		return t.Thumbnail(ctx, w, h)
+		return t.Thumbnail(ctx, w, h, d)
 	}
 	return nil, nil
 }

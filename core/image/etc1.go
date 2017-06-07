@@ -32,21 +32,21 @@ func NewETC1_RGB_U8_NORM(name string) *Format {
 func (f *FmtETC1_RGB_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC1_RGB_U8_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+func (*FmtETC1_RGB_U8_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (f *FmtETC1_RGB_U8_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC1_RGB_U8_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC1_RGB_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
 }
 
 func init() {
-	RegisterConverter(ETC1_RGB_U8_NORM, RGB_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return Convert(src, width, height, ETC2_RGB_U8_NORM, RGB_U8_NORM)
+	RegisterConverter(ETC1_RGB_U8_NORM, RGB_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return Convert(src, w, h, d, ETC2_RGB_U8_NORM, RGB_U8_NORM)
 	})
-	RegisterConverter(ETC1_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return Convert(src, width, height, ETC2_RGB_U8_NORM, RGBA_U8_NORM)
+	RegisterConverter(ETC1_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return Convert(src, w, h, d, ETC2_RGB_U8_NORM, RGBA_U8_NORM)
 	})
 }

@@ -63,8 +63,8 @@ type drawConfig struct {
 }
 
 type imgRes struct {
-	img *image.Image2D // The image data.
-	err error          // The error that occurred generating the image.
+	img *image.Data // The image data.
+	err error       // The error that occurred generating the image.
 }
 
 // framebufferRequest requests a postback of a framebuffer's attachment.
@@ -567,7 +567,7 @@ func (a api) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment gfxapi.FramebufferAttachment,
 	wireframeMode replay.WireframeMode,
-	hints *service.UsageHints) (*image.Image2D, error) {
+	hints *service.UsageHints) (*image.Data, error) {
 
 	c := drawConfig{}
 	out := make(chan imgRes, 1)
@@ -576,7 +576,7 @@ func (a api) QueryFramebufferAttachment(
 	if err != nil {
 		return nil, err
 	}
-	return res.(*image.Image2D), nil
+	return res.(*image.Data), nil
 }
 
 func (a api) QueryIssues(

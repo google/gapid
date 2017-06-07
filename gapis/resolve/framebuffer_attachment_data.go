@@ -27,7 +27,7 @@ import (
 )
 
 // Resolve implements the database.Resolver interface.
-func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
+func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	intent := replay.Intent{
 		Device:  r.Device,
 		Capture: path.FindCapture(r.After),
@@ -50,7 +50,7 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 
 	query, ok := api.(replay.QueryFramebufferAttachment)
 	if !ok {
-		log.E(ctx, "API %s does not implement FramebufferAttachmentDataResolvable", api.Name())
+		log.E(ctx, "API %s does not implement QueryFramebufferAttachment", api.Name())
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
@@ -90,5 +90,5 @@ func (r *FramebufferAttachmentDataResolvable) Resolve(ctx context.Context) (inte
 		return nil, log.Err(ctx, err, "Couldn't get framebuffer attachment")
 	}
 
-	return res.Data, nil
+	return res.Bytes, nil
 }

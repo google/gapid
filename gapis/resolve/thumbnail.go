@@ -28,7 +28,7 @@ import (
 )
 
 // Thumbnail resolves and returns the thumbnail from the path p.
-func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
+func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info, error) {
 	switch parent := p.Parent().(type) {
 	case *path.Command:
 		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
@@ -42,7 +42,7 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info2D, error) {
 }
 
 // CommandThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.Command) (*image.Info2D, error) {
+func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.Command) (*image.Info, error) {
 	imageInfoPath, err := FramebufferAttachment(ctx,
 		nil, // device
 		p,
@@ -70,11 +70,11 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path
 		return nil, err
 	}
 
-	return boxedImageInfo.(*image.Info2D), nil
+	return boxedImageInfo.(*image.Info), nil
 }
 
 // CommandTreeNodeThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info2D, error) {
+func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info, error) {
 	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 }
 
 // ResourceDataThumbnail resolves and returns the thumbnail for the resource at p.
-func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.ResourceData) (*image.Info2D, error) {
+func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.ResourceData) (*image.Info, error) {
 	obj, err := ResolveInternal(ctx, p)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 		return nil, fmt.Errorf("Type %T does not support thumbnailing", obj)
 	}
 
-	img, err := t.Thumbnail(ctx, w, h)
+	img, err := t.Thumbnail(ctx, w, h, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -152,5 +152,5 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 		return img, err
 	}
 
-	return img.Resize(ctx, targetWidth, targetHeight)
+	return img.Resize(ctx, targetWidth, targetHeight, 1)
 }

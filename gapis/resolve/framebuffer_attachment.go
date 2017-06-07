@@ -95,7 +95,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 	}
 	width, height := uniformScale(fbInfo.width, fbInfo.height, r.Settings.MaxWidth, r.Settings.MaxHeight)
 
-	data, err := database.Store(ctx, &FramebufferAttachmentDataResolvable{
+	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
 		Device:        r.Device,
 		After:         r.After,
 		Width:         width,
@@ -109,11 +109,12 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		return nil, err
 	}
 
-	return &image.Info2D{
+	return &image.Info{
 		Width:  width,
 		Height: height,
+		Depth:  1,
 		Format: fbInfo.format,
-		Data:   image.NewID(data),
+		Bytes:  image.NewID(id),
 	}, nil
 }
 

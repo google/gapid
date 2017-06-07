@@ -20,6 +20,6 @@ import "context"
 // a thumbnail image.
 type Thumbnailer interface {
 	// Thumbnail returns a thumbnail image info that most closely matches the
-	// desired image width w and height h.
-	Thumbnail(ctx context.Context, w, h uint32) (*Info2D, error)
+	// desired image width, height and depth.
+	Thumbnail(ctx context.Context, w, h, d uint32) (*Info, error)
 }

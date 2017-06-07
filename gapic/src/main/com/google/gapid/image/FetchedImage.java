@@ -26,7 +26,7 @@ import static com.google.gapid.util.Paths.thumbnail;
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.proto.image.Image.Info2D;
+import com.google.gapid.proto.image.Image.Info;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
@@ -52,9 +52,9 @@ public class FetchedImage implements MultiLevelImage {
 
   public static ListenableFuture<FetchedImage> load(Client client, Path.ImageInfo imagePath) {
     return Futures.transformAsync(client.get(imageInfo(imagePath)), value -> {
-      Images.Format format = getFormat(value.getImageInfo2D());
+      Images.Format format = getFormat(value.getImageInfo());
       return Futures.transform(client.get(imageData(imagePath, format.format)),
-          pixelValue -> new FetchedImage(client, format, pixelValue.getImageInfo2D()));
+          pixelValue -> new FetchedImage(client, format, pixelValue.getImageInfo()));
     });
   }
 
@@ -93,11 +93,11 @@ public class FetchedImage implements MultiLevelImage {
 
   public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
     return loadLevel(Futures.transform(client.get(thumbnail(path)), value -> {
-      return new FetchedImage(client, Images.Format.Color8, value.getImageInfo2D());
+      return new FetchedImage(client, Images.Format.Color8, value.getImageInfo());
     }), 0);
   }
 
-  private static Images.Format getFormat(Info2D imageInfo) {
+  private static Images.Format getFormat(Info imageInfo) {
     return Images.Format.from(imageInfo.getFormat());
   }
 
@@ -110,12 +110,12 @@ public class FetchedImage implements MultiLevelImage {
         Images.Format.Color8 : getFormat(cubemap.getLevels(0).getNegativeZ());
   }
 
-  public FetchedImage(Client client, Images.Format format, Info2D imageInfo) {
+  public FetchedImage(Client client, Images.Format format, Info imageInfo) {
     levels = new Level[] { new SingleFacedLevel(client, format, imageInfo) };
   }
 
   public FetchedImage(Client client, Images.Format format, Texture2D texture) {
-    List<Info2D> infos = texture.getLevelsList();
+    List<Info> infos = texture.getLevelsList();
     levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SingleFacedLevel(client, format, infos.get(i));
@@ -198,14 +198,14 @@ public class FetchedImage implements MultiLevelImage {
 
     protected abstract ListenableFuture<ArrayImageBuffer> doLoad();
 
-    protected static ArrayImageBuffer convertImage(Info2D info, Images.Format format, byte[] data) {
+    protected static ArrayImageBuffer convertImage(Info info, Images.Format format, byte[] data) {
       return format.builder(info.getWidth(), info.getHeight())
           .update(data, 0, 0, info.getWidth(), info.getHeight())
           .build();
     }
 
     protected static ArrayImageBuffer convertImage(
-        Info2D[] infos, Images.Format format, byte[][] data) {
+        Info[] infos, Images.Format format, byte[][] data) {
       assert (infos.length == data.length && infos.length == 6);
       // Typically these are all the same, but let's be safe.
       int width = Math.max(
@@ -242,9 +242,9 @@ public class FetchedImage implements MultiLevelImage {
    */
   private static class SingleFacedLevel extends Level {
     private final Client client;
-    protected final Info2D imageInfo;
+    protected final Info imageInfo;
 
-    public SingleFacedLevel(Client client, Images.Format format, Info2D imageInfo) {
+    public SingleFacedLevel(Client client, Images.Format format, Info imageInfo) {
       super(format);
       this.client = client;
       this.imageInfo = imageInfo;
@@ -253,7 +253,7 @@ public class FetchedImage implements MultiLevelImage {
     @Override
     protected ListenableFuture<ArrayImageBuffer> doLoad() {
       return Futures.transform(
-          client.get(blob(imageInfo.getData())), new Function<Value, ArrayImageBuffer>() {
+          client.get(blob(imageInfo.getBytes())), new Function<Value, ArrayImageBuffer>() {
         @Override
         public ArrayImageBuffer apply(Value data) {
           //TODO
@@ -268,12 +268,12 @@ public class FetchedImage implements MultiLevelImage {
    */
   private static class SixFacedLevel extends Level {
     private final Client client;
-    protected final Info2D[] imageInfos;
+    protected final Info[] imageInfos;
 
     public SixFacedLevel(Client client, Images.Format format, CubemapLevel level) {
       super(format);
       this.client = client;
-      this.imageInfos = new Info2D[] {
+      this.imageInfos = new Info[] {
         level.getNegativeX(), level.getPositiveX(),
         level.getNegativeY(), level.getPositiveY(),
         level.getNegativeZ(), level.getPositiveZ()
@@ -285,7 +285,7 @@ public class FetchedImage implements MultiLevelImage {
       @SuppressWarnings("unchecked")
       ListenableFuture<Value>[] futures = new ListenableFuture[imageInfos.length];
       for (int i = 0; i < imageInfos.length; i++) {
-        futures[i] = client.get(blob(imageInfos[i].getData()));
+        futures[i] = client.get(blob(imageInfos[i].getBytes()));
       }
       return Futures.transform(
           Futures.allAsList(futures), new Function<List<Value>, ArrayImageBuffer>() {

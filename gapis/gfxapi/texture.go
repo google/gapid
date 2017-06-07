@@ -22,8 +22,8 @@ import (
 	"github.com/google/gapid/core/image"
 )
 
-func (l *CubemapLevel) faces() [6]*image.Info2D {
-	return [6]*image.Info2D{
+func (l *CubemapLevel) faces() [6]*image.Info {
+	return [6]*image.Info{
 		l.NegativeX,
 		l.PositiveX,
 		l.NegativeY,
@@ -33,7 +33,7 @@ func (l *CubemapLevel) faces() [6]*image.Info2D {
 	}
 }
 
-func (l *CubemapLevel) setFaces(faces [6]*image.Info2D) {
+func (l *CubemapLevel) setFaces(faces [6]*image.Info) {
 	l.NegativeX,
 		l.PositiveX,
 		l.NegativeY,
@@ -43,12 +43,14 @@ func (l *CubemapLevel) setFaces(faces [6]*image.Info2D) {
 }
 
 type imageMatcher struct {
-	best          *image.Info2D
-	score         uint32
-	width, height uint32
+	best   *image.Info
+	score  uint32
+	width  uint32
+	height uint32
+	depth  uint32
 }
 
-func (m *imageMatcher) consider(i *image.Info2D) {
+func (m *imageMatcher) consider(i *image.Info) {
 	if i == nil {
 		return
 	}
@@ -56,31 +58,22 @@ func (m *imageMatcher) consider(i *image.Info2D) {
 	if m.best == nil {
 		m.score = 0xffffffff
 	}
-	dw, dh := i.Width-m.width, i.Height-m.height
-	score := dw*dw + dh*dh
+	dw, dh, dd := i.Width-m.width, i.Height-m.height, i.Depth-m.depth
+	score := dw*dw + dh*dh + dd*dd
 	if m.score > score {
 		m.score = score
 		m.best = i
 	}
 }
 
-// Thumbnail returns the image that most closely matches the desired size.
-func (t *Texture2D) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
-	m := imageMatcher{width: w, height: h}
-	for _, l := range t.Levels {
-		m.consider(l)
-	}
-
-	return m.best, nil
-}
-
 // Interface compliance check
 var _ = image.Convertable((*Texture2D)(nil))
+var _ = image.Thumbnailer((*Texture2D)(nil))
 
 // ConvertTo returns this Texture2D with each mip-level converted to the requested format.
 func (t *Texture2D) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
 	out := &Texture2D{
-		Levels: make([]*image.Info2D, len(t.Levels)),
+		Levels: make([]*image.Info, len(t.Levels)),
 	}
 	for i, m := range t.Levels {
 		if obj, err := m.Convert(ctx, f); err == nil {
@@ -93,16 +86,10 @@ func (t *Texture2D) ConvertTo(ctx context.Context, f *image.Format) (interface{}
 }
 
 // Thumbnail returns the image that most closely matches the desired size.
-func (t *Cubemap) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
-	m := imageMatcher{width: w, height: h}
-
+func (t *Texture2D) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
+	m := imageMatcher{width: w, height: h, depth: 1}
 	for _, l := range t.Levels {
-		m.consider(l.NegativeX)
-		m.consider(l.PositiveX)
-		m.consider(l.NegativeY)
-		m.consider(l.PositiveY)
-		m.consider(l.NegativeZ)
-		m.consider(l.PositiveZ)
+		m.consider(l)
 	}
 
 	return m.best, nil
@@ -110,6 +97,7 @@ func (t *Cubemap) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, er
 
 // Interface compliance check
 var _ = image.Convertable((*Cubemap)(nil))
+var _ = image.Thumbnailer((*Cubemap)(nil))
 
 // ConvertTo returns this Cubemap with each mip-level face converted to the requested format.
 func (t *Cubemap) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
@@ -135,6 +123,22 @@ func (t *Cubemap) ConvertTo(ctx context.Context, f *image.Format) (interface{}, 
 	return out, nil
 }
 
+// Thumbnail returns the image that most closely matches the desired size.
+func (t *Cubemap) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
+	m := imageMatcher{width: w, height: h, depth: 1}
+
+	for _, l := range t.Levels {
+		m.consider(l.NegativeX)
+		m.consider(l.PositiveX)
+		m.consider(l.NegativeY)
+		m.consider(l.PositiveY)
+		m.consider(l.NegativeZ)
+		m.consider(l.PositiveZ)
+	}
+
+	return m.best, nil
+}
+
 // Interface compliance check
 var _ = image.Convertable((*Texture)(nil))
 var _ = image.Thumbnailer((*Texture)(nil))
@@ -153,10 +157,10 @@ func (t *Texture) ConvertTo(ctx context.Context, f *image.Format) (interface{}, 
 }
 
 // Thumbnail returns the image that most closely matches the desired size.
-func (t *Texture) Thumbnail(ctx context.Context, w, h uint32) (*image.Info2D, error) {
+func (t *Texture) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
 	data := protoutil.OneOf(t.Type)
 	if t, ok := data.(image.Thumbnailer); ok {
-		return t.Thumbnail(ctx, w, h)
+		return t.Thumbnail(ctx, w, h, d)
 	}
 	return nil, nil
 }
