@@ -12,7 +12,7 @@ Please see the following for detailed steps on each platform.
 
 ## Windows
 
-### Install [Go 1.8](https://storage.googleapis.com/golang/go1.8.windows-amd64.msi)
+### Install [Go 1.8.3](https://storage.googleapis.com/golang/go1.8.3.windows-amd64.msi)
 
 ### Install Mingw-w64 Toolchain
 * Install [msys2](http://repo.msys2.org/distrib/x86_64/msys2-x86_64-20161025.exe).
@@ -73,7 +73,8 @@ The build output will be in the directory you specified with `do config`.
 
 ## MacOS
 
-### Install [Go 1.8](https://storage.googleapis.com/golang/go1.8.darwin-amd64.pkg)
+### Install [Go 1.8.3](https://storage.googleapis.com/golang/go1.8.3.darwin-amd64.pkg)
+   * Note that some older 1.8 versions have had problems if used with Xcode 8.3 ([bug](https://github.com/golang/go/issues/19772))
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip) to a directory of your choosing.
@@ -134,7 +135,7 @@ The build output will be in the directory you specified with `do config`.
 
 ## Linux
 
-### Install [Go 1.8](https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz)
+### Install [Go 1.8.3](https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz)
 
 ### Install Android SDK
 * Unzip the [Android SDK](https://dl.google.com/android/repository/tools_r25.2.3-linux.zip) to a directory of your choosing.
