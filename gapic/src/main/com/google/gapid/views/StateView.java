@@ -239,7 +239,7 @@ public class StateView extends Composite
       }
 
       return new String[] { String.valueOf(object) };
-    });
+    }, true);
   }
 
   @Override
