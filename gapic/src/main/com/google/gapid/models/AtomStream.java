@@ -36,6 +36,7 @@ import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
@@ -75,6 +76,14 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   public void onCaptureLoadingStart(boolean maintainState) {
     if (!maintainState) {
       selection = null;
+    }
+  }
+
+  @Override
+  public void onCaptureLoaded(Loadable.Message error) {
+    if (error == null && selection != null) {
+      selection = selection.withCapture(capture.getData());
+      resolve(selection.getCommand(), node -> selectAtoms(selection.withNode(node), true));
     }
   }
 
@@ -380,6 +389,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     public AtomIndex withNode(Path.CommandTreeNode newNode) {
       return new AtomIndex(command, newNode, group);
+    }
+
+    public AtomIndex withCapture(Path.Capture capture) {
+      return new AtomIndex(command.toBuilder().setCapture(capture).build(), null, group);
     }
 
     public Path.Command getCommand() {
