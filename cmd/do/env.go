@@ -40,9 +40,9 @@ func env(cfg Config) *shell.Env {
 		system32 := cmd.Parent()
 		windows := system32.Parent()
 		path = append(path, system32.System(), windows.System())
-		path = append(path, exePaths("node.exe", "adb.exe")...)
+		path = append(path, exePaths(cfg, "node.exe", "adb.exe")...)
 	} else {
-		path = append(path, exePaths(
+		path = append(path, exePaths(cfg,
 			"sh", "uname", "sed", "clang", "gcc", "node", "adb",
 		)...)
 	}
@@ -58,13 +58,18 @@ func env(cfg Config) *shell.Env {
 	return env
 }
 
-func exePaths(exes ...string) []string {
+func exePaths(cfg Config, exes ...string) []string {
 	path := []string{}
 	added := map[file.Path]bool{}
 	for _, name := range exes {
+		// First search PATH
 		exe, err := file.FindExecutable(name)
 		if err != nil {
-			continue
+			// Not found on PATH, try ${AndroidSDKRoot}/platform-tools.
+			exe, err = file.FindExecutable(cfg.AndroidSDKRoot.Join("platform-tools", name).System())
+			if err != nil {
+				continue
+			}
 		}
 		dir := exe.Parent()
 		if !added[dir] {
