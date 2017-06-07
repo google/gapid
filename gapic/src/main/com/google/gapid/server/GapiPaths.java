@@ -30,7 +30,9 @@ import java.util.logging.Logger;
  * Utility for locating the various GAPID binaries and associated files.
  */
 public final class GapiPaths {
-  public static final Flag<String> gapidPath = Flags.value("gapid", "", "Path to the gapid binaries.");
+  public static final Flag<String> gapidPath =
+      Flags.value("gapid", "", "Path to the gapid binaries.");
+  public static final Flag<String> adbPath = Flags.value("adb", "", "Path to the adb binary.");
 
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
@@ -73,6 +75,10 @@ public final class GapiPaths {
   public static synchronized File strings() {
     isValid();
     return stringsPath;
+  }
+
+  public static String adb() {
+    return adbPath.get();
   }
 
   private static boolean checkForTools(File dir) {

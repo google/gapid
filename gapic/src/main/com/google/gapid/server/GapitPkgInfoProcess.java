@@ -76,6 +76,9 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
       args.add(deviceSerial);
     }
 
+    args.add("--adb");
+    args.add(GapiPaths.adb());
+
     pb.command(args);
     return null;
   }
