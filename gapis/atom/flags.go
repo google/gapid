@@ -20,6 +20,7 @@ type Flags uint32
 
 const (
 	DrawCall Flags = 1 << iota
+	BeginOfFrame
 	EndOfFrame
 	PushUserMarker
 	PopUserMarker
@@ -28,6 +29,9 @@ const (
 
 // IsDrawCall returns true if the atom is a draw call.
 func (f Flags) IsDrawCall() bool { return (f & DrawCall) != 0 }
+
+// IsBeginOfFrame returns true if the atom represents the begin of a frame.
+func (f Flags) IsBeginOfFrame() bool { return (f & BeginOfFrame) != 0 }
 
 // IsEndOfFrame returns true if the atom represents the end of a frame.
 func (f Flags) IsEndOfFrame() bool { return (f & EndOfFrame) != 0 }

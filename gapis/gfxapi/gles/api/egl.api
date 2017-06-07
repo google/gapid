@@ -312,14 +312,14 @@ cmd EGLBoolean eglSurfaceAttrib(EGLDisplay display,
 }
 
 @no_replay
-@EndOfFrame
+@BeginOfFrame
 ///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglSwapBuffers.xhtml
 cmd EGLBoolean eglSwapBuffers(EGLDisplay display, void* surface) {
   return ?
 }
 
 @no_replay
-@EndOfFrame
+@BeginOfFrame
 ///https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_swap_buffers_with_damage.txt
 cmd EGLBoolean eglSwapBuffersWithDamageKHR(EGLDisplay dpy,
                                            EGLSurface surface,

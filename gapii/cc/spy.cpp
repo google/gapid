@@ -352,6 +352,36 @@ void Spy::onPostDrawCall(uint8_t api) {
     mNumDrawsPerFrame++;
 }
 
+void Spy::onPreBeginOfFrame(uint8_t api) {
+    if (is_suspended()) {
+        return;
+    }
+    if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
+        GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
+        observeFramebuffer(api);
+    }
+    GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d",
+               mNumFrames, mNumDraws, mNumDrawsPerFrame);
+    mNumFrames++;
+    mNumDrawsPerFrame = 0;
+}
+
+void Spy::onPostBeginOfFrame(CallObserver* observer) {
+    if (!is_suspended() && mCaptureFrames >= 1) {
+        mCaptureFrames -= 1;
+        if (mCaptureFrames == 0) {
+            mConnection->close();
+            set_suspended(true);
+        }
+    }
+    if (mSuspendCaptureFrames.load() > 0) {
+        if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
+            set_suspended(false);
+            EnumerateVulkanResources(observer);
+        }
+    }
+}
+
 void Spy::onPreEndOfFrame(uint8_t api) {
     if (is_suspended()) {
         return;

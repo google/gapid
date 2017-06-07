@@ -40,7 +40,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 			drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
 			seenSurfaces[eglMakeCurrent.Draw] = true
 		}
-		if a.AtomFlags().IsEndOfFrame() {
+		if a.AtomFlags().IsBeginOfFrame() {
 			if c != nil && !c.Info.PreserveBuffersOnSwap {
 				drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
 			}
