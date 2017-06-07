@@ -59,13 +59,16 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
+import org.eclipse.jface.text.ITextOperationTarget;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -350,11 +353,24 @@ public class ShaderView extends Composite
       Group group = createGroup(parent, source.label);
       SourceViewer viewer =
           new SourceViewer(group, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+      StyledText textWidget = viewer.getTextWidget();
       viewer.setEditable(type.isEditable());
-      viewer.getTextWidget().setFont(theme.getMonoSpaceFont());
+      textWidget.setFont(theme.getMonoSpaceFont());
+      textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
       viewer.configure(new GlslSourceConfiguration(theme));
       viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));
+      textWidget.addListener(SWT.KeyDown, e -> {
+        if (isKey(e, SWT.MOD1, 'z')) {
+          viewer.doOperation(ITextOperationTarget.UNDO);
+        } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+          viewer.doOperation(ITextOperationTarget.REDO);
+        }
+      });
       return viewer;
+    }
+
+    private boolean isKey(Event e, int stateMask, int keyCode) {
+      return (e.stateMask & stateMask) == e.stateMask && e.keyCode == keyCode;
     }
 
     public void clearSource() {
