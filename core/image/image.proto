@@ -25,28 +25,32 @@ message ID {
     bytes data = 1;
 }
 
-// Image2D is a two-dimensional bitmap.
-message Image2D {
+// Data is a one, two or three dimensional image.
+message Data {
 	// The format of the image.
     Format format = 1;
 	// The width of the image in pixels.
     uint32 width = 2;
-	// The height of the image in pixels.
+	// The height of the image in pixels. Must be 1 for 1D images.
     uint32 height = 3;
+	// The depth of the image in pixels. Must be 1 for 1D or 2D images.
+    uint32 depth = 4;
 	// The pixel data.
-    bytes data = 4;
+    bytes bytes = 5;
 }
 
-// Info2D describes a two-dimensional bitmap.
-message Info2D {
+// Info describes a one, two or three dimensional image.
+message Info {
 	// The format of the image.
     Format format = 1;
 	// The width of the image in pixels.
     uint32 width = 2;
-	// The height of the image in pixels.
+	// The height of the image in pixels. Must be 1 for 1D images.
     uint32 height = 3;
-	// The identifier of the Image2D data.
-    ID data = 4;
+	// The depth of the image in pixels. Must be 1 for 1D or 2D images.
+    uint32 depth = 4;
+	// The identifier of the image data as bytes.
+    ID bytes = 5;
 }
 
 message Format {
@@ -106,23 +110,27 @@ message FmtASTC {
 
 // GAPIS internal structure.
 message ConvertResolvable {
-    ID data = 1;
+    ID bytes = 1;
 	uint32 width = 2;
 	uint32 height = 3;
-	Format format_from = 4;
-	Format format_to = 5;
+	uint32 depth = 4;
+	Format format_from = 5;
+	Format format_to = 6;
 
-	// Number of bytes between lines in the source image.
-	// If 0 then lines are contiguous.
-	uint32 stride_from = 6;
+	// Number of bytes between rows in the source image. If 0 then rows are contiguous.
+	uint32 row_stride_from = 7;
+	// Number of bytes between each 2D slice in the source image. If 0 then slices are contiguous.
+	uint32 slice_stride_from = 8;
 }
 
 // GAPIS internal structure.
 message ResizeResolvable {
-    ID data = 1;
+    ID bytes = 1;
     Format format = 2;
     uint32 src_width = 3;
     uint32 src_height = 4;
-    uint32 dst_width = 5;
-    uint32 dst_height = 6;
+    uint32 src_depth = 5;
+    uint32 dst_width = 6;
+    uint32 dst_height = 7;
+    uint32 dst_depth = 8;
 }

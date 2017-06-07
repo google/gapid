@@ -472,7 +472,7 @@ func getDepthImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) 
 	}
 }
 
-func setCubemapFace(img *image.Info2D, cubeMap *gfxapi.CubemapLevel, layerIndex uint32) (success bool) {
+func setCubemapFace(img *image.Info, cubeMap *gfxapi.CubemapLevel, layerIndex uint32) (success bool) {
 	if cubeMap == nil || img == nil {
 		return false
 	}
@@ -515,11 +515,12 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxap
 			}
 			for layerIndex, imageLayer := range t.Layers {
 				for levelIndex, imageLevel := range imageLayer.Levels {
-					img := &image.Info2D{
+					img := &image.Info{
 						Format: format,
 						Width:  imageLevel.Width,
 						Height: imageLevel.Height,
-						Data:   image.NewID(imageLevel.Data.ResourceID(ctx, s)),
+						Depth:  imageLevel.Depth,
+						Bytes:  image.NewID(imageLevel.Data.ResourceID(ctx, s)),
 					}
 					if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
 						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
@@ -529,13 +530,14 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxap
 			return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Cubemap{Levels: cubeMapLevels})), nil
 		}
 
-		levels := make([]*image.Info2D, len(t.Layers[0].Levels))
+		levels := make([]*image.Info, len(t.Layers[0].Levels))
 		for i, level := range t.Layers[0].Levels {
-			levels[i] = &image.Info2D{
+			levels[i] = &image.Info{
 				Format: format,
 				Width:  level.Width,
 				Height: level.Height,
-				Data:   image.NewID(level.Data.ResourceID(ctx, s)),
+				Depth:  level.Depth,
+				Bytes:  image.NewID(level.Data.ResourceID(ctx, s)),
 			}
 		}
 		return gfxapi.NewResourceData(gfxapi.NewTexture(&gfxapi.Texture2D{Levels: levels})), nil

@@ -49,14 +49,14 @@ func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
 }
 
 // ImageInfo resolves and returns the ImageInfo from the path p.
-func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info2D, error) {
+func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info, error) {
 	obj, err := database.Resolve(ctx, p.Id.ID())
 	if err != nil {
 		return nil, err
 	}
-	ii, ok := obj.(*image.Info2D)
+	ii, ok := obj.(*image.Info)
 	if !ok {
-		return nil, fmt.Errorf("Path %s gave %T, expected *image.Info2D", p, obj)
+		return nil, fmt.Errorf("Path %s gave %T, expected *image.Info", p, obj)
 	}
 	return ii, err
 }

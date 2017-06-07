@@ -55,7 +55,7 @@ message FramebufferChangesResolvable {
 	path.Capture capture = 1;
 }
 
-message FramebufferAttachmentDataResolvable {
+message FramebufferAttachmentBytesResolvable {
 	path.Device device = 1;
 	path.Command after = 2;
 	uint32 width = 3;

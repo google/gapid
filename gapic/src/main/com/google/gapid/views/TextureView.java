@@ -390,13 +390,13 @@ public class TextureView extends Composite
 
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
-          new AdditionalInfo("<unknown>", Image.Info2D.getDefaultInstance(), 0);
+          new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0);
 
-      public final Image.Info2D level0;
+      public final Image.Info level0;
       public final int levelCount;
       public final String typeLabel;
 
-      public AdditionalInfo(String typeLabel, Image.Info2D level0, int levelCount) {
+      public AdditionalInfo(String typeLabel, Image.Info level0, int levelCount) {
         this.level0 = level0;
         this.levelCount = levelCount;
         this.typeLabel = typeLabel;

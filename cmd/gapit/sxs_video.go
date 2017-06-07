@@ -356,7 +356,7 @@ func resize(i *image.NRGBA, w, h int) *image.NRGBA {
 	if i == nil {
 		return nil
 	}
-	data, err := img.RGBA_U8_NORM.Resize(i.Pix, i.Bounds().Dx(), i.Bounds().Dy(), w, h)
+	data, err := img.RGBA_U8_NORM.Resize(i.Pix, i.Bounds().Dx(), i.Bounds().Dy(), 1, w, h, 1)
 	if err != nil {
 		return nil
 	}

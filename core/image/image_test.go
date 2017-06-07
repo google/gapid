@@ -29,24 +29,25 @@ var (
 )
 
 func TestDifference(t *testing.T) {
-	fill := func(w, h uint32, r, g, b, a byte) *image.Image2D {
-		data := make([]byte, w*h*4)
-		for p := 0; p < len(data); p += 4 {
-			data[p+0] = r
-			data[p+1] = g
-			data[p+2] = b
-			data[p+3] = a
+	fill := func(w, h uint32, r, g, b, a byte) *image.Data {
+		bytes := make([]byte, w*h*4)
+		for p := 0; p < len(bytes); p += 4 {
+			bytes[p+0] = r
+			bytes[p+1] = g
+			bytes[p+2] = b
+			bytes[p+3] = a
 		}
-		return &image.Image2D{
+		return &image.Data{
 			Width:  w,
 			Height: h,
-			Data:   data,
+			Depth:  1,
+			Bytes:  bytes,
 			Format: image.RGBA_U8_NORM,
 		}
 	}
 	for _, test := range []struct {
 		name string
-		a, b *image.Image2D
+		a, b *image.Data
 		diff float32
 	}{
 		{

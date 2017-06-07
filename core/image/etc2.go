@@ -52,11 +52,11 @@ func NewETC2_SRGB_U8_NORM(name string) *Format {
 func (f *FmtETC2_RGB_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RGB_U8_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+func (*FmtETC2_RGB_U8_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (f *FmtETC2_RGB_U8_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_RGB_U8_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_RGB_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
@@ -77,11 +77,11 @@ func NewETC2_SRGBA_U8_NORM(name string) *Format {
 func (f *FmtETC2_RGBA_U8_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RGBA_U8_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+func (*FmtETC2_RGBA_U8_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }
-func (f *FmtETC2_RGBA_U8_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_RGBA_U8_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_RGBA_U8_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
@@ -102,11 +102,11 @@ func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *Format {
 func (f *FmtETC2_RGBA_U8U8U8U1_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RGBA_U8U8U8U1_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+func (*FmtETC2_RGBA_U8U8U8U1_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (f *FmtETC2_RGBA_U8U8U8U1_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_RGBA_U8U8U8U1_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_RGBA_U8U8U8U1_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
@@ -121,11 +121,11 @@ func NewETC2_R_U11_NORM(name string) *Format {
 func (f *FmtETC2_R_U11_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_R_U11_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+func (*FmtETC2_R_U11_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (f *FmtETC2_R_U11_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_R_U11_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_R_U11_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red}
@@ -140,11 +140,11 @@ func NewETC2_RG_U11_NORM(name string) *Format {
 func (f *FmtETC2_RG_U11_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RG_U11_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+func (*FmtETC2_RG_U11_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }
-func (f *FmtETC2_RG_U11_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_RG_U11_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_RG_U11_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green}
@@ -159,11 +159,11 @@ func NewETC2_R_S11_NORM(name string) *Format {
 func (f *FmtETC2_R_S11_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_R_S11_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
+func (*FmtETC2_R_S11_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
 }
-func (f *FmtETC2_R_S11_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_R_S11_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_R_S11_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red}
@@ -178,37 +178,37 @@ func NewETC2_RG_S11_NORM(name string) *Format {
 func (f *FmtETC2_RG_S11_NORM) key() interface{} {
 	return *f
 }
-func (*FmtETC2_RG_S11_NORM) size(w, h int) int {
-	return (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+func (*FmtETC2_RG_S11_NORM) size(w, h, d int) int {
+	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }
-func (f *FmtETC2_RG_S11_NORM) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtETC2_RG_S11_NORM) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (*FmtETC2_RG_S11_NORM) channels() []stream.Channel {
 	return []stream.Channel{stream.Channel_Red, stream.Channel_Green}
 }
 
 func init() {
-	RegisterConverter(ETC2_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETC(src, width, height, etcAlphaNone)
+	RegisterConverter(ETC2_RGB_U8_NORM, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlphaNone)
 	})
-	RegisterConverter(ETC2_RGBA_U8_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETC(src, width, height, etcAlpha8Bit)
+	RegisterConverter(ETC2_RGBA_U8_NORM, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlpha8Bit)
 	})
-	RegisterConverter(ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETC(src, width, height, etcAlpha1Bit)
+	RegisterConverter(ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlpha1Bit)
 	})
-	RegisterConverter(ETC2_R_U11_NORM, R_U16_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETCU11(src, width, height, 1)
+	RegisterConverter(ETC2_R_U11_NORM, R_U16_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETCU11(src, w, h, d, 1)
 	})
-	RegisterConverter(ETC2_RG_U11_NORM, RG_U16_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETCU11(src, width, height, 2)
+	RegisterConverter(ETC2_RG_U11_NORM, RG_U16_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETCU11(src, w, h, d, 2)
 	})
-	RegisterConverter(ETC2_R_S11_NORM, R_S16_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETCS11(src, width, height, 1)
+	RegisterConverter(ETC2_R_S11_NORM, R_S16_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETCS11(src, w, h, d, 1)
 	})
-	RegisterConverter(ETC2_RG_S11_NORM, RG_S16_NORM, func(src []byte, width, height int) ([]byte, error) {
-		return decodeETCS11(src, width, height, 2)
+	RegisterConverter(ETC2_RG_S11_NORM, RG_S16_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETCS11(src, w, h, d, 2)
 	})
 
 	for _, conv := range []struct {
@@ -224,21 +224,21 @@ func init() {
 	} {
 		conv := conv
 		if !registered(conv.src, RGB_U8_NORM) {
-			RegisterConverter(conv.src, RGB_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-				rgb, err := Convert(src, width, height, conv.src, conv.dst)
+			RegisterConverter(conv.src, RGB_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+				rgb, err := Convert(src, w, h, d, conv.src, conv.dst)
 				if err != nil {
 					return nil, err
 				}
-				return Convert(rgb, width, height, conv.dst, RGB_U8_NORM)
+				return Convert(rgb, w, h, d, conv.dst, RGB_U8_NORM)
 			})
 		}
 		if !registered(conv.src, RGBA_U8_NORM) {
-			RegisterConverter(conv.src, RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-				rgba, err := Convert(src, width, height, conv.src, conv.dst)
+			RegisterConverter(conv.src, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+				rgba, err := Convert(src, w, h, d, conv.src, conv.dst)
 				if err != nil {
 					return nil, err
 				}
-				return Convert(rgba, width, height, conv.dst, RGBA_U8_NORM)
+				return Convert(rgba, w, h, d, conv.dst, RGBA_U8_NORM)
 			})
 		}
 	}
@@ -281,8 +281,8 @@ const (
 	etcAlpha1Bit
 )
 
-func decodeETC(src []byte, width, height int, alphaMode etcAlphaMode) ([]byte, error) {
-	dst := make([]byte, width*height*4)
+func decodeETC(src []byte, width, height, depth int, alphaMode etcAlphaMode) ([]byte, error) {
+	dst := make([]byte, width*height*depth*4)
 
 	blockWidth := sint.Max((width+3)/4, 1)
 	blockHeight := sint.Max((height+3)/4, 1)
@@ -329,231 +329,235 @@ func decodeETC(src []byte, width, height int, alphaMode etcAlphaMode) ([]byte, e
 	}
 
 	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
-	for by := 0; by < blockHeight; by++ {
-		for bx := 0; bx < blockWidth; bx++ {
-			if alphaMode == etcAlpha8Bit {
+
+	for z := 0; z < depth; z++ {
+		dst := dst[z*width*height*4:]
+		for by := 0; by < blockHeight; by++ {
+			for bx := 0; bx < blockWidth; bx++ {
+				if alphaMode == etcAlpha8Bit {
+					v64 := r.Uint64()
+					base, mul, modTbl := decodeETCBaseMulModTbl(v64)
+					for i := uint8(0); i < 16; i++ {
+						mod := modTbl[(v64>>(i*3))&7]
+						alpha[15-i] = sint.Byte(base + mod*mul)
+					}
+				}
+
 				v64 := r.Uint64()
-				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
-				for i := uint8(0); i < 16; i++ {
-					mod := modTbl[(v64>>(i*3))&7]
-					alpha[15-i] = sint.Byte(base + mod*mul)
+				flip := (v64 >> 32) & 1
+				diff := (v64 >> 33) & 1
+				opaque := 1
+				if alphaMode == etcAlpha1Bit {
+					opaque = int(diff)
 				}
-			}
 
-			v64 := r.Uint64()
-			flip := (v64 >> 32) & 1
-			diff := (v64 >> 33) & 1
-			opaque := 1
-			if alphaMode == etcAlpha1Bit {
-				opaque = int(diff)
-			}
-
-			mode := uint(0)
-			for i := uint(0); i < 3; i++ {
-				if alphaMode != etcAlpha1Bit && diff == 0 {
-					// ┏━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
-					// ┃    R₀     ┃    R₁     ┃    G₀     ┃    G₁     ┃    B₀     ┃    B₁     ┃   C₀   ┃   C₁   ┃df┃fp┃
-					// ┣━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
-					// ┃₆₃│₆₂│₆₁│₆₀┃₅₉│₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄┃₄₃│₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇┃₃₆│₃₅│₃₄┃₃₃┃₃₂┃
-					// ┖──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┚
-					a := (v64 >> (60 - i*8)) & 15
-					b := (v64 >> (56 - i*8)) & 15
-					c[0][i] = int((a << 4) | a)
-					c[1][i] = int((b << 4) | b)
-				} else {
-					// ┏━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
-					// ┃      R₀      ┃Delta R₀┃      G₀      ┃Delta G₀┃      B₀      ┃Delta B₀┃   C₀   ┃   C₁   ┃df┃fp┃
-					// ┣━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
-					// ┃₆₃│₆₂│₆₁│₆₀│₅₉┃₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂│₅₁┃₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄│₄₃┃₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇┃₃₆│₃₅│₃₄┃₃₃┃₃₂┃
-					// ┖──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┚
-					a := (v64 >> (59 - i*8)) & 31
-					d := (v64 >> (56 - i*8)) & 7
-					b := int(a) + diffTbl[d]
-					if b < 0 || b > 31 {
-						mode = i + 1
-						break
+				mode := uint(0)
+				for i := uint(0); i < 3; i++ {
+					if alphaMode != etcAlpha1Bit && diff == 0 {
+						// ┏━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
+						// ┃    R₀     ┃    R₁     ┃    G₀     ┃    G₁     ┃    B₀     ┃    B₁     ┃   C₀   ┃   C₁   ┃df┃fp┃
+						// ┣━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
+						// ┃₆₃│₆₂│₆₁│₆₀┃₅₉│₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄┃₄₃│₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇┃₃₆│₃₅│₃₄┃₃₃┃₃₂┃
+						// ┖──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┚
+						a := (v64 >> (60 - i*8)) & 15
+						b := (v64 >> (56 - i*8)) & 15
+						c[0][i] = int((a << 4) | a)
+						c[1][i] = int((b << 4) | b)
+					} else {
+						// ┏━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
+						// ┃      R₀      ┃Delta R₀┃      G₀      ┃Delta G₀┃      B₀      ┃Delta B₀┃   C₀   ┃   C₁   ┃df┃fp┃
+						// ┣━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
+						// ┃₆₃│₆₂│₆₁│₆₀│₅₉┃₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂│₅₁┃₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄│₄₃┃₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇┃₃₆│₃₅│₃₄┃₃₃┃₃₂┃
+						// ┖──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┚
+						a := (v64 >> (59 - i*8)) & 31
+						d := (v64 >> (56 - i*8)) & 7
+						b := int(a) + diffTbl[d]
+						if b < 0 || b > 31 {
+							mode = i + 1
+							break
+						}
+						c[0][i] = int((a << 3) | (a >> 2))
+						c[1][i] = int((b << 3) | (b >> 2))
 					}
-					c[0][i] = int((a << 3) | (a >> 2))
-					c[1][i] = int((b << 3) | (b >> 2))
 				}
-			}
 
-			switch mode {
-			case 0: // individual & differential mode (ETC1)
-				codes[0] = modTbl0[opaque][(v64>>37)&7]
-				codes[1] = modTbl0[opaque][(v64>>34)&7]
+				switch mode {
+				case 0: // individual & differential mode (ETC1)
+					codes[0] = modTbl0[opaque][(v64>>37)&7]
+					codes[1] = modTbl0[opaque][(v64>>34)&7]
 
-				blockTbl := flipTbl[flip]
+					blockTbl := flipTbl[flip]
 
-				i := uint(0)
-				for x := bx * 4; x < (bx+1)*4; x++ {
-					for y := by * 4; y < (by+1)*4; y++ {
-						if x < width && y < height {
-							block := blockTbl[i]
-							k := 4 * (y*width + x)
-							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							if opaque == 0 && idx == 2 {
-								dst[k+2] = 0
-								dst[k+1] = 0
-								dst[k+0] = 0
-								dst[k+3] = 0
-							} else {
-								base := c[block]
-								shift := codes[block][idx]
-								dst[k+2] = sint.Byte(base[2] + shift)
-								dst[k+1] = sint.Byte(base[1] + shift)
-								dst[k+0] = sint.Byte(base[0] + shift)
+					i := uint(0)
+					for x := bx * 4; x < (bx+1)*4; x++ {
+						for y := by * 4; y < (by+1)*4; y++ {
+							if x < width && y < height {
+								block := blockTbl[i]
+								k := 4 * (y*width + x)
+								idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
+								if opaque == 0 && idx == 2 {
+									dst[k+2] = 0
+									dst[k+1] = 0
+									dst[k+0] = 0
+									dst[k+3] = 0
+								} else {
+									base := c[block]
+									shift := codes[block][idx]
+									dst[k+2] = sint.Byte(base[2] + shift)
+									dst[k+1] = sint.Byte(base[1] + shift)
+									dst[k+0] = sint.Byte(base[0] + shift)
+									dst[k+3] = alpha[i]
+								}
+							}
+							i++
+						}
+					}
+				case 1: // T-mode
+					// ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
+					// ┃        ┃  R₀ ┏━━┓     ┃    G₀     ┃    B₀     ┃    R₂     ┃    G₂     ┃    B₂     ┃     ┏━━┓  ┃
+					// ┣━━┯━━┯━━╋━━┯━━╋━━╋━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━╋━━╋━━┫
+					// ┃₆₃│₆₂│₆₁┃₆₀│₅₉┃₅₈┃₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄┃₄₃│₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇│₃₆┃₃₅│₃₄┃₃₃┃₃₂┃
+					// ┖──┴──┴──┸──┴──┸──┸──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┸──┸──┚
+
+					// Load colors
+					c[0][R] = int(u64.Expand4to8(((v64 >> 57) & 12) | (v64>>56)&3))
+					c[0][G] = int(u64.Expand4to8(v64 >> 52))
+					c[0][B] = int(u64.Expand4to8(v64 >> 48))
+					c[2][R] = int(u64.Expand4to8(v64 >> 44))
+					c[2][G] = int(u64.Expand4to8(v64 >> 40))
+					c[2][B] = int(u64.Expand4to8(v64 >> 36))
+
+					// Load intensity modifier
+					modIdx := ((v64 >> 33) & 6) | ((v64 >> 32) & 1)
+					mod := modTbl1[modIdx]
+					// Calculate C₁ and c₃
+					for i := 0; i < 3; i++ {
+						c[1][i] = c[2][i] + mod
+						c[3][i] = c[2][i] - mod
+					}
+					// ┏━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┓
+					// ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₃ ┃  x₃ ┃  x₃ ┃  x₃ ┃
+					// ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃
+					// ┣━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━┫
+					// ┃₃₁│₃₀┃₂₉│₂₈┃₂₇│₂₆┃₂₅│₂₄┃₂₃│₂₂┃₂₁│₂₀┃₁₉│₁₈┃₁₇│₁₆┃₁₅│₁₄┃₁₃│₁₂┃₁₁│₁₀┃ ₉│ ₈┃ ₇│ ₆┃ ₅│ ₄┃ ₃│ ₂┃ ₁│ ₀┃
+					// ┖──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┚
+					// Use 2-bit indices to lookup texel colors
+					i := uint(0)
+					for x := bx * 4; x < (bx+1)*4; x++ {
+						for y := by * 4; y < (by+1)*4; y++ {
+							if x < width && y < height {
+								k := 4 * (y*width + x)
+								idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
+								if opaque == 0 && idx == 2 {
+									dst[k+0] = 0
+									dst[k+1] = 0
+									dst[k+2] = 0
+									dst[k+3] = 0
+								} else {
+									dst[k+0] = sint.Byte(c[idx][0])
+									dst[k+1] = sint.Byte(c[idx][1])
+									dst[k+2] = sint.Byte(c[idx][2])
+									dst[k+3] = alpha[i]
+								}
+							}
+							i++
+						}
+					}
+				case 2: // H-mode
+					// ┏━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+					// ┃  ┃    R₀     ┃   G₀   ┏━━━━━━━━┓  ┃  ┏━━┓   B₀   ┃    R₂     ┃    G₂     ┃    B₂     ┃md┏━━┓  ┃
+					// ┣━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━╋━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━╋━━╋━━┫
+					// ┃₆₃┃₆₂│₆₁│₆₀│₅₉┃₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃┃₅₂┃₅₁┃₅₀┃₄₉│₄₈│₄₇┃₄₆│₄₅│₄₄│₄₃┃₄₂│₄₁│₄₀│₃₉┃₃₈│₃₇│₃₆│₃₅┃₃₄┃₃₃┃₃₂┃
+					// ┖──┸──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┸──┸──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┸──┸──┚
+
+					// Load colors
+					c[0][R] = int(u64.Expand4to8(v64 >> 59))
+					c[0][G] = int(u64.Expand4to8(((v64 >> 55) & 14) | ((v64 >> 52) & 1)))
+					c[0][B] = int(u64.Expand4to8(((v64 >> 48) & 8) | ((v64 >> 47) & 7)))
+					c[2][R] = int(u64.Expand4to8(v64 >> 43))
+					c[2][G] = int(u64.Expand4to8(v64 >> 39))
+					c[2][B] = int(u64.Expand4to8(v64 >> 35))
+
+					// Load intensity modifier
+					modIdx := ((v64 >> 32) & 4) | ((v64 >> 31) & 2)
+					// LSB of modIdx is 1 if:
+					if (c[0][R]<<16)+(c[0][G]<<8)+c[0][B] >= (c[2][R]<<16)+(c[2][G]<<8)+c[2][B] {
+						modIdx++
+					}
+					mod := modTbl1[modIdx]
+					// Calculate C₁ and c₃
+					for i := 0; i < 3; i++ {
+						c[0][i], c[1][i] = c[0][i]+mod, c[0][i]-mod
+						c[2][i], c[3][i] = c[2][i]+mod, c[2][i]-mod
+					}
+					// ┏━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┓
+					// ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₃ ┃  x₃ ┃  x₃ ┃  x₃ ┃
+					// ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃
+					// ┣━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━┫
+					// ┃₃₁│₃₀┃₂₉│₂₈┃₂₇│₂₆┃₂₅│₂₄┃₂₃│₂₂┃₂₁│₂₀┃₁₉│₁₈┃₁₇│₁₆┃₁₅│₁₄┃₁₃│₁₂┃₁₁│₁₀┃ ₉│ ₈┃ ₇│ ₆┃ ₅│ ₄┃ ₃│ ₂┃ ₁│ ₀┃
+					// ┖──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┚
+					// Use 2-bit indices to lookup texel colors
+					i := uint(0)
+					for x := bx * 4; x < (bx+1)*4; x++ {
+						for y := by * 4; y < (by+1)*4; y++ {
+							if x < width && y < height {
+								k := 4 * (y*width + x)
+								idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
+								if opaque == 0 && idx == 2 {
+									dst[k+0] = 0
+									dst[k+1] = 0
+									dst[k+2] = 0
+									dst[k+3] = 0
+								} else {
+									dst[k+0] = sint.Byte(c[idx][0])
+									dst[k+1] = sint.Byte(c[idx][1])
+									dst[k+2] = sint.Byte(c[idx][2])
+									dst[k+3] = alpha[i]
+								}
+							}
+							i++
+						}
+					}
+				case 3: // planar-mode
+					// ┏━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
+					// ┃  ┃    R₀           ┃  ┏━━┓           G₀    ┃  ┏━━━━━━━━┓  B₀ ┏━━┓        ┃    R₁        ┏━━┓  ┃
+					// ┣━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━╋━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━╋━━┯━━┯━━╋━━┯━━╋━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━╋━━┫
+					// ┃₆₃┃₆₂│₆₁│₆₀│₅₉│₅₈│₅₇┃₅₆┃₅₅┃₅₄│₅₃│₅₂│₅₁│₅₀│₄₉┃₄₈┃₄₇│₄₆│₄₅┃₄₄│₄₃┃₄₂┃₄₁│₄₀│₃₉┃₃₈│₃₇│₃₆│₃₅│₃₄┃₃₃┃₃₂┃
+					// ┖──┸──┴──┴──┴──┴──┴──┸──┸──┸──┴──┴──┴──┴──┴──┸──┸──┴──┴──┸──┴──┸──┸──┴──┴──┸──┴──┴──┴──┴──┸──┸──┚
+					//
+					// ┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+					// ┃         G₁         ┃        B₁       ┃        R₂       ┃         G₂         ┃       B₂        ┃
+					// ┣━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━┫
+					// ┃₃₁│₃₀│₂₉│₂₈│₂₇│₂₆│₂₅┃₂₄│₂₃│₂₂│₂₁│₂₀│₁₉┃₁₈│₁₇│₁₆│₁₅│₁₄│₁₃┃₁₂│₁₁│₁₀│ ₉│ ₈│ ₇│ ₆┃ ₅│ ₄│ ₃│ ₂│ ₁│ ₀┃
+					// ┖──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┚
+
+					// Load colors
+					c[0][R] = int(u64.Expand6to8(v64 >> 57))
+					c[0][G] = int(u64.Expand7to8(((v64 >> 50) & 64) | ((v64 >> 49) & 63)))
+					c[0][B] = int(u64.Expand6to8(((v64 >> 43) & 32) | ((v64 >> 40) & 24) | ((v64 >> 39) & 7)))
+
+					c[1][R] = int(u64.Expand6to8(((v64 >> 33) & 62) | ((v64 >> 32) & 1)))
+					c[1][G] = int(u64.Expand7to8(v64 >> 25))
+					c[1][B] = int(u64.Expand6to8(v64 >> 19))
+
+					c[2][R] = int(u64.Expand6to8(v64 >> 13))
+					c[2][G] = int(u64.Expand7to8(v64 >> 6))
+					c[2][B] = int(u64.Expand6to8(v64))
+
+					i := 0
+					for dx := 0; dx < 4; dx++ {
+						x := bx*4 + dx
+						for dy := 0; dy < 4; dy++ {
+							y := by*4 + dy
+							if x < width && y < height {
+								k := 4 * (y*width + x)
+								dst[k+0] = sint.Byte((dx*(c[1][R]-c[0][R]) + dy*(c[2][R]-c[0][R]) + 4*c[0][R] + 2) >> 2)
+								dst[k+1] = sint.Byte((dx*(c[1][G]-c[0][G]) + dy*(c[2][G]-c[0][G]) + 4*c[0][G] + 2) >> 2)
+								dst[k+2] = sint.Byte((dx*(c[1][B]-c[0][B]) + dy*(c[2][B]-c[0][B]) + 4*c[0][B] + 2) >> 2)
 								dst[k+3] = alpha[i]
 							}
+							i++
 						}
-						i++
-					}
-				}
-			case 1: // T-mode
-				// ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
-				// ┃        ┃  R₀ ┏━━┓     ┃    G₀     ┃    B₀     ┃    R₂     ┃    G₂     ┃    B₂     ┃     ┏━━┓  ┃
-				// ┣━━┯━━┯━━╋━━┯━━╋━━╋━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━╋━━╋━━┫
-				// ┃₆₃│₆₂│₆₁┃₆₀│₅₉┃₅₈┃₅₇│₅₆┃₅₅│₅₄│₅₃│₅₂┃₅₁│₅₀│₄₉│₄₈┃₄₇│₄₆│₄₅│₄₄┃₄₃│₄₂│₄₁│₄₀┃₃₉│₃₈│₃₇│₃₆┃₃₅│₃₄┃₃₃┃₃₂┃
-				// ┖──┴──┴──┸──┴──┸──┸──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┸──┸──┚
-
-				// Load colors
-				c[0][R] = int(u64.Expand4to8(((v64 >> 57) & 12) | (v64>>56)&3))
-				c[0][G] = int(u64.Expand4to8(v64 >> 52))
-				c[0][B] = int(u64.Expand4to8(v64 >> 48))
-				c[2][R] = int(u64.Expand4to8(v64 >> 44))
-				c[2][G] = int(u64.Expand4to8(v64 >> 40))
-				c[2][B] = int(u64.Expand4to8(v64 >> 36))
-
-				// Load intensity modifier
-				modIdx := ((v64 >> 33) & 6) | ((v64 >> 32) & 1)
-				mod := modTbl1[modIdx]
-				// Calculate C₁ and c₃
-				for i := 0; i < 3; i++ {
-					c[1][i] = c[2][i] + mod
-					c[3][i] = c[2][i] - mod
-				}
-				// ┏━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┓
-				// ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₃ ┃  x₃ ┃  x₃ ┃  x₃ ┃
-				// ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃
-				// ┣━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━┫
-				// ┃₃₁│₃₀┃₂₉│₂₈┃₂₇│₂₆┃₂₅│₂₄┃₂₃│₂₂┃₂₁│₂₀┃₁₉│₁₈┃₁₇│₁₆┃₁₅│₁₄┃₁₃│₁₂┃₁₁│₁₀┃ ₉│ ₈┃ ₇│ ₆┃ ₅│ ₄┃ ₃│ ₂┃ ₁│ ₀┃
-				// ┖──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┚
-				// Use 2-bit indices to lookup texel colors
-				i := uint(0)
-				for x := bx * 4; x < (bx+1)*4; x++ {
-					for y := by * 4; y < (by+1)*4; y++ {
-						if x < width && y < height {
-							k := 4 * (y*width + x)
-							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							if opaque == 0 && idx == 2 {
-								dst[k+0] = 0
-								dst[k+1] = 0
-								dst[k+2] = 0
-								dst[k+3] = 0
-							} else {
-								dst[k+0] = sint.Byte(c[idx][0])
-								dst[k+1] = sint.Byte(c[idx][1])
-								dst[k+2] = sint.Byte(c[idx][2])
-								dst[k+3] = alpha[i]
-							}
-						}
-						i++
-					}
-				}
-			case 2: // H-mode
-				// ┏━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
-				// ┃  ┃    R₀     ┃   G₀   ┏━━━━━━━━┓  ┃  ┏━━┓   B₀   ┃    R₂     ┃    G₂     ┃    B₂     ┃md┏━━┓  ┃
-				// ┣━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━╋━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━╋━━╋━━┫
-				// ┃₆₃┃₆₂│₆₁│₆₀│₅₉┃₅₈│₅₇│₅₆┃₅₅│₅₄│₅₃┃₅₂┃₅₁┃₅₀┃₄₉│₄₈│₄₇┃₄₆│₄₅│₄₄│₄₃┃₄₂│₄₁│₄₀│₃₉┃₃₈│₃₇│₃₆│₃₅┃₃₄┃₃₃┃₃₂┃
-				// ┖──┸──┴──┴──┴──┸──┴──┴──┸──┴──┴──┸──┸──┸──┸──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┴──┴──┴──┸──┸──┸──┚
-
-				// Load colors
-				c[0][R] = int(u64.Expand4to8(v64 >> 59))
-				c[0][G] = int(u64.Expand4to8(((v64 >> 55) & 14) | ((v64 >> 52) & 1)))
-				c[0][B] = int(u64.Expand4to8(((v64 >> 48) & 8) | ((v64 >> 47) & 7)))
-				c[2][R] = int(u64.Expand4to8(v64 >> 43))
-				c[2][G] = int(u64.Expand4to8(v64 >> 39))
-				c[2][B] = int(u64.Expand4to8(v64 >> 35))
-
-				// Load intensity modifier
-				modIdx := ((v64 >> 32) & 4) | ((v64 >> 31) & 2)
-				// LSB of modIdx is 1 if:
-				if (c[0][R]<<16)+(c[0][G]<<8)+c[0][B] >= (c[2][R]<<16)+(c[2][G]<<8)+c[2][B] {
-					modIdx++
-				}
-				mod := modTbl1[modIdx]
-				// Calculate C₁ and c₃
-				for i := 0; i < 3; i++ {
-					c[0][i], c[1][i] = c[0][i]+mod, c[0][i]-mod
-					c[2][i], c[3][i] = c[2][i]+mod, c[2][i]-mod
-				}
-				// ┏━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┳━━━━━┓
-				// ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₀ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₁ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₂ ┃  x₃ ┃  x₃ ┃  x₃ ┃  x₃ ┃
-				// ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃  y₀ ┃  y₁ ┃  y₂ ┃  y₃ ┃
-				// ┣━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━╋━━┯━━┫
-				// ┃₃₁│₃₀┃₂₉│₂₈┃₂₇│₂₆┃₂₅│₂₄┃₂₃│₂₂┃₂₁│₂₀┃₁₉│₁₈┃₁₇│₁₆┃₁₅│₁₄┃₁₃│₁₂┃₁₁│₁₀┃ ₉│ ₈┃ ₇│ ₆┃ ₅│ ₄┃ ₃│ ₂┃ ₁│ ₀┃
-				// ┖──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┸──┴──┚
-				// Use 2-bit indices to lookup texel colors
-				i := uint(0)
-				for x := bx * 4; x < (bx+1)*4; x++ {
-					for y := by * 4; y < (by+1)*4; y++ {
-						if x < width && y < height {
-							k := 4 * (y*width + x)
-							idx := ((v64 >> i) & 1) | ((v64 >> (15 + i)) & 2)
-							if opaque == 0 && idx == 2 {
-								dst[k+0] = 0
-								dst[k+1] = 0
-								dst[k+2] = 0
-								dst[k+3] = 0
-							} else {
-								dst[k+0] = sint.Byte(c[idx][0])
-								dst[k+1] = sint.Byte(c[idx][1])
-								dst[k+2] = sint.Byte(c[idx][2])
-								dst[k+3] = alpha[i]
-							}
-						}
-						i++
-					}
-				}
-			case 3: // planar-mode
-				// ┏━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
-				// ┃  ┃    R₀           ┃  ┏━━┓           G₀    ┃  ┏━━━━━━━━┓  B₀ ┏━━┓        ┃    R₁        ┏━━┓  ┃
-				// ┣━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━╋━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━╋━━┯━━┯━━╋━━┯━━╋━━╋━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━╋━━╋━━┫
-				// ┃₆₃┃₆₂│₆₁│₆₀│₅₉│₅₈│₅₇┃₅₆┃₅₅┃₅₄│₅₃│₅₂│₅₁│₅₀│₄₉┃₄₈┃₄₇│₄₆│₄₅┃₄₄│₄₃┃₄₂┃₄₁│₄₀│₃₉┃₃₈│₃₇│₃₆│₃₅│₃₄┃₃₃┃₃₂┃
-				// ┖──┸──┴──┴──┴──┴──┴──┸──┸──┸──┴──┴──┴──┴──┴──┸──┸──┴──┴──┸──┴──┸──┸──┴──┴──┸──┴──┴──┴──┴──┸──┸──┚
-				//
-				// ┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
-				// ┃         G₁         ┃        B₁       ┃        R₂       ┃         G₂         ┃       B₂        ┃
-				// ┣━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━┯━━┯━━┫
-				// ┃₃₁│₃₀│₂₉│₂₈│₂₇│₂₆│₂₅┃₂₄│₂₃│₂₂│₂₁│₂₀│₁₉┃₁₈│₁₇│₁₆│₁₅│₁₄│₁₃┃₁₂│₁₁│₁₀│ ₉│ ₈│ ₇│ ₆┃ ₅│ ₄│ ₃│ ₂│ ₁│ ₀┃
-				// ┖──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┴──┸──┴──┴──┴──┴──┴──┚
-
-				// Load colors
-				c[0][R] = int(u64.Expand6to8(v64 >> 57))
-				c[0][G] = int(u64.Expand7to8(((v64 >> 50) & 64) | ((v64 >> 49) & 63)))
-				c[0][B] = int(u64.Expand6to8(((v64 >> 43) & 32) | ((v64 >> 40) & 24) | ((v64 >> 39) & 7)))
-
-				c[1][R] = int(u64.Expand6to8(((v64 >> 33) & 62) | ((v64 >> 32) & 1)))
-				c[1][G] = int(u64.Expand7to8(v64 >> 25))
-				c[1][B] = int(u64.Expand6to8(v64 >> 19))
-
-				c[2][R] = int(u64.Expand6to8(v64 >> 13))
-				c[2][G] = int(u64.Expand7to8(v64 >> 6))
-				c[2][B] = int(u64.Expand6to8(v64))
-
-				i := 0
-				for dx := 0; dx < 4; dx++ {
-					x := bx*4 + dx
-					for dy := 0; dy < 4; dy++ {
-						y := by*4 + dy
-						if x < width && y < height {
-							k := 4 * (y*width + x)
-							dst[k+0] = sint.Byte((dx*(c[1][R]-c[0][R]) + dy*(c[2][R]-c[0][R]) + 4*c[0][R] + 2) >> 2)
-							dst[k+1] = sint.Byte((dx*(c[1][G]-c[0][G]) + dy*(c[2][G]-c[0][G]) + 4*c[0][G] + 2) >> 2)
-							dst[k+2] = sint.Byte((dx*(c[1][B]-c[0][B]) + dy*(c[2][B]-c[0][B]) + 4*c[0][B] + 2) >> 2)
-							dst[k+3] = alpha[i]
-						}
-						i++
 					}
 				}
 			}
@@ -563,33 +567,37 @@ func decodeETC(src []byte, width, height int, alphaMode etcAlphaMode) ([]byte, e
 	return dst, nil
 }
 
-func decodeETCU11(src []byte, width, height int, channels int) ([]byte, error) {
-	dst := make([]byte, width*height*channels*2)
+func decodeETCU11(src []byte, width, height, depth int, channels int) ([]byte, error) {
+	dst := make([]byte, width*height*depth*channels*2)
 	blockWidth := sint.Max((width+3)/4, 1)
 	blockHeight := sint.Max((height+3)/4, 1)
 	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
-	for by := 0; by < blockHeight; by++ {
-		for bx := 0; bx < blockWidth; bx++ {
-			for c := 0; c < channels; c++ {
-				v64 := r.Uint64()
-				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
-				if mul != 0 {
-					mul *= 8
-				} else {
-					mul = 1
-				}
-				i := uint(15)
-				for x := bx * 4; x < bx*4+4; x++ {
-					for y := by * 4; y < by*4+4; y++ {
-						if x < width && y < height {
-							mod := modTbl[(v64>>(i*3))&7]
-							u11 := uint(sint.Clamp(base*8+4+mod*mul, 0, 2047))
-							u16 := (u11 << 5) | (u11 >> 5)
-							k := 2*channels*(y*width+x) + c*2
-							dst[k+0] = byte(u16)
-							dst[k+1] = byte(u16 >> 8)
+
+	for z := 0; z < depth; z++ {
+		dst := dst[z*width*height*channels*2:]
+		for by := 0; by < blockHeight; by++ {
+			for bx := 0; bx < blockWidth; bx++ {
+				for c := 0; c < channels; c++ {
+					v64 := r.Uint64()
+					base, mul, modTbl := decodeETCBaseMulModTbl(v64)
+					if mul != 0 {
+						mul *= 8
+					} else {
+						mul = 1
+					}
+					i := uint(15)
+					for x := bx * 4; x < bx*4+4; x++ {
+						for y := by * 4; y < by*4+4; y++ {
+							if x < width && y < height {
+								mod := modTbl[(v64>>(i*3))&7]
+								u11 := uint(sint.Clamp(base*8+4+mod*mul, 0, 2047))
+								u16 := (u11 << 5) | (u11 >> 5)
+								k := 2*channels*(y*width+x) + c*2
+								dst[k+0] = byte(u16)
+								dst[k+1] = byte(u16 >> 8)
+							}
+							i--
 						}
-						i--
 					}
 				}
 			}
@@ -599,39 +607,42 @@ func decodeETCU11(src []byte, width, height int, channels int) ([]byte, error) {
 	return dst, nil
 }
 
-func decodeETCS11(src []byte, width, height int, channels int) ([]byte, error) {
-	dst := make([]byte, width*height*channels*2)
+func decodeETCS11(src []byte, width, height, depth int, channels int) ([]byte, error) {
+	dst := make([]byte, width*height*depth*channels*2)
 	blockWidth := sint.Max((width+3)/4, 1)
 	blockHeight := sint.Max((height+3)/4, 1)
 	r := endian.Reader(bytes.NewReader(src), device.BigEndian)
-	for by := 0; by < blockHeight; by++ {
-		for bx := 0; bx < blockWidth; bx++ {
-			for c := 0; c < channels; c++ {
-				v64 := r.Uint64()
-				base, mul, modTbl := decodeETCBaseMulModTbl(v64)
-				base = int(int8(base))
-				if mul != 0 {
-					mul *= 8
-				} else {
-					mul = 1
-				}
-				i := uint(15)
-				for x := bx * 4; x < bx*4+4; x++ {
-					for y := by * 4; y < by*4+4; y++ {
-						if x < width && y < height {
-							mod := modTbl[(v64>>(i*3))&7]
-							s11 := sint.Clamp(base*8+mod*mul, -1023, 1023)
-							var s16 int
-							if s11 >= 0 {
-								s16 = (s11 << 5) | (s11 >> 5)
-							} else {
-								s16 = -((-s11 << 5) | (-s11 >> 5))
+	for z := 0; z < depth; z++ {
+		dst := dst[z*width*height*channels*2:]
+		for by := 0; by < blockHeight; by++ {
+			for bx := 0; bx < blockWidth; bx++ {
+				for c := 0; c < channels; c++ {
+					v64 := r.Uint64()
+					base, mul, modTbl := decodeETCBaseMulModTbl(v64)
+					base = int(int8(base))
+					if mul != 0 {
+						mul *= 8
+					} else {
+						mul = 1
+					}
+					i := uint(15)
+					for x := bx * 4; x < bx*4+4; x++ {
+						for y := by * 4; y < by*4+4; y++ {
+							if x < width && y < height {
+								mod := modTbl[(v64>>(i*3))&7]
+								s11 := sint.Clamp(base*8+mod*mul, -1023, 1023)
+								var s16 int
+								if s11 >= 0 {
+									s16 = (s11 << 5) | (s11 >> 5)
+								} else {
+									s16 = -((-s11 << 5) | (-s11 >> 5))
+								}
+								k := 2*channels*(y*width+x) + c*2
+								dst[k+0] = byte(s16)
+								dst[k+1] = byte(s16 >> 8)
 							}
-							k := 2*channels*(y*width+x) + c*2
-							dst[k+0] = byte(s16)
-							dst[k+1] = byte(s16 >> 8)
+							i--
 						}
-						i--
 					}
 				}
 			}

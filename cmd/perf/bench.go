@@ -399,8 +399,8 @@ func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 		return err
 	}
 
-	ii := imgInfo.(*image.Info2D)
-	_, err = session.client.Get(ctx, path.NewBlob(ii.Data.ID()).Path())
+	ii := imgInfo.(*image.Info)
+	_, err = session.client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
 
 	if err != nil {
 		return err

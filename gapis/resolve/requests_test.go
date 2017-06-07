@@ -22,7 +22,7 @@ var _ = []database.Resolvable{
 	(*CommandTreeResolvable)(nil),
 	(*ContextListResolvable)(nil),
 	(*FollowResolvable)(nil),
-	(*FramebufferAttachmentDataResolvable)(nil),
+	(*FramebufferAttachmentBytesResolvable)(nil),
 	(*FramebufferAttachmentResolvable)(nil),
 	(*FramebufferChangesResolvable)(nil),
 	(*GetResolvable)(nil),

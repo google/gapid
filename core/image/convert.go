@@ -23,9 +23,9 @@ import (
 )
 
 // Converter is used to convert the the image formed from the parameters data,
-// width and height into another format. If the conversion succeeds then the
-// converted image data is returned, otherwise an error is returned.
-type Converter func(data []byte, width int, height int) ([]byte, error)
+// width, height and depth into another format. If the conversion succeeds then
+// the converted image data is returned, otherwise an error is returned.
+type Converter func(data []byte, width, height, depth int) ([]byte, error)
 
 type srcDstFmt struct{ src, dst interface{} }
 
@@ -51,33 +51,34 @@ func registered(src, dst *Format) bool {
 // converter is the interface implemented by formats that support format
 // conversion.
 type converter interface {
-	// convert converts the image formed from data, width and height to dstFmt.
+	// convert converts the image formed from data, width, height, depth to
+	// dstFmt.
 	// If converter is unable to convert to dstFmt then nil, nil is returned.
-	convert(data []byte, width, height int, dstFmt *Format) ([]byte, error)
+	convert(data []byte, width, height, depth int, dstFmt *Format) ([]byte, error)
 }
 
 // Convert uses the registered Converters to convert the image formed from
 // data, width and height from srcFmt to dstFmt.
 // If no direct converter has been registered to convert from srcFmt to dstFmt,
 // then Convert may try converting via an intermediate format.
-func Convert(data []byte, width, height int, srcFmt, dstFmt *Format) ([]byte, error) {
+func Convert(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]byte, error) {
 	srcKey, dstKey := srcFmt.Key(), dstFmt.Key()
 	if srcKey == dstKey {
 		return data, nil // No conversion required.
 	}
 
-	if err := srcFmt.Check(data, width, height); err != nil {
+	if err := srcFmt.Check(data, width, height, depth); err != nil {
 		return nil, fmt.Errorf("Source data of format %s is invalid: %s", srcFmt, err)
 	}
 
 	// Look for a registered converter.
 	if conv, found := registeredConverters[srcDstFmt{srcKey, dstKey}]; found {
-		return conv(data, width, height)
+		return conv(data, width, height, depth)
 	}
 
 	// Check if the source format supports the converter interface.
 	if c, ok := protoutil.OneOf(srcFmt.Format).(converter); ok {
-		data, err := c.convert(data, width, height, dstFmt)
+		data, err := c.convert(data, width, height, depth, dstFmt)
 		if data != nil || err != nil {
 			return data, err
 		}
@@ -87,13 +88,13 @@ func Convert(data []byte, width, height int, srcFmt, dstFmt *Format) ([]byte, er
 	rgbaU8Key := RGBA_U8_NORM.Key()
 	if convA, found := registeredConverters[srcDstFmt{srcKey, rgbaU8Key}]; found {
 		if convB, found := registeredConverters[srcDstFmt{rgbaU8Key, dstKey}]; found {
-			if data, err := convA(data, width, height); err != nil {
-				return convB(data, width, height)
+			if data, err := convA(data, width, height, depth); err != nil {
+				return convB(data, width, height, depth)
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("No converter registered that can convert from format '%s' to '%s'\n",
+	return nil, fmt.Errorf("No converter registered that can convert from format '%s' to '%s'",
 		srcFmt, dstFmt)
 }
 
@@ -101,27 +102,41 @@ func Convert(data []byte, width, height int, srcFmt, dstFmt *Format) ([]byte, er
 // request.
 // TODO: Can this be moved to the resolve package?
 func (r *ConvertResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	data, err := database.Resolve(ctx, r.Data.ID())
+	boxedBytes, err := database.Resolve(ctx, r.Bytes.ID())
 	if err != nil {
 		return nil, err
 	}
+	bytes := boxedBytes.([]byte)
 	from, to := r.FormatFrom, r.FormatTo
-	rowLength := from.Size(int(r.Width), 1)
-	if r.StrideFrom != 0 && r.StrideFrom != uint32(rowLength) {
-		// Remove any padding from the source image
-		packed := make([]byte, from.Size(int(r.Width), int(r.Height)))
-		src, dst := data.([]byte), packed
-		for y := 0; y < int(r.Height); y++ {
-			copy(dst, src[:rowLength])
-			dst, src = dst[rowLength:], src[r.StrideFrom:]
-		}
-		data = packed
+
+	sliceLength := from.Size(int(r.Width), int(r.Height), 1)
+	sliceStride := int(r.SliceStrideFrom)
+	if sliceStride == 0 {
+		sliceStride = sliceLength
 	}
 
-	data, err = Convert(data.([]byte), int(r.Width), int(r.Height), from, to)
+	rowLength := from.Size(int(r.Width), 1, 1)
+	rowStride := int(r.RowStrideFrom)
+	if rowStride == 0 {
+		rowStride = rowLength
+	}
+
+	// Remove any padding from the source image
+	if sliceStride != sliceLength || rowStride != rowLength {
+		src, dst := bytes, make([]byte, sliceLength*int(r.Depth))
+		for z := 0; z < int(r.Depth); z++ {
+			dst, src := dst[sliceLength*z:], src[sliceStride*z:]
+			for y := 0; y < int(r.Height); y++ {
+				copy(dst, src[:rowLength])
+				dst, src = dst[rowLength:], src[rowStride:]
+			}
+		}
+	}
+
+	bytes, err = Convert(bytes, int(r.Width), int(r.Height), int(r.Depth), from, to)
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	return bytes, nil
 }

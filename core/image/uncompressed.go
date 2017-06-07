@@ -48,11 +48,11 @@ func NewUncompressed(name string, f *stream.Format) *Format {
 func (f *FmtUncompressed) key() interface{} {
 	return f.Format.String()
 }
-func (f *FmtUncompressed) size(w, h int) int {
-	return f.Format.Size(w * h)
+func (f *FmtUncompressed) size(w, h, d int) int {
+	return f.Format.Size(w * h * d)
 }
-func (f *FmtUncompressed) check(d []byte, w, h int) error {
-	return checkSize(d, f, w, h)
+func (f *FmtUncompressed) check(data []byte, w, h, d int) error {
+	return checkSize(data, f, w, h, d)
 }
 func (f *FmtUncompressed) channels() []stream.Channel {
 	out := make([]stream.Channel, len(f.Format.Components))
@@ -62,21 +62,21 @@ func (f *FmtUncompressed) channels() []stream.Channel {
 	return out
 }
 
-func (f *FmtUncompressed) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
+func (f *FmtUncompressed) resize(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error) {
 	format := &Format{"", &Format_Uncompressed{f}}
-	data, err := Convert(data, srcW, srcH, format, RGBA_F32)
+	data, err := Convert(data, srcW, srcH, srcD, format, RGBA_F32)
 	if err != nil {
 		return nil, err
 	}
-	data, err = resizeRGBA_F32(data, srcW, srcH, dstW, dstH)
+	data, err = resizeRGBA_F32(data, srcW, srcH, srcD, dstW, dstH, dstD)
 	if err != nil {
 		return nil, err
 	}
-	return Convert(data, dstW, dstH, RGBA_F32, format)
+	return Convert(data, dstW, dstH, dstD, RGBA_F32, format)
 }
 
-func (f *FmtUncompressed) convert(data []byte, width, height int, dstFmt *Format) ([]byte, error) {
-	if err := f.check(data, width, height); err != nil {
+func (f *FmtUncompressed) convert(data []byte, w, h, d int, dstFmt *Format) ([]byte, error) {
+	if err := f.check(data, w, h, d); err != nil {
 		return nil, err
 	}
 	switch dstFmt := protoutil.OneOf(dstFmt.Format).(type) {

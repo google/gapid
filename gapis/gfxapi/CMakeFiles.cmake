@@ -27,7 +27,6 @@ set(files
     resource.go
     state.go
     texture.go
-    texture_test.go
 )
 set(dirs
     .vscode

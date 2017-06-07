@@ -150,7 +150,7 @@ func postColorData(ctx context.Context,
 	t := newTweaker(ctx, out, dID)
 	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
 
-	imageSize := imgFmt.Size(int(width), int(height))
+	imageSize := imgFmt.Size(int(width), int(height), 1)
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
 	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 		// TODO: We use Call() directly here because we are calling glReadPixels
@@ -173,10 +173,11 @@ func postColorData(ctx context.Context,
 				err = fmt.Errorf("Could not read framebuffer data (expected length %d bytes): %v", imageSize, err)
 				data = nil
 			}
-			img := &image.Image2D{
-				Data:   data,
+			img := &image.Data{
+				Bytes:  data,
 				Width:  uint32(width),
 				Height: uint32(height),
+				Depth:  1,
 				Format: imgFmt,
 			}
 			res(img, err)

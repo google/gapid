@@ -34,7 +34,7 @@ import (
 )
 
 // storeReferenceImage replaces the reference image with img.
-func storeReferenceImage(ctx context.Context, outputDir string, name string, img *gpuimg.Image2D) {
+func storeReferenceImage(ctx context.Context, outputDir string, name string, img *gpuimg.Data) {
 	ctx = log.V{"name": name}.Bind(ctx)
 	data := &bytes.Buffer{}
 	i, err := toGoImage(img)
@@ -54,7 +54,7 @@ func storeReferenceImage(ctx context.Context, outputDir string, name string, img
 }
 
 // loadReferenceImage loads the reference image with the specified name.
-func loadReferenceImage(ctx context.Context, name string) *gpuimg.Image2D {
+func loadReferenceImage(ctx context.Context, name string) *gpuimg.Data {
 	ctx = log.V{"name": name}.Bind(ctx)
 	b64, found := embedded[filepath.Join("reference", name+".png")]
 	if !found {
@@ -75,26 +75,26 @@ func loadReferenceImage(ctx context.Context, name string) *gpuimg.Image2D {
 	return out
 }
 
-func toGoImage(in *gpuimg.Image2D) (goimg.Image, error) {
+func toGoImage(in *gpuimg.Data) (goimg.Image, error) {
 	rect := goimg.Rect(0, 0, int(in.Width), int(in.Height))
 	switch in.Format.Key() {
 	case gpuimg.RGBA_U8_NORM.Key():
 		out := goimg.NewNRGBA(rect)
-		out.Pix = in.Data
+		out.Pix = in.Bytes
 		return out, nil
 
 	case gpuimg.D_U16_NORM.Key():
 		out := goimg.NewGray16(rect)
-		out.Pix = make([]byte, len(in.Data))
+		out.Pix = make([]byte, len(in.Bytes))
 		// Endian-swap.
-		for i, c := 0, len(in.Data); i < c; i += 2 {
-			out.Pix[i+0], out.Pix[i+1] = in.Data[i+1], in.Data[i+0]
+		for i, c := 0, len(in.Bytes); i < c; i += 2 {
+			out.Pix[i+0], out.Pix[i+1] = in.Bytes[i+1], in.Bytes[i+0]
 		}
 		return out, nil
 
 	default:
 		uncompressed := in.Format.GetUncompressed()
-		var converted *gpuimg.Image2D
+		var converted *gpuimg.Data
 		var err error
 		if depth, _ := uncompressed.Format.Component(stream.Channel_Depth); depth != nil {
 			converted, err = in.Convert(gpuimg.D_U16_NORM)
@@ -108,9 +108,9 @@ func toGoImage(in *gpuimg.Image2D) (goimg.Image, error) {
 	}
 }
 
-func toGPUImage(in goimg.Image) (*gpuimg.Image2D, error) {
+func toGPUImage(in goimg.Image) (*gpuimg.Data, error) {
 	w, h := in.Bounds().Dx(), in.Bounds().Dy()
-	out := &gpuimg.Image2D{Width: uint32(w), Height: uint32(h)}
+	out := &gpuimg.Data{Width: uint32(w), Height: uint32(h)}
 	buf := &bytes.Buffer{}
 	e := endian.Writer(buf, device.BigEndian)
 
@@ -138,11 +138,11 @@ func toGPUImage(in goimg.Image) (*gpuimg.Image2D, error) {
 		return nil, fmt.Errorf("Unsupported color model %v", in.ColorModel())
 	}
 
-	out.Data = buf.Bytes()
+	out.Bytes = buf.Bytes()
 	return out, nil
 }
 
-func quantizeImage(in *gpuimg.Image2D) *gpuimg.Image2D {
+func quantizeImage(in *gpuimg.Data) *gpuimg.Data {
 	tmp, err := toGoImage(in)
 	if err != nil {
 		panic(err)

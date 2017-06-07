@@ -30,7 +30,7 @@ import (
 )
 
 // See: https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/
-func loadKTX(data []byte) (*image.Image2D, error) {
+func loadKTX(data []byte) (*image.Data, error) {
 	r := endian.Reader(bytes.NewBuffer(data), device.LittleEndian)
 
 	var ident [12]byte
@@ -109,15 +109,16 @@ glBaseInternalFormat=0x%x
 		return nil, err
 	}
 
-	return &image.Image2D{
+	return &image.Data{
 		Format: format,
 		Width:  texelWidth,
 		Height: texelHeight,
-		Data:   texelData,
+		Depth:  1,
+		Bytes:  texelData,
 	}, nil
 }
 
-func loadASTC(data []byte) (*image.Image2D, error) {
+func loadASTC(data []byte) (*image.Data, error) {
 	r := endian.Reader(bytes.NewBuffer(data), device.LittleEndian)
 
 	if got := r.Uint32(); got != 0x5ca1ab13 {
@@ -136,25 +137,23 @@ func loadASTC(data []byte) (*image.Image2D, error) {
 	texelHeight := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
 	texelDepth := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
 
-	if texelDepth != 1 {
-		return nil, fmt.Errorf("Got a texel depth of %v. Only 2D textures are currently supported", texelDepth)
-	}
-
 	blocksX := (texelWidth + blockWidth - 1) / blockWidth
 	blocksY := (texelHeight + blockHeight - 1) / blockHeight
+	blocksZ := (texelDepth + blockDepth - 1) / blockDepth
 
-	texelData := make([]byte, blocksX*blocksY*16)
+	texelData := make([]byte, blocksX*blocksY*blocksZ*16)
 	r.Data(texelData)
 
 	if err := r.Error(); err != nil {
 		return nil, err
 	}
 
-	return &image.Image2D{
+	return &image.Data{
 		Format: image.NewASTC("astc", blockWidth, blockHeight, false),
 		Width:  texelWidth,
 		Height: texelHeight,
-		Data:   texelData,
+		Depth:  texelDepth,
+		Bytes:  texelData,
 	}, nil
 }
 
@@ -209,7 +208,7 @@ func TestDecompressors(t *testing.T) {
 			continue
 		}
 
-		var in *image.Image2D
+		var in *image.Data
 		switch test.ext {
 		case ".ktx":
 			ktx, err := loadKTX(data)
@@ -240,10 +239,11 @@ func TestDecompressors(t *testing.T) {
 			in = astc
 
 		case ".bin":
-			in = &image.Image2D{
-				Data:   data,
+			in = &image.Data{
+				Bytes:  data,
 				Width:  ref.Width,
 				Height: ref.Height,
+				Depth:  1,
 				Format: test.fmt,
 			}
 
@@ -268,18 +268,18 @@ func TestDecompressors(t *testing.T) {
 		if diff != 0 {
 			t.Errorf("%v produced unexpected difference when decompressing (%v)", test.fmt.Name, diff)
 			if outPNG, err := out.Convert(image.PNG); err == nil {
-				ioutil.WriteFile(outputPath, outPNG.Data, 0666)
+				ioutil.WriteFile(outputPath, outPNG.Bytes, 0666)
 			} else {
 				t.Errorf("Could not write output file: %v", err)
 			}
-			for i := range out.Data {
-				g, e := int(out.Data[i]), int(ref.Data[i])
+			for i := range out.Bytes {
+				g, e := int(out.Bytes[i]), int(ref.Bytes[i])
 				if g != e {
-					out.Data[i] = 255 // Highlight errors
+					out.Bytes[i] = 255 // Highlight errors
 				}
 			}
 			if outPNG, err := out.Convert(image.PNG); err == nil {
-				ioutil.WriteFile(errorPath, outPNG.Data, 0666)
+				ioutil.WriteFile(errorPath, outPNG.Bytes, 0666)
 			} else {
 				t.Errorf("Could not write error file: %v", err)
 			}
@@ -290,8 +290,8 @@ func TestDecompressors(t *testing.T) {
 	}
 }
 
-func s16ToU8(src []byte, width, height int) ([]byte, error) {
-	pixels := width * height
+func s16ToU8(src []byte, w, h, d int) ([]byte, error) {
+	pixels := w * h * d
 	channels := len(src) / (pixels * 2)
 	out := make([]byte, 0, pixels*4)
 	for i := 0; i < pixels; i++ {

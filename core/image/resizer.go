@@ -24,13 +24,13 @@ import (
 // ResizeResolver request.
 // TODO: Can this be moved to the resolve package?
 func (r *ResizeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	data, err := database.Resolve(ctx, r.Data.ID())
+	bytes, err := database.Resolve(ctx, r.Bytes.ID())
 	if err != nil {
 		return nil, err
 	}
 
-	return r.Format.Resize(data.([]byte),
-		int(r.SrcWidth), int(r.SrcHeight),
-		int(r.DstWidth), int(r.DstHeight),
+	return r.Format.Resize(bytes.([]byte),
+		int(r.SrcWidth), int(r.SrcHeight), int(r.SrcDepth),
+		int(r.DstWidth), int(r.DstHeight), int(r.DstDepth),
 	)
 }

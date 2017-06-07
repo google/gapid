@@ -27,14 +27,15 @@ var ErrResizeUnsupported = fmt.Errorf("Format does not support resizing")
 
 // format is the interface for an image and/or pixel format.
 type format interface {
-	// check returns an error if the combination of data, image width and image
-	// height is invalid for the given format, otherwise check returns nil.
-	check(data []byte, width, height int) error
+	// check returns an error if the combination of data, image width, image
+	// height and image depth is invalid for the given format, otherwise check
+	// returns nil.
+	check(data []byte, width, height, depth int) error
 
-	// size returns the number of bytes required to hold an image of the specified
-	// dimensions in this format. If the size varies based on the image data, then
-	// size returns -1.
-	size(width, height int) int
+	// size returns the number of bytes required to hold an image of the
+	// specified dimensions in this format. If the size varies based on the
+	// image data, then size returns -1.
+	size(width, height, depth int) int
 
 	// key returns an object that can be used for equality-testing of the format
 	// and can be used as a key in a map. Formats of the same type and parameters
@@ -70,17 +71,18 @@ var _ = []format{
 	&FmtASTC{},
 }
 
-// Check returns an error if the combination of data, image width and image
-// height is invalid for the given format, otherwise Check returns nil.
-func (f *Format) Check(data []byte, width, height int) error {
-	return f.format().check(data, width, height)
+// Check returns an error if the combination of data, image width, image
+// height and image depth is invalid for the given format, otherwise Check
+// returns nil.
+func (f *Format) Check(data []byte, width, height, depth int) error {
+	return f.format().check(data, width, height, depth)
 }
 
 // Size returns the number of bytes required to hold an image of the specified
 // dimensions in this format. If the size varies based on the image data, then
 // Size returns -1.
-func (f *Format) Size(width, height int) int {
-	return f.format().size(width, height)
+func (f *Format) Size(width, height, depth int) int {
+	return f.format().size(width, height, depth)
 }
 
 // Key returns an object that can be used for equality-testing of the format
@@ -104,26 +106,28 @@ func (f *Format) format() format {
 
 // resizer is the interface implemented by formats that support resizing.
 type resizer interface {
-	// resize returns an image resized from srcW x srcH to dstW x dstH.
+	// resize returns an image resized from srcW x srcH x srcD to
+	// dstW x dstH x dstD.
 	// If the format does not support image resizing then the error
 	// ErrResizeUnsupported is returned.
-	resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error)
+	resize(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error)
 }
 
-// Resize returns an image resized from srcW x srcH to dstW x dstH.
+// Resize  returns an image resized from srcW x srcH x srcD to
+// dstW x dstH x dstD.
 // If the format does not support image resizing then the error
 // ErrResizeUnsupported is returned.
-func (f *Format) Resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
+func (f *Format) Resize(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error) {
 	if r, ok := protoutil.OneOf(f.Format).(resizer); ok {
-		return r.resize(data, srcW, srcH, dstW, dstH)
+		return r.resize(data, srcW, srcH, srcD, dstW, dstH, dstD)
 	}
 	return nil, ErrResizeUnsupported
 }
 
-func checkSize(data []byte, f format, width, height int) error {
-	if expected, actual := f.size(width, height), len(data); expected != actual {
-		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%d",
-			actual, expected, width, height)
+func checkSize(data []byte, f format, width, height, depth int) error {
+	if expected, actual := f.size(width, height, depth), len(data); expected != actual {
+		return fmt.Errorf("Image data size (0x%x) did not match expected (0x%x) for dimensions %dx%dx%d",
+			actual, expected, width, height, depth)
 	}
 	return nil
 }

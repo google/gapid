@@ -222,7 +222,7 @@ func postImageData(ctx context.Context,
 		}
 	}
 
-	bufferSize := uint64(formatOfImgRes.Size(int(reqWidth), int(reqHeight)))
+	bufferSize := uint64(formatOfImgRes.Size(int(reqWidth), int(reqHeight), 1))
 
 	// Data and info for destination buffer creation
 	bufferId := VkBuffer(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Buffers[VkBuffer(x)]; return ok }))
@@ -957,34 +957,35 @@ func postImageData(ctx context.Context,
 	writeEach(ctx, out,
 		replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {
-				var data []byte
+				var bytes []byte
 				if err == nil {
-					data = make([]byte, bufferSize)
-					r.Data(data)
+					bytes = make([]byte, bufferSize)
+					r.Data(bytes)
 					r.Error()
 
 					// Flip the image in Y axis
-					rowSizeInBytes := uint64(formatOfImgRes.Size(int(reqWidth), 1))
+					rowSizeInBytes := uint64(formatOfImgRes.Size(int(reqWidth), 1, 1))
 					top := uint64(0)
 					bottom := bufferSize - rowSizeInBytes
 					var temp = make([]byte, rowSizeInBytes)
 					for top <= bottom {
-						copy(temp, data[top:top+rowSizeInBytes])
-						copy(data[top:top+rowSizeInBytes], data[bottom:bottom+rowSizeInBytes])
-						copy(data[bottom:bottom+rowSizeInBytes], temp)
+						copy(temp, bytes[top:top+rowSizeInBytes])
+						copy(bytes[top:top+rowSizeInBytes], bytes[bottom:bottom+rowSizeInBytes])
+						copy(bytes[bottom:bottom+rowSizeInBytes], temp)
 						top += rowSizeInBytes
 						bottom -= rowSizeInBytes
 					}
 				}
 				if err != nil {
 					err = fmt.Errorf("Could not read framebuffer data (expected length %d bytes): %v", bufferSize, err)
-					data = nil
+					bytes = nil
 				}
 
-				img := &image.Image2D{
-					Data:   data,
+				img := &image.Data{
+					Bytes:  bytes,
 					Width:  uint32(reqWidth),
 					Height: uint32(reqHeight),
+					Depth:  1,
 					Format: formatOfImgRes,
 				}
 

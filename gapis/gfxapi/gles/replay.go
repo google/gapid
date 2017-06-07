@@ -227,7 +227,7 @@ func (a api) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment gfxapi.FramebufferAttachment,
 	wireframeMode replay.WireframeMode,
-	hints *service.UsageHints) (*image.Image2D, error) {
+	hints *service.UsageHints) (*image.Data, error) {
 
 	c := drawConfig{wireframeMode: wireframeMode}
 	if wireframeMode == replay.WireframeMode_Overlay {
@@ -238,7 +238,7 @@ func (a api) QueryFramebufferAttachment(
 	if err != nil {
 		return nil, err
 	}
-	return res.(*image.Image2D), nil
+	return res.(*image.Data), nil
 }
 
 // destroyResourcesAtEOS is a transform that destroys all textures,

@@ -27,96 +27,144 @@ type rgbaF32 struct {
 	r, g, b, a float32
 }
 
+func rgbaAvg(a, b rgbaF32) rgbaF32 {
+	return rgbaF32{(a.r + b.r) * 0.5, (a.g + b.g) * 0.5, (a.b + b.b) * 0.5, (a.a + b.a) * 0.5}
+}
+
+func rgbaLerp(a, b rgbaF32, f float32) rgbaF32 {
+	return rgbaF32{a.r + (b.r-a.r)*f, a.g + (b.g-a.g)*f, a.b + (b.b-a.b)*f, a.a + (b.a-a.a)*f}
+}
+
 // resizeRGBA_F32 returns a RGBA_F32 image resized from srcW x srcH to dstW x dstH.
 // The algorithm uses pixel-pair averaging to down-sample (if required) the
 // image to no greater than twice the width or height than the target
 // dimensions, then uses a bilinear interpolator to calculate the final image
 // at the requested size.
-func resizeRGBA_F32(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
-	if err := checkSize(data, RGBA_F32.format(), srcW, srcH); err != nil {
+func resizeRGBA_F32(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error) {
+	if err := checkSize(data, RGBA_F32.format(), srcW, srcH, srcD); err != nil {
 		return nil, err
 	}
-	if srcW <= 0 || srcH <= 0 {
-		return nil, fmt.Errorf("Invalid source size for Resize: %dx%d", srcW, srcH)
+	if srcW <= 0 || srcH <= 0 || srcD <= 0 {
+		return nil, fmt.Errorf("Invalid source size for Resize: %dx%dx%d", srcW, srcH, srcD)
 	}
-	if dstW <= 0 || dstH <= 0 {
-		return nil, fmt.Errorf("Invalid target size for Resize: %dx%d", dstW, dstH)
+	if dstW <= 0 || dstH <= 0 || dstD <= 0 {
+		return nil, fmt.Errorf("Invalid target size for Resize: %dx%dx%d", dstW, dstH, dstD)
 	}
 	r := endian.Reader(bytes.NewReader(data), device.LittleEndian)
-	bufA, bufB := make([]rgbaF32, srcW*srcH), make([]rgbaF32, srcW*srcH)
+	bufA, bufB := make([]rgbaF32, srcW*srcH*srcD), make([]rgbaF32, srcW*srcH*srcD)
 	for i := range bufA {
 		bufA[i] = rgbaF32{r.Float32(), r.Float32(), r.Float32(), r.Float32()}
 	}
 
 	dst, src := bufB, bufA
 
-	for dstW*2 <= srcW { // Horizontal 2x downsample
-		newW := srcW / 2
-		for y := 0; y < srcH; y++ {
-			i := newW * y
-			a, b := srcW*y, srcW*y+1
-			for x := 0; x < srcW/2; x++ {
-				dst[i].r = (src[a].r + src[b].r) * 0.5
-				dst[i].g = (src[a].g + src[b].g) * 0.5
-				dst[i].b = (src[a].b + src[b].b) * 0.5
-				dst[i].a = (src[a].a + src[b].a) * 0.5
-				i, a, b = i+1, a+2, b+2
+	samples := func(val, max int, scale float64) (int, int, float32) {
+		f := float64(val) * scale
+		i := int(f)
+		return i, sint.Min(i+1, max-1), float32(f - float64(i))
+	}
+
+	for dstD*2 <= srcD { // Depth 2x downsample
+		i, newD := 0, srcD/2
+		for z := 0; z < newD; z++ {
+			srcA, srcB := src[srcW*srcH*z*2:], src[srcW*srcH*(z*2+1):]
+			for y := 0; y < srcH; y++ {
+				srcA, srcB := srcA[srcW*y:], srcB[srcW*y:]
+				for x := 0; x < srcW; x++ {
+					dst[i] = rgbaAvg(srcA[x], srcB[x])
+					i++
+				}
 			}
 		}
-		dst, src, srcW = src, dst, newW
+		dst, src, srcD = src, dst, newD
+	}
+
+	if srcD != dstD { // Depth bi-linear downsample
+		i, s := 0, float64(sint.Max(srcD-1, 0))/float64(sint.Max(dstD-1, 1))
+		for z := 0; z < dstD; z++ {
+			iA, iB, f := samples(z, srcD, s)
+			srcA, srcB := src[srcW*srcH*iA:], src[srcW*srcH*iB:]
+			for y := 0; y < srcH; y++ {
+				srcA, srcB := srcA[srcW*y:], srcB[srcW*y:]
+				for x := 0; x < srcW; x++ {
+					dst[i] = rgbaLerp(srcA[x], srcB[x], f)
+					i++
+				}
+			}
+		}
+		dst, src, srcD = src, dst, dstD
 	}
 
 	for dstH*2 <= srcH { // Vertical 2x downsample
-		newH := srcH / 2
-		for y := 0; y < newH; y++ {
-			i := srcW * y
-			a, b := i*2, i*2+srcW
-			for x := 0; x < srcW; x++ {
-				dst[i].r = (src[a].r + src[b].r) * 0.5
-				dst[i].g = (src[a].g + src[b].g) * 0.5
-				dst[i].b = (src[a].b + src[b].b) * 0.5
-				dst[i].a = (src[a].a + src[b].a) * 0.5
-				i, a, b = i+1, a+1, b+1
+		i, newH := 0, srcH/2
+		for z := 0; z < srcD; z++ {
+			src := src[srcW*srcH*z:]
+			for y := 0; y < newH; y++ {
+				srcA, srcB := src[srcW*y*2:], src[srcW*(y*2+1):]
+				for x := 0; x < srcW; x++ {
+					dst[i] = rgbaAvg(srcA[x], srcB[x])
+					i++
+				}
 			}
 		}
 		dst, src, srcH = src, dst, newH
 	}
 
-	out := make([]byte, dstW*dstH*4*4)
-	w := endian.Writer(bytes.NewBuffer(out[:0]), device.LittleEndian)
-	if srcW == dstW && srcH == dstH {
-		for i, c := 0, dstW*dstH; i < c; i++ {
-			w.Float32(src[i].r)
-			w.Float32(src[i].g)
-			w.Float32(src[i].b)
-			w.Float32(src[i].a)
-		}
-	} else {
-		// bi-linear filtering
-		sx := float64(sint.Max(srcW-1, 0)) / float64(sint.Max(dstW-1, 1))
-		sy := float64(sint.Max(srcH-1, 0)) / float64(sint.Max(dstH-1, 1))
-		for y := 0; y < dstH; y++ {
-			fy := float64(y) * sy
-			iy := int(fy)
-			dy, y0, y1 := float32(fy-float64(iy)), iy, sint.Min(iy+1, srcH-1)
-			for x := 0; x < dstW; x++ {
-				fx := float64(x) * sx
-				ix := int(fx)
-				dx, x0, x1 := float32(fx-float64(ix)), ix, sint.Min(ix+1, srcW-1)
-
-				a, b := src[x0+y0*srcW], src[x1+y0*srcW]
-				c, d := src[x0+y1*srcW], src[x1+y1*srcW]
-
-				p := rgbaF32{a.r + (b.r-a.r)*dx, a.g + (b.g-a.g)*dx, a.b + (b.b-a.b)*dx, a.a + (b.a-a.a)*dx}
-				q := rgbaF32{c.r + (d.r-c.r)*dx, c.g + (d.g-c.g)*dx, c.b + (d.b-c.b)*dx, c.a + (d.a-c.a)*dx}
-				r := rgbaF32{p.r + (q.r-p.r)*dy, p.g + (q.g-p.g)*dy, p.b + (q.b-p.b)*dy, p.a + (q.a-p.a)*dy}
-
-				w.Float32(r.r)
-				w.Float32(r.g)
-				w.Float32(r.b)
-				w.Float32(r.a)
+	if srcH != dstH { // Vertical bi-linear downsample
+		i, s := 0, float64(sint.Max(srcH-1, 0))/float64(sint.Max(dstH-1, 1))
+		for z := 0; z < srcD; z++ {
+			src := src[srcW*srcH*z:]
+			for y := 0; y < dstH; y++ {
+				iA, iB, f := samples(y, srcH, s)
+				srcA, srcB := src[srcW*iA:], src[srcW*iB:]
+				for x := 0; x < srcW; x++ {
+					dst[i] = rgbaLerp(srcA[x], srcB[x], f)
+					i++
+				}
 			}
 		}
+		dst, src, srcH = src, dst, dstH
 	}
+
+	for dstW*2 <= srcW { // Horizontal 2x downsample
+		i, newW := 0, srcW/2
+		for z := 0; z < srcD; z++ {
+			src := src[srcW*srcH*z:]
+			for y := 0; y < srcH; y++ {
+				src := src[srcW*y:]
+				for x := 0; x < srcW/2; x++ {
+					dst[i] = rgbaAvg(src[x*2], src[x*2+1])
+					i++
+				}
+			}
+		}
+		dst, src, srcW = src, dst, newW
+	}
+
+	if srcW != dstW { // Horizontal bi-linear downsample
+		i, s := 0, float64(sint.Max(srcW-1, 0))/float64(sint.Max(dstW-1, 1))
+		for z := 0; z < srcD; z++ {
+			src := src[srcW*srcH*z:]
+			for y := 0; y < srcH; y++ {
+				src := src[srcW*y:]
+				for x := 0; x < dstW; x++ {
+					iA, iB, f := samples(x, srcW, s)
+					dst[i] = rgbaLerp(src[iA], src[iB], f)
+					i++
+				}
+			}
+		}
+		dst, src, srcW = src, dst, dstW
+	}
+
+	out := make([]byte, dstW*dstH*dstD*4*4)
+	w := endian.Writer(bytes.NewBuffer(out[:0]), device.LittleEndian)
+	for i, c := 0, dstW*dstH*dstD; i < c; i++ {
+		w.Float32(src[i].r)
+		w.Float32(src[i].g)
+		w.Float32(src[i].b)
+		w.Float32(src[i].a)
+	}
+
 	return out, nil
 }

@@ -123,19 +123,23 @@ func init() {
 	}
 	for _, f := range fmts {
 		f := f
-		image.RegisterConverter(f, image.RGBA_U8_NORM, func(src []byte, width, height int) ([]byte, error) {
-			dst := make([]byte, width*height*4)
-			in := (unsafe.Pointer)(&src[0])
-			out := (unsafe.Pointer)(&dst[0])
-			blockW := f.GetAstc().BlockWidth
-			blockH := f.GetAstc().BlockHeight
-			C.decompress_astc( // TODO: sRGB.
-				(*C.uint8_t)(in),
-				(*C.uint8_t)(out),
-				(C.uint32_t)(width),
-				(C.uint32_t)(height),
-				(C.uint32_t)(blockW),
-				(C.uint32_t)(blockH))
+		image.RegisterConverter(f, image.RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+			dst := make([]byte, w*h*d*4)
+			sliceSize := f.Size(w, h, 1)
+			for z := 0; z < d; z++ {
+				dst, src := dst[z*w*h*4:], src[z*sliceSize:]
+				in := (unsafe.Pointer)(&src[0])
+				out := (unsafe.Pointer)(&dst[0])
+				blockW := f.GetAstc().BlockWidth
+				blockH := f.GetAstc().BlockHeight
+				C.decompress_astc( // TODO: sRGB.
+					(*C.uint8_t)(in),
+					(*C.uint8_t)(out),
+					(C.uint32_t)(w),
+					(C.uint32_t)(h),
+					(C.uint32_t)(blockW),
+					(C.uint32_t)(blockH))
+			}
 			return dst, nil
 		})
 	}

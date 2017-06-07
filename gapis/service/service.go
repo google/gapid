@@ -191,8 +191,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_Mesh{v}}
 	case *gfxapi.ResourceData:
 		return &Value{&Value_ResourceData{v}}
-	case *image.Info2D:
-		return &Value{&Value_ImageInfo_2D{v}}
+	case *image.Info:
+		return &Value{&Value_ImageInfo{v}}
 	case *device.Instance:
 		return &Value{&Value_Device{v}}
 

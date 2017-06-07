@@ -28,17 +28,18 @@ import (
 
 var PNG = NewPNG("png")
 
-// PNGFrom returns a new Image2D with the PNG format.
-func PNGFrom(data []byte) (*Image2D, error) {
+// PNGFrom returns a new Data with the PNG format.
+func PNGFrom(data []byte) (*Data, error) {
 	cfg, err := png.DecodeConfig(bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
-	return &Image2D{
+	return &Data{
 		Width:  uint32(cfg.Width),
 		Height: uint32(cfg.Height),
-		Data:   data,
+		Depth:  1,
 		Format: PNG,
+		Bytes:  data,
 	}, nil
 }
 
@@ -46,9 +47,9 @@ func PNGFrom(data []byte) (*Image2D, error) {
 // same name.
 func NewPNG(name string) *Format { return &Format{name, &Format_Png{&FmtPNG{}}} }
 
-func (f *FmtPNG) key() interface{}             { return *f }
-func (*FmtPNG) size(w, h int) int              { return -1 }
-func (*FmtPNG) check(d []byte, w, h int) error { return nil }
+func (f *FmtPNG) key() interface{}                   { return *f }
+func (*FmtPNG) size(w, h, d int) int                 { return -1 }
+func (*FmtPNG) check(data []byte, w, h, d int) error { return nil }
 func (*FmtPNG) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
 	return nil, ErrResizeUnsupported
 }
@@ -57,7 +58,10 @@ func (*FmtPNG) channels() []stream.Channel {
 }
 func init() {
 	RegisterConverter(RGBA_U8_NORM, PNG,
-		func(src []byte, width, height int) ([]byte, error) {
+		func(src []byte, width, height, depth int) ([]byte, error) {
+			if depth != 1 {
+				return nil, fmt.Errorf("Cannot decode PNG with depth of %d", depth)
+			}
 			img := image.NewNRGBA(image.Rect(0, 0, width, height))
 			i := 0
 			for y := 0; y < height; y++ {
@@ -73,7 +77,10 @@ func init() {
 			return buffer.Bytes(), nil
 		})
 	RegisterConverter(PNG, RGBA_U8_NORM,
-		func(src []byte, width, height int) ([]byte, error) {
+		func(src []byte, width, height, depth int) ([]byte, error) {
+			if depth != 1 {
+				return nil, fmt.Errorf("Cannot decode PNG with depth of %d", depth)
+			}
 			img, err := png.Decode(bytes.NewReader(src))
 			if err != nil {
 				return nil, err
@@ -136,6 +143,6 @@ func init() {
 					}
 				}
 			}
-			return Convert(buf.Bytes(), width, height, f, RGBA_U8_NORM)
+			return Convert(buf.Bytes(), width, height, 1, f, RGBA_U8_NORM)
 		})
 }
