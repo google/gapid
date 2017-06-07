@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/vulkan/loader"
@@ -73,6 +74,10 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	if verb.Start.Defer {
 		options.Flags |= client.DeferStart
+	}
+
+	if verb.ADB != "" {
+		adb.ADB = file.Abs(verb.ADB)
 	}
 
 	switch verb.API {
