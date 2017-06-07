@@ -3356,6 +3356,7 @@ cmd void vkDestroyEvent(
 
 @threadSafety("system")
 @indirect("VkDevice")
+@custom
 cmd VkResult vkGetEventStatus(
     VkDevice device,
     VkEvent  event) {
