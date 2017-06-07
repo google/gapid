@@ -313,7 +313,7 @@ func getAtomIndicesAndSampleGrabber(bench *Benchmark, session *session) (err err
 	switch bench.Input.BenchmarkType {
 	case "frames":
 		arr, grab = arr.filter(func(idx int) bool {
-			return session.atoms[idx].AtomFlags().IsEndOfFrame()
+			return session.atoms[idx].AtomFlags().IsBeginOfFrame()
 		}), getFrame
 	case "state":
 		grab = getStateAfter
@@ -347,7 +347,7 @@ func (s *session) grabSamples() error {
 	}
 	currentFrame := 0
 	for index, atom := range s.atoms {
-		if atom.AtomFlags().IsEndOfFrame() {
+		if atom.AtomFlags().IsBeginOfFrame() {
 			currentFrame++
 		}
 		if interesting[index] {
