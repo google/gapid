@@ -24,6 +24,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android/adb"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapidapk"
 )
 
@@ -43,6 +45,10 @@ func init() {
 }
 
 func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	if verb.ADB != "" {
+		adb.ADB = file.Abs(verb.ADB)
+	}
+
 	d, err := getADBDevice(ctx, verb.Device)
 	if err != nil {
 		return err
