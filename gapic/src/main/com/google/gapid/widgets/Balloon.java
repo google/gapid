@@ -47,13 +47,12 @@ public class Balloon {
   public static Balloon createAndShow(
       Control parent, Consumer<Shell> createContents, Point offset) {
     Shell parentShell = parent.getShell();
-    Shell shell = new Shell(parentShell, SWT.NO_TRIM | SWT.NO_MOVE | SWT.TOOL);
+    Shell shell = new Shell(parentShell, SWT.ON_TOP | SWT.NO_TRIM);
     shell.setLayout(withMargin(new FillLayout(), 5, 5));
     createContents.accept(shell);
     shell.setLocation(parent.toDisplay(offset));
-    shell.setCapture(true);
     shell.setSize(shell.computeSize(SWT.DEFAULT, SWT.DEFAULT));
-    shell.open();
+    shell.setVisible(true);
     return new Balloon(shell);
   }
 
