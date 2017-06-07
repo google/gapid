@@ -458,11 +458,9 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     viewer.getTree().setSelection(viewer.getTree().getItem(0));
     viewer.getTree().showSelection();
 
-    /*
     if (models.atoms.getSelectedAtoms() != null) {
       onAtomsSelected(models.atoms.getSelectedAtoms());
     }
-    */
   }
 
   private ListenableFuture<TreePath> getTreePath(AtomIndex index) {
