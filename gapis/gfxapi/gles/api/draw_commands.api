@@ -105,7 +105,7 @@ sub void DrawElements(ref!Context    ctx,
     id := ctx.Objects.VertexArrays[ctx.BoundVertexArray].ElementArrayBuffer
     if (id != 0) {
       // Element array buffer bound - indices is an offset on the buffer.
-      index_data := ctx.SharedObjects.Buffers[id].Data
+      index_data := ctx.Objects.Shared.Buffers[id].Data
       offset := as!s32(as!u64(indices))
 
       // Read the vertices

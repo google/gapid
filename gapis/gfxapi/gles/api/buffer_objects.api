@@ -101,7 +101,7 @@ sub ref!Buffer GetBoundBufferOrError(GLenum target) {
     }
   }
   if id == 0 { glErrorInvalidOperation() }
-  return ctx.SharedObjects.Buffers[id]
+  return ctx.Objects.Shared.Buffers[id]
 }
 
 @if(Version.GLES10)
@@ -169,8 +169,8 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
 
   // Create the buffer if need (after checking whether the enum is valid)
   if buffer != 0 {
-    if !(buffer in ctx.SharedObjects.Buffers) {
-      ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+    if !(buffer in ctx.Objects.Shared.Buffers) {
+      ctx.Objects.Shared.Buffers[buffer] = new!Buffer()
     }
   }
 }
@@ -181,8 +181,8 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferBase.xhtml", Version.GLES32)
 cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
   ctx := GetContext()
-  size := switch (buffer in ctx.SharedObjects.Buffers) {
-    case true:  ctx.SharedObjects.Buffers[buffer].Size
+  size := switch (buffer in ctx.Objects.Shared.Buffers) {
+    case true:  ctx.Objects.Shared.Buffers[buffer].Size
     case false: as!GLsizeiptr(0)
   }
   BindBufferRange(target, index, buffer, 0, size)
@@ -239,8 +239,8 @@ sub void BindBufferRange(GLenum     target,
 
   // Create the buffer if need (after checking whether the enum is valid)
   if buffer != 0 {
-    if !(buffer in ctx.SharedObjects.Buffers) {
-      ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+    if !(buffer in ctx.Objects.Shared.Buffers) {
+      ctx.Objects.Shared.Buffers[buffer] = new!Buffer()
     }
   }
 }
@@ -319,7 +319,7 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   for i in (0 .. count) {
     id := b[i]
     if id != 0 {
-      delete(ctx.SharedObjects.Buffers, id)
+      delete(ctx.Objects.Shared.Buffers, id)
     }
   }
 }
@@ -337,7 +337,7 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   for i in (0 .. count) {
     id := as!BufferId(?)
     assert(id != 0)
-    ctx.SharedObjects.Buffers[id] = new!Buffer()
+    ctx.Objects.Shared.Buffers[id] = new!Buffer()
     b[i] = id
   }
 }
@@ -436,7 +436,7 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
 cmd GLboolean glIsBuffer(BufferId buffer) {
 
   ctx := GetContext()
-  return as!GLboolean(buffer in ctx.SharedObjects.Buffers)
+  return as!GLboolean(buffer in ctx.Objects.Shared.Buffers)
 }
 
 // This command only exits in desktop GL - but we need the signature in compat.

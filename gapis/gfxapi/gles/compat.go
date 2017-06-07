@@ -333,7 +333,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		switch a := a.(type) {
 		case *GlBindBuffer:
-			if a.Buffer != 0 && !c.SharedObjects.Buffers.Contains(a.Buffer) {
+			if a.Buffer != 0 && !c.Objects.Shared.Buffers.Contains(a.Buffer) {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := atom.Must(atom.AllocData(ctx, s, a.Buffer))
 				out.MutateAndWrite(ctx, dID, NewGlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -342,7 +342,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlBindTexture:
 			{
 				a := *a
-				if a.Texture != 0 && !c.SharedObjects.Textures.Contains(a.Texture) {
+				if a.Texture != 0 && !c.Objects.Shared.Textures.Contains(a.Texture) {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(a.Texture)))
 					out.MutateAndWrite(ctx, dID, NewGlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -387,7 +387,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// TODO: We don't handle the case where the buffer is kept bound
 				// while the buffer is updated. It's an unlikely issue, but
 				// something that may break us.
-				if _, ok := c.SharedObjects.Buffers[a.Buffer]; !ok {
+				if _, ok := c.Objects.Shared.Buffers[a.Buffer]; !ok {
 					return // Don't know what buffer this is referring to.
 				}
 
@@ -472,7 +472,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			if err := a.Mutate(ctx, s, nil /* no builder, just mutate */); err != nil {
 				return
 			}
-			shader := c.SharedObjects.Shaders.Get(a.Shader)
+			shader := c.Objects.Shared.Shaders.Get(a.Shader)
 			src := ""
 
 			if config.UseGlslang {
@@ -595,7 +595,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// client memory and we need to move this into temporary buffer(s).
 					// The indices are server-side, so can just be read from the internal
 					// pooled buffer.
-					data := c.SharedObjects.Buffers[ib].Data
+					data := c.Objects.Shared.Buffers[ib].Data
 					indexSize := DataTypeSize(a.IndicesType)
 					start := u64.Min(a.Indices.addr, data.count)                               // Clamp
 					end := u64.Min(start+uint64(indexSize)*uint64(a.IndicesCount), data.count) // Clamp
@@ -1067,7 +1067,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Forcefully get all uniform locations, so that we can remap for applications that
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
-				prog := c.SharedObjects.Programs[a.Program]
+				prog := c.Objects.Shared.Programs[a.Program]
 				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
 					uniform := prog.ActiveUniforms[uniformIndex]
 					for i := 0; i < int(uniform.ArraySize); i++ {

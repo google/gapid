@@ -42,7 +42,7 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	return nil, nil, nil
 }
 
-// sharedObjects returns the path to the SharedObjects field of the currently bound
+// sharedObjects returns the path to the Objects.Shared field of the currently bound
 // context, and the context at p.
 func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
@@ -58,7 +58,8 @@ func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, err
 		return cmdPath.StateAfter().
 			Field("Contexts").
 			MapIndex(state.CurrentThread).
-			Field("SharedObjects"), context, nil
+			Field("Objects").
+			Field("Shared"), context, nil
 	}
 	return nil, nil, nil
 }
@@ -85,7 +86,7 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 // If nil, nil is returned then the path cannot be followed.
 func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := sharedObjects(ctx, p)
-	if i == nil || !c.SharedObjects.Buffers.Contains(o) {
+	if i == nil || !c.Objects.Shared.Buffers.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Buffers").MapIndex(o), nil
@@ -105,7 +106,7 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 // If nil, nil is returned then the path cannot be followed.
 func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := sharedObjects(ctx, p)
-	if i == nil || !c.SharedObjects.Programs.Contains(o) {
+	if i == nil || !c.Objects.Shared.Programs.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Programs").MapIndex(o), nil
@@ -125,7 +126,7 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := sharedObjects(ctx, p)
-	if i == nil || !c.SharedObjects.Renderbuffers.Contains(o) {
+	if i == nil || !c.Objects.Shared.Renderbuffers.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Renderbuffers").MapIndex(o), nil
@@ -135,7 +136,7 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 // If nil, nil is returned then the path cannot be followed.
 func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := sharedObjects(ctx, p)
-	if i == nil || !c.SharedObjects.Shaders.Contains(o) {
+	if i == nil || !c.Objects.Shared.Shaders.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Shaders").MapIndex(o), nil
@@ -145,7 +146,7 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := sharedObjects(ctx, p)
-	if i == nil || !c.SharedObjects.Textures.Contains(o) {
+	if i == nil || !c.Objects.Shared.Textures.Contains(o) {
 		return nil, err
 	}
 	return i.Field("Textures").MapIndex(o), nil
@@ -174,7 +175,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 		program = c.BoundProgram
 	}
 
-	prog, ok := c.SharedObjects.Programs[program]
+	prog, ok := c.Objects.Shared.Programs[program]
 	if !ok || !prog.Uniforms.Contains(o) {
 		return nil, nil
 	}
