@@ -47,6 +47,7 @@ import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.BigPoint;
+import com.google.gapid.util.Float16;
 import com.google.gapid.util.IntRange;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.LongPoint;
@@ -429,6 +430,11 @@ public class MemoryView extends Composite
       @Override
       public MemoryModel getMemoryModel(MemoryDataModel memory) {
         return new Int64MemoryModel(memory);
+      }
+    }, Float16() {
+      @Override
+      public MemoryModel getMemoryModel(MemoryDataModel memory) {
+        return new Float16MemoryModel(memory);
       }
     }, Float32() {
       @Override
@@ -1238,6 +1244,42 @@ public class MemoryView extends Composite
   }
 
   /**
+   * {@link MemoryModel} displaying the data as 16bit floating point values.
+   */
+  private static class Float16MemoryModel extends CharBufferMemoryModel {
+    private static final int FLOATS_PER_ROW = BYTES_PER_ROW / 2;
+    private static final int CHARS_PER_FLOAT = 15;
+
+    private static final int FLOAT_SEPARATOR = 1;
+
+    private static final int FLOATS_CHARS = (CHARS_PER_FLOAT + FLOAT_SEPARATOR) * FLOATS_PER_ROW;
+    private static final int CHARS_PER_ROW = ADDRESS_CHARS + FLOATS_CHARS;
+
+    private static final IntRange FLOATS_RANGE =
+        new IntRange(ADDRESS_CHARS + FLOAT_SEPARATOR, ADDRESS_CHARS + FLOATS_CHARS);
+
+    public Float16MemoryModel(MemoryDataModel data) {
+      super(data.align(4), CHARS_PER_ROW, FLOATS_RANGE);
+    }
+
+    @Override
+    protected void formatMemory(char[] buffer, MemorySegment memory) {
+      StringBuilder sb = new StringBuilder(50);
+      for (int i = 0, j = ADDRESS_CHARS; i + 1 < memory.length;
+          i += 2, j += CHARS_PER_FLOAT + FLOAT_SEPARATOR) {
+        sb.setLength(0);
+        if (memory.getShortKnown(i)) {
+          sb.append(Float16.shortBitsToFloat(memory.getShort(i)));
+        } else {
+          appendUnknown(sb, CHARS_PER_FLOAT);
+        }
+        int count = Math.min(CHARS_PER_FLOAT, sb.length());
+        sb.getChars(0, count, buffer, j + CHARS_PER_FLOAT - count + 1);
+      }
+    }
+  }
+
+  /**
    * {@link MemoryModel} displaying the data as 32bit floating point values.
    */
   private static class Float32MemoryModel extends CharBufferMemoryModel {
@@ -1449,8 +1491,19 @@ public class MemoryView extends Composite
       return data[offset + off] & 0xFF;
     }
 
+    public boolean getShortKnown(int off) {
+      return getByteKnown(off, 2);
+    }
+
     public boolean getIntKnown(int off) {
       return getByteKnown(off, 4);
+    }
+
+    public int getShort(int off) {
+      off += offset;
+      // TODO: figure out BigEndian vs LittleEndian.
+      return (data[off + 0] & 0xFF) |
+          ((data[off + 1] & 0xFF) << 8);
     }
 
     public int getInt(int off) {
