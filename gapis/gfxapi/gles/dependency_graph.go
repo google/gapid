@@ -300,7 +300,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				// It may act as "resolve" of EGLImage - i.e. save the content in one context.
 				b.KeepAlive = true
 			case *GlFramebufferTexture2D:
-				b.read(g, textureSizeKey{c.SharedObjects.Textures[a.Texture], a.Texture})
+				b.read(g, textureSizeKey{c.Objects.Shared.Textures[a.Texture], a.Texture})
 				b.KeepAlive = true // Changes untracked state
 			case *GlBindTexture:
 				// It may act as "load" of EGLImage - i.e. load the content in other context.
@@ -348,7 +348,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context) (stateKeys []stateKey) {
 	// Look for samplers used by the current program.
-	if prog, ok := c.SharedObjects.Programs[c.BoundProgram]; ok {
+	if prog, ok := c.Objects.Shared.Programs[c.BoundProgram]; ok {
 		for _, activeUniform := range prog.ActiveUniforms {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {

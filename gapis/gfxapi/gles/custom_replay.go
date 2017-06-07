@@ -37,7 +37,7 @@ type objectKey struct {
 func (i BufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Buffers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Buffers, i}, true
 	}
 	return
 }
@@ -53,7 +53,7 @@ func (i FramebufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, rem
 func (i RenderbufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Renderbuffers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, i}, true
 	}
 	return
 }
@@ -61,7 +61,7 @@ func (i RenderbufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 func (i ProgramId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Programs, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Programs, i}, true
 	}
 	return
 }
@@ -69,7 +69,7 @@ func (i ProgramId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Shaders, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Shaders, i}, true
 	}
 	return
 }
@@ -77,7 +77,7 @@ func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bo
 func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Textures, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Textures, i}, true
 	}
 	return
 }
@@ -98,7 +98,7 @@ func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 	return struct {
 		p *Program
 		i UniformBlockId
-	}{ctx.SharedObjects.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
 func (i VertexArrayId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
@@ -120,7 +120,7 @@ func (i QueryId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap boo
 func (i GLsync) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && !i.IsNullptr() {
-		key, remap = objectKey{&ctx.SharedObjects.SyncObjects, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.SyncObjects, i}, true
 	}
 	return
 }
@@ -132,7 +132,7 @@ func (i GLsync) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Va
 func (i SamplerId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.SharedObjects.Samplers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Samplers, i}, true
 	}
 	return
 }
@@ -165,7 +165,7 @@ func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, r
 	return struct {
 		p *Program
 		l UniformLocation
-	}{ctx.SharedObjects.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
 func (i SrcImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
@@ -200,9 +200,9 @@ func remapImageId(name GLuint, target GLenum, s *gfxapi.State) (key interface{},
 	ctx := GetContext(s)
 	if ctx != nil && name != 0 {
 		if target == GLenum_GL_RENDERBUFFER {
-			key, remap = objectKey{&ctx.SharedObjects.Renderbuffers, RenderbufferId(name)}, true
+			key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, RenderbufferId(name)}, true
 		} else {
-			key, remap = objectKey{&ctx.SharedObjects.Textures, TextureId(name)}, true
+			key, remap = objectKey{&ctx.Objects.Shared.Textures, TextureId(name)}, true
 		}
 	}
 	return

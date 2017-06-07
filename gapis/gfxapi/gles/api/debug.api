@@ -247,28 +247,28 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
   ctx := GetContext()
   switch (identifier) {
     case GL_TEXTURE: {
-      if !(as!TextureId(name) in ctx.SharedObjects.Textures) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Textures[as!TextureId(name)].Label = str
+      if !(as!TextureId(name) in ctx.Objects.Shared.Textures) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Textures[as!TextureId(name)].Label = str
     }
     case GL_FRAMEBUFFER: {
       if !(as!FramebufferId(name) in ctx.Objects.Framebuffers) { glErrorInvalidOperation() }
       ctx.Objects.Framebuffers[as!FramebufferId(name)].Label = str
     }
     case GL_RENDERBUFFER: {
-      if !(as!RenderbufferId(name) in ctx.SharedObjects.Renderbuffers) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Renderbuffers[as!RenderbufferId(name)].Label = str
+      if !(as!RenderbufferId(name) in ctx.Objects.Shared.Renderbuffers) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Renderbuffers[as!RenderbufferId(name)].Label = str
     }
     case GL_BUFFER: {
-      if !(as!BufferId(name) in ctx.SharedObjects.Buffers) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Buffers[as!BufferId(name)].Label = str
+      if !(as!BufferId(name) in ctx.Objects.Shared.Buffers) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Buffers[as!BufferId(name)].Label = str
     }
     case GL_SHADER: {
-      if !(as!ShaderId(name) in ctx.SharedObjects.Shaders) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Shaders[as!ShaderId(name)].Label = str
+      if !(as!ShaderId(name) in ctx.Objects.Shared.Shaders) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Shaders[as!ShaderId(name)].Label = str
     }
     case GL_PROGRAM: {
-      if !(as!ProgramId(name) in ctx.SharedObjects.Programs) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Programs[as!ProgramId(name)].Label = str
+      if !(as!ProgramId(name) in ctx.Objects.Shared.Programs) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Programs[as!ProgramId(name)].Label = str
     }
     case GL_VERTEX_ARRAY: {
       if !(as!VertexArrayId(name) in ctx.Objects.VertexArrays) { glErrorInvalidOperation() }
@@ -279,8 +279,8 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
       ctx.Objects.Queries[as!QueryId(name)].Label = str
     }
     case GL_SAMPLER: {
-      if !(as!SamplerId(name) in ctx.SharedObjects.Samplers) { glErrorInvalidOperation() }
-      ctx.SharedObjects.Samplers[as!SamplerId(name)].Label = str
+      if !(as!SamplerId(name) in ctx.Objects.Shared.Samplers) { glErrorInvalidOperation() }
+      ctx.Objects.Shared.Samplers[as!SamplerId(name)].Label = str
     }
     case GL_TRANSFORM_FEEDBACK: {
       if !(as!TransformFeedbackId(name) in ctx.Objects.TransformFeedbacks) { glErrorInvalidOperation() }

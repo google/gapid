@@ -214,8 +214,8 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
       glErrorInvalidEnum(target)
     }
   }
-  if !(renderbuffer in ctx.SharedObjects.Renderbuffers) {
-    ctx.SharedObjects.Renderbuffers[renderbuffer] = new!Renderbuffer(ID: renderbuffer)
+  if !(renderbuffer in ctx.Objects.Shared.Renderbuffers) {
+    ctx.Objects.Shared.Renderbuffers[renderbuffer] = new!Renderbuffer(ID: renderbuffer)
   }
 }
 
@@ -472,7 +472,7 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
   for i in (0 .. count) {
     id := r[i]
     if id != 0 {
-      delete(ctx.SharedObjects.Renderbuffers, id)
+      delete(ctx.Objects.Shared.Renderbuffers, id)
     }
   }
 }
@@ -549,12 +549,12 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   ctx := GetContext()
   if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
   // SPEC: Only PDF spec mentions this:
-  if (renderbuffer != 0) && !(renderbuffer in ctx.SharedObjects.Renderbuffers) { glErrorInvalidOperation() }
+  if (renderbuffer != 0) && !(renderbuffer in ctx.Objects.Shared.Renderbuffers) { glErrorInvalidOperation() }
 
   attachment := FramebufferAttachment()
   if (renderbuffer != 0) {
     attachment.Type = GL_RENDERBUFFER
-    attachment.Renderbuffer = ctx.SharedObjects.Renderbuffers[renderbuffer]
+    attachment.Renderbuffer = ctx.Objects.Shared.Renderbuffers[renderbuffer]
   }
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
@@ -569,9 +569,9 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
     attachment_info.Type = GL_TEXTURE
-    attachment_info.Texture = ctx.SharedObjects.Textures[texture]
+    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.Layered = 0 // TODO
   }
@@ -615,7 +615,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   ctx := GetContext()
   attachment := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidOperation() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidOperation() }
     kind := switch (texture_target) {
       case GL_TEXTURE_2D:
         GL_TEXTURE_2D
@@ -629,9 +629,9 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
         as!GLenum(0)
     }
     // TODO: Handle texture 0
-    if ctx.SharedObjects.Textures[texture].Kind != kind { glErrorInvalidOperation() }
+    if ctx.Objects.Shared.Textures[texture].Kind != kind { glErrorInvalidOperation() }
     attachment.Type = GL_TEXTURE
-    attachment.Texture = ctx.SharedObjects.Textures[texture]
+    attachment.Texture = ctx.Objects.Shared.Textures[texture]
     attachment.TextureLevel = level
     attachment.TextureLayer = CubemapFaceToLayer(texture_target)
   }
@@ -650,9 +650,9 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.SharedObjects.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
     attachment_info.Type = GL_TEXTURE
-    attachment_info.Texture = ctx.SharedObjects.Textures[texture]
+    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.TextureLayer = layer
   }
@@ -688,7 +688,7 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!RenderbufferId(?)
-    ctx.SharedObjects.Renderbuffers[id] = new!Renderbuffer(ID: id)
+    ctx.Objects.Shared.Renderbuffers[id] = new!Renderbuffer(ID: id)
     r[i] = id
   }
 }
@@ -827,7 +827,7 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   ctx := GetContext()
   id := ctx.BoundRenderbuffer
   if id == 0 { glErrorInvalidOperation() } // PDF spec
-  rb := ctx.SharedObjects.Renderbuffers[id]
+  rb := ctx.Objects.Shared.Renderbuffers[id]
   values[0] = switch (parameter) {
     case GL_RENDERBUFFER_WIDTH:           as!GLint(rb.Width)
     case GL_RENDERBUFFER_HEIGHT:          as!GLint(rb.Height)
@@ -921,7 +921,7 @@ cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
 cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
 
   ctx := GetContext()
-  return as!GLboolean(renderbuffer in ctx.SharedObjects.Renderbuffers)
+  return as!GLboolean(renderbuffer in ctx.Objects.Shared.Renderbuffers)
 }
 
 @if(Version.GLES30)
@@ -1078,7 +1078,7 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
 
   id := ctx.BoundRenderbuffer
   if id == 0 { glErrorInvalidOperation() }
-  rb := ctx.SharedObjects.Renderbuffers[id]
+  rb := ctx.Objects.Shared.Renderbuffers[id]
   rb.InternalFormat = internalformat
   rb.Width = width
   rb.Height = height

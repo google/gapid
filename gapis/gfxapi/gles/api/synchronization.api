@@ -34,7 +34,7 @@ cmd GLenum glClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout)
 sub void ClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   supportsBits(syncFlags, GL_SYNC_FLUSH_COMMANDS_BIT)
   ctx := GetContext()
-  if !(sync in ctx.SharedObjects.SyncObjects) { glErrorInvalidValue() }
+  if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidValue() }
   if (GL_SYNC_FLUSH_COMMANDS_BIT in syncFlags) {
   }
   _ = timeout // TODO
@@ -51,8 +51,8 @@ cmd void glDeleteSync(GLsync sync) {
 sub void DeleteSync(GLsync sync) {
   if sync != null {
     ctx := GetContext()
-    if !(sync in ctx.SharedObjects.SyncObjects) { glErrorInvalidValue() }
-    delete(ctx.SharedObjects.SyncObjects, sync)
+    if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidValue() }
+    delete(ctx.Objects.Shared.SyncObjects, sync)
   }
 }
 
@@ -71,7 +71,7 @@ sub void FenceSync(GLenum condition, GLbitfield syncFlags, GLsync sync) {
   if syncFlags != as!GLbitfield(0) { glErrorInvalidValue() }
   ctx := GetContext()
   if (sync != null) {
-    ctx.SharedObjects.SyncObjects[sync] = new!SyncObject()
+    ctx.Objects.Shared.SyncObjects[sync] = new!SyncObject()
   }
 }
 
@@ -111,7 +111,7 @@ cmd GLboolean glIsSync(GLsync sync) {
 
 sub GLboolean IsSync(GLsync sync) {
   ctx := GetContext()
-  return as!GLboolean(sync in ctx.SharedObjects.SyncObjects)
+  return as!GLboolean(sync in ctx.Objects.Shared.SyncObjects)
 }
 
 @if(Version.GLES30)
@@ -124,7 +124,7 @@ cmd void glWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
 
 sub void WaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   ctx := GetContext()
-  if !(sync in ctx.SharedObjects.SyncObjects) { glErrorInvalidOperation() }
+  if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidOperation() }
   if timeout != 0xFFFFFFFFFFFFFFFF { glErrorInvalidValue() } // GL_TIMEOUT_IGNORED
   if syncFlags != as!GLbitfield(0) { glErrorInvalidValue() }
 }

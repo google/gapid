@@ -188,8 +188,8 @@ sub void BindVertexBuffer(ref!Context ctx, VertexBufferBindingIndex binding_inde
   }
   // TODO: if !((buffer == 0) || (buffer in ctx.UsedNames.Buffers)) { glErrorInvalidOperation() } // SPEC: html is different
   if buffer != 0 {
-    if !(buffer in ctx.SharedObjects.Buffers) {
-      ctx.SharedObjects.Buffers[buffer] = new!Buffer()
+    if !(buffer in ctx.Objects.Shared.Buffers) {
+      ctx.Objects.Shared.Buffers[buffer] = new!Buffer()
     }
   }
   vao := ctx.Objects.VertexArrays[ctx.BoundVertexArray]

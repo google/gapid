@@ -260,8 +260,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 
 	// Delete all Renderbuffers.
-	renderbuffers := make([]RenderbufferId, 0, len(c.SharedObjects.Renderbuffers)-3)
-	for renderbufferId := range c.SharedObjects.Renderbuffers {
+	renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
+	for renderbufferId := range c.Objects.Shared.Renderbuffers {
 		// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
 		if renderbufferId < 0xf0000000 {
 			renderbuffers = append(renderbuffers, renderbufferId)
@@ -273,8 +273,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 
 	// Delete all Textures.
-	textures := make([]TextureId, 0, len(c.SharedObjects.Textures))
-	for textureId := range c.SharedObjects.Textures {
+	textures := make([]TextureId, 0, len(c.Objects.Shared.Textures))
+	for textureId := range c.Objects.Shared.Textures {
 		textures = append(textures, textureId)
 	}
 	if len(textures) > 0 {
@@ -293,8 +293,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 
 	// Delete all Buffers.
-	buffers := make([]BufferId, 0, len(c.SharedObjects.Buffers))
-	for bufferId := range c.SharedObjects.Buffers {
+	buffers := make([]BufferId, 0, len(c.Objects.Shared.Buffers))
+	for bufferId := range c.Objects.Shared.Buffers {
 		buffers = append(buffers, bufferId)
 	}
 	if len(buffers) > 0 {
@@ -313,12 +313,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 
 	// Delete all Shaders.
-	for _, shaderId := range c.SharedObjects.Shaders.KeysSorted() {
+	for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
 		out.MutateAndWrite(ctx, id, NewGlDeleteShader(shaderId))
 	}
 
 	// Delete all Programs.
-	for _, programId := range c.SharedObjects.Programs.KeysSorted() {
+	for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
 		out.MutateAndWrite(ctx, id, NewGlDeleteProgram(programId))
 	}
 

@@ -63,7 +63,7 @@ func (a *GlDrawElements) getIndices(
 		reader = a.Indices.Slice(0, size, s.MemoryLayout).Reader(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
-		indexBuffer := c.SharedObjects.Buffers[indexBufferID]
+		indexBuffer := c.Objects.Shared.Buffers[indexBufferID]
 		if indexBuffer == nil {
 			return nil, 0, fmt.Errorf("Can not find buffer %v", indexBufferID)
 		}
