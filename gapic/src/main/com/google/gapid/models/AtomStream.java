@@ -193,7 +193,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   public int getStartOfFrame(long index) {
     Atom[] atoms = getData().getAtoms();
     for (int i = (int)index; i > 0; i--) {
-      if (atoms[i - 1].isBeginOfFrame()) {
+      if (atoms[i - 1].isStartOfFrame()) {
         return i;
       }
     }
@@ -203,10 +203,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   /**
    * @return the index of the last command of the frame that contains the given command.
    *
-  public int getBeginOfFrame(long index) {
+  public int getEndOfFrame(long index) {
     Atom[] atoms = getData().getAtoms();
     for (int i = (int)index; i < atoms.length; i++) {
-      if (atoms[i].isBeginOfFrame()) {
+      if (atoms[i].isEndOfFrame()) {
         return i;
       }
     }

@@ -107,7 +107,7 @@ cmd GLboolean glIsEnabled(GLenum capability) {
 Each command may be prefixed with one or more annotations.
 
 ```cpp
-@BeginOfFrame
+@StartOfFrame
 cmd EGLBoolean eglSwapBuffers(EGLDisplay display, void* surface) {
   // ...
 }

@@ -875,7 +875,7 @@
     func (ϟa *{{$name}}) API() gfxapi.API { return API() }
     func (ϟa *{{$name}}) AtomFlags() atom.Flags { return 0 §
         {{if GetAnnotation $.Command "DrawCall"}} | atom.DrawCall §{{end}}
-        {{if GetAnnotation $.Command "BeginOfFrame"}} | atom.BeginOfFrame §{{end}}
+        {{if GetAnnotation $.Command "StartOfFrame"}} | atom.StartOfFrame §{{end}}
         {{if GetAnnotation $.Command "EndOfFrame"}} | atom.EndOfFrame §{{end}}
         {{if GetAnnotation $.Command "UserMarker"}} | atom.UserMarker §{{end}}
         {{if GetAnnotation $.Command "PushUserMarker"}} | atom.PushUserMarker §{{end}}

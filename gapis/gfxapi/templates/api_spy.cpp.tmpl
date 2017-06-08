@@ -195,8 +195,8 @@
       bool called = false;
       auto call = [{{Macro "CallCapture" $}}] {
         called = true;
-        {{if GetAnnotation $ "BeginOfFrame"}}
-          onPreBeginOfFrame({{Global "ApiIndex"}});
+        {{if GetAnnotation $ "StartOfFrame"}}
+          onPreStartOfFrame({{Global "ApiIndex"}});
         {{end}}
         {{if GetAnnotation $ "EndOfFrame"}}
           onPreEndOfFrame({{Global "ApiIndex"}});
@@ -255,7 +255,7 @@
       observer->encodeAndDeleteCommand(c.toProto());
 
       {{if GetAnnotation $ "DrawCall"}}onPostDrawCall({{Global "ApiIndex"}});{{end}}
-      {{if GetAnnotation $ "BeginOfFrame"}}onPostBeginOfFrame(observer);{{end}}
+      {{if GetAnnotation $ "StartOfFrame"}}onPostStartOfFrame(observer);{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
 ¶
       {{if not (IsVoid $.Return.Type)}}¶

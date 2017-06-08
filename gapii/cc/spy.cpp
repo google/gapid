@@ -352,7 +352,7 @@ void Spy::onPostDrawCall(uint8_t api) {
     mNumDrawsPerFrame++;
 }
 
-void Spy::onPreBeginOfFrame(uint8_t api) {
+void Spy::onPreStartOfFrame(uint8_t api) {
     if (is_suspended()) {
         return;
     }
@@ -366,7 +366,7 @@ void Spy::onPreBeginOfFrame(uint8_t api) {
     mNumDrawsPerFrame = 0;
 }
 
-void Spy::onPostBeginOfFrame(CallObserver* observer) {
+void Spy::onPostStartOfFrame(CallObserver* observer) {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {

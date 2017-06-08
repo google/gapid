@@ -587,7 +587,7 @@ cmd Bool glXMakeCurrent(void* display, GLXDrawable drawable, GLXContext ctx) {
 }
 
 @no_replay
-@BeginOfFrame
+@StartOfFrame
 cmd void glXSwapBuffers(void* display, GLXDrawable drawable) {
 }
 
@@ -630,7 +630,7 @@ cmd BOOL wglMakeCurrent(HDC hdc, HGLRC hglrc) {
 }
 
 @no_replay
-@BeginOfFrame
+@StartOfFrame
 ///http://msdn.microsoft.com/en-us/library/dd369060(v=vs.85)
 cmd void wglSwapBuffers(HDC hdc) { }
 
@@ -676,7 +676,7 @@ cmd int CGSGetSurfaceBounds(CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID s
 }
 
 @no_replay
-@BeginOfFrame
+@StartOfFrame
 cmd CGLError CGLFlushDrawable(CGLContextObj ctx) {
   return ?
 }

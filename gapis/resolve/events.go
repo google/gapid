@@ -59,7 +59,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Commands.Capture.Command(uint64(i)),
 			})
 		}
-		if p.LastInFrame && f.IsBeginOfFrame() && i > 0 {
+		if p.LastInFrame && f.IsStartOfFrame() && i > 0 {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_LastInFrame,
 				Command: p.Commands.Capture.Command(uint64(i) - 1),
@@ -71,7 +71,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Commands.Capture.Command(uint64(i)),
 			})
 		}
-		if p.FirstInFrame && (f.IsBeginOfFrame() || i == 0) {
+		if p.FirstInFrame && (f.IsStartOfFrame() || i == 0) {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_FirstInFrame,
 				Command: p.Commands.Capture.Command(uint64(i)),
