@@ -18,6 +18,7 @@ package com.google.gapid.models;
 import static com.google.gapid.util.Paths.stateTree;
 import static com.google.gapid.util.UiErrorCallback.error;
 import static com.google.gapid.util.UiErrorCallback.success;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
@@ -114,7 +115,7 @@ public class ApiState
   }
 
   public ListenableFuture<Node> load(Node node) {
-    return node.load(() -> Futures.transformAsync(
+    return node.load(shell, () -> Futures.transformAsync(
         client.get(Paths.any(node.getPath(Path.StateTreeNode.newBuilder()))),
         value -> Futures.transform(constants.loadConstants(value.getStateTreeNode()),
             ignore -> new NodeData(value.getStateTreeNode()))));
@@ -201,7 +202,7 @@ public class ApiState
       return parent.getPath(path).addIndices(index);
     }
 
-    public ListenableFuture<Node> load(Supplier<ListenableFuture<NodeData>> loader) {
+    public ListenableFuture<Node> load(Shell shell, Supplier<ListenableFuture<NodeData>> loader) {
       if (data != null) {
         // Already loaded.
         return null;
@@ -209,12 +210,13 @@ public class ApiState
         return loadFuture;
       }
 
-      return loadFuture = Futures.transform(loader.get(), newData -> {
-        data = newData.data;
-        children = new Node[(int)data.getNumChildren()];
-        loadFuture = null; // Don't hang on to listeners.
-        return Node.this;
-      });
+      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+          scheduleIfNotDisposed(shell, () -> {
+            data = newData.data;
+            children = new Node[(int)data.getNumChildren()];
+            loadFuture = null; // Don't hang on to listeners.
+            return Node.this;
+          }));
     }
 
     @Override
