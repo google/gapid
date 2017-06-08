@@ -127,6 +127,10 @@ public class Paths {
     return Path.Any.newBuilder().setStateTreeNode(node).build();
   }
 
+  public static Path.Any any(Path.State state) {
+    return Path.Any.newBuilder().setState(state).build();
+  }
+
   public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
     return Path.Any.newBuilder()
         .setCommandTree(context.commandTree(Path.CommandTree.newBuilder())
@@ -149,6 +153,15 @@ public class Paths {
         .setCommandTreeNodeForCommand(Path.CommandTreeNodeForCommand.newBuilder()
             .setTree(tree)
             .setCommand(command))
+        .build();
+  }
+
+  public static Path.State stateAfter(Path.Command command) {
+    if (command == null) {
+      return null;
+    }
+    return Path.State.newBuilder()
+        .setAfter(command)
         .build();
   }
 
@@ -397,6 +410,64 @@ public class Paths {
       case SLICE: return findState(path.getSlice());
       case MAP_INDEX: return findState(path.getMapIndex());
       default: return null;
+    }
+  }
+
+  public static Path.Any reparent(Path.Any path, Path.State newState) {
+    Path.Any.Builder builder = path.toBuilder();
+    switch (path.getPathCase()) {
+      case STATE: return builder.setState(newState).build();
+      case FIELD:
+        return reparent(builder.getFieldBuilder(), newState) ? builder.build() : null;
+      case ARRAY_INDEX:
+        return reparent(builder.getArrayIndexBuilder(), newState) ? builder.build() : null;
+      case SLICE:
+        return reparent(builder.getSliceBuilder(), newState) ? builder.build() : null;
+      case MAP_INDEX:
+        return reparent(builder.getMapIndexBuilder(), newState) ? builder.build() : null;
+      default: return null;
+    }
+  }
+
+  public static boolean reparent(Path.Field.Builder path, Path.State newState) {
+    switch (path.getStructCase()) {
+      case STATE: path.setState(newState); return true;
+      case FIELD: return reparent(path.getFieldBuilder(), newState);
+      case ARRAY_INDEX: return reparent(path.getArrayIndexBuilder(), newState);
+      case SLICE: return reparent(path.getSliceBuilder(), newState);
+      case MAP_INDEX: return reparent(path.getMapIndexBuilder(), newState);
+      default: return false;
+    }
+  }
+
+  public static boolean reparent(Path.ArrayIndex.Builder path, Path.State newState) {
+    switch (path.getArrayCase()) {
+      case FIELD: return reparent(path.getFieldBuilder(), newState);
+      case ARRAY_INDEX: return reparent(path.getArrayIndexBuilder(), newState);
+      case SLICE: return reparent(path.getSliceBuilder(), newState);
+      case MAP_INDEX: return reparent(path.getMapIndexBuilder(), newState);
+      default: return false;
+    }
+  }
+
+  public static boolean reparent(Path.Slice.Builder path, Path.State newState) {
+    switch (path.getArrayCase()) {
+      case FIELD: return reparent(path.getFieldBuilder(), newState);
+      case ARRAY_INDEX: return reparent(path.getArrayIndexBuilder(), newState);
+      case SLICE: return reparent(path.getSliceBuilder(), newState);
+      case MAP_INDEX: return reparent(path.getMapIndexBuilder(), newState);
+      default: return false;
+    }
+  }
+
+  public static boolean reparent(Path.MapIndex.Builder path, Path.State newState) {
+    switch (path.getMapCase()) {
+      case STATE: path.setState(newState); return true;
+      case FIELD: return reparent(path.getFieldBuilder(), newState);
+      case ARRAY_INDEX: return reparent(path.getArrayIndexBuilder(), newState);
+      case SLICE: return reparent(path.getSliceBuilder(), newState);
+      case MAP_INDEX: return reparent(path.getMapIndexBuilder(), newState);
+      default: return false;
     }
   }
 

@@ -41,6 +41,10 @@ public class GeoUtils {
     return r.y + r.height;
   }
 
+  public static Point center(Rectangle r) {
+    return new Point(r.x + r.width / 2, r.y + r.height / 2);
+  }
+
   public static int horCenter(Rectangle r) {
     return r.x + r.width / 2;
   }
