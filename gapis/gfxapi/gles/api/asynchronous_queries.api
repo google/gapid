@@ -40,7 +40,16 @@ cmd void glBeginQuery(GLenum target, QueryId query) {
     }
   }
   ctx := GetContext()
-  ctx.ActiveQueries[target] = query
+  ctx.ActiveQueries[target] = GetOrCreateQuery(query)
+}
+
+sub ref!Query GetOrCreateQuery(QueryId id) {
+  ctx := GetContext()
+  if (id != 0) && (ctx.Objects.Queries[id] == null) {
+    ctx.Objects.Queries[id] = new!Query(ID: id)
+    ctx.Objects.GeneratedNames.Queries[id] = true
+  }
+  return ctx.Objects.Queries[id]
 }
 
 @if(Version.GLES30)
@@ -48,13 +57,18 @@ cmd void glBeginQuery(GLenum target, QueryId query) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteQueries.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteQueries.xhtml", Version.GLES32)
 cmd void glDeleteQueries(GLsizei count, const QueryId* queries) {
+  DeleteQueries(count, queries)
+}
 
+sub void DeleteQueries(GLsizei count, const QueryId* queries) {
+  if count < 0 { glErrorInvalidValue() }
   q := queries[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := q[i]
     if id != 0 {
       delete(ctx.Objects.Queries, id)
+      delete(ctx.Objects.GeneratedNames.Queries, id)
     }
   }
 }
@@ -85,13 +99,17 @@ cmd void glEndQuery(GLenum target) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenQueries.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenQueries.xhtml", Version.GLES32)
 cmd void glGenQueries(GLsizei count, QueryId* queries) {
+  GenQueries(count, queries)
+}
 
+sub void GenQueries(GLsizei count, QueryId* queries) {
+  if count < 0 { glErrorInvalidValue() }
   q := queries[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!QueryId(?)
-    // TODO: This should only reserve the name, but not create the object.
-    ctx.Objects.Queries[id] = new!Query(ID: id)
+    assert(id != 0)
+    ctx.Objects.GeneratedNames.Queries[id] = true
     q[i] = id
   }
 }
@@ -138,7 +156,7 @@ cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
       // version 3.0
       ctx := GetContext()
       if (target in ctx.ActiveQueries) {
-        value[0] = as!GLint(ctx.ActiveQueries[target])
+        value[0] = as!GLint(ctx.ActiveQueries[target].ID)
       } else {
         value[0] = 0
       }

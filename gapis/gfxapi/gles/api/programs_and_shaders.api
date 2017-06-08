@@ -436,7 +436,6 @@ cmd ProgramId glCreateShaderProgramv(GLenum type, GLsizei count, const GLchar* c
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteProgram.xhtml", Version.GLES32)
 cmd void glDeleteProgram(ProgramId program) {
-
   if program != 0 {
     ctx := GetContext()
     p := GetProgramOrError(program)
@@ -453,8 +452,20 @@ cmd void glDeleteProgram(ProgramId program) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteProgramPipelines.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteProgramPipelines.xhtml", Version.GLES32)
 cmd void glDeleteProgramPipelines(GLsizei n, const PipelineId* pipelines) {
-  // TODO
-  read(pipelines[0:n])
+  DeleteProgramPipelines(n, pipelines)
+}
+
+sub void DeleteProgramPipelines(GLsizei count, const PipelineId* pipelines) {
+  if count < 0 { glErrorInvalidValue() }
+  ids := pipelines[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := ids[i]
+    if id != 0 {
+      delete(ctx.Objects.Pipelines, id)
+      delete(ctx.Objects.GeneratedNames.Pipelines, id)
+    }
+  }
 }
 
 @if(Version.GLES20)
@@ -463,7 +474,6 @@ cmd void glDeleteProgramPipelines(GLsizei n, const PipelineId* pipelines) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteShader.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteShader.xhtml", Version.GLES32)
 cmd void glDeleteShader(ShaderId shader) {
-
   if shader != 0 {
     s := GetShaderOrError(shader)
     s.DeleteStatus = true
@@ -504,9 +514,20 @@ cmd void glDispatchComputeIndirect(GLintptr indirect) {
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenProgramPipelines.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenProgramPipelines.xhtml", Version.GLES32)
-cmd void glGenProgramPipelines(GLsizei n, PipelineId* pipelines) {
-  // TODO
-  write(pipelines[0:n])
+cmd void glGenProgramPipelines(GLsizei count, PipelineId* pipelines) {
+  GenProgramPipelines(count, pipelines)
+}
+
+sub void GenProgramPipelines(GLsizei count, PipelineId* pipelines) {
+  if count < 0 { glErrorInvalidValue() }
+  t := pipelines[0:count]
+  ctx := GetContext()
+  for i in (0 .. count) {
+    id := as!PipelineId(?)
+    assert(id != 0)
+    ctx.Objects.GeneratedNames.Pipelines[id] = true
+    t[i] = id
+  }
 }
 
 @if(Version.GLES20)

@@ -332,6 +332,7 @@ class DefaultObjects {
 // Objects which are never shared between contexts.
 @internal
 class Objects {
+  GeneratedObjectNames                             GeneratedNames
   DefaultObjects                                   Default
   ref!SharedObjects                                Shared
   map!(FramebufferId, ref!Framebuffer)             Framebuffers
@@ -345,6 +346,7 @@ class Objects {
 // See: Chapter 5 - "Shared Objects and Multiple Contexts"
 @internal
 class SharedObjects {
+  GeneratedSharedObjectNames             GeneratedNames
   map!(RenderbufferId, ref!Renderbuffer) Renderbuffers
   map!(TextureId, ref!Texture)           Textures
   map!(BufferId, ref!Buffer)             Buffers
@@ -352,6 +354,23 @@ class SharedObjects {
   map!(ShaderId, ref!Shader)             Shaders
   map!(ProgramId, ref!Program)           Programs
   map!(GLsync, ref!SyncObject)           SyncObjects
+}
+
+@internal
+class GeneratedObjectNames {
+  map!(FramebufferId, bool)       Framebuffers
+  map!(PipelineId, bool)          Pipelines
+  map!(VertexArrayId, bool)       VertexArrays
+  map!(QueryId, bool)             Queries
+  map!(TransformFeedbackId, bool) TransformFeedbacks
+}
+
+@internal
+class GeneratedSharedObjectNames {
+  map!(RenderbufferId, bool) Renderbuffers
+  map!(TextureId, bool)      Textures
+  map!(BufferId, bool)       Buffers
+  map!(SamplerId, bool)      Samplers
 }
 
 @internal type s32 ContextID
@@ -398,8 +417,10 @@ class BufferBinding {
 @internal
 class Context {
   ContextID                                             Identifier
+  Constants                                             Constants
   ContextCreationInfo                                   Info
   Bindings                                              Bound
+  Objects                                               Objects
   DebugState                                            Debug
   RasterizationState                                    Rasterization
   FragmentOperationsState                               FragmentOperations
@@ -410,9 +431,7 @@ class Context {
   GLenum                                                ActiveTextureUnit  = GL_TEXTURE0
   PixelStorageState                                     PixelStorage
   MiscellaneousState                                    Miscellaneous
-  map!(GLenum, QueryId)                                 ActiveQueries
-  Objects                                               Objects
-  Constants                                             Constants
+  map!(GLenum, ref!Query)                               ActiveQueries
 }
 
 type u64 ThreadID
