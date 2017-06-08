@@ -19,6 +19,9 @@ import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.top;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 
@@ -71,6 +74,7 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -120,22 +124,46 @@ public class Widgets {
     }
   }
 
+  public static void schedule(Display display, Runnable run) {
+    if (enqueue(run)) {
+      long start = System.currentTimeMillis();
+      display.asyncExec(() -> {
+        Runnable[] work = drainQueue();
+        if (work.length > 1 && LOG.isLoggable(Level.FINE)) {
+          LOG.log(Level.FINE, "Processing a batch of {0} runnables after a delay of {1}ms",
+              new Object[] { work.length, System.currentTimeMillis() - start });
+        }
+        for (Runnable r : work) {
+          r.run();
+        }
+      });
+    }
+  }
+
   public static void scheduleIfNotDisposed(Widget widget, Runnable run) {
     if (!widget.isDisposed()) {
-      if (enqueue(() -> ifNotDisposed(widget, run))) {
-        long start = System.currentTimeMillis();
-        widget.getDisplay().asyncExec(() -> {
-          Runnable[] work = drainQueue();
-          if (work.length > 1 && LOG.isLoggable(Level.FINE)) {
-            LOG.log(Level.FINE, "Processing a batch of {0} runnables after a delay of {1}ms",
-                new Object[] { work.length, System.currentTimeMillis() - start });
-          }
-          for (Runnable r : work) {
-            r.run();
-          }
-        });
-      }
+      schedule(widget.getDisplay(), () -> ifNotDisposed(widget, run));
     }
+  }
+
+  public static <T> ListenableFuture<T> submitIfNotDisposed(Widget widget, Callable<T> callable) {
+    if (widget.isDisposed()) {
+      return Futures.immediateCancelledFuture();
+    }
+
+    SettableFuture<T> result = SettableFuture.create();
+    schedule(widget.getDisplay(), () -> {
+      if (widget.isDisposed() || result.isCancelled()) {
+        result.cancel(true);
+      } else {
+        try {
+          result.set(callable.call());
+        } catch (Exception e) {
+          result.setException(e);
+        }
+      }
+    });
+    return result;
   }
 
   private static final List<Runnable> queue = Lists.newArrayList();
