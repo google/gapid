@@ -16,10 +16,13 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.models.Follower.nullPrefetcher;
+import static com.google.gapid.util.GeoUtils.center;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
+import static java.util.Arrays.stream;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -33,10 +36,15 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpclib.rpccore.Rpc;
+import com.google.gapid.rpclib.rpccore.Rpc.Result;
+import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.SelectionHandler;
+import com.google.gapid.util.UiCallback;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadablePanel;
@@ -65,8 +73,10 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * View that displays the API state as a tree.
@@ -77,8 +87,10 @@ public class StateView extends Composite
 
   private final Models models;
   private final LoadablePanel<Tree> loading;
-  private final TreeViewer viewer;
+  protected final TreeViewer viewer;
   private final SelectionHandler<Tree> selectionHandler;
+  protected List<Path.Any> scheduledExpandedPaths;
+  protected Point scheduledScrollPos;
 
   public StateView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -302,7 +314,13 @@ public class StateView extends Composite
     }
 
     loading.stopLoading();
+    if (scheduledExpandedPaths == null) {
+      scheduledExpandedPaths = getExpandedPaths();
+      TreeItem topItem = viewer.getTree().getTopItem();
+      scheduledScrollPos = (topItem == null) ? null : center(topItem.getBounds());
+    }
     viewer.setInput(models.state.getData());
+    updateExpansionState(scheduledExpandedPaths, scheduledExpandedPaths.size());
 
     Path.Any selection = models.state.getSelectedPath();
     if (selection == null) {
@@ -328,6 +346,67 @@ public class StateView extends Composite
           viewer.setSelection(new TreeSelection(selection), true);
           viewer.setExpandedState(selection, true);
         });
+  }
+
+  private List<Path.Any> getExpandedPaths() {
+    return stream(viewer.getExpandedElements())
+        .map(element -> ((ApiState.Node)element).getData())
+        .filter(data -> data != null)
+        .map(data -> data.getValuePath())
+        .collect(Collectors.toList());
+  }
+
+  protected void updateExpansionState(List<Path.Any> paths, int retry) {
+    Path.State state = Paths.stateAfter(models.state.getSource().getStateTree().getAfter());
+    ApiState.Node root = models.state.getData();
+    List<ListenableFuture<TreePath>> futures = Lists.newArrayList();
+    for (Path.Any path : paths) {
+      Path.Any reparented = Paths.reparent(path, state);
+      if (reparented == null) {
+        LOG.log(WARNING, "Unable to reparent path {0}", path);
+        continue;
+      }
+      futures.add(Futures.transformAsync(models.state.resolve(reparented),
+          nodePath -> getTreePath(root, nodePath)));
+    }
+
+    Rpc.listen(Futures.allAsList(futures),
+        new UiCallback<List<TreePath>, TreePath[]>(viewer.getTree(), LOG) {
+      @Override
+      protected TreePath[] onRpcThread(Result<List<TreePath>> result)
+          throws RpcException, ExecutionException {
+        List<TreePath> list = result.get();
+        return list.toArray(new TreePath[list.size()]);
+      }
+
+      @Override
+      protected void onUiThread(TreePath[] treePaths) {
+        setExpanded(treePaths, paths, retry);
+      }
+    });
+  }
+
+  protected void setExpanded(TreePath[] treePaths, List<Path.Any> paths, int retry) {
+    viewer.refresh();
+    for (TreePath path : treePaths) {
+      viewer.setExpandedState(path, true);
+      if (!viewer.getExpandedState(path)) {
+        if (retry > 0) {
+          updateExpansionState(paths, retry - 1);
+          return;
+        }
+      }
+    }
+
+    if (scheduledScrollPos != null) {
+      TreeItem topItem = viewer.getTree().getItem(scheduledScrollPos);
+      if (topItem != null) {
+        viewer.getTree().setTopItem(topItem);
+      }
+    }
+
+    scheduledExpandedPaths = null;
+    scheduledScrollPos = null;
   }
 
   private ListenableFuture<TreePath> getTreePath(ApiState.Node root, Path.StateTreeNode nodePath) {

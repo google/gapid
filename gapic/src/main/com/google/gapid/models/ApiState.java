@@ -18,7 +18,7 @@ package com.google.gapid.models;
 import static com.google.gapid.util.Paths.stateTree;
 import static com.google.gapid.util.UiErrorCallback.error;
 import static com.google.gapid.util.UiErrorCallback.success;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
@@ -143,7 +143,16 @@ public class ApiState
   }
 
   public ListenableFuture<Path.StateTreeNode> getResolvedSelectedPath() {
-    Path.Any path = selection.get();
+   return resolve(selection.get());
+  }
+
+  public void selectPath(Path.Any path, boolean force) {
+    if (selection.update(path) || force) {
+      listeners.fire().onStateSelected(path);
+    }
+  }
+
+  public ListenableFuture<Path.StateTreeNode> resolve(Path.Any path) {
     if (path == null || !isLoaded()) {
       return Futures.immediateFuture(Path.StateTreeNode.getDefaultInstance());
     } else if (path.getPathCase() == Path.Any.PathCase.STATE_TREE_NODE) {
@@ -152,12 +161,6 @@ public class ApiState
 
     return Futures.transform(client.get(Paths.stateTree(((RootNode)getData()).tree, path)),
         value -> value.getPath().getStateTreeNode());
-  }
-
-  public void selectPath(Path.Any path, boolean force) {
-    if (selection.update(path) || force) {
-      listeners.fire().onStateSelected(path);
-    }
   }
 
   public static class Node {
@@ -211,7 +214,7 @@ public class ApiState
       }
 
       return loadFuture = Futures.transformAsync(loader.get(), newData ->
-          scheduleIfNotDisposed(shell, () -> {
+          submitIfNotDisposed(shell, () -> {
             data = newData.data;
             children = new Node[(int)data.getNumChildren()];
             loadFuture = null; // Don't hang on to listeners.
@@ -237,7 +240,7 @@ public class ApiState
 
     @Override
     public String toString() {
-      return index + (data == null ? "" : " " + data.getName());
+      return parent.toString() + "/" + index + (data == null ? "" : " " + data.getName());
     }
   }
 
