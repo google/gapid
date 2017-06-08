@@ -23,6 +23,7 @@
 #include "gapir/cc/server_listener.h"
 
 #include "core/cc/connection.h"
+#include "core/cc/debugger.h"
 #include "core/cc/log.h"
 #include "core/cc/socket_connection.h"
 #include "core/cc/supported_abis.h"
@@ -146,6 +147,7 @@ int main(int argc, const char* argv[]) {
     int logLevel = LOG_LEVEL;
     const char* logPath = "logs/gapir.log";
 
+    bool wait_for_debugger = false;
     const char* cachePath = nullptr;
     const char* portStr = "0";
     const char* authToken = nullptr;
@@ -191,12 +193,19 @@ int main(int argc, const char* argv[]) {
                 GAPID_FATAL("Usage: --idle-timeout-ms <timeout in milliseconds>");
             }
             idleTimeoutMs = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
+            wait_for_debugger = true;
         } else {
             GAPID_FATAL("Unknown argument: %s", argv[i]);
         }
     }
 
     GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
+
+    if (wait_for_debugger) {
+        GAPID_INFO("Waiting for debugger to attach");
+        core::Debugger::waitForAttach();
+    }
 
     MemoryManager memoryManager(memorySizes);
     auto conn = SocketConnection::createSocket("127.0.0.1", portStr);

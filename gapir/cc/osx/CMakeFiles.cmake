@@ -22,5 +22,5 @@ set(files
     vulkan_renderer.mm
 )
 set(dirs
-    
+
 )

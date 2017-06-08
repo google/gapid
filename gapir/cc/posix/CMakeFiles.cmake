@@ -18,8 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    
 )
 set(dirs
-    
+
 )

@@ -18,10 +18,11 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    debugger.cpp
     get_gles_proc_address.cpp
     get_vulkan_proc_address.cpp
     thread.cpp
 )
 set(dirs
-    
+
 )

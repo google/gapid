@@ -18,6 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
+    debugger.cpp
     mutex.cpp
     thread_local.cpp
     thread.cpp
