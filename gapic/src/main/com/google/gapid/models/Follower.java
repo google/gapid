@@ -36,7 +36,6 @@ import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
-import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
@@ -102,7 +101,6 @@ public class Follower {
    * Prefetches the follow path for the path.
    */
   public Prefetcher<Void> prepare(Path.Any path, Runnable onResult) {
-    System.err.println(ProtoDebugTextFormat.shortDebugString(path));
     ObjectStore<Path.Any> result = ObjectStore.create();
     ListenableFuture<Path.Any> future = client.follow(path);
     Futures.addCallback(future, callback(path, v -> {
