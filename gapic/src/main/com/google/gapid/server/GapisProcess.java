@@ -99,8 +99,10 @@ public class GapisProcess extends ChildProcess<Integer> {
     args.add("--idle-timeout");
     args.add(IDLE_TIMEOUT_MS + "ms");
 
-    args.add("--adb");
-    args.add(GapiPaths.adb());
+    if (!GapiPaths.adb().isEmpty()) {
+      args.add("--adb");
+      args.add(GapiPaths.adb());
+    }
 
     pb.command(args);
     return null;
