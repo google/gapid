@@ -61,6 +61,12 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
     args.add(logLevel.get().gapisLevel);
 
     args.add("trace");
+
+    if (!GapiPaths.adb().isEmpty()) {
+      args.add("--adb");
+      args.add(GapiPaths.adb());
+    }
+
     request.appendCommandLine(args);
 
     pb.command(args);
