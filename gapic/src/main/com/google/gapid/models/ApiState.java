@@ -15,7 +15,7 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.Paths.stateAfter;
+import static com.google.gapid.util.Paths.stateTree;
 import static com.google.gapid.util.UiErrorCallback.error;
 import static com.google.gapid.util.UiErrorCallback.success;
 import static java.util.logging.Level.WARNING;
@@ -61,7 +61,7 @@ public class ApiState
     atoms.addListener(new AtomStream.Listener() {
       @Override
       public void onAtomsSelected(AtomIndex index) {
-        load(stateAfter(index), false);
+        load(stateTree(index), false);
       }
     });
     follower.addListener(new Follower.Listener() {

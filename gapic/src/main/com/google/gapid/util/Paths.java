@@ -152,7 +152,7 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any stateAfter(AtomIndex atom) {
+  public static Path.Any stateTree(AtomIndex atom) {
     if (atom == null) {
       return null;
     }
