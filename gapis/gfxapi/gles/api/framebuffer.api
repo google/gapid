@@ -190,6 +190,7 @@ sub ref!Framebuffer GetOrCreateFramebuffer(FramebufferId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Framebuffers[id] == null) {
     ctx.Objects.Framebuffers[id] = new!Framebuffer(ID: id)
+    ctx.Objects.GeneratedNames.Framebuffers[id] = true
   }
   return ctx.Objects.Framebuffers[id]
 }
@@ -215,6 +216,7 @@ sub ref!Renderbuffer GetOrCreateRenderbuffer(RenderbufferId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Shared.Renderbuffers[id] == null) {
     ctx.Objects.Shared.Renderbuffers[id] = new!Renderbuffer(ID: id)
+    ctx.Objects.Shared.GeneratedNames.Renderbuffers[id] = true
   }
   return ctx.Objects.Shared.Renderbuffers[id]
 }
@@ -449,11 +451,12 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
     id := f[i]
     if id != 0 {
       delete(ctx.Objects.Framebuffers, id)
+      delete(ctx.Objects.GeneratedNames.Framebuffers, id)
       if id == ctx.Bound.ReadFramebuffer.ID {
-        ctx.Bound.ReadFramebuffer = ctx.Objects.Framebuffers[0]
+        ctx.Bound.ReadFramebuffer = ctx.Objects.Default.Framebuffer
       }
       if id == ctx.Bound.DrawFramebuffer.ID {
-        ctx.Bound.DrawFramebuffer = ctx.Objects.Framebuffers[0]
+        ctx.Bound.DrawFramebuffer = ctx.Objects.Default.Framebuffer
       }
     }
   }
@@ -473,6 +476,7 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
     id := r[i]
     if id != 0 {
       delete(ctx.Objects.Shared.Renderbuffers, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Renderbuffers, id)
     }
   }
 }
@@ -666,12 +670,12 @@ cmd void glFramebufferTextureLayer(GLenum    target,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml", Version.GLES32)
 cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
   if count < 0 { glErrorInvalidValue() }
-
   f := framebuffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!FramebufferId(?)
-    ctx.Objects.Framebuffers[id] = new!Framebuffer(ID: id)
+    assert(id != 0)
+    ctx.Objects.GeneratedNames.Framebuffers[id] = true
     f[i] = id
   }
 }
@@ -683,12 +687,12 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml", Version.GLES32)
 cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   if count < 0 { glErrorInvalidValue() }
-
   r := renderbuffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!RenderbufferId(?)
-    ctx.Objects.Shared.Renderbuffers[id] = new!Renderbuffer(ID: id)
+    assert(id != 0)
+    ctx.Objects.Shared.GeneratedNames.Renderbuffers[id] = true
     r[i] = id
   }
 }

@@ -98,6 +98,7 @@ sub ref!Buffer GetOrCreateBuffer(BufferId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Shared.Buffers[id] == null) {
     ctx.Objects.Shared.Buffers[id] = new!Buffer(ID: id)
+    ctx.Objects.Shared.GeneratedNames.Buffers[id] = true
   }
   return ctx.Objects.Shared.Buffers[id]
 }
@@ -296,13 +297,13 @@ sub void CopyBufferSubData(GLenum readTarget, GLenum writeTarget, GLintptr readO
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteBuffers.xhtml", Version.GLES32)
 cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   if count < 0 { glErrorInvalidValue() }
-
   b := buffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := b[i]
     if id != 0 {
       delete(ctx.Objects.Shared.Buffers, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Buffers, id)
     }
   }
 }
@@ -314,13 +315,12 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenBuffers.xhtml", Version.GLES32)
 cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   if count < 0 { glErrorInvalidValue() }
-
   b := buffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!BufferId(?)
     assert(id != 0)
-    ctx.Objects.Shared.Buffers[id] = new!Buffer(ID: id)
+    ctx.Objects.Shared.GeneratedNames.Buffers[id] = true
     b[i] = id
   }
 }

@@ -332,7 +332,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		switch a := a.(type) {
 		case *GlBindBuffer:
-			if a.Buffer != 0 && !c.Objects.Shared.Buffers.Contains(a.Buffer) {
+			if a.Buffer != 0 && !c.Objects.Shared.GeneratedNames.Buffers[a.Buffer] {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := atom.Must(atom.AllocData(ctx, s, a.Buffer))
 				out.MutateAndWrite(ctx, dID, NewGlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -341,7 +341,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlBindTexture:
 			{
 				a := *a
-				if a.Texture != 0 && !c.Objects.Shared.Textures.Contains(a.Texture) {
+				if a.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures[a.Texture] {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(a.Texture)))
 					out.MutateAndWrite(ctx, dID, NewGlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))

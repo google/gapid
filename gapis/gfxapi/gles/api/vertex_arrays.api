@@ -69,6 +69,7 @@ sub ref!VertexArray GetOrCreateVertexArray(VertexArrayId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.VertexArrays[id] == null) {
     ctx.Objects.VertexArrays[id] = NewVertexArray(id)
+    ctx.Objects.GeneratedNames.VertexArrays[id] = true
   }
   return ctx.Objects.VertexArrays[id]
 }
@@ -233,6 +234,7 @@ sub void DeleteVertexArrays(GLsizei count, const VertexArrayId* arrays) {
     if id != 0 {
       if id in ctx.Objects.VertexArrays {
         delete(ctx.Objects.VertexArrays, id)
+        delete(ctx.Objects.GeneratedNames.VertexArrays, id)
         if ctx.Bound.VertexArray.ID == id {
           ctx.Bound.VertexArray = ctx.Objects.Default.VertexArray
         }
@@ -275,11 +277,12 @@ cmd void glGenVertexArrays(GLsizei count, VertexArrayId* arrays) {
 
 sub void GenVertexArrays(GLsizei count, VertexArrayId* arrays) {
   if count < 0 { glErrorInvalidValue() }
+  ctx := GetContext()
   a := arrays[0:count]
   for i in (0 .. count) {
     id := as!VertexArrayId(?)
-    // Mark the name as used, but do not create the object yet - glIsVertexArray stays false.
-    // TODO: ctx.UsedNames.VertexArrays[id] = true
+    assert(id != 0)
+    ctx.Objects.GeneratedNames.VertexArrays[id] = true
     a[i] = id
   }
 }

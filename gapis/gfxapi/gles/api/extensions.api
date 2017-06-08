@@ -372,22 +372,14 @@ cmd void glDeletePerfQueryINTEL(GLuint queryHandle) {
 @if(Extension.GL_EXT_separate_shader_objects)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", Extension.GL_EXT_separate_shader_objects)
 cmd void glDeleteProgramPipelinesEXT(GLsizei n, const PipelineId* pipelines) {
-  // TODO
+  DeleteProgramPipelines(n, pipelines)
 }
 
 @if(Extension.GL_EXT_disjoint_timer_query || Extension.GL_EXT_occlusion_query_boolean)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", Extension.GL_EXT_disjoint_timer_query)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", Extension.GL_EXT_occlusion_query_boolean)
 cmd void glDeleteQueriesEXT(GLsizei count, const QueryId* queries) {
-
-  q := queries[0:count]
-  ctx := GetContext()
-  for i in (0 .. count) {
-    id := q[i]
-    if id != 0 {
-      delete(ctx.Objects.Queries, id)
-    }
-  }
+  DeleteQueries(count, queries)
 }
 
 @if(Extension.GL_APPLE_sync)
@@ -912,21 +904,14 @@ cmd void glGenPerfMonitorsAMD(GLsizei n, GLuint* monitors) {
 @if(Extension.GL_EXT_separate_shader_objects)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.txt", Extension.GL_EXT_separate_shader_objects)
 cmd void glGenProgramPipelinesEXT(GLsizei n, PipelineId* pipelines) {
-  // TODO
+  GenProgramPipelines(n, pipelines)
 }
 
 @if(Extension.GL_EXT_disjoint_timer_query || Extension.GL_EXT_occlusion_query_boolean)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_disjoint_timer_query.txt", Extension.GL_EXT_disjoint_timer_query)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_occlusion_query_boolean.txt", Extension.GL_EXT_occlusion_query_boolean)
 cmd void glGenQueriesEXT(GLsizei count, QueryId* queries) {
-
-  q := queries[0:count]
-  ctx := GetContext()
-  for i in (0 .. count) {
-    id := as!QueryId(?)
-    ctx.Objects.Queries[id] = new!Query(ID: id)
-    q[i] = id
-  }
+  GenQueries(count, queries)
 }
 
 @if(Extension.GL_OES_vertex_array_object)

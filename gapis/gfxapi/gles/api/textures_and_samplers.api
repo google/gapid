@@ -17,16 +17,16 @@ class TextureUnit {
   TextureUnitId ID
 
   // Table 21.9: Textures (selector; state per texture unit)
-  ref!Texture       Binding2d                 = null
-  ref!Texture       Binding3d                 = null
-  ref!Texture       Binding2dArray            = null
-  ref!Texture       BindingBuffer             = null
-  ref!Texture       BindingCubeMap            = null
-  ref!Texture       BindingCubeMapArray       = null
-  ref!Texture       Binding2dMultisample      = null
-  ref!Texture       Binding2dMultisampleArray = null
-  ref!Texture       BindingExternalOes        = null // OES_EGL_image_external
-  @unused SamplerId SamplerBinding            = 0
+  ref!Texture Binding2d                 = null
+  ref!Texture Binding3d                 = null
+  ref!Texture Binding2dArray            = null
+  ref!Texture BindingBuffer             = null
+  ref!Texture BindingCubeMap            = null
+  ref!Texture BindingCubeMapArray       = null
+  ref!Texture Binding2dMultisample      = null
+  ref!Texture Binding2dMultisampleArray = null
+  ref!Texture BindingExternalOes        = null // OES_EGL_image_external
+  ref!Sampler SamplerBinding            = null
 }
 
 sub ref!TextureUnit NewTextureUnit(TextureUnitId id) {
@@ -557,7 +557,16 @@ cmd void glBindImageTexture(GLuint    unit,
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx := GetContext()
   unit := as!GLenum(index + as!GLuint(GL_TEXTURE0))
-  ctx.TextureUnits[unit].SamplerBinding = sampler
+  ctx.TextureUnits[unit].SamplerBinding = GetOrCreateSampler(sampler)
+}
+
+sub ref!Sampler GetOrCreateSampler(SamplerId id) {
+  ctx := GetContext()
+  if (id != 0) && (ctx.Objects.Shared.Samplers[id] == null) {
+    ctx.Objects.Shared.Samplers[id] = new!Sampler(ID: id)
+    ctx.Objects.Shared.GeneratedNames.Samplers[id] = true
+  }
+  return ctx.Objects.Shared.Samplers[id]
 }
 
 sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture defaultTexture) {
@@ -575,6 +584,7 @@ sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture
         ctx.Objects.Shared.Textures[texture] = new!Texture(ID: texture)
       }
     }
+    ctx.Objects.Shared.GeneratedNames.Textures[texture] = true
 
     // Set or check the kind of the texture
     t := ctx.Objects.Shared.Textures[texture]
@@ -850,13 +860,14 @@ sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoff
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml", Version.GLES32)
 cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
-
+  if count < 0 { glErrorInvalidValue() }
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := s[i]
     if id != 0 {
       delete(ctx.Objects.Shared.Samplers, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Samplers, id)
     }
   }
 }
@@ -867,7 +878,6 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", Version.GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
-
   if count < 0 { glErrorInvalidValue() }
   t := textures[0:count]
   ctx := GetContext()
@@ -875,6 +885,7 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
     id := t[i]
     if id != 0 {
       delete(ctx.Objects.Shared.Textures, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Textures, id)
     }
     // TODO: Unbind from all texture units.
   }
@@ -885,12 +896,13 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml", Version.GLES32)
 cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
-
+  if count < 0 { glErrorInvalidValue() }
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!SamplerId(?)
-    ctx.Objects.Shared.Samplers[id] = new!Sampler(ID: id)
+    assert(id != 0)
+    ctx.Objects.Shared.GeneratedNames.Samplers[id] = true
     s[i] = id
   }
 }
@@ -902,12 +914,12 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml", Version.GLES32)
 cmd void glGenTextures(GLsizei count, TextureId* textures) {
   if count < 0 { glErrorInvalidValue() }
-
   t := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
     id := as!TextureId(?)
-    ctx.Objects.Shared.Textures[id] = new!Texture(ID: id)
+    assert(id != 0)
+    ctx.Objects.Shared.GeneratedNames.Textures[id] = true
     t[i] = id
   }
 }
@@ -936,8 +948,7 @@ cmd void glGenerateMipmap(GLenum target) {
 }
 
 sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
-  ctx := GetContext()
-  s := ctx.Objects.Shared.Samplers[sampler]
+  s := GetOrCreateSampler(sampler)
   switch (pname) {
     case GL_TEXTURE_COMPARE_FUNC: params[0] = as!T(s.CompareFunc)
     case GL_TEXTURE_COMPARE_MODE: params[0] = as!T(s.CompareMode)
@@ -1238,7 +1249,9 @@ cmd void glGetTexParameteriv(GLenum target, GLenum parameter, GLint* values) {
 cmd GLboolean glIsSampler(SamplerId sampler) {
 
   ctx := GetContext()
-  return as!GLboolean(sampler in ctx.Objects.Shared.Samplers)
+  // This seems to be different to all other glIs* commands.
+  // Just have generated name seems sufficient to return true.
+  return as!GLboolean(ctx.Objects.Shared.GeneratedNames.Samplers[sampler])
 }
 
 @if(Version.GLES10)
@@ -1318,8 +1331,7 @@ cmd void glPixelStorei(GLenum parameter, GLint value) {
 }
 
 sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
-  ctx := GetContext()
-  s := ctx.Objects.Shared.Samplers[sampler]
+  s := GetOrCreateSampler(sampler)
   switch (pname) {
     case GL_TEXTURE_COMPARE_FUNC: s.CompareFunc = as!GLenum(params[0])
     case GL_TEXTURE_COMPARE_MODE: s.CompareMode = as!GLenum(params[0])
