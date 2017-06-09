@@ -20,6 +20,7 @@ import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
+import com.google.gapid.models.Settings;
 import com.google.gapid.server.Tracer.TraceRequest;
 
 import java.io.File;
@@ -40,8 +41,8 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
   private final TraceRequest request;
   private final Consumer<String> onOutput;
 
-  public GapitTraceProcess(TraceRequest request, Consumer<String> onOutput) {
-    super("gapit");
+  public GapitTraceProcess(Settings settings, TraceRequest request, Consumer<String> onOutput) {
+    super("gapit", settings);
     this.request = request;
     this.onOutput = onOutput;
   }
@@ -62,9 +63,10 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
 
     args.add("trace");
 
-    if (!GapiPaths.adb().isEmpty()) {
+    String adb = GapiPaths.adb(settings);
+    if (!adb.isEmpty()) {
       args.add("--adb");
-      args.add(GapiPaths.adb());
+      args.add(adb);
     }
 
     request.appendCommandLine(args);

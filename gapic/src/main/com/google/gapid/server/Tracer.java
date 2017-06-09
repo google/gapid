@@ -18,6 +18,7 @@ package com.google.gapid.server;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
 
 import org.eclipse.swt.widgets.Display;
@@ -29,9 +30,10 @@ import java.util.List;
  * Handles capturing an API trace.
  */
 public class Tracer {
-  public static Trace trace(Display display, TraceRequest request, Listener listener) {
-    GapitTraceProcess process = new GapitTraceProcess(request, message ->
-      display.asyncExec(() -> listener.onProgress(message)));
+  public static Trace trace(
+      Display display, Settings settings, TraceRequest request, Listener listener) {
+    GapitTraceProcess process = new GapitTraceProcess(settings, request, message ->
+        display.asyncExec(() -> listener.onProgress(message)));
     Futures.addCallback(process.start(), new FutureCallback<Boolean>() {
       @Override
       public void onFailure(Throwable t) {

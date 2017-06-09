@@ -50,8 +50,7 @@ public class Models {
     this.constants = constants;
   }
 
-  public static Models create(Shell shell, Client client) {
-    Settings settings = Settings.load();
+  public static Models create(Shell shell, Settings settings, Client client) {
     ConstantSets constants = new ConstantSets(client);
     Follower follower = new Follower(shell, client);
     Capture capture = new Capture(shell, client, settings);

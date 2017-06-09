@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 import com.google.common.base.Splitter;
+import com.google.gapid.server.GapiPaths;
 import com.google.gapid.util.OS;
 
 import org.eclipse.swt.graphics.Point;
@@ -66,6 +67,7 @@ public class Settings {
   public boolean traceDisablePcs = false;
   public boolean skipWelcomeScreen = false;
   public String[] recentFiles = new String[0];
+  public String adb = "";
 
   public static Settings load() {
     Settings result = new Settings();
@@ -156,6 +158,7 @@ public class Settings {
     traceDisablePcs = getBoolean(properties, "trace.disablePCS");
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
     recentFiles = getStringList(properties, "open.recent", recentFiles);
+    adb = tryFindAdb(properties.getProperty("adb.path", ""));
   }
 
   private void updateTo(Properties properties) {
@@ -182,6 +185,7 @@ public class Settings {
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     setStringList(properties, "open.recent", recentFiles);
+    properties.setProperty("adb.path", adb);
   }
 
   private static Point getPoint(Properties properties, String name) {
@@ -247,5 +251,30 @@ public class Settings {
 
   private static void setStringList(Properties properties, String name, String[] value) {
     properties.setProperty(name, stream(value).collect(joining(",")));
+  }
+
+  private static String tryFindAdb(String current) {
+    if (!current.isEmpty()) {
+      return current;
+    }
+
+    String[] sdkVars = { "ANDROID_HOME", "ANDROID_SDK_HOME", "ANDROID_ROOT", "ANDROID_SDK_ROOT" };
+    for (String sdkVar : sdkVars) {
+      File adb = findAdbInSdk(System.getenv(sdkVar));
+      if (adb != null) {
+        return adb.getAbsolutePath();
+      }
+    }
+
+    // If not found, but the flag is specified, use that.
+    return GapiPaths.adbPath.get();
+  }
+
+  private static File findAdbInSdk(String sdk) {
+    if (sdk == null || sdk.isEmpty()) {
+      return null;
+    }
+    File adb = new File(sdk, "platform-tools" + File.separator + "adb" + OS.exeExtension);
+    return (adb.exists() && adb.canExecute()) ? adb : null;
   }
 }

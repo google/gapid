@@ -22,6 +22,7 @@ import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.gapid.image.Images;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.server.GapitPkgInfoProcess;
@@ -73,6 +74,7 @@ public class ActivityPickerDialog extends TitleAreaDialog {
   private static final int ICON_SIZE_DIP = 24;
   private static final int INITIAL_MIN_HEIGHT = 600;
 
+  private final Settings settings;
   private final Widgets widgets;
   private final Device.Instance device;
   private LoadablePanel<Tree> loading;
@@ -148,8 +150,10 @@ public class ActivityPickerDialog extends TitleAreaDialog {
     }
   }
 
-  public ActivityPickerDialog(Shell parent, Widgets widgets, Device.Instance device) {
+  public ActivityPickerDialog(
+      Shell parent, Settings settings, Widgets widgets, Device.Instance device) {
     super(parent);
+    this.settings = settings;
     this.widgets = widgets;
     this.device = device;
   }
@@ -238,7 +242,8 @@ public class ActivityPickerDialog extends TitleAreaDialog {
 
   private void load(Shell shell) {
     float iconDensityScale = DPIUtil.getDeviceZoom() / 100.0f;
-    GapitPkgInfoProcess process = new GapitPkgInfoProcess(device.getSerial(), iconDensityScale);
+    GapitPkgInfoProcess process =
+        new GapitPkgInfoProcess(settings, device.getSerial(), iconDensityScale);
     Futures.addCallback(process.start(), new FutureCallback<PkgInfo.PackageList>() {
       @Override
       public void onFailure(Throwable t) {

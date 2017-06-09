@@ -22,6 +22,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.Settings;
 import com.google.gapid.util.Logging;
 
 import java.io.File;
@@ -57,8 +58,8 @@ public class GapisProcess extends ChildProcess<Integer> {
   private final PanicDetector panicDetector = new PanicDetector();
   private final Listener listener;
 
-  public GapisProcess(Listener listener) {
-    super("gapis");
+  public GapisProcess(Settings settings, Listener listener) {
+    super("gapis", settings);
     this.listener = (listener == null) ? Listener.NULL : listener;
     connection = Futures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
@@ -99,9 +100,10 @@ public class GapisProcess extends ChildProcess<Integer> {
     args.add("--idle-timeout");
     args.add(IDLE_TIMEOUT_MS + "ms");
 
-    if (!GapiPaths.adb().isEmpty()) {
+    String adb = GapiPaths.adb(settings);
+    if (!adb.isEmpty()) {
       args.add("--adb");
-      args.add(GapiPaths.adb());
+      args.add(adb);
     }
 
     pb.command(args);
