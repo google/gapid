@@ -37,6 +37,7 @@ public class Thumbnails {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   public static final int THUMB_SIZE = 192;
+  private static final int MIN_SIZE = DPIUtil.autoScaleUp(18);
   private static final int THUMB_PIXELS = DPIUtil.autoScaleUp(THUMB_SIZE);
 
   private final Client client;
@@ -79,13 +80,20 @@ public class Thumbnails {
 
   private static ImageData processImage(ImageData image, int size) {
     size = DPIUtil.autoScaleUp(size);
-    if (image.width > image.height && image.width > size) {
-      return image.scaledTo(size, (image.height * size) / image.width);
-    } else if (image.height > size) {
-      return image.scaledTo((image.width * size) / image.height, size);
+    if (image.width >= image.height) {
+      if (image.width > size) {
+        return image.scaledTo(size, (image.height * size) / image.width);
+      } else if (image.width < MIN_SIZE) {
+        return image.scaledTo(MIN_SIZE, (image.height * MIN_SIZE) / image.width);
+      }
     } else {
-      return image;
+      if (image.height > size) {
+        return image.scaledTo((image.width * size) / image.height, size);
+      } else if (image.height < MIN_SIZE) {
+        return image.scaledTo((image.width * MIN_SIZE) / image.height, MIN_SIZE);
+      }
     }
+    return image;
   }
 
   public void addListener(Listener listener) {
