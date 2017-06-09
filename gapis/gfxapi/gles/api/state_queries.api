@@ -202,7 +202,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
   switch (name) {
     @if(Version.GLES20)
     case GL_ACTIVE_TEXTURE: {
-      v[0] = as!T(ctx.ActiveTextureUnit)
+      v[0] = GetID!(T,TextureUnit)(ctx.Bound.TextureUnit)
     }
     @if(Version.GLES20)
     case GL_ALIASED_LINE_WIDTH_RANGE: {
@@ -1301,39 +1301,39 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_2D: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2d)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.Binding2d)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_EXTERNAL_OES: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingExternalOes)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.BindingExternalOes)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_BINDING_2D_ARRAY: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dArray)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.Binding2dArray)
     }
     @if(Version.GLES31)
     case GL_TEXTURE_BINDING_2D_MULTISAMPLE: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisample)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.Binding2dMultisample)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding2dMultisampleArray)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.Binding2dMultisampleArray)
     }
     @if(Version.GLES30)
     case GL_TEXTURE_BINDING_3D: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].Binding3d)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.Binding3d)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_BUFFER: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingBuffer)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.BindingBuffer)
     }
     @if(Version.GLES20)
     case GL_TEXTURE_BINDING_CUBE_MAP: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMap)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.BindingCubeMap)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BINDING_CUBE_MAP_ARRAY: {
-      v[0] = GetID!(T,Texture)(ctx.TextureUnits[ctx.ActiveTextureUnit].BindingCubeMapArray)
+      v[0] = GetID!(T,Texture)(ctx.Bound.TextureUnit.BindingCubeMapArray)
     }
     @if(Version.GLES32)
     case GL_TEXTURE_BUFFER_BINDING: {

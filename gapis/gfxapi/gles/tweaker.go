@@ -341,7 +341,7 @@ func (t *tweaker) glBindRenderbuffer(id RenderbufferId) {
 }
 
 func (t *tweaker) glBindTexture_2D(id TextureId) {
-	if o := t.c.TextureUnits[t.c.ActiveTextureUnit].Binding2d.GetID(); o != id {
+	if o := t.c.Bound.TextureUnit.Binding2d.GetID(); o != id {
 		t.doAndUndo(
 			NewGlBindTexture(GLenum_GL_TEXTURE_2D, id),
 			NewGlBindTexture(GLenum_GL_TEXTURE_2D, o))
@@ -365,7 +365,7 @@ func (t *tweaker) glUseProgram(id ProgramId) {
 }
 
 func (t *tweaker) glActiveTexture(unit GLenum) {
-	if o := t.c.ActiveTextureUnit; o != unit {
+	if o := GLenum(t.c.Bound.TextureUnit.ID) + GLenum_GL_TEXTURE0; o != unit {
 		t.doAndUndo(
 			NewGlActiveTexture(unit),
 			NewGlActiveTexture(o))

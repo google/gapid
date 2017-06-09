@@ -400,6 +400,7 @@ class Bindings {
   ref!Buffer                  ShaderStorageBuffer
   map!(GLuint, BufferBinding) ShaderStorageBuffers
   ref!Buffer                  TextureBuffer
+  ref!TextureUnit             TextureUnit
   ref!TransformFeedback       TransformFeedback
   ref!Buffer                  TransformFeedbackBuffer
   ref!Buffer                  UniformBuffer
@@ -426,9 +427,8 @@ class Context {
   FragmentOperationsState                               FragmentOperations
   FramebufferState                                      Framebuffer
   @unused map!(AttributeLocation, VertexAttributeValue) VertexAttributes
-  map!(GLenum, ref!TextureUnit)                         TextureUnits
+  map!(TextureUnitId, ref!TextureUnit)                  TextureUnits
   map!(GLuint, ImageUnit)                               ImageUnits
-  GLenum                                                ActiveTextureUnit  = GL_TEXTURE0
   PixelStorageState                                     PixelStorage
   MiscellaneousState                                    Miscellaneous
   map!(GLenum, ref!Query)                               ActiveQueries
@@ -494,8 +494,6 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     ctx.Objects.VertexArrays[0] = ctx.Objects.Default.VertexArray
     ctx.Bound.VertexArray = ctx.Objects.Default.VertexArray
 
-    ctx.TextureUnits[GL_TEXTURE0] = NewTextureUnit(0)
-
     ctx.Objects.Default.Texture2d = new!Texture(ID: 0, Kind: GL_TEXTURE_2D)
     ctx.Objects.Default.Texture2dArray = new!Texture(ID: 0, Kind: GL_TEXTURE_2D_ARRAY)
     ctx.Objects.Default.Texture2dMultisample = new!Texture(ID: 0, Kind: GL_TEXTURE_2D_MULTISAMPLE)
@@ -532,10 +530,10 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
       ctx.VertexAttributes[i] = VertexAttributeValue(Value: as!u8[](v))
     }
 
-    for i in 0 .. staticState.Constants.MaxCombinedTextureImageUnits {
-      name := GL_TEXTURE0 + as!GLenum(i)
-      ctx.TextureUnits[name] = NewTextureUnit(as!TextureUnitId(i))
+    for i in 0 .. as!TextureUnitId(staticState.Constants.MaxCombinedTextureImageUnits) {
+      ctx.TextureUnits[i] = NewTextureUnit(i)
     }
+    ctx.Bound.TextureUnit = ctx.TextureUnits[0]
 
     for i in 0 .. as!GLuint(staticState.Constants.MaxImageUnits) {
       ctx.ImageUnits[i] = ImageUnit()
