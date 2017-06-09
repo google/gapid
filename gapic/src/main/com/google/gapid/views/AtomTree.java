@@ -310,8 +310,16 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             @Override
             public void onLoaded(boolean success) {
               if (success) {
-                Widgets.ifNotDisposed(shell,
-                    () -> shell.setSize(shell.computeSize(SWT.DEFAULT, SWT.DEFAULT)));
+                Widgets.ifNotDisposed(shell,() -> {
+                  Point oldSize = shell.getSize();
+                  Point newSize = shell.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+                  shell.setSize(newSize);
+                  if (oldSize.y != newSize.y) {
+                    Point location = shell.getLocation();
+                    location.y += (oldSize.y - newSize.y) / 2;
+                    shell.setLocation(location);
+                  }
+                });
               }
             }
           });
