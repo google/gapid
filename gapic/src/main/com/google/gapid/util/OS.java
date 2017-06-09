@@ -23,6 +23,7 @@ public class OS {
   public static final String arch;
   public static final boolean isWindows, isMac, isLinux;
   public static final String userHomeDir;
+  public static final String exeExtension;
 
   static {
     name = System.getProperty("os.name", "").toLowerCase();
@@ -31,6 +32,7 @@ public class OS {
     isMac = name.indexOf("mac") >= 0;
     isLinux = name.indexOf("nux") >= 0;
     userHomeDir = System.getProperty("user.home", ".");
+    exeExtension = isWindows ? ".exe" : "";
   }
 
   public static void openFileInSystemExplorer(File file) throws IOException {

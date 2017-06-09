@@ -21,6 +21,7 @@ import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.models.Info;
+import com.google.gapid.models.Settings;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.stringtable.Stringtable;
@@ -57,8 +58,13 @@ public class Server {
   public static final Flag<Boolean> useCache = Flags.value(
       "cache", true, "Whether to use a cache between the UI and the gapis server.");
 
+  private final Settings settings;
   private GapisConnection gapisConnection;
   private Client client;
+
+  public Server(Settings settings) {
+    this.settings = settings;
+  }
 
   public void connect(GapisProcess.Listener listener) throws GapisInitException {
     connectToServer(listener);
@@ -103,9 +109,9 @@ public class Server {
     }
   }
 
-  private static GapisConnection createConnection(GapisProcess.Listener listener) {
+  private GapisConnection createConnection(GapisProcess.Listener listener) {
     if (gapis.get().isEmpty()) {
-      return new GapisProcess(listener).connect();
+      return new GapisProcess(settings, listener).connect();
     } else {
       return GapisConnection.create(
           gapis.get(), gapisAuthToken.get(), 0, con -> listener.onServerExit(-1, null));

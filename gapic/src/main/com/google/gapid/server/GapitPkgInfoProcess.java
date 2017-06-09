@@ -20,6 +20,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.proto.pkginfo.PkgInfo.PackageList;
 
@@ -42,8 +43,8 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   private final String deviceSerial;
   private final float iconDensityScale;
 
-  public GapitPkgInfoProcess(String deviceSerial, float iconDensityScale) {
-    super("gapit");
+  public GapitPkgInfoProcess(Settings settings, String deviceSerial, float iconDensityScale) {
+    super("gapit", settings);
     this.deviceSerial = deviceSerial;
     this.iconDensityScale = iconDensityScale;
   }
@@ -76,9 +77,10 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
       args.add(deviceSerial);
     }
 
-    if (!GapiPaths.adb().isEmpty()) {
+    String adb = GapiPaths.adb(settings);
+    if (!adb.isEmpty()) {
       args.add("--adb");
-      args.add(GapiPaths.adb());
+      args.add(adb);
     }
 
     pb.command(args);

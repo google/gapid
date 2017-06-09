@@ -101,7 +101,8 @@ public class TracerDialog {
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
       TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue());
       AtomicBoolean failed = new AtomicBoolean(false);
-      Tracer.Trace trace = Tracer.trace(shell.getDisplay(), input.getValue(), new Tracer.Listener() {
+      Tracer.Trace trace = Tracer.trace(
+          shell.getDisplay(), models.settings, input.getValue(), new Tracer.Listener() {
         @Override
         public void onProgress(String message) {
           progress.append(message);
@@ -145,7 +146,7 @@ public class TracerDialog {
     private static final String DEFAULT_TRACE_FILE = "trace.gfxtrace";
     private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
 
-    private final Settings settings;
+    protected final Settings settings;
     protected final Widgets widgets;
     private ComboViewer device;
     private LoadingIndicator.Widget deviceLoader;
@@ -212,7 +213,7 @@ public class TracerDialog {
         @Override
         protected String createAndShowDialog(String current) {
           ActivityPickerDialog dialog = new ActivityPickerDialog(
-              getShell(), widgets, getSelectedDevice());
+              getShell(), settings, widgets, getSelectedDevice());
           dialog.open();
           Action action = dialog.getSelected();
           return (action == null) ? null : action.toString();

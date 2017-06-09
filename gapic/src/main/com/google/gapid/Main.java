@@ -20,6 +20,7 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Settings;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.util.Flags;
@@ -53,8 +54,9 @@ public class Main {
 
     Display.setAppName(Messages.WINDOW_TITLE);
     Display.setAppVersion(Version.GAPID_VERSION.toString());
+    Settings settings = Settings.load();
 
-    Server server = new Server();
+    Server server = new Server(settings);
     AtomicReference<UI> uiRef = new AtomicReference<UI>(null);
     try {
       server.connect((code, panic) -> {
@@ -63,7 +65,7 @@ public class Main {
           ui.showServerDiedMessage(code, panic);
         }
       });
-      uiRef.set(new UI(server.getClient(), args));
+      uiRef.set(new UI(settings, server.getClient(), args));
       uiRef.get().show();
     } finally {
       uiRef.set(null);
@@ -90,13 +92,15 @@ public class Main {
       });
     }
 
+    private final Settings settings;
     private final Client client;
     private final String[] args;
     private final ApplicationWindow window;
     private Models models;
     private Widgets widgets;
 
-    public UI(Client client, String[] args) {
+    public UI(Settings settings, Client client, String[] args) {
+      this.settings = settings;
       this.client = client;
       this.args = args;
       this.window = new MainWindow(client, this);
@@ -132,7 +136,7 @@ public class Main {
 
     @Override
     public void init(Shell shell) {
-      models = Models.create(shell, client);
+      models = Models.create(shell, settings, client);
       widgets = Widgets.create(shell.getDisplay(), client, models);
 
       if (args.length == 1) {

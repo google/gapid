@@ -22,6 +22,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.models.Settings;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -37,11 +38,13 @@ public abstract class ChildProcess<T> {
   private static final Logger LOG = Logger.getLogger(ChildProcess.class.getName());
 
   protected final String name;
+  protected final Settings settings;
   private Thread serverThread;
   protected Process process;
 
-  ChildProcess(String name) {
+  ChildProcess(String name, Settings settings) {
     this.name = name;
+    this.settings = settings;
   }
 
   protected abstract Exception prepare(ProcessBuilder pb);

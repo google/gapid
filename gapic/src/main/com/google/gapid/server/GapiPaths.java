@@ -18,6 +18,7 @@ package com.google.gapid.server;
 import static java.util.logging.Level.INFO;
 
 import com.google.common.collect.ImmutableList;
+import com.google.gapid.models.Settings;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.OS;
@@ -36,9 +37,8 @@ public final class GapiPaths {
 
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
-  private static final String EXE_EXTENSION = OS.isWindows ? ".exe" : "";
-  private static final String GAPIS_EXECUTABLE_NAME = "gapis" + EXE_EXTENSION;
-  private static final String GAPIT_EXECUTABLE_NAME = "gapit" + EXE_EXTENSION;
+  private static final String GAPIS_EXECUTABLE_NAME = "gapis" + OS.exeExtension;
+  private static final String GAPIT_EXECUTABLE_NAME = "gapit" + OS.exeExtension;
   private static final String STRINGS_DIR_NAME = "strings";
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
@@ -77,8 +77,9 @@ public final class GapiPaths {
     return stringsPath;
   }
 
-  public static String adb() {
-    return adbPath.get();
+  public static String adb(Settings settings) {
+    String adb = adbPath.get();
+    return adb.isEmpty() ? settings.adb : adb;
   }
 
   private static boolean checkForTools(File dir) {
