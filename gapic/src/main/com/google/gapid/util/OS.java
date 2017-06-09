@@ -15,6 +15,9 @@
  */
 package com.google.gapid.util;
 
+import java.io.File;
+import java.io.IOException;
+
 public class OS {
   public static final String name;
   public static final String arch;
@@ -28,5 +31,28 @@ public class OS {
     isMac = name.indexOf("mac") >= 0;
     isLinux = name.indexOf("nux") >= 0;
     userHomeDir = System.getProperty("user.home", ".");
+  }
+
+  public static void openFileInSystemExplorer(File file) throws IOException {
+    String cmd = getSystemExplorerCommand(file.toURI().toString(), file.isDirectory());
+    if (isLinux || isMac) {
+      Runtime.getRuntime().exec(new String[] { "/bin/sh", "-c", cmd }, null, null);
+    } else {
+      Runtime.getRuntime().exec(cmd, null, null);
+    }
+  }
+
+  private static String getSystemExplorerCommand(String file, boolean isDir) {
+    if (isLinux) {
+      return "dbus-send --print-reply --dest=org.freedesktop.FileManager1 "
+          + "/org/freedesktop/FileManager1 org.freedesktop.FileManager1.ShowItems "
+          + "array:string:\"" + file + "\" string:\"\"";
+    } else if (isWindows) {
+      return "explorer /E," + (isDir ? "" : "/select,") + file;
+    } else if (isMac) {
+      return "open -R \"" + file + "\"";
+    } else {
+      return file;
+    }
   }
 }
