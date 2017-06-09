@@ -18,10 +18,13 @@ package com.google.gapid.widgets;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.models.Info;
 import com.google.gapid.server.Version;
+import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.OS;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
@@ -35,18 +38,30 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 
+import java.io.IOException;
+import java.util.logging.Logger;
+
 /**
  * Dialog showing some basic info about our application.
  */
 public class AboutDialog {
   private static final String HELP_URL =
       "https://developer.android.com/r/studio-ui/am-gpu-debugger.html";
+  private static final Logger LOG = Logger.getLogger(AboutDialog.class.getName());
 
   private AboutDialog() {
   }
 
   public static void showHelp() {
     Program.launch(HELP_URL);
+  }
+
+  public static void showLogDir() {
+    try {
+      OS.openFileInSystemExplorer(Logging.getLogDir());
+    } catch (IOException e) {
+      LOG.log(SEVERE, "Failed to open log directory in system explorer", e);
+    }
   }
 
   public static void showAbout(Shell shell, Theme theme) {

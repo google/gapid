@@ -20,7 +20,6 @@ import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.AboutDialog.showAbout;
-import static com.google.gapid.widgets.AboutDialog.showHelp;
 import static com.google.gapid.widgets.GotoAtom.showGotoAtomDialog;
 import static com.google.gapid.widgets.GotoMemory.showGotoMemoryDialog;
 import static com.google.gapid.widgets.Licenses.showLicensesDialog;
@@ -50,6 +49,7 @@ import com.google.gapid.views.StateView;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
+import com.google.gapid.widgets.AboutDialog;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
@@ -379,8 +379,9 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createHelpMenu() {
     MenuManager manager = new MenuManager("&Help");
-    manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp()));
+    manager.add(MenuItems.HelpOnlineHelp.create(AboutDialog::showHelp));
     manager.add(MenuItems.HelpAbout.create(() -> showAbout(getShell(), widgets().theme)));
+    manager.add(MenuItems.HelpShowLogs.create(AboutDialog::showLogDir));
     manager.add(MenuItems.HelpLicenses.create(() -> showLicensesDialog(getShell())));
     manager.add(MenuItems.HelpWelcome.create(
         () -> showWelcomeDialog(getShell(), models(), widgets())));
@@ -570,6 +571,7 @@ public class MainWindow extends ApplicationWindow {
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),
+    HelpShowLogs("Open &Log Directory"),
     HelpLicenses("&Licenses"),
     HelpWelcome("Show &Welcome Screen");
 
