@@ -182,7 +182,7 @@ void GlesRendererImpl::createPbuffer(int width, int height) {
     mPbuffer = glXCreatePbuffer(mDisplay, mFBConfig, pbufferAttribs);
 }
 
-static void* DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint id, Gles::GLenum severity,
+static void DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint id, Gles::GLenum severity,
                            Gles::GLsizei length, const Gles::GLchar* message, const void* user_param) {
     auto renderer = reinterpret_cast<const GlesRendererImpl*>(user_param);
     auto listener = renderer->getListener();
