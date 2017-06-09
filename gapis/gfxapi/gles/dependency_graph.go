@@ -302,18 +302,18 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 				// It may act as "load" of EGLImage - i.e. load the content in other context.
 				b.KeepAlive = true
 			case *GlCompressedTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				texData, texSize := getTextureDataAndSize(ctx, a, s, c.Bound.TextureUnit, a.Target)
 				b.modify(g, texData)
 				b.write(g, texSize)
 			case *GlCompressedTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				texData, _ := getTextureDataAndSize(ctx, a, s, c.Bound.TextureUnit, a.Target)
 				b.modify(g, texData)
 			case *GlTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				texData, texSize := getTextureDataAndSize(ctx, a, s, c.Bound.TextureUnit, a.Target)
 				b.modify(g, texData)
 				b.write(g, texSize)
 			case *GlTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, a, s, c, c.ActiveTextureUnit, a.Target)
+				texData, _ := getTextureDataAndSize(ctx, a, s, c.Bound.TextureUnit, a.Target)
 				b.modify(g, texData)
 			case *GlUniform1fv:
 				b.write(g, uniformKey{c.Bound.Program, a.Location, a.Count})
@@ -359,9 +359,10 @@ func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 						units = []uint32{0} // The uniform was not set, so use default value.
 					}
 					for _, unit := range units {
-						unit := GLenum(unit) + GLenum_GL_TEXTURE0
-						texData, _ := getTextureDataAndSize(ctx, a, s, c, unit, target)
-						stateKeys = append(stateKeys, texData)
+						if tu := c.TextureUnits[TextureUnitId(unit)]; tu != nil {
+							texData, _ := getTextureDataAndSize(ctx, a, s, tu, target)
+							stateKeys = append(stateKeys, texData)
+						}
 					}
 				}
 			}
@@ -370,8 +371,8 @@ func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 	return
 }
 
-func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, c *Context, unit, target GLenum) (stateKey, stateKey) {
-	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, c, unit, target)
+func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, unit *TextureUnit, target GLenum) (stateKey, stateKey) {
+	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, unit, target)
 	if tex == nil || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil

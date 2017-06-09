@@ -174,11 +174,10 @@ sub GLint CubemapFaceToLayer(GLenum target) {
 
 sub ref!Texture GetBoundTextureOrErrorInvalidEnum(GLenum target) {
   ctx := GetContext()
-  return GetBoundTextureForUnit(ctx, ctx.ActiveTextureUnit, target)
+  return GetBoundTextureForUnit(ctx.Bound.TextureUnit, target)
 }
 
-sub ref!Texture GetBoundTextureForUnit(ref!Context ctx, GLenum unit, GLenum target) {
-  tu := ctx.TextureUnits[unit]
+sub ref!Texture GetBoundTextureForUnit(ref!TextureUnit tu, GLenum target) {
   return switch (target) {
     @if(Version.GLES20)
     case GL_TEXTURE_2D: {
@@ -508,8 +507,9 @@ cmd void glActiveTexture(GLenum unit) {
     }
   }
   ctx := GetContext()
-  if !unit in ctx.TextureUnits { glErrorInvalidEnum(unit) }
-  ctx.ActiveTextureUnit = unit
+  tu := ctx.TextureUnits[as!TextureUnitId(unit - GL_TEXTURE0)]
+  if tu == null { glErrorInvalidEnum(unit) }
+  ctx.Bound.TextureUnit = tu
 }
 
 @if(Version.GLES31)
@@ -556,8 +556,9 @@ cmd void glBindImageTexture(GLuint    unit,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml", Version.GLES32)
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx := GetContext()
-  unit := as!GLenum(index + as!GLuint(GL_TEXTURE0))
-  ctx.TextureUnits[unit].SamplerBinding = GetOrCreateSampler(sampler)
+  tu := ctx.TextureUnits[as!TextureUnitId(index)]
+  if tu == null { glErrorInvalidValue() }
+  tu.SamplerBinding = GetOrCreateSampler(sampler)
 }
 
 sub ref!Sampler GetOrCreateSampler(SamplerId id) {
@@ -604,7 +605,7 @@ sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindTexture.xhtml", Version.GLES32)
 cmd void glBindTexture(GLenum target, TextureId texture) {
   ctx := GetContext()
-  tu := ctx.TextureUnits[ctx.ActiveTextureUnit]
+  tu := ctx.Bound.TextureUnit
   switch (target) {
     @if(Version.GLES20)
     case GL_TEXTURE_2D: {
