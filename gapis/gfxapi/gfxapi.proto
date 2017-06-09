@@ -104,11 +104,13 @@ message ResourceData {
 // Texture represents a texture resource.
 message Texture {
 	oneof type {
-		// Texture1D texture_1d = 1;
-		Texture2D texture_2d = 2;
-		// Texture3D texture_3d = 3;
-		// Texture2DArray array = 4;
-		Cubemap cubemap = 5;
+		Texture1D texture_1d = 1;
+		Texture1DArray texture_1d_array = 2;
+		Texture2D texture_2d = 3;
+		Texture2DArray texture_2d_array = 4;
+		Texture3D texture_3d = 5;
+		Cubemap cubemap = 6;
+		CubemapArray cubemap_array = 7;
 	}
 }
 
@@ -145,8 +147,30 @@ message Mesh {
 	IndexBuffer index_buffer = 3;
 }
 
+// Texture1D represents a one-dimensional texture resource.
+message Texture1D {
+	// The mip-map levels.
+	repeated image.Info levels = 1;
+}
+
+// Texture1DArray represents a one-dimensional texture array resource.
+message Texture1DArray {
+	repeated Texture1D layers = 1;
+}
+
 // Texture2D represents a two-dimensional texture resource.
 message Texture2D {
+	// The mip-map levels.
+	repeated image.Info levels = 1;
+}
+
+// Texture2DArray represents a two-dimensional texture array resource.
+message Texture2DArray {
+	repeated Texture2D layers = 1;
+}
+
+// Texture3D represents a three-dimensional texture resource.
+message Texture3D {
 	// The mip-map levels.
 	repeated image.Info levels = 1;
 }
@@ -155,6 +179,11 @@ message Texture2D {
 message Cubemap {
 	// The mip-map levels.
 	repeated CubemapLevel levels = 1;
+}
+
+// CubemapArray represents a cube-map texture array resource.
+message CubemapArray {
+	repeated Cubemap layers = 1;
 }
 
 // CubemapLevel represents a single mip-map level of a cube-map texture resource.
