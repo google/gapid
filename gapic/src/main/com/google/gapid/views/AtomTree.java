@@ -564,7 +564,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     public void unload(AtomStream.Node group) {
-      LoadableImage image = getLoadableImage(group);
+      LoadableImage image = images.get(group);
       if (image != null) {
         image.unload();
       }

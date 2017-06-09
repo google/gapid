@@ -72,9 +72,10 @@ public class LoadableImage {
 
   public LoadableImage load() {
     loadCount++;
-    if (loadCount++ != 1 || state != State.NOT_STARTED) {
+    if (loadCount > 1 || state != State.NOT_STARTED) {
       return this;
     }
+    loadCount = 1;
     state = State.LOADING;
     listeners.fire().onLoadingStart();
     loading.scheduleForRedraw(repaintable);
@@ -113,7 +114,7 @@ public class LoadableImage {
 
   public LoadableImage unload() {
     loadCount--;
-    if (loadCount != 0 || state != State.LOADING) {
+    if (loadCount > 0 || state != State.LOADING) {
       return this;
     }
     future.cancel(true);

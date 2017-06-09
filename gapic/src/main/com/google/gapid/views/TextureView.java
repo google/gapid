@@ -524,7 +524,7 @@ public class TextureView extends Composite
     }
 
     public void unload(Data data) {
-      LoadableImage image = getLoadableImage(data);
+      LoadableImage image = images.get(data);
       if (image != null) {
         image.unload();
       }
