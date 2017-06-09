@@ -52,6 +52,8 @@ public:
     GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
 
     void onPostDrawCall(uint8_t api) override;
+    void onPreStartOfFrame(uint8_t api) override;
+    void onPostStartOfFrame(CallObserver* observer) override;
     void onPreEndOfFrame(uint8_t api) override;
     void onPostEndOfFrame(CallObserver* observer) override;
     void onPostFence(CallObserver* observer) override;

@@ -154,6 +154,12 @@ protected:
     // onPostDrawCall is after any command annotated with @DrawCall
     inline virtual void onPostDrawCall(uint8_t) {}
 
+    // onPreStartOfFrame is before any command annotated with @StartOfFrame
+    inline virtual void onPreStartOfFrame(uint8_t) {}
+
+    // onPostStrartOfFrame is after any command annotated with @StartOfFrame
+    inline virtual void onPostStartOfFrame(CallObserver* observer) {}
+
     // onPreEndOfFrame is before any command annotated with @EndOfFrame
     inline virtual void onPreEndOfFrame(uint8_t) {}
 

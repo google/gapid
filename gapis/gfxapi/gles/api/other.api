@@ -283,7 +283,7 @@ cmd void glFinish() {
 }
 
 @if(Version.GLES10)
-@EndOfFrame // For daydream.  TODO: Use gvr-specific api call instead?
+@StartOfFrame // For daydream.  TODO: Use gvr-specific api call instead?
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glFlush.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glFlush.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glFlush.xhtml", Version.GLES31)
