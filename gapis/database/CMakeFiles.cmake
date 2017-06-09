@@ -19,10 +19,11 @@
 
 set(files
     database.go
+    debug.go
     hash.go
     memory.go
     resolvable.go
 )
 set(dirs
-    
+
 )
