@@ -168,6 +168,7 @@ public class Main {
   private static final Flag<?>[] ALL_FLAGS = {
     Flags.help,
     GapiPaths.gapidPath,
+    GapiPaths.adbPath,
     Server.gapis,
     Server.gapisAuthToken,
     Logging.logLevel,
