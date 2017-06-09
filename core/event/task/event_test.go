@@ -16,6 +16,7 @@ package task_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/event/task"
@@ -34,7 +35,7 @@ func TestEvents(t *testing.T) {
 	assert.For(ctx, "Size after 2").That(signals.Pending()).Equals(2)
 	go func() {
 		signals.Wait(ctx)
-		assert.For(ctx, "TryWait after Wait").That(signals.TryWait(ctx, 0)).Equals(true)
+		assert.For(ctx, "TryWait after Wait").That(signals.TryWait(ctx, time.Millisecond)).Equals(true)
 		outfire(ctx)
 	}()
 	assert.For(ctx, "Out before signal 1").That(out.TryWait(ctx, ExpectBlocking)).Equals(false)
