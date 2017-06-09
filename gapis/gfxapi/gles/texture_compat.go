@@ -212,11 +212,11 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 	c := GetContext(s)
 
 	data := a.Data
-	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
+	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
 		base := a.Data.addr
-		data = NewTexturePointer(c.Objects.Shared.Buffers[pb].Data.Index(base, s.MemoryLayout))
+		data = NewTexturePointer(pb.Data.Index(base, s.MemoryLayout))
 		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
+		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}
@@ -259,11 +259,11 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 	c := GetContext(s)
 
 	data := a.Data
-	if pb := c.BoundBuffers.PixelUnpackBuffer; pb != 0 {
+	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
 		base := a.Data.addr
-		data = TexturePointer(c.Objects.Shared.Buffers[pb].Data.Index(base, s.MemoryLayout))
+		data = TexturePointer(pb.Data.Index(base, s.MemoryLayout))
 		out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb))
+		defer out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 	}

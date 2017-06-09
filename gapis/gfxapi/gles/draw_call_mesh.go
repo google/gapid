@@ -72,13 +72,13 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshHasNoVertices()}
 	}
 
-	program, found := c.Objects.Shared.Programs[c.BoundProgram]
-	if !found {
+	program := c.Bound.Program
+	if program == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoProgramBound()}
 	}
 
 	vb := &vertex.Buffer{}
-	va := c.Objects.VertexArrays[c.BoundVertexArray]
+	va := c.Bound.VertexArray
 	for _, attr := range program.ActiveAttributes {
 		vaa := va.VertexAttributeArrays[attr.Location]
 		if vaa == nil || vaa.Enabled == GLboolean_GL_FALSE {

@@ -71,13 +71,12 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 	if i == nil {
 		return nil, err
 	}
-	va, ok := c.Objects.VertexArrays[c.BoundVertexArray]
-	if !ok || !va.VertexAttributeArrays.Contains(o) {
+	if !c.Bound.VertexArray.VertexAttributeArrays.Contains(o) {
 		return nil, nil
 	}
 	return i.
 		Field("VertexArrays").
-		MapIndex(c.BoundVertexArray).
+		MapIndex(c.Bound.VertexArray.GetID()).
 		Field("VertexAttributeArrays").
 		MapIndex(o), nil
 }
@@ -172,7 +171,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 	case *GlGetUniformLocation:
 		program = atom.Program
 	default:
-		program = c.BoundProgram
+		program = c.Bound.Program.GetID()
 	}
 
 	prog, ok := c.Objects.Shared.Programs[program]

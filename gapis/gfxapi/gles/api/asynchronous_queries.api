@@ -14,6 +14,8 @@
 
 @internal
 class Query {
+  QueryId ID
+
   // Table 21.31: Query Object State
   // GLuint QueryResult = 0 // TODO: or GL_FALSE?
   // GLboolean QueryResultAvailable = GL_FALSE
@@ -89,7 +91,7 @@ cmd void glGenQueries(GLsizei count, QueryId* queries) {
   for i in (0 .. count) {
     id := as!QueryId(?)
     // TODO: This should only reserve the name, but not create the object.
-    ctx.Objects.Queries[id] = new!Query()
+    ctx.Objects.Queries[id] = new!Query(ID: id)
     q[i] = id
   }
 }
