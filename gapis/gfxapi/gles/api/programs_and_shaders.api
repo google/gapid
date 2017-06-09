@@ -16,7 +16,7 @@
 @resource
 class Shader {
   @unused ShaderId ID
-  @unused GLenum   ShaderType
+  @unused GLenum   ShaderType // TODO: Duplicate field?
   @unused u8[]     Binary
   @unused bool     Compiled     = false
   bool             DeleteStatus
@@ -24,7 +24,7 @@ class Shader {
   string           Source
   GLenum           Type
   @unused string   Label
-  GLuint           RefCount
+  s32              AttachCount
 }
 
 @internal
@@ -42,6 +42,7 @@ class Program {
   map!(UniformIndex, ActiveUniform)       ActiveUniforms    // Program introspection.
   map!(UniformLocation, Uniform)          Uniforms          // Values are stored separately.
   @unused string                          Label
+  s32                                     UseCount
 }
 
 @internal
@@ -268,20 +269,27 @@ sub ref!Program GetProgramOrError(ProgramId program) {
   return p
 }
 
-sub void reapShader(ref!Shader shader) {
+sub void AdjustShaderAttachCount(ref!Shader s, s32 delta) {
   ctx := GetContext()
-  if (shader.DeleteStatus && shader.RefCount == 0) {
-    delete(ctx.Objects.Shared.Shaders, shader.ID)
+  if s != null {
+    s.AttachCount += delta
+    assert(s.AttachCount >= 0)
+    // Delete if it was marked for deletion and it is no longer attached anywhere
+    if s.DeleteStatus && (s.AttachCount == 0) {
+      delete(ctx.Objects.Shared.Shaders, s.ID)
+    }
   }
 }
 
-sub void reapProgram(ref!Program p) {
+sub void AdjustProgramUseCount(ref!Program p, s32 delta) {
   ctx := GetContext()
-  if (p != null) {
-    if (p.DeleteStatus) {
+  if p != null {
+    p.UseCount += delta
+    assert(p.UseCount >= 0)
+    // Delete if it was marked for deletion and it is no longer used anywhere
+    if p.DeleteStatus && (p.UseCount == 0) {
       for _ , _ , s in p.Shaders {
-        s.RefCount -= 1
-        reapShader(s)
+        AdjustShaderAttachCount(s, -1)
       }
       delete(ctx.Objects.Shared.Programs, p.ID)
     }
@@ -328,7 +336,7 @@ cmd void glAttachShader(ProgramId program, ShaderId shader) {
   s := ctx.Objects.Shared.Shaders[shader]
   if s.Type in p.Shaders { glErrorInvalidOperation() } // shader already attached
   p.Shaders[s.Type] = s
-  s.RefCount += 1
+  AdjustShaderAttachCount(s, +1)
 }
 
 @if(Version.GLES20)
@@ -371,7 +379,6 @@ cmd void glCompileShader(ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCreateProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCreateProgram.xhtml", Version.GLES32)
 cmd ProgramId glCreateProgram() {
-
   ctx := GetContext()
   id := ?
   ctx.Objects.Shared.Programs[id] = new!Program(ID: id)
@@ -401,9 +408,7 @@ cmd ShaderId glCreateShader(GLenum type) {
 
   ctx := GetContext()
   id := ?
-  ctx.Objects.Shared.Shaders[id] = new!Shader(ID: id, ShaderType:  type)
-  s := ctx.Objects.Shared.Shaders[id]
-  s.Type = type
+  ctx.Objects.Shared.Shaders[id] = new!Shader(ID: id, ShaderType: type, Type: type)
   return id
 }
 
@@ -437,14 +442,9 @@ cmd ProgramId glCreateShaderProgramv(GLenum type, GLsizei count, const GLchar* c
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteProgram.xhtml", Version.GLES32)
 cmd void glDeleteProgram(ProgramId program) {
   if program != 0 {
-    ctx := GetContext()
     p := GetProgramOrError(program)
     p.DeleteStatus = true
-    // Do not reap while the program is in use.
-    // TODO: Programs can be shared between contexts so this does not quite work
-    if ctx.Bound.Program != p {
-      reapProgram(p)
-    }
+    AdjustProgramUseCount(p, 0) // Do not change the count, just check if it can be deleted now.
   }
 }
 
@@ -477,7 +477,7 @@ cmd void glDeleteShader(ShaderId shader) {
   if shader != 0 {
     s := GetShaderOrError(shader)
     s.DeleteStatus = true
-    reapShader(s)
+    AdjustShaderAttachCount(s, 0) // Do not change the count, just check if it can be deleted now.
   }
 }
 
@@ -493,8 +493,7 @@ cmd void glDetachShader(ProgramId program, ShaderId shader) {
 
   if (!(s.Type in p.Shaders)) || (p.Shaders[s.Type] != s) { glErrorInvalidOperation() }
   delete(p.Shaders, s.Type)
-  s.RefCount -= 1
-  reapShader(s)
+  AdjustShaderAttachCount(s, -1)
 }
 
 @if(Version.GLES31)
@@ -2287,19 +2286,15 @@ sub void UniformMatrix4x3fv(UniformLocation location, GLsizei count, GLboolean t
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUseProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUseProgram.xhtml", Version.GLES32)
 cmd void glUseProgram(ProgramId program) {
-
   ctx := GetContext()
-  if program != 0 {
-    _ = GetProgramOrError(program)
+  oldProgram := ctx.Bound.Program
+  if program == 0 {
+    ctx.Bound.Program = null
+  } else {
+    ctx.Bound.Program = GetProgramOrError(program)
+    AdjustProgramUseCount(ctx.Bound.Program, 1)
   }
-  p := ctx.Objects.Shared.Programs[program]
-
-  // Lazy delete. See glDeleteProgram.
-  if ctx.Bound.Program != p {
-    reapProgram(ctx.Bound.Program)
-  }
-
-  ctx.Bound.Program = p
+  AdjustProgramUseCount(oldProgram, -1)
 }
 
 @if(Version.GLES31)
