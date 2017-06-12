@@ -15,6 +15,11 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.Colors.BLACK;
+import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
+import static com.google.gapid.util.Colors.WHITE;
+import static com.google.gapid.util.Colors.getLuminance;
+import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
@@ -30,6 +35,7 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -69,6 +75,9 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -81,6 +90,7 @@ import org.eclipse.swt.widgets.TabFolder;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -369,7 +379,7 @@ public class ShaderView extends Composite
       return viewer;
     }
 
-    private boolean isKey(Event e, int stateMask, int keyCode) {
+    private static boolean isKey(Event e, int stateMask, int keyCode) {
       return (e.stateMask & stateMask) == e.stateMask && e.keyCode == keyCode;
     }
 
@@ -514,6 +524,7 @@ public class ShaderView extends Composite
    */
   private static class UniformsPanel extends Composite {
     private final TableViewer table;
+    private final Map<Uniform, Image> images = Maps.newIdentityHashMap();
 
     public UniformsPanel(Composite parent) {
       super(parent, SWT.NONE);
@@ -540,17 +551,73 @@ public class ShaderView extends Composite
           case Double: return String.valueOf(value.getFloat64Array().getValList());
           default: return ProtoDebugTextFormat.shortDebugString(value);
         }
-      });
+      },this::getImage);
       packColumns(table.getTable());
+      addListener(SWT.Dispose, e -> clearImages());
     }
 
     public void setUniforms(Program program) {
       List<Uniform> uniforms = Lists.newArrayList(program.getUniformsList());
       Collections.sort(uniforms, (a, b) -> a.getUniformLocation() - b.getUniformLocation());
+      clearImages();
       table.setInput(uniforms);
       table.refresh();
       packColumns(table.getTable());
       table.getTable().requestLayout();
+    }
+
+    private Image getImage(Uniform uniform) {
+      if (!images.containsKey(uniform)) {
+        Image image = null;
+        Pod.Value value = uniform.getValue().getPod(); // TODO
+        switch (uniform.getType()) {
+          case Float: {
+            List<Float> values = value.getFloat32Array().getValList();
+            if ((values.size() == 3 || values.size() == 4) &&
+                isColorRange(values.get(0)) && isColorRange(values.get(1)) &&
+                isColorRange(values.get(2))) {
+              image = createImage(values.get(0), values.get(1), values.get(2));
+            }
+            break;
+          }
+          case Double: {
+            List<Double> values = value.getFloat64Array().getValList();
+            if ((values.size() == 3 || values.size() == 4) &&
+                isColorRange(values.get(0)) && isColorRange(values.get(1)) &&
+                isColorRange(values.get(2))) {
+              image = createImage(values.get(0), values.get(1), values.get(2));
+            }
+            break;
+          }
+          default:
+            // Not a color.
+        }
+        images.put(uniform, image);
+      }
+      return images.get(uniform);
+    }
+
+    private static boolean isColorRange(double v) {
+      return v >= 0 && v <= 1;
+    }
+
+    private Image createImage(double r, double g, double b) {
+      ImageData data = new ImageData(12, 12, 1, new PaletteData(
+          (getLuminance(r, g, b) < DARK_LUMINANCE_THRESHOLD) ? WHITE : BLACK, rgb(r, g, b)), 1,
+          new byte[] {
+              0, 0, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31,
+              127, -31, 127, -31, 0, 0
+          } /* Square of 1s with a border of 0s (and padding to 2 bytes per row) */);
+      return new Image(getDisplay(), data);
+    }
+
+    private void clearImages() {
+      for (Image image : images.values()) {
+        if (image != null) {
+          image.dispose();
+        }
+      }
+      images.clear();
     }
   }
 
