@@ -28,6 +28,7 @@ import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
+import static java.util.logging.Level.FINE;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -376,6 +377,7 @@ public class TextureView extends Composite
           try {
             return AdditionalInfo.from(result.get());
           } catch (DataUnavailableException e) {
+            LOG.log(FINE, "Texture info unavailable: {0}", e.getMessage());
             return AdditionalInfo.NULL;
           }
         }
@@ -391,6 +393,10 @@ public class TextureView extends Composite
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
           new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_2D =
+          new AdditionalInfo("2D", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_CUBEMAP =
+          new AdditionalInfo("Cubemap", Image.Info.getDefaultInstance(), 0);
 
       public final Image.Info level0;
       public final int levelCount;
@@ -408,13 +414,14 @@ public class TextureView extends Composite
         switch (texture.getTypeCase()) {
           case TEXTURE_2D:
             GfxAPI.Texture2D t = texture.getTexture2D();
-            return (t.getLevelsCount() == 0) ? NULL :
-              new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
+            return (t.getLevelsCount() == 0) ? NULL_2D :
+                new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
           case CUBEMAP:
             GfxAPI.Cubemap c = texture.getCubemap();
-            return (c.getLevelsCount() == 0) ? NULL :
-              new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
-          default: return NULL;
+            return (c.getLevelsCount() == 0) ? NULL_CUBEMAP :
+                new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
+          default:
+            return NULL;
         }
       }
 
