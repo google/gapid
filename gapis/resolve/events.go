@@ -77,7 +77,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Commands.Capture.Command(uint64(i)),
 			})
 		}
-		if p.FirstInFrame && f.IsEndOfFrame() {
+		if p.FirstInFrame && (f.IsEndOfFrame() && len(c.Atoms) > i+1) {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_FirstInFrame,
 				Command: p.Commands.Capture.Command(uint64(i) + 1),

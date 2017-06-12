@@ -151,7 +151,8 @@ Spy::Spy()
   , mObserveFrameFrequency(0)
   , mObserveDrawFrequency(0)
   , mDisablePrecompiledShaders(false)
-  , mRecordGLErrorState(false) {
+  , mRecordGLErrorState(false)
+  , mPendingFramebufferObservation(nullptr) {
 
 
 #if TARGET_OS == GAPID_OS_ANDROID
@@ -388,7 +389,14 @@ void Spy::onPreEndOfFrame(uint8_t api) {
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-        observeFramebuffer(api);
+        // The EndOfFrame atom for Vulkan is vkQueuePresentKHR. Because once an
+        // image is sent to device for presenting, we cannot access the image
+        // again before acquiring it back. The data of the framebuffer image to
+        // be presented must be gather before calling the underlying
+        // vkQueuePresentKHR.  However, the data must be messaged after the
+        // vkQueuePresentKHR so the server knows the observed framebuffer is
+        // that specific vkQueuePresentKHR.
+        observeFramebuffer(api, api == VulkanSpy::kApiIndex);
     }
     GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d",
                mNumFrames, mNumDraws, mNumDrawsPerFrame);
@@ -397,6 +405,10 @@ void Spy::onPreEndOfFrame(uint8_t api) {
 }
 
 void Spy::onPostEndOfFrame(CallObserver* observer) {
+    if (mPendingFramebufferObservation) {
+        mEncoder->message(mPendingFramebufferObservation.get());
+        mPendingFramebufferObservation.reset(nullptr);
+    }
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
@@ -462,7 +474,7 @@ static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW,
 
 // observeFramebuffer captures the currently bound framebuffer, and writes
 // it to a FramebufferObservation atom.
-void Spy::observeFramebuffer(uint8_t api) {
+void Spy::observeFramebuffer(uint8_t api, bool pendMessaging) {
     uint32_t w = 0;
     uint32_t h = 0;
     std::vector<uint8_t> data;
@@ -489,13 +501,19 @@ void Spy::observeFramebuffer(uint8_t api) {
     if (downsamplePixels(data, w, h,
                          &downsampledData, &downsampledW, &downsampledH,
                          kMaxFramebufferObservationWidth, kMaxFramebufferObservationHeight)) {
-        atom_pb::FramebufferObservation observation;
-        observation.set_originalwidth(w);
-        observation.set_originalheight(h);
-        observation.set_datawidth(downsampledW);
-        observation.set_dataheight(downsampledH);
-        observation.set_data(downsampledData.data(), downsampledData.size());
-        mEncoder->message(&observation);
+        // atom_pb::FramebufferObservation observation;
+        auto observation = std::unique_ptr<atom_pb::FramebufferObservation>(
+            new atom_pb::FramebufferObservation());
+        observation->set_originalwidth(w);
+        observation->set_originalheight(h);
+        observation->set_datawidth(downsampledW);
+        observation->set_dataheight(downsampledH);
+        observation->set_data(downsampledData.data(), downsampledData.size());
+        if (pendMessaging) {
+          mPendingFramebufferObservation = std::move(observation);
+        } else {
+          mEncoder->message(observation.get());
+        }
     }
 }
 
