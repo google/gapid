@@ -172,21 +172,24 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-gapii-device", d.Instance().Serial,
 	}
 	cmd := shell.Command(gapit.System(), params...)
-	output, callErr := cmd.Call(ctx)
+	output, err := cmd.Call(ctx)
 	output = fmt.Sprintf("%s\n\n%s", cmd, output)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "gapit call failed %v", output);
+	}
 
 	outputObj := &Output{}
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}}, output)
 	if err != nil {
-		return outputObj, err
+		return nil, err
 	}
 	outputObj.Log = logID
 	traceID, err := store.UploadFile(ctx, tracefile)
 	if err != nil {
-		return outputObj, err
+		return nil, err
 	}
 	outputObj.Trace = traceID
-	return outputObj, callErr
+	return outputObj, nil
 }
 
 type offlineDevice struct {

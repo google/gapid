@@ -64,11 +64,14 @@ func SetupReplay(ctx context.Context, env *shell.Env) (func(), error) {
 func findLibraryAndJSON(ctx context.Context, libType layout.LibraryType) (file.Path, file.Path, error) {
 	lib, err := layout.Library(ctx, libType)
 	if err != nil {
-		return lib, lib, err
+		return file.Path{}, file.Path{}, err
 	}
 
 	json, err := layout.Json(ctx, libType)
-	return lib, json, err
+	if err != nil {
+		return file.Path{}, file.Path{}, err
+	}
+	return lib, json, nil
 }
 
 func setupJSON(library, json file.Path, env *shell.Env) (func(), error) {
