@@ -1107,7 +1107,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
-      v[0] = as!T(ctx.Miscellaneous.PrimitiveRestartFixedIndex)
+      v[0] = as!T(ctx.Vertex.PrimitiveRestartFixedIndex)
     }
     @if(Version.GLES30)
     case GL_PROGRAM_BINARY_FORMATS: {
