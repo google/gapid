@@ -24,6 +24,8 @@ import org.eclipse.swt.graphics.RGBA;
 public class Colors {
   public static final double DARK_LUMINANCE_THRESHOLD = 0.65;
   public static final int DARK_LUMINANCE8_THRESHOLD = 165;
+  public static final RGB BLACK = new RGB(0, 0, 0);
+  public static final RGB WHITE = new RGB(255, 255, 255);
 
   private Colors() {
   }
@@ -34,6 +36,10 @@ public class Colors {
 
   public static RGB fromRGB(int rgb) {
     return new RGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+  }
+
+  public static RGB rgb(double r, double g, double b) {
+    return new RGB((int)(r * 255), (int)(g * 255), (int)(b * 255));
   }
 
   /**
@@ -53,6 +59,10 @@ public class Colors {
    * @see <a href="https://en.wikipedia.org/wiki/Relative_luminance">Relative Luminance</a>
    */
   public static double getLuminance(float r, float g, float b) {
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  public static double getLuminance(double r, double g, double b) {
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   }
 
