@@ -148,7 +148,7 @@ func postColorData(ctx context.Context,
 
 	dID := id.Derived()
 	t := newTweaker(ctx, out, dID)
-	t.setPixelStorage(PixelStorageState{PackAlignment: 1, UnpackAlignment: 1}, 0, 0)
+	t.setPackStorage(PixelStorageState{Alignment: 1}, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height), 1)
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))

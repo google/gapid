@@ -372,39 +372,54 @@ func (t *tweaker) glActiveTexture(unit GLenum) {
 	}
 }
 
-func (t *tweaker) setPixelStorage(state PixelStorageState, packBufferId, unpackBufferId BufferId) {
+func (t *tweaker) setPackStorage(state PixelStorageState, bufferId BufferId) {
 	origState := map[GLenum]GLint{}
-	forEachPixelStorageState(t.c.PixelStorage, func(n GLenum, v GLint) { origState[n] = v })
-	forEachPixelStorageState(state, func(name GLenum, value GLint) {
+	forEachPackStorageState(t.c.Other.Pack, func(n GLenum, v GLint) { origState[n] = v })
+	forEachPackStorageState(state, func(name GLenum, value GLint) {
 		if o := origState[name]; o != value {
 			t.doAndUndo(
 				NewGlPixelStorei(name, value),
 				NewGlPixelStorei(name, o))
 		}
 	})
-	if o := t.c.Bound.PixelPackBuffer.GetID(); o != packBufferId {
+	if o := t.c.Bound.PixelPackBuffer.GetID(); o != bufferId {
 		t.doAndUndo(
-			NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, packBufferId),
+			NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, bufferId),
 			NewGlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, o))
 	}
-	if o := t.c.Bound.PixelUnpackBuffer.GetID(); o != unpackBufferId {
+}
+
+func forEachPackStorageState(state PixelStorageState, action func(n GLenum, v GLint)) {
+	action(GLenum_GL_PACK_ALIGNMENT, state.Alignment)
+	action(GLenum_GL_PACK_IMAGE_HEIGHT, state.ImageHeight)
+	action(GLenum_GL_PACK_ROW_LENGTH, state.RowLength)
+	action(GLenum_GL_PACK_SKIP_IMAGES, state.SkipImages)
+	action(GLenum_GL_PACK_SKIP_PIXELS, state.SkipPixels)
+	action(GLenum_GL_PACK_SKIP_ROWS, state.SkipRows)
+}
+
+func (t *tweaker) setUnpackStorage(state PixelStorageState, bufferId BufferId) {
+	origState := map[GLenum]GLint{}
+	forEachUnpackStorageState(t.c.Other.Unpack, func(n GLenum, v GLint) { origState[n] = v })
+	forEachUnpackStorageState(state, func(name GLenum, value GLint) {
+		if o := origState[name]; o != value {
+			t.doAndUndo(
+				NewGlPixelStorei(name, value),
+				NewGlPixelStorei(name, o))
+		}
+	})
+	if o := t.c.Bound.PixelUnpackBuffer.GetID(); o != bufferId {
 		t.doAndUndo(
-			NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, unpackBufferId),
+			NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, bufferId),
 			NewGlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, o))
 	}
 }
 
-func forEachPixelStorageState(state PixelStorageState, action func(n GLenum, v GLint)) {
-	action(GLenum_GL_UNPACK_ALIGNMENT, state.UnpackAlignment)
-	action(GLenum_GL_UNPACK_IMAGE_HEIGHT, state.UnpackImageHeight)
-	action(GLenum_GL_UNPACK_ROW_LENGTH, state.UnpackRowLength)
-	action(GLenum_GL_UNPACK_SKIP_IMAGES, state.UnpackSkipImages)
-	action(GLenum_GL_UNPACK_SKIP_PIXELS, state.UnpackSkipPixels)
-	action(GLenum_GL_UNPACK_SKIP_ROWS, state.UnpackSkipRows)
-	action(GLenum_GL_PACK_ALIGNMENT, state.PackAlignment)
-	action(GLenum_GL_PACK_IMAGE_HEIGHT, state.PackImageHeight)
-	action(GLenum_GL_PACK_ROW_LENGTH, state.PackRowLength)
-	action(GLenum_GL_PACK_SKIP_IMAGES, state.PackSkipImages)
-	action(GLenum_GL_PACK_SKIP_PIXELS, state.PackSkipPixels)
-	action(GLenum_GL_PACK_SKIP_ROWS, state.PackSkipRows)
+func forEachUnpackStorageState(state PixelStorageState, action func(n GLenum, v GLint)) {
+	action(GLenum_GL_UNPACK_ALIGNMENT, state.Alignment)
+	action(GLenum_GL_UNPACK_IMAGE_HEIGHT, state.ImageHeight)
+	action(GLenum_GL_UNPACK_ROW_LENGTH, state.RowLength)
+	action(GLenum_GL_UNPACK_SKIP_IMAGES, state.SkipImages)
+	action(GLenum_GL_UNPACK_SKIP_PIXELS, state.SkipPixels)
+	action(GLenum_GL_UNPACK_SKIP_ROWS, state.SkipRows)
 }

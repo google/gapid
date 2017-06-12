@@ -432,6 +432,8 @@ class VertexState {
 class OtherState {
   DebugState              Debug
   map!(GLenum, ref!Query) ActiveQueries
+  PixelStorageState       Pack
+  PixelStorageState       Unpack
 
   // Table 21.38: Hints
   GLenum         GenerateMipmapHint           = GL_DONT_CARE
@@ -454,7 +456,6 @@ class Context {
   VertexState                                           Vertex
   RasterizationState                                    Rasterization
   PixelState                                            Pixel
-  PixelStorageState                                     PixelStorage
   OtherState                                            Other
 }
 

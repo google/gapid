@@ -1055,27 +1055,27 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_PACK_ALIGNMENT: {
-      v[0] = as!T(ctx.PixelStorage.PackAlignment)
+      v[0] = as!T(ctx.Other.Pack.Alignment)
     }
     @if(Version.GLES30)
     case GL_PACK_IMAGE_HEIGHT: {
-      v[0] = as!T(ctx.PixelStorage.PackImageHeight)
+      v[0] = as!T(ctx.Other.Pack.ImageHeight)
     }
     @if(Version.GLES30)
     case GL_PACK_ROW_LENGTH: {
-      v[0] = as!T(ctx.PixelStorage.PackRowLength)
+      v[0] = as!T(ctx.Other.Pack.RowLength)
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_IMAGES: {
-      v[0] = as!T(ctx.PixelStorage.PackSkipImages)
+      v[0] = as!T(ctx.Other.Pack.SkipImages)
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_PIXELS: {
-      v[0] = as!T(ctx.PixelStorage.PackSkipPixels)
+      v[0] = as!T(ctx.Other.Pack.SkipPixels)
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_ROWS: {
-      v[0] = as!T(ctx.PixelStorage.PackSkipRows)
+      v[0] = as!T(ctx.Other.Pack.SkipRows)
     }
     @if(Version.GLES32)
     case GL_PATCH_VERTICES: {
@@ -1409,27 +1409,27 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_UNPACK_ALIGNMENT: {
-      v[0] = as!T(ctx.PixelStorage.UnpackAlignment)
+      v[0] = as!T(ctx.Other.Unpack.Alignment)
     }
     @if(Version.GLES30)
     case GL_UNPACK_IMAGE_HEIGHT: {
-      v[0] = as!T(ctx.PixelStorage.UnpackImageHeight)
+      v[0] = as!T(ctx.Other.Unpack.ImageHeight)
     }
     @if(Version.GLES30)
     case GL_UNPACK_ROW_LENGTH: {
-      v[0] = as!T(ctx.PixelStorage.UnpackRowLength)
+      v[0] = as!T(ctx.Other.Unpack.RowLength)
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_IMAGES: {
-      v[0] = as!T(ctx.PixelStorage.UnpackSkipImages)
+      v[0] = as!T(ctx.Other.Unpack.SkipImages)
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_PIXELS: {
-      v[0] = as!T(ctx.PixelStorage.UnpackSkipPixels)
+      v[0] = as!T(ctx.Other.Unpack.SkipPixels)
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_ROWS: {
-      v[0] = as!T(ctx.PixelStorage.UnpackSkipRows)
+      v[0] = as!T(ctx.Other.Unpack.SkipRows)
     }
     @if(Version.GLES30)
     case GL_VERTEX_ARRAY_BINDING: {
