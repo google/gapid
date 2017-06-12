@@ -507,7 +507,7 @@ cmd void glActiveTexture(GLenum unit) {
     }
   }
   ctx := GetContext()
-  tu := ctx.TextureUnits[as!TextureUnitId(unit - GL_TEXTURE0)]
+  tu := ctx.Objects.TextureUnits[as!TextureUnitId(unit - GL_TEXTURE0)]
   if tu == null { glErrorInvalidEnum(unit) }
   ctx.Bound.TextureUnit = tu
 }
@@ -540,7 +540,7 @@ cmd void glBindImageTexture(GLuint    unit,
     }
   }
   ctx := GetContext()
-  ctx.ImageUnits[unit] = ImageUnit(
+  ctx.Objects.ImageUnits[unit] = ImageUnit(
     Name:     texture,
     Level:    level,
     Layered:  layered,
@@ -556,7 +556,7 @@ cmd void glBindImageTexture(GLuint    unit,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindSampler.xhtml", Version.GLES32)
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx := GetContext()
-  tu := ctx.TextureUnits[as!TextureUnitId(index)]
+  tu := ctx.Objects.TextureUnits[as!TextureUnitId(index)]
   if tu == null { glErrorInvalidValue() }
   tu.SamplerBinding = GetOrCreateSampler(sampler)
 }

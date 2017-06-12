@@ -340,6 +340,8 @@ class Objects {
   map!(VertexArrayId, ref!VertexArray)             VertexArrays
   map!(QueryId, ref!Query)                         Queries
   map!(TransformFeedbackId, ref!TransformFeedback) TransformFeedbacks
+  map!(TextureUnitId, ref!TextureUnit)             TextureUnits
+  map!(GLuint, ImageUnit)                          ImageUnits
 }
 
 // Objects which can be shared between contexts.
@@ -431,8 +433,6 @@ class Context {
   VertexState                                           Vertex
   RasterizationState                                    Rasterization
   PixelState                                            Pixel
-  map!(TextureUnitId, ref!TextureUnit)                  TextureUnits
-  map!(GLuint, ImageUnit)                               ImageUnits
   PixelStorageState                                     PixelStorage
   MiscellaneousState                                    Miscellaneous
   map!(GLenum, ref!Query)                               ActiveQueries
@@ -535,12 +535,12 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     }
 
     for i in 0 .. as!TextureUnitId(staticState.Constants.MaxCombinedTextureImageUnits) {
-      ctx.TextureUnits[i] = NewTextureUnit(i)
+      ctx.Objects.TextureUnits[i] = NewTextureUnit(i)
     }
-    ctx.Bound.TextureUnit = ctx.TextureUnits[0]
+    ctx.Bound.TextureUnit = ctx.Objects.TextureUnits[0]
 
     for i in 0 .. as!GLuint(staticState.Constants.MaxImageUnits) {
-      ctx.ImageUnits[i] = ImageUnit()
+      ctx.Objects.ImageUnits[i] = ImageUnit()
     }
 
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
