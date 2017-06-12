@@ -32,8 +32,8 @@ cmd void glDebugMessageCallback(GLDEBUGPROC callback, const void* userParam) {
 
 sub void DebugMessageCallback(GLDEBUGPROC callback, const void* userParam) {
   ctx := GetContext()
-  ctx.Debug.CallbackFunction = callback
-  ctx.Debug.CallbackUserParam = userParam
+  ctx.Other.Debug.CallbackFunction = callback
+  ctx.Other.Debug.CallbackUserParam = userParam
 }
 
 @if(Version.GLES32)

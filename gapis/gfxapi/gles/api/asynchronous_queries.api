@@ -40,7 +40,7 @@ cmd void glBeginQuery(GLenum target, QueryId query) {
     }
   }
   ctx := GetContext()
-  ctx.ActiveQueries[target] = GetOrCreateQuery(query)
+  ctx.Other.ActiveQueries[target] = GetOrCreateQuery(query)
 }
 
 sub ref!Query GetOrCreateQuery(QueryId id) {
@@ -91,7 +91,7 @@ cmd void glEndQuery(GLenum target) {
     }
   }
   ctx := GetContext()
-  delete(ctx.ActiveQueries, target)
+  delete(ctx.Other.ActiveQueries, target)
 }
 
 @if(Version.GLES30)
@@ -155,8 +155,8 @@ cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
     case GL_CURRENT_QUERY: {
       // version 3.0
       ctx := GetContext()
-      if (target in ctx.ActiveQueries) {
-        value[0] = as!GLint(ctx.ActiveQueries[target].ID)
+      if (target in ctx.Other.ActiveQueries) {
+        value[0] = as!GLint(ctx.Other.ActiveQueries[target].ID)
       } else {
         value[0] = 0
       }

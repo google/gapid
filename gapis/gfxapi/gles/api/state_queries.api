@@ -427,7 +427,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_GENERATE_MIPMAP_HINT: {
-      v[0] = as!T(ctx.Miscellaneous.GenerateMipmapHint)
+      v[0] = as!T(ctx.Other.GenerateMipmapHint)
     }
     @if(Version.GLES20)
     case GL_GREEN_BITS: {

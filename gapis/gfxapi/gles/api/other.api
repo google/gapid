@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@internal
-class MiscellaneousState {
-  // Table 21.38: Hints
-  GLenum         GenerateMipmapHint           = GL_DONT_CARE
-  @unused GLenum FragmentShaderDerivativeHint = GL_DONT_CARE
-
-// Table 21.57: Miscellaneous
-// GLenum CurrentError = as!GLenum(0)
-// GLboolean HasError = GL_FALSE
-// Vec3u CurrentQuery = Vec3u(0,0,0)
-// GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
-}
-
 sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolean enabled) {
   ctx := GetContext()
   switch (capability) {
@@ -89,11 +76,11 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
-      ctx.Debug.Output = enabled
+      ctx.Other.Debug.Output = enabled
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      ctx.Debug.OutputSynchronous = enabled
+      ctx.Other.Debug.OutputSynchronous = enabled
     }
     @if(Extension.GL_QCOM_alpha_test)
     case GL_ALPHA_TEST_QCOM: {
@@ -196,11 +183,11 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
-      ctx.Debug.Output
+      ctx.Other.Debug.Output
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      ctx.Debug.OutputSynchronous
+      ctx.Other.Debug.OutputSynchronous
     }
     @if(Extension.GL_QCOM_alpha_test)
     case GL_ALPHA_TEST_QCOM: {
@@ -313,11 +300,11 @@ cmd void glHint(GLenum target, GLenum mode) {
   switch (target) {
     @if(Version.GLES20)
     case GL_GENERATE_MIPMAP_HINT: {
-      ctx.Miscellaneous.GenerateMipmapHint = mode
+      ctx.Other.GenerateMipmapHint = mode
     }
     @if(Version.GLES30)
     case GL_FRAGMENT_SHADER_DERIVATIVE_HINT: {
-      ctx.Miscellaneous.FragmentShaderDerivativeHint = mode
+      ctx.Other.FragmentShaderDerivativeHint = mode
     }
     default: {
       glErrorInvalidEnum(target)
