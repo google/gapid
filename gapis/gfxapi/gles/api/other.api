@@ -50,14 +50,14 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     case GL_BLEND: {
       // TODO: Remove the temporary variables once we fix bug 28858106
       if isIndexed {
-        blend := ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)]
+        blend := ctx.Pixel.Blend[as!DrawBufferIndex(index)]
         blend.Enabled = enabled
-        ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)] = blend
+        ctx.Pixel.Blend[as!DrawBufferIndex(index)] = blend
       } else {
-        for i in 0 .. as!DrawBufferIndex(len(ctx.FragmentOperations.Blend)) {
-          blend := ctx.FragmentOperations.Blend[i]
+        for i in 0 .. as!DrawBufferIndex(len(ctx.Pixel.Blend)) {
+          blend := ctx.Pixel.Blend[i]
           blend.Enabled = enabled
-          ctx.FragmentOperations.Blend[i] = blend
+          ctx.Pixel.Blend[i] = blend
         }
       }
     }
@@ -67,11 +67,11 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     }
     @if(Version.GLES20)
     case GL_DEPTH_TEST: {
-      ctx.FragmentOperations.Depth.Test = enabled
+      ctx.Pixel.Depth.Test = enabled
     }
     @if(Version.GLES20)
     case GL_DITHER: {
-      ctx.FragmentOperations.Dither = enabled
+      ctx.Pixel.Dither = enabled
     }
     @if(Version.GLES20)
     case GL_POLYGON_OFFSET_FILL: {
@@ -87,11 +87,11 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     }
     @if(Version.GLES20)
     case GL_SCISSOR_TEST: {
-      ctx.FragmentOperations.Scissor.Test = enabled
+      ctx.Pixel.Scissor.Test = enabled
     }
     @if(Version.GLES20)
     case GL_STENCIL_TEST: {
-      ctx.FragmentOperations.Stencil.Test = enabled
+      ctx.Pixel.Stencil.Test = enabled
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
@@ -119,7 +119,7 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     }
     @if(Extension.GL_EXT_sRGB_write_control)
     case GL_FRAMEBUFFER_SRGB_EXT: {
-      ctx.FragmentOperations.FramebufferSrgb = enabled
+      ctx.Pixel.FramebufferSrgb = enabled
     }
     default: {
       glErrorInvalidEnum(capability)
@@ -166,7 +166,7 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   return switch (capability) {
     @if(Version.GLES20)
     case GL_BLEND: {
-      ctx.FragmentOperations.Blend[as!DrawBufferIndex(index)].Enabled
+      ctx.Pixel.Blend[as!DrawBufferIndex(index)].Enabled
     }
     @if(Version.GLES20)
     case GL_CULL_FACE: {
@@ -174,11 +174,11 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Version.GLES20)
     case GL_DEPTH_TEST: {
-      ctx.FragmentOperations.Depth.Test
+      ctx.Pixel.Depth.Test
     }
     @if(Version.GLES20)
     case GL_DITHER: {
-      ctx.FragmentOperations.Dither
+      ctx.Pixel.Dither
     }
     @if(Version.GLES20)
     case GL_POLYGON_OFFSET_FILL: {
@@ -194,11 +194,11 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Version.GLES20)
     case GL_SCISSOR_TEST: {
-      ctx.FragmentOperations.Scissor.Test
+      ctx.Pixel.Scissor.Test
     }
     @if(Version.GLES20)
     case GL_STENCIL_TEST: {
-      ctx.FragmentOperations.Stencil.Test
+      ctx.Pixel.Stencil.Test
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
@@ -226,7 +226,7 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Extension.GL_EXT_sRGB_write_control)
     case GL_FRAMEBUFFER_SRGB_EXT: {
-      ctx.FragmentOperations.FramebufferSrgb
+      ctx.Pixel.FramebufferSrgb
     }
     default: {
       // glErrorInvalidEnum(capability)

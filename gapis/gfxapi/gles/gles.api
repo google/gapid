@@ -424,7 +424,7 @@ class Context {
   Objects                                               Objects
   DebugState                                            Debug
   RasterizationState                                    Rasterization
-  FragmentOperationsState                               FragmentOperations
+  PixelState                                            Pixel
   FramebufferState                                      Framebuffer
   @unused map!(AttributeLocation, VertexAttributeValue) VertexAttributes
   map!(TextureUnitId, ref!TextureUnit)                  TextureUnits
@@ -540,7 +540,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     }
 
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
-      ctx.FragmentOperations.Blend[i] = BlendState()
+      ctx.Pixel.Blend[i] = BlendState()
       ctx.Framebuffer.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     }
 
@@ -574,8 +574,8 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
     ctx.Objects.Shared.Renderbuffers[stencil_id] = stencil_buffer
 
     if dynamicState.ResetViewportScissor {
-      ctx.FragmentOperations.Scissor.Box.Width = dynamicState.BackbufferWidth
-      ctx.FragmentOperations.Scissor.Box.Height = dynamicState.BackbufferHeight
+      ctx.Pixel.Scissor.Box.Width = dynamicState.BackbufferWidth
+      ctx.Pixel.Scissor.Box.Height = dynamicState.BackbufferHeight
       ctx.Rasterization.Viewport.Width = dynamicState.BackbufferWidth
       ctx.Rasterization.Viewport.Height = dynamicState.BackbufferHeight
     }

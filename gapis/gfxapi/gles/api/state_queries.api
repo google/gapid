@@ -251,45 +251,45 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES20)
     case GL_BLEND: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].Enabled)
+      v[0] = as!T(ctx.Pixel.Blend[i].Enabled)
     }
     @if(Version.GLES20)
     case GL_BLEND_COLOR: {
       s := v[0:4]
-      s[0] = as!T(ctx.FragmentOperations.BlendColor.Red)
-      s[1] = as!T(ctx.FragmentOperations.BlendColor.Green)
-      s[2] = as!T(ctx.FragmentOperations.BlendColor.Blue)
-      s[3] = as!T(ctx.FragmentOperations.BlendColor.Alpha)
+      s[0] = as!T(ctx.Pixel.BlendColor.Red)
+      s[1] = as!T(ctx.Pixel.BlendColor.Green)
+      s[2] = as!T(ctx.Pixel.BlendColor.Blue)
+      s[3] = as!T(ctx.Pixel.BlendColor.Alpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_DST_ALPHA: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].DstAlpha)
+      v[0] = as!T(ctx.Pixel.Blend[i].DstAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_DST_RGB: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].DstRgb)
+      v[0] = as!T(ctx.Pixel.Blend[i].DstRgb)
     }
     @if(Version.GLES20)
     case GL_BLEND_EQUATION_ALPHA: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].EquationAlpha)
+      v[0] = as!T(ctx.Pixel.Blend[i].EquationAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_EQUATION_RGB: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].EquationRgb)
+      v[0] = as!T(ctx.Pixel.Blend[i].EquationRgb)
     }
     @if(Version.GLES20)
     case GL_BLEND_SRC_ALPHA: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].SrcAlpha)
+      v[0] = as!T(ctx.Pixel.Blend[i].SrcAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_SRC_RGB: {
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.FragmentOperations.Blend[i].SrcRgb)
+      v[0] = as!T(ctx.Pixel.Blend[i].SrcRgb)
     }
     @if(Version.GLES20)
     case GL_BLUE_BITS: {
@@ -369,7 +369,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DEPTH_FUNC: {
-      v[0] = as!T(ctx.FragmentOperations.Depth.Func)
+      v[0] = as!T(ctx.Pixel.Depth.Func)
     }
     @if(Version.GLES20)
     case GL_DEPTH_RANGE: {
@@ -379,7 +379,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DEPTH_TEST: {
-      v[0] = as!T(ctx.FragmentOperations.Depth.Test)
+      v[0] = as!T(ctx.Pixel.Depth.Test)
     }
     @if(Version.GLES20)
     case GL_DEPTH_WRITEMASK: {
@@ -391,7 +391,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DITHER: {
-      v[0] = as!T(ctx.FragmentOperations.Dither)
+      v[0] = as!T(ctx.Pixel.Dither)
     }
     @if(Version.GLES30)
     case GL_DRAW_BUFFER: {
@@ -1179,14 +1179,14 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES20)
     case GL_SCISSOR_BOX: {
       s := v[0:4]
-      s[0] = as!T(ctx.FragmentOperations.Scissor.Box.X)
-      s[1] = as!T(ctx.FragmentOperations.Scissor.Box.Y)
-      s[2] = as!T(ctx.FragmentOperations.Scissor.Box.Width)
-      s[3] = as!T(ctx.FragmentOperations.Scissor.Box.Height)
+      s[0] = as!T(ctx.Pixel.Scissor.Box.X)
+      s[1] = as!T(ctx.Pixel.Scissor.Box.Y)
+      s[2] = as!T(ctx.Pixel.Scissor.Box.Width)
+      s[3] = as!T(ctx.Pixel.Scissor.Box.Height)
     }
     @if(Version.GLES20)
     case GL_SCISSOR_TEST: {
-      v[0] = as!T(ctx.FragmentOperations.Scissor.Test)
+      v[0] = as!T(ctx.Pixel.Scissor.Test)
     }
     @if(Version.GLES20)
     case GL_SHADER_BINARY_FORMATS: {
@@ -1229,27 +1229,27 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_FAIL: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackFail)
+      v[0] = as!T(ctx.Pixel.Stencil.BackFail)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_FUNC: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackFunc)
+      v[0] = as!T(ctx.Pixel.Stencil.BackFunc)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_PASS_DEPTH_FAIL: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackPassDepthFail)
+      v[0] = as!T(ctx.Pixel.Stencil.BackPassDepthFail)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_PASS_DEPTH_PASS: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackPassDepthPass)
+      v[0] = as!T(ctx.Pixel.Stencil.BackPassDepthPass)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_REF: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackRef)
+      v[0] = as!T(ctx.Pixel.Stencil.BackRef)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_VALUE_MASK: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.BackValueMask)
+      v[0] = as!T(ctx.Pixel.Stencil.BackValueMask)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_WRITEMASK: {
@@ -1265,31 +1265,31 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_STENCIL_FAIL: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.Fail)
+      v[0] = as!T(ctx.Pixel.Stencil.Fail)
     }
     @if(Version.GLES20)
     case GL_STENCIL_FUNC: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.Func)
+      v[0] = as!T(ctx.Pixel.Stencil.Func)
     }
     @if(Version.GLES20)
     case GL_STENCIL_PASS_DEPTH_FAIL: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.PassDepthFail)
+      v[0] = as!T(ctx.Pixel.Stencil.PassDepthFail)
     }
     @if(Version.GLES20)
     case GL_STENCIL_PASS_DEPTH_PASS: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.PassDepthPass)
+      v[0] = as!T(ctx.Pixel.Stencil.PassDepthPass)
     }
     @if(Version.GLES20)
     case GL_STENCIL_REF: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.Ref)
+      v[0] = as!T(ctx.Pixel.Stencil.Ref)
     }
     @if(Version.GLES20)
     case GL_STENCIL_TEST: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.Test)
+      v[0] = as!T(ctx.Pixel.Stencil.Test)
     }
     @if(Version.GLES20)
     case GL_STENCIL_VALUE_MASK: {
-      v[0] = as!T(ctx.FragmentOperations.Stencil.ValueMask)
+      v[0] = as!T(ctx.Pixel.Stencil.ValueMask)
     }
     @if(Version.GLES20)
     case GL_STENCIL_WRITEMASK: {
