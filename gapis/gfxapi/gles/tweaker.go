@@ -94,7 +94,7 @@ func (t *tweaker) glDisable(name GLenum) {
 }
 
 func (t *tweaker) glDepthMask(v GLboolean) {
-	if o := t.c.Framebuffer.DepthWritemask; o != v {
+	if o := t.c.Pixel.DepthWritemask; o != v {
 		t.doAndUndo(
 			NewGlDepthMask(v),
 			NewGlDepthMask(o))

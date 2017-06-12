@@ -70,6 +70,15 @@ class PixelState {
   GLboolean Dither     = GL_TRUE
 
   GLboolean FramebufferSrgb = GL_TRUE
+
+  // Table 21.14: Framebuffer Control
+  map!(DrawBufferIndex, Vec4b) ColorWritemask
+  GLboolean                    DepthWritemask       = GL_TRUE
+  GLuint                       StencilWritemask     = 0xFFFFFFFF
+  GLuint                       StencilBackWritemask = 0xFFFFFFFF
+  Vec4f                        ColorClearValue      = Vec4f(0.0, 0.0, 0.0, 0.0)
+  GLfloat                      DepthClearValue      = 1
+  GLint                        StencilClearValue    = 0
 }
 
 @if(Version.GLES32)

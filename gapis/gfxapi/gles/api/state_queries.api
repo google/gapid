@@ -298,19 +298,19 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES20)
     case GL_COLOR_CLEAR_VALUE: {
       s := v[0:4]
-      s[0] = as!T(ctx.Framebuffer.ColorClearValue[0])
-      s[1] = as!T(ctx.Framebuffer.ColorClearValue[1])
-      s[2] = as!T(ctx.Framebuffer.ColorClearValue[2])
-      s[3] = as!T(ctx.Framebuffer.ColorClearValue[3])
+      s[0] = as!T(ctx.Pixel.ColorClearValue[0])
+      s[1] = as!T(ctx.Pixel.ColorClearValue[1])
+      s[2] = as!T(ctx.Pixel.ColorClearValue[2])
+      s[3] = as!T(ctx.Pixel.ColorClearValue[3])
     }
     @if(Version.GLES20)
     case GL_COLOR_WRITEMASK: {
       s := v[0:4]
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      s[0] = as!T(ctx.Framebuffer.ColorWritemask[i][0])
-      s[1] = as!T(ctx.Framebuffer.ColorWritemask[i][1])
-      s[2] = as!T(ctx.Framebuffer.ColorWritemask[i][2])
-      s[3] = as!T(ctx.Framebuffer.ColorWritemask[i][3])
+      s[0] = as!T(ctx.Pixel.ColorWritemask[i][0])
+      s[1] = as!T(ctx.Pixel.ColorWritemask[i][1])
+      s[2] = as!T(ctx.Pixel.ColorWritemask[i][2])
+      s[3] = as!T(ctx.Pixel.ColorWritemask[i][3])
     }
     @if(Version.GLES20)
     case GL_COMPRESSED_TEXTURE_FORMATS: {
@@ -365,7 +365,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DEPTH_CLEAR_VALUE: {
-      v[0] = as!T(ctx.Framebuffer.DepthClearValue)
+      v[0] = as!T(ctx.Pixel.DepthClearValue)
     }
     @if(Version.GLES20)
     case GL_DEPTH_FUNC: {
@@ -383,7 +383,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_DEPTH_WRITEMASK: {
-      v[0] = as!T(ctx.Framebuffer.DepthWritemask)
+      v[0] = as!T(ctx.Pixel.DepthWritemask)
     }
     @if(Version.GLES31)
     case GL_DISPATCH_INDIRECT_BUFFER_BINDING: {
@@ -1253,7 +1253,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_STENCIL_BACK_WRITEMASK: {
-      v[0] = as!T(ctx.Framebuffer.StencilBackWritemask)
+      v[0] = as!T(ctx.Pixel.StencilBackWritemask)
     }
     @if(Version.GLES20)
     case GL_STENCIL_BITS: {
@@ -1261,7 +1261,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_STENCIL_CLEAR_VALUE: {
-      v[0] = as!T(ctx.Framebuffer.StencilClearValue)
+      v[0] = as!T(ctx.Pixel.StencilClearValue)
     }
     @if(Version.GLES20)
     case GL_STENCIL_FAIL: {
@@ -1293,7 +1293,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_STENCIL_WRITEMASK: {
-      v[0] = as!T(ctx.Framebuffer.StencilWritemask)
+      v[0] = as!T(ctx.Pixel.StencilWritemask)
     }
     @if(Version.GLES20)
     case GL_SUBPIXEL_BITS: {
