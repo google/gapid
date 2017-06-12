@@ -568,9 +568,8 @@ public class ImagePanel extends Composite {
           (float)PREVIEW_HEIGHT / imageData.getHeight()
       };
       float[] texOffset = new float[] {
-          previewPixel.u - ((PREVIEW_WIDTH - 0.5f) / imageData.getWidth() / 2),
-          (flipped ? 1 - previewPixel.v : previewPixel.v) -
-              ((PREVIEW_HEIGHT - 0.5f) / imageData.getHeight() / 2),
+          (float)(previewPixel.x - PREVIEW_WIDTH / 2) / imageData.getWidth(),
+          (float)(previewPixel.y - PREVIEW_HEIGHT / 2) / imageData.getHeight()
       };
 
       shader.setUniform("uMode", MODE_TEXTURE);
