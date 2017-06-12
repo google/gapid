@@ -519,7 +519,8 @@ public class ShaderView extends Composite
       super(parent, SWT.NONE);
       setLayout(new FillLayout(SWT.VERTICAL));
 
-      table = createTableViewer(this, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+      table = createTableViewer(
+          this, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL);
       table.setContentProvider(new ArrayContentProvider());
 
       Widgets.<Uniform>createTableColumn(table, "Location",
