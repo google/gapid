@@ -728,43 +728,32 @@ cmd void glGetFramebufferAttachmentParameteriv(GLenum framebuffer_target,
       framebuffer.ColorAttachments[0]
     }
   }
-  switch (parameter) {
-    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
-        GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE, GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL: {
-      // version 2.0
-    }
-    @if(Version.GLES30)
-    case GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE,
-        GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
-        GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE,
-        GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
-        GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER: {
-    }
-    @if(Version.GLES32)
-    case GL_FRAMEBUFFER_ATTACHMENT_LAYERED: {
-    }
-    default: {
-      glErrorInvalidEnum(parameter)
-    }
-  }
-
   if (a.Type == GL_NONE) &&
       (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME) && (parameter != GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) {
     glErrorInvalidOperation()
   }
-  value[0] = switch (parameter) {
-    // TODO: Several format-related cases are still missing.
-    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE:           as!GLint(a.Type)
+  switch (parameter) {
+    case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE:           value[0] = as!GLint(a.Type)
     case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME:
       switch a.Type {
-        case GL_NONE:         as!GLint(0)
-        case GL_TEXTURE:      as!GLint(a.Texture.ID)
-        case GL_RENDERBUFFER: as!GLint(a.Renderbuffer.ID)
+        case GL_NONE:         value[0] = as!GLint(0)
+        case GL_TEXTURE:      value[0] = as!GLint(a.Texture.ID)
+        case GL_RENDERBUFFER: value[0] = as!GLint(a.Renderbuffer.ID)
       }
-    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL:         as!GLint(a.TextureLevel)
-    // TODO: case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: as!GLint(a.TextureCubeMapFace)
-    case GL_FRAMEBUFFER_ATTACHMENT_LAYERED:               as!GLint(a.Layered)
-    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER:         as!GLint(a.TextureLayer)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL:         value[0] = as!GLint(a.TextureLevel)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE: value[0] = ? // TODO
+    @if(Version.GLES32)
+    case GL_FRAMEBUFFER_ATTACHMENT_LAYERED:               value[0] = as!GLint(a.Layered)
+    @if(Version.GLES30)
+    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER:         value[0] = as!GLint(a.TextureLayer)
+    @if(Version.GLES30)
+    case GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE,
+        GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
+        GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE,
+        GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE:
+      value[0] = ?
+    default:
+      glErrorInvalidEnum(parameter)
   }
 }
 
