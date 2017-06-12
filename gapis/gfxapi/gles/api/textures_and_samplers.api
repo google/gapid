@@ -134,20 +134,12 @@ class Sampler {
 @internal
 class PixelStorageState {
   // Table 21.18: Pixels
-  GLint UnpackImageHeight = 0
-  GLint UnpackSkipImages  = 0
-  GLint UnpackRowLength   = 0
-  GLint UnpackSkipRows    = 0
-  GLint UnpackSkipPixels  = 0
-  GLint UnpackAlignment   = 4
-  GLint PackImageHeight   = 0 // SPEC: Missing in state tables.
-  GLint PackSkipImages    = 0 // SPEC: Missing in state tables.
-  GLint PackRowLength     = 0
-  GLint PackSkipRows      = 0
-  GLint PackSkipPixels    = 0
-  GLint PackAlignment     = 4
-// GLuint PixelPackBufferBinding = 0
-// GLuint PixelUnpackBufferBinding = 0
+  GLint ImageHeight = 0
+  GLint SkipImages  = 0
+  GLint RowLength   = 0
+  GLint SkipRows    = 0
+  GLint SkipPixels  = 0
+  GLint Alignment   = 4
 }
 
 @internal
@@ -422,7 +414,7 @@ sub void TexImage(TexImageFlags  flags,
       // Update the content of the image
       img := tmpLevel.Layers[zoffset + z + cubemap_layer]
       if isTexImageCmd {
-        src_skip_images := Select!GLint(has3DModifier, ctx.PixelStorage.UnpackSkipImages, 0) + z
+        src_skip_images := Select!GLint(has3DModifier, ctx.Other.Unpack.SkipImages, 0) + z
         UpdateImageData(img, xoffset, yoffset, width, height,
                         src_skip_images, data_format, data_type, data)
       } else if isCompressedTexImageCmd {
@@ -446,14 +438,14 @@ sub void UpdateImageData(ref!Image      dst_image,
                          GLenum         type,
                          TexturePointer data) {
   ctx := GetContext()
-  opt := ctx.PixelStorage
-  url := SelectNonZero!GLint(opt.UnpackRowLength, as!GLint(width))
+  unpack := ctx.Other.Unpack
+  url := SelectNonZero!GLint(unpack.RowLength, as!GLint(width))
   pixel_size := as!GLint(uncompressedPixelSize(format, type))
 
-  src_row_size := Align!GLint(url * pixel_size, opt.UnpackAlignment)
-  src_image_size := SelectNonZero!GLint(opt.UnpackImageHeight, as!GLint(height)) * src_row_size
-  src_offset := (opt.UnpackSkipPixels * pixel_size) +
-                (opt.UnpackSkipRows * src_row_size) +
+  src_row_size := Align!GLint(url * pixel_size, unpack.Alignment)
+  src_image_size := SelectNonZero!GLint(unpack.ImageHeight, as!GLint(height)) * src_row_size
+  src_offset := (unpack.SkipPixels * pixel_size) +
+                (unpack.SkipRows * src_row_size) +
                 (src_skip_images * src_image_size)
 
   dst_row_size := as!GLint(dst_image.Width) * pixel_size
@@ -1278,52 +1270,52 @@ cmd void glPixelStorei(GLenum parameter, GLint value) {
     @if(Version.GLES20)
     case GL_PACK_ALIGNMENT: {
       if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
-      ctx.PixelStorage.PackAlignment = value
+      ctx.Other.Pack.Alignment = value
     }
     @if(Version.GLES30)
     case GL_PACK_IMAGE_HEIGHT: {
-      ctx.PixelStorage.PackImageHeight = value
+      ctx.Other.Pack.ImageHeight = value
     }
     @if(Version.GLES30)
     case GL_PACK_ROW_LENGTH: {
-      ctx.PixelStorage.PackRowLength = value
+      ctx.Other.Pack.RowLength = value
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_IMAGES: {
-      ctx.PixelStorage.PackSkipImages = value
+      ctx.Other.Pack.SkipImages = value
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_PIXELS: {
-      ctx.PixelStorage.PackSkipPixels = value
+      ctx.Other.Pack.SkipPixels = value
     }
     @if(Version.GLES30)
     case GL_PACK_SKIP_ROWS: {
-      ctx.PixelStorage.PackSkipRows = value
+      ctx.Other.Pack.SkipRows = value
     }
     @if(Version.GLES20)
     case GL_UNPACK_ALIGNMENT: {
       if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
-      ctx.PixelStorage.UnpackAlignment = value
+      ctx.Other.Unpack.Alignment = value
     }
     @if(Version.GLES30)
     case GL_UNPACK_IMAGE_HEIGHT: {
-      ctx.PixelStorage.UnpackImageHeight = value
+      ctx.Other.Unpack.ImageHeight = value
     }
     @if(Version.GLES30)
     case GL_UNPACK_ROW_LENGTH: {
-      ctx.PixelStorage.UnpackRowLength = value
+      ctx.Other.Unpack.RowLength = value
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_IMAGES: {
-      ctx.PixelStorage.UnpackSkipImages = value
+      ctx.Other.Unpack.SkipImages = value
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_PIXELS: {
-      ctx.PixelStorage.UnpackSkipPixels = value
+      ctx.Other.Unpack.SkipPixels = value
     }
     @if(Version.GLES30)
     case GL_UNPACK_SKIP_ROWS: {
-      ctx.PixelStorage.UnpackSkipRows = value
+      ctx.Other.Unpack.SkipRows = value
     }
     default: {
       glErrorInvalidEnum(parameter)

@@ -198,7 +198,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			log.W(ctx, "Can not get bound texture for: %v", a)
 		} else {
 			if !boundTexture.EGLImage.IsNullptr() {
-				origUnpackAlignment := c.PixelStorage.UnpackAlignment
+				origUnpackAlignment := c.Other.Unpack.Alignment
 				img := boundTexture.Levels[0].Layers[0]
 				data := eglImageData[boundTexture.EGLImage]
 				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
@@ -235,7 +235,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					s := out.State()
 					t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
 					t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
-					t.setPixelStorage(PixelStorageState{UnpackAlignment: 1, PackAlignment: 1}, 0, 0)
+					t.setPackStorage(PixelStorageState{Alignment: 1}, 0)
 					img := tex.Levels[0].Layers[0]
 					data, ok := eglImageData[tex.EGLImage]
 					if !ok {
