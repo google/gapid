@@ -52,7 +52,7 @@ public class LoadableImage {
   private final LoadingIndicator.Repaintable repaintable;
   protected final ErrorStrategy errorStrategy;
   private State state;
-  private Image image;
+  private Image image, errorImage;
 
   protected LoadableImage(Widget widget, Supplier<ListenableFuture<Object>> futureSupplier,
       LoadingIndicator loading, LoadingIndicator.Repaintable repaintable,
@@ -98,15 +98,15 @@ public class LoadableImage {
       @Override
       protected void onUiThreadSuccess(Object result) {
         if (result instanceof Image) {
-          updateImage((Image)result, true);
+          updateImage((Image)result);
         } else {
-          updateImage(Images.createNonScaledImage(widget.getDisplay(), (ImageData)result), true);
+          updateImage(Images.createNonScaledImage(widget.getDisplay(), (ImageData)result));
         }
       }
 
       @Override
       protected void onUiThreadError(Image errorIcon) {
-        updateImage(errorIcon, false);
+        updateErrorImage(errorIcon);
       }
     });
     return this;
@@ -126,8 +126,8 @@ public class LoadableImage {
     switch (state) {
       case NOT_STARTED: return getLoadingImage();
       case LOADING: loading.scheduleForRedraw(repaintable); return getLoadingImage();
-      case LOADED:
-      case FAILED: return image;
+      case LOADED: return image;
+      case FAILED: return errorImage;
       case DISPOSED: SWT.error(SWT.ERROR_WIDGET_DISPOSED); return null;
       default: throw new AssertionError();
     }
@@ -144,18 +144,31 @@ public class LoadableImage {
   public void dispose() {
     if (image != null) {
       image.dispose();
-      image = null;
-      state = State.DISPOSED;
+    }
+    image = null;
+    errorImage = null;
+    state = State.DISPOSED;
+  }
+
+  /** @param result The loaded image, may not be null. */
+  protected void updateImage(Image result) {
+    if (state == State.LOADING) {
+      state = State.LOADED;
+      image = result;
+      errorImage = null;
+      listeners.fire().onLoaded(true);
+    } else {
+      result.dispose();
     }
   }
 
-  protected void updateImage(Image result, boolean success) {
+  /** @param result The error icon to show, may be null. */
+  protected void updateErrorImage(Image result) {
     if (state == State.LOADING) {
-      state = (result == null || !success) ? State.FAILED : State.LOADED;
-      image = result;
-      listeners.fire().onLoaded(result != null);
-    } else if (result != null) {
-      result.dispose();
+      state = State.FAILED;
+      image = null;
+      errorImage = result;
+      listeners.fire().onLoaded(false);
     }
   }
 
