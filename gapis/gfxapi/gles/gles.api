@@ -429,19 +429,33 @@ class VertexState {
 }
 
 @internal
+class OtherState {
+  DebugState              Debug
+  map!(GLenum, ref!Query) ActiveQueries
+
+  // Table 21.38: Hints
+  GLenum         GenerateMipmapHint           = GL_DONT_CARE
+  @unused GLenum FragmentShaderDerivativeHint = GL_DONT_CARE
+
+  // Table 21.57: Miscellaneous
+  // GLenum CurrentError = as!GLenum(0)
+  // GLboolean HasError = GL_FALSE
+  // Vec3u CurrentQuery = Vec3u(0,0,0)
+  // GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
+}
+
+@internal
 class Context {
   ContextID                                             Identifier
   Constants                                             Constants
   ContextCreationInfo                                   Info
   Bindings                                              Bound
   Objects                                               Objects
-  DebugState                                            Debug
   VertexState                                           Vertex
   RasterizationState                                    Rasterization
   PixelState                                            Pixel
   PixelStorageState                                     PixelStorage
-  MiscellaneousState                                    Miscellaneous
-  map!(GLenum, ref!Query)                               ActiveQueries
+  OtherState                                            Other
 }
 
 type u64 ThreadID
