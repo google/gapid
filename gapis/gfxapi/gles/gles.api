@@ -431,7 +431,6 @@ class Context {
   VertexState                                           Vertex
   RasterizationState                                    Rasterization
   PixelState                                            Pixel
-  FramebufferState                                      Framebuffer
   map!(TextureUnitId, ref!TextureUnit)                  TextureUnits
   map!(GLuint, ImageUnit)                               ImageUnits
   PixelStorageState                                     PixelStorage
@@ -546,7 +545,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
       ctx.Pixel.Blend[i] = BlendState()
-      ctx.Framebuffer.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+      ctx.Pixel.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     }
 
     ctx.Info.Initialized = true
