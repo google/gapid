@@ -14,33 +14,15 @@
 
 @internal
 class MiscellaneousState {
-  // Table 21.2: Current Values and Associated Data
-  @unused GLint PatchVertices = 3
-
-  // Table 21.4: Vertex Array Data (not in vertex array objects)
-  // GLuint ArrayBufferBinding = 0
-  // GLuint DrawIndirectBufferBinding = 0
-  // GLuint VertexArrayBinding = 0
-  GLboolean PrimitiveRestartFixedIndex = GL_FALSE
-
-  // Table 21.6: Transformation State
-  // GLuint TransformFeedbackBinding = 0
-
   // Table 21.38: Hints
   GLenum         GenerateMipmapHint           = GL_DONT_CARE
   @unused GLenum FragmentShaderDerivativeHint = GL_DONT_CARE
-
-// Table 21.39: Compute Dispatch State
-// GLuint DispatchIndirectBufferBinding = 0
 
 // Table 21.57: Miscellaneous
 // GLenum CurrentError = as!GLenum(0)
 // GLboolean HasError = GL_FALSE
 // Vec3u CurrentQuery = Vec3u(0,0,0)
-// GLuint CopyReadBufferBinding = 0
-// GLuint CopyWriteBufferBinding = 0
 // GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
-// GLuint TextureBufferBinding = 0
 }
 
 sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolean enabled) {
@@ -95,7 +77,7 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
-      ctx.Miscellaneous.PrimitiveRestartFixedIndex = enabled
+      ctx.Vertex.PrimitiveRestartFixedIndex = enabled
     }
     @if(Version.GLES30)
     case GL_RASTERIZER_DISCARD: {
@@ -202,7 +184,7 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX: {
-      ctx.Miscellaneous.PrimitiveRestartFixedIndex
+      ctx.Vertex.PrimitiveRestartFixedIndex
     }
     @if(Version.GLES30)
     case GL_RASTERIZER_DISCARD: {

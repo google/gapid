@@ -257,7 +257,7 @@ cmd void glPatchParameteri(GLenum pname, GLint value) {
 sub void PatchParameteri(GLenum pname, GLint value) {
   if pname != GL_PATCH_VERTICES { glErrorInvalidEnum(pname) }
   ctx := GetContext()
-  ctx.Miscellaneous.PatchVertices = value
+  ctx.Vertex.PatchVertices = value
 }
 
 @if(Version.GLES32)

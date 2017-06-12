@@ -420,6 +420,12 @@ class BufferBinding {
 @internal
 class VertexState {
   @unused map!(AttributeLocation, VertexAttributeValue) Attributes
+
+  // Table 21.2: Current Values and Associated Data
+  @unused GLint PatchVertices = 3
+
+  // Table 21.4: Vertex Array Data (not in vertex array objects)
+  GLboolean PrimitiveRestartFixedIndex = GL_FALSE
 }
 
 @internal
