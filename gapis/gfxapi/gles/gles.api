@@ -416,6 +416,11 @@ class BufferBinding {
 }
 
 @internal
+class VertexState {
+  @unused map!(AttributeLocation, VertexAttributeValue) Attributes
+}
+
+@internal
 class Context {
   ContextID                                             Identifier
   Constants                                             Constants
@@ -423,10 +428,10 @@ class Context {
   Bindings                                              Bound
   Objects                                               Objects
   DebugState                                            Debug
+  VertexState                                           Vertex
   RasterizationState                                    Rasterization
   PixelState                                            Pixel
   FramebufferState                                      Framebuffer
-  @unused map!(AttributeLocation, VertexAttributeValue) VertexAttributes
   map!(TextureUnitId, ref!TextureUnit)                  TextureUnits
   map!(GLuint, ImageUnit)                               ImageUnits
   PixelStorageState                                     PixelStorage
@@ -527,7 +532,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     for i in 0 .. as!AttributeLocation(staticState.Constants.MaxVertexAttribs) {
       v := make!Vec4f(1)
       v[0] = Vec4f(0.0, 0.0, 0.0, 1.0)
-      ctx.VertexAttributes[i] = VertexAttributeValue(Value: as!u8[](v))
+      ctx.Vertex.Attributes[i] = VertexAttributeValue(Value: as!u8[](v))
     }
 
     for i in 0 .. as!TextureUnitId(staticState.Constants.MaxCombinedTextureImageUnits) {
