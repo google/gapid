@@ -7547,6 +7547,7 @@ class CmdBeginRenderPass {
 }
 
 sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
+  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   LastDrawInfo.Framebuffer = Framebuffers[args.Framebuffer]
   LastDrawInfo.LastSubpass = 0
   LastDrawInfo.RenderPass = RenderPasses[args.RenderPass]
@@ -7555,17 +7556,25 @@ sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
   }
   subpass := LastDrawInfo.RenderPass.SubpassDescriptions[0]
   for _, _, a in subpass.InputAttachments {
-    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
   }
   for _, _, a in subpass.ColorAttachments {
-    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
   }
   for _, _, a in subpass.ResolveAttachments {
-    LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
   }
   if subpass.DepthStencilAttachment != null {
     dsRef := subpass.DepthStencilAttachment
-    LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+    if dsRef.Attachment != VK_ATTACHMENT_UNUSED {
+      LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+    }
   }
 }
 
