@@ -359,7 +359,7 @@ func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 						units = []uint32{0} // The uniform was not set, so use default value.
 					}
 					for _, unit := range units {
-						if tu := c.TextureUnits[TextureUnitId(unit)]; tu != nil {
+						if tu := c.Objects.TextureUnits[TextureUnitId(unit)]; tu != nil {
 							texData, _ := getTextureDataAndSize(ctx, a, s, tu, target)
 							stateKeys = append(stateKeys, texData)
 						}
