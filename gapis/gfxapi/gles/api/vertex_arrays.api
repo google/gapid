@@ -295,7 +295,7 @@ cmd void glGetVertexAttribIiv(AttributeLocation index, GLenum pname, GLint* para
   ctx := GetContext()
   if index >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   if pname == GL_CURRENT_VERTEX_ATTRIB {
-    // attr := ctx.VertexAttributes[index]
+    // attr := ctx.Vertex.Attributes[index]
     // TODO: params[0:4] = as!GLint[](attr.Value)[0:4]
     write(params[0:4])
   } else {
@@ -311,7 +311,7 @@ cmd void glGetVertexAttribIuiv(AttributeLocation index, GLenum pname, GLuint* pa
   ctx := GetContext()
   if index >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   if pname == GL_CURRENT_VERTEX_ATTRIB {
-    // attr := ctx.VertexAttributes[index]
+    // attr := ctx.Vertex.Attributes[index]
     // TODO: params[0:4] = as!GLuint[](attr.Value)[0:4]
     write(params[0:4])
   } else {
@@ -342,7 +342,7 @@ cmd void glGetVertexAttribfv(AttributeLocation index, GLenum pname, GLfloat* par
   if index >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   if pname == GL_CURRENT_VERTEX_ATTRIB {
     // TODO: params[0:4] = as!GLfloat[](attr.Value)[0:4]
-    // attr := ctx.VertexAttributes[index]
+    // attr := ctx.Vertex.Attributes[index]
     write(params[0:4])
   } else {
     params[0] = as!GLfloat(GetVertexAttrib(ctx, index, pname))
@@ -359,7 +359,7 @@ cmd void glGetVertexAttribiv(AttributeLocation index, GLenum pname, GLint* param
   if index >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   if pname == GL_CURRENT_VERTEX_ATTRIB {
     // TODO: params[0:4] = as!GLint[](attr.Value)[0:4]
-    // attr := ctx.VertexAttributes[index]
+    // attr := ctx.Vertex.Attributes[index]
     write(params[0:4])
   } else {
     params[0] = as!GLint(GetVertexAttrib(ctx, index, pname))
@@ -384,7 +384,7 @@ sub void VertexAttribF(AttributeLocation location, Vec4f value) {
   if location >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   vals := make!Vec4f(1)
   vals[0] = value
-  ctx.VertexAttributes[location] = VertexAttributeValue(Value: as!u8[](vals))
+  ctx.Vertex.Attributes[location] = VertexAttributeValue(Value: as!u8[](vals))
 }
 
 @if(Version.GLES20)
@@ -594,7 +594,7 @@ sub void VertexAttribI(AttributeLocation location, Vec4i value) {
   if location >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
   vals := make!Vec4i(1)
   vals[0] = value
-  ctx.VertexAttributes[location] = VertexAttributeValue(Value: as!u8[](vals))
+  ctx.Vertex.Attributes[location] = VertexAttributeValue(Value: as!u8[](vals))
 }
 
 @if(Version.GLES30)

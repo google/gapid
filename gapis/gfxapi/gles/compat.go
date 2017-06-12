@@ -439,10 +439,10 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlVertexAttrib4fv:
-			if oldAttrib, ok := c.VertexAttributes[a.Location]; ok {
+			if oldAttrib, ok := c.Vertex.Attributes[a.Location]; ok {
 				oldValue := oldAttrib.Value.Read(ctx, a, s, nil /* builder */)
 				a.Mutate(ctx, s, nil /* no builder, just mutate */)
-				newAttrib := c.VertexAttributes[a.Location]
+				newAttrib := c.Vertex.Attributes[a.Location]
 				newValue := newAttrib.Value.Read(ctx, a, s, nil /* builder */)
 				if reflect.DeepEqual(oldValue, newValue) {
 					// Ignore the call if it is redundant.
