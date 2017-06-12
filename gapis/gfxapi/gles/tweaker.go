@@ -102,7 +102,7 @@ func (t *tweaker) glDepthMask(v GLboolean) {
 }
 
 func (t *tweaker) glDepthFunc(v GLenum) {
-	if o := t.c.FragmentOperations.Depth.Func; o != v {
+	if o := t.c.Pixel.Depth.Func; o != v {
 		t.doAndUndo(
 			NewGlDepthFunc(v),
 			NewGlDepthFunc(o))
@@ -111,7 +111,7 @@ func (t *tweaker) glDepthFunc(v GLenum) {
 
 func (t *tweaker) glBlendColor(r, g, b, a GLfloat) {
 	n := Color{Red: r, Green: g, Blue: b, Alpha: a}
-	if o := t.c.FragmentOperations.BlendColor; o != n {
+	if o := t.c.Pixel.BlendColor; o != n {
 		t.doAndUndo(
 			NewGlBlendColor(r, g, b, a),
 			NewGlBlendColor(o.Red, o.Green, o.Blue, o.Alpha))
@@ -124,7 +124,7 @@ func (t *tweaker) glBlendFunc(src, dst GLenum) {
 
 func (t *tweaker) glBlendFuncSeparate(srcRGB, dstRGB, srcA, dstA GLenum) {
 	// TODO: This does not correctly handle indexed state.
-	o := t.c.FragmentOperations.Blend[0]
+	o := t.c.Pixel.Blend[0]
 	n := o
 	n.SrcRgb, n.DstRgb, n.SrcAlpha, n.DstAlpha = srcRGB, dstRGB, srcA, dstA
 	if o != n {
@@ -283,7 +283,7 @@ func (t *tweaker) glShaderSource(shaderID ShaderId, shaderSource string) {
 
 func (t *tweaker) glScissor(x, y GLint, w, h GLsizei) {
 	v := Rect{X: x, Y: y, Width: w, Height: h}
-	if o := t.c.FragmentOperations.Scissor.Box; o != v {
+	if o := t.c.Pixel.Scissor.Box; o != v {
 		t.doAndUndo(
 			NewGlScissor(x, y, w, h),
 			NewGlScissor(o.X, o.Y, o.Width, o.Height))

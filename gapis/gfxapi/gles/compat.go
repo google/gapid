@@ -1002,7 +1002,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			resolveEglImageData(ctx, i, a, c, out)
 
 			if target.framebufferSrgb == required && contexts[c].framebufferSrgb != required &&
-				c.FragmentOperations.FramebufferSrgb != 0 {
+				c.Pixel.FramebufferSrgb != 0 {
 				// Replay device defaults FRAMEBUFFER_SRGB to disabled and allows
 				// enabling it (desktop), while the capture device defaulted to enabled
 				// and may or may not have allowed it to be changed (GLES). While at the
@@ -1013,7 +1013,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// (If it was explicetly disabled in the capture, no change is needed.)
 				// TODO: Handle the use of the EGL KHR_gl_colorspace extension.
 				if a.Target == GLenum_GL_FRAMEBUFFER || a.Target == GLenum_GL_DRAW_FRAMEBUFFER {
-					origSrgb := c.FragmentOperations.FramebufferSrgb
+					origSrgb := c.Pixel.FramebufferSrgb
 					if a.Framebuffer == 0 {
 						out.MutateAndWrite(ctx, dID, NewGlDisable(GLenum_GL_FRAMEBUFFER_SRGB))
 					} else {
@@ -1022,7 +1022,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// Change the replay driver state, but keep our mutated state,
 					// so we know what to do the next time we see glBindFramebuffer.
 					// TODO: Handle SRGB better.
-					c.FragmentOperations.FramebufferSrgb = origSrgb
+					c.Pixel.FramebufferSrgb = origSrgb
 				}
 			}
 

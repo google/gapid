@@ -388,7 +388,7 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 	if att.Type == GLenum_GL_RENDERBUFFER {
 		rb := att.Renderbuffer
 		if rb != nil && rb.InternalFormat != GLenum_GL_NONE {
-			scissor := c.FragmentOperations.Scissor
+			scissor := c.Pixel.Scissor
 			fullBox := Rect{Width: rb.Width, Height: rb.Height}
 			if scissor.Test == GLboolean_GL_TRUE && scissor.Box != fullBox {
 				key = renderbufferSubDataKey{rb, scissor.Box}

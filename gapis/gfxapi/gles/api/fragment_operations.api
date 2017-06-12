@@ -59,7 +59,7 @@ class BlendState {
 }
 
 @internal
-class FragmentOperationsState {
+class PixelState {
   ScissorState                      Scissor
   StencilState                      Stencil
   DepthState                        Depth
@@ -89,7 +89,7 @@ sub void BlendBarrier() {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendColor.xhtml", Version.GLES32)
 cmd void glBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
   ctx := GetContext()
-  ctx.FragmentOperations.BlendColor = Color(red, green, blue, alpha)
+  ctx.Pixel.BlendColor = Color(red, green, blue, alpha)
 }
 
 @if(Version.GLES20)
@@ -99,7 +99,7 @@ cmd void glBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquation.xhtml", Version.GLES32)
 cmd void glBlendEquation(GLenum equation) {
   ctx := GetContext()
-  SetBlendEquation(0, len(ctx.FragmentOperations.Blend), equation, equation)
+  SetBlendEquation(0, len(ctx.Pixel.Blend), equation, equation)
 }
 
 @if(Version.GLES20)
@@ -109,7 +109,7 @@ cmd void glBlendEquation(GLenum equation) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendEquationSeparate.xhtml", Version.GLES32)
 cmd void glBlendEquationSeparate(GLenum rgb, GLenum alpha) {
   ctx := GetContext()
-  SetBlendEquation(0, len(ctx.FragmentOperations.Blend), rgb, alpha)
+  SetBlendEquation(0, len(ctx.Pixel.Blend), rgb, alpha)
 }
 
 @if(Version.GLES32)
@@ -151,10 +151,10 @@ sub void SetBlendEquation(DrawBufferIndex first_buffer, s32 buffer_count, GLenum
   CheckBlendEquation(alpha)
   ctx := GetContext()
   for i in (first_buffer .. (first_buffer + as!DrawBufferIndex(buffer_count))) {
-    blend := ctx.FragmentOperations.Blend[i]
+    blend := ctx.Pixel.Blend[i]
     blend.EquationRgb = rgb
     blend.EquationAlpha = alpha
-    ctx.FragmentOperations.Blend[i] = blend
+    ctx.Pixel.Blend[i] = blend
   }
 }
 
@@ -165,7 +165,7 @@ sub void SetBlendEquation(DrawBufferIndex first_buffer, s32 buffer_count, GLenum
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBlendFunc.xhtml", Version.GLES32)
 cmd void glBlendFunc(GLenum src_factor, GLenum dst_factor) {
   ctx := GetContext()
-  SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor, dst_factor, src_factor, dst_factor)
+  SetBlendFunc(0, len(ctx.Pixel.Blend), src_factor, dst_factor, src_factor, dst_factor)
 }
 
 @if(Version.GLES20)
@@ -178,7 +178,7 @@ cmd void glBlendFuncSeparate(GLenum src_factor_rgb,
                              GLenum src_factor_alpha,
                              GLenum dst_factor_alpha) {
   ctx := GetContext()
-  SetBlendFunc(0, len(ctx.FragmentOperations.Blend), src_factor_rgb, dst_factor_rgb, src_factor_alpha, dst_factor_alpha)
+  SetBlendFunc(0, len(ctx.Pixel.Blend), src_factor_rgb, dst_factor_rgb, src_factor_alpha, dst_factor_alpha)
 }
 
 @if(Version.GLES32)
@@ -227,12 +227,12 @@ sub void SetBlendFunc(DrawBufferIndex first_buffer, s32    buffer_count,
   CheckBlendFunc(dstAlpha)
   ctx := GetContext()
   for i in (first_buffer .. (first_buffer + as!DrawBufferIndex(buffer_count))) {
-    blend := ctx.FragmentOperations.Blend[i]
+    blend := ctx.Pixel.Blend[i]
     blend.SrcRgb = srcRgb
     blend.DstRgb = dstRgb
     blend.SrcAlpha = srcAlpha
     blend.DstAlpha = dstAlpha
-    ctx.FragmentOperations.Blend[i] = blend
+    ctx.Pixel.Blend[i] = blend
   }
 }
 
@@ -252,7 +252,7 @@ cmd void glDepthFunc(GLenum function) {
   }
 
   ctx := GetContext()
-  ctx.FragmentOperations.Depth.Func = function
+  ctx.Pixel.Depth.Func = function
 }
 
 // TODO: Move to rasterization?
@@ -285,7 +285,7 @@ cmd void glSampleMaski(GLuint maskNumber, GLbitfield mask) {
 cmd void glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
   if (width < 0) || (height < 0) { glErrorInvalidValue() }
   ctx := GetContext()
-  ctx.FragmentOperations.Scissor.Box = Rect(x, y, width, height)
+  ctx.Pixel.Scissor.Box = Rect(x, y, width, height)
 }
 
 @if(Version.GLES10)
@@ -325,14 +325,14 @@ sub void StencilFuncSeparate(GLenum face, GLenum function, GLint reference_value
   }
   ctx := GetContext()
   if ((face == GL_FRONT) || (face == GL_FRONT_AND_BACK)) {
-    ctx.FragmentOperations.Stencil.Func = function
-    ctx.FragmentOperations.Stencil.Ref = reference_value
-    ctx.FragmentOperations.Stencil.ValueMask = mask
+    ctx.Pixel.Stencil.Func = function
+    ctx.Pixel.Stencil.Ref = reference_value
+    ctx.Pixel.Stencil.ValueMask = mask
   }
   if ((face == GL_BACK) || (face == GL_FRONT_AND_BACK)) {
-    ctx.FragmentOperations.Stencil.BackFunc = function
-    ctx.FragmentOperations.Stencil.BackRef = reference_value
-    ctx.FragmentOperations.Stencil.BackValueMask = mask
+    ctx.Pixel.Stencil.BackFunc = function
+    ctx.Pixel.Stencil.BackRef = reference_value
+    ctx.Pixel.Stencil.BackValueMask = mask
   }
 }
 
@@ -382,13 +382,13 @@ sub void StencilOpSeparate(GLenum face, GLenum fail, GLenum pass_depth_fail, GLe
   CheckStencilOp(pass_depth_pass)
   ctx := GetContext()
   if ((face == GL_FRONT) || (face == GL_FRONT_AND_BACK)) {
-    ctx.FragmentOperations.Stencil.Fail = fail
-    ctx.FragmentOperations.Stencil.PassDepthFail = pass_depth_fail
-    ctx.FragmentOperations.Stencil.PassDepthPass = pass_depth_pass
+    ctx.Pixel.Stencil.Fail = fail
+    ctx.Pixel.Stencil.PassDepthFail = pass_depth_fail
+    ctx.Pixel.Stencil.PassDepthPass = pass_depth_pass
   }
   if ((face == GL_BACK) || (face == GL_FRONT_AND_BACK)) {
-    ctx.FragmentOperations.Stencil.BackFail = fail
-    ctx.FragmentOperations.Stencil.BackPassDepthFail = pass_depth_fail
-    ctx.FragmentOperations.Stencil.BackPassDepthPass = pass_depth_pass
+    ctx.Pixel.Stencil.BackFail = fail
+    ctx.Pixel.Stencil.BackPassDepthFail = pass_depth_fail
+    ctx.Pixel.Stencil.BackPassDepthPass = pass_depth_pass
   }
 }
