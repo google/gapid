@@ -104,6 +104,9 @@ var toolPatterns = []*ToolSet{{
 	Gapir: "osx/x86_64/gapir",
 	Gapis: "osx/x86_64/gapis",
 	Gapit: "osx/x86_64/gapit",
+	// TODO(baldwinn): These should not be required, https://github.com/google/gapid/issues/570
+	VirtualSwapChainLib:  "osx/x86_64/libVkLayer_VirtualSwapchain.so",
+	VirtualSwapChainJson: "osx/x86_64/VirtualSwapchainLayer.json",
 }, {
 	Abi:                  device.WindowsX86_64,
 	Gapir:                "windows/x86_64/gapir",
