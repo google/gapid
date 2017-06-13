@@ -144,7 +144,7 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 	}
 }
 
-func (e *gapicEnv) run(ctx context.Context, args ...string) {
+func (e *gapicEnv) run(ctx context.Context, options RunOptions, args ...string) {
 	jar := e.out.Join("gapic-" + e.platform + ".jar")
 
 	jargs := make([]string, 0)
@@ -157,7 +157,10 @@ func (e *gapicEnv) run(ctx context.Context, args ...string) {
 		jargs = append(args, "-XstartOnFirstThread")
 	}
 	jargs = append(jargs, "-jar", jar.System(), "-gapid", e.cfg.pkg().System())
-	run(ctx, e.out, e.javaExe, env, append(jargs, args...)...)
+	if options.WD.IsEmpty() {
+		options.WD = file.Abs("")
+	}
+	run(ctx, options.WD, e.javaExe, env, append(jargs, args...)...)
 }
 
 func (e *gapicEnv) findAllJavaFiles(path file.Path, cb func(file.Path)) {
