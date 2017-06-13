@@ -36,7 +36,6 @@ func init() {
 
 func main() {
 	app.ShortHelp = "Stash is a command line tool for interacting with gapid stash servers."
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
 	app.Run(app.VerbMain)
 }
 

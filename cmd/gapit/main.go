@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	app.ShortHelp = "Gapit is a command line tool for the graphics api debugger system."
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
+	app.ShortHelp = "GAPIT is a command line tool for the graphics api debugger system."
+	app.Name = "GAPIT"
 	app.Run(app.VerbMain)
 }

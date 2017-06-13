@@ -20,8 +20,8 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static java.util.logging.Level.SEVERE;
 
+import com.google.gapid.Version;
 import com.google.gapid.models.Info;
-import com.google.gapid.server.Version;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
@@ -90,7 +90,7 @@ public class AboutDialog {
         createLabel(container, "", theme.logoBig());
         Label title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
-        createForegroundLabel(container, "Version " + Version.GAPIC_VERSION);
+        createForegroundLabel(container, "Version " + Version.GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
         createForegroundLabel(container, Messages.ABOUT_DESCRIPTION);

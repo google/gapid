@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package app
 
-import (
-	"github.com/google/gapid/core/app"
-)
-
-var (
-	version = app.VersionSpec{Major: 0, Minor: 2}
-)
+func init() {
+	Version = VersionSpec{
+		Major: @GAPID_VERSION_MAJOR@,
+		Minor: @GAPID_VERSION_MINOR@,
+		Point: @GAPID_VERSION_POINT@,
+		Build: "@GAPID_BUILD_NUMBER@:@GAPID_BUILD_SHA@",
+	}
+}

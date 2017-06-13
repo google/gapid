@@ -22,6 +22,5 @@ import (
 
 func main() {
 	app.ShortHelp = "Robot is a command line tool for interacting with gapid automatic test servers."
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
 	app.Run(app.VerbMain)
 }

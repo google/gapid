@@ -22,7 +22,7 @@ android {
         minSdkVersion 14
         targetSdkVersion 21
         versionCode 1
-        versionName "0.1 (" + inputsHash() + ")"
+        versionName gapidVersionAndBuild + ":" + inputsHash()
     }
     buildTypes {
         release {

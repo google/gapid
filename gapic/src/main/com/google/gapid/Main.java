@@ -22,7 +22,6 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
-import com.google.gapid.server.Version;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -53,7 +52,7 @@ public class Main {
     Logging.init();
 
     Display.setAppName(Messages.WINDOW_TITLE);
-    Display.setAppVersion(Version.GAPIC_VERSION.toString());
+    Display.setAppVersion(Version.GAPID_VERSION.toString());
 
     Server server = new Server();
     AtomicReference<UI> uiRef = new AtomicReference<UI>(null);

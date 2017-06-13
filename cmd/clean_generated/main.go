@@ -36,7 +36,6 @@ The search is rooted at the current working directory.
 It finds files with a known extension and a known generated file header comment.
 If the -n flag is not specified, the file will then be removed.
 `
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
 	app.Run(run)
 }
 

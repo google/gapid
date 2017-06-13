@@ -26,7 +26,6 @@ var (
 
 func main() {
 	app.ShortHelp = "Perf is a performance regression testing tool"
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
 	flag.BoolVar(&flagVerifyHashes, "v", false, "warn if any external files have changed")
 	app.Run(app.VerbMain)
 }

@@ -27,6 +27,9 @@ if(NOT ${GAPID_CMAKE_VERSION} STREQUAL ${GAPID_CMAKE_VERSION_STORE})
 ")
 endif()
 
+include(version.cmake)
+add_compile_options("-DGAPID_VERSION_AND_BUILD=\"${GAPID_VERSION_AND_BUILD}\"")
+
 set(CMAKE_HOST_EXECUTABLE_SUFFIX "")
 if(CMAKE_HOST_WIN32)
     set(CMAKE_HOST_EXECUTABLE_SUFFIX ".exe")
@@ -43,7 +46,10 @@ option(DISABLE_CODE_GENERATION "Disable all code generation building steps")
 option(ONLY_HOST "Disable non host build steps")
 
 include(cmake/Init.cmake)
-project(GAPID ${languages})
+project(GAPID
+    LANGUAGES ${languages}
+    VERSION ${GAPID_VERSION_MAJOR}.${GAPID_VERSION_MINOR}.${GAPID_VERSION_POINT}
+)
 include(Config)
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
@@ -68,6 +74,7 @@ include(third_party/grpc-java.cmake)
 build_subdirectory(cmd)
 
 build_subdirectory(core)
+build_subdirectory(gapic)
 build_subdirectory(gapii)
 if(NOT GAPII_TARGET)
 build_subdirectory(gapil)
@@ -83,3 +90,4 @@ scan_for_protos()
 include_directories(${CMAKE_SOURCE_DIR})
 
 include(Package)
+

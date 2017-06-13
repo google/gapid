@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generated globbing source file
-# This file will be automatically regenerated if deleted, do not edit by hand.
-# If you add a new file to the directory, just delete this file, run any cmake
-# build and the file will be recreated, check in the new version.
-
-set(files
-    main.go
-)
-set(dirs
-
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/Version.java.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/service/com/google/gapid/Version.java"
+    @ONLY
 )
