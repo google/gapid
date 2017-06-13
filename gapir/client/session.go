@@ -98,6 +98,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 			return nil
 		}
 		ctx := log.PutProcess(ctx, "gapir")
+		ctx = log.PutFilter(ctx, nil)
 		return text.Writer(func(line string) error {
 			if m := parseHostLogMsg(line); m != nil {
 				h.Handle(m)
