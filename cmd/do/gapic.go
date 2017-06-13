@@ -147,14 +147,14 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 func (e *gapicEnv) run(ctx context.Context, options RunOptions, args ...string) {
 	jar := e.out.Join("gapic-" + e.platform + ".jar")
 
-	jargs := make([]string, 0)
+	jargs := []string{}
 	env := env(e.cfg)
 	switch e.platform {
 	case "linux":
 		env.Set("SWT_GTK3", "0").
 			Set("LIBOVERLAY_SCROLLBAR", "0")
 	case "osx":
-		jargs = append(args, "-XstartOnFirstThread")
+		jargs = []string{"-XstartOnFirstThread"}
 	}
 	jargs = append(jargs, "-jar", jar.System(), "-gapid", e.cfg.pkg().System())
 	if options.WD.IsEmpty() {
