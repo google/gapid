@@ -15,6 +15,7 @@
  */
 package com.google.gapid;
 
+import static com.google.gapid.views.SettingsDialog.showSettingsDialog;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
@@ -172,7 +173,9 @@ public class MainWindow extends ApplicationWindow {
     shell.addListener(SWT.Resize, e -> models().settings.windowSize = shell.getSize());
 
     if (OS.isMac) {
-      MacApplication.init(shell.getDisplay(), () -> showAbout(shell, widgets().theme));
+      MacApplication.init(shell.getDisplay(),
+          () -> showAbout(shell, widgets().theme),
+          () -> showSettingsDialog(shell, models().settings));
     }
   }
 
@@ -302,6 +305,8 @@ public class MainWindow extends ApplicationWindow {
     editCopy = MenuItems.EditCopy.create(() -> widgets().copypaste.doCopy());
 
     manager.add(editCopy);
+    manager.add(MenuItems.EditSettings.create(
+        () -> showSettingsDialog(getShell(), models().settings)));
 
     editCopy.setEnabled(false);
 
@@ -561,6 +566,7 @@ public class MainWindow extends ApplicationWindow {
     FileExit("&Exit", 'Q'),
 
     EditCopy("&Copy", 'C'),
+    EditSettings("&Preferences", ','),
 
     GotoAtom("Api &Call", 'G'),
     GotoMemory("&Memory Location", 'M'),

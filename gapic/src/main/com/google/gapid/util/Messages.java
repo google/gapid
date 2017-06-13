@@ -50,4 +50,5 @@ public interface Messages {
   public static final String WELCOME_WINDOW_TITLE = "Welcome";
   public static final String WELCOME_TITLE = WINDOW_TITLE;
   public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
+  public static final String SETTINGS_TITLE = "Modify Settings";
 }
