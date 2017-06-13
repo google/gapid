@@ -537,6 +537,9 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 		ss, pop := s.push()
 		defer pop()
 
+		flows := []*scope{}
+		defer func() { s.setUnion(flows...) }()
+
 		for _, choice := range n.Choices {
 			for _, cond := range choice.Conditions {
 				// For each choice and condition...
@@ -557,7 +560,9 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 				val, _ := cs.valueOf(choice.Expression)
 				out = UnionOf(out, val)
 				pop()
-				if cs.abort != nil {
+				if cs.abort == nil {
+					flows = append(flows, cs)
+				} else {
 					// case resulted in an abort.
 					// Statements below the switch can consider this case false.
 					s.considerFalse(isTrue)

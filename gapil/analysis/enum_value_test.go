@@ -90,11 +90,28 @@ func TestEnumParameterAnalysis(t *testing.T) {
 			Numbers: anyU64,
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}}, {`cmd void c(E e) {
-            if e == A {}
-            if e == B {}
-            if e == C {}
-          }`, &analysis.EnumValue{
+                if e == A {}
+                if e == B {}
+                if e == C {}
+              }`, &analysis.EnumValue{
 			Numbers: anyU64,
+			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
+		}}, {`cmd s32 c(E e) {
+               return switch (e) {
+                 case A, B: 10
+                 case C: 30
+               }
+             }`, &analysis.EnumValue{
+			Numbers: u64(1, 2, 3),
+			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
+		}}, {`sub s32 S(E e) {
+                return switch (e) {
+                  case A, B: 10
+                  case C: 30
+                }
+              }
+              cmd void c(E e) { x := S(e) }`, &analysis.EnumValue{
+			Numbers: u64(1, 2, 3),
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
 	} {
