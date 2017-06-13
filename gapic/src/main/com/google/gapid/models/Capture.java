@@ -67,7 +67,10 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
   @Override
   protected ListenableFuture<Path.Capture> doLoad(File file) {
-    if (file.length() == 0) {
+    if (!file.exists() || !file.canRead()) {
+      return Futures.immediateFailedFuture(
+          new Exception("Trace file does not exist or is not accessible"));
+    } else if (file.length() == 0) {
       return Futures.immediateFailedFuture(new Exception("Trace file is empty!"));
     }
 
