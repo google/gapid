@@ -153,12 +153,20 @@ func getCommand(ctx context.Context, client service.Service, p *path.Command) (*
 	return boxedCmd.(*service.Command), nil
 }
 
+var constantSetCache = map[string]*service.ConstantSet{}
+
 func getConstantSet(ctx context.Context, client service.Service, p *path.ConstantSet) (*service.ConstantSet, error) {
+	key := p.Text()
+	if cs, ok := constantSetCache[key]; ok {
+		return cs, nil
+	}
 	boxedConstants, err := client.Get(ctx, p.Path())
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Couldn't local constant set at: %v", p.Text())
 	}
-	return boxedConstants.(*service.ConstantSet), nil
+	out := boxedConstants.(*service.ConstantSet)
+	constantSetCache[key] = out
+	return out, nil
 }
 
 func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command, of ObservationFlags) error {
