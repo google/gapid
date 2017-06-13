@@ -19,6 +19,7 @@ import com.google.gapid.util.Messages;
 
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.FileDialog;
 
 /**
  * An {@link ActionTextbox} representing a file path where the button will open a file dialog.
@@ -26,6 +27,39 @@ import org.eclipse.swt.widgets.DirectoryDialog;
 public abstract class FileTextbox extends ActionTextbox {
   public FileTextbox(Composite parent, String value) {
     super(parent, Messages.BROWSE, value);
+  }
+
+  /**
+   * A {@link FileTextbox} limiting the selection to directories in the file dialog.
+   */
+  public static class File extends FileTextbox {
+    public File(Composite parent) {
+      super(parent, "");
+    }
+
+    public File(Composite parent, String value) {
+      super(parent, value);
+    }
+
+    @Override
+    protected String createAndShowDialog(String current) {
+      FileDialog dialog = new FileDialog(getShell());
+      if (!current.isEmpty()) {
+        java.io.File file = new java.io.File(current);
+        String parent = file.getParent();
+        if (parent != null) {
+          dialog.setFilterPath(parent);
+        }
+        dialog.setFileName(file.getName());
+      }
+      configureDialog(dialog);
+      return dialog.open();
+    }
+
+    @SuppressWarnings("unused")
+    protected void configureDialog(FileDialog dialog) {
+      // Empty.
+    }
   }
 
   /**
