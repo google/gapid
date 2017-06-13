@@ -297,12 +297,7 @@ func GetExtensionManpage(extension string) (url string, data []byte) {
 	parts := strings.Split(extension, "_")
 	vendor := parts[1]
 	page := strings.Join(parts[2:], "_")
-	// most of the time the page name includes the vendor prefix, but sometimes it does not
 	url = fmt.Sprintf("https://www.khronos.org/registry/gles/extensions/%s/%s_%s.txt", vendor, vendor, page)
-	if data := Download(url); len(data) > 0 {
-		return url, data
-	}
-	url = fmt.Sprintf("https://www.khronos.org/registry/gles/extensions/%s/%s.txt", vendor, page)
 	if data := Download(url); len(data) > 0 {
 		return url, data
 	}
@@ -310,6 +305,7 @@ func GetExtensionManpage(extension string) (url string, data []byte) {
 		{"GL_NV_coverage_sample", "NV/EGL_NV_coverage_sample.txt"},
 		{"GL_NV_depth_nonlinear", "NV/EGL_NV_depth_nonlinear.txt"},
 		{"GL_NV_EGL_NV_coverage_sample", "NV/EGL_NV_coverage_sample.txt"},
+		{"GL_EXT_separate_shader_objects", "EXT/EXT_separate_shader_objects.gles.txt"},
 	} {
 		if table.extension == extension {
 			url = fmt.Sprintf("https://www.khronos.org/registry/gles/extensions/%s", table.page)
