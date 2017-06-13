@@ -251,7 +251,7 @@ public class Flags {
       @Override
       public T parse(String value) {
         try {
-          return Enum.valueOf(dflt.getDeclaringClass(), value);
+          return Enum.valueOf(dflt.getDeclaringClass(), value.toUpperCase());
         } catch (IllegalArgumentException e) {
           throw new InvalidFlagException(value, e);
         }

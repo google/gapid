@@ -95,9 +95,9 @@ public class Logging {
   }
 
   public static final Flag<LogLevel> logLevel = Flags.value(
-      "logLevel", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
+      "log-level", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
   public static final Flag<String> logDir = Flags.value(
-      "logDir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
+      "log-dir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
 
   private static final int BUFFER_SIZE = 1000;
 
