@@ -53,8 +53,7 @@ public class LogView extends Composite implements Tab {
     SEVERITY(0, 35, "Severity"),
     TIME(1, 100, "Time"),
     PROCESS(2, 60, "Process"),
-    TEXT(3, 300, "Text"),
-    TAG(4, 100, "Tag");
+    TEXT(3, 300, "Text");
 
     final int index;
     final int width;
@@ -116,7 +115,6 @@ public class LogView extends Composite implements Tab {
       item.setText(Column.TIME.index, formatTime(message.getTime()));
       item.setText(Column.PROCESS.index, message.getProcess());
       item.setText(Column.TEXT.index, lines[0]);
-      item.setText(Column.TAG.index, message.getTag());
       // Additional lines
       for (int l = 1; l < lines.length; l++) {
         TreeItem line = newItem(item, severity);
@@ -128,6 +126,10 @@ public class LogView extends Composite implements Tab {
           (message.getValuesCount() > 0 ? 1 : 0) +
           (message.getCallstackCount() > 0 ? 1 : 0)) > 1;
 
+
+      if (!message.getTag().isEmpty()) {
+        newItem(item, severity).setText(Column.TEXT.index, message.getTag());
+      }
       // Exceptions
       for (Log.Cause cause : message.getCauseList()) {
         causeToTreeItem(item, severity, cause);
