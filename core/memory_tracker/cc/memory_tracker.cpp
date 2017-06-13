@@ -113,7 +113,7 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
 
 void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
   void* fault_addr = info->si_addr;
-  if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_)) {
+  if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_, true)) {
 #ifndef NDEBUG
     raise(SIGTRAP);
 #endif // NDEBUG
@@ -123,6 +123,12 @@ void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
   // The fault address is within a tracking range
   void* page_addr = GetAlignedAddress(fault_addr, page_size_);
   if (dirty_pages_.Has(page_addr)) {
+    // Dirty pages should always be writable. But in practice, dirty pages may
+    // not be writable. E.g. One page is added to tracking ranges twice with
+    // two ranges that shares a common page, but not overlapping. The later
+    // added range will mark the shared page as read-only, even though the
+    // page has already been marked as dirty before. 
+    mprotect(page_addr, page_size_, PROT_READ | PROT_WRITE);
     return;
   }
   if (!dirty_pages_.Record(page_addr)) {
