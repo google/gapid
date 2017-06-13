@@ -41,6 +41,7 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 import com.google.gapid.util.UiCallback;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -106,7 +107,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   }
 
   public ListenableFuture<Node> load(Node node) {
-    return node.load(() -> Futures.transformAsync(
+    return node.load(shell, () -> Futures.transformAsync(
         client.get(any(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
           CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
@@ -489,7 +490,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
           getPath(Path.CommandTreeNode.newBuilder()).build());
     }
 
-    public ListenableFuture<Node> load(Supplier<ListenableFuture<NodeData>> loader) {
+    public ListenableFuture<Node> load(Shell shell, Supplier<ListenableFuture<NodeData>> loader) {
       if (data != null) {
         // Already loaded.
         return null;
@@ -497,13 +498,14 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         return loadFuture;
       }
 
-      return loadFuture = Futures.transform(loader.get(), newData -> {
-        data = newData.data;
-        command = newData.command;
-        children = new Node[(int)data.getNumChildren()];
-        loadFuture = null; // Don't hang on to listeners.
-        return Node.this;
-      });
+      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+        Widgets.submitIfNotDisposed(shell, () -> {
+          data = newData.data;
+          command = newData.command;
+          children = new Node[(int)data.getNumChildren()];
+          loadFuture = null; // Don't hang on to listeners.
+          return Node.this;
+      }));
     }
 
     @Override
