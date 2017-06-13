@@ -131,11 +131,20 @@ type (
 		Observations   ObservationFlags
 	}
 	CommandsFlags struct {
-		Gapis        GapisFlags
-		Gapir        GapirFlags
-		Raw          bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
-		Name         string `help:"Filter to commands and groups with the specified name."`
-		Observations ObservationFlags
+		Gapis                  GapisFlags
+		Gapir                  GapirFlags
+		Raw                    bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Name                   string `help:"Filter to commands and groups with the specified name."`
+		MaxChildren            int    `help:"Maximum children per tree node."`
+		GroupByAPI             bool   `help:"Group commands by api"`
+		GroupByContext         bool   `help:"Group commands by context"`
+		GroupByThread          bool   `help:"Group commands by thread"`
+		GroupByDrawCall        bool   `help:"Group commands by draw call"`
+		GroupByFrame           bool   `help:"Group commands by frame"`
+		GroupByUserMarkers     bool   `help:"Group commands by user markers"`
+		IncludeNoContextGroups bool   `help:"Include no context groups"`
+		AllowIncompleteFrame   bool   `help:"Make a group for incomplete frames"`
+		Observations           ObservationFlags
 		CommandFilterFlags
 	}
 	StateFlags struct {
