@@ -7,3 +7,4 @@ hs_err_pid*.log
 
 # Proto generated files.
 src/service/com/google/gapid/proto
+src/service/com/google/gapid/Version.java

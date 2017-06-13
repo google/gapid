@@ -15,7 +15,7 @@
  */
 package com.google.gapid;
 
-import static com.google.gapid.server.Version.GAPIC_VERSION;
+import static com.google.gapid.Version.GAPID_VERSION;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
@@ -29,7 +29,6 @@ import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapisConnection;
 import com.google.gapid.server.GapisProcess;
-import com.google.gapid.server.Version;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -121,9 +120,9 @@ public class Server {
     Service.ServerInfo info = Rpc.get(client.getSeverInfo(), FETCH_INFO_TIMEOUT_MS, MILLISECONDS);
     LOG.log(INFO, "Server info: {0}", info);
     Version gapisVersion = Version.fromProto(info);
-    if (!GAPIC_VERSION.isCompatible(gapisVersion)) {
+    if (!GAPID_VERSION.isCompatible(gapisVersion)) {
       throw new GapisInitException("Incompatible gapis version. Found: " + gapisVersion +
-          ", wanted: " + GAPIC_VERSION.toPatternString(), "");
+          ", wanted: " + GAPID_VERSION.toPatternString(), "");
     }
     Info.setServerInfo(info);
   }

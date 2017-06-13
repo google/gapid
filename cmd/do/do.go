@@ -204,7 +204,6 @@ func main() {
 	}
 
 	app.ShortHelp = "Do is the build front end for the graphics api debugger system."
-	app.Version = app.VersionSpec{Major: versionMajor, Minor: versionMinor}
 	app.Run(app.VerbMain)
 }
 

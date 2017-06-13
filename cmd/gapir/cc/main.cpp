@@ -195,6 +195,9 @@ int main(int argc, const char* argv[]) {
             idleTimeoutMs = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
             wait_for_debugger = true;
+        } else if (strcmp(argv[i], "--version") == 0) {
+            printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+            return 0;
         } else {
             GAPID_FATAL("Unknown argument: %s", argv[i]);
         }

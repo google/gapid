@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generated globbing source file
-# This file will be automatically regenerated if deleted, do not edit by hand.
-# If you add a new file to the directory, just delete this file, run any cmake
-# build and the file will be recreated, check in the new version.
+# True source of GAPID versions.
+# Increment these numbers before releasing a new version.
+set(GAPID_VERSION_MAJOR 0)
+set(GAPID_VERSION_MINOR 4)
+set(GAPID_VERSION_POINT 0)
 
-set(files
-    main.go
-)
-set(dirs
+if (NOT DEFINED GAPID_BUILD_NUMBER)
+    set(GAPID_BUILD_NUMBER 0)
+endif()
 
-)
+if (NOT DEFINED GAPID_BUILD_SHA)
+    set(GAPID_BUILD_SHA "developer")
+endif()
+
+
+set(GAPID_VERSION_AND_BUILD "${GAPID_VERSION_MAJOR}.${GAPID_VERSION_MINOR}.${GAPID_VERSION_POINT}:${GAPID_BUILD_NUMBER}:${GAPID_BUILD_SHA}")

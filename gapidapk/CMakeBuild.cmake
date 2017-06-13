@@ -130,6 +130,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
         DIRECTORY "${apk_dir}"
         ARGS
             "-Pfilehash=$<TARGET_FILE:filehash>"
+            "-PgapidVersionAndBuild=${GAPID_VERSION_AND_BUILD}"
             "-Pinputs=${all_inputs}"
         DEPENDS
             ${TARGET_SOURCES}

@@ -53,9 +53,8 @@ var (
 )
 
 func main() {
-	app.ShortHelp = "Gapis is the graphics API server"
+	app.ShortHelp = "GAPIS is the graphics API server"
 	app.Name = "GAPIS" // Has to be this for version parsing compatability
-	app.Version = version
 	app.Run(run)
 }
 
@@ -107,8 +106,9 @@ func run(ctx context.Context) error {
 	return server.Listen(ctx, *rpc, server.Config{
 		Info: &service.ServerInfo{
 			Name:         host.Instance(ctx).Name,
-			VersionMajor: uint32(version.Major),
-			VersionMinor: uint32(version.Minor),
+			VersionMajor: uint32(app.Version.Major),
+			VersionMinor: uint32(app.Version.Minor),
+			VersionPoint: uint32(app.Version.Point),
 			Features:     features,
 		},
 		StringTables:   loadStrings(ctx),

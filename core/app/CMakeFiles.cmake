@@ -19,6 +19,7 @@
 
 set(files
     atexit.go
+    default_version.go
     doc.go
     flags.go
     help.go

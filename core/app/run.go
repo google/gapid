@@ -39,9 +39,10 @@ var (
 	ShortUsage = ""
 	// UsageFooter is printed at the bottom of the usage text
 	UsageFooter = ""
-	// Version holds the version specification for the application. If valid a command line option to report it
-	// will be added automatically.
-	Version = VersionSpec{-1, -1, ""}
+	// Version holds the version specification for the application.
+	// The default version is the one defined in version.cmake.
+	// If valid a command line option to report it will be added automatically.
+	Version VersionSpec
 	// Restart is the error to return to cause the app to restart itself.
 	Restart = fault.Const("Restart")
 )
@@ -52,7 +53,9 @@ type VersionSpec struct {
 	Major int
 	// Minor version, not used if <0
 	Minor int
-	// The build identifier, not used if the empty string
+	// Point version, not used if <0
+	Point int
+	// The build identifier, not used if an empty string
 	Build string
 }
 
@@ -66,6 +69,9 @@ func (v VersionSpec) Format(f fmt.State, c rune) {
 	fmt.Fprint(f, v.Major)
 	if v.Minor >= 0 {
 		fmt.Fprint(f, ".", v.Minor)
+	}
+	if v.Point >= 0 {
+		fmt.Fprint(f, ".", v.Point)
 	}
 	if v.Build != "" {
 		fmt.Fprint(f, ":", v.Build)

@@ -20,6 +20,5 @@ const maxErrors = 10
 
 func main() {
 	app.ShortHelp = "Apic is a tool for managing api source files."
-	app.Version = app.VersionSpec{Major: 0, Minor: 1}
 	app.Run(app.VerbMain)
 }
