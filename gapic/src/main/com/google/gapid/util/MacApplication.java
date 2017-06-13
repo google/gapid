@@ -30,7 +30,7 @@ public class MacApplication {
   /**
    * Initializes the OSX application menus.
    */
-  public static void init(Display display, Runnable onAbout) {
+  public static void init(Display display, Runnable onAbout, Runnable onSettings) {
     Menu menu = display.getSystemMenu();
     if (menu == null) {
       return;
@@ -42,7 +42,7 @@ public class MacApplication {
           item.addListener(SWT.Selection, e -> onAbout.run());
           break;
         case SWT.ID_PREFERENCES:
-          item.setEnabled(false); // We don't currently have settings.
+          item.addListener(SWT.Selection, e -> onSettings.run());
           break;
       }
     }
