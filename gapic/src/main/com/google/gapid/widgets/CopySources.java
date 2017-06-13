@@ -60,9 +60,12 @@ public class CopySources {
         }
 
         // Measure the column widths.
-        List<Integer> maxColumnWidths = Lists.newArrayList();
-        for (Node node : roots) {
-          node.measure(maxColumnWidths, 0, align);
+        List<Integer> maxColumnWidths = null;
+        if (align) {
+          maxColumnWidths = Lists.newArrayList();
+          for (Node node : roots) {
+            node.measure(maxColumnWidths, 0);
+          }
         }
 
         // Print each of the roots and their children.
@@ -141,24 +144,22 @@ public class CopySources {
      * of this node and all descendants.
      * @param indent the indentation of this node in number of characters.
      */
-    public void measure(List<Integer> maxColumnWidths, int indent, boolean align) {
+    public void measure(List<Integer> maxColumnWidths, int indent) {
       // Grow maxColumnWidths to at least as big as columns.
       while (maxColumnWidths.size() < columns.length) {
         maxColumnWidths.add(0);
       }
-      if (align) {
-        for (int i = 0, c = columns.length; i < c; i++) {
-          int width = columns[i].length();
-          // Consider the tree as part of the first column.
-          if (i == 0) { width += indent; }
-          // Padding between columns.
-          if (i < c - 1) { width += 1; }
-          maxColumnWidths.set(i, Math.max(width, maxColumnWidths.get(i)));
-        }
+      for (int i = 0, c = columns.length; i < c; i++) {
+        int width = columns[i].length();
+        // Consider the tree as part of the first column.
+        if (i == 0) { width += indent; }
+        // Padding between columns.
+        if (i < c - 1) { width += 1; }
+        maxColumnWidths.set(i, Math.max(width, maxColumnWidths.get(i)));
       }
       // Now measure all the children.
       for (Node child : children) {
-        child.measure(maxColumnWidths, indent + INDENT_SIZE, align);
+        child.measure(maxColumnWidths, indent + INDENT_SIZE);
       }
     }
 
@@ -166,7 +167,8 @@ public class CopySources {
      * Prints this node and all descendants to the {@link StringBuilder}.
      * This includes all tree lines, and padding for each column.
      *
-     * @param maxColumnWidths the maximum column widths calculated by {@link #measure}.
+     * @param maxColumnWidths the maximum column widths calculated by {@link #measure}, or null if
+     *        columns should not be aligned.
      */
     public void print(StringBuffer sb, List<Integer> maxColumnWidths) {
       print(sb, maxColumnWidths, "", true, false);
@@ -183,8 +185,13 @@ public class CopySources {
       for (int i = 0, c = columns.length; i < c; i++) {
         column.append(columns[i]);
         if (i < c - 1) {
-          // Align columns
-          while (column.length() < maxColumnWidths.get(i)) {
+          if (maxColumnWidths != null) {
+            // Align columns
+            while (column.length() < maxColumnWidths.get(i)) {
+              column.append(' ');
+            }
+          } else {
+            // Separate columns with whitespace.
             column.append(' ');
           }
         }
