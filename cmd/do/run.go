@@ -37,7 +37,7 @@ func doRunTarget(ctx context.Context, cfg Config, options BuildAndRunOptions, ta
 	doBuild(ctx, cfg, options.BuildOptions, target)
 
 	if target == "gapic" {
-		gapic(ctx, cfg).run(ctx, args...)
+		gapic(ctx, cfg).run(ctx, options.RunOptions, args...)
 	} else {
 		doRun(ctx, cfg, options.RunOptions, target, args...)
 	}
