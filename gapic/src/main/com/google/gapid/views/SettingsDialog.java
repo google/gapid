@@ -17,11 +17,11 @@ package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
+import com.google.gapid.widgets.FileTextbox;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
@@ -30,15 +30,15 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 /**
  * Dialog that allows the user to modify application settings.
  */
 public class SettingsDialog extends TitleAreaDialog {
   private final Settings settings;
-  private Text adbPath;
+  private FileTextbox adbPath;
 
   public SettingsDialog(Shell parent, Settings settings) {
     super(parent);
@@ -77,8 +77,12 @@ public class SettingsDialog extends TitleAreaDialog {
     Composite container = createComposite(area, new GridLayout(2, false));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     createLabel(container, "Path to adb:*");
-    adbPath = withLayoutData(createTextbox(container, settings.adb),
-        new GridData(SWT.FILL, SWT.FILL, true, false));
+    adbPath = withLayoutData(new FileTextbox.File(container, settings.adb) {
+      @Override
+      protected void configureDialog(FileDialog dialog) {
+        dialog.setText("Path to adb:");
+      }
+    }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
     createLabel(container, "");
     createLabel(container, "* Requires Restart");
