@@ -19,6 +19,7 @@ import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
@@ -53,8 +54,10 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
@@ -150,6 +153,7 @@ public class TracerDialog {
     protected final Widgets widgets;
     private ComboViewer device;
     private LoadingIndicator.Widget deviceLoader;
+    private Link adbWarning;
     private ActionTextbox traceTarget;
     private FileTextbox.Directory directory;
     private Text file;
@@ -232,12 +236,26 @@ public class TracerDialog {
       file = withLayoutData(createTextbox(container, settings.traceOutFile),
           new GridData(SWT.FILL, SWT.FILL, true, false));
 
+      createLabel(container, "");
       clearCache = withLayoutData(
           createCheckbox(container, "Clear package cache", settings.traceClearCache),
-          withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
+          new GridData(SWT.FILL, SWT.FILL, true, false));
+
+      createLabel(container, "");
       disablePcs = withLayoutData(
           createCheckbox(container, "Disable pre-compiled shaders", settings.traceDisablePcs),
-          withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
+          new GridData(SWT.FILL, SWT.FILL, true, false));
+
+      withLayoutData(createLabel(container, ""), withSpans(new GridData(), 2, 1));
+
+      createLabel(container, "");
+      adbWarning = withLayoutData(
+          createLink(container,
+              "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
+              e -> SettingsDialog.showSettingsDialog(getShell(), settings)),
+          new GridData(SWT.FILL, SWT.FILL, true, false));
+      adbWarning.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_RED));
+      adbWarning.setVisible(false);
 
       updateDevicesDropDown();
 
@@ -299,6 +317,8 @@ public class TracerDialog {
           }
         }
         device.getCombo().notifyListeners(SWT.Selection, new Event());
+
+        adbWarning.setVisible(devices.isEmpty() && settings.adb.isEmpty());
       } else if (deviceLoader != null) {
         deviceLoader.startLoading();
       }
