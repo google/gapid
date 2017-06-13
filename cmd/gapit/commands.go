@@ -69,12 +69,16 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	treePath := c.CommandTree(filter)
-	treePath.GroupByApi = true
-	treePath.GroupByContext = true
-	treePath.GroupByThread = true
-	treePath.GroupByDrawCall = true
-	treePath.GroupByFrame = true
-	treePath.GroupByUserMarkers = true
+	treePath.GroupByApi = verb.GroupByAPI
+	treePath.GroupByContext = verb.GroupByContext
+	treePath.GroupByThread = verb.GroupByThread
+	treePath.GroupByDrawCall = verb.GroupByDrawCall
+	treePath.GroupByFrame = verb.GroupByFrame
+	treePath.GroupByUserMarkers = verb.GroupByUserMarkers
+	treePath.IncludeNoContextGroups = verb.IncludeNoContextGroups
+	treePath.AllowIncompleteFrame = verb.AllowIncompleteFrame
+
+	treePath.MaxChildren = int32(verb.MaxChildren)
 
 	boxedTree, err := client.Get(ctx, treePath.Path())
 	if err != nil {
