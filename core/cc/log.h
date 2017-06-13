@@ -17,6 +17,8 @@
 #ifndef CORE_LOG_H
 #define CORE_LOG_H
 
+#include <vector>
+
 // General logging functions. All logging should be done through these macros.
 //
 // The system supports the following log levels with the specified meanings:
@@ -138,7 +140,7 @@ private:
 
     unsigned mLevel;
     const char* mSystem;
-    FILE* mFile;
+    std::vector<FILE*> mFiles;
 };
 
 }  // namespace core

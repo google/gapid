@@ -36,19 +36,24 @@ Logger Logger::mInstance = Logger();
 void Logger::init(unsigned level, const char* system, const char* path) {
     mInstance.mLevel = level;
     mInstance.mSystem = system;
-    if (FILE* f = fopen(path, "w")) {
-        GAPID_INFO("Logging to %s", path);
-        mInstance.mFile = f;
-    } else {
-        GAPID_WARNING("Can't open file for logging (%s): %s", path, strerror(errno));
-        mInstance.mFile = stdout;
+    if (path != nullptr) {
+        if (FILE* f = fopen(path, "w")) {
+            GAPID_INFO("Logging to %s", path);
+            mInstance.mFiles.push_back(f);
+        } else {
+            GAPID_WARNING("Can't open file for logging (%s): %s", path, strerror(errno));
+        }
     }
 }
 
-Logger::Logger() : mLevel(LOG_LEVEL_INFO), mSystem(""), mFile(stdout) {}
+Logger::Logger() : mLevel(LOG_LEVEL_INFO), mSystem("") {
+    mFiles.push_back(stdout);
+}
 
 Logger::~Logger() {
-    fclose(mFile);
+    for (FILE* file : mFiles) {
+        fclose(file);
+    }
 }
 
 void Logger::log(unsigned level, const char* file, unsigned line, const char* format, ...) const {
@@ -58,21 +63,23 @@ void Logger::log(unsigned level, const char* file, unsigned line, const char* fo
     std::tm* loc = std::localtime(&now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch());
 
-    // Print out the common part of the log messages
-    fprintf(mFile, "%02d:%02d:%02d.%03d %c %s %s:%u : ", loc->tm_hour, loc->tm_min, loc->tm_sec,
-            static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, file, line);
+    for (FILE* file : mFiles) {
+        // Print out the common part of the log messages
+        fprintf(file, "%02d:%02d:%02d.%03d %c %s %s:%u : ", loc->tm_hour, loc->tm_min, loc->tm_sec,
+                static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, file, line);
 
-    // Print out the actual log message
-    va_list args;
-    va_start(args, format);
-    vfprintf(mFile, format, args);
-    va_end(args);
+        // Print out the actual log message
+        va_list args;
+        va_start(args, format);
+        vfprintf(file, format, args);
+        va_end(args);
 
-    // Always finish with a newline
-    fprintf(mFile, "\n");
+        // Always finish with a newline
+        fprintf(file, "\n");
 
-    // Flush the log to ensure that every message is written out even if the application crashes
-    fflush(mFile);
+        // Flush the log to ensure that every message is written out even if the application crashes
+        fflush(file);
+    }
 
     if (level == LOG_LEVEL_FATAL) {
         exit(EXIT_FAILURE);
