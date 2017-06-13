@@ -208,24 +208,25 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 			continue // TODO: Add those in the api file.
 		}
 		url, _ := GetCoreManpage(version, cmdName)
-		annots = append(annots, fmt.Sprintf(`@Doc("%s","OpenGL ES %v")`, url, version))
+		annots = append(annots, fmt.Sprintf(`@doc("%s", Version.GLES%v)`, url, strings.Replace(string(version), ".", "", -1)))
 	}
 	for _, extension := range extensions {
 		url, _ := GetExtensionManpage(extension)
-		annots = append(annots, fmt.Sprintf(`@Doc("%s","%v")`, url, extension))
+		annots = append(annots, fmt.Sprintf(`@doc("%s", Extension.%v)`, url, extension))
 	}
-
-	// Expected body.
-	apiCheck := ""
-	if versions != nil {
-		version := strings.Replace(string(versions[0]), ".", ", ", -1)
-		apiCheck = fmt.Sprintf("minRequiredVersion(%v)", version)
-	} else if extensions != nil {
-		overload := ""
-		if len(extensions) > 1 {
-			overload = fmt.Sprintf("%v", len(extensions))
+	if len(versions) != 0 {
+		cond := fmt.Sprintf(`Version.GLES%v`, strings.Replace(string(versions[0]), ".", "", -1))
+		if len(versions) == 1 && versions[0] == Version("1.0") {
+			cond = "Version.GLES10 && !Version.GLES20" // Deprecated in GLES20
 		}
-		apiCheck = fmt.Sprintf("requiresExtension%s(%s)", overload, strings.Join(extensions, ", "))
+		annots = append(annots, fmt.Sprintf(`@if(%v)`, cond))
+	}
+	if len(extensions) != 0 {
+		conds := []string{}
+		for _, extension := range extensions {
+			conds = append(conds, fmt.Sprintf(`Extension.%v`, extension))
+		}
+		annots = append(annots, fmt.Sprintf("@if(%s)", strings.Join(conds, " || ")))
 	}
 
 	// Find existing API function.
@@ -242,8 +243,8 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 		for _, param := range cmd.Param {
 			params = append(params, param.Type()+" "+param.Name)
 		}
-		fmt.Printf("%s\ncmd %s %s(%s) {\n  %s\n}\n\n", strings.Join(annots, "\n"),
-			cmd.Proto.Type(), cmdName, strings.Join(params, ", "), apiCheck)
+		fmt.Printf("%s\ncmd %s %s(%s) { }\n", strings.Join(annots, "\n"),
+			cmd.Proto.Type(), cmdName, strings.Join(params, ", "))
 		return
 	}
 
@@ -254,7 +255,7 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 	}
 	seen := make(map[string]struct{})
 	for _, a := range apiCmd.Annotations {
-		if a.Name() == "Doc" || a.Name() == "DrawCall" {
+		if a.Name() == "if" || a.Name() == "doc" || a.Name() == "DrawCall" {
 			seen[getSource(mappings.CST(a.AST))] = struct{}{}
 		}
 	}
@@ -267,16 +268,6 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 		for i, p := range cmd.Param {
 			VerifyType(cmdName, i, p.Type(), apiCmd.FullParameters[i].Type)
 		}
-	}
-
-	// Check version.
-	stmts := apiCmd.Block.AST.Statements
-	if len(stmts) == 0 {
-		PrintError("%s: Empty method body\n", cmdName)
-	} else {
-		expected := map[string]struct{}{apiCheck: {}}
-		seen := map[string]struct{}{getSource(mappings.CST(stmts[0])): {}}
-		CompareSets(expected, seen, fmt.Sprintf("%s: ", cmdName))
 	}
 }
 
