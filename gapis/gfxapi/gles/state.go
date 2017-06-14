@@ -60,17 +60,12 @@ func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (
 		return 0, 0, 0, fmt.Errorf("%s is not bound", att)
 	case GLenum_GL_TEXTURE:
 		t := a.Texture
-		switch t.Kind {
-		case GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_CUBE_MAP:
-			l := t.Levels[a.TextureLevel].Layers[a.TextureLayer]
-			if l == nil {
-				return 0, 0, 0, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
-					t.ID, a.TextureLevel, a.TextureLayer)
-			}
-			return uint32(l.Width), uint32(l.Height), l.SizedFormat, nil
-		default:
-			return 0, 0, 0, fmt.Errorf("Unknown texture kind %v", t.Kind)
+		l := t.Levels[a.TextureLevel].Layers[a.TextureLayer]
+		if l == nil {
+			return 0, 0, 0, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
+				t.ID, a.TextureLevel, a.TextureLayer)
 		}
+		return uint32(l.Width), uint32(l.Height), l.SizedFormat, nil
 	case GLenum_GL_RENDERBUFFER:
 		r := a.Renderbuffer
 		return uint32(r.Width), uint32(r.Height), r.InternalFormat, nil
