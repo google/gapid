@@ -122,7 +122,7 @@ sub void DebugMessageInsert(GLenum source, GLenum type, GLuint id, GLenum severi
     }
   }
   _ = id // TODO
-  readString(length, message)
+  readString(length, message, false)
 }
 
 sub void GetDebugMessageLog(GLuint   count,
@@ -304,7 +304,7 @@ cmd void glObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) 
 
 sub void ObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
   _ = ptr // TODO
-  readString(length, label)
+  readString(length, label, false)
 }
 
 @if(Version.GLES32)
@@ -334,6 +334,13 @@ sub void PushDebugGroup(GLenum source, GLuint id, GLsizei length, const GLchar* 
       glErrorInvalidEnum(source)
     }
   }
+
+  // This is incorrect, fudging for a bug in Unity which has been fixed but not
+  // rolled out.
+  // See https://github.com/google/gapid/issues/459 for reference.
+  // TODO: Consider removing once the fixed version is mainstream.
+  consider_zero_length_nt := true
+
   _ = id // TODO
-  readString(length, message)
+  readString(length, message, consider_zero_length_nt)
 }
