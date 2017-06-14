@@ -35,8 +35,8 @@ func (s schedule) doReport(ctx context.Context, t *monitor.Trace) error {
 	}
 	input := &report.Input{
 		Trace: t.Action.Output.Trace,
-		Gapit: hostTools.Gapit,
-		Gapis: hostTools.Gapis,
+		Gapit: hostTools.Host.Gapit,
+		Gapis: hostTools.Host.Gapis,
 	}
 	action := &report.Action{
 		Input:  input,

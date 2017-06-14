@@ -78,10 +78,13 @@ func (s schedule) getHostTools(ctx context.Context) *build.ToolSet {
 	if tools == nil {
 		return nil
 	}
-	if tools.Gapit == "" {
+	if tools.Host.Gapit == "" {
 		return nil
 	}
-	if tools.Gapis == "" {
+	if tools.Host.Gapis == "" {
+		return nil
+	}
+	if tools.Host.Gapir == "" {
 		return nil
 	}
 	return tools

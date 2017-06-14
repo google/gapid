@@ -24,9 +24,9 @@ import (
 	"github.com/google/gapid/test/robot/trace"
 )
 
-func (s schedule) getTraceTargetTools(ctx context.Context, subj *monitor.Subject) *build.ToolSet {
+func (s schedule) getTraceTargetTools(ctx context.Context, subj *monitor.Subject) *build.AndroidToolSet {
 	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
-	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Target), subj.GetAPK())
+	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Host), s.data.FindDevice(s.worker.Target), subj.GetAPK())
 
 	if tools == nil {
 		return nil
@@ -50,7 +50,7 @@ func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject) error {
 	}
 	input := &trace.Input{
 		Subject:  subj.Id,
-		Gapit:    hostTools.Gapit,
+		Gapit:    hostTools.Host.Gapit,
 		GapidApk: targetTools.GapidApk,
 		Hints:    subj.Hints,
 		Layout: &trace.ToolingLayout{

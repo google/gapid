@@ -105,7 +105,7 @@ func (p *packages) addArtifact(ctx context.Context, a *Artifact, info *Informati
 	pkg := &Package{
 		Information: info,
 		Artifact:    []string{a.Id},
-		Tool:        a.Tool,
+		Tool:        []*ToolSet{a.Tool},
 	}
 	merged := false
 	if old != nil {
@@ -150,20 +150,29 @@ func (pkg *Package) mergeTool(ctx context.Context, tool *ToolSet) {
 	for _, t := range pkg.Tool {
 		if t.Abi.SameAs(tool.Abi) {
 			// merge into existing tool
-			if tool.Interceptor != "" {
-				t.Interceptor = tool.Interceptor
+			if tool.Host.Gapir != "" {
+				t.Host.Gapir = tool.Host.Gapir
 			}
-			if tool.Gapii != "" {
-				t.Gapii = tool.Gapii
+			if tool.Host.Gapis != "" {
+				t.Host.Gapis = tool.Host.Gapis
 			}
-			if tool.Gapir != "" {
-				t.Gapir = tool.Gapir
+			if tool.Host.Gapit != "" {
+				t.Host.Gapit = tool.Host.Gapit
 			}
-			if tool.Gapis != "" {
-				t.Gapis = tool.Gapis
-			}
-			if tool.Gapit != "" {
-				t.Gapit = tool.Gapit
+			for _, android := range tool.Android {
+				if android.GapidApk != "" {
+					merged := false
+					for _, a := range t.Android {
+						if a.Abi.SameAs(android.Abi) {
+							a.GapidApk = android.GapidApk
+							merged = true
+							break
+						}
+					}
+					if !merged {
+						t.Android = append(t.Android, android)
+					}
+				}
 			}
 			return
 		}
@@ -173,10 +182,24 @@ func (pkg *Package) mergeTool(ctx context.Context, tool *ToolSet) {
 }
 
 // GetTools will return the toolset that match the abi, if there is one.
-func (p *Package) GetTools(abi *device.ABI) *ToolSet {
+func (p *Package) GetHostTools(abi *device.ABI) *ToolSet {
 	for _, t := range p.Tool {
 		if t.Abi.SameAs(abi) {
 			return t
+		}
+	}
+	return nil
+}
+
+func (p *Package) GetTargetTools(hostAbi *device.ABI, targetAbi *device.ABI) *AndroidToolSet {
+	hostTools := p.GetHostTools(hostAbi)
+	if hostTools == nil {
+		return nil
+	}
+
+	for _, a := range hostTools.Android {
+		if a.Abi.SameAs(targetAbi) {
+			return a
 		}
 	}
 	return nil
