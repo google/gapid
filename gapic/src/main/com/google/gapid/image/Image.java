@@ -37,6 +37,11 @@ public interface Image {
   public int getHeight();
 
   /**
+   * @return the depth in pixels of this image.
+   */
+  public int getDepth();
+
+  /**
    * @return the {@link ImageBuffer pixel data} of this image.
    */
   public ImageBuffer getData();
@@ -52,6 +57,11 @@ public interface Image {
 
     @Override
     public int getHeight() {
+      return 1;
+    }
+
+    @Override
+    public int getDepth() {
       return 1;
     }
 
@@ -77,7 +87,7 @@ public interface Image {
       }
 
       @Override
-      public PixelValue getPixel(int x, int y) {
+      public PixelValue getPixel(int x, int y, int z) {
         return PixelValue.NULL_PIXEL;
       }
 
@@ -100,7 +110,7 @@ public interface Image {
     /**
      * @return the {@link PixelValue} at the given pixel location.
      */
-    public PixelValue getPixel(int x, int y);
+    public PixelValue getPixel(int x, int y, int z);
 
     /**
      * @return the {@link PixelInfo} for this buffer.

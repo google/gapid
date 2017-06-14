@@ -67,6 +67,35 @@ func (m *imageMatcher) consider(i *image.Info) {
 }
 
 // Interface compliance check
+var _ = image.Convertable((*Texture1D)(nil))
+var _ = image.Thumbnailer((*Texture1D)(nil))
+
+// ConvertTo returns this Texture1D with each mip-level converted to the requested format.
+func (t *Texture1D) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
+	out := &Texture1D{
+		Levels: make([]*image.Info, len(t.Levels)),
+	}
+	for i, m := range t.Levels {
+		if obj, err := m.Convert(ctx, f); err == nil {
+			out.Levels[i] = obj
+		} else {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// Thumbnail returns the image that most closely matches the desired size.
+func (t *Texture1D) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
+	m := imageMatcher{width: w, height: 1, depth: 1}
+	for _, l := range t.Levels {
+		m.consider(l)
+	}
+
+	return m.best, nil
+}
+
+// Interface compliance check
 var _ = image.Convertable((*Texture2D)(nil))
 var _ = image.Thumbnailer((*Texture2D)(nil))
 
@@ -88,6 +117,35 @@ func (t *Texture2D) ConvertTo(ctx context.Context, f *image.Format) (interface{}
 // Thumbnail returns the image that most closely matches the desired size.
 func (t *Texture2D) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
 	m := imageMatcher{width: w, height: h, depth: 1}
+	for _, l := range t.Levels {
+		m.consider(l)
+	}
+
+	return m.best, nil
+}
+
+// Interface compliance check
+var _ = image.Convertable((*Texture3D)(nil))
+var _ = image.Thumbnailer((*Texture3D)(nil))
+
+// ConvertTo returns this Texture3D with each mip-level converted to the requested format.
+func (t *Texture3D) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
+	out := &Texture3D{
+		Levels: make([]*image.Info, len(t.Levels)),
+	}
+	for i, m := range t.Levels {
+		if obj, err := m.Convert(ctx, f); err == nil {
+			out.Levels[i] = obj
+		} else {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// Thumbnail returns the image that most closely matches the desired size.
+func (t *Texture3D) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
+	m := imageMatcher{width: w, height: h, depth: d}
 	for _, l := range t.Levels {
 		m.consider(l)
 	}
@@ -168,10 +226,20 @@ func (t *Texture) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, e
 // NewTexture returns a new *ResourceData with the specified texture.
 func NewTexture(t interface{}) *Texture {
 	switch t := t.(type) {
+	case *Texture1D:
+		return &Texture{Type: &Texture_Texture_1D{t}}
+	case *Texture1DArray:
+		return &Texture{Type: &Texture_Texture_1DArray{t}}
 	case *Texture2D:
 		return &Texture{Type: &Texture_Texture_2D{t}}
+	case *Texture2DArray:
+		return &Texture{Type: &Texture_Texture_2DArray{t}}
+	case *Texture3D:
+		return &Texture{Type: &Texture_Texture_3D{t}}
 	case *Cubemap:
 		return &Texture{Type: &Texture_Cubemap{t}}
+	case *CubemapArray:
+		return &Texture{Type: &Texture_CubemapArray{t}}
 	default:
 		panic(fmt.Errorf("%T is not a Texture type", t))
 	}

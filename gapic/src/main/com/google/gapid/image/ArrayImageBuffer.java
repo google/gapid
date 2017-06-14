@@ -38,14 +38,15 @@ import java.nio.FloatBuffer;
  * An {@link ImageBuffer} backed by a byte array.
  */
 public abstract class ArrayImageBuffer implements ImageBuffer {
-  public final int width, height;
+  public final int width, height, depth;
   private final byte[] data;
   private final int internalFormat, format, type;
 
-  public ArrayImageBuffer(int width, int height, byte[] data,
+  public ArrayImageBuffer(int width, int height, int depth, byte[] data,
       int internalFormat, int format, int type) {
     this.width = width;
     this.height = height;
+    this.depth = depth;
     this.data = data;
     this.internalFormat = internalFormat;
     this.format = format;
@@ -63,15 +64,15 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
   @Override
   public ImageData getImageData() {
     ImageData result = Images.createImageData(width, height, true);
-    convert(data, result.data, result.alphaData, result.bytesPerLine);
+    convert2D(data, result.data, result.alphaData, result.bytesPerLine);
     return result;
   }
 
-  protected abstract void convert(byte[] src, byte[] dst, byte[] alpha, int stride);
+  protected abstract void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride);
 
   @Override
-  public PixelValue getPixel(int x, int y) {
-    if (x < 0 || y < 0 || x >= width || y >= height) {
+  public PixelValue getPixel(int x, int y, int z) {
+    if (x < 0 || y < 0 || x >= width || y >= height || z > depth) {
       return PixelValue.NULL_PIXEL;
     }
     return getPixel(x, y, data);
@@ -87,25 +88,34 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
    * An {@link ArrayImageBuffer} builder.
    */
   public abstract static class Builder {
-    public final int width, height;
+    public final int width, height, depth;
     public final byte[] data;
     private final int pixelSize;
 
-    public Builder(int width, int height, int pixelSize) {
+    public Builder(int width, int height, int depth, int pixelSize) {
       this.width = width;
       this.height = height;
-      this.data = new byte[pixelSize * width * height];
+      this.depth = depth;
+      this.data = new byte[pixelSize * width * height * depth];
       this.pixelSize = pixelSize;
     }
 
-    public Builder update(byte[] src, int x, int y, int w, int h) {
-      if (x == 0 && w == width) {
-        // Copying complete rows of pixels is easy.
-        System.arraycopy(src, 0, data, pixelSize * y * w, pixelSize * w * h);
-      } else {
-        // Copy one (incomplete) row at a time.
-        for (int row = 0, p = y * width, s = 0; row < h; row++, p += width, s += w * pixelSize) {
-          System.arraycopy(src, s, data, pixelSize * (p + x), pixelSize * w);
+    public Builder update(byte[] src, int x, int y, int z, int w, int h, int d) {
+      if (x == 0 && y == 0 && w == width && h == height) {
+        // Bulk copy.
+        System.arraycopy(src, 0, data, pixelSize * w * h * z, pixelSize * w * h * d);
+      }
+      for (int slice = 0; slice < d; slice++) {
+        int srcOffset = pixelSize * slice * width * height;
+        int dstOffset = pixelSize * slice * w * h;
+        if (x == 0 && w == width) {
+          // Copying complete rows of pixels is easy.
+          System.arraycopy(src, srcOffset, data, dstOffset + pixelSize * y * w, pixelSize * w * h);
+        } else {
+          // Copy one (incomplete) row at a time.
+          for (int row = 0, p = y * width, s = 0; row < h; row++, p += width, s += w * pixelSize) {
+            System.arraycopy(src, srcOffset + s, data, dstOffset + pixelSize * (p + x), pixelSize * w);
+          }
         }
       }
       return this;
@@ -129,12 +139,12 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
    * An {@link ArrayImageBuffer} that represents an RGBA image with 8bit color channels.
    */
   public static class RGBA8ImageBuffer extends ArrayImageBuffer {
-    public RGBA8ImageBuffer(int width, int height, byte[] data) {
-      super(width, height, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
+    public RGBA8ImageBuffer(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+    protected void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride) {
       for (int row = 0, di = 0, si = 4 * (height - 1) * width, ai = 0; row < height;
           row++, si -= 4 * width, di += stride) {
         for (int col = 0, s = si, d = di; col < width; col++, s += 4, d += 3, ai++) {
@@ -187,14 +197,14 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public RGBAFloatImageBuffer(int width, int height, byte[] data) {
-      super(width, height, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
+    public RGBAFloatImageBuffer(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
       this.info = FloatPixelInfo.compute(buffer, true);
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+    protected void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride) {
       for (int row = 0, di = 0, si = 4 * (height - 1) * width, ai = 0; row < height;
           row++, si -= 4 * width, di += stride) {
         for (int col = 0, s = si, d = di; col < width; col++, s += 4, d += 3, ai++) {
@@ -244,8 +254,8 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
    */
   // TODO: The client may not actually need to distinguish between luminance and RGBA
   public static class Luminance8ImageBuffer extends ArrayImageBuffer {
-    public Luminance8ImageBuffer(int width, int height, byte[] data) {
-      super(width, height, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
+    public Luminance8ImageBuffer(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
     }
 
     @Override
@@ -255,7 +265,7 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+    protected void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride) {
       for (int row = 0, di = 0, si = (height - 1) * width, ai = 0; row < height;
           row++, si -= width, di += stride) {
         for (int col = 0, s = si, d = di; col < width; col++, s++, d += 3, ai++) {
@@ -304,8 +314,8 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public LuminanceFloatImageBuffer(int width, int height, byte[] data) {
-      super(width, height, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
+    public LuminanceFloatImageBuffer(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
       this.info = FloatPixelInfo.compute(buffer, false);
     }
@@ -317,7 +327,7 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
     }
 
     @Override
-    protected void convert(byte[] src, byte[] dst, byte[] alpha, int stride) {
+    protected void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride) {
       for (int row = 0, di = 0, si = (height - 1) * width, ai = 0; row < height;
           row++, si -= width, di += stride) {
         for (int col = 0, s = si, d = di; col < width; col++, s++, d += 3, ai++) {
