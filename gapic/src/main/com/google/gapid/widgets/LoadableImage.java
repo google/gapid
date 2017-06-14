@@ -210,8 +210,6 @@ public class LoadableImage {
     private Supplier<ListenableFuture<Object>> futureSupplier;
     private ErrorStrategy errorStrategy;
     private boolean small;
-    // True if build() should call load, because the future was wrapped via supplier().
-    private boolean shouldLoad;
 
     protected Builder(LoadingIndicator loading) {
       this.loading = loading;
@@ -228,25 +226,21 @@ public class LoadableImage {
     }
 
     public Builder forImageData(ListenableFuture<ImageData> future) {
-      this.shouldLoad = true;
       this.futureSupplier = cast(supplier(future));
       return this;
     }
 
     public Builder forImageData(Supplier<ListenableFuture<ImageData>> future) {
-      this.shouldLoad = false;
       this.futureSupplier = cast(future);
       return this;
     }
 
     public Builder forImage(ListenableFuture<Image> future) {
-      this.shouldLoad = true;
       this.futureSupplier = cast(supplier(future));
       return this;
     }
 
     public Builder forImage(Supplier<ListenableFuture<Image>> future) {
-      this.shouldLoad = false;
       this.futureSupplier = cast(future);
       return this;
     }
@@ -288,7 +282,7 @@ public class LoadableImage {
       } else {
         result = new LoadableImage(widget, futureSupplier, loading, repaintable, errorStrategy);
       }
-      return shouldLoad ? result.load() : result;
+      return result.load();
     }
 
     private static <T> Supplier<ListenableFuture<T>> supplier(ListenableFuture<T> future) {
