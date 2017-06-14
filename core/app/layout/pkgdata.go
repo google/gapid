@@ -84,6 +84,11 @@ func Strings(ctx context.Context) (file.Path, error) {
 	return layout(ctx).Strings(ctx)
 }
 
+// Gapis returns the path to the gapis binary.
+func Gapis(ctx context.Context) (file.Path, error) {
+	return layout(ctx).Gapis(ctx)
+}
+
 // GapidApk returns the path to the gapid.apk corresponding to the given abi.
 func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return layout(ctx).GapidApk(ctx, abi)
