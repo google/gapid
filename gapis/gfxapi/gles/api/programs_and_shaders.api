@@ -218,13 +218,13 @@ class ProgramResource {
 }
 */
 
-sub void readString(GLsizei length, const GLchar* buffer) {
+sub void readString(GLsizei length, const GLchar* buffer, bool consider_zero_length_nt) {
   if buffer != null {
-    if length < 0 {
-      // Negative length implies null-terminated string
-      _ = as!string(as!char*(buffer))
+    if (length < 0) || (consider_zero_length_nt && length == 0) {
+        // Negative length implies null-terminated string
+        _ = as!string(as!char*(buffer))
     } else {
-      read(buffer[0:length])
+        read(buffer[0:length])
     }
   }
 }
