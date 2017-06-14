@@ -83,16 +83,28 @@ type grpcServer struct {
 // keepAlive chan within idleTimeout.
 // This function blocks until there's an idle timeout, or ctx is cancelled.
 func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, keepAlive <-chan struct{}, idleTimeout time.Duration) {
+	// Split the idleTimeout into N smaller chunks, and check that there was
+	// no activity from the client in a contiguous N chunks of time.
+	// This avoids killing the server if the machine is suspended (where the
+	// client cannot send hearbeats, and the system clock jumps forward).
+	const maxMissCount = 3
+	idleTimeout /= maxMissCount
+	misses := 0
+
 	defer server.GracefulStop()
 	for {
 		select {
 		case <-task.ShouldStop(ctx):
 			return
 		case <-time.After(idleTimeout):
-			log.W(ctx, fmt.Sprintf("Stopping GAPIS server as it has been idle for more than %v (--idle-timeout)", idleTimeout))
-			time.Sleep(time.Second * 3) // Wait a little in the hope this message makes its way to the client(s).
-			return
+			misses++
+			if misses >= maxMissCount {
+				log.W(ctx, fmt.Sprintf("Stopping GAPIS server as it has been idle for more than %v (--idle-timeout)", idleTimeout))
+				time.Sleep(time.Second * 3) // Wait a little in the hope this message makes its way to the client(s).
+				return
+			}
 		case <-keepAlive:
+			misses = 0
 		}
 	}
 }
