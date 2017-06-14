@@ -80,42 +80,6 @@ func (a *artifacts) search(ctx context.Context, query *search.Query, handler Art
 	return event.Feed(ctx, filter, initial)
 }
 
-var toolPatterns = []*ToolSet{{
-	Abi:                 device.AndroidARMv7a,
-	GapidApk:            "android/armeabi-v7a/gapid.apk",
-	VirtualSwapChainLib: "android/armeabi-v7a/libVkLayer_VirtualSwapchain.so",
-}, {
-	Abi:                 device.AndroidARM64v8a,
-	GapidApk:            "android/arm64-v8a/gapid.apk",
-	VirtualSwapChainLib: "android/arm64-v8a/libVkLayer_VirtualSwapchain.so",
-}, {
-	Abi:                 device.AndroidX86_64,
-	GapidApk:            "android/x86/gapid.apk",
-	VirtualSwapChainLib: "android/x86/libVkLayer_VirtualSwapchain.so",
-}, {
-	Abi:                  device.LinuxX86_64,
-	Gapir:                "linux/x86_64/gapir",
-	Gapis:                "linux/x86_64/gapis",
-	Gapit:                "linux/x86_64/gapit",
-	VirtualSwapChainLib:  "linux/x86_64/libVkLayer_VirtualSwapchain.so",
-	VirtualSwapChainJson: "linux/x86_64/VirtualSwapchainLayer.json",
-}, {
-	Abi:   device.OSXX86_64,
-	Gapir: "osx/x86_64/gapir",
-	Gapis: "osx/x86_64/gapis",
-	Gapit: "osx/x86_64/gapit",
-	// TODO(baldwinn): These should not be required, https://github.com/google/gapid/issues/570
-	VirtualSwapChainLib:  "osx/x86_64/libVkLayer_VirtualSwapchain.so",
-	VirtualSwapChainJson: "osx/x86_64/VirtualSwapchainLayer.json",
-}, {
-	Abi:                  device.WindowsX86_64,
-	Gapir:                "windows/x86_64/gapir",
-	Gapis:                "windows/x86_64/gapis",
-	Gapit:                "windows/x86_64/gapit",
-	VirtualSwapChainLib:  "windows/x86_64/libVkLayer_VirtualSwapchain.so",
-	VirtualSwapChainJson: "windows/x86_64/VirtualSwapchainLayer.json",
-}}
-
 type zipEntry struct {
 	file *zip.File
 	id   string
@@ -178,38 +142,7 @@ func (z *zipEntry) GetID(ctx context.Context, a *artifacts) string {
 	return z.id
 }
 
-func toolIsEmpty(t *ToolSet) bool {
-	return t.GapidApk == "" &&
-		t.Gapii == "" &&
-		t.Gapir == "" &&
-		t.Gapis == "" &&
-		t.Gapit == "" &&
-		t.VirtualSwapChainLib == "" &&
-		t.VirtualSwapChainJson == ""
-}
-
-func (a *artifacts) matchTool(ctx context.Context, z *zipEntry, pattern string, target *string) {
-	if pattern == "" {
-		return
-	}
-	if !strings.HasSuffix(z.file.Name, pattern) {
-		return
-	}
-	*target = z.GetID(ctx, a)
-}
-
-func (a *artifacts) matchTools(ctx context.Context, z *zipEntry, pattern *ToolSet, target *ToolSet) {
-	a.matchTool(ctx, z, pattern.Interceptor, &target.Interceptor)
-	a.matchTool(ctx, z, pattern.Gapii, &target.Gapii)
-	a.matchTool(ctx, z, pattern.Gapir, &target.Gapir)
-	a.matchTool(ctx, z, pattern.Gapis, &target.Gapis)
-	a.matchTool(ctx, z, pattern.Gapit, &target.Gapit)
-	a.matchTool(ctx, z, pattern.GapidApk, &target.GapidApk)
-	a.matchTool(ctx, z, pattern.VirtualSwapChainLib, &target.VirtualSwapChainLib)
-	a.matchTool(ctx, z, pattern.VirtualSwapChainJson, &target.VirtualSwapChainJson)
-}
-
-func (a *artifacts) get(ctx context.Context, id string) (*Artifact, error) {
+func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) (*Artifact, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if entry := a.byID[id]; entry != nil {
@@ -226,24 +159,27 @@ func (a *artifacts) get(ctx context.Context, id string) (*Artifact, error) {
 	if err != nil {
 		return nil, log.Err(ctx, nil, "File is not a build artifact.")
 	}
-	tools := make([]*ToolSet, len(toolPatterns))
-	for i := range tools {
-		tools[i] = &ToolSet{
-			Abi: toolPatterns[i].Abi,
-		}
+	if len(hostABIs) != 1 {
+		log.W(ctx, "(*artifacts) get() received multiple host ABIs, taking first one. %v", hostABIs[0])
+	}
+	toolSet := new(ToolSet{Abi: hostABIs[0], Host: new(HostToolSet)})
+	// TODO(baldwinn): move these paths to layout
+	toolSetIdByZipEntry := map[string]*string{
+		"gapid/gapir":                          &toolSet.Host.Gapir,
+		"gapid/gapis":                          &toolSet.Host.Gapis,
+		"gapid/gapit":                          &toolSet.Host.Gapit,
+		"gapid/libVkLayer_VirtualSwapchain.so": &toolSet.Host.VirtualSwapChainLib,
+		"gapid/VirtualSwapchainLayer.json":     &toolSet.Host.VirtualSwapChainJson,
 	}
 	for _, f := range zipFile.File {
 		z := &zipEntry{file: f}
-		for i, p := range toolPatterns {
-			a.matchTools(ctx, z, p, tools[i])
+		if dirs := strings.Split(f.Name, "/"); dirs[1] == "android" {
+			toolSet.Android = append(toolset.Android, &AndroidToolSet{Abi: device.ABIByName(dirs[2]), GapidApk: z.GetID(ctx, a)})
+		} else if id, ok := toolSetIdByZipEntry[f.Name]; ok {
+			id = z.GetID(ctx, a)
 		}
 	}
-	entry := &Artifact{Id: id}
-	for _, t := range tools {
-		if !toolIsEmpty(t) {
-			entry.Tool = append(entry.Tool, t)
-		}
-	}
+	entry := &Artifact{Id: id, Tool: &toolSet}
 	a.ledger.Add(ctx, entry)
 	return entry, nil
 }

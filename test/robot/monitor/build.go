@@ -59,7 +59,7 @@ func (p *Package) FindTools(ctx context.Context, d *Device) *build.ToolSet {
 		return nil
 	}
 	for _, abi := range d.Information.Configuration.ABIs {
-		if tools := p.Package.GetTools(abi); tools != nil {
+		if tools := p.Package.GetHostTools(abi); tools != nil {
 			return tools
 		}
 	}
@@ -68,12 +68,17 @@ func (p *Package) FindTools(ctx context.Context, d *Device) *build.ToolSet {
 
 // FindToolsForAPK returns the best matching tool set for a certain apk on a device,
 // if present in the package.
-func (p *Package) FindToolsForAPK(ctx context.Context, d *Device, apkInfo *apk.Information) *build.ToolSet {
-	toolsABI := d.GetInformation().GetConfiguration().PreferredABI(apkInfo.ABI)
-	if toolsABI == nil {
+func (p *Package) FindToolsForAPK(ctx context.Context, host *Device, target *Device, apkInfo *apk.Information) *build.AndroidToolSet {
+	targetToolsAbi := target.GetInformation().GetConfiguration().PreferredABI(apkInfo.ABI)
+	if targetToolsAbi == nil {
 		return nil
 	}
-	return p.Package.GetTools(toolsABI)
+	for _, abi := range host.Information.Configuration.ABIs {
+		if tools := p.Package.GetTargetTools(abi, targetToolsAbi); tools != nil {
+			return tools
+		}
+	}
+	return nil
 }
 
 func (o *DataOwner) updateTrack(ctx context.Context, track *build.Track) error {

@@ -63,32 +63,42 @@ message Information {
 message Artifact {
   // Id is the id in the stash of the build artifact.
   string id = 1;
-  // Tool is the set of tool entry ids that were inferred from the build on upload.
-  repeated ToolSet tool = 2;
+  // Tool is the set of tools in this artifact
+  ToolSet tool = 2;
 }
 
-// ToolSet is the information for a collction files extracted from a package to perform a specific task.
+// ToolSet is the information for all of the tools extracted from a particular package or artifact.
 message ToolSet {
-  // Abi is the target system this tool set runs on.
+  // Abi is the host system this toolset was built on.
   device.ABI abi = 1;
-  // The stash id of the function interceptor
-  string interceptor = 2;
-  // The stash id of the graphics interceptor
-  string gapii = 3;
-  // The stash id of the replay daemon
-  string gapir = 4;
-  // The stash id of the graphics analysis server
-  string gapis = 5;
-  // The stash id of the graphics analysis command line tool
-  string gapit = 6;
-  // The stash id of the gapid.apk
-  string gapid_apk = 7;
+  // The tools provided from a particular host.
+  HostToolSet host = 2;
+  // The tools provided for each supported android abi.
+  repeated AndroidToolSet android = 3;
+}
+
+// HostToolSet is the information for the tools extracted from a package for a particular host device.
+message HostToolSet {
+  // The stash id of the replay daemon.
+  string gapir = 1;
+  // The stash id of the graphics analysis server.
+  string gapis = 2;
+  // The stash id of the graphics analysis command line tool.
+  string gapit = 3;
   // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
   // library.
-  string virtual_swap_chain_lib = 8;
+  string virtual_swap_chain_lib = 4;
   // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
   // json file.
-  string virtual_swap_chain_json = 9;
+  string virtual_swap_chain_json = 5;
+}
+
+// AndroidToolSet is the information for the tools extracted from a package for a particular android ABI.
+message AndroidToolSet {
+  // The type of host system this tool set runs on.
+  device.ABI abi = 1;
+  // The stash id of the gapid.apk.
+  string gapid_apk = 2;
 }
 
 // Package represents an entry in a build track.

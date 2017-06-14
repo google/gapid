@@ -30,7 +30,7 @@ func (s schedule) getReplayTargetTools(ctx context.Context) *build.ToolSet {
 	if tools == nil {
 		return nil
 	}
-	if tools.Gapir == "" {
+	if tools.Host.Gapir == "" {
 		return nil
 	}
 	return tools
@@ -49,11 +49,11 @@ func (s schedule) doReplay(ctx context.Context, t *monitor.Trace) error {
 	}
 	input := &replay.Input{
 		Trace:                t.Action.Output.Trace,
-		Gapit:                hostTools.Gapit,
-		Gapis:                hostTools.Gapis,
-		Gapir:                targetTools.Gapir,
-		VirtualSwapChainLib:  targetTools.VirtualSwapChainLib,
-		VirtualSwapChainJson: targetTools.VirtualSwapChainJson,
+		Gapit:                hostTools.Host.Gapit,
+		Gapis:                hostTools.Host.Gapis,
+		Gapir:                targetTools.Host.Gapir,
+		VirtualSwapChainLib:  targetTools.Host.VirtualSwapChainLib,
+		VirtualSwapChainJson: targetTools.Host.VirtualSwapChainJson,
 	}
 	action := &replay.Action{
 		Input:  input,
