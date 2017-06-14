@@ -697,6 +697,13 @@ func tokRange(doc *ls.Document, tok parse.Token) ls.Range {
 	return doc.Body().Range(tok.Start, tok.End)
 }
 
+func fragRange(doc *ls.Document, f parse.Fragment) ls.Range {
+	if f == nil {
+		return doc.Body().Range(0, 0)
+	}
+	return tokRange(doc, f.Token())
+}
+
 func (fa *fullAnalysis) documentation(n ast.Node) string {
 	buf := &bytes.Buffer{}
 	cst := fa.mappings.CST(n)

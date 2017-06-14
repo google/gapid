@@ -362,10 +362,10 @@ func (a *analyzer) doAnalysis(
 		doc := docs[path]
 		diags := ls.Diagnostics{}
 		for _, err := range da.errs {
-			diags.Error(tokRange(doc, err.At.Token()), err.Message)
+			diags.Error(fragRange(doc, err.At), err.Message)
 		}
 		for _, issue := range da.issues {
-			diags.Warning(tokRange(doc, issue.At.Token()), issue.String())
+			diags.Warning(fragRange(doc, issue.At), issue.String())
 		}
 		doc.SetDiagnostics(diags)
 		delete(a.diagnostics, path)
