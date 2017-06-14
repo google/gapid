@@ -70,6 +70,9 @@ func (r *ResourceData) ConvertTo(ctx context.Context, f *image.Format) (interfac
 		if err != nil {
 			return nil, err
 		}
+		if data == nil {
+			return nil, nil
+		}
 		return NewResourceData(data), nil
 	}
 	return nil, nil

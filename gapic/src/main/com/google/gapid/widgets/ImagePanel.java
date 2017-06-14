@@ -490,7 +490,7 @@ public class ImagePanel extends Composite {
       float u = (float)imageNormalized.x * 0.5f + 0.5f;
       float v = (float)imageNormalized.y * (settings.flipped ? 0.5f : 0.5f) + 0.5f;
       int sampleY = settings.flipped ? (image.getHeight() - y - 1) : y;
-      return new Pixel(x, y, u, v, image.getData().getPixel(x, sampleY));
+      return new Pixel(x, y, u, v, image.getData().getPixel(x, sampleY, 1));
     }
 
     public void setZoomToFit(boolean zoomToFit) {

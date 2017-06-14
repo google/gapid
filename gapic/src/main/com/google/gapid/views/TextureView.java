@@ -390,10 +390,20 @@ public class TextureView extends Composite
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
           new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_1D =
+          new AdditionalInfo("1D", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_1D_ARRAY =
+          new AdditionalInfo("1D Array", Image.Info.getDefaultInstance(), 0);
       public static final AdditionalInfo NULL_2D =
           new AdditionalInfo("2D", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_2D_ARRAY =
+          new AdditionalInfo("2D Array", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_3D =
+          new AdditionalInfo("3D", Image.Info.getDefaultInstance(), 0);
       public static final AdditionalInfo NULL_CUBEMAP =
           new AdditionalInfo("Cubemap", Image.Info.getDefaultInstance(), 0);
+      public static final AdditionalInfo NULL_CUBEMAP_ARRAY =
+          new AdditionalInfo("Cubemap Array", Image.Info.getDefaultInstance(), 0);
 
       public final Image.Info level0;
       public final int levelCount;
@@ -409,14 +419,35 @@ public class TextureView extends Composite
         API.ResourceData data = value.getResourceData();
         API.Texture texture = data.getTexture();
         switch (texture.getTypeCase()) {
-          case TEXTURE_2D:
+          case TEXTURE_1D: {
+            API.Texture1D t = texture.getTexture1D();
+            return (t.getLevelsCount() == 0) ? NULL_1D :
+                new AdditionalInfo("1D", t.getLevels(0), t.getLevelsCount());
+          }
+          case TEXTURE_1D_ARRAY: {
+            return NULL_1D_ARRAY; // TODO
+          }
+          case TEXTURE_2D: {
             API.Texture2D t = texture.getTexture2D();
             return (t.getLevelsCount() == 0) ? NULL_2D :
                 new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
-          case CUBEMAP:
+          }
+          case TEXTURE_2D_ARRAY: {
+            return NULL_2D_ARRAY; // TODO
+          }
+          case TEXTURE_3D: {
+            API.Texture3D t = texture.getTexture3D();
+            return (t.getLevelsCount() == 0) ? NULL_3D :
+                new AdditionalInfo("3D", t.getLevels(0), t.getLevelsCount());
+          }
+          case CUBEMAP: {
             API.Cubemap c = texture.getCubemap();
             return (c.getLevelsCount() == 0) ? NULL_CUBEMAP :
                 new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
+          }
+          case CUBEMAP_ARRAY: {
+            return NULL_CUBEMAP_ARRAY; // TODO
+          }
           default:
             return NULL;
         }
