@@ -30,6 +30,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
@@ -372,31 +373,39 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       if (viewer.getTree().getSelectionCount() >= 1) {
         parent = (AtomStream.Node)viewer.getTree().getSelection()[0].getData();
       }
-      client.streamSearch(Service.FindRequest.newBuilder()
-          .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
-          .setText(text)
-          .setIsRegex(regex)
-          .setMaxItems(1)
-          .setWrap(true)
-          .build(), this::processSearchResult);
+      Rpc.listen(Futures.transformAsync(search(searchRequest(parent, text, regex)),
+          r -> getTreePath(models.atoms.getData(), Lists.newArrayList(),
+              r.getCommandTreeNode().getIndicesList().iterator())),
+          searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
+        @Override
+        protected TreePath onRpcThread(Result<TreePath> result)
+            throws RpcException, ExecutionException {
+          return result.get();
+        }
+
+        @Override
+        protected void onUiThread(TreePath result) {
+          select(result);
+        }
+      });
     }
   }
 
-  private void processSearchResult(Service.FindResponse found) {
-    ListenableFuture<TreePath> path = getTreePath(models.atoms.getData(), Lists.newArrayList(),
-        found.getCommandTreeNode().getIndicesList().iterator());
-    Rpc.listen(path, searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
-      @Override
-      protected TreePath onRpcThread(Result<TreePath> result)
-          throws RpcException, ExecutionException {
-        return result.get();
-      }
+  private static Service.FindRequest searchRequest(
+      AtomStream.Node parent, String text, boolean regex) {
+    return Service.FindRequest.newBuilder()
+        .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
+        .setText(text)
+        .setIsRegex(regex)
+        .setMaxItems(1)
+        .setWrap(true)
+        .build();
+  }
 
-      @Override
-      protected void onUiThread(TreePath result) {
-        select(result);
-      }
-    });
+  private ListenableFuture<Service.FindResponse> search(Service.FindRequest request) {
+    SettableFuture<Service.FindResponse> result = SettableFuture.create();
+    client.streamSearch(request, result::set);
+    return result;
   }
 
   protected void select(TreePath path) {

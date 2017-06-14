@@ -20,6 +20,7 @@ import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
+import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
 import com.google.common.base.Objects;
@@ -41,7 +42,6 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 import com.google.gapid.util.UiCallback;
-import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -494,18 +494,18 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       if (data != null) {
         // Already loaded.
         return null;
-      } else if (loadFuture != null) {
+      } else if (loadFuture != null && !loadFuture.isCancelled()) {
         return loadFuture;
       }
 
       return loadFuture = Futures.transformAsync(loader.get(), newData ->
-        Widgets.submitIfNotDisposed(shell, () -> {
+        submitIfNotDisposed(shell, () -> {
           data = newData.data;
           command = newData.command;
           children = new Node[(int)data.getNumChildren()];
           loadFuture = null; // Don't hang on to listeners.
           return Node.this;
-      }));
+        }));
     }
 
     @Override
@@ -526,7 +526,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     @Override
     public String toString() {
-      return index + (data == null ? "" : " " + data.getGroup() + data.getCommands().getToList());
+      return parent + "/" + index + (data == null ? "" : " " + data.getGroup() + data.getCommands().getToList());
     }
   }
 
