@@ -222,7 +222,7 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	issues, err := gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr)
+	issues, err := gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr, nil)
 	if assert.With(ctx).ThatError(err).Succeeded() {
 		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
 	}

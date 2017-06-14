@@ -209,10 +209,11 @@ func (a api) Replay(
 func (a api) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
-	mgr *replay.Manager) ([]replay.Issue, error) {
+	mgr *replay.Manager,
+	hints *service.UsageHints) ([]replay.Issue, error) {
 
 	c, r := issuesConfig{}, issuesRequest{}
-	res, err := mgr.Replay(ctx, intent, c, r, a, nil)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err
 	}

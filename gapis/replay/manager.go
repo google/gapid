@@ -29,10 +29,12 @@ import (
 )
 
 const (
-	lowPriority       = 0
-	defaultPriority   = 1
-	highPriorty       = 2
-	defaultBatchDelay = time.Millisecond * 100
+	lowestPriority       = 0
+	lowPriority          = 1
+	defaultPriority      = 2
+	highPriorty          = 3
+	backgroundBatchDelay = time.Millisecond * 500
+	defaultBatchDelay    = time.Millisecond * 100
 )
 
 // Manager is used discover replay devices and to send replay requests to those
@@ -97,6 +99,10 @@ func (m *Manager) Replay(
 		if hints.Primary {
 			b.Priority = highPriorty
 			b.Precondition = nil
+		}
+		if hints.Background {
+			b.Priority = lowestPriority
+			b.Precondition = backgroundBatchDelay
 		}
 	}
 	return s.Schedule(ctx, req, b)
