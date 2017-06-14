@@ -98,14 +98,11 @@ func ReadInt(r Reader, bits int32) int64 {
 	}
 }
 
-// ConsumeBytes reads and throws away a number of bytes from r,
-// returns the number of bytes it consumed
+// ConsumeBytes reads and throws away a number of bytes from r, returning the
+// number of bytes it consumed.
 func ConsumeBytes(r Reader, bytes uint64) uint64 {
 	for i := uint64(0); i < bytes; i++ {
 		r.Uint8()
-		if err := r.Error(); err != nil {
-			panic(fmt.Errorf("ConsumeBytes(%v): %v", bytes, err))
-		}
 	}
 	return bytes
 }
