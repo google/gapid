@@ -16,6 +16,7 @@
 package com.google.gapid.util;
 
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.rpclib.rpccore.Rpc;
@@ -46,6 +47,7 @@ public abstract class UiCallback<T, U> implements Rpc.Callback<T> {
       U value = onRpcThread(result);
       scheduleIfNotDisposed(widget, () -> onUiThread(value));
     } catch (CancellationException cancel) {
+      logger.log(FINE, "RPC future was cancelled: " + cancel.getMessage());
       // Not an error, don't log.
     } catch (Exception e) {
       logger.log(SEVERE, "error in " + getClass().getName() + ".onRpcThread", e);
