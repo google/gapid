@@ -154,7 +154,7 @@ func (e *gapicEnv) run(ctx context.Context, options RunOptions, args ...string) 
 		env.Set("SWT_GTK3", "0").
 			Set("LIBOVERLAY_SCROLLBAR", "0")
 	case "osx":
-		jargs = []string{"-XstartOnFirstThread"}
+		jargs = append(jargs, "-XstartOnFirstThread")
 	}
 	jargs = append(jargs, "-jar", jar.System(), "-gapid", e.cfg.pkg().System())
 	if options.WD.IsEmpty() {
