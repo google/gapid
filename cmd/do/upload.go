@@ -30,9 +30,11 @@ func getPlatform() string {
 
 func doUpload(ctx context.Context, cfg Config, options UploadOptions, args ...string) {
 	pkg := cfg.out().Join(fmt.Sprintf("%s-%s.zip", "gapid", getPlatform()))
-	if !pkg.Exists() {
-		panic(fmt.Errorf("Package %s does not exist", pkg.String()))
+	robotArgs := append([]string{}, args...)
+	if pkg.Exists() {
+		robotArgs = append([]string{"upload", "build", pkg.String()}, robotArgs...)
+	} else {
+		robotArgs = append([]string{"upload", "package", pkg.String()}, robotArgs...)
 	}
-	robotArgs := append([]string{"upload", "build", pkg.String()}, args...)
 	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "robot", robotArgs...)
 }

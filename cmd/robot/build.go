@@ -15,18 +15,24 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
+	"errors"
 	"flag"
+	"io"
 	"os"
 	"os/user"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/git"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/search/script"
 	"google.golang.org/grpc"
@@ -38,6 +44,12 @@ func init() {
 		ShortHelp:  "Upload a build to the server",
 		ShortUsage: "<filenames>",
 		Action:     &buildUploadVerb{ServerAddress: defaultMasterAddress},
+	})
+	uploadVerb.Add(&app.Verb{
+		Name:       "package",
+		ShortHelp:  "Package and upload a build to the server",
+		ShortUsage: "<filename>",
+		Action:     &packageUploadVerb{buildUploadVerb: buildUploadVerb{ServerAddress: defaultMasterAddress}},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
@@ -152,6 +164,102 @@ func (v *buildUploadVerb) process(ctx context.Context, id string) error {
 		log.I(ctx, "New build set %s", id)
 	}
 	return nil
+}
+
+func zipFile(zip *zip.Writer, zipVirtualPath string, filePath file.Path) error {
+	fileReader, err := os.Open(filePath.String())
+	if err != nil {
+		return err
+	}
+	defer fileReader.Close()
+
+	zipWriter, err := zip.Create(zipVirtualPath)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(zipWriter, fileReader)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
+	outputZipFile, err := os.Create(artifactFile.String())
+	if err != nil {
+		return err
+	}
+	artifacts := zip.NewWriter(outputZipFile)
+	defer artifacts.Close()
+
+	basePath := "gapid/"
+	bindLayoutVirtualSwapChainFunc := func(layoutFunc func(context.Context, layout.LibraryType) (file.Path, error)) func(context.Context) (file.Path, error) {
+		return func(ctx context.Context) (file.Path, error) {
+			return layoutFunc(ctx, layout.LibVirtualSwapChain)
+		}
+	}
+	toolSetPathFunc := map[string]func(context.Context) (file.Path, error){
+		"gapis": layout.Gapis,
+		"gapit": layout.Gapit,
+		"gapir": layout.Gapir,
+		"libVkLayer_VirtualSwapchain.so": bindLayoutVirtualSwapChainFunc(layout.Library),
+		"VirtualSwapchainLayer.json":     bindLayoutVirtualSwapChainFunc(layout.Json),
+	}
+	for toolName, pathFunc := range toolSetPathFunc {
+		path, err := pathFunc(ctx)
+		if err != nil {
+			return log.Errf(ctx, err, "Couldn't get layout path for tool %s", toolName)
+		}
+		if err := zipFile(artifacts, basePath+toolName, path); err != nil {
+			return log.Errf(ctx, err, "Failed to Zip the tool %s at path %s", toolName, path)
+		}
+	}
+
+	androidBasePath := "gapid/android/"
+	// TODO(baldwinn): these hardcoded architectures come from core/app/layout/layout.go, move this to a better place
+	for _, arch := range []device.Architecture{device.ARMv7a, device.ARMv8a, device.X86_64} {
+		gapidApkPath, err := layout.GapidApk(ctx, &device.ABI{Architecture: arch})
+		if err != nil || !gapidApkPath.Exists() {
+			continue
+		}
+		if err := zipFile(artifacts, androidBasePath+arch.String()+"/gapid.apk", gapidApkPath); err != nil {
+			return log.Errf(ctx, err, "Failed to Zip the gapid.apk for arch %s at path %s", arch.String(), gapidApkPath)
+		}
+	}
+
+	return nil
+}
+
+type packageUploadVerb struct {
+	buildUploadVerb
+	ArtifactPath file.Path `help:"The file path where the zipped artifact will be stored"`
+}
+
+func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	if v.ArtifactPath.IsEmpty() {
+		if len(flags.Args()) != 1 {
+			err := errors.New("Missing expeced argument")
+			return log.Err(ctx, err, "`do robot upload` package expects a single filepath as argument")
+		}
+		log.I(ctx, "Running packageUploadVerb, artifact arg is %s", flags.Args()[0])
+		v.ArtifactPath = file.Abs(flags.Args()[0])
+		log.I(ctx, "artifact path is %s", v.ArtifactPath.String())
+	}
+
+	return upload(ctx, flags, v.ServerAddress, v)
+}
+
+func (v *packageUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+	if err := zipArtifacts(ctx, v.ArtifactPath); err != nil {
+		return err
+	}
+	return v.buildUploadVerb.prepare(ctx, conn)
+}
+
+func (v *packageUploadVerb) process(ctx context.Context, id string) error {
+	return v.buildUploadVerb.process(ctx, id)
 }
 
 type artifactSearchVerb struct {

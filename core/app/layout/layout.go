@@ -70,6 +70,8 @@ func withPlatformSuffix(lib string) string {
 	switch runtime.GOOS {
 	case "windows":
 		return lib + ".dll"
+	case "darwin":
+		return lib + ".dylib"
 	default:
 		return lib + ".so"
 	}

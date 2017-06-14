@@ -41,7 +41,9 @@ func upload(ctx context.Context, flags flag.FlagSet, serverAddress string, u upl
 		if err != nil {
 			return err
 		}
-		u.prepare(ctx, conn)
+		if err := u.prepare(ctx, conn); err != nil {
+			return err
+		}
 		for _, partial := range flags.Args() {
 			id, err := client.UploadFile(ctx, file.Abs(partial))
 			if err != nil {
