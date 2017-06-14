@@ -536,6 +536,12 @@ message UsageHints {
   // Primary indicates that the request has been made for the primary view.
   // Primary requests are prioritized and are low-latency.
   bool primary = 2;
+
+  // Background indicates that this request is non-critical, non-urgent and
+  // should process in the background. All other non-background processes should
+  // be considered more urgent. Background requests may be interrupted for
+  // non-background requests.
+  bool background = 3;
 }
 
 // RenderSettings contains settings and flags to be used in replaying and

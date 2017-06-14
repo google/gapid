@@ -43,7 +43,8 @@ type QueryIssues interface {
 	QueryIssues(
 		ctx context.Context,
 		intent Intent,
-		mgr *Manager) ([]Issue, error)
+		mgr *Manager,
+		hints *service.UsageHints) ([]Issue, error)
 }
 
 // QueryFramebufferAttachment is the interface implemented by types that can
