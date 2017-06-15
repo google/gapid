@@ -15,9 +15,9 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.rpc.UiErrorCallback.error;
+import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Paths.stateTree;
-import static com.google.gapid.util.UiErrorCallback.error;
-import static com.google.gapid.util.UiErrorCallback.success;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.WARNING;
 
@@ -26,17 +26,17 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
-import com.google.gapid.util.UiCallback;
-import com.google.gapid.util.UiErrorCallback.ResultOrError;
 
 import org.eclipse.swt.widgets.Shell;
 

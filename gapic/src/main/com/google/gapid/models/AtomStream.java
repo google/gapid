@@ -32,16 +32,16 @@ import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
-import com.google.gapid.util.UiCallback;
 
 import org.eclipse.swt.widgets.Shell;
 

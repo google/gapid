@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.util;
+package com.google.gapid.rpc;
 
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.RpcException;
 
 import org.eclipse.swt.widgets.Widget;
 

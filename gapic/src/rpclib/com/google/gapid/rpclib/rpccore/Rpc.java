@@ -18,6 +18,7 @@ package com.google.gapid.rpclib.rpccore;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Uninterruptibles;
+import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpclib.futures.FutureController;
 
 import java.util.concurrent.CancellationException;

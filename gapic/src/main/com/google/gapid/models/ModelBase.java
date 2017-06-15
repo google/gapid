@@ -15,22 +15,22 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.UiErrorCallback.error;
-import static com.google.gapid.util.UiErrorCallback.success;
+import static com.google.gapid.rpc.UiErrorCallback.error;
+import static com.google.gapid.rpc.UiErrorCallback.success;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiErrorCallback;
+import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.ObjectStore;
-import com.google.gapid.util.UiErrorCallback;
-import com.google.gapid.util.UiErrorCallback.ResultOrError;
 
 import org.eclipse.swt.widgets.Shell;
 
