@@ -86,7 +86,6 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 	javaOut := e.out.Join("gapic", e.platform)
 	baseJar := e.out.Join("gapic-base-" + e.platform + ".jar")
 	if e.needsBuilding(javaSrc.Join("main"), baseJar) ||
-		e.needsBuilding(javaSrc.Join("rpclib"), baseJar) ||
 		e.needsBuilding(javaSrc.Join("service"), baseJar) ||
 		e.needsBuilding(javaSrc.Join("platform", e.platform), baseJar) {
 		fmt.Println("Building gapic for", e.platform, "...")
@@ -94,7 +93,6 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 		srcTxt := e.writeFile(e.out.Join("source-"+e.platform+".txt"), func(f *os.File) {
 			nlWriter := func(p file.Path) { f.WriteString(p.System() + "\n") }
 			e.findAllJavaFiles(javaSrc.Join("main"), nlWriter)
-			e.findAllJavaFiles(javaSrc.Join("rpclib"), nlWriter)
 			e.findAllJavaFiles(javaSrc.Join("service"), nlWriter)
 			e.findAllJavaFiles(javaSrc.Join("platform", e.platform), nlWriter)
 		})

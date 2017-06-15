@@ -19,8 +19,6 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 
-import com.google.gapid.rpclib.rpccore.Rpc;
-
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.concurrent.CancellationException;
@@ -28,7 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
- * A {@link com.google.gapid.rpclib.rpccore.Rpc.Callback} that will execute part of the callback on
+ * A {@link com.google.gapid.rpc.Rpc.Callback} that will execute part of the callback on
  * the UI thread.
  */
 public abstract class UiCallback<T, U> implements Rpc.Callback<T> {

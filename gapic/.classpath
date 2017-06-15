@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src/main"/>
-	<classpathentry kind="src" path="src/rpclib"/>
 	<classpathentry kind="src" path="src/service"/>
 	<classpathentry kind="src" path="platform_src"/>
 	<classpathentry kind="src" path="res"/>

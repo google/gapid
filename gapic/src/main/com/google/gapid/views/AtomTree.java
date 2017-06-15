@@ -47,7 +47,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpclib.rpccore.Rpc.Result;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
