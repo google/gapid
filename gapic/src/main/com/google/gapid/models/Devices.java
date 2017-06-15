@@ -24,16 +24,16 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Paths;
-import com.google.gapid.util.UiErrorCallback;
 
 import org.eclipse.swt.widgets.Shell;
 

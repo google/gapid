@@ -29,13 +29,13 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Pods;
 import com.google.gapid.util.PrefixTree;
-import com.google.gapid.util.UiCallback;
 import com.google.gapid.util.Values;
 import com.google.gapid.views.Formatter;
 

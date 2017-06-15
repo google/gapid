@@ -33,16 +33,16 @@ import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.image.MultiLevelImage;
 import com.google.gapid.rpclib.futures.FutureController;
 import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
-import com.google.gapid.rpclib.rpccore.RpcException;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
-import com.google.gapid.util.UiErrorCallback;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;

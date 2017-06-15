@@ -39,7 +39,7 @@ import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
-import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.rpc.RpcException;
 import com.google.gapid.util.Paths;
 import com.google.protobuf.ByteString;
 

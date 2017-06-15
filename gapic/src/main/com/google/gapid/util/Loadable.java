@@ -15,7 +15,7 @@
  */
 package com.google.gapid.util;
 
-import com.google.gapid.rpclib.rpccore.RpcException;
+import com.google.gapid.rpc.RpcException;
 
 /**
  * Widget mixin for widgets that show loadable data. Typical implementations should show a loading

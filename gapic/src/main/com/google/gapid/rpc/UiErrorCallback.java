@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.util;
+package com.google.gapid.rpc;
 
 import org.eclipse.swt.widgets.Widget;
 
