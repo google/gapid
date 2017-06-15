@@ -395,23 +395,56 @@ func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *b
 	return nil
 }
 
+// Remap uniform block indices
+func bindUniformBlocks(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
+	pi := FindProgramInfo(a.Extras())
+	if pi != nil && b != nil {
+		for i, ub := range pi.ActiveUniformBlocks {
+			// Query replay-time uniform block index so that the remapping is established
+			a := NewGlGetUniformBlockIndex(pid, ub.Name, i)
+			if err := a.Mutate(ctx, s, b); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (a *GlProgramBinaryOES) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}
-	return a.mutate(ctx, s, b)
+	if err := a.mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *GlLinkProgram) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}
-	return a.mutate(ctx, s, b)
+	if err := a.mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *GlProgramBinary) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
 		return err
 	}
-	return a.mutate(ctx, s, b)
+	if err := a.mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
+		return err
+	}
+	return nil
 }
