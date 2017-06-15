@@ -33,11 +33,10 @@ import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
-import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.image.MultiLevelImage;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
@@ -87,7 +86,7 @@ public class ImagePanel extends Composite {
   protected static final int ZOOM_AMOUNT = 5;
   private static final int CHANNEL_RED = 0, CHANNEL_GREEN = 1, CHANNEL_BLUE = 2, CHANNEL_ALPHA = 3;
 
-  private final FutureController imageRequestController = new SingleInFlight();
+  private final SingleInFlight imageRequestController = new SingleInFlight();
   protected final LoadablePanel<ImageComponent> loading;
   private final StatusBar status;
   protected final ImageComponent imageComponent;
@@ -272,7 +271,7 @@ public class ImagePanel extends Composite {
 
     index = Math.min(image.getLevelCount() - 1, index);
     loading.startLoading();
-    Rpc.listen(image.getLevel(index), imageRequestController,
+    imageRequestController.start().listen(image.getLevel(index),
         new UiErrorCallback<Image, Image, Loadable.Message>(this, LOG) {
       @Override
       protected ResultOrError<Image, Loadable.Message> onRpcThread(Rpc.Result<Image> result)

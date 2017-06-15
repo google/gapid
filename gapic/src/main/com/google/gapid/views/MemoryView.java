@@ -41,10 +41,8 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.BigPoint;
@@ -110,7 +108,7 @@ public class MemoryView extends Composite
   protected final LoadablePanel<InfiniteScrolledComposite> loading;
   protected final InfiniteScrolledComposite memoryScroll;
   private final State uiState = new State();
-  private final FutureController rpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   private MemoryDataModel memoryData;
 
   public MemoryView(Composite parent, Client client, Models models, Widgets widgets) {
@@ -190,7 +188,7 @@ public class MemoryView extends Composite
 
   @Override
   public void onAtomsSelected(AtomIndex range) {
-    Rpc.listen(models.atoms.getObservations(range), rpcController,
+    rpcController.start().listen(models.atoms.getObservations(range),
         new UiCallback<Observation[], Observation[]>(this, LOG) {
       @Override
       protected Observation[] onRpcThread(Result<Observation[]> result)

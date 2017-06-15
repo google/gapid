@@ -25,10 +25,8 @@ import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -48,7 +46,7 @@ public class Devices {
   protected static final Logger LOG = Logger.getLogger(Devices.class.getName());
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-  private final FutureController rpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   private final Shell shell;
   private final Client client;
   private Path.Device replayDevice;
@@ -78,7 +76,7 @@ public class Devices {
   }
 
   protected void loadReplayDevice(Path.Capture capturePath) {
-    Rpc.listen(client.getDevicesForReplay(capturePath), rpcController,
+    rpcController.start().listen(client.getDevicesForReplay(capturePath),
         new UiErrorCallback<List<Path.Device>, Path.Device, Void>(shell, LOG) {
       @Override
       protected ResultOrError<Path.Device, Void> onRpcThread(Result<List<Path.Device>> result) {
@@ -117,14 +115,13 @@ public class Devices {
   }
 
   public void loadDevices() {
-    Rpc.listen(Futures.transformAsync(client.getDevices(), paths -> {
+    rpcController.start().listen(Futures.transformAsync(client.getDevices(), paths -> {
       List<ListenableFuture<Service.Value>> results = Lists.newArrayList();
       for (Path.Device path : paths) {
         results.add(client.get(Paths.device(path)));
       }
       return Futures.allAsList(results);
-    }), rpcController,
-        new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
+    }), new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
       @Override
       protected ResultOrError<List<Device.Instance>, Void> onRpcThread(
           Result<List<Service.Value>> result) throws RpcException, ExecutionException {

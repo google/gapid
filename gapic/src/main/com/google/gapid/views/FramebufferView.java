@@ -38,9 +38,8 @@ import com.google.gapid.proto.service.gfxapi.GfxAPI.FramebufferAttachment;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.path.Path.ImageInfo;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
@@ -88,7 +87,7 @@ public class FramebufferView extends Composite
 
   private final Client client;
   private final Models models;
-  private final FutureController rpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   protected final ImagePanel imagePanel;
   protected final Loadable loading;
   private RenderSettings renderSettings = RENDER_SHADED;
@@ -220,7 +219,8 @@ public class FramebufferView extends Composite
       loading.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
       loading.startLoading();
-      Rpc.listen(FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())), rpcController,
+      rpcController.start().listen(
+          FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())),
           new UiErrorCallback<FetchedImage, MultiLevelImage, Loadable.Message>(this, LOG) {
         @Override
         protected ResultOrError<MultiLevelImage, Loadable.Message> onRpcThread(

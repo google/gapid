@@ -51,9 +51,8 @@ import com.google.gapid.proto.service.gfxapi.GfxAPI.Shader;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Uniform;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
@@ -105,8 +104,8 @@ public class ShaderView extends Composite
   private final Client client;
   protected final Models models;
   private final Widgets widgets;
-  private final FutureController shaderRpcController = new SingleInFlight();
-  private final FutureController programRpcController = new SingleInFlight();
+  private final SingleInFlight shaderRpcController = new SingleInFlight();
+  private final SingleInFlight programRpcController = new SingleInFlight();
   private final LoadablePanel<Composite> loading;
   private boolean uiBuiltWithPrograms;
 
@@ -179,7 +178,7 @@ public class ShaderView extends Composite
   }
 
   private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
-    Rpc.listen(client.get(data.getPath(models.atoms)), shaderRpcController,
+    shaderRpcController.start().listen(client.get(data.getPath(models.atoms)),
         new UiCallback<Service.Value, ShaderPanel.Source>(this, LOG) {
       @Override
       protected ShaderPanel.Source onRpcThread(Result<Service.Value> result)
@@ -198,7 +197,7 @@ public class ShaderView extends Composite
 
   private void getProgramSource(
       Data data, Consumer<Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
-    Rpc.listen(client.get(data.getPath(models.atoms)), programRpcController,
+    programRpcController.start().listen(client.get(data.getPath(models.atoms)),
         new UiCallback<Service.Value, ShaderPanel.Source[]>(this, LOG) {
       @Override
       protected ShaderPanel.Source[] onRpcThread(Result<Service.Value> result)
