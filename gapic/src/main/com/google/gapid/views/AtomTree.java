@@ -45,10 +45,8 @@ import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -115,7 +113,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   private final TreeViewer viewer;
   private final ImageProvider imageProvider;
   private final SelectionHandler<Tree> selectionHandler;
-  private final FutureController searchController = new SingleInFlight();
+  private final SingleInFlight searchController = new SingleInFlight();
 
   public AtomTree(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -373,10 +371,11 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       if (viewer.getTree().getSelectionCount() >= 1) {
         parent = (AtomStream.Node)viewer.getTree().getSelection()[0].getData();
       }
-      Rpc.listen(Futures.transformAsync(search(searchRequest(parent, text, regex)),
-          r -> getTreePath(models.atoms.getData(), Lists.newArrayList(),
-              r.getCommandTreeNode().getIndicesList().iterator())),
-          searchController, new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
+      searchController.start().listen(
+          Futures.transformAsync(search(searchRequest(parent, text, regex)),
+              r -> getTreePath(models.atoms.getData(), Lists.newArrayList(),
+                  r.getCommandTreeNode().getIndicesList().iterator())),
+          new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
         @Override
         protected TreePath onRpcThread(Result<TreePath> result)
             throws RpcException, ExecutionException {

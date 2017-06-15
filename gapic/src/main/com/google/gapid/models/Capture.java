@@ -26,7 +26,6 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
-import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -145,7 +144,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
     settings.addToRecent(canonicalPath);
 
-    Rpc.listen(client.exportCapture(getData()), rpcController,
+    rpcController.start().listen(client.exportCapture(getData()),
         new UiErrorCallback<byte[], Boolean, Exception>(shell, LOG) {
       @Override
       protected ResultOrError<Boolean, Exception> onRpcThread(Result<byte[]> result) throws RpcException, ExecutionException {

@@ -19,12 +19,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpclib.futures.FutureController;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -77,27 +75,9 @@ public class Rpc {
      * @param callback the {@link Callback} to handle {@link Callback#onStart} and {@link Callback#onFinish} events.
      */
     public static <V> void listen(ListenableFuture<V> future, Callback<V> callback) {
-        listen(future, FutureController.NULL_CONTROLLER, callback);
-    }
-
-    /**
-     * Extension of {@link #listen(ListenableFuture, Callback)} that also takes a {@link FutureController}
-     * for controlling the {@link Future}s.
-     *
-     * @param <V>        the RPC result type.
-     * @param future     the {@link ListenableFuture} returned by the invoking the RPC call.
-     * @param controller the {@link FutureController} used to manage the RPC futures.
-     * @param callback   the {@link Callback} to handle {@link Callback#onStart} and {@link Callback#onFinish} events.
-     */
-    public static <V> void listen(
-      final ListenableFuture<V> future, final FutureController controller, final Callback<V> callback) {
-        controller.onStart(future);
         future.addListener(new Runnable() {
             @Override
             public void run() {
-                if (!controller.onStop(future)) {
-                    return;
-                }
                 callback.onFinish(new Result<V>(future));
             }
         }, EXECUTOR);

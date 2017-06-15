@@ -45,9 +45,8 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
@@ -100,7 +99,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
   private final Client client;
   private final Models models;
-  private final FutureController rpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   protected final LoadablePanel<GlComposite> loading;
   private final Geometry geometry = new Geometry();
   private final IsoSurfaceCameraModel camera =
@@ -256,7 +255,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
         meshAfter(atom, Path.MeshOptions.getDefaultInstance(), POS_NORM_XYZ_F32));
     ListenableFuture<Model> facetedFuture = fetchModel(meshAfter(
         atom, Path.MeshOptions.newBuilder().setFaceted(true).build(), POS_NORM_XYZ_F32));
-    Rpc.listen(Futures.successfulAsList(originalFuture, facetedFuture), rpcController,
+    rpcController.start().listen(Futures.successfulAsList(originalFuture, facetedFuture),
         new UiErrorCallback<List<Model>, List<Model>, String>(this, LOG) {
       @Override
       protected ResultOrError<List<Model>, String> onRpcThread(Rpc.Result<List<Model>> result)

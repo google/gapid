@@ -45,10 +45,9 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
 import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
@@ -99,7 +98,7 @@ public class TextureView extends Composite
 
   private final Client client;
   private final Models models;
-  private final FutureController rpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   private final GotoAction gotoAction;
   private final TableViewer textureTable;
   private final ImageProvider imageProvider;
@@ -258,7 +257,7 @@ public class TextureView extends Composite
     } else {
       loading.startLoading();
       Data data = (Data)textureTable.getElementAt(selection);
-      Rpc.listen(FetchedImage.load(client, data.path.getResourceData()), rpcController,
+      rpcController.start().listen(FetchedImage.load(client, data.path.getResourceData()),
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
         @Override
         protected ResultOrError<FetchedImage, String> onRpcThread(Result<FetchedImage> result)

@@ -22,11 +22,9 @@ import static java.util.logging.Level.SEVERE;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
-import com.google.gapid.rpclib.futures.FutureController;
-import com.google.gapid.rpclib.futures.SingleInFlight;
-import com.google.gapid.rpclib.rpccore.Rpc;
 import com.google.gapid.rpclib.rpccore.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -50,7 +48,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
   protected final Shell shell;
   protected final Client client;
   private final ObjectStore<S> sourceStore = ObjectStore.create();
-  protected final FutureController rpcController = new SingleInFlight();
+  protected final SingleInFlight rpcController = new SingleInFlight();
   protected final Events.ListenerCollection<L> listeners;
   private T data;
 
@@ -65,7 +63,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
     if (sourceStore.updateIfNotNull(source) || force) {
       data = null;
       fireLoadStartEvent();
-      Rpc.listen(doLoad(source), rpcController, new UiErrorCallback<T, T, E>(shell, log) {
+      rpcController.start().listen(doLoad(source), new UiErrorCallback<T, T, E>(shell, log) {
         @Override
         protected ResultOrError<T, E> onRpcThread(Result<T> result) {
           return processResult(result);
