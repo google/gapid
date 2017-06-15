@@ -662,6 +662,7 @@ enum EventKind {
     PushUserMarker = 6;
     PopUserMarker = 7;
     FramebufferObservation = 8;
+    AllCommands = 9;
 }
 
 // StateTree represents a state tree hierarchy.
