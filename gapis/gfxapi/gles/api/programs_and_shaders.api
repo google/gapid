@@ -30,19 +30,21 @@ class Shader {
 @internal
 @resource
 class Program {
-  @unused ProgramId                       ID
-  map!(GLenum, ref!Shader)                Shaders
-  @unused GLboolean                       LinkStatus
-  @unused string                          InfoLog
-  @unused bool                            Precompiled
-  bool                                    DeleteStatus
-  @unused u8[]                            Binary
-  @unused map!(string, AttributeLocation) AttributeBindings
-  map!(AttributeIndex, ActiveAttribute)   ActiveAttributes  // Program introspection.
-  map!(UniformIndex, ActiveUniform)       ActiveUniforms    // Program introspection.
-  map!(UniformLocation, Uniform)          Uniforms          // Values are stored separately.
-  @unused string                          Label
-  s32                                     UseCount
+  @unused ProgramId                           ID
+  map!(GLenum, ref!Shader)                    Shaders
+  @unused GLboolean                           LinkStatus
+  @unused string                              InfoLog
+  @unused bool                                Precompiled
+  bool                                        DeleteStatus
+  @unused u8[]                                Binary
+  @unused map!(string, AttributeLocation)     AttributeBindings
+  map!(AttributeIndex, ActiveAttribute)       ActiveAttributes    // Program introspection.
+  map!(UniformIndex, ActiveUniform)           ActiveUniforms      // Program introspection.
+  ActiveUniformBlock                          DefaultUniformBlock // Program introspection.
+  map!(UniformBlockIndex, ActiveUniformBlock) ActiveUniformBlocks // Program introspection.
+  map!(UniformLocation, Uniform)              Uniforms            // Values are stored separately.
+  @unused string                              Label
+  s32                                         UseCount
 }
 
 @internal
@@ -56,11 +58,28 @@ class ActiveAttribute {
 
 @internal
 @serialize
+class ActiveUniformBlock {
+  @unused string                    Name
+  GLint                             Binding
+  GLint                             DataSize
+  bool                              ReferencedByVertexShader
+  bool                              ReferencedByFragmentShader
+  map!(UniformIndex, ActiveUniform) ActiveUniforms
+}
+
+@internal
+@serialize
 class ActiveUniform {
-  @unused string          Name
-  @unused GLenum          Type
-  @unused GLint           ArraySize
-  @unused UniformLocation Location  // This is different to the index. -1 if not used.
+  @unused string                    Name
+  @unused GLenum                    Type
+  @unused GLint                     ArraySize
+  @unused UniformLocation           Location = -1 // This is different to the index. -1 if not used.
+  @unused map!(u32,UniformLocation) Locations // Location of each array element (can be non-consecutive).
+  @unused UniformBlockIndex         BlockIndex = 0xFFFFFFFF
+  @unused GLint                     Offset = -1
+  @unused GLint                     ArrayStride = -1
+  @unused GLint                     MatrixStride = -1
+  @unused GLint                     IsRowMajor = 0
 }
 
 @internal
@@ -584,11 +603,11 @@ cmd void glGetActiveUniform(ProgramId    program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetActiveUniformBlockName.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetActiveUniformBlockName.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetActiveUniformBlockName.xhtml", Version.GLES32)
-cmd void glGetActiveUniformBlockName(ProgramId      program,
-                                     UniformBlockId uniform_block_index,
-                                     GLsizei        buffer_size,
-                                     GLsizei*       buffer_bytes_written,
-                                     GLchar*        name) {
+cmd void glGetActiveUniformBlockName(ProgramId         program,
+                                     UniformBlockIndex uniform_block_index,
+                                     GLsizei           buffer_size,
+                                     GLsizei*          buffer_bytes_written,
+                                     GLchar*           name) {
 
   writeString(buffer_size, buffer_bytes_written, name)
 }
@@ -597,10 +616,10 @@ cmd void glGetActiveUniformBlockName(ProgramId      program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetActiveUniformBlockiv.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetActiveUniformBlockiv.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetActiveUniformBlockiv.xhtml", Version.GLES32)
-cmd void glGetActiveUniformBlockiv(ProgramId      program,
-                                   UniformBlockId uniform_block_index,
-                                   GLenum         parameter_name,
-                                   GLint*         parameters) {
+cmd void glGetActiveUniformBlockiv(ProgramId         program,
+                                   UniformBlockIndex uniform_block_index,
+                                   GLenum            parameter_name,
+                                   GLint*            parameters) {
   switch (parameter_name) {
     case GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
         GL_UNIFORM_BLOCK_BINDING, GL_UNIFORM_BLOCK_DATA_SIZE, GL_UNIFORM_BLOCK_NAME_LENGTH,
@@ -1004,7 +1023,7 @@ cmd void glGetShaderiv(ShaderId shader, GLenum parameter, GLint* value) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetUniformBlockIndex.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetUniformBlockIndex.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetUniformBlockIndex.xhtml", Version.GLES32)
-cmd UniformBlockId glGetUniformBlockIndex(ProgramId program, string uniformBlockName) {
+cmd UniformBlockIndex glGetUniformBlockIndex(ProgramId program, string uniformBlockName) {
   // TODO
   return ?
 }
@@ -1152,7 +1171,8 @@ cmd GLboolean glIsShader(ShaderId shader) {
 cmd void glLinkProgram(ProgramId program) {
   _ = GetProgramOrError(program)
 
-  ApplyProgramInfoExtra(program, GetProgramInfoExtra(program))
+  ctx := GetContext()
+  ApplyProgramInfoExtra(program, GetProgramInfoExtra(ctx, program))
 }
 
 @if(Version.GLES31)
@@ -1247,7 +1267,7 @@ sub void ProgramBinary(ProgramId program, GLenum binaryFormat, const void* binar
     case GL_Z400_BINARY_AMD: {
       p.Binary = clone(as!u8[](binary[0:length]))
       p.Precompiled = true
-      ApplyProgramInfoExtra(program, GetProgramInfoExtra(program))
+      ApplyProgramInfoExtra(program, GetProgramInfoExtra(ctx, program))
     }
     default: {
       glErrorInvalidEnum(binaryFormat)
@@ -2129,9 +2149,9 @@ cmd void glUniform4uiv(UniformLocation location, GLsizei count, const GLuint* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glUniformBlockBinding.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniformBlockBinding.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniformBlockBinding.xhtml", Version.GLES32)
-cmd void glUniformBlockBinding(ProgramId      program,
-                               UniformBlockId uniform_block_index,
-                               GLuint         uniform_block_binding) {
+cmd void glUniformBlockBinding(ProgramId         program,
+                               UniformBlockIndex uniform_block_index,
+                               GLuint            uniform_block_binding) {
 
   // TODO
 }

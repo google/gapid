@@ -303,7 +303,7 @@ type GLuint               AttributeIndex
 type GLuint               TextureUnitId
 @replay_remap type GLuint SamplerId
 @replay_remap type GLuint PipelineId
-@replay_remap type GLuint UniformBlockId
+@replay_remap type GLuint UniformBlockIndex
 @replay_remap type GLuint TransformFeedbackId
 @replay_remap type GLuint SrcImageId
 @replay_remap type GLuint DstImageId
