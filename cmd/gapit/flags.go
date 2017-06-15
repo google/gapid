@@ -110,11 +110,12 @@ type (
 			Width  int `help:"maximum video width"`
 			Height int `help:"maximum video height"`
 		}
-		Type   VideoType `help:"type of output to produce"`
-		Text   string    `help:"summary prefix (use '║' for aligned columns, '¶' for new line)"`
-		Frames struct {
+		Type     VideoType `help:"type of output to produce"`
+		Text     string    `help:"summary prefix (use '║' for aligned columns, '¶' for new line)"`
+		Commands bool      `help:"Treat every command as its own frame"`
+		Frames   struct {
 			Start int `help:"frame to start capture from"`
-			End   int `help:"frame to end capture on: -1 for last frame"`
+			Count int `help:"number of frames after Start to capture: -1 for all frames"`
 		}
 	}
 	DumpShadersFlags struct {

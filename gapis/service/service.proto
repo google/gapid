@@ -662,6 +662,9 @@ enum EventKind {
     PushUserMarker = 6;
     PopUserMarker = 7;
     FramebufferObservation = 8;
+    // Note you probably only want to use AllCommands for debugging/testing
+    // purposes.
+    AllCommands = 9;
 }
 
 // StateTree represents a state tree hierarchy.
