@@ -23,6 +23,8 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+type CustomState struct{}
+
 func GetContext(s *gfxapi.State) *Context {
 	return GetState(s).getContext()
 }
@@ -103,4 +105,8 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 		return drawCallMesh(ctx, dc, p)
 	}
 	return nil, nil
+}
+
+func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
+	return nil
 }

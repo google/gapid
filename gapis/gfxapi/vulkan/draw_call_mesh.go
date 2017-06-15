@@ -40,7 +40,17 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 		return nil, err
 	}
 
-	lastDrawInfo := getStateObject(s).LastDrawInfo
+	c := getStateObject(s)
+
+	lastQueue := c.LastBoundQueue
+	if lastQueue == nil {
+		return nil, fmt.Errorf("No previous queue submission")
+	}
+
+	lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+	if !ok {
+		return nil, fmt.Errorf("There have been no previous draws")
+	}
 
 	// Get the draw primitive from the currente graphics pipeline
 	if lastDrawInfo.GraphicsPipeline == nil {
@@ -192,9 +202,19 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 		return nil, fmt.Errorf("Number of vertices must be greater than 0.")
 	}
 
+	c := getStateObject(s)
+
+	lastQueue := c.LastBoundQueue
+	if lastQueue == nil {
+		return nil, fmt.Errorf("No previous queue submission")
+	}
+
+	lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+	if !ok {
+		return nil, fmt.Errorf("There have been no previous draws")
+	}
+
 	vb := &vertex.Buffer{}
-	// Get the current bound vertex buffers
-	lastDrawInfo := getStateObject(s).LastDrawInfo
 	attributes := lastDrawInfo.GraphicsPipeline.VertexInputState.AttributeDescriptions
 	bindings := lastDrawInfo.GraphicsPipeline.VertexInputState.BindingDescriptions
 	// For each attribute, get the vertex buffer data

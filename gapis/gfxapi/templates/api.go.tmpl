@@ -1081,6 +1081,7 @@
     {{range $g := $.Globals}}
       {{Title $g.Name}} {{Template "Go.Type" $g}}
     {{end}}
+    CustomState `nobox:"true"`
   }
 
   func (g *State) Init() {

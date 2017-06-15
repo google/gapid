@@ -26,6 +26,7 @@ set(files
     mesh.go
     resource.go
     state.go
+    synchronization_data.go
     texture.go
 )
 set(dirs

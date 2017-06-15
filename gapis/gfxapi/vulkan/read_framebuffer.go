@@ -81,7 +81,21 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Depth attachment")})
 			return
 		}
-		imageViewDepth := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
+
+		c := GetState(s)
+		lastQueue := c.LastBoundQueue
+		if lastQueue == nil {
+			res(nil, fmt.Errorf("No previous queue submission"))
+			return
+		}
+
+		lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+		if !ok {
+			res(nil, fmt.Errorf("There have been no previous draws"))
+			return
+		}
+
+		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		depthImageObject := imageViewDepth.Image
 		postImageData(ctx, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
@@ -99,7 +113,20 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
-			imageView := GetState(s).LastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
+			c := GetState(s)
+			lastQueue := c.LastBoundQueue
+			if lastQueue == nil {
+				res(nil, fmt.Errorf("No previous queue submission"))
+				return
+			}
+
+			lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+			if !ok {
+				res(nil, fmt.Errorf("There have been no previous draws"))
+				return
+			}
+
+			imageView := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 			imageObject := imageView.Image
 			postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {

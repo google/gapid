@@ -2781,6 +2781,7 @@ cmd VkResult vkQueueSubmit(
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
 
+  enterSubcontext()
   for i in (0 .. submitCount) {
     info := submitInfo[i]
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
@@ -2791,16 +2792,20 @@ cmd VkResult vkQueueSubmit(
 
     command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
 
+    enterSubcontext()
     for j in (0 .. info.commandBufferCount) {
       execCommands(command_buffers[j])
+      nextSubcontext()
     }
+    leaveSubcontext()
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
       recordUpdateSemaphoreSignal(signal_semaphores[j], true)
     }
-
+    nextSubcontext()
   }
+  leaveSubcontext()
   return ?
 }
 
@@ -3379,6 +3384,7 @@ cmd VkResult vkSetEvent(
     // If all pending events are signaled, so all removed from the pending
     // event list in the queue object, we should roll out the pending commands
     if len(q.PendingEvents) == 0 {
+      LastBoundQueue = Queues[queue]
       execPendingCommands(queue)
     }
   }
@@ -5329,6 +5335,9 @@ extern void setSpecData(ref!SpecializationInfo info, size numBytes, const void* 
 extern void resetCmd(VkCommandBuffer cmdBuf)
 extern void execCommands(VkCommandBuffer cmdBuf)
 extern void execPendingCommands(VkQueue queue)
+extern void enterSubcontext()
+extern void nextSubcontext()
+extern void leaveSubcontext()
 extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
 extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
 extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
@@ -5349,7 +5358,7 @@ sub void doCmdBindPipeline(CmdBindPipeline args) {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
       CurrentComputePipeline = ComputePipelines[args.Pipeline]
     case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      LastDrawInfo.GraphicsPipeline = GraphicsPipelines[args.Pipeline]
+      lastDrawInfo().GraphicsPipeline = GraphicsPipelines[args.Pipeline]
   }
 }
 
@@ -5560,7 +5569,7 @@ sub void doCmdBindDescriptorSets(CmdBindDescriptorSets bind) {
     }
   }
   for _, binding, set in bind.DescriptorSets {
-      LastDrawInfo.DescriptorSets[binding] = set
+      lastDrawInfo().DescriptorSets[binding] = set
   }
 }
 
@@ -5680,7 +5689,7 @@ class CmdBindIndexBuffer {
 }
 
 sub void doCmdBindIndexBuffer(CmdBindIndexBuffer buffer) {
-  LastDrawInfo.BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
+  lastDrawInfo().BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
     BoundBuffer(Buffers[buffer.Buffer], buffer.Offset, 0))
   Buffers[buffer.Buffer].LastBoundQueue = LastBoundQueue
 }
@@ -5726,7 +5735,7 @@ class CmdBindBuffer {
 
 sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
   for _ , k , v in bind.BoundBuffers {
-    LastDrawInfo.BoundVertexBuffers[k] = v
+    lastDrawInfo().BoundVertexBuffers[k] = v
     v.Buffer.LastBoundQueue = LastBoundQueue
   }
 }
@@ -5820,9 +5829,9 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 }
 
 sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
-  for _, _, vertex_binding in LastDrawInfo.GraphicsPipeline.VertexInputState.BindingDescriptions {
-    if vertex_binding.binding in LastDrawInfo.BoundVertexBuffers {
-      bound_vertex_buffer := LastDrawInfo.BoundVertexBuffers[vertex_binding.binding]
+  for _, _, vertex_binding in lastDrawInfo().GraphicsPipeline.VertexInputState.BindingDescriptions {
+    if vertex_binding.binding in lastDrawInfo().BoundVertexBuffers {
+      bound_vertex_buffer := lastDrawInfo().BoundVertexBuffers[vertex_binding.binding]
       backing_buf := bound_vertex_buffer.Buffer
       if ((backing_buf.Memory != null) && IsMemoryCoherent(backing_buf.Memory)) {
         start_vertex := switch vertex_binding.inputRate {
@@ -5867,7 +5876,7 @@ sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, 
 sub void doCmdDraw(CmdDraw draw) {
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
-  LastDrawInfo.CommandParameters.Draw = new!CmdDraw(
+  lastDrawInfo().CommandParameters.Draw = new!CmdDraw(
       draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
 }
 
@@ -5906,8 +5915,9 @@ cmd void vkCmdDraw(
 sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
-  indexBuffer := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer
-  indexSize := switch (LastDrawInfo.BoundIndexBuffer.Type) {
+  lastDraw := lastDrawInfo()
+  indexBuffer := lastDraw.BoundIndexBuffer.BoundBuffer.Buffer
+  indexSize := switch (lastDraw.BoundIndexBuffer.Type) {
     case VK_INDEX_TYPE_UINT16:
       as!VkDeviceSize(2)
     case VK_INDEX_TYPE_UINT32:
@@ -5915,14 +5925,14 @@ sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   }
 
   numBytes := as!VkDeviceSize(draw.IndexCount) * indexSize
-  startOffset := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
+  startOffset := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
 
   // Read the data of the index buffer if the index buffer is backed with coherent memory.
   readCoherentMemoryInBuffer(indexBuffer, startOffset, numBytes)
   // Read the whole vertex buffer if a buffer is backed with coherent memory.
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
-  LastDrawInfo.CommandParameters.DrawIndexed = new!CmdDrawIndexed(
+  lastDrawInfo().CommandParameters.DrawIndexed = new!CmdDrawIndexed(
       draw.IndexCount, draw.InstanceCount, draw.FirstIndex, draw.VertexOffset,
       draw.FirstInstance)
 }
@@ -6000,7 +6010,7 @@ sub void doCmdDrawIndirect(CmdDrawIndirect draw) {
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    LastDrawInfo.CommandParameters.DrawIndirect = new!CmdDrawIndirect(
+    lastDrawInfo().CommandParameters.DrawIndirect = new!CmdDrawIndirect(
         draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
   }
 }
@@ -6050,12 +6060,12 @@ sub void doCmdDrawIndexedIndirect(CmdDrawIndexedIndirect draw) {
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
     readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
     // Read through the whole index buffer if it uses coherent menory.
-    indexBuffer := LastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer
+    indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
     readCoherentMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
     // Read through all the coherent memory vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    LastDrawInfo.CommandParameters.DrawIndexedIndirect = new!CmdDrawIndexedIndirect(
+    lastDrawInfo().CommandParameters.DrawIndexedIndirect = new!CmdDrawIndexedIndirect(
         draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
   }
 }
@@ -7548,52 +7558,53 @@ class CmdBeginRenderPass {
 
 sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
-  LastDrawInfo.Framebuffer = Framebuffers[args.Framebuffer]
-  LastDrawInfo.LastSubpass = 0
-  LastDrawInfo.RenderPass = RenderPasses[args.RenderPass]
-  for _ , _ , v in LastDrawInfo.Framebuffer.ImageAttachments {
+  lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
+  lastDrawInfo().LastSubpass = 0
+  lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
+  lastDrawInfo().InRenderPass = true
+  for _ , _ , v in lastDrawInfo().Framebuffer.ImageAttachments {
     v.Image.LastBoundQueue = LastBoundQueue
   }
-  subpass := LastDrawInfo.RenderPass.SubpassDescriptions[0]
+  subpass := lastDrawInfo().RenderPass.SubpassDescriptions[0]
   for _, _, a in subpass.InputAttachments {
     if a.Attachment != VK_ATTACHMENT_UNUSED {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
   }
   for _, _, a in subpass.ColorAttachments {
     if a.Attachment != VK_ATTACHMENT_UNUSED {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
   }
   for _, _, a in subpass.ResolveAttachments {
     if a.Attachment != VK_ATTACHMENT_UNUSED {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
   }
   if subpass.DepthStencilAttachment != null {
     dsRef := subpass.DepthStencilAttachment
     if dsRef.Attachment != VK_ATTACHMENT_UNUSED {
-      LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
     }
   }
 }
 
 sub void doCmdNextSubpass(u32 Unused) {
-  LastDrawInfo.LastSubpass += 1
-  if LastDrawInfo.LastSubpass < len(LastDrawInfo.RenderPass.SubpassDescriptions) {
-  subpass := LastDrawInfo.RenderPass.SubpassDescriptions[LastDrawInfo.LastSubpass]
+  lastDrawInfo().LastSubpass += 1
+  if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
+  subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
     for _, _, a in subpass.InputAttachments {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
     for _, _, a in subpass.ColorAttachments {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
     for _, _, a in subpass.ResolveAttachments {
-      LastDrawInfo.Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
     }
     if subpass.DepthStencilAttachment != null {
       dsRef := subpass.DepthStencilAttachment
-      LastDrawInfo.Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
     }
   }
 }
@@ -7629,6 +7640,7 @@ RecreateCmdEndRenderPassData {
 }
 
 sub void doCmdEndRenderPass(u32 unused) {
+  lastDrawInfo().InRenderPass = false
 }
 
 @threadSafety("app")
@@ -7644,9 +7656,12 @@ class CmdExecuteCommands {
 }
 
 sub void doCmdExecuteCommands(CmdExecuteCommands cmds) {
+  enterSubcontext()
   for i in (0 .. len(cmds.CommandBuffers)) {
     execCommands(cmds.CommandBuffers[as!u32(i)])
+    nextSubcontext()
   }
+  leaveSubcontext()
 }
 
 @internal
@@ -8590,9 +8605,11 @@ ref!ComputePipelineObject  CurrentComputePipeline
   DrawParameters                      CommandParameters
   // The render pass in which this draw takes place
   ref!RenderPassObject                RenderPass
+  // Whether or not we are in an unclosed render pass
+  bool                                InRenderPass
 }
-// Records the draw information of the last draw.
-DrawInfo LastDrawInfo
+
+map!(VkQueue, ref!DrawInfo)               LastDrawInfos
 
 @internal class PresentInfo {
   // The number of images presented last present
@@ -8610,19 +8627,35 @@ enum LastSubmissionType {
 
 LastSubmissionType LastSubmission
 
+sub ref!DrawInfo lastDrawInfo() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastDrawInfos) {
+      LastDrawInfos[LastBoundQueue.VulkanHandle] = new!DrawInfo()
+    }
+  }
+
+  ldi := switch (LastBoundQueue == null) {
+    case false:
+      LastDrawInfos[LastBoundQueue.VulkanHandle]
+    case true:
+      new!DrawInfo()
+  }
+  return ldi
+}
+
 // Clear the recorded descriptor sets in the last draw
 sub void clearLastDrawInfoDescriptorSets() {
-  for i in (0 .. len(LastDrawInfo.DescriptorSets)) {
-    LastDrawInfo.DescriptorSets[as!u32(i)] = null
+  for i in (0 .. len(lastDrawInfo().DescriptorSets)) {
+    lastDrawInfo().DescriptorSets[as!u32(i)] = null
   }
 }
 
 // Clear the draw command parameters in the last draw info
 sub void clearLastDrawInfoDrawCommandParameters() {
-  LastDrawInfo.CommandParameters.Draw = null
-  LastDrawInfo.CommandParameters.DrawIndexed = null
-  LastDrawInfo.CommandParameters.DrawIndirect = null
-  LastDrawInfo.CommandParameters.DrawIndexedIndirect = null
+  lastDrawInfo().CommandParameters.Draw = null
+  lastDrawInfo().CommandParameters.DrawIndexed = null
+  lastDrawInfo().CommandParameters.DrawIndirect = null
+  lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
 }
 
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.

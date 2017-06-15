@@ -15,9 +15,14 @@
 package core
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/service/path"
 )
+
+type CustomState struct{}
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
 func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
@@ -26,5 +31,9 @@ func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.F
 
 // Context returns the active context for the given state.
 func (api) Context(*gfxapi.State) gfxapi.Context {
+	return nil
+}
+
+func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
 	return nil
 }

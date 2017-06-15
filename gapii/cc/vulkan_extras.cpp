@@ -31,29 +31,36 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
         std::vector<uint8_t>* data) {
     std::shared_ptr<ImageObject> image;
     if (LastSubmission == LastSubmissionType::SUBMIT) {
-        if (!LastDrawInfo.mRenderPass) {
+        if (!LastBoundQueue) {
             return false;
         }
-        if (!LastDrawInfo.mFramebuffer) {
+        if (!LastDrawInfos.count(LastBoundQueue->mVulkanHandle)) {
             return false;
         }
-        if (LastDrawInfo.mLastSubpass >=
-            LastDrawInfo.mRenderPass->mSubpassDescriptions.size()) {
+        auto& lastDrawInfo = *LastDrawInfos[LastBoundQueue->mVulkanHandle];
+        if (!lastDrawInfo.mRenderPass) {
             return false;
         }
-        if (LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments.empty()) {
+        if (!lastDrawInfo.mFramebuffer) {
+            return false;
+        }
+        if (lastDrawInfo.mLastSubpass >=
+            lastDrawInfo.mRenderPass->mSubpassDescriptions.size()) {
+            return false;
+        }
+        if (lastDrawInfo.mRenderPass->mSubpassDescriptions[lastDrawInfo.mLastSubpass].mColorAttachments.empty()) {
             return false;
         }
 
-        uint32_t color_attachment_index = LastDrawInfo.mRenderPass->mSubpassDescriptions[LastDrawInfo.mLastSubpass].mColorAttachments[0].mAttachment;
-        if (LastDrawInfo.mFramebuffer->mImageAttachments.count(color_attachment_index) == 0) {
+        uint32_t color_attachment_index = lastDrawInfo.mRenderPass->mSubpassDescriptions[lastDrawInfo.mLastSubpass].mColorAttachments[0].mAttachment;
+        if (lastDrawInfo.mFramebuffer->mImageAttachments.count(color_attachment_index) == 0) {
             return false;
         }
 
-        auto& imageView = LastDrawInfo.mFramebuffer->mImageAttachments[color_attachment_index];
+        auto& imageView = lastDrawInfo.mFramebuffer->mImageAttachments[color_attachment_index];
         image = imageView->mImage;
-        *w = LastDrawInfo.mFramebuffer->mWidth;
-        *h = LastDrawInfo.mFramebuffer->mHeight;
+        *w = lastDrawInfo.mFramebuffer->mWidth;
+        *h = lastDrawInfo.mFramebuffer->mHeight;
     } else {
         if (LastPresentInfo.mPresentImageCount == 0) {
             return false;
@@ -348,5 +355,9 @@ bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
 
     return true;
 }
+
+void VulkanSpy::enterSubcontext(CallObserver* observer) {}
+void VulkanSpy::leaveSubcontext(CallObserver* observer) {}
+void VulkanSpy::nextSubcontext(CallObserver* observer) {}
 
 }
