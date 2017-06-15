@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package test
+package resolve
 
 import (
 	"context"
 
-	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/service/path"
 )
 
-type CustomState struct{}
+// Resolve builds a SynchronizationResolvable object for the given capture
+func (r *SynchronizationResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	capture, err := capture.ResolveFromPath(ctx, r.Capture)
+	if err != nil {
+		return nil, err
+	}
+	s := gfxapi.NewSynchronizationData()
 
-func (api) GetFramebufferAttachmentInfo(*gfxapi.State, gfxapi.FramebufferAttachment) (uint32, uint32, *image.Format, error) {
-	return 0, 0, nil, nil
-}
+	for _, api := range capture.APIs {
+		if err = api.ResolveSynchronization(ctx, s, r.Capture); err != nil {
+			return nil, err
+		}
+	}
 
-func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
-	return nil
-}
-func (api) Context(*gfxapi.State) gfxapi.Context { return nil }
-
-func (i remapped) remap(a atom.Atom, s *gfxapi.State) (interface{}, bool) {
-	return i, true
+	return s, nil
 }

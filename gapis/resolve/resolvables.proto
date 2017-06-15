@@ -103,6 +103,10 @@ message GlobalStateResolvable {
 	path.State path = 1;
 }
 
+message SynchronizationResolvable {
+	path.Capture capture = 1;
+}
+
 message APIStateResolvable {
 	path.State path = 1;
 }

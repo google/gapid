@@ -19,8 +19,11 @@ package vulkan
 import "github.com/google/gapid/gapis/atom"
 
 type CommandBufferCommand struct {
-	function func()
-	a        *atom.Atom
+	function         func()
+	submit           *atom.Atom
+	submissionIndex  []uint64
+	recreateData     interface{}
+	actualSubmission bool
 }
 
 type CommandBufferCommands []CommandBufferCommand

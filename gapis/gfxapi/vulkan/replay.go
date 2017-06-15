@@ -26,9 +26,11 @@ import (
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -60,6 +62,8 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
+	startScope gfxapi.SynchronizationIndex
+	endScope   gfxapi.SynchronizationIndex
 }
 
 type imgRes struct {
@@ -459,7 +463,6 @@ func (a api) Replay(
 	device *device.Instance,
 	capture *capture.Capture,
 	out transform.Writer) error {
-
 	if a.GetReplayPriority(ctx, device, capture.Header.Abi.MemoryLayout) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
@@ -474,6 +477,11 @@ func (a api) Replay(
 	// Gathers and reports any issues found.
 	var issues *findIssues
 
+	earlyTerminator, err := NewVulkanTerminator(ctx, intent.Capture)
+	if err != nil {
+		return err
+	}
+
 	// Prepare data for dead-code-elimination
 	dceInfo := deadCodeEliminationInfo{}
 	if !config.DisableDeadCodeElimination {
@@ -484,9 +492,6 @@ func (a api) Replay(
 		dceInfo.dependencyGraph = dg
 		dceInfo.deadCodeElimination = newDeadCodeElimination(ctx, dceInfo.dependencyGraph)
 	}
-
-	// Terminate after all atoms of interest.
-	earlyTerminator := &transform.EarlyTerminator{}
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -569,7 +574,29 @@ func (a api) QueryFramebufferAttachment(
 	wireframeMode replay.WireframeMode,
 	hints *service.UsageHints) (*image.Data, error) {
 
-	c := drawConfig{}
+	sync, err := database.Build(ctx, &resolve.SynchronizationResolvable{intent.Capture})
+	if err != nil {
+		return nil, err
+	}
+	s, ok := sync.(*gfxapi.SynchronizationData)
+	if !ok {
+		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
+	}
+	beginIndex := gfxapi.SynchronizationIndex(0)
+	endIndex := gfxapi.SynchronizationIndex(0)
+	for _, v := range s.SortedKeys() {
+		if v > gfxapi.SynchronizationIndex(after) {
+			break
+		}
+		for _, k := range s.CommandRanges[v].SortedKeys() {
+			if k > gfxapi.SynchronizationIndex(atom.ID(after)) {
+				beginIndex = v
+				endIndex = k
+			}
+		}
+	}
+
+	c := drawConfig{beginIndex, endIndex}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, attachment: attachment, out: out}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)

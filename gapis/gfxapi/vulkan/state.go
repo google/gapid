@@ -25,17 +25,27 @@ func (st *State) getSubmitAttachmentInfo(attachment gfxapi.FramebufferAttachment
 		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, fmt.Errorf(format_str, e...)
 	}
 
-	if st.LastDrawInfo.Framebuffer == nil {
+	lastQueue := st.LastBoundQueue
+	if lastQueue == nil {
+		return returnError("No previous queue submission")
+	}
+
+	lastDrawInfo, ok := st.LastDrawInfos[lastQueue.VulkanHandle]
+	if !ok {
+		return returnError("There have been no previous draws")
+	}
+
+	if lastDrawInfo.Framebuffer == nil {
 		return returnError("%s is not bound", attachment)
 	}
 
-	if st.LastDrawInfo.Framebuffer.RenderPass == nil {
+	if lastDrawInfo.Framebuffer.RenderPass == nil {
 		return returnError("%s is not bound to any renderpass", attachment)
 	}
 
-	lastSubpass := st.LastDrawInfo.LastSubpass
+	lastSubpass := lastDrawInfo.LastSubpass
 
-	subpass_desc := st.LastDrawInfo.Framebuffer.RenderPass.SubpassDescriptions[lastSubpass]
+	subpass_desc := lastDrawInfo.Framebuffer.RenderPass.SubpassDescriptions[lastSubpass]
 	switch attachment {
 	case gfxapi.FramebufferAttachment_Color0,
 		gfxapi.FramebufferAttachment_Color1,
@@ -44,7 +54,7 @@ func (st *State) getSubmitAttachmentInfo(attachment gfxapi.FramebufferAttachment
 		num_of_color_att_before_the_query_one := attachment - gfxapi.FramebufferAttachment_Color0
 		for _, att_ref_index := range subpass_desc.ColorAttachments.KeysSorted() {
 			att_ref := subpass_desc.ColorAttachments[att_ref_index]
-			color_img := st.LastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment].Image
+			color_img := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment].Image
 			if uint32(color_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0 {
 				if num_of_color_att_before_the_query_one == 0 {
 					return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, att_ref.Attachment, nil
@@ -54,9 +64,9 @@ func (st *State) getSubmitAttachmentInfo(attachment gfxapi.FramebufferAttachment
 			}
 		}
 	case gfxapi.FramebufferAttachment_Depth:
-		if subpass_desc.DepthStencilAttachment != nil && st.LastDrawInfo.Framebuffer != nil {
+		if subpass_desc.DepthStencilAttachment != nil && lastDrawInfo.Framebuffer != nil {
 			att_ref := subpass_desc.DepthStencilAttachment
-			if attachment, ok := st.LastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
+			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
 				depth_img := attachment.Image
 				if (uint32(depth_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) &&
 					(depth_img.Info.Samples == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT) {

@@ -76,7 +76,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}
 
 	o.Commands = append(o.Commands, CommandBufferCommand{func() {
 		reflect.ValueOf(functionToCall).Call(args)
-	}, &e.a})
+	}, &e.a, []uint64(nil), recreate_data, true})
 }
 
 func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
@@ -85,46 +85,109 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 }
 
 func (e externs) execCommands(commandBuffer VkCommandBuffer) {
+	s := GetState(e.s)
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
+	if _, ok := e.a.(*VkQueueSubmit); ok {
+		s.CurrentSubmission = &e.a
+	}
+	e.enterSubcontext()
+	defer e.leaveSubcontext()
 	lastBoundQueue := GetState(e.s).LastBoundQueue
 	for _, command := range o.Commands {
 		if len(lastBoundQueue.PendingEvents) != 0 {
+			c := command
+			c.actualSubmission = true
+			c.submit = s.CurrentSubmission
+			c.submissionIndex = append([]uint64(nil), s.SubcommandIndex...)
 			lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
-				command)
+				c)
 		} else {
 			command.function()
+			if command.actualSubmission && s.HandleSubcommand != nil {
+				s.HandleSubcommand(command)
+			}
 			// If a vkCmdWaitEvents is hit in the commands, it will set the pending
 			// events list of the current LastBoundQueue. Once that happens, we should
 			// records all the following commands to the pending commands list.
 			if len(lastBoundQueue.PendingEvents) != 0 {
+				// We end up submitting VkCmdWaitEvents twice, once
+				// "call" it in the VkQueueSubmit, and again later to register
+				// the semaphores. Keep track of which of these states we are in.
+				c := command
+				c.actualSubmission = false
+				c.submit = s.CurrentSubmission
+				c.submissionIndex = append([]uint64(nil), s.SubcommandIndex...)
 				// The vkCmdWaitEvents carries memory barriers, those should take
 				// effect when the event is signaled.
 				lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
-					command)
+					c)
 			}
 		}
+		e.nextSubcontext()
 	}
 }
 
+func (e externs) enterSubcontext() {
+	o := GetState(e.s)
+	o.SubcommandIndex = append(o.SubcommandIndex, 0)
+}
+
+func (e externs) leaveSubcontext() {
+	o := GetState(e.s)
+	o.SubcommandIndex = o.SubcommandIndex[:len(o.SubcommandIndex)-1]
+}
+
+func (e externs) nextSubcontext() {
+	o := GetState(e.s)
+	o.SubcommandIndex[len(o.SubcommandIndex)-1] += 1
+}
+
 func (e externs) execPendingCommands(queue VkQueue) {
+	o := GetState(e.s)
 	// Set the global LastBoundQueue, so the next vkCmdWaitEvent in the pending
 	// commands knows in which queue it will be waiting.
 	GetState(e.s).LastBoundQueue = GetState(e.s).Queues.Get(queue)
 	lastBoundQueue := GetState(e.s).LastBoundQueue
 	newPendingCommands := []CommandBufferCommand{}
+
+	// Store off state.IdxList (Should be empty)
 	for _, command := range lastBoundQueue.PendingCommands {
+		// Set the state.IdxList to command.Indices
+		// Set the state.Queue to command.Queue
+
+		// lastBoundQueue.PendingEvents will be 0 the first time
+		// through. (ExecPending could not have been called otherwise).
+		// Therefore o.CurrentSubmission will be set by the else
+		// branch at least once.
 		if len(lastBoundQueue.PendingEvents) != 0 {
-			newPendingCommands = append(newPendingCommands, command)
+			c := command
+			c.actualSubmission = true
+			c.submit = o.CurrentSubmission
+			c.submissionIndex = append([]uint64(nil), o.SubcommandIndex...)
+			newPendingCommands = append(newPendingCommands, c)
 		} else {
+			o.CurrentSubmission = command.submit
+			o.SubcommandIndex = append([]uint64(nil), command.submissionIndex...)
 			command.function()
+			if command.actualSubmission && o.HandleSubcommand != nil {
+				o.HandleSubcommand(command)
+			}
 			// If a vkCmdWaitEvent is hit in the pending commands, it will set a new
 			// list of pending events to the LastBoundQueue. Once that happens, we
 			// should start a new pending command list.
 			if len(lastBoundQueue.PendingEvents) != 0 {
-				newPendingCommands = append(newPendingCommands, command)
+				c := command
+				c.actualSubmission = false
+				c.submit = o.CurrentSubmission
+				newPendingCommands = append(newPendingCommands, c)
 			}
 		}
+		if command.actualSubmission {
+			o.SubcommandIndex[len(o.SubcommandIndex)-1] += 1
+		}
 	}
+	o.SubcommandIndex = []uint64(nil)
+	// Reset state.IdxList
 	// Refresh or clear the pending commands in LastBoundQueue
 	lastBoundQueue.PendingCommands = newPendingCommands
 }
@@ -134,7 +197,7 @@ func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled boo
 		function: func() {
 			GetState(e.s).Semaphores[semaphore].Signaled = Signaled
 		},
-		a: &e.a,
+		actualSubmission: false,
 	}
 	lastBoundQueue := GetState(e.s).LastBoundQueue
 	if len(lastBoundQueue.PendingEvents) != 0 {

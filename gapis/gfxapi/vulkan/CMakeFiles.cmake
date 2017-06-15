@@ -20,6 +20,7 @@
 set(files
     api.go
     buffer_command.go
+    command_buffer_rebuilder.go
     convert.go
     custom_replay.go
     dead_code_elimination.go
@@ -38,6 +39,7 @@ set(files
     resources.go
     state.go
     vulkan.go
+    vulkan_terminator.go
 )
 set(dirs
     android
