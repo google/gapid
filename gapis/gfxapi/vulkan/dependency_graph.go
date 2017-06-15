@@ -560,6 +560,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		image := a.Image
 		addModify(&b, g, vulkanStateKey(image))
 
+	case *VkGetBufferMemoryRequirements:
+		buffer := a.Buffer
+		addModify(&b, g, vulkanStateKey(buffer))
+
 	case *VkBindImageMemory:
 		image := a.Image
 		memory := a.Memory
