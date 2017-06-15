@@ -82,7 +82,7 @@ func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 	return
 }
 
-func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
+func (i UniformBlockIndex) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	program := ctx.Bound.Program.GetID()
 	switch a := a.(type) {
@@ -97,7 +97,7 @@ func (i UniformBlockId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 	}
 	return struct {
 		p *Program
-		i UniformBlockId
+		i UniformBlockIndex
 	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 

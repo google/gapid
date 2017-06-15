@@ -93,7 +93,7 @@ func (e externs) substr(str string, start, end int32) string {
 	return str[start:end]
 }
 
-func (e externs) GetProgramInfoExtra(pid ProgramId) *ProgramInfo {
+func (e externs) GetProgramInfoExtra(ctx *Context, pid ProgramId) *ProgramInfo {
 	return FindProgramInfo(e.a.Extras())
 }
 

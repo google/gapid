@@ -46,14 +46,15 @@ extern ref!DynamicContextState GetEGLDynamicContextState(EGLDisplay display, EGL
 // ProgramInfo is an atom extra used to describe linked shader program.
 @internal @serialize
 class ProgramInfo {
-  GLboolean                             LinkStatus
-  string                                InfoLog
-  map!(AttributeIndex, ActiveAttribute) ActiveAttributes
-  map!(UniformIndex, ActiveUniform)     ActiveUniforms
+  GLboolean                                   LinkStatus
+  string                                      InfoLog
+  map!(AttributeIndex, ActiveAttribute)       ActiveAttributes
+  map!(UniformIndex, ActiveUniform)           ActiveUniforms
+  map!(UniformBlockIndex, ActiveUniformBlock) ActiveUniformBlocks
 }
 
 @post_fence
-extern ref!ProgramInfo GetProgramInfoExtra(ProgramId programId)
+extern ref!ProgramInfo GetProgramInfoExtra(ref!Context ctx, ProgramId programId)
 
 sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
   if (info != null) {
@@ -64,16 +65,27 @@ sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
     program.ActiveAttributes = null
     program.ActiveUniforms = null
     program.Uniforms = null
-    for i in (0 .. as!AttributeIndex(len(info.ActiveAttributes))) {
-      program.ActiveAttributes[i] = info.ActiveAttributes[i]
+    for _, attributeIndex, aa in info.ActiveAttributes {
+      program.ActiveAttributes[attributeIndex] = aa
     }
-    for i in (0 .. as!UniformIndex(len(info.ActiveUniforms))) {
-      u := info.ActiveUniforms[i]
-      program.ActiveUniforms[i] = u
-      for j in (0 .. as!UniformLocation(u.ArraySize)) {
+    for _, uniformIndex, au in info.ActiveUniforms {
+      program.ActiveUniforms[uniformIndex] = au
+      for arrayIndex in (0 .. as!UniformLocation(au.ArraySize)) {
         // TODO: Locations do not have to be consecutive.
-        program.Uniforms[u.Location + j] = Uniform(Value: make!u8(0),Type:  u.Type)
+        program.Uniforms[au.Location + arrayIndex] = Uniform(Value: make!u8(0), Type: au.Type)
       }
+      if au.BlockIndex == 0xFFFFFFFF {
+        program.DefaultUniformBlock.ActiveUniforms[uniformIndex] = au // Copy for convenience
+      }
+    }
+    for _, blockIndex, aub in info.ActiveUniformBlocks {
+      tmp := aub
+      for _, uniformIndex, au in info.ActiveUniforms {
+        if au.BlockIndex == blockIndex {
+          tmp.ActiveUniforms[uniformIndex] = au // Copy for convenience
+        }
+      }
+      program.ActiveUniformBlocks[blockIndex] = tmp
     }
   }
 }

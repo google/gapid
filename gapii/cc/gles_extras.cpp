@@ -32,7 +32,9 @@ namespace gapii {
 
 // getProgramInfo returns a ProgramInfo, populated with the details of all the
 // attributes and uniforms exposed by program.
-std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer, ProgramId program) {
+std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer, std::shared_ptr<Context> ctx, ProgramId program) {
+    bool gles30 = ctx->mConstants.mMajorVersion >= 3;
+
     // Allocate temporary buffer large enough to hold any of the returned strings.
     int32_t infoLogLength = 0;
     mImports.glGetProgramiv(program, GLenum::GL_INFO_LOG_LENGTH, &infoLogLength);
@@ -40,9 +42,13 @@ std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer
     mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &activeAttributeMaxLength);
     int32_t activeUniformMaxLength = 0;
     mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_UNIFORM_MAX_LENGTH, &activeUniformMaxLength);
-    const int strSize = std::max(infoLogLength, std::max(activeAttributeMaxLength, activeUniformMaxLength));
+    int32_t activeUniformBlockMaxNameLength = 0;
+    mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &activeUniformBlockMaxNameLength);
+    const int strSize = std::max(
+      std::max(infoLogLength, activeAttributeMaxLength),
+      std::max(activeUniformMaxLength, activeUniformBlockMaxNameLength)) +
+      16 /* extra space for sprintf */ + 1 /* null-terminator */;
     char* str = observer->getScratch()->create<char>(strSize);
-    int32_t strLen = 0;
 
     auto pi = std::shared_ptr<ProgramInfo>(new ProgramInfo());
 
@@ -50,31 +56,89 @@ std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer
     mImports.glGetProgramiv(program, GLenum::GL_LINK_STATUS, &linkStatus);
     pi->mLinkStatus = linkStatus;
 
-    mImports.glGetProgramInfoLog(program, strSize, &strLen, str);
-    pi->mInfoLog = std::string(str, strLen);
+    mImports.glGetProgramInfoLog(program, strSize, &infoLogLength, str);
+    pi->mInfoLog = std::string(str, infoLogLength);
 
-    int32_t activeUniforms = 0;
-    mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_UNIFORMS, &activeUniforms);
-    for (int32_t i = 0; i < activeUniforms; i++) {
-        ActiveUniform au;
-        mImports.glGetActiveUniform(program, i, strSize, &strLen, &au.mArraySize, &au.mType, str);
-        au.mName = std::string(str, strLen);
-        au.mLocation = mImports.glGetUniformLocation(program, str);
-        pi->mActiveUniforms[i] = au;
+    if (linkStatus == GLbooleanLabels::GL_TRUE) {
+
+      int32_t activeUniforms = 0;
+      mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_UNIFORMS, &activeUniforms);
+      for (uint32_t i = 0; i < activeUniforms; i++) {
+          ActiveUniform au{};
+
+          int32_t nameLength = 0;
+          mImports.glGetActiveUniform(program, i, strSize, &nameLength, &au.mArraySize, &au.mType, str);
+          au.mName = std::string(str, nameLength);
+
+          au.mBlockIndex = -1;
+          if (gles30) {
+              int32_t blockIndex = -1;
+              mImports.glGetActiveUniformsiv(program, 1, &i, GLenum::GL_UNIFORM_BLOCK_INDEX, &blockIndex);
+              au.mBlockIndex = blockIndex;
+
+              mImports.glGetActiveUniformsiv(program, 1, &i, GLenum::GL_UNIFORM_OFFSET, &au.mOffset);
+              mImports.glGetActiveUniformsiv(program, 1, &i, GLenum::GL_UNIFORM_ARRAY_STRIDE, &au.mArrayStride);
+              mImports.glGetActiveUniformsiv(program, 1, &i, GLenum::GL_UNIFORM_MATRIX_STRIDE, &au.mMatrixStride);
+              mImports.glGetActiveUniformsiv(program, 1, &i, GLenum::GL_UNIFORM_IS_ROW_MAJOR, &au.mIsRowMajor);
+          }
+
+          if (au.mBlockIndex == -1) {
+              au.mLocation = mImports.glGetUniformLocation(program, str);
+              au.mLocations[0] = mImports.glGetUniformLocation(program, str);
+              if (nameLength >= 3 && strcmp(str + nameLength - 3, "[0]") == 0) {
+                nameLength -= 3; // Remove the "[0]" suffix of array
+              }
+              for (int32_t j = 1; j < au.mArraySize; j++) {
+                sprintf(str + nameLength, "[%i]", j); // Append array suffix
+                au.mLocations[j] = mImports.glGetUniformLocation(program, str);
+              }
+          }
+
+          pi->mActiveUniforms[i] = au;
+      }
+
+      int32_t activeAttributes = 0;
+      mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_ATTRIBUTES, &activeAttributes);
+      for (int32_t i = 0; i < activeAttributes; i++) {
+          ActiveAttribute aa{};
+          int32_t nameLength = 0;
+          mImports.glGetActiveAttrib(program, i, strSize, &nameLength, &aa.mArraySize, &aa.mType, str);
+          aa.mName = std::string(str, nameLength);
+          aa.mLocation = mImports.glGetAttribLocation(program, str);
+          pi->mActiveAttributes[i] = aa;
+      }
+
+      int32_t activeUniformBlocks = 0;
+      if (gles30) {
+          mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_UNIFORM_BLOCKS, &activeUniformBlocks);
+          for (int32_t i = 0; i < activeUniformBlocks; i++) {
+              ActiveUniformBlock aub{};
+
+              int32_t nameLength = 0;
+              mImports.glGetActiveUniformBlockName(program, i, strSize, &nameLength, str);
+              aub.mName = std::string(str, nameLength);
+
+              mImports.glGetActiveUniformBlockiv(program, i, GLenum::GL_UNIFORM_BLOCK_BINDING, &aub.mBinding);
+
+              mImports.glGetActiveUniformBlockiv(program, i, GLenum::GL_UNIFORM_BLOCK_DATA_SIZE, &aub.mDataSize);
+
+              int32_t referencedByVS = 0;
+              mImports.glGetActiveUniformBlockiv(program, i, GLenum::GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER, &referencedByVS);
+              aub.mReferencedByVertexShader = referencedByVS != 0;
+
+              int32_t referencedByFS = 0;
+              mImports.glGetActiveUniformBlockiv(program, i, GLenum::GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER, &referencedByFS);
+              aub.mReferencedByFragmentShader = referencedByFS != 0;
+
+              pi->mActiveUniformBlocks[i] = aub;
+          }
+      }
+
+      GAPID_DEBUG("Created ProgramInfo: LinkStatus=GL_TRUE ActiveUniforms=%i ActiveAttributes=%i ActiveUniformBlocks=%i",
+          activeUniforms, activeAttributes, activeUniformBlocks);
+    } else {
+      GAPID_DEBUG("Created ProgramInfo: LinkStatus=GL_FALSE InfoLog=\"%s\"", pi->mInfoLog.data());
     }
-
-    int32_t activeAttributes = 0;
-    mImports.glGetProgramiv(program, GLenum::GL_ACTIVE_ATTRIBUTES, &activeAttributes);
-    for (int32_t i = 0; i < activeAttributes; i++) {
-        ActiveAttribute aa;
-        mImports.glGetActiveAttrib(program, i, strSize, &strLen, &aa.mArraySize, &aa.mType, str);
-        aa.mName = std::string(str, strLen);
-        aa.mLocation = mImports.glGetAttribLocation(program, str);
-        pi->mActiveAttributes[i] = aa;
-    }
-
-    GAPID_DEBUG("Created ProgramInfo: LinkStatus=%i ActiveUniforms=%i ActiveAttributes=%i",
-        linkStatus, activeUniforms, activeAttributes);
 
     observer->addExtra(pi->toProto());
     return pi;
