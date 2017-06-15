@@ -17,7 +17,6 @@ package com.google.gapid.rpc;
 
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.rpclib.rpccore.Rpc;
 
 import java.util.concurrent.atomic.AtomicReference;
 
