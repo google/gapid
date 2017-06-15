@@ -48,11 +48,15 @@ public class SearchBox extends Composite {
     regex.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
 
     text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regex));
+    /* TODO: This was added, because it appeared as though the above wasn't triggered.
+     *       However, now it looks like it is always triggered. Need to figure out if there really
+     *       is a case where the above is not enough.
     text.addListener(SWT.Traverse, e -> {
       if (e.detail == SWT.TRAVERSE_RETURN) {
         notifySearch(text, regex);
       }
     });
+    */
     if (fireEventOnChange) {
       text.addListener(SWT.Modify, e -> notifySearch(text, regex));
       regex.addListener(SWT.Selection, e -> notifySearch(text, regex));
