@@ -57,7 +57,7 @@ func init() {
 	verb.Max.Width = 1920
 	verb.Max.Height = 1280
 	verb.FPS = 5
-	verb.Frames.End = allTheWay
+	verb.Frames.Count = allTheWay
 	app.AddVerb(&app.Verb{
 		Name:      "video",
 		ShortHelp: "Produce a video or sequence of frames from a .gfxtrace file",
@@ -75,11 +75,18 @@ func (verb *videoVerb) regularVideoSource(
 	client service.Service,
 	device *path.Device) (videoFrameWriter, error) {
 
-	// Get the end-of-frame events.
-	eofEvents, err := getEvents(ctx, client, &path.Events{
+	requestEvents := path.Events{
 		Capture:     capture,
 		LastInFrame: true,
-	})
+	}
+
+	if verb.Commands {
+		requestEvents.LastInFrame = false
+		requestEvents.AllCommands = true
+	}
+
+	// Get the end-of-frame events.
+	eofEvents, err := getEvents(ctx, client, &requestEvents)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get frame events")
 	}
@@ -87,8 +94,9 @@ func (verb *videoVerb) regularVideoSource(
 	if verb.Frames.Start < len(eofEvents) {
 		eofEvents = eofEvents[verb.Frames.Start:]
 	}
-	if verb.Frames.End != allTheWay && verb.Frames.End < len(eofEvents) {
-		eofEvents = eofEvents[:verb.Frames.End]
+
+	if verb.Frames.Count != allTheWay && verb.Frames.Count < len(eofEvents) {
+		eofEvents = eofEvents[:verb.Frames.Count]
 	}
 
 	frameCount := len(eofEvents)
