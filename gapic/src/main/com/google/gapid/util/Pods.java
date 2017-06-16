@@ -304,4 +304,12 @@ public class Pods {
       default: return pod;
     }
   }
+
+  public static byte[] getBytes(Pod.Value pod) {
+    switch (pod.getValCase()) {
+      case UINT8_ARRAY: return pod.getUint8Array().toByteArray();
+      default:
+        throw new RuntimeException("Don't know how to get bytes out of " + pod.getValCase());
+    }
+  }
 }
