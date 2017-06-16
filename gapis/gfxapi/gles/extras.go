@@ -42,7 +42,11 @@ func (s *ErrorState) Convert(ctx context.Context, out atom_pb.Handler) error {
 func FindProgramInfo(extras *atom.Extras) *ProgramInfo {
 	for _, e := range extras.All() {
 		if pi, ok := e.(*ProgramInfo); ok {
-			return pi
+			clone, err := deep.Clone(pi)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*ProgramInfo)
 		}
 	}
 	return nil
