@@ -37,9 +37,10 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
@@ -92,7 +93,7 @@ public class StateView extends Composite
   protected List<Path.Any> scheduledExpandedPaths;
   protected Point scheduledScrollPos;
 
-  public StateView(Composite parent, Models models, Widgets widgets) {
+  public StateView(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
 
@@ -208,7 +209,7 @@ public class StateView extends Composite
     tree.getVerticalBar().addSelectionListener(mouseHandler);
 
     Menu popup = new Menu(tree);
-    Widgets.createMenuItem(popup, "&View Text", SWT.MOD1 + 'T', e -> {
+    Widgets.createMenuItem(popup, "&View Details", SWT.MOD1 + 'D', e -> {
       TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
       if (item != null && (item.getData() instanceof ApiState.Node)) {
         StateTreeNode data = ((ApiState.Node)item.getData()).getData();
@@ -223,9 +224,10 @@ public class StateView extends Composite
           return;
         }
 
-        String text = Formatter.toString(data.getPreview(),
-            models.constants.getConstants(data.getConstants()), data.getPreviewIsValue());
-        TextViewer.showViewTextPopup(getShell(), data.getName() + ":", text);
+        TextViewer.showViewTextPopup(getShell(), widgets, data.getName() + ":",
+            Futures.transform(client.get(data.getValuePath()),
+                v -> Formatter.toString(
+                    v.getBox(),  models.constants.getConstants(data.getConstants()), false)));
       }
     });
     tree.setMenu(popup);

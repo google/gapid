@@ -15,27 +15,42 @@
  */
 package com.google.gapid.widgets;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiErrorCallback;
+import com.google.gapid.util.Loadable.MessageType;
 import com.google.gapid.util.Messages;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
+
 /**
  * Popup displaying text to the user.
  */
 public class TextViewer {
+  private static final int INITIAL_MIN_HEIGHT = 600;
+  protected static final Logger LOG = Logger.getLogger(TextViewer.class.getName());
+
   private TextViewer() {
   }
 
-  public static void showViewTextPopup(Shell shell, String title, String text) {
+  public static void showViewTextPopup(
+      Shell shell, Widgets widgets, String title, ListenableFuture<String> text) {
     new MessageDialog(shell, Messages.VIEW_DETAILS, null, title, MessageDialog.INFORMATION, 0,
         IDialogConstants.OK_LABEL) {
+      protected LoadablePanel<Text> loadable;
+
       @Override
       protected boolean isResizable() {
         return true;
@@ -43,11 +58,42 @@ public class TextViewer {
 
       @Override
       protected Control createCustomArea(Composite parent) {
-        Text box = new Text(
-            parent, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-        box.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-        box.setText(text);
-        return box;
+        loadable = new LoadablePanel<Text>(parent, widgets, panel -> new Text(
+            panel, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL));
+        loadable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        loadable.startLoading();
+        Rpc.listen(text, new UiErrorCallback<String, String, String>(parent, LOG) {
+          @Override
+          protected ResultOrError<String, String> onRpcThread(Rpc.Result<String> result)  {
+            try {
+              return success(result.get());
+            } catch (RpcException e) {
+              return error(e.getMessage());
+            } catch (ExecutionException e) {
+              return error(e.getCause().toString());
+            }
+          }
+
+          @Override
+          protected void onUiThreadSuccess(String result) {
+            loadable.getContents().setText(result);
+            loadable.stopLoading();
+          }
+
+          @Override
+          protected void onUiThreadError(String error) {
+            loadable.showMessage(MessageType.Error, error);
+          }
+        });
+        return loadable;
+      }
+
+      @Override
+      protected Point getInitialSize() {
+        Point size = super.getInitialSize();
+        size.y = Math.max(size.y, INITIAL_MIN_HEIGHT);
+        return size;
       }
     }.open();
   }
