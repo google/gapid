@@ -568,7 +568,7 @@ public class MainWindow extends ApplicationWindow {
     EditCopy("&Copy", 'C'),
     EditSettings("&Preferences", ','),
 
-    GotoAtom("Api &Call", 'G'),
+    GotoAtom("&Command", 'G'),
     GotoMemory("&Memory Location", 'M'),
 
     ViewThumbnails("Show Filmstrip"),
