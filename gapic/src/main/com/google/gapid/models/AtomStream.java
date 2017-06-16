@@ -151,82 +151,6 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     listeners.fire().onAtomsLoaded();
   }
 
-  /*
-  @Override
-  protected void reset(boolean maintainState) {
-    super.reset(maintainState);
-    if (!maintainState) {
-      selection = null;
-    }
-  }
-
-  @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
-    return Path.Any.newBuilder()
-        .setCommands(Path.Commands.newBuilder()
-            .setCapture(capturePath))
-        .build();
-  }
-
-  @Override
-  protected AtomList unbox(Value value) throws IOException {
-    return Client.decode(value.getObject());
-  }
-
-  @Override
-  protected void fireLoadEvent() {
-    listeners.fire().onAtomsLoaded();
-    if (selection != null) {
-      listeners.fire().onAtomsSelected(selection);
-    }
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext ctx) {
-    if (selection != null && !ctx.contains(selection)) {
-      if (ctx.contains(last(selection))) {
-        selectAtoms(last(selection), 1, false);
-      } else {
-        selectAtoms(ctx.findClosest(selection), false);
-      }
-    }
-  }
-
-  public int getAtomCount() {
-    return getData().getAtoms().length;
-  }
-
-  public Atom getAtom(long index) {
-    return getData().get(index);
-  }
-
-  /**
-   * @return the index of the first command of the frame that contains the given command.
-   *
-  public int getStartOfFrame(long index) {
-    Atom[] atoms = getData().getAtoms();
-    for (int i = (int)index; i > 0; i--) {
-      if (atoms[i - 1].isEndOfFrame()) {
-        return i;
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * @return the index of the last command of the frame that contains the given command.
-   *
-  public int getEndOfFrame(long index) {
-    Atom[] atoms = getData().getAtoms();
-    for (int i = (int)index; i < atoms.length; i++) {
-      if (atoms[i].isEndOfFrame()) {
-        return i;
-      }
-    }
-    return atoms.length - 1;
-  }
-  */
-
   public AtomIndex getSelectedAtoms() {
     return selection;
   }
@@ -265,48 +189,6 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       }
     });
   }
-
-  /*
-  public void selectAtoms(long from, long count, boolean force) {
-    selectAtoms(commands(from, count), force);
-  }
-
-  public void selectAtoms(CommandRange range, boolean force) {
-    if (force || !Objects.equal(selection, range)) {
-      selection = range;
-      context.selectContextContaining(range);
-      listeners.fire().onAtomsSelected(selection);
-    }
-  }
-
-  public Atom getFirstSelectedAtom() {
-    return (selection == null || getData() == null) ? null : getData().get(first(selection));
-  }
-
-  public Atom getLastSelectedAtom() {
-    return (selection == null || getData() == null) ? null : getData().get(last(selection));
-  }
-
-  /**
-   * @return the path to the last draw command within the current selection or {@code null}.
-   *
-  public Path.Command getLastSelectedDrawCall() {
-    if (selection == null || getData() == null) {
-      return null;
-    }
-
-    FilteringContext selectedContext = context.getSelectedContext();
-    for (long index = last(selection); index >= first(selection); index--) {
-      if (selectedContext.contains(index) && getData().get(index).isDrawCall()) {
-        return Path.Command.newBuilder()
-            .setCommands(getPath().getCommands())
-            .setIndex(index)
-            .build();
-      }
-    }
-    return null;
-  }
-  */
 
   public ListenableFuture<Observation[]> getObservations(AtomIndex index) {
     return Futures.transform(client.get(observationsAfter(index, Application_VALUE)), v -> {
