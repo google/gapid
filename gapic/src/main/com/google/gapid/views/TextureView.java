@@ -45,11 +45,11 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
@@ -109,7 +109,7 @@ public class TextureView extends Composite
     super(parent, SWT.NONE);
     this.client = client;
     this.models = models;
-    this.gotoAction = new GotoAction(this, widgets.theme,
+    this.gotoAction = new GotoAction(this, models, widgets.theme,
         a -> models.atoms.selectAtoms(AtomIndex.forCommand(a), true));
 
     setLayout(new FillLayout(SWT.VERTICAL));
@@ -368,8 +368,7 @@ public class TextureView extends Composite
     }
 
     public void load(Client client, Widget widget, Widgets.Refresher refresher) {
-      Rpc.listen(
-          client.get(path), new UiCallback<Service.Value, AdditionalInfo>(widget, LOG) {
+      Rpc.listen(client.get(path), new UiCallback<Service.Value, AdditionalInfo>(widget, LOG) {
         @Override
         protected AdditionalInfo onRpcThread(Result<Service.Value> result)
             throws RpcException, ExecutionException {
@@ -451,13 +450,16 @@ public class TextureView extends Composite
    * displayed texture.
    */
   private static class GotoAction {
+    protected final Models models;
     private final Theme theme;
     private final Consumer<Path.Command> listener;
     private final Menu popupMenu;
     private ToolItem item;
     private List<Path.Command> atomIds = Collections.emptyList();
 
-    public GotoAction(Composite parent, Theme theme, Consumer<Path.Command> listener) {
+    public GotoAction(
+        Composite parent, Models models, Theme theme, Consumer<Path.Command> listener) {
+      this.models = models;
       this.theme = theme;
       this.listener = listener;
       this.popupMenu = new Menu(parent);
@@ -467,6 +469,7 @@ public class TextureView extends Composite
       item = Widgets.createToolItem(bar, theme.jump(), e -> {
         popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
         popupMenu.setVisible(true);
+        loadAllCommands();
       }, "Jump to texture reference");
       item.setEnabled(!atomIds.isEmpty());
       return item;
@@ -493,15 +496,38 @@ public class TextureView extends Composite
 
       for (int i = 0; i < atomIds.size(); i++) {
         Path.Command id = atomIds.get(i);
-        MenuItem child = Widgets.createMenuItem(popupMenu, Formatter.atomIndex(id)/* + ": " + atoms.get(id).getName()*/, 0,
-            e -> listener.accept(id));
-        /*
-        if (id <= selection && (i == atomIds.size() - 1 || atomIds.get(i + 1) > selection)) {
+        MenuItem child = Widgets.createMenuItem(popupMenu, Formatter.atomIndex(id) + ": Loading...",
+            0, e -> listener.accept(id));
+        child.setData(id);
+        if ((Paths.compare(id, selection) <= 0) &&
+            (i == atomIds.size() - 1 || (Paths.compare(atomIds.get(i + 1), selection) > 0))) {
           child.setImage(theme.arrow());
         }
-        */
       }
       item.setEnabled(!atomIds.isEmpty());
+    }
+
+    private void loadAllCommands() {
+      for (MenuItem child : popupMenu.getItems()) {
+        if (child.getData() instanceof Path.Command) {
+          Path.Command path = (Path.Command)child.getData();
+          Rpc.listen(models.atoms.loadCommand(path),
+              new UiCallback<Service.Command, String>(child, LOG) {
+            @Override
+            protected String onRpcThread(Result<Service.Command> result)
+                throws RpcException, ExecutionException {
+              return Formatter.atomIndex(path) + ": " +
+                Formatter.toString(result.get(), models.constants::getConstants);
+            }
+
+            @Override
+            protected void onUiThread(String result) {
+              child.setText(result);
+            }
+          });
+          child.setData(null);
+        }
+      }
     }
   }
 

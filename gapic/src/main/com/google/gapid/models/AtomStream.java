@@ -33,9 +33,9 @@ import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
@@ -111,14 +111,17 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         client.get(any(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
           CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
-            return Futures.transformAsync(client.get(any(lastCommand(data.getCommands()))), v2 -> {
-              Service.Command cmd = v2.getCommand();
-              return Futures.transform(constants.loadConstants(cmd),
-                  ignore -> new NodeData(data, v2.getCommand()));
-            });
+            return Futures.transform(
+                loadCommand(lastCommand(data.getCommands())), cmd -> new NodeData(data, cmd));
           }
           return Futures.immediateFuture(new NodeData(data, null));
         }));
+  }
+
+  public ListenableFuture<Service.Command> loadCommand(Path.Command path) {
+    return Futures.transformAsync(client.get(any(path)), value ->
+        Futures.transform(constants.loadConstants(value.getCommand()), ignore ->
+            value.getCommand()));
   }
 
   public void load(Node node, Runnable callback) {
