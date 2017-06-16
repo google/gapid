@@ -29,4 +29,12 @@ public class Values {
         .setCommand(command)
         .build();
   }
+
+  public static byte[] getBytes(Service.Value value) {
+    switch (value.getValCase()) {
+      case BOX: return Boxes.getBytes(value.getBox());
+      default:
+        throw new RuntimeException("Don't know how to get bytes out of " + value.getValCase());
+    }
+  }
 }

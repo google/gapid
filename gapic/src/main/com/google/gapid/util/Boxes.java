@@ -56,6 +56,14 @@ public class Boxes {
     return type.getArray();
   }
 
+  public static byte[] getBytes(Box.Value box) {
+    switch (box.getValCase()) {
+      case POD: return Pods.getBytes(box.getPod());
+      default:
+        throw new RuntimeException("Don't know how to get bytes out of " + box.getValCase());
+    }
+  }
+
 //  @SuppressWarnings("unused")
 //  public static interface Visitor {
 //    public default void backReference(Integer id) { /* empty */ }

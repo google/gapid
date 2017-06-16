@@ -27,6 +27,7 @@ import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image.Info;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.gfxapi.GfxAPI;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
@@ -34,6 +35,7 @@ import com.google.gapid.proto.service.gfxapi.GfxAPI.CubemapLevel;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.Texture2D;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.Values;
 
 import org.eclipse.swt.graphics.ImageData;
 
@@ -253,11 +255,10 @@ public class FetchedImage implements MultiLevelImage {
     @Override
     protected ListenableFuture<ArrayImageBuffer> doLoad() {
       return Futures.transform(
-          client.get(blob(imageInfo.getBytes())), new Function<Value, ArrayImageBuffer>() {
+          client.get(blob(imageInfo.getBytes())), new Function<Service.Value, ArrayImageBuffer>() {
         @Override
-        public ArrayImageBuffer apply(Value data) {
-          //TODO
-          return convertImage(imageInfo, format, data.getBox().getPod().getUint8Array().toByteArray());
+        public ArrayImageBuffer apply(Service.Value data) {
+          return convertImage(imageInfo, format, Values.getBytes(data));
         }
       });
     }
@@ -293,8 +294,7 @@ public class FetchedImage implements MultiLevelImage {
         public ArrayImageBuffer apply(List<Value> values) {
           byte[][] data = new byte[values.size()][];
           for (int i = 0; i < data.length; i++) {
-            // TODO
-            data[i] = values.get(i).getBox().getPod().getUint8Array().toByteArray();
+            data[i] = Values.getBytes(values.get(i));
           }
           return convertImage(imageInfos, format, data);
         }
