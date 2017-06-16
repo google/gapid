@@ -60,7 +60,7 @@ if (NOT PlatformSourcePath STREQUAL "windows")
 endif()
 
 set(JAVA_BASE "${CMAKE_SOURCE_DIR}/gapic/src")
-set(JAVA_SERVICE "${JAVA_BASE}/service")
+set(JAVA_GENERATED "${JAVA_BASE}/generated")
 
 # Install and package settings
 set(home $ENV{HOME})

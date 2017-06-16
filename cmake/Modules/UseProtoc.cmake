@@ -219,11 +219,11 @@ endfunction()
 function(protoc_java src_dir protos classes)
     set(outputs)
     foreach(class ${classes})
-        list(APPEND outputs "${JAVA_SERVICE}/${class}.java")
+        list(APPEND outputs "${JAVA_GENERATED}/${class}.java")
     endforeach()
 
     file(TO_NATIVE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/protoc-gen-grpc-java${CMAKE_HOST_EXECUTABLE_SUFFIX}" os_protoc_gen_grpc_java)
-    file(TO_NATIVE_PATH "${JAVA_SERVICE}" os_java_service)
+    file(TO_NATIVE_PATH "${JAVA_GENERATED}" os_java_generated)
 
     set(proto_path
         "${CMAKE_SOURCE_DIR}"
@@ -233,8 +233,8 @@ function(protoc_java src_dir protos classes)
 
     _do_protoc("java" "${proto_path}" "${src_dir}" "${protos}" "${outputs}"
         "--plugin=protoc-gen-grpc-java=${os_protoc_gen_grpc_java}"
-        "--java_out=${os_java_service}"
-        "--grpc-java_out=${os_java_service}"
+        "--java_out=${os_java_generated}"
+        "--grpc-java_out=${os_java_generated}"
     )
 endfunction()
 

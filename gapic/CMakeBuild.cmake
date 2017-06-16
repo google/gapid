@@ -14,6 +14,6 @@
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/Version.java.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/service/com/google/gapid/Version.java"
+    "${JAVA_GENERATED}/com/google/gapid/Version.java"
     @ONLY
 )

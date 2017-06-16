@@ -19,6 +19,7 @@ import com.google.gapid.proto.service.Service;
 /**
  * Version specifier.
  */
+@javax.annotation.Generated("by GAPID cmake")
 public class Version {
   public static final Version GAPID_VERSION = new Version(@GAPID_VERSION_MAJOR@, @GAPID_VERSION_MINOR@, @GAPID_VERSION_POINT@, "@GAPID_BUILD_NUMBER@:@GAPID_BUILD_SHA@");
 
