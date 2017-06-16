@@ -19,6 +19,7 @@ import static com.google.gapid.util.Paths.findState;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.WARNING;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -26,9 +27,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.PathNotFollowableException;
 import com.google.gapid.util.Events;
@@ -40,6 +41,7 @@ import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -72,16 +74,19 @@ public class Follower {
    */
   public Prefetcher<String> prepare(Path.Command path, Service.Command atom, Runnable onResult) {
     LazyMap<String, Path.Any> paths = new LazyMap<String, Path.Any>();
+    List<ListenableFuture<Path.Any>> futures = Lists.newArrayList();
     for (Service.Parameter p : atom.getParametersList()) {
       Path.Any follow = Paths.atomField(path, p.getName());
-      Futures.addCallback(
-          client.follow(follow), callback(follow, v -> paths.put(p.getName(), v), onResult));
+      ListenableFuture<Path.Any> future = client.follow(follow);
+      Futures.addCallback(future, callback(follow, v -> paths.put(p.getName(), v), onResult));
+      futures.add(future);
     }
 
     if (atom.hasResult()) {
       Path.Any follow = Paths.atomResult(path);
-      Futures.addCallback(
-          client.follow(follow), callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
+      ListenableFuture<Path.Any> future = client.follow(follow);
+      Futures.addCallback(future, callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
+      futures.add(future);
     }
 
     return new Prefetcher<String>() {
@@ -92,7 +97,7 @@ public class Follower {
 
       @Override
       public void cancel() {
-        // TODO.
+        futures.forEach(f -> f.cancel(true));
       }
     };
   }
