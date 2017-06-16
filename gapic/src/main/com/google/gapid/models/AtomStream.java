@@ -366,7 +366,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   }
 
   /**
-   * TODO
+   * An index into the atom stream, representing a specific "point in time" in the trace.
    */
   public static class AtomIndex implements Comparable<AtomIndex> {
     private final Path.Command command;
@@ -379,14 +379,25 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       this.group = group;
     }
 
+    /**
+     * Create an index pointing to the given command and node.
+     */
     public static AtomIndex forNode(Path.Command command, Path.CommandTreeNode node) {
       return new AtomIndex(command, node, false);
     }
 
+    /**
+     * Create an index pointing to the given command, without knowing the tree node.
+     * The tree nodes is then resolved when it is needed.
+     */
     public static AtomIndex forCommand(Path.Command command) {
       return new AtomIndex(command, null, false);
     }
 
+    /**
+     * Same as {@link forCommand}, except that group selection is to be preferred when
+     * resolving to a tree node.
+     */
     public static AtomIndex forGroup(Path.Command command) {
       return new AtomIndex(command, null, true);
     }
