@@ -15,6 +15,8 @@
  */
 package com.google.gapid.util;
 
+import static com.google.gapid.Version.GAPID_VERSION;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -35,6 +37,7 @@ public class Flags {
   private static final int HELP_LINE_LENGTH = 80;
 
   public static final Flag<Boolean> help = value("help", false, "Print help information.");
+  public static final Flag<Boolean> version = value("version", false, "Print GAPID version.");
 
   private static boolean initialized = false;
 
@@ -108,7 +111,10 @@ public class Flags {
 
     if (help.get()) {
       printHelp(System.out, flags);
-      System.exit(1);
+      System.exit(0);
+    } else if (version.get()) {
+      printVersion(System.out);
+      System.exit(0);
     }
 
     return result.toArray(new String[result.size()]);
@@ -118,7 +124,12 @@ public class Flags {
     return flag.get() instanceof Boolean;
   }
 
+  private static void printVersion(PrintStream out) {
+    out.println("GAPID version " + GAPID_VERSION);
+  }
+
   private static void printHelp(PrintStream out, Flag<?>[] flags) {
+    printVersion(out);
     out.println("Usage:");
     StringBuilder line = new StringBuilder();
     for (Flag<?> flag : flags) {
