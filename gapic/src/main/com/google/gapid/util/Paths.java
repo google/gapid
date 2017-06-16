@@ -44,18 +44,6 @@ public class Paths {
     return TextFormat.shortDebugString(path);
   }
 
-  /*
-  public static Path.Command command(Path.Any atomsPath, long index) {
-    if (atomsPath == null || atomsPath.getPathCase() != COMMANDS) {
-      return null;
-    }
-    return Path.Command.newBuilder()
-        .setCapture(atomsPath.getCommands().getCapture())
-        .addIndex(index)
-        .build();
-  }
-  */
-
   public static Path.Command command(Path.Capture capture, long index) {
     if (capture == null) {
       return null;
@@ -183,23 +171,6 @@ public class Paths {
             .setMember(statePath))
         .build();
   }
-
-  /*
-  public static Path.Any memoryAfter(
-      Path.Any atomsPath, AtomIndex atom, int pool, long address, long size) {
-    if (atomsPath == null || atom == null || atomsPath.getPathCase() != COMMANDS) {
-      return null;
-    }
-    return Path.Any.newBuilder()
-        .setMemory(Path.Memory.newBuilder()
-            .setAfter(atom.toProto(Path.Command.newBuilder())
-                .setCapture(atomsPath.getCommands().getCapture()))
-            .setPool(pool)
-            .setAddress(address)
-            .setSize(size))
-        .build();
-  }
-  */
 
   public static Path.Any memoryAfter(Path.Command after, int pool, long address, long size) {
     if (after == null) {

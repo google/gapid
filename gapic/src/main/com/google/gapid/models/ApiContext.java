@@ -120,21 +120,6 @@ public class ApiContext
     }
   }
 
-  /*
-  public void selectContextContaining(CommandRange atoms) {
-    if (isLoaded() && !selectedContext.contains(last(atoms))) {
-      for (FilteringContext context : getData()) {
-        if (context != FilteringContext.ALL && context.contains(last(atoms))) {
-          selectContext(context);
-          return;
-        }
-      }
-      // Fallback to selecting the ALL context.
-      selectContext(FilteringContext.ALL);
-    }
-  }
-  */
-
   /**
    * A {@link com.google.gapid.proto.service.Service.Context} wrapper to allow filtering of the
    * command tree.

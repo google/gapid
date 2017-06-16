@@ -25,69 +25,6 @@ public class Pods {
   private Pods() {
   }
 
-  /*
-  public static Pod.Value pod(Object o, Type type) {
-    Pod.Value.Builder result = Pod.Value.newBuilder();
-    if (o == null) {
-      // Empty proto.
-    } else if (o instanceof Number) {
-      Number n = (Number)o;
-      if (type instanceof Primitive) {
-        switch (((Primitive)type).getMethod().getValue()) {
-          case Method.BoolValue:
-            result.setBool(n.intValue() != 0);
-            break;
-          case Method.Int8Value:
-            result.setSint8(n.intValue());
-            break;
-          case Method.Uint8Value:
-            result.setUint8(n.intValue() & 0xFF);
-            break;
-          case Method.Int16Value:
-            result.setSint16(n.intValue());
-            break;
-          case Method.Uint16Value:
-            result.setUint16(n.intValue() & 0xFFFF);
-            break;
-          case Method.Int32Value:
-            result.setSint32(n.intValue());
-            break;
-          case Method.Uint32Value:
-            result.setUint32(n.intValue());
-            break;
-          case Method.Int64Value:
-            result.setSint64(n.longValue());
-            break;
-          case Method.Uint64Value:
-            result.setUint64(n.longValue());
-            break;
-          case Method.Float32Value:
-            result.setFloat32(n.floatValue());
-            break;
-          case Method.Float64Value:
-            result.setFloat64(n.doubleValue());
-            break;
-          case Method.StringValue:
-            result.setString(n.toString());
-            break;
-          default:
-            throw new AssertionError();
-        }
-      } else {
-        throw new UnsupportedOperationException("Cannot pod: " + o + " as: " + type);
-      }
-    } else if (o instanceof Boolean) {
-      result.setBool((Boolean)o);
-    } else if (o instanceof String) {
-      result.setString((String)o);
-    } else {
-      // TODO handle arrays
-      throw new UnsupportedOperationException("Cannot pod: " + o + " as: " + type);
-    }
-    return result.build();
-  }
-  */
-
   public static Pod.Value pod(String s) {
     return Pod.Value.newBuilder().setString(s).build();
   }
