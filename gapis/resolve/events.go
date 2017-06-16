@@ -104,6 +104,13 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				})
 			}
 		}
+
+		if p.AllCommands {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_AllCommands,
+				Command: p.Commands.Capture.Command(uint64(i)),
+			})
+		}
 	}
 
 	return &service.Events{List: events}, nil

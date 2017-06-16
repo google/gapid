@@ -152,6 +152,7 @@ message Events {
     bool push_user_markers = 8;
     bool pop_user_markers = 9;
     bool framebuffer_observations = 10;
+    bool all_commands = 11;
 }
 
 // Parameter is the path to a single parameter on a command.
