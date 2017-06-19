@@ -31,7 +31,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.gapid.glviewer.Geometry;
 import com.google.gapid.glviewer.Geometry.DisplayMode;
-import com.google.gapid.glviewer.Viewer;
+import com.google.gapid.glviewer.GeometryScene;
+import com.google.gapid.glviewer.GeometryScene.Data;
 import com.google.gapid.glviewer.camera.CylindricalCameraModel;
 import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
@@ -53,7 +54,7 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Streams;
-import com.google.gapid.widgets.GlComposite;
+import com.google.gapid.widgets.ScenePanel;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
@@ -100,12 +101,11 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   private final Client client;
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
-  protected final LoadablePanel<GlComposite> loading;
-  private final Geometry geometry = new Geometry();
+  protected final LoadablePanel<ScenePanel> loading;
+  protected final ScenePanel canvas;
+  protected GeometryScene.Data data = Data.DEFAULTS;
   private final IsoSurfaceCameraModel camera =
       new IsoSurfaceCameraModel(new CylindricalCameraModel());
-  private final Viewer viewer = new Viewer(camera);
-  private final GlComposite canvas;
   private ToolItem originalModelItem, facetedModelItem;
   private Model originalModel, facetedModel;
   private Geometry.DisplayMode displayMode = Geometry.DisplayMode.TRIANGLES;
@@ -119,9 +119,12 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
     setLayout(new GridLayout(2, false));
 
+    GeometryScene scene = new GeometryScene(camera);
+
     ToolBar toolbar = createToolbar(widgets.theme);
-    loading = LoadablePanel.create(this, widgets, panel -> createCanvas(panel));
+    loading = LoadablePanel.create(this, widgets, panel -> new ScenePanel(panel, scene));
     canvas = loading.getContents();
+    scene.bindCamera(canvas);
 
     toolbar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -133,30 +136,21 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
       models.atoms.removeListener(this);
     });
 
-    viewer.addMouseListeners(canvas);
-
     originalModelItem.setEnabled(false);
     facetedModelItem.setEnabled(false);
-  }
-
-  private GlComposite createCanvas(Composite parent) {
-    GlComposite result = new GlComposite(parent);
-    result.addListener(viewer);
-    return result;
   }
 
   private ToolBar createToolbar(Theme theme) {
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
     createToolItem(bar, theme.yUp(), e -> {
-      boolean zUp = geometry.toggleZUp();
+      boolean zUp = !data.geometry.zUp;
       ((ToolItem)e.widget).setImage(zUp ? theme.zUp() : theme.yUp());
-      updateViewer();
+      setSceneData(data.withGeometry(new Geometry(data.geometry.model, zUp), displayMode));
     }, "Toggle Y/Z up");
     createToolItem(bar, theme.windingCCW(), e -> {
-      Viewer.Winding winding = viewer.toggleWinding();
-      ((ToolItem)e.widget).setImage((winding == Viewer.Winding.CCW) ?
-          theme.windingCCW() : theme.windingCW());
-      updateViewer();
+      ((ToolItem)e.widget).setImage((data.winding == GeometryScene.Winding.CCW) ?
+          theme.windingCW() : theme.windingCCW());
+      setSceneData(data.withToggledWinding());
     }, "Toggle triangle winding");
     createSeparator(bar);
     exclusiveSelection(
@@ -182,24 +176,20 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
         }, "Use computed per-face normals"));
     createSeparator(bar);
     createToolItem(bar, theme.cullingDisabled(), e -> {
-      Viewer.Culling culling = viewer.toggleCulling();
-      ((ToolItem)e.widget).setImage((culling == Viewer.Culling.ON) ?
-          theme.cullingEnabled() : theme.cullingDisabled());
-      updateViewer();
+      ((ToolItem)e.widget).setImage((data.culling == GeometryScene.Culling.ON) ?
+          theme.cullingDisabled() : theme.cullingEnabled());
+      setSceneData(data.withToggledCulling());
     }, "Toggle backface culling");
     createSeparator(bar);
     exclusiveSelection(
         createToggleToolItem(bar, theme.lit(), e -> {
-          viewer.setShading(Viewer.Shading.LIT);
-          updateViewer();
+          setSceneData(data.withShading(GeometryScene.Shading.LIT));
         }, "Render with a lit shader"),
         createToggleToolItem(bar, theme.flat(), e -> {
-          viewer.setShading(Viewer.Shading.FLAT);
-          updateViewer();
+          setSceneData(data.withShading(GeometryScene.Shading.FLAT));
         }, "Render with a flat shader (silhouette)"),
         createToggleToolItem(bar, theme.normals(), e -> {
-          viewer.setShading(Viewer.Shading.NORMALS);
-          updateViewer();
+          setSceneData(data.withShading(GeometryScene.Shading.NORMALS));
         }, "Render normals"));
     return bar;
   }
@@ -386,26 +376,21 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
         // Ignore.
     }
 
-    setDisplayMode(newDisplayMode);
-    geometry.setModel(model);
-    updateRenderable();
-  }
+    renderAsTriangles.setSelection(newDisplayMode == DisplayMode.TRIANGLES);
+    renderAsLines.setSelection(newDisplayMode == DisplayMode.LINES);
+    renderAsPoints.setSelection(newDisplayMode == DisplayMode.POINTS);
+    displayMode = newDisplayMode;
 
-  private void setDisplayMode(DisplayMode newMode) {
-    renderAsTriangles.setSelection(newMode == DisplayMode.TRIANGLES);
-    renderAsLines.setSelection(newMode == DisplayMode.LINES);
-    renderAsPoints.setSelection(newMode == DisplayMode.POINTS);
-    displayMode = newMode;
+    setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp), displayMode));
   }
 
   private void updateRenderable() {
-    // Repaint will happen below.
-    viewer.setRenderable(geometry.asRenderable(displayMode));
-    updateViewer();
+    setSceneData(data.withGeometry(data.geometry, displayMode));
   }
 
-  private void updateViewer() {
-    camera.setEmitter(geometry.getEmitter());
-    canvas.paint();
+  private void setSceneData(GeometryScene.Data data) {
+    this.data = data;
+    camera.setEmitter(data.geometry.getEmitter());
+    canvas.setSceneData(data);
   }
 }

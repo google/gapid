@@ -15,6 +15,7 @@
  */
 package com.google.gapid.glviewer;
 
+import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Shader;
 
 /**
@@ -23,35 +24,35 @@ import com.google.gapid.glviewer.gl.Shader;
 public interface Renderable {
   public static final Renderable NOOP = new Renderable() {
     @Override
-    public void init() {
+    public void init(Renderer renderer) {
       // No op.
     }
 
     @Override
-    public void render(State state) {
+    public void render(Renderer renderer, State state) {
       // No op.
     }
 
     @Override
-    public void dispose() {
+    public void dispose(Renderer renderer) {
       // No op.
     }
   };
 
   /**
-   * Called once to initialize this {@link Renderable} before any calls to {@link #render(State)}.
+   * Called once to initialize this {@link Renderable} before any calls to {@link #render(Renderer, State)}.
    */
-  public void init();
+  public void init(Renderer renderer);
 
   /**
    * Renders this object with the given state.
    */
-  public void render(State state);
+  public void render(Renderer renderer, State state);
 
   /**
-   * Called once to dispose this {@link Renderable} after the last call to {@link #render(State)}.
+   * Called once to dispose this {@link Renderable} after the last call to {@link #render(Renderer, State)}.
    */
-  public void dispose();
+  public void dispose(Renderer renderer);
 
   /**
    * Current render state, consisting of the current shader and view transforms.

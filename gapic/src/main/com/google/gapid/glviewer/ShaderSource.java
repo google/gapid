@@ -45,17 +45,21 @@ public class ShaderSource {
   private static final String VERSION_130 = "#version 130\n";
   private static final String VERSION_150 = "#version 150\n";
 
-  private ShaderSource() {
+  public final String vertex, fragment;
+
+  private ShaderSource(String vertex, String fragment) {
+    this.vertex = vertex;
+    this.fragment = fragment;
   }
 
-  public static Shader loadShader(String name) {
-    return loadShader(Resources.getResource("shaders/" + name + ".glsl"));
+  public static ShaderSource load(String name) {
+    return load(Resources.getResource("shaders/" + name + ".glsl"));
   }
 
-  public static Shader loadShader(URL resource) {
+  public static ShaderSource load(URL resource) {
     String version = isAtLeastVersion(3, 2) ? VERSION_150 : VERSION_130;
     try {
-      Source source = Resources.readLines(resource, Charsets.US_ASCII, new LineProcessor<Source>() {
+      ShaderSource source = Resources.readLines(resource, Charsets.US_ASCII, new LineProcessor<ShaderSource>() {
         private static final int MODE_COMMON = 0;
         private static final int MODE_VERTEX = 1;
         private static final int MODE_FRAGMENT = 2;
@@ -94,17 +98,12 @@ public class ShaderSource {
         }
 
         @Override
-        public Source getResult() {
-          return new Source(vertexSource.toString(), fragmentSource.toString());
+        public ShaderSource getResult() {
+          return new ShaderSource(vertexSource.toString(), fragmentSource.toString());
         }
       });
 
-      Shader shader = new Shader();
-      if (!shader.link(source.vertex, source.fragment)) {
-        shader.delete();
-        shader = null;
-      }
-      return shader;
+      return source;
     } catch (IOException e) {
       LOG.log(WARNING, "Failed to load shader source", e);
       return null;
@@ -114,14 +113,5 @@ public class ShaderSource {
   private static boolean isAtLeastVersion(int major, int minor) {
     int val = GL11.glGetInteger(GL30.GL_MAJOR_VERSION);
     return (val > major) || (val == major && GL11.glGetInteger(GL30.GL_MINOR_VERSION) >= minor);
-  }
-
-  private static class Source {
-    public final String vertex, fragment;
-
-    public Source(String vertex, String fragment) {
-      this.vertex = vertex;
-      this.fragment = fragment;
-    }
   }
 }

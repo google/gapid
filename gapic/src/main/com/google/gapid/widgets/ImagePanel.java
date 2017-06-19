@@ -25,11 +25,12 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 
-import com.google.gapid.glviewer.Constants;
-import com.google.gapid.glviewer.ShaderSource;
-import com.google.gapid.glviewer.gl.Buffer;
+import com.google.gapid.glviewer.gl.Renderer;
+import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
 import com.google.gapid.glviewer.gl.Texture;
+import com.google.gapid.glviewer.vec.MatD;
+import com.google.gapid.glviewer.vec.VecD;
 import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
@@ -70,11 +71,10 @@ import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntConsumer;
 import java.util.logging.Logger;
 
@@ -91,17 +91,18 @@ public class ImagePanel extends Composite {
   private final StatusBar status;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
-  private ToolItem backgroundItem, saveItem;
+  private ToolItem zoomFitItem, backgroundItem, saveItem;
   private MultiLevelImage image = MultiLevelImage.EMPTY;
   private Image level = Image.EMPTY;
 
-  public ImagePanel(Composite parent, Widgets widgets) {
+  public ImagePanel(Composite parent, Widgets widgets, boolean naturallyFlipped) {
     super(parent, SWT.NONE);
     backgroundSelection = new BackgroundSelection(getDisplay());
 
     setLayout(Widgets.withMargin(new GridLayout(1, false), 5, 2));
 
-    loading = LoadablePanel.create(this, widgets, panel -> new ImageComponent(panel));
+    loading = LoadablePanel.create(this, widgets, panel ->
+        new ImageComponent(panel, widgets.theme, naturallyFlipped));
     status = new StatusBar(this, this::loadLevel);
     imageComponent = loading.getContents();
 
@@ -119,7 +120,7 @@ public class ImagePanel extends Composite {
           setCursor(getDisplay().getSystemCursor(SWT.CURSOR_SIZEALL));
           imageComponent.setPreviewPixel(Pixel.OUT_OF_BOUNDS);
         } else {
-          imageComponent.zoomToFit();
+          setZoomToFit(true);
         }
       }
 
@@ -144,7 +145,7 @@ public class ImagePanel extends Composite {
 
       @Override
       public void mouseScrolled(MouseEvent e) {
-        imageComponent.zoom(Math.max(-ZOOM_AMOUNT, Math.min(ZOOM_AMOUNT, -e.count)), getPoint(e));
+        zoom(Math.max(-ZOOM_AMOUNT, Math.min(ZOOM_AMOUNT, -e.count)), getPoint(e));
       }
 
       @Override
@@ -174,11 +175,13 @@ public class ImagePanel extends Composite {
     status.setPixel(pixel);
   }
 
-  public void createToolbar(ToolBar bar, Theme theme, boolean enableVerticalFlip) {
-    createToolItem(bar, theme.zoomFit(), e -> imageComponent.zoomToFit(), "Zoom to fit");
-    createToolItem(bar, theme.zoomActual(), e -> imageComponent.zoomToActual(), "Original size");
-    createToolItem(bar, theme.zoomIn(), e -> imageComponent.zoom(-ZOOM_AMOUNT, null), "Zoom in");
-    createToolItem(bar, theme.zoomOut(), e -> imageComponent.zoom(ZOOM_AMOUNT, null), "Zoom out");
+  public void createToolbar(ToolBar bar, Theme theme) {
+    zoomFitItem = createToggleToolItem(bar, theme.zoomFit(),
+        e -> setZoomToFit(((ToolItem)e.widget).getSelection()), "Zoom to fit");
+    setZoomToFit(true);
+    createToolItem(bar, theme.zoomActual(), e -> zoomToActual(), "Original size");
+    createToolItem(bar, theme.zoomIn(), e -> zoom(-ZOOM_AMOUNT), "Zoom in");
+    createToolItem(bar, theme.zoomOut(), e -> zoom(ZOOM_AMOUNT), "Zoom out");
     createSeparator(bar);
     saveItem = createToolItem(bar, theme.save(), e -> save(), "Save image to file");
     saveItem.setEnabled(false);
@@ -197,10 +200,27 @@ public class ImagePanel extends Composite {
     backgroundItem = createBaloonToolItem(bar, theme.transparency(),
         shell -> backgroundSelection.createBaloonContents(shell, theme,
             mode -> updateBackgroundMode(mode, theme)), "Choose image background");
-    if (enableVerticalFlip) {
-      createToggleToolItem(bar, theme.flipVertically(),
-          e -> imageComponent.setFlipped(((ToolItem)e.widget).getSelection()), "Flip vertically");
-    }
+    createToggleToolItem(bar, theme.flipVertically(),
+        e -> imageComponent.setFlipped(((ToolItem)e.widget).getSelection()), "Flip vertically");
+  }
+
+  protected void setZoomToFit(boolean enabled) {
+    zoomFitItem.setSelection(enabled);
+    imageComponent.setZoomToFit(enabled);
+  }
+
+  protected void zoomToActual() {
+    setZoomToFit(false);
+    imageComponent.zoomToActual();
+  }
+
+  protected void zoom(int amount) {
+    zoom(amount, null);
+  }
+
+  protected void zoom(int amount, Point cursor) {
+    setZoomToFit(false);
+    imageComponent.zoom(amount, cursor);
   }
 
   protected void updateBackgroundMode(BackgroundMode mode, Theme theme) {
@@ -238,10 +258,6 @@ public class ImagePanel extends Composite {
     if (image == null || image == MultiLevelImage.EMPTY) {
       clearImage();
     } else {
-      if (this.image == MultiLevelImage.EMPTY) {
-        // Ignore any zoom actions that might have happened before the first real image was shown.
-        imageComponent.zoomToFit();
-      }
       this.image = image;
       this.level = Image.EMPTY;
       loadLevel(0);
@@ -256,7 +272,7 @@ public class ImagePanel extends Composite {
       saveItem.setEnabled(false);
     }
     status.setLevelCount(0);
-    imageComponent.setImageData(level);
+    imageComponent.setImage(level);
   }
 
   private void loadLevel(int index) {
@@ -299,372 +315,453 @@ public class ImagePanel extends Composite {
   }
 
   protected void updateLevel(Image newLevel) {
-    if (level == Image.EMPTY) {
-      // Ignore any zoom actions that might have happened before the first real image was shown.
-      imageComponent.zoomToFit();
-    }
     level = (newLevel == null) ? Image.EMPTY : newLevel;
     status.setLevelSize(level.getWidth(), level.getHeight());
     loading.stopLoading();
     if (saveItem != null) {
       saveItem.setEnabled(newLevel != null);
     }
-    imageComponent.setImageData(level);
+    imageComponent.setImage(level);
+  }
+
+  private static class SceneData {
+    public Image image;
+    public MatD transform = MatD.IDENTITY;
+    public final boolean channels[] = { true, true, true, true };
+    public Pixel previewPixel = Pixel.OUT_OF_BOUNDS;
+    public boolean flipped;
+    public int borderWidth;
+    public Color borderColor;
+    public Color panelColor;
+    public Color backgroundColor;
+    public BackgroundMode backgroundMode;
+    public Color checkerLight;
+    public Color checkerDark;
+    public int checkerSize;
+    public Color cursorLight;
+    public Color cursorDark;
+
+    public SceneData copy() {
+      SceneData out = new SceneData();
+      out.image = image;
+      out.transform = MatD.copyOf(transform);
+      System.arraycopy(channels, 0, out.channels, 0, channels.length);
+      out.previewPixel = previewPixel;
+      out.flipped = flipped;
+      out.borderWidth = borderWidth;
+      out.borderColor = borderColor;
+      out.panelColor = panelColor;
+      out.backgroundColor = backgroundColor;
+      out.backgroundMode = backgroundMode;
+      out.checkerLight = checkerLight;
+      out.checkerDark = checkerDark;
+      out.checkerSize = checkerSize;
+      out.cursorLight = cursorLight;
+      out.cursorDark = cursorDark;
+      return out;
+    }
   }
 
   /**
    * Component that renders the image using OpenGL.
    */
-  private static class ImageComponent extends Composite implements GlComposite.Listener {
-    private static final double ZOOM_FIT = Double.POSITIVE_INFINITY;
+  private static class ImageComponent extends Composite {
     private static final int BORDER_SIZE = 2;
     private static final double MAX_ZOOM_FACTOR = 8;
-    private static final double MIN_ZOOM_WIDTH = 100.0;
-    private static final int PREVIEW_WIDTH = 19; // Should be odd, so center pixel looks nice.
-    private static final int PREVIEW_HEIGHT = 11; // Should be odd, so center pixel looks nice.
-    private static final int PREVIEW_SIZE = 7;
-    private static final int MODE_TEXTURE = 0, MODE_CHECKER = 1, MODE_SOLID = 2;
-    private static final float[] CURSOR_DARK = new float[] { 0, 0, 0 };
-    private static final float[] CURSOR_LIGHT = new float[] { 1, 1, 1 };
+    private static final VecD MIN_ZOOM_SIZE = new VecD(100, 100, 0);
 
-    private final GlComposite canvas;
-    private Image imageData = Image.EMPTY;
-    private final AtomicBoolean newImageData = new AtomicBoolean(false);
-    private double zoom = ZOOM_FIT;
-    private boolean flipped = false;
-    private float[] channels = new float[] { 1f, 1f, 1f, 1f };
-    private BackgroundMode backgroundMode = BackgroundMode.Checkerboard;
-    private Color backgroundColor;
-    private Pixel previewPixel = Pixel.OUT_OF_BOUNDS;
+    private final boolean naturallyFlipped;
 
-    private Shader shader;
-    private Buffer buffer;
-    private Texture texture;
-    private int[] uSize = new int[2], uOffset = new int[2];
-    private float[] uRange = new float[] { 0, 1 };
+    private final ScrollBar scrollbars[];
+    private final ScenePanel canvas;
+    private final SceneData settings;
+    private Image image;
 
-    public ImageComponent(Composite parent) {
-      super(parent, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
+    private double scaleImageToViewMin = 0;
+    private double scaleImageToViewMax = Double.POSITIVE_INFINITY;
+    private double scaleImageToViewFit = 1;
+
+    private VecD viewSize = VecD.ZERO;
+    private VecD imageSize = VecD.ZERO;
+    private VecD imageOffset = VecD.ZERO;
+    private VecD imageOffsetMin = VecD.MIN;
+    private VecD imageOffsetMax = VecD.MAX;
+
+    private double scaleImageToView = 1.0;
+    private boolean zoomToFit;
+
+    public ImageComponent(Composite parent, Theme theme, boolean naturallyFlipped) {
+      super(parent, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
       setLayout(new FillLayout(SWT.VERTICAL));
 
-      canvas = new GlComposite(this);
-      canvas.addListener(this);
+      this.naturallyFlipped = naturallyFlipped;
 
-      getHorizontalBar().addListener(SWT.Selection, e -> canvas.paint());
-      getVerticalBar().addListener(SWT.Selection, e -> canvas.paint());
+      scrollbars = new ScrollBar[] { getHorizontalBar(), getVerticalBar() };
+
+      settings = new SceneData();
+      settings.flipped = naturallyFlipped;
+      settings.borderWidth = BORDER_SIZE;
+      settings.borderColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_NORMAL_SHADOW);
+      settings.panelColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+      settings.backgroundMode = BackgroundMode.Checkerboard;
+      settings.checkerDark = theme.imageCheckerDark();
+      settings.checkerLight = theme.imageCheckerLight();
+      settings.checkerSize = 30;
+      settings.cursorLight = theme.imageCursorLight();
+      settings.cursorDark = theme.imageCursorDark();
+
+      canvas = new ScenePanel(this, new ImageScene());
+      canvas.setSceneData(settings.copy());
+
+      getHorizontalBar().addListener(SWT.Selection, e -> onScroll());
+      getVerticalBar().addListener(SWT.Selection, e -> onScroll());
+      canvas.addListener(SWT.Resize, e -> onResize());
 
       // Prevent the mouse wheel from scrolling the view.
       addListener(SWT.MouseWheel, e -> e.doit = false);
     }
 
     public void addMouseListeners(MouseAdapter mouseHandler) {
-      canvas.getControl().addMouseListener(mouseHandler);
-      canvas.getControl().addMouseMoveListener(mouseHandler);
-      canvas.getControl().addMouseWheelListener(mouseHandler);
-      canvas.getControl().addMouseTrackListener(mouseHandler);
+      canvas.addMouseListener(mouseHandler);
+      canvas.addMouseMoveListener(mouseHandler);
+      canvas.addMouseWheelListener(mouseHandler);
+      canvas.addMouseTrackListener(mouseHandler);
     }
 
-    public void setImageData(Image data) {
-      imageData = data;
-      newImageData.set(true);
-      PixelInfo info = data.getData().getInfo();
-      uRange[0] = info.getMin();
-      uRange[1] = info.getMax() - info.getMin();
-      canvas.paint();
+    public void setImage(Image image) {
+      this.image = image;
+      imageSize = new VecD(image.getWidth(), image.getHeight(), 0);
+      updateScaleLimits();
+      setScale(zoomToFit ? scaleImageToViewFit : scaleImageToView);
+      refresh();
     }
 
-    public Pixel getPixel(Point point) {
-      if (imageData == Image.EMPTY) {
-        return Pixel.OUT_OF_BOUNDS;
-      }
-
-      Rectangle size = getClientArea();
-      double scale = getScale(size);
-      int w = uSize[0], h = uSize[1];
-      int x = point.x - Math.max(0, size.width - w) / 2 + getHorizontalBar().getSelection();
-      int y = point.y - Math.max(0, size.height - h) / 2 + getVerticalBar().getSelection();
-
-      if (x < 0 || x >= w || y < 0 || y >= h) {
-        return Pixel.OUT_OF_BOUNDS;
-      }
-
-      // Use OpenGL coordinates: origin at bottom left. While XY will be as shown
-      // (possibly flipped), UV stays constant to the origin of the image used as a texture.
-      int pixelX = (int)(x / scale), pixelY = (int)(y / scale);
-      float u = (x - 0.5f) / w, v = (y - 0.5f) / h; // This is actually flipped v.
-      int lookupY = flipped ? pixelY : imageData.getHeight() - pixelY - 1;
-
-      return new Pixel(pixelX, imageData.getHeight() - pixelY - 1, u, flipped ? v : 1 - v,
-          imageData.getData().getPixel(pixelX, lookupY));
+    private void refresh() {
+      settings.image = image;
+      settings.transform = calcTransform();
+      canvas.setSceneData(settings.copy());
     }
 
     public void setPreviewPixel(Pixel previewPixel) {
-      this.previewPixel = previewPixel;
-      canvas.paint();
+      settings.previewPixel = previewPixel;
+      refresh();
     }
 
     protected void scrollBy(int dx, int dy) {
-      scroll(getHorizontalBar(), dx);
-      scroll(getVerticalBar(), dy);
-      canvas.paint();
-    }
-
-    private static void scroll(ScrollBar bar, int delta) {
-      if (delta != 0) {
-        bar.setSelection(bar.getSelection() + delta);
-      }
-    }
-
-    protected void zoom(int amount, Point cursor) {
-      Rectangle size = getClientArea();
-      double scale = getScale(size);
-      zoom = Math.min(getMaxZoom(size), Math.max(getMinZoom(size), scale * (1 - 0.05f * amount)));
-
-      if (zoom != scale) {
-        updateSize(size);
-        ScrollBar hBar = getHorizontalBar(), vBar = getVerticalBar();
-        if (cursor == null) {
-          cursor = new Point(size.width / 2, size.height / 2);
-        }
-        hBar.setSelection((int)((hBar.getSelection() + cursor.x) * zoom / scale - cursor.x));
-        vBar.setSelection((int)((vBar.getSelection() + cursor.y) * zoom / scale - cursor.y));
-
-        canvas.paint();
-      }
-    }
-
-    protected void zoomToFit() {
-      zoom = ZOOM_FIT;
-      canvas.paint();
-    }
-
-    protected void zoomToActual() {
-      zoom = 1;
-      canvas.paint();
-    }
-
-    protected boolean isChannelEnabled(int channel) {
-      return channels[channel] == 1;
-    }
-
-    protected void setChannelEnabled(int channel, boolean enabled) {
-      channels[channel] = enabled ? 1 : 0;
-      canvas.paint();
-    }
-
-    protected void setFlipped(boolean flipped) {
-      this.flipped = flipped;
-      canvas.paint();
+      imageOffset = imageOffset
+          .add(-dx / scaleImageToView, -dy / scaleImageToView, 0)
+          .clamp(imageOffsetMin, imageOffsetMax);
+      updateScrollbars();
+      refresh();
     }
 
     protected void setBackgroundMode(BackgroundMode backgroundMode, Color backgroundColor) {
-      this.backgroundMode = backgroundMode;
-      this.backgroundColor = backgroundColor;
-      canvas.paint();
+      settings.backgroundMode = backgroundMode;
+      settings.backgroundColor = backgroundColor;
+      refresh();
     }
 
+    protected void setFlipped(boolean flipped) {
+      settings.flipped = flipped ^ naturallyFlipped;
+      refresh();
+    }
+
+    protected boolean isChannelEnabled(int channel) {
+      return settings.channels[channel];
+    }
+
+    protected void setChannelEnabled(int channel, boolean enabled) {
+      settings.channels[channel] = enabled;
+      refresh();
+    }
+
+    public Pixel getPixel(Point point) {
+      VecD imageNormalized = calcInvTransform().multiply(pointToNDC(point));
+      VecD imageTexel = imageNormalized.scale(0.5).add(0.5, 0.5, 0.0).multiply(imageSize);
+      int x = (int)imageTexel.x;
+      int y = (int)imageTexel.y;
+      if (x < 0 || y < 0 || x >= image.getWidth() || y >= image.getHeight()) {
+        return Pixel.OUT_OF_BOUNDS;
+      }
+      float u = (float)imageNormalized.x * 0.5f + 0.5f;
+      float v = (float)imageNormalized.y * (settings.flipped ? 0.5f : 0.5f) + 0.5f;
+      int sampleY = settings.flipped ? (image.getHeight() - y - 1) : y;
+      return new Pixel(x, y, u, v, image.getData().getPixel(x, sampleY));
+    }
+
+    public void setZoomToFit(boolean zoomToFit) {
+      this.zoomToFit = zoomToFit;
+      if (zoomToFit) {
+        setScale(scaleImageToViewFit);
+        updateScrollbars();
+        refresh();
+      }
+    }
+
+    public void zoomToActual() {
+      setScale(DPIUtil.autoScaleDown(1.0f));
+      updateScrollbars();
+      refresh();
+    }
+
+    public void zoom(int amount, Point cursor) {
+      double scale = scaleImageToView * (1 - 0.05f * amount);
+
+      if (cursor != null) {
+        VecD ndc = pointToNDC(cursor);
+        VecD imageNormPreScale = calcInvTransform().multiply(ndc);
+        setScale(scale);
+        VecD imageNormPostScale = calcInvTransform().multiply(ndc);
+        VecD imageNormDelta = imageNormPostScale.subtract(imageNormPreScale);
+        imageOffset = imageOffset
+            .add(imageNormDelta.multiply(imageSize).scale(0.5))
+            .clamp(imageOffsetMin, imageOffsetMax);
+      } else {
+        setScale(scale);
+      }
+      updateScrollbars();
+      refresh();
+    }
+
+    /**
+     * Converts a SWT {@link Point} into normalized-device-coordinates.
+     * The shaders flip Y to simplify the calculations, keeping positive x
+     * and positive y pointing right and down respectively.
+     *
+     * NDC coordinates:
+     * <code>
+     *   [-1,-1] ------ [+1,-1]
+     *      |              |
+     *      |              |
+     *   [-1,+1] ------ [+1,+1]
+     * </code>
+     */
+    private VecD pointToNDC(Point point) {
+      return new VecD(point.x, point.y, 0)
+          .divide(viewSize.x, viewSize.y, 1)
+          .subtract(0.5, 0.5, 0)
+          .scale(2.0);
+    }
+
+    /**
+     * @return a transform that can be used to convert the texture quad [-1, -1] to [1, 1] into
+     * NDC coordinates based on the current scale and offset.
+     */
+    private MatD calcTransform() {
+      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(viewSize))
+              .scale(scaleImageToView)
+              .translate(imageOffset)
+              .scale(imageSize.scale(0.5));
+    }
+
+    /**
+     * @return the inverse of the matrix returned from {@link #calcTransform()}.
+     */
+    private MatD calcInvTransform() {
+      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(imageSize))
+          .translate(imageOffset.negate())
+          .scale(1.0 / scaleImageToView)
+          .scale(viewSize.scale(0.5));
+    }
+
+    private double clamp(double x, double min, double max) {
+      return Math.max(Math.min(x, max), min);
+    }
+
+    private void setScale(double scale) {
+      scaleImageToView = clamp(scale, scaleImageToViewMin, scaleImageToViewMax);
+
+      VecD viewSizeSubBorder = viewSize.subtract(BORDER_SIZE * 2);
+
+      imageOffsetMax = imageSize
+          .subtract(viewSizeSubBorder.divide(scaleImageToView))
+          .scale(0.5)
+          .max(VecD.ZERO);
+      imageOffsetMin = imageOffsetMax.negate();
+      imageOffset = imageOffset.clamp(imageOffsetMin, imageOffsetMax);
+    }
+
+    private void onResize() {
+      Rectangle area = canvas.getClientArea();
+      viewSize = new VecD(area.width, area.height, 0);
+      updateScaleLimits();
+      if (zoomToFit) {
+        setScale(scaleImageToViewFit);
+      }
+      updateScrollbars();
+      refresh();
+    }
+
+    private void updateScaleLimits() {
+      VecD viewSpace = viewSize.subtract(settings.borderWidth).max(VecD.ZERO);
+      scaleImageToViewFit = viewSpace.safeDivide(imageSize).minXY();
+      scaleImageToViewMax = Math.max(MAX_ZOOM_FACTOR, scaleImageToViewFit);
+      // The smallest zoom factor to see the whole image or that causes the larger dimension to be
+      // no less than MIN_ZOOM_WIDTH pixels.
+      scaleImageToViewMin = Math.min(MIN_ZOOM_SIZE.safeDivide(imageSize).minXY(), scaleImageToViewFit);
+    }
+
+    private void updateScrollbars() {
+      for (int i = 0; i < scrollbars.length; i++) {
+        ScrollBar scrollbar = scrollbars[i];
+        int val = (int)(imageOffset.get(i) * scaleImageToView); // offset in view pixels
+        int min = (int)(imageOffsetMin.get(i) * scaleImageToView); // min movement in view pixels
+        int max = (int)(imageOffsetMax.get(i) * scaleImageToView); // max movement in view pixels
+        int rng = max - min;
+        if (rng == 0) {
+          scrollbar.setEnabled(false);
+          scrollbar.setValues(0, 0, 1, 1, 1, 1);
+        } else {
+          int view = (int)this.viewSize.get(i);
+          scrollbar.setEnabled(true);
+          scrollbar.setValues(
+              max - val,        // selection
+              0,                // min
+              view + rng,       // max
+              view,             // thumb
+              (rng + 99) / 100, // increment
+              (rng + 9) / 10    // page increment
+          );
+        }
+      }
+    }
+
+    private void onScroll() {
+      for (int i = 0; i < scrollbars.length; i++) {
+        ScrollBar scrollbar = scrollbars[i];
+        if (scrollbar.getEnabled()) {
+          int max = (int)(imageOffsetMax.get(i) * scaleImageToView); // max movement in view pixels
+          int val = max - scrollbar.getSelection();
+          imageOffset = imageOffset.set(i, val / scaleImageToView);
+        }
+      }
+      refresh();
+    }
+  }
+
+  private static class ImageScene implements Scene<SceneData> {
+    private static final int PREVIEW_WIDTH = 19; // Should be odd, so center pixel looks nice.
+    private static final int PREVIEW_HEIGHT = 11; // Should be odd, so center pixel looks nice.
+    private static final int PREVIEW_SIZE = 7;
+
+    private Shader shader;
+    private Texture texture;
+    private SceneData data;
+
+    private final float[] uRange = new float[] { 0, 1 };
+    private final float[] uChannels = new float[] { 1, 1, 1, 1 };
+
     @Override
-    public void init() {
+    public void init(Renderer renderer) {
       GL30.glBindVertexArray(GL30.glGenVertexArrays());
-      shader = ShaderSource.loadShader("image");
-      buffer = new Buffer(GL15.GL_ARRAY_BUFFER);
-      buffer.bind();
-      buffer.loadData(new float[] { -1f, -1f, 1f, -1f, 1f,  1f, -1f,  1f });
+      shader = renderer.loadShader("image");
 
       GL11.glDisable(GL11.GL_DEPTH_TEST);
       GL11.glDisable(GL11.GL_CULL_FACE);
       GL11.glEnable(GL11.GL_BLEND);
       GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
-      shader.bind();
-      shader.bindAttribute(Constants.POSITION_ATTRIBUTE, 2, GL11.GL_FLOAT, 0, 0);
-      Texture.activate(0);
-      shader.setUniform("uTexture", 0);
-      shader.setUniform("uRange", uRange);
     }
 
     @Override
-    public void reshape(int x, int y, int w, int h) {
-      GL11.glViewport(x, y, w, h);
-    }
-
-    @Override
-    public void display() {
-      Rectangle size = getClientArea();
-      updateSize(size);
-
-      if (newImageData.getAndSet(false)) {
+    public void update(Renderer renderer, SceneData data) {
+      Image oldImage = (this.data != null) ? this.data.image : null;
+      if (oldImage != data.image) {
+        // Release old texture, create new.
         if (texture != null) {
           texture.delete();
         }
-        texture = new Texture(GL11.GL_TEXTURE_2D);
-        texture.bind()
+        texture = renderer
+            .newTexture(GL11.GL_TEXTURE_2D)
             .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
-            .setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
-        imageData.getData().uploadToTexture(texture);
+            .setBorderColor(data.borderColor);
+        data.image.getData().uploadToTexture(texture);
+        shader.setUniform("uTexture", texture);
+
+        // Get range limits, update uniforms.
+        PixelInfo info = data.image.getData().getInfo();
+        uRange[0] = info.getMin();
+        uRange[1] = info.getMax() - info.getMin();
         shader.setUniform("uRange", uRange);
       }
-
-      clearWith(getDisplay().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND));
-      drawBackground(size);
-
-      shader.setUniform("uMode", MODE_TEXTURE);
-      shader.setUniform("uPixelSize", new float[] { 1f / size.width, 1f / size.height });
-      shader.setUniform("uSize", uSize);
-      shader.setUniform("uOffset", uOffset);
-      shader.setUniform("uTextureSize", new float[] { 1, 1 });
-      shader.setUniform("uTextureOffset", new float[] { 0, 0 });
-      shader.setUniform("uChannels", channels);
-      shader.setUniform("uFlipped", flipped ? 1 : 0);
-      GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, 4);
-
-      drawPreview(size);
+      for (int i = 0; i < 4; i++) {
+        uChannels[i] = data.channels[i] ? 1.0f : 0.0f;
+      }
+      this.data = data;
     }
 
     @Override
-    public void dispose() {
-      if (texture != null) {
-        texture.delete();
+    public void render(Renderer renderer) {
+      if (data == null) {
+        return;
       }
-      buffer.delete();
-      shader.delete();
+      renderer.clear(data.panelColor);
+      drawBackground(renderer);
+      if (texture != null) {
+        drawImage(renderer);
+        drawPreview(renderer);
+      }
     }
 
-    private void drawBackground(Rectangle size) {
-      int x = (size.width - uSize[0]) / 2, y = (size.height - uSize[1]) / 2;
-      drawBorderAround(x, y, uSize[0], uSize[1]);
+    @Override
+    public void resize(Renderer renderer, int width, int height) {}
 
-      switch (backgroundMode) {
+    private void drawBackground(Renderer renderer) {
+      switch (data.backgroundMode) {
         case Checkerboard:
-          shader.setUniform("uMode", MODE_CHECKER);
-          shader.setUniform("uSize", uSize);
-          shader.setUniform("uOffset", uOffset);
-          GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, 4);
+          renderer.drawChecker(data.transform, data.checkerLight, data.checkerDark, data.checkerSize);
           break;
         case SolidColor:
-          withSciscor(x, y, uSize[0], uSize[1], () -> clearWith(backgroundColor));
+          renderer.drawSolid(data.transform, data.backgroundColor);
           break;
         default:
           throw new AssertionError();
       }
+      renderer.drawBorder(data.transform, data.borderColor, data.borderWidth);
     }
 
-    private void drawPreview(Rectangle size) {
-      if (previewPixel == Pixel.OUT_OF_BOUNDS) {
+    private void drawImage(Renderer renderer) {
+      texture.setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
+      shader.setUniform("uPixelSize", VecD.ONE.safeDivide(renderer.getViewSize()));
+      shader.setUniform("uTextureSize", new float[] { 1, 1 });
+      shader.setUniform("uTextureOffset", new float[] { 0, 0 });
+      shader.setUniform("uChannels", uChannels);
+      shader.setUniform("uFlipped", data.flipped ? 1 : 0);
+      renderer.drawQuad(data.transform, shader);
+    }
+
+    private void drawPreview(Renderer renderer) {
+      if (data.previewPixel == Pixel.OUT_OF_BOUNDS) {
         return;
       }
 
-      drawBorderAround(
-          BORDER_SIZE, BORDER_SIZE, PREVIEW_WIDTH * PREVIEW_SIZE, PREVIEW_HEIGHT * PREVIEW_SIZE);
+      int width = PREVIEW_WIDTH * PREVIEW_SIZE;
+      int height = PREVIEW_HEIGHT * PREVIEW_SIZE;
+      int x = data.borderWidth;
+      int y = renderer.getViewHeight() - height - data.borderWidth;
 
-      int[] scale = new int[] { PREVIEW_WIDTH * PREVIEW_SIZE, PREVIEW_HEIGHT * PREVIEW_SIZE };
-      int[] offset = new int[] {
-          (-size.width + PREVIEW_WIDTH * PREVIEW_SIZE) / 2 + BORDER_SIZE,
-          (-size.height + PREVIEW_HEIGHT * PREVIEW_SIZE) / 2 + BORDER_SIZE
-      };
+      renderer.drawBorder(x, y, width, height, data.borderColor, data.borderWidth);
+
       float[] texScale = new float[] {
-          (float)PREVIEW_WIDTH / imageData.getWidth(),
-          (float)PREVIEW_HEIGHT / imageData.getHeight()
+          (float)PREVIEW_WIDTH / data.image.getWidth(),
+          (float)PREVIEW_HEIGHT / data.image.getHeight()
       };
       float[] texOffset = new float[] {
-          (float)(previewPixel.x - PREVIEW_WIDTH / 2) / imageData.getWidth(),
-          (float)(previewPixel.y - PREVIEW_HEIGHT / 2) / imageData.getHeight()
+          (float)(data.previewPixel.x - PREVIEW_WIDTH / 2) / data.image.getWidth(),
+          (float)(data.previewPixel.y - PREVIEW_HEIGHT / 2) / data.image.getHeight()
       };
 
-      shader.setUniform("uMode", MODE_TEXTURE);
-      shader.setUniform("uSize", scale);
-      shader.setUniform("uOffset", offset);
+      texture.setWrapMode(GL13.GL_CLAMP_TO_BORDER, GL13.GL_CLAMP_TO_BORDER);
       shader.setUniform("uTextureSize", texScale);
       shader.setUniform("uTextureOffset", texOffset);
       shader.setUniform("uChannels", new float[] { 1, 1, 1, 0 });
-      shader.setUniform("uFlipped", flipped ? 1 : 0);
-      GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, 4);
+      shader.setUniform("uFlipped", data.flipped ? 1 : 0);
+      renderer.drawQuad(x, y, width, height, shader);
 
-      // Render cursor "cross-hair"
-      scale = new int[] { PREVIEW_SIZE, PREVIEW_SIZE };
-      offset = new int[] {
-          (-size.width + PREVIEW_WIDTH * PREVIEW_SIZE) / 2 + BORDER_SIZE,
-          (-size.height + PREVIEW_HEIGHT * PREVIEW_SIZE) / 2 + BORDER_SIZE
-      };
-
-      shader.setUniform("uMode", MODE_SOLID);
-      shader.setUniform("uSize", scale);
-      shader.setUniform("uOffset", offset);
-      shader.setUniform("uColor", previewPixel.value.isDark() ? CURSOR_LIGHT : CURSOR_DARK);
-      GL11.glDrawArrays(GL11.GL_LINE_LOOP, 0, 4);
-    }
-
-    // TODO: Maybe this is not quite the best way?
-    private void drawBorderAround(int x, int y, int w, int h) {
-      withSciscor(x - BORDER_SIZE, y - BORDER_SIZE, w + 2 * BORDER_SIZE, h + 2 * BORDER_SIZE,
-          () -> clearWith(getDisplay().getSystemColor(SWT.COLOR_WIDGET_NORMAL_SHADOW)));
-    }
-
-    private static void clearWith(Color c) {
-      GL11.glClearColor(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, 1f);
-      GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
-    }
-
-    private static void withSciscor(int x, int y, int w, int h, Runnable run) {
-      if (DPIUtil.getDeviceZoom() != 100) {
-        // Translate SWT points to GL pixels.
-        Rectangle scaled = DPIUtil.autoScaleUp(new Rectangle(x, y, w, h));
-        x = scaled.x; y = scaled.y; w = scaled.width; h = scaled.height;
-      }
-
-      GL11.glScissor(x, y, w, h);
-      GL11.glEnable(GL11.GL_SCISSOR_TEST);
-      run.run();
-      GL11.glDisable(GL11.GL_SCISSOR_TEST);
-    }
-
-    private void updateSize(Rectangle size) {
-      double scale = getScale(size);
-      uSize[0] = roundAndSameParity(scale, imageData.getWidth(), size.width);
-      uSize[1] = roundAndSameParity(scale, imageData.getHeight(), size.height);
-
-      uOffset[0] = -updateScrollbar(getHorizontalBar(), uSize[0], size.width);
-      uOffset[1] = updateScrollbar(getVerticalBar(), uSize[1], size.height);
-    }
-
-    // Ensures the result has the same parity as the screen, so we don't draw any half pixels.
-    // I.e. (screenSize - result) is even, and so borders can be easily split.
-    private static int roundAndSameParity(double scale, int imageSize, int screenSize) {
-      int result = (int)Math.round(scale * imageSize);
-      return ((result & 1) == (screenSize & 1)) ? result : result - 1;
-    }
-
-    private static int updateScrollbar(ScrollBar bar, int imageSize, int screenSize) {
-      if (imageSize > screenSize) {
-        int selection = bar.getSelection();
-        bar.setValues(selection, 0, imageSize, screenSize, imageSize / 100, imageSize / 10);
-        bar.setEnabled(true);
-        return selection - (imageSize - screenSize) / 2;
-      } else {
-        bar.setEnabled(false);
-        bar.setValues(0, 0, imageSize, imageSize, imageSize / 100, imageSize / 10);
-        return 0;
-      }
-    }
-
-    private double getFitRatio(Rectangle size) {
-      return Math.min((double)(size.width - 2 * BORDER_SIZE) / imageData.getWidth(),
-          (double)(size.height- 2 * BORDER_SIZE) / imageData.getHeight());
-    }
-
-    private double getMinZoom(Rectangle size) {
-      // The smallest zoom factor to see the whole image or that causes the larger dimension to be
-      // no less than MIN_ZOOM_WIDTH pixels.
-      return Math.min(1, Math.min(getFitRatio(size),
-          Math.min(MIN_ZOOM_WIDTH / imageData.getWidth(), MIN_ZOOM_WIDTH / imageData.getHeight())));
-    }
-
-    private double getMaxZoom(Rectangle size) {
-      return Math.max(MAX_ZOOM_FACTOR, getFitRatio(size));
-    }
-
-    private double getScale(Rectangle size) {
-      return (zoom == ZOOM_FIT) ? getFitRatio(size) : zoom;
+      renderer.drawBorder(
+          x + (width-PREVIEW_SIZE)/2, y + (height-PREVIEW_SIZE)/2,
+          PREVIEW_SIZE, PREVIEW_SIZE,
+          data.previewPixel.value.isDark() ? data.cursorLight : data.cursorDark,
+          2);
     }
   }
 

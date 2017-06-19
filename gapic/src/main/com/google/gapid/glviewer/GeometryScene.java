@@ -17,9 +17,13 @@ package com.google.gapid.glviewer;
 
 import static java.util.logging.Level.FINE;
 
+import com.google.gapid.glviewer.Geometry.DisplayMode;
+import com.google.gapid.glviewer.gl.Renderer;
+import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
+import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
 import com.google.gapid.util.MouseAdapter;
-import com.google.gapid.widgets.GlComposite;
+import com.google.gapid.widgets.ScenePanel;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
@@ -30,86 +34,82 @@ import org.lwjgl.opengl.GL30;
 import java.util.logging.Logger;
 
 /**
- * Renders a {@link Renderable} and handles user interactions with the given {@link CameraModel}.
+ * Renders a {@link Geometry} and handles user interactions with the given {@link CameraModel}.
  * This is the main entry point of the GL model viewer.
  */
-public class Viewer implements GlComposite.Listener {
-  private static final Logger LOG = Logger.getLogger(Viewer.class.getName());
+public class GeometryScene implements Scene<GeometryScene.Data> {
+  /**
+   * The geometry and display mode for the viewer to render.
+   */
+  public static class Data {
+    public static final Data DEFAULTS =
+        new Data(Geometry.NULL, Geometry.DisplayMode.TRIANGLES, Shading.LIT, Winding.CCW, Culling.OFF);
+
+    public final Geometry geometry;
+    public final Geometry.DisplayMode displayMode;
+    public final Shading shading;
+    public final Winding winding;
+    public final Culling culling;
+
+    public Data(Geometry geometry, Geometry.DisplayMode displayMode) {
+      this(geometry, displayMode, Shading.LIT, Winding.CCW, Culling.OFF);
+    }
+
+    public Data(Geometry geometry, Geometry.DisplayMode displayMode, Shading shading,
+        Winding winding, Culling culling) {
+      this.geometry = geometry;
+      this.displayMode = displayMode;
+      this.shading = shading;
+      this.winding = winding;
+      this.culling = culling;
+    }
+
+    public Data withToggledWinding() {
+      return new Data(geometry, displayMode, shading, winding.toggle(), culling);
+    }
+
+    public Data withToggledCulling() {
+      return new Data(geometry, displayMode, shading, winding, culling.toggle());
+    }
+
+    public Data withShading(Shading shading) {
+      return new Data(geometry, displayMode, shading, winding, culling);
+    }
+
+    public Data withGeometry(Geometry geometry, DisplayMode displayMode) {
+      return new Data(geometry, displayMode, shading, winding, culling);
+    }
+  }
+
+  private static final Logger LOG = Logger.getLogger(GeometryScene.class.getName());
 
   private final CameraModel camera;
   private Shaders shaders;
   private Renderable renderable;
-  private Renderable newRenderable;
-  private Shading shading = Shading.LIT;
-  private Winding winding = Winding.CCW;
-  private Culling culling = Culling.OFF;
+  private Data data;
 
-  public Viewer(CameraModel camera) {
+  public GeometryScene(CameraModel camera) {
     this.camera = camera;
   }
 
-  /**
-   * Hooks up the mouse handling event listener to the given canvas.
-   */
-  public void addMouseListeners(GlComposite canvas) {
+  // TODO: This is wrong - the camera state is mutated outside of the renderer / scene systems.
+  public void bindCamera(ScenePanel canvas) {
     MouseHandler handler = new MouseHandler(camera, canvas);
-    canvas.getControl().addMouseListener(handler);
-    canvas.getControl().addMouseMoveListener(handler);
-    canvas.getControl().addMouseWheelListener(handler);
-  }
-
-  public void setRenderable(Renderable renderable) {
-    if (this.renderable != renderable) {
-      newRenderable = renderable;
-    } else {
-      newRenderable = null;
-    }
-  }
-
-  public Shading getShading() {
-    return shading;
-  }
-
-  public Culling getCulling() {
-    return culling;
-  }
-
-  public Winding getWinding() {
-    return winding;
-  }
-
-  public void setShading(Shading shading) {
-    this.shading = shading;
-  }
-
-  public void setCulling(Culling culling) {
-    this.culling = culling;
-  }
-
-  public Culling toggleCulling() {
-    culling = culling.toggle();
-    return culling;
-  }
-
-  public void setWinding(Winding winding) {
-    this.winding = winding;
-  }
-
-  public Winding toggleWinding() {
-    winding = winding.toggle();
-    return winding;
+    canvas.addMouseListener(handler);
+    canvas.addMouseMoveListener(handler);
+    canvas.addMouseWheelListener(handler);
   }
 
   @Override
-  public void init() {
+  public void init(Renderer renderer) {
     float[] background = new float[] { .2f, .2f, .2f, 1f };
 
     LOG.log(FINE, "GL Version:   " + GL11.glGetString(GL11.GL_VERSION));
     LOG.log(FINE, "GLSL Version: " + GL11.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION));
 
-    shaders = Shaders.init();
+    shaders = Shaders.init(renderer);
     if (renderable != null) {
-      renderable.init();
+      renderable.init(renderer);
     }
 
     GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -119,40 +119,32 @@ public class Viewer implements GlComposite.Listener {
   }
 
   @Override
-  public void reshape(int x, int y, int width, int height) {
-    GL11.glViewport(x, y, width, height);
+  public void resize(Renderer renderer, int width, int height) {
     camera.updateViewport(width, height);
   }
 
   @Override
-  public void display() {
-    GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-
-    if (newRenderable != null) {
-      if (renderable != null) {
-        renderable.dispose();
-      }
-      renderable = newRenderable;
-      renderable.init();
-      newRenderable = null;
-    }
-
+  public void update(Renderer renderer, Data data) {
+    this.data = data;
     if (renderable != null) {
-      Renderable.State state = shading.getState(shaders, winding.invertNormals);
-      culling.apply();
-      winding.apply();
-
-      state.transform.setProjection(camera.getProjection());
-      state.transform.setModelView(camera.getViewTransform());
-      renderable.render(state);
+      renderable.dispose(renderer);
     }
+    renderable = data.geometry.asRenderable(data.displayMode);
+    renderable.init(renderer);
   }
 
   @Override
-  public void dispose() {
-    shaders.delete();
-    if (renderable != null) {
-      renderable.dispose();
+  public void render(Renderer renderer) {
+    GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+
+    if (data != null && renderable != null) {
+      Renderable.State state = data.shading.getState(shaders, data.winding.invertNormals);
+      data.culling.apply();
+      data.winding.apply();
+
+      state.transform.setProjection(camera.getProjection());
+      state.transform.setModelView(camera.getViewTransform());
+      renderable.render(renderer, state);
     }
   }
 
@@ -218,7 +210,6 @@ public class Viewer implements GlComposite.Listener {
       @Override
       public Renderable.State getState(Shaders shaders, boolean invertNormals) {
         Renderable.State state = new Renderable.State(shaders.litShader, invertNormals);
-        state.shader.bind();
         state.shader.setUniform("uLightDir", new float[] {
           0,      -0.707f, -0.707f,
           0,       0.707f, -0.707f,
@@ -251,7 +242,6 @@ public class Viewer implements GlComposite.Listener {
       @Override
       public Renderable.State getState(Shaders shaders, boolean invertNormals) {
         Renderable.State state = new Renderable.State(shaders.flatShader, false);
-        state.shader.bind();
         state.shader.setUniform("uDiffuseColor",
             new float[] { 0.640625f, 0.7734375f, 0.22265625f }); // #A4C639 in sRGB.
         return state;
@@ -260,9 +250,7 @@ public class Viewer implements GlComposite.Listener {
     NORMALS() {
       @Override
       public Renderable.State getState(Shaders shaders, boolean invertNormals) {
-        Renderable.State state = new Renderable.State(shaders.normalShader, invertNormals);
-        state.shader.bind();
-        return state;
+        return new Renderable.State(shaders.normalShader, invertNormals);
       }
     };
 
@@ -271,10 +259,10 @@ public class Viewer implements GlComposite.Listener {
 
   private static class MouseHandler extends MouseAdapter {
     private final CameraModel camera;
-    private final GlComposite canvas;
+    private final ScenePanel canvas;
     private int lastX, lastY;
 
-    public MouseHandler(CameraModel camera, GlComposite canvas) {
+    public MouseHandler(CameraModel camera, ScenePanel canvas) {
       this.camera = camera;
       this.canvas = canvas;
     }
@@ -313,17 +301,11 @@ public class Viewer implements GlComposite.Listener {
       this.normalShader = normalShader;
     }
 
-    public static Shaders init() {
+    public static Shaders init(Renderer renderer) {
       return new Shaders(
-        ShaderSource.loadShader("lit"),
-        ShaderSource.loadShader("flat"),
-        ShaderSource.loadShader("normals"));
-    }
-
-    public void delete() {
-      litShader.delete();
-      flatShader.delete();
-      normalShader.delete();
+          renderer.loadShader("lit"),
+          renderer.loadShader("flat"),
+          renderer.loadShader("normals"));
     }
   }
 }

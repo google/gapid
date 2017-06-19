@@ -20,6 +20,7 @@ import static org.lwjgl.BufferUtils.createIntBuffer;
 
 import com.google.common.collect.Maps;
 
+import org.eclipse.swt.graphics.Color;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
@@ -29,41 +30,25 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Helper object for GL shaders and programs.
+ * An OpenGL shader program.
  */
-public class Shader {
+public class Shader extends GlObject {
   protected static Logger LOG = Logger.getLogger(Shader.class.getName());
 
   private final int handle;
   private final Map<String, Attribute> attributes = Maps.newHashMap();
   private final Map<String, Uniform> uniforms = Maps.newHashMap();
 
-  public Shader() {
+  Shader(Renderer owner) {
+    super(owner);
     this.handle = GL20.glCreateProgram();
+    owner.register(this);
   }
 
-  public boolean link(String vertexSource, String fragmentSource) {
-    detachShaders();
-    if (!attachShaders(vertexSource, fragmentSource) || !link()) {
-      return false;
-    }
-    getAttributes();
-    getUniforms();
-    return true;
-  }
-
-  public void bind() {
-    GL20.glUseProgram(handle);
-  }
-
-  /**
-   * Allowed types are Float, Integer, int[] and float[].
-   */
   public void setUniform(String name, Object value) {
     Uniform uniform = uniforms.get(name);
-    if (uniform != null && !uniform.set(value)) {
-      LOG.log(WARNING,
-          "Unexpected uniform value: " + value + " (" + value.getClass() + ") for " + name);
+    if (uniform != null) {
+      uniform.set(value);
     }
   }
 
@@ -74,26 +59,45 @@ public class Shader {
     }
   }
 
-  public void bindAttribute(
-      String name, int elementSize, int elementType, int strideBytes, int offsetBytes) {
+  public void setAttribute(String name, VertexBuffer vertexBuffer) {
     Attribute attribute = attributes.get(name);
     if (attribute != null) {
-      attribute.bind(elementSize, elementType, strideBytes, offsetBytes);
+      attribute.set(vertexBuffer);
     }
   }
 
-  public void unbindAttribute(String name) {
-    Attribute attribute = attributes.get(name);
-    if (attribute != null) {
-      attribute.unbind();
-    }
-  }
-
-  public void delete() {
+  @Override
+  protected void release() {
     detachShaders();
     GL20.glDeleteProgram(handle);
     attributes.clear();
     uniforms.clear();
+  }
+
+  boolean link(String vertexSource, String fragmentSource) {
+    detachShaders();
+    if (!attachShaders(vertexSource, fragmentSource) || !link()) {
+      return false;
+    }
+    getAttributes();
+    getUniforms();
+    return true;
+  }
+
+  void bind() {
+    GL20.glUseProgram(handle);
+    for (Attribute attribute : attributes.values()) {
+      attribute.bind();
+    }
+    for (Uniform uniform : uniforms.values()) {
+      uniform.bind();
+    }
+  }
+
+  void unbind() {
+    for (Attribute attribute : attributes.values()) {
+      attribute.unbind();
+    }
   }
 
   private void detachShaders() {
@@ -209,19 +213,33 @@ public class Shader {
   }
 
   private static class Attribute extends AttributeOrUniform {
+    private float vecX, vecY, vecZ;
+    private VertexBuffer vertexBuffer;
+
     public Attribute(int location, String name, int type) {
       super(location, name, type);
     }
 
-    public void set(float x, float y, float z) {
-      GL20.glDisableVertexAttribArray(location);
-      GL20.glVertexAttrib3f(location, x, y, z);
+    public void set(VertexBuffer vertexBuffer) {
+      this.vertexBuffer = vertexBuffer;
     }
 
-    public void bind(int elementSize, int elementType, int strideBytes, int offsetBytes) {
-      GL20.glEnableVertexAttribArray(location);
-      GL20.glVertexAttribPointer(
-          location, elementSize, elementType, false, strideBytes, offsetBytes);
+    public void set(float x, float y, float z) {
+      vecX = x;
+      vecY = y;
+      vecZ = z;
+    }
+
+    public void bind() {
+      if (vertexBuffer != null) {
+        vertexBuffer.bind();
+        GL20.glEnableVertexAttribArray(location);
+        GL20.glVertexAttribPointer(
+            location, vertexBuffer.elementsPerVertex, vertexBuffer.elementType, false, 0, 0);
+      } else {
+        GL20.glDisableVertexAttribArray(location);
+        GL20.glVertexAttrib3f(location, vecX, vecY, vecZ);
+      }
     }
 
     public void unbind() {
@@ -230,14 +248,48 @@ public class Shader {
   }
 
   private static class Uniform extends AttributeOrUniform {
-    private final Setter setter;
+    private final Binder binder;
+    private Object value;
 
     public Uniform(int location, String name, int type) {
       super(location, name, type);
-      this.setter = getSetter();
+      this.binder = getBinder();
     }
 
-    private Setter getSetter() {
+    public void set(Object value) {
+      this.value = value;
+    }
+
+    public boolean bind() {
+      if (value instanceof Float) {
+        binder.bind(((Float)value).floatValue());
+      } else if (value instanceof Integer) {
+        binder.bind(((Integer)value).intValue());
+      } else if (value instanceof int[]) {
+        binder.bind((int[])value);
+      } else if (value instanceof float[]) {
+        binder.bind((float[])value);
+      } else if (value instanceof Color){
+        Color color = (Color)value;
+        binder.bind(new float[]{
+            color.getRed()   / 255.f,
+            color.getGreen() / 255.f,
+            color.getBlue()  / 255.f,
+            color.getAlpha() / 255.f,
+        });
+      } else if (value instanceof Texture) {
+        int unit = 0; // TODO use incrementing allocation.
+        Texture texture = (Texture)value;
+        Texture.activate(unit);
+        texture.bind();
+        binder.bind(unit);
+      } else {
+        return false;
+      }
+      return true;
+    }
+
+    private Binder getBinder() {
       switch (type) {
         case GL11.GL_SHORT:
         case GL11.GL_UNSIGNED_INT:
@@ -246,165 +298,165 @@ public class Shader {
         case GL20.GL_BOOL:
         case GL20.GL_SAMPLER_2D:
         case GL20.GL_SAMPLER_CUBE:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniform1fv(location, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               GL20.glUniform1f(location, value);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               GL20.glUniform1iv(location, values);
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               GL20.glUniform1i(location, value);
             }
           };
         case GL20.GL_INT_VEC2:
         case GL20.GL_BOOL_VEC2:
         case GL20.GL_FLOAT_VEC2:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniform2fv(location, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               GL20.glUniform2f(location, value, 0);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               GL20.glUniform2iv(location, values);
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               GL20.glUniform2i(location, value, 0);
             }
           };
         case GL20.GL_INT_VEC3:
         case GL20.GL_BOOL_VEC3:
         case GL20.GL_FLOAT_VEC3:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniform3fv(location, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               GL20.glUniform3f(location, value, 0, 0);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               GL20.glUniform3iv(location, values);
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               GL20.glUniform3i(location, value, 0, 0);
             }
           };
         case GL20.GL_INT_VEC4:
         case GL20.GL_BOOL_VEC4:
         case GL20.GL_FLOAT_VEC4:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniform4fv(location, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               GL20.glUniform4f(location, value, 0, 0, 1);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               GL20.glUniform4iv(location, values);
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               GL20.glUniform4i(location, value, 0, 0, 1);
             }
           };
         case GL20.GL_FLOAT_MAT2:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniformMatrix2fv(location, false, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + value);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               LOG.log(WARNING,
                   "Unexpected shader uniform value (expected mat2): " + Arrays.toString(values));
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + value);
             }
           };
         case GL20.GL_FLOAT_MAT3:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniformMatrix3fv(location, false, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + value);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               LOG.log(WARNING,
                   "Unexpected shader uniform value (expected mat3): " + Arrays.toString(values));
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + value);
             }
           };
         case GL20.GL_FLOAT_MAT4:
-          return new Setter() {
+          return new Binder() {
             @Override
-            public void set(float[] values) {
+            public void bind(float[] values) {
               GL20.glUniformMatrix4fv(location, false, values);
             }
 
             @Override
-            public void set(float value) {
+            public void bind(float value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + value);
             }
 
             @Override
-            public void set(int[] values) {
+            public void bind(int[] values) {
               LOG.log(WARNING,
                   "Unexpected shader uniform value (expected mat4): " + Arrays.toString(values));
             }
 
             @Override
-            public void set(int value) {
+            public void bind(int value) {
               LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + value);
             }
           };
@@ -414,26 +466,11 @@ public class Shader {
       }
     }
 
-    public boolean set(Object value) {
-      if (value instanceof Float) {
-        setter.set(((Float)value).floatValue());
-      } else if (value instanceof Integer) {
-        setter.set(((Integer)value).intValue());
-      } else if (value instanceof int[]) {
-        setter.set((int[])value);
-      } else if (value instanceof float[]) {
-        setter.set((float[])value);
-      } else {
-        return false;
-      }
-      return true;
-    }
-
-    private interface Setter {
-      public void set(int value);
-      public void set(int[] values);
-      public void set(float value);
-      public void set(float[] values);
+    private interface Binder {
+      public void bind(int value);
+      public void bind(int[] values);
+      public void bind(float value);
+      public void bind(float[] values);
     }
   }
 }

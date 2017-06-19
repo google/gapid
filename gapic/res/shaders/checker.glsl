@@ -12,44 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! COMMON
-varying vec2 vPos;
-
 //! VERTEX
 in vec2 aVertexPosition;
 
 uniform mat4 uTransform;
-uniform vec2 uPixelSize;
-uniform vec2 uTextureSize;
-uniform vec2 uTextureOffset;
-uniform bool uFlipped;
 
 void main(void) {
-  vPos = uTextureOffset + uTextureSize * (aVertexPosition + 1.0) / 2.0;
-  if (uFlipped) {
-    vPos.y = 1 - vPos.y;
-  }
   gl_Position = uTransform * vec4(aVertexPosition, 0.0, 1.0);
   gl_Position.y *= -1.0; // Flip the y-axis so that our 'NDC' space matches SWT.
 }
 
 //! FRAGMENT
-uniform sampler2D uTexture;
-uniform vec4 uChannels;
-uniform vec2 uRange;
+uniform vec4 uColorA;
+uniform vec4 uColorB;
+uniform vec2 uCheckerSize;
 
 out vec4 fragColor;
 
-void tonemap(inout vec4 color) {
-  color.rgb = (color.rgb - uRange.x) / uRange.y;
-}
-
 void main(void) {
-  vec4 color = vec4(0, 0, 0, 1);
-  color = texture(uTexture, vPos);
-  color.rgb *= uChannels.rgb;
-  color.a = (uChannels.a < 0.5) ? 1.0 : color.a;
-  tonemap(color);
-
-  fragColor = color;
+  vec2 v = step(fract(gl_FragCoord.xy / uCheckerSize), vec2(0.5));
+  fragColor = mix(vec4(dot(v.xy, 1. - v.yx)), uColorA, uColorB);
 }

@@ -40,6 +40,20 @@ public class BoundingBox {
     VecD.max(max, x, y, z);
   }
 
+  public BoundingBox() {
+    this(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE,
+        Double.MIN_VALUE, Double.MIN_VALUE, Double.MIN_VALUE);
+  }
+
+  public BoundingBox(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+    min[0] = minX;
+    min[1] = minY;
+    min[2] = minZ;
+    max[0] = maxX;
+    max[1] = maxY;
+    max[2] = maxZ;
+  }
+
   /**
    * @return a matrix that will center the model at the origin and scale it to the given size.
    */
