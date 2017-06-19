@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.rpc.SharedFuture.shared;
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Paths.stateTree;
@@ -27,9 +28,10 @@ import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SharedFuture;
+import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
@@ -168,7 +170,7 @@ public class ApiState
     private final int index;
     private Node[] children;
     private StateTreeNode data;
-    private ListenableFuture<Node> loadFuture;
+    private SharedFuture<Node> loadFuture;
 
     public Node(StateTreeNode data) {
       this(null, 0);
@@ -210,16 +212,16 @@ public class ApiState
         // Already loaded.
         return null;
       } else if (loadFuture != null) {
-        return loadFuture;
+        return loadFuture.share();
       }
 
-      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+      return loadFuture = shared(Futures.transformAsync(loader.get(), newData ->
           submitIfNotDisposed(shell, () -> {
             data = newData.data;
             children = new Node[(int)data.getNumChildren()];
             loadFuture = null; // Don't hang on to listeners.
             return Node.this;
-          }));
+          })));
     }
 
     @Override
