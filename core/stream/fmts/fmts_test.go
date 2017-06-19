@@ -145,6 +145,7 @@ func TestFormatNames(t *testing.T) {
 		"RGBA_U64":                         fmts.RGBA_U64,
 		"RGBA_S64":                         fmts.RGBA_S64,
 		"RGBA_F64":                         fmts.RGBA_F64,
+		"RGBE_U9U9U9U5":                    fmts.RGBE_U9U9U9U5,
 		"SD_U8F32":                         fmts.SD_U8F32,
 		"SD_U8NU16":                        fmts.SD_U8NU16,
 		"SD_U8NU24":                        fmts.SD_U8NU24,

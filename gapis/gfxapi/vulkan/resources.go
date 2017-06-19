@@ -250,7 +250,7 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
 		return image.NewUncompressed("VK_FORMAT_B10G11R11_UFLOAT_PACK32", fmts.BGR_F10F11F11), nil
 	case VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+		return image.NewUncompressed("VK_FORMAT_E5B9G9R9_UFLOAT_PACK32", fmts.RGBE_U9U9U9U5), nil
 	case VkFormat_VK_FORMAT_R16G16B16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16G16B16_UNORM", fmts.RGB_U16_NORM), nil
 	case VkFormat_VK_FORMAT_R16G16B16_SNORM:

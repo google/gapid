@@ -34,11 +34,12 @@ set(files
     rg.go
     rgb.go
     rgba.go
+    rgbe.go
     sd.go
     xy.go
     xyz.go
     xyzw.go
 )
 set(dirs
-    
+
 )

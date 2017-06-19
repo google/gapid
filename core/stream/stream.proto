@@ -111,6 +111,8 @@ enum Channel {
     Y = 15;
     // Z vector channel.
     Z = 16;
+    // Shared-exponent channel. All other channels are scaled by this.
+    SharedExponent = 17;
 }
 
 // Component describes a single repeating element in a stream.

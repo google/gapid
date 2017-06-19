@@ -26,6 +26,7 @@ set(files
     doc.go
     format.go
     sampling.go
+    shared_exp.go
     stream.pb.go
     stream.proto
 )
