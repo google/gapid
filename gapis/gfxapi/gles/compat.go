@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/math/u32"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
@@ -524,8 +525,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 					glDrawElements := *a
 					glDrawElements.Indices.addr = 0
-					out.MutateAndWrite(ctx, i, &glDrawElements)
-					return
+					a = &glDrawElements
 
 				} else if clientVB { // GL_ELEMENT_ARRAY_BUFFER is bound
 					// Some of the vertex arrays for the glDrawElements call is in
@@ -977,7 +977,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				img := GetState(s).EGLImages[a.Result].Image
 				sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
 				textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
-				out.MutateAndWrite(ctx, i, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+				out.MutateAndWrite(ctx, dID, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
 				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 					GetState(s).EGLImages[a.Result].CompatReplacement = texId
@@ -996,7 +996,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
 				// the remapping layer will use the ID of the EGL image replacement texture now.
-				out.MutateAndWrite(ctx, i, NewGlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
+				out.MutateAndWrite(ctx, dID, NewGlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
 				return
 			}
 
@@ -1020,9 +1020,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlFramebufferTextureMultiviewOVR:
 			{
-				// TODO: Support properly.
-				a := NewGlFramebufferTextureLayer(a.Target, a.Attachment, a.Texture, a.Level, a.BaseViewIndex)
-				out.MutateAndWrite(ctx, i, a)
+				a.Mutate(ctx, s, nil /* no builder, just mutate */)
 				return
 			}
 
@@ -1057,10 +1055,54 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 		}
 
+		// Naive multiview implementation - invoke each draw call several times with different layers
+		_, isClearCall := a.(*GlClear) // TODO: Generalize
+		if a.AtomFlags().IsDrawCall() || isClearCall {
+			numViews := uint32(1)
+			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
+				numViews = u32.Max(numViews, uint32(att.NumViews))
+			})
+			if numViews > 1 {
+				for viewID := GLuint(0); viewID < GLuint(numViews); viewID++ {
+					// Set the magic uniform which shaders use to fetch view-dependent attributes.
+					// It is missing from the observed extras, so normal mutation would fail.
+					out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+						if c.Bound.Program != nil {
+							viewIDLocation := UniformLocation(0x7FFF0000)
+							NewGlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
+							NewGlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
+						}
+						return nil
+					}))
+
+					// For each attachment, bind the layer corresponding to this ViewID.
+					// Do not modify the state so that we do not revert to single-view for next draw call.
+					c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
+						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+							if a.Texture != nil {
+								NewGlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
+							}
+							return nil
+						}))
+					})
+					out.MutateAndWrite(ctx, i, a)
+				}
+				return
+			}
+		}
+
 		out.MutateAndWrite(ctx, i, a)
 	})
 
 	return t, nil
+}
+
+func (fb *Framebuffer) ForEachAttachment(action func(GLenum, FramebufferAttachment)) {
+	for i, a := range fb.ColorAttachments {
+		action(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
+	}
+	action(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment)
+	action(GLenum_GL_STENCIL_ATTACHMENT, fb.StencilAttachment)
 }
 
 // canUsePrecompiledShader returns true if precompiled shaders / programs
