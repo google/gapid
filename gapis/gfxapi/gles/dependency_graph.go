@@ -221,13 +221,13 @@ type textureSizeKey struct {
 func (k textureSizeKey) Parent() stateKey { return nil }
 
 type eglImageDataKey struct {
-	address GLeglImageOES
+	image *EGLImage
 }
 
 func (k eglImageDataKey) Parent() stateKey { return nil }
 
 type eglImageSizeKey struct {
-	address GLeglImageOES
+	image *EGLImage
 }
 
 func (k eglImageSizeKey) Parent() stateKey { return nil }
@@ -292,15 +292,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					b.read(g, getAttachmentSize(g, c, fb.StencilAttachment))
 					b.write(g, getAttachmentData(g, c, fb.StencilAttachment))
 				}
-			case *GlBindFramebuffer:
-				// It may act as "resolve" of EGLImage - i.e. save the content in one context.
-				b.KeepAlive = true
 			case *GlFramebufferTexture2D:
 				b.read(g, textureSizeKey{c.Objects.Shared.Textures[a.Texture], a.Texture})
 				b.KeepAlive = true // Changes untracked state
-			case *GlBindTexture:
-				// It may act as "load" of EGLImage - i.e. load the content in other context.
-				b.KeepAlive = true
 			case *GlCompressedTexImage2D:
 				texData, texSize := getTextureDataAndSize(ctx, a, s, c.Bound.TextureUnit, a.Target)
 				b.modify(g, texData)
@@ -377,7 +371,7 @@ func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, un
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
-	if !tex.EGLImage.IsNullptr() {
+	if tex.EGLImage != nil {
 		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
 	} else {
 		return textureDataKey{tex, tex.ID}, textureSizeKey{tex, tex.ID}
@@ -401,7 +395,7 @@ func getAttachmentData(g *DependencyGraph, c *Context, att FramebufferAttachment
 		tex := att.Texture
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
-			if !tex.EGLImage.IsNullptr() {
+			if tex.EGLImage != nil {
 				key = eglImageDataKey{tex.EGLImage}
 			} else {
 				key = textureDataKey{tex, tex.ID}
@@ -418,7 +412,7 @@ func getAttachmentSize(g *DependencyGraph, c *Context, att FramebufferAttachment
 	if att.Type == GLenum_GL_TEXTURE {
 		tex := att.Texture
 		if tex != nil {
-			if !tex.EGLImage.IsNullptr() {
+			if tex.EGLImage != nil {
 				key = eglImageSizeKey{tex.EGLImage}
 			} else {
 				key = textureSizeKey{tex, tex.ID}

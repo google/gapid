@@ -12,20 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-sub GLenum EGLSizedFormat2GLSizedFormat(AndroidGraphicsBufferFormat eglSizedFormat) {
-  return switch eglSizedFormat {
-    case HAL_PIXEL_FORMAT_RGBA_8888:    GL_RGBA8
-    case HAL_PIXEL_FORMAT_RGBX_8888:    GL_RGB8 // Does not have a precise match
-    case HAL_PIXEL_FORMAT_RGB_888:      GL_RGB8
-    case HAL_PIXEL_FORMAT_RGB_565:      GL_RGB565
-    case HAL_PIXEL_FORMAT_BGRA_8888:    GL_BGRA8_EXT
-    case HAL_PIXEL_FORMAT_RGBA_5551:    GL_RGB5_A1
-    case HAL_PIXEL_FORMAT_RGBA_4444:    GL_RGB4
-    case HAL_PIXEL_FORMAT_YCrCb_420_SP: GL_RGB8 // Does not have a precise match
-    default: GL_RGBA8 // TODO: Report warning
-  }
-}
-
 @if(Extension.GL_EXT_separate_shader_objects)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.gles.txt", Extension.GL_EXT_separate_shader_objects)
 cmd void glActiveShaderProgramEXT(PipelineId pipeline, ProgramId program) {
@@ -633,22 +619,13 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     default:
       glErrorInvalidEnum(target)
   }
-  if as!EGLImageKHR(image) in EGLImages {
-    info := EGLImages[as!EGLImageKHR(image)]
+  eglImage := EGLImages[as!EGLImageKHR(image)]
+  if eglImage != null {
     t := GetBoundTextureOrErrorInvalidEnum(target)
-    sf := EGLSizedFormat2GLSizedFormat(info.Format)
-    sfInfo := GetSizedFormatInfo(sf)
-    i := new!Image(
-      Width:       as!GLsizei(info.Width),
-      Height:      as!GLsizei(info.Height),
-      SizedFormat: sf,
-      DataFormat:  sfInfo.UnsizedFormat,
-      DataType:    sfInfo.DataType,
-    )
     tmpLevel := t.Levels[0]
-    tmpLevel.Layers[0] = i
+    tmpLevel.Layers[0] = eglImage.Image
     t.Levels[0] = tmpLevel
-    t.EGLImage = image
+    t.EGLImage = eglImage
   }
 }
 

@@ -170,6 +170,16 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		return id
 	}
 
+	nextTextureID := TextureId(0xffff0000)
+	newTexture := func(i atom.ID, out transform.Writer) TextureId {
+		s := out.State()
+		id := nextTextureID
+		tmp := atom.Must(atom.AllocData(ctx, s, id))
+		out.MutateAndWrite(ctx, i.Derived(), NewGlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
+		nextTextureID--
+		return id
+	}
+
 	// Definitions of Vertex Arrays backed by client memory.
 	// We postpone the write of the command until draw call.
 	clientVAs := map[*VertexAttributeArray]*GlVertexAttribPointer{}
@@ -185,69 +195,6 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			GLenum_GL_TEXTURE_SWIZZLE_A: {},
 		},
 		compatSwizzle: map[*Texture]map[GLenum]GLenum{},
-	}
-
-	// Temporary buffer for each EGLImage which stores copy of its content
-	eglImageData := map[GLeglImageOES]memory.Pointer{}
-
-	// Upload last know EGL image content of bound texture (possibly from different context)
-	// TODO: Share the data properly between contexts in replay.
-	loadEglImageData := func(ctx context.Context, i atom.ID, a atom.Atom, target GLenum, c *Context, out transform.Writer) {
-		s := out.State()
-		if boundTexture, err := subGetBoundTextureOrErrorInvalidEnum(ctx, a, nil, s, GetState(s), nil, target); err != nil {
-			log.W(ctx, "Can not get bound texture for: %v", a)
-		} else {
-			if !boundTexture.EGLImage.IsNullptr() {
-				origUnpackAlignment := c.Other.Unpack.Alignment
-				img := boundTexture.Levels[0].Layers[0]
-				data := eglImageData[boundTexture.EGLImage]
-				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
-				sizedFormat := img.SizedFormat
-				textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
-				out.MutateAndWrite(ctx, i, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-					NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, data).Call(ctx, s, b)
-					return nil
-				}))
-				out.MutateAndWrite(ctx, i, NewGlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, origUnpackAlignment))
-			}
-		}
-		return
-	}
-
-	// This allows us to avoid the EGLImage "resolve" if draw calls have been optimized away.
-	isEglImageDirty := map[*Framebuffer]bool{}
-
-	// If EGLImage is bound to current framebuffer, make a copy of its data.
-	// TODO: Share the data properly between contexts in replay.
-	resolveEglImageData := func(ctx context.Context, i atom.ID, a atom.Atom, c *Context, out transform.Writer) {
-		fb := c.Bound.DrawFramebuffer
-		if !isEglImageDirty[fb] {
-			return
-		}
-		isEglImageDirty[fb] = false
-		// TODO: Depth and stencil
-		for name, att := range fb.ColorAttachments {
-			if att.Type == GLenum_GL_TEXTURE {
-				tex := att.Texture
-				if !tex.EGLImage.IsNullptr() {
-					dID := i.Derived()
-					t := newTweaker(ctx, out, dID)
-					s := out.State()
-					t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
-					t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(name))
-					t.setPackStorage(PixelStorageState{Alignment: 1}, 0)
-					img := tex.Levels[0].Layers[0]
-					data, ok := eglImageData[tex.EGLImage]
-					if !ok {
-						data = atom.Must(atom.Alloc(ctx, s, img.Data.count)).Ptr()
-						eglImageData[tex.EGLImage] = data
-					}
-					out.MutateAndWrite(ctx, dID, NewGlReadPixels(0, 0, img.Width, img.Height, img.DataFormat, img.DataType, data))
-					out.MutateAndWrite(ctx, dID, NewGlGetError(0))
-					t.revert()
-				}
-			}
-		}
 	}
 
 	// TODO: Implement full support for external images.
@@ -326,10 +273,6 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			return
 		}
 
-		if a.AtomFlags().IsDrawCall() {
-			isEglImageDirty[c.Bound.DrawFramebuffer] = true
-		}
-
 		switch a := a.(type) {
 		case *GlBindBuffer:
 			if a.Buffer != 0 && !c.Objects.Shared.GeneratedNames.Buffers[a.Buffer] {
@@ -350,10 +293,6 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				convertTexTarget(&a.Target)
 
 				out.MutateAndWrite(ctx, i, &a)
-
-				if !version.IsES {
-					loadEglImageData(ctx, i, &a, a.Target, c, out)
-				}
 				return
 			}
 
@@ -999,8 +938,6 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlBindFramebuffer:
-			resolveEglImageData(ctx, i, a, c, out)
-
 			if target.framebufferSrgb == required && contexts[c].framebufferSrgb != required &&
 				c.Pixel.FramebufferSrgb != 0 {
 				// Replay device defaults FRAMEBUFFER_SRGB to disabled and allows
@@ -1026,10 +963,40 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 			}
 
+		case *EglCreateImageKHR:
+			if !version.IsES {
+				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+					return a.Mutate(ctx, s, nil) // do not call, just mutate
+				}))
+
+				// Create GL texture as compat replacement of the EGL image
+				texId := newTexture(i, out)
+				t := newTweaker(ctx, out, dID)
+				defer t.revert()
+				t.glBindTexture_2D(texId)
+				img := GetState(s).EGLImages[a.Result].Image
+				sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
+				textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
+				out.MutateAndWrite(ctx, i, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+
+				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+					GetState(s).EGLImages[a.Result].CompatReplacement = texId
+					return nil
+				}))
+				return
+			}
+
 		case *GlEGLImageTargetTexture2DOES:
 			if !version.IsES {
-				a.Mutate(ctx, s, nil /* no builder, just mutate */)
-				loadEglImageData(ctx, i, a, a.Target, c, out)
+				a := *a
+				convertTexTarget(&a.Target)
+				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+					return a.Mutate(ctx, s, nil) // do not call, just mutate
+				}))
+
+				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
+				// the remapping layer will use the ID of the EGL image replacement texture now.
+				out.MutateAndWrite(ctx, i, NewGlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
 				return
 			}
 
