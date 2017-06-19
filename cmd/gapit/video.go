@@ -77,7 +77,7 @@ func (verb *videoVerb) regularVideoSource(
 
 	// Get the end-of-frame events.
 	eofEvents, err := getEvents(ctx, client, &path.Events{
-		Commands:    capture.Commands(),
+		Capture:     capture,
 		LastInFrame: true,
 	})
 	if err != nil {
@@ -220,7 +220,7 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	fboEvents, err := getEvents(ctx, client, &path.Events{
-		Commands:                capture.Commands(),
+		Capture:                 capture,
 		FramebufferObservations: true,
 	})
 	if err != nil {

@@ -101,7 +101,7 @@ func (n CommandTreeNodeForCommand) Parent() Node { return n.Command }
 func (n Context) Parent() Node                   { return n.Capture }
 func (n Contexts) Parent() Node                  { return n.Capture }
 func (n Device) Parent() Node                    { return nil }
-func (n Events) Parent() Node                    { return n.Commands }
+func (n Events) Parent() Node                    { return n.Capture }
 func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
 func (n ImageInfo) Parent() Node                 { return nil }
 func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
