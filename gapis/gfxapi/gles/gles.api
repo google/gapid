@@ -98,7 +98,18 @@ class Versions {
   bool GLES31                                          = true
   bool GLES32                                          = true
 }
+// TODO: This should be thread local variable
 Versions Version
+
+sub void InitVersions(ref!Context ctx) {
+  Version = Versions(
+    GLES10: VersionGreaterOrEqual(ctx, 1, 0),
+    GLES20: VersionGreaterOrEqual(ctx, 2, 0),
+    GLES30: VersionGreaterOrEqual(ctx, 3, 0),
+    GLES31: VersionGreaterOrEqual(ctx, 3, 1),
+    GLES32: VersionGreaterOrEqual(ctx, 3, 2),
+  )
+}
 
 // Flags which are set if the context supports given GLES extension
 @internal
@@ -237,7 +248,155 @@ class Extensions {
   bool GL_QCOM_extended_get2                           = true
   bool GL_QCOM_tiled_rendering                         = true
 }
+// TODO: This should be thread local variable
 Extensions Extension
+
+sub void InitExtensions(ref!Context ctx) {
+  set := StringSet()
+  for _, _, ext in ctx.Constants.Extensions {
+    set.Strings[ext] = true
+  }
+  Extension = Extensions(
+    EGL_ANDROID_create_native_client_buffer:         set.Strings["EGL_ANDROID_create_native_client_buffer"],
+    EGL_ANDROID_image_native_buffer:                 set.Strings["EGL_ANDROID_image_native_buffer"],
+    EGL_KHR_image_base:                              set.Strings["EGL_KHR_image_base"],
+    GL_AMD_compressed_ATC_texture:                   set.Strings["GL_AMD_compressed_ATC_texture"],
+    GL_AMD_performance_monitor:                      set.Strings["GL_AMD_performance_monitor"],
+    GL_ANGLE_framebuffer_blit:                       set.Strings["GL_ANGLE_framebuffer_blit"],
+    GL_ANGLE_framebuffer_multisample:                set.Strings["GL_ANGLE_framebuffer_multisample"],
+    GL_ANGLE_instanced_arrays:                       set.Strings["GL_ANGLE_instanced_arrays"],
+    GL_ANGLE_translated_shader_source:               set.Strings["GL_ANGLE_translated_shader_source"],
+    GL_APPLE_copy_texture_levels:                    set.Strings["GL_APPLE_copy_texture_levels"],
+    GL_APPLE_framebuffer_multisample:                set.Strings["GL_APPLE_framebuffer_multisample"],
+    GL_APPLE_sync:                                   set.Strings["GL_APPLE_sync"],
+    GL_EXT_base_instance:                            set.Strings["GL_EXT_base_instance"],
+    GL_EXT_blend_func_extended:                      set.Strings["GL_EXT_blend_func_extended"],
+    GL_EXT_buffer_storage:                           set.Strings["GL_EXT_buffer_storage"],
+    GL_EXT_clear_texture:                            set.Strings["GL_EXT_clear_texture"],
+    GL_EXT_copy_image:                               set.Strings["GL_EXT_copy_image"],
+    GL_EXT_debug_label:                              set.Strings["GL_EXT_debug_label"],
+    GL_EXT_debug_marker:                             set.Strings["GL_EXT_debug_marker"],
+    GL_EXT_discard_framebuffer:                      set.Strings["GL_EXT_discard_framebuffer"],
+    GL_EXT_disjoint_timer_query:                     set.Strings["GL_EXT_disjoint_timer_query"],
+    GL_EXT_draw_buffers:                             set.Strings["GL_EXT_draw_buffers"],
+    GL_EXT_draw_buffers_indexed:                     set.Strings["GL_EXT_draw_buffers_indexed"],
+    GL_EXT_draw_elements_base_vertex:                set.Strings["GL_EXT_draw_elements_base_vertex"],
+    GL_EXT_draw_instanced:                           set.Strings["GL_EXT_draw_instanced"],
+    GL_EXT_draw_transform_feedback:                  set.Strings["GL_EXT_draw_transform_feedback"],
+    GL_EXT_geometry_shader:                          set.Strings["GL_EXT_geometry_shader"],
+    GL_EXT_instanced_arrays:                         set.Strings["GL_EXT_instanced_arrays"],
+    GL_EXT_map_buffer_range:                         set.Strings["GL_EXT_map_buffer_range"],
+    GL_EXT_multi_draw_arrays:                        set.Strings["GL_EXT_multi_draw_arrays"],
+    GL_EXT_multi_draw_indirect:                      set.Strings["GL_EXT_multi_draw_indirect"],
+    GL_EXT_multisampled_render_to_texture:           set.Strings["GL_EXT_multisampled_render_to_texture"],
+    GL_EXT_multiview_draw_buffers:                   set.Strings["GL_EXT_multiview_draw_buffers"],
+    GL_EXT_occlusion_query_boolean:                  set.Strings["GL_EXT_occlusion_query_boolean"],
+    GL_EXT_polygon_offset_clamp:                     set.Strings["GL_EXT_polygon_offset_clamp"],
+    GL_EXT_primitive_bounding_box:                   set.Strings["GL_EXT_primitive_bounding_box"],
+    GL_EXT_raster_multisample:                       set.Strings["GL_EXT_raster_multisample"],
+    GL_EXT_robustness:                               set.Strings["GL_EXT_robustness"],
+    GL_EXT_sRGB_write_control:                       set.Strings["GL_EXT_sRGB_write_control"],
+    GL_EXT_separate_shader_objects:                  set.Strings["GL_EXT_separate_shader_objects"],
+    GL_EXT_shader_pixel_local_storage2:              set.Strings["GL_EXT_shader_pixel_local_storage2"],
+    GL_EXT_shadow_samplers:                          set.Strings["GL_EXT_shadow_samplers"],
+    GL_EXT_sparse_texture:                           set.Strings["GL_EXT_sparse_texture"],
+    GL_EXT_tessellation_shader:                      set.Strings["GL_EXT_tessellation_shader"],
+    GL_EXT_texture_border_clamp:                     set.Strings["GL_EXT_texture_border_clamp"],
+    GL_EXT_texture_buffer:                           set.Strings["GL_EXT_texture_buffer"],
+    GL_EXT_texture_compression_s3tc:                 set.Strings["GL_EXT_texture_compression_s3tc"],
+    GL_EXT_texture_filter_anisotropic:               set.Strings["GL_EXT_texture_filter_anisotropic"],
+    GL_EXT_texture_filter_minmax:                    set.Strings["GL_EXT_texture_filter_minmax"],
+    GL_EXT_texture_format_BGRA8888:                  set.Strings["GL_EXT_texture_format_BGRA8888"],
+    GL_EXT_texture_norm16:                           set.Strings["GL_EXT_texture_norm16"],
+    GL_EXT_texture_rg:                               set.Strings["GL_EXT_texture_rg"],
+    GL_EXT_texture_sRGB_decode:                      set.Strings["GL_EXT_texture_sRGB_decode"],
+    GL_EXT_texture_storage:                          set.Strings["GL_EXT_texture_storage"],
+    GL_EXT_texture_type_2_10_10_10_REV:              set.Strings["GL_EXT_texture_type_2_10_10_10_REV"],
+    GL_EXT_texture_view:                             set.Strings["GL_EXT_texture_view"],
+    GL_EXT_window_rectangles:                        set.Strings["GL_EXT_window_rectangles"],
+    GL_IMG_bindless_texture:                         set.Strings["GL_IMG_bindless_texture"],
+    GL_IMG_framebuffer_downsample:                   set.Strings["GL_IMG_framebuffer_downsample"],
+    GL_IMG_multisampled_render_to_texture:           set.Strings["GL_IMG_multisampled_render_to_texture"],
+    GL_IMG_user_clip_plane:                          set.Strings["GL_IMG_user_clip_plane"],
+    GL_INTEL_framebuffer_CMAA:                       set.Strings["GL_INTEL_framebuffer_CMAA"],
+    GL_INTEL_performance_query:                      set.Strings["GL_INTEL_performance_query"],
+    GL_KHR_blend_equation_advanced:                  set.Strings["GL_KHR_blend_equation_advanced"],
+    GL_KHR_debug:                                    set.Strings["GL_KHR_debug"],
+    GL_KHR_robustness:                               set.Strings["GL_KHR_robustness"],
+    GL_NV_bindless_texture:                          set.Strings["GL_NV_bindless_texture"],
+    GL_NV_blend_equation_advanced:                   set.Strings["GL_NV_blend_equation_advanced"],
+    GL_NV_conditional_render:                        set.Strings["GL_NV_conditional_render"],
+    GL_NV_conservative_raster:                       set.Strings["GL_NV_conservative_raster"],
+    GL_NV_conservative_raster_pre_snap_triangles:    set.Strings["GL_NV_conservative_raster_pre_snap_triangles"],
+    GL_NV_copy_buffer:                               set.Strings["GL_NV_copy_buffer"],
+    GL_NV_coverage_sample:                           set.Strings["GL_NV_coverage_sample"],
+    GL_NV_draw_buffers:                              set.Strings["GL_NV_draw_buffers"],
+    GL_NV_draw_instanced:                            set.Strings["GL_NV_draw_instanced"],
+    GL_NV_fence:                                     set.Strings["GL_NV_fence"],
+    GL_NV_fragment_coverage_to_color:                set.Strings["GL_NV_fragment_coverage_to_color"],
+    GL_NV_framebuffer_blit:                          set.Strings["GL_NV_framebuffer_blit"],
+    GL_NV_framebuffer_mixed_samples:                 set.Strings["GL_NV_framebuffer_mixed_samples"],
+    GL_NV_framebuffer_multisample:                   set.Strings["GL_NV_framebuffer_multisample"],
+    GL_NV_gpu_shader5:                               set.Strings["GL_NV_gpu_shader5"],
+    GL_NV_instanced_arrays:                          set.Strings["GL_NV_instanced_arrays"],
+    GL_NV_internalformat_sample_query:               set.Strings["GL_NV_internalformat_sample_query"],
+    GL_NV_non_square_matrices:                       set.Strings["GL_NV_non_square_matrices"],
+    GL_NV_path_rendering:                            set.Strings["GL_NV_path_rendering"],
+    GL_NV_polygon_mode:                              set.Strings["GL_NV_polygon_mode"],
+    GL_NV_read_buffer:                               set.Strings["GL_NV_read_buffer"],
+    GL_NV_sample_locations:                          set.Strings["GL_NV_sample_locations"],
+    GL_NV_viewport_array:                            set.Strings["GL_NV_viewport_array"],
+    GL_NV_viewport_swizzle:                          set.Strings["GL_NV_viewport_swizzle"],
+    GL_OES_EGL_image:                                set.Strings["GL_OES_EGL_image"],
+    GL_OES_EGL_image_external:                       set.Strings["GL_OES_EGL_image_external"],
+    GL_OES_blend_equation_separate:                  set.Strings["GL_OES_blend_equation_separate"],
+    GL_OES_blend_func_separate:                      set.Strings["GL_OES_blend_func_separate"],
+    GL_OES_blend_subtract:                           set.Strings["GL_OES_blend_subtract"],
+    GL_OES_compressed_ETC1_RGB8_texture:             set.Strings["GL_OES_compressed_ETC1_RGB8_texture"],
+    GL_OES_copy_image:                               set.Strings["GL_OES_copy_image"],
+    GL_OES_depth_texture:                            set.Strings["GL_OES_depth_texture"],
+    GL_OES_draw_buffers_indexed:                     set.Strings["GL_OES_draw_buffers_indexed"],
+    GL_OES_draw_elements_base_vertex:                set.Strings["GL_OES_draw_elements_base_vertex"],
+    GL_OES_draw_texture:                             set.Strings["GL_OES_draw_texture"],
+    GL_OES_fixed_point:                              set.Strings["GL_OES_fixed_point"],
+    GL_OES_framebuffer_object:                       set.Strings["GL_OES_framebuffer_object"],
+    GL_OES_geometry_shader:                          set.Strings["GL_OES_geometry_shader"],
+    GL_OES_get_program_binary:                       set.Strings["GL_OES_get_program_binary"],
+    GL_OES_mapbuffer:                                set.Strings["GL_OES_mapbuffer"],
+    GL_OES_matrix_palette:                           set.Strings["GL_OES_matrix_palette"],
+    GL_OES_packed_depth_stencil:                     set.Strings["GL_OES_packed_depth_stencil"],
+    GL_OES_point_size_array:                         set.Strings["GL_OES_point_size_array"],
+    GL_OES_primitive_bounding_box:                   set.Strings["GL_OES_primitive_bounding_box"],
+    GL_OES_query_matrix:                             set.Strings["GL_OES_query_matrix"],
+    GL_OES_sample_shading:                           set.Strings["GL_OES_sample_shading"],
+    GL_OES_single_precision:                         set.Strings["GL_OES_single_precision"],
+    GL_OES_tessellation_shader:                      set.Strings["GL_OES_tessellation_shader"],
+    GL_OES_texture_3D:                               set.Strings["GL_OES_texture_3D"],
+    GL_OES_texture_border_clamp:                     set.Strings["GL_OES_texture_border_clamp"],
+    GL_OES_texture_buffer:                           set.Strings["GL_OES_texture_buffer"],
+    GL_OES_texture_cube_map:                         set.Strings["GL_OES_texture_cube_map"],
+    GL_OES_texture_float:                            set.Strings["GL_OES_texture_float"],
+    GL_OES_texture_half_float:                       set.Strings["GL_OES_texture_half_float"],
+    GL_OES_texture_stencil8:                         set.Strings["GL_OES_texture_stencil8"],
+    GL_OES_texture_storage_multisample_2d_array:     set.Strings["GL_OES_texture_storage_multisample_2d_array"],
+    GL_OES_texture_view:                             set.Strings["GL_OES_texture_view"],
+    GL_OES_vertex_array_object:                      set.Strings["GL_OES_vertex_array_object"],
+    GL_OES_vertex_half_float:                        set.Strings["GL_OES_vertex_half_float"],
+    GL_OES_viewport_array:                           set.Strings["GL_OES_viewport_array"],
+    GL_OVR_multiview:                                set.Strings["GL_OVR_multiview"],
+    GL_OVR_multiview_multisampled_render_to_texture: set.Strings["GL_OVR_multiview_multisampled_render_to_texture"],
+    GL_QCOM_alpha_test:                              set.Strings["GL_QCOM_alpha_test"],
+    GL_QCOM_driver_control:                          set.Strings["GL_QCOM_driver_control"],
+    GL_QCOM_extended_get:                            set.Strings["GL_QCOM_extended_get"],
+    GL_QCOM_extended_get2:                           set.Strings["GL_QCOM_extended_get2"],
+    GL_QCOM_tiled_rendering:                         set.Strings["GL_QCOM_tiled_rendering"],
+  )
+}
+
+@internal
+class StringSet {
+  map!(string, bool) Strings
+}
 
 sub s32 min(s32 a, s32 b) {
   return switch (a < b) {
@@ -505,6 +664,8 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     // First initialization for the context.
     ctx.Constants = staticState.Constants
+    InitVersions(ctx)
+    InitExtensions(ctx)
 
     ctx.Objects.Default.Framebuffer = new!Framebuffer(ID: 0, ReadBuffer: GL_BACK)
     ctx.Objects.Framebuffers[0] = ctx.Objects.Default.Framebuffer
