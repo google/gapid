@@ -44,10 +44,10 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
@@ -356,8 +356,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             result.append(Formatter.toString(cmd, models.constants::getConstants));
           }
         } else {
-          result.append(data.getCommands().getFrom(0)).append(": ")
-              .append(data.getGroup()); // TODO add counts
+          result.append(data.getCommands().getFrom(0)).append(": ").append(data.getGroup());
         }
         return new String[] { result.toString() };
       }
