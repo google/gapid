@@ -75,7 +75,7 @@ public class GotoAtom {
     protected Control createCustomArea(Composite parent) {
       // Although the atom ID is a long, we currently only actually support the int range, as
       // the atoms are stored in an array. So, using an int spinner here is fine.
-      //TODO do not submit - int max = (atoms.isLoaded()) ? atoms.getAtomCount() - 1 : 0;
+      //TODO limit to max atoms
       int max = Integer.MAX_VALUE;
       AtomIndex selection = atoms.getSelectedAtoms();
       int current = (selection == null) ? 0 : 0 /*TODO(int)last(selection)*/;
