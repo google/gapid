@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 
+import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
@@ -44,6 +45,10 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.graphics.Color;
@@ -273,7 +278,7 @@ public class ImagePanel extends Composite {
       saveItem.setEnabled(false);
     }
     status.setLevelCount(0);
-    imageComponent.setImage(level);
+    imageComponent.setImages(new Image[]{ level });
   }
 
   private void loadLevel(int index) {
@@ -322,12 +327,16 @@ public class ImagePanel extends Composite {
     if (saveItem != null) {
       saveItem.setEnabled(newLevel != null);
     }
-    imageComponent.setImage(level);
+    Image[] images = new Image[level.getDepth()];
+    for (int i = 0; i < images.length; i++) {
+      images[i] = level.getSlice(i);
+    }
+    imageComponent.setImages(images);
   }
 
   private static class SceneData {
-    public Image image;
-    public MatD transform = MatD.IDENTITY;
+    public Image[] images = {};
+    public MatD[] transforms = {};
     public final boolean channels[] = { true, true, true, true };
     public Pixel previewPixel = Pixel.OUT_OF_BOUNDS;
     public boolean flipped;
@@ -347,8 +356,8 @@ public class ImagePanel extends Composite {
 
     public SceneData copy() {
       SceneData out = new SceneData();
-      out.image = image;
-      out.transform = MatD.copyOf(transform);
+      out.images = images;
+      out.transforms = transforms.clone();
       System.arraycopy(channels, 0, out.channels, 0, channels.length);
       out.previewPixel = previewPixel;
       out.flipped = flipped;
@@ -370,7 +379,7 @@ public class ImagePanel extends Composite {
    * Component that renders the image using OpenGL.
    */
   private static class ImageComponent extends Composite {
-    private static final int BORDER_SIZE = 2;
+    private static final VecD BORDER_SIZE = new VecD(2, 2, 0);
     private static final double MAX_ZOOM_FACTOR = 8;
     private static final VecD MIN_ZOOM_SIZE = new VecD(100, 100, 0);
 
@@ -378,20 +387,22 @@ public class ImagePanel extends Composite {
 
     private final ScrollBar scrollbars[];
     private final ScenePanel<SceneData> canvas;
-    private final SceneData settings;
-    private Image image;
+    private final SceneData data;
+    private Image[] images = {};
 
-    private double scaleImageToViewMin = 0;
-    private double scaleImageToViewMax = Double.POSITIVE_INFINITY;
-    private double scaleImageToViewFit = 1;
+    private double scaleGridToViewMin = 0;
+    private double scaleGridToViewMax = Double.POSITIVE_INFINITY;
+    private double scaleGridToViewFit = 1;
 
     private VecD viewSize = VecD.ZERO;
-    private VecD imageSize = VecD.ZERO;
-    private VecD imageOffset = VecD.ZERO;
-    private VecD imageOffsetMin = VecD.MIN;
-    private VecD imageOffsetMax = VecD.MAX;
+    private VecD viewOffset = VecD.ZERO;
+    private VecD viewOffsetMin = VecD.MIN;
+    private VecD viewOffsetMax = VecD.MAX;
+    private VecD gridSize = VecD.ZERO;
+    private VecD tileSize = VecD.ZERO;
+    private VecD tileOffsets[] = {};
 
-    private double scaleImageToView = 1.0;
+    private double scaleGridToView = 1.0;
     private boolean zoomToFit;
 
     public ImageComponent(Composite parent, Theme theme, boolean naturallyFlipped) {
@@ -402,20 +413,20 @@ public class ImagePanel extends Composite {
 
       scrollbars = new ScrollBar[] { getHorizontalBar(), getVerticalBar() };
 
-      settings = new SceneData();
-      settings.flipped = naturallyFlipped;
-      settings.borderWidth = BORDER_SIZE;
-      settings.borderColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_NORMAL_SHADOW);
-      settings.panelColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
-      settings.backgroundMode = BackgroundMode.Checkerboard;
-      settings.checkerDark = theme.imageCheckerDark();
-      settings.checkerLight = theme.imageCheckerLight();
-      settings.checkerSize = 30;
-      settings.cursorLight = theme.imageCursorLight();
-      settings.cursorDark = theme.imageCursorDark();
+      data = new SceneData();
+      data.flipped = naturallyFlipped;
+      data.borderWidth = (int)BORDER_SIZE.x;
+      data.borderColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_NORMAL_SHADOW);
+      data.panelColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+      data.backgroundMode = BackgroundMode.Checkerboard;
+      data.checkerDark = theme.imageCheckerDark();
+      data.checkerLight = theme.imageCheckerLight();
+      data.checkerSize = 30;
+      data.cursorLight = theme.imageCursorLight();
+      data.cursorDark = theme.imageCursorDark();
 
       canvas = new ScenePanel<SceneData>(this, new ImageScene());
-      canvas.setSceneData(settings.copy());
+      canvas.setSceneData(data.copy());
 
       getHorizontalBar().addListener(SWT.Selection, e -> onScroll());
       getVerticalBar().addListener(SWT.Selection, e -> onScroll());
@@ -432,71 +443,96 @@ public class ImagePanel extends Composite {
       canvas.addMouseTrackListener(mouseHandler);
     }
 
-    public void setImage(Image image) {
-      this.image = image;
-      imageSize = new VecD(image.getWidth(), image.getHeight(), 0);
+    public void setImages(Image[] images) {
+      this.images = images;
+      this.tileOffsets = new VecD[images.length];
+
+      tileSize = VecD.ZERO;
+      for (Image image : images) {
+        VecD imageSize = new VecD(image.getWidth(), image.getHeight(), 0);
+        tileSize = tileSize.max(imageSize);
+      }
+      int numColumns = (int)Math.round(Math.sqrt(images.length));
+      int numRows = (images.length + numColumns - 1) / numColumns;
+
+      gridSize = tileSize.multiply(numColumns, numRows, 1).add(BORDER_SIZE.multiply(numColumns - 1, numRows - 1, 1));
+      VecD center = gridSize.subtract(tileSize).divide(2);
+
+      for (int i = 0; i < images.length; i++) {
+        int x = i % numColumns;
+        int y = i / numColumns;
+        tileOffsets[i] = tileSize.add(BORDER_SIZE)
+            .multiply(x, y, 0)
+            .subtract(center);
+      }
+
       updateScaleLimits();
-      setScale(zoomToFit ? scaleImageToViewFit : scaleImageToView);
+      setScale(zoomToFit ? scaleGridToViewFit : scaleGridToView);
       refresh();
     }
 
     private void refresh() {
-      settings.image = image;
-      settings.transform = calcTransform();
-      canvas.setSceneData(settings.copy());
+      data.images = images;
+      data.transforms = calcTransforms();
+      canvas.setSceneData(data.copy());
     }
 
     public void setPreviewPixel(Pixel previewPixel) {
-      settings.previewPixel = previewPixel;
+      data.previewPixel = previewPixel;
       refresh();
     }
 
     protected void scrollBy(int dx, int dy) {
-      imageOffset = imageOffset
-          .add(-dx / scaleImageToView, -dy / scaleImageToView, 0)
-          .clamp(imageOffsetMin, imageOffsetMax);
+      viewOffset = viewOffset
+          .add(dx / scaleGridToView, dy / scaleGridToView, 0)
+          .clamp(viewOffsetMin, viewOffsetMax);
       updateScrollbars();
       refresh();
     }
 
     protected void setBackgroundMode(BackgroundMode backgroundMode, Color backgroundColor) {
-      settings.backgroundMode = backgroundMode;
-      settings.backgroundColor = backgroundColor;
+      data.backgroundMode = backgroundMode;
+      data.backgroundColor = backgroundColor;
       refresh();
     }
 
     protected void setFlipped(boolean flipped) {
-      settings.flipped = flipped ^ naturallyFlipped;
+      data.flipped = flipped ^ naturallyFlipped;
       refresh();
     }
 
     protected boolean isChannelEnabled(int channel) {
-      return settings.channels[channel];
+      return data.channels[channel];
     }
 
     protected void setChannelEnabled(int channel, boolean enabled) {
-      settings.channels[channel] = enabled;
+      data.channels[channel] = enabled;
       refresh();
     }
 
     public Pixel getPixel(Point point) {
-      VecD imageNormalized = calcInvTransform().multiply(pointToNDC(point));
-      VecD imageTexel = imageNormalized.multiply(0.5).add(0.5, 0.5, 0.0).multiply(imageSize);
-      int x = (int)imageTexel.x;
-      int y = (int)imageTexel.y;
-      if (x < 0 || y < 0 || x >= image.getWidth() || y >= image.getHeight()) {
-        return Pixel.OUT_OF_BOUNDS;
+      VecD ndc = pointToNDC(point);
+      for (int i = 0; i < images.length; i++) {
+        Image image = images[i];
+        VecD imageNormalized = calcInvTransform(i).multiply(ndc);
+        VecD imageTexel = imageNormalized.multiply(0.5).add(0.5, 0.5, 0.0).multiply(tileSize);
+        float u = (float)imageNormalized.x * 0.5f + 0.5f;
+        float v = (float)imageNormalized.y * (data.flipped ? 0.5f : 0.5f) + 0.5f;
+        if (u < 0 || v < 0 || u > 1 || v > 1) {
+          continue;
+        }
+        int x = (int)imageTexel.x;
+        int y = (int)imageTexel.y;
+        int sampleY = data.flipped ? (image.getHeight() - y - 1) : y;
+        return new Pixel(i, x, y, u, v, image.getPixel(x, sampleY, 1));
       }
-      float u = (float)imageNormalized.x * 0.5f + 0.5f;
-      float v = (float)imageNormalized.y * (settings.flipped ? 0.5f : 0.5f) + 0.5f;
-      int sampleY = settings.flipped ? (image.getHeight() - y - 1) : y;
-      return new Pixel(x, y, u, v, image.getPixel(x, sampleY, 1));
+      return Pixel.OUT_OF_BOUNDS;
     }
 
     public void setZoomToFit(boolean zoomToFit) {
       this.zoomToFit = zoomToFit;
       if (zoomToFit) {
-        setScale(scaleImageToViewFit);
+        setScale(scaleGridToViewFit);
         updateScrollbars();
         refresh();
       }
@@ -509,17 +545,17 @@ public class ImagePanel extends Composite {
     }
 
     public void zoom(int amount, Point cursor) {
-      double scale = scaleImageToView * (1 - 0.05f * amount);
+      double scale = scaleGridToView * (1 - 0.05f * amount);
 
       if (cursor != null) {
         VecD ndc = pointToNDC(cursor);
-        VecD imageNormPreScale = calcInvTransform().multiply(ndc);
+        VecD imageNormPreScale = calcInvTransform(0).multiply(ndc);
         setScale(scale);
-        VecD imageNormPostScale = calcInvTransform().multiply(ndc);
+        VecD imageNormPostScale = calcInvTransform(0).multiply(ndc);
         VecD imageNormDelta = imageNormPostScale.subtract(imageNormPreScale);
-        imageOffset = imageOffset
-            .add(imageNormDelta.multiply(imageSize).multiply(0.5))
-            .clamp(imageOffsetMin, imageOffsetMax);
+        viewOffset = viewOffset
+            .subtract(imageNormDelta.multiply(tileSize).multiply(0.5))
+            .clamp(viewOffsetMin, viewOffsetMax);
       } else {
         setScale(scale);
       }
@@ -547,24 +583,32 @@ public class ImagePanel extends Composite {
           .multiply(2.0);
     }
 
-    /**
-     * @return a transform that can be used to convert the texture quad [-1, -1] to [1, 1] into
-     * NDC coordinates based on the current scale and offset.
-     */
-    private MatD calcTransform() {
-      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(viewSize))
-              .scale(scaleImageToView)
-              .translate(imageOffset)
-              .scale(imageSize.multiply(0.5));
+    private MatD[] calcTransforms() {
+      MatD[] out = new MatD[images.length];
+      for (int i = 0; i < images.length; i++) {
+        out[i] = calcTransform(i);
+      }
+      return out;
     }
 
     /**
-     * @return the inverse of the matrix returned from {@link #calcTransform()}.
+     * @return a transform that can be used to convert the tile quad [-1, -1] to [1, 1] into
+     * NDC coordinates based on the current scale and offset.
      */
-    private MatD calcInvTransform() {
-      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(imageSize))
-          .translate(imageOffset.negate())
-          .scale(1.0 / scaleImageToView)
+    private MatD calcTransform(int index) {
+      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(viewSize))
+              .scale(scaleGridToView)
+              .translate(tileOffsets[index].subtract(viewOffset))
+              .scale(tileSize.multiply(0.5));
+    }
+
+    /**
+     * @return the inverse of the matrix returned from {@link #calcTransform(int)}.
+     */
+    private MatD calcInvTransform(int index) {
+      return MatD.makeScale(new VecD(2, 2, 0).safeDivide(tileSize))
+          .translate(viewOffset.subtract(tileOffsets[index]))
+          .scale(1.0 / scaleGridToView)
           .scale(viewSize.multiply(0.5));
     }
 
@@ -573,16 +617,16 @@ public class ImagePanel extends Composite {
     }
 
     private void setScale(double scale) {
-      scaleImageToView = clamp(scale, scaleImageToViewMin, scaleImageToViewMax);
+      scaleGridToView = clamp(scale, scaleGridToViewMin, scaleGridToViewMax);
 
-      VecD viewSizeSubBorder = viewSize.subtract(BORDER_SIZE * 2);
+      VecD viewSizeSubBorder = viewSize.subtract(BORDER_SIZE.multiply(2));
 
-      imageOffsetMax = imageSize
-          .subtract(viewSizeSubBorder.divide(scaleImageToView))
+      viewOffsetMax = gridSize
+          .subtract(viewSizeSubBorder.safeDivide(scaleGridToView))
           .multiply(0.5)
           .max(VecD.ZERO);
-      imageOffsetMin = imageOffsetMax.negate();
-      imageOffset = imageOffset.clamp(imageOffsetMin, imageOffsetMax);
+      viewOffsetMin = viewOffsetMax.negate();
+      viewOffset = viewOffset.clamp(viewOffsetMin, viewOffsetMax);
     }
 
     private void onResize() {
@@ -590,28 +634,27 @@ public class ImagePanel extends Composite {
       viewSize = new VecD(area.width, area.height, 0);
       updateScaleLimits();
       if (zoomToFit) {
-        setScale(scaleImageToViewFit);
+        setScale(scaleGridToViewFit);
       }
       updateScrollbars();
       refresh();
     }
 
     private void updateScaleLimits() {
-      VecD viewSpace = viewSize.subtract(settings.borderWidth).max(VecD.ZERO);
-      scaleImageToViewFit = viewSpace.safeDivide(imageSize).minXY();
-      scaleImageToViewMax = Math.max(MAX_ZOOM_FACTOR, scaleImageToViewFit);
+      VecD viewSpace = viewSize.subtract(data.borderWidth).max(VecD.ZERO);
+      scaleGridToViewFit = viewSpace.safeDivide(gridSize).minXY();
+      scaleGridToViewMax = Math.max(MAX_ZOOM_FACTOR, scaleGridToViewFit);
       // The smallest zoom factor to see the whole image or that causes the larger dimension to be
       // no less than MIN_ZOOM_WIDTH pixels.
-      scaleImageToViewMin =
-          Math.min(MIN_ZOOM_SIZE.safeDivide(imageSize).minXY(), scaleImageToViewFit);
+      scaleGridToViewMin = Math.min(MIN_ZOOM_SIZE.safeDivide(gridSize).minXY(), scaleGridToViewFit);
     }
 
     private void updateScrollbars() {
       for (int i = 0; i < scrollbars.length; i++) {
         ScrollBar scrollbar = scrollbars[i];
-        int val = (int)(imageOffset.get(i) * scaleImageToView); // offset in view pixels
-        int min = (int)(imageOffsetMin.get(i) * scaleImageToView); // min movement in view pixels
-        int max = (int)(imageOffsetMax.get(i) * scaleImageToView); // max movement in view pixels
+        int val = (int)(viewOffset.get(i) * scaleGridToView); // offset in view pixels
+        int min = (int)(viewOffsetMin.get(i) * scaleGridToView); // min movement in view pixels
+        int max = (int)(viewOffsetMax.get(i) * scaleGridToView); // max movement in view pixels
         int rng = max - min;
         if (rng == 0) {
           scrollbar.setEnabled(false);
@@ -620,7 +663,7 @@ public class ImagePanel extends Composite {
           int view = (int)this.viewSize.get(i);
           scrollbar.setEnabled(true);
           scrollbar.setValues(
-              max - val,        // selection
+              val - min,          // selection
               0,                // min
               view + rng,       // max
               view,             // thumb
@@ -635,9 +678,9 @@ public class ImagePanel extends Composite {
       for (int i = 0; i < scrollbars.length; i++) {
         ScrollBar scrollbar = scrollbars[i];
         if (scrollbar.getEnabled()) {
-          int max = (int)(imageOffsetMax.get(i) * scaleImageToView); // max movement in view pixels
-          int val = max - scrollbar.getSelection();
-          imageOffset = imageOffset.set(i, val / scaleImageToView);
+          int min = (int)(viewOffsetMin.get(i) * scaleGridToView); // min movement in view pixels
+          int val = min + scrollbar.getSelection();
+          viewOffset = viewOffset.set(i, val / scaleGridToView);
         }
       }
       refresh();
@@ -649,11 +692,12 @@ public class ImagePanel extends Composite {
     private static final int PREVIEW_HEIGHT = 11; // Should be odd, so center pixel looks nice.
     private static final int PREVIEW_SIZE = 7;
 
+
+    private final Map<Image, Texture> imageToTexture = new HashMap<>();
     private Shader shader;
-    private Texture texture;
+    private Texture[] textures;
     private SceneData data;
 
-    private final float[] uRange = new float[] { 0, 1 };
     private final float[] uChannels = new float[] { 1, 1, 1, 1 };
 
     public ImageScene() {
@@ -672,25 +716,37 @@ public class ImagePanel extends Composite {
 
     @Override
     public void update(Renderer renderer, SceneData newData) {
-      Image oldImage = (this.data != null) ? this.data.image : null;
-      if (oldImage != newData.image) {
-        // Release old texture, create new.
-        if (texture != null) {
-          texture.delete();
+      // Release textures that are no longer in data.
+      Set<Image> newSet = Sets.newHashSet(newData.images);
+      for (Entry<Image, Texture> entry : imageToTexture.entrySet()) {
+        if (!newSet.contains(entry.getKey())) {
+          entry.getValue().delete();
         }
-        texture = renderer
-            .newTexture(GL11.GL_TEXTURE_2D)
-            .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
-            .setBorderColor(newData.borderColor);
-        newData.image.uploadToTexture(texture);
-        shader.setUniform("uTexture", texture);
+      }
+
+      this.textures = new Texture[newData.images.length];
+      float rangeMin = Float.MAX_VALUE;
+      float rangeMax = Float.MIN_VALUE;
+      for (int i = 0; i < newData.images.length; i++) {
+        Image image = newData.images[i];
+        Texture texture = imageToTexture.get(image);
+        if (texture == null) {
+          texture = renderer
+              .newTexture(GL11.GL_TEXTURE_2D)
+              .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
+              .setBorderColor(newData.borderColor);
+          image.uploadToTexture(texture);
+        }
 
         // Get range limits, update uniforms.
-        PixelInfo info = data.image.getInfo();
-        uRange[0] = info.getMin();
-        uRange[1] = info.getMax() - info.getMin();
-        shader.setUniform("uRange", uRange);
+        PixelInfo info = image.getInfo();
+        rangeMin = Math.min(rangeMin, info.getMin());
+        rangeMax = Math.max(rangeMax, info.getMax());
+
+        this.textures[i] = texture;
       }
+
+      shader.setUniform("uRange", new float[] { rangeMin, rangeMax - rangeMin });
       for (int i = 0; i < 4; i++) {
         uChannels[i] = newData.channels[i] ? 1.0f : 0.0f;
       }
@@ -704,10 +760,8 @@ public class ImagePanel extends Composite {
       }
       Renderer.clear(data.panelColor);
       drawBackground(renderer);
-      if (texture != null) {
-        drawImage(renderer);
-        drawPreview(renderer);
-      }
+      drawImages(renderer);
+      drawPreview(renderer);
     }
 
     @Override
@@ -718,25 +772,34 @@ public class ImagePanel extends Composite {
     private void drawBackground(Renderer renderer) {
       switch (data.backgroundMode) {
         case Checkerboard:
-          renderer.drawChecker(
-              data.transform, data.checkerLight, data.checkerDark, data.checkerSize);
+          for (MatD transform : data.transforms) {
+            renderer.drawChecker(transform, data.checkerLight, data.checkerDark, data.checkerSize);
+          }
           break;
         case SolidColor:
-          renderer.drawSolid(data.transform, data.backgroundColor);
+          for (MatD transform : data.transforms) {
+            renderer.drawSolid(transform, data.backgroundColor);
+          }
           break;
         default:
           throw new AssertionError();
       }
-      renderer.drawBorder(data.transform, data.borderColor, data.borderWidth);
+      for (MatD transform : data.transforms) {
+        renderer.drawBorder(transform, data.borderColor, data.borderWidth);
+      }
     }
 
-    private void drawImage(Renderer renderer) {
-      texture.setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
+    private void drawImages(Renderer renderer) {
+      shader.setUniform("uPixelSize", VecD.ONE.safeDivide(renderer.getViewSize()));
       shader.setUniform("uTextureSize", new float[] { 1, 1 });
       shader.setUniform("uTextureOffset", new float[] { 0, 0 });
       shader.setUniform("uChannels", uChannels);
       shader.setUniform("uFlipped", data.flipped ? 1 : 0);
-      renderer.drawQuad(data.transform, shader);
+      for (int i = 0; i < textures.length; i++) {
+        textures[i].setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
+        shader.setUniform("uTexture", textures[i]);
+        renderer.drawQuad(data.transforms[i], shader);
+      }
     }
 
     private void drawPreview(Renderer renderer) {
@@ -744,6 +807,8 @@ public class ImagePanel extends Composite {
         return;
       }
 
+      int imageIndex = data.previewPixel.imageIndex;
+      Image image = data.images[imageIndex];
       int width = PREVIEW_WIDTH * PREVIEW_SIZE;
       int height = PREVIEW_HEIGHT * PREVIEW_SIZE;
       int x = data.borderWidth;
@@ -752,15 +817,17 @@ public class ImagePanel extends Composite {
       renderer.drawBorder(x, y, width, height, data.borderColor, data.borderWidth);
 
       float[] texScale = new float[] {
-          (float)PREVIEW_WIDTH / data.image.getWidth(),
-          (float)PREVIEW_HEIGHT / data.image.getHeight()
+          (float)PREVIEW_WIDTH / image.getWidth(),
+          (float)PREVIEW_HEIGHT / image.getHeight()
       };
       float[] texOffset = new float[] {
-          (float)(data.previewPixel.x - PREVIEW_WIDTH / 2) / data.image.getWidth(),
-          (float)(data.previewPixel.y - PREVIEW_HEIGHT / 2) / data.image.getHeight()
+          (float)(data.previewPixel.x - PREVIEW_WIDTH / 2) / image.getWidth(),
+          (float)(data.previewPixel.y - PREVIEW_HEIGHT / 2) / image.getHeight()
       };
 
+      Texture texture = textures[imageIndex];
       texture.setWrapMode(GL13.GL_CLAMP_TO_BORDER, GL13.GL_CLAMP_TO_BORDER);
+      shader.setUniform("uTexture", texture);
       shader.setUniform("uTextureSize", texScale);
       shader.setUniform("uTextureOffset", texOffset);
       shader.setUniform("uChannels", new float[] { 1, 1, 1, 0 });
@@ -779,18 +846,20 @@ public class ImagePanel extends Composite {
    * Information regarding the currently hovered pixel.
    */
   private static class Pixel {
-    public static final Pixel OUT_OF_BOUNDS = new Pixel(-1, -1, -1, -1, PixelValue.NULL_PIXEL) {
+    public static final Pixel OUT_OF_BOUNDS = new Pixel(-1, -1, -1, -1, -1, PixelValue.NULL_PIXEL) {
       @Override
       public void formatTo(Label label) {
         label.setText(" ");
       }
     };
 
+    public final int imageIndex;
     public final int x, y;
     public final float u, v;
     public final PixelValue value;
 
-    public Pixel(int x, int y, float u, float v, PixelValue value) {
+    public Pixel(int imageIndex, int x, int y, float u, float v, PixelValue value) {
+      this.imageIndex = imageIndex;
       this.x = x;
       this.y = y;
       this.u = u;
