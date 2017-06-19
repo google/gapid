@@ -139,19 +139,27 @@ public class VecD {
     return new VecD(x / sx, y / sy, z / sz);
   }
 
-  /**
-   * Like {@link #divide(VecD)}, but divide by zeros result in zero.
-   */
-  public VecD safeDivide(VecD v) {
+  /** Like {@link #divide(double, double, double)}, but divide by zeros result in zero. */
+  public VecD safeDivide(double v) {
+    return safeDivide(v, v, v);
+  }
+
+  /** Like {@link #divide(VecD)}, but divide by zeros result in zero. */
+  public VecD safeDivide(double x, double y, double z) {
     return new VecD(
-        (v.x == 0) ? 0 : (x / v.x),
-        (v.y == 0) ? 0 : (y / v.y),
-        (v.z == 0) ? 0 : (z / v.z));
+        (x == 0) ? 0 : (this.x / x),
+        (y == 0) ? 0 : (this.y / y),
+        (z == 0) ? 0 : (this.z / z));
+  }
+
+  /** Like {@link #divide(VecD)}, but divide by zeros result in zero. */
+  public VecD safeDivide(VecD v) {
+    return safeDivide(v.x, v.y, v.z);
   }
 
   public double magnitudeSquared() {
-    return x * x + y * y + z * z;
-  }
+  return x * x + y * y + z * z;
+}
 
   public double magnitude() {
     return Math.sqrt(magnitudeSquared());
