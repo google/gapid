@@ -164,7 +164,7 @@ func (n *Device) Validate() error {
 
 // Validate checks the path is valid.
 func (n *Events) Validate() error {
-	return checkNotNilAndValidate(n, protoutil.OneOf(n.Commands), "commands")
+	return checkNotNilAndValidate(n, protoutil.OneOf(n.Capture), "capture")
 }
 
 // Validate checks the path is valid.

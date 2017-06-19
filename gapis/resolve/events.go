@@ -25,12 +25,12 @@ import (
 
 // Events resolves and returns the event list from the path p.
 func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Commands.Capture)
+	c, err := capture.ResolveFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, p.Commands.Capture, p.Filter)
+	filter, err := buildFilter(ctx, p.Capture, p.Filter)
 	if err != nil {
 		return nil, err
 	}
@@ -50,49 +50,49 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_DrawCall,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 		if p.DrawCalls && f.IsUserMarker() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_UserMarker,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 		if p.LastInFrame && f.IsStartOfFrame() && i > 0 {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_LastInFrame,
-				Command: p.Commands.Capture.Command(uint64(i) - 1),
+				Command: p.Capture.Command(uint64(i) - 1),
 			})
 		}
 		if p.LastInFrame && f.IsEndOfFrame() && i > 0 {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_LastInFrame,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 		if p.FirstInFrame && (f.IsStartOfFrame() || i == 0) {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_FirstInFrame,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 		if p.FirstInFrame && (f.IsEndOfFrame() && len(c.Atoms) > i+1) {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_FirstInFrame,
-				Command: p.Commands.Capture.Command(uint64(i) + 1),
+				Command: p.Capture.Command(uint64(i) + 1),
 			})
 		}
 		if p.PushUserMarkers && f.IsPushUserMarker() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_PushUserMarker,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 		if p.PopUserMarkers && f.IsPopUserMarker() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_PopUserMarker,
-				Command: p.Commands.Capture.Command(uint64(i)),
+				Command: p.Capture.Command(uint64(i)),
 			})
 		}
 
@@ -100,7 +100,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 			if _, ok := a.(*atom.FramebufferObservation); ok {
 				events = append(events, &service.Event{
 					Kind:    service.EventKind_FramebufferObservation,
-					Command: p.Commands.Capture.Command(uint64(i)),
+					Command: p.Capture.Command(uint64(i)),
 				})
 			}
 		}

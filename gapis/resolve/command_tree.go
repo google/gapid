@@ -303,7 +303,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree, last atom.ID) error {
 	events, err := Events(ctx, &path.Events{
-		Commands:     t.path.Capture.Commands(),
+		Capture:      t.path.Capture,
 		Filter:       p.Filter,
 		DrawCalls:    p.GroupByDrawCall,
 		FirstInFrame: true,

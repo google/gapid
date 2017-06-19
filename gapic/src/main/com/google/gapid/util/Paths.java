@@ -128,8 +128,7 @@ public class Paths {
   public static Path.Any events(Path.Capture capture, FilteringContext context) {
     return Path.Any.newBuilder()
         .setEvents(context.events(Path.Events.newBuilder())
-            .setCommands(Path.Commands.newBuilder()
-                .setCapture(capture))
+            .setCapture(capture)
             .setLastInFrame(true))
         .build();
   }

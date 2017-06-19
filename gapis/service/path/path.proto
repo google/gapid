@@ -142,7 +142,7 @@ message ConstantSet {
 // Events is a path to a list of events in a capture.
 // Resolves to a service.Events.
 message Events {
-    Commands commands = 1;
+    Capture capture = 1;
     CommandFilter filter = 2;
     bool draw_calls = 3;
     bool first_in_frame = 4;

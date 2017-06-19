@@ -58,7 +58,7 @@ func (verb *videoVerb) sxsVideoSource(
 
 	// Get the draw call and end-of-frame events.
 	events, err := getEvents(ctx, client, &path.Events{
-		Commands:                capture.Commands(),
+		Capture:                 capture,
 		DrawCalls:               true,
 		LastInFrame:             true,
 		FramebufferObservations: true,
