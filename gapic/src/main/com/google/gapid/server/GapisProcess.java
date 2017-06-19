@@ -23,6 +23,8 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
 
 import java.io.File;
@@ -41,6 +43,9 @@ import java.util.regex.Pattern;
  * future returned by {@link #start()} is the port the GAPIS server listens to.
  */
 public class GapisProcess extends ChildProcess<Integer> {
+  public static final Flag<Boolean> disableGapisTimeout = Flags.value(
+      "disable-gapis-timeout", false, "Disables the GAPIS timeout. Useful for debugging.");
+
   private static final Logger LOG = Logger.getLogger(GapisProcess.class.getName());
 
   private static final Pattern PORT_PATTERN = Pattern.compile("^Bound on port '(\\d+)'$", 0);
@@ -97,8 +102,10 @@ public class GapisProcess extends ChildProcess<Integer> {
     args.add("--gapis-auth-token");
     args.add(authToken);
 
-    args.add("--idle-timeout");
-    args.add(IDLE_TIMEOUT_MS + "ms");
+    if (!disableGapisTimeout.get()) {
+      args.add("--idle-timeout");
+      args.add(IDLE_TIMEOUT_MS + "ms");
+    }
 
     String adb = GapiPaths.adb(settings);
     if (!adb.isEmpty()) {
