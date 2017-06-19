@@ -129,7 +129,7 @@ public class TextureView extends Composite
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    imagePanel.createToolbar(toolBar, widgets.theme, true);
+    imagePanel.createToolbar(toolBar, widgets.theme);
     gotoAction.createToolItem(toolBar);
 
     models.capture.addListener(this);
@@ -172,7 +172,7 @@ public class TextureView extends Composite
   }
 
   private static ImagePanel createImagePanel(Composite parent, Widgets widgets) {
-    ImagePanel panel = new ImagePanel(parent, widgets);
+    ImagePanel panel = new ImagePanel(parent, widgets, false);
     return panel;
   }
 

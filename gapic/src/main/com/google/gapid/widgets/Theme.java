@@ -126,6 +126,11 @@ public interface Theme {
   @RGB(argb = 0xff4c0100) public Color errorForeground();
   @RGB(argb = 0xff1b004c) public Color fatalForeground();
 
+  @RGB(argb = 0xffc0c0c0) public Color imageCheckerDark();
+  @RGB(argb = 0xffffffff) public Color imageCheckerLight();
+  @RGB(argb = 0xff000000) public Color imageCursorDark();
+  @RGB(argb = 0xffffffff) public Color imageCursorLight();
+
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();

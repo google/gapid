@@ -18,39 +18,29 @@ package com.google.gapid.glviewer;
 import com.google.gapid.glviewer.camera.Emitter;
 import com.google.gapid.glviewer.geo.BoundingBox;
 import com.google.gapid.glviewer.geo.Model;
-import com.google.gapid.glviewer.gl.Buffer;
+import com.google.gapid.glviewer.gl.IndexBuffer;
+import com.google.gapid.glviewer.gl.Renderer;
+import com.google.gapid.glviewer.gl.VertexBuffer;
 import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.proto.service.gfxapi.GfxAPI.DrawPrimitive;
 
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15;
 
 /**
  * Renders a {@link Model}. Can render the geometry using either y-up or z-up and as either a
  * point cloud, wire mesh, or solid.
  */
 public class Geometry {
-  private Model model;
-  private MatD modelMatrix;
-  private boolean zUp;
+  public static final Geometry NULL = new Geometry(null, false);
 
-  public Geometry() {
-    updateModelMatrix();
-  }
+  public final Model model;
+  public final boolean zUp;
+  public final MatD modelMatrix;
 
-  public void setModel(Model model) {
+  public Geometry(Model model, boolean zUp) {
     this.model = model;
-    updateModelMatrix();
-  }
-
-  public Model getModel() {
-    return model;
-  }
-
-  public boolean toggleZUp() {
-    zUp = !zUp;
-    updateModelMatrix();
-    return zUp;
+    this.zUp = zUp;
+    this.modelMatrix = getBounds().getCenteringMatrix(Constants.SCENE_SCALE_FACTOR, zUp);
   }
 
   public BoundingBox getBounds() {
@@ -58,14 +48,6 @@ public class Geometry {
       return model.getBounds();
     }
     return BoundingBox.INVALID;
-  }
-
-  private void updateModelMatrix() {
-    modelMatrix = getBounds().getCenteringMatrix(Constants.SCENE_SCALE_FACTOR, zUp);
-  }
-
-  protected MatD getModelMatrix() {
-    return modelMatrix;
   }
 
   public Renderable asRenderable(DisplayMode displayMode) {
@@ -80,45 +62,38 @@ public class Geometry {
     final int[] indices = isNonPolygonPoints(displayMode) ? null : model.getIndices();
 
     return new Renderable() {
-      private Buffer positionBuffer;
-      private Buffer normalBuffer;
-      private Buffer indexBuffer;
+      private VertexBuffer positionBuffer;
+      private VertexBuffer normalBuffer;
+      private IndexBuffer indexBuffer;
 
       @Override
-      public void init() {
-        positionBuffer = new Buffer(GL15.GL_ARRAY_BUFFER).bind().loadData(positions);
+      public void init(Renderer renderer) {
+        positionBuffer = renderer.newVertexBuffer(positions, 3);
         if (normals != null) {
-          normalBuffer = new Buffer(GL15.GL_ARRAY_BUFFER).bind().loadData(normals);
+          normalBuffer = renderer.newVertexBuffer(normals, 3);
         }
         if (indices != null) {
-          indexBuffer = new Buffer(GL15.GL_ELEMENT_ARRAY_BUFFER).bind().loadData(indices);
+          indexBuffer = renderer.newIndexBuffer(indices);
         }
       }
 
       @Override
-      public void render(State state) {
-        state.transform.push(getModelMatrix());
+      public void render(Renderer renderer, State state) {
+        state.transform.push(modelMatrix);
         state.transform.apply(state.shader);
 
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
 
-        positionBuffer.bind();
-        state.shader.bindAttribute(Constants.POSITION_ATTRIBUTE, 3, GL11.GL_FLOAT, 3 * 4, 0);
+        state.shader.setAttribute(Constants.POSITION_ATTRIBUTE, positionBuffer);
         if (normalBuffer != null) {
-          normalBuffer.bind();
-          state.shader.bindAttribute(Constants.NORMAL_ATTRIBUTE, 3, GL11.GL_FLOAT, 3 * 4, 0);
+          state.shader.setAttribute(Constants.NORMAL_ATTRIBUTE, normalBuffer);
         } else {
           state.shader.setAttribute(Constants.NORMAL_ATTRIBUTE, 1, 0, 0);
         }
         if (indexBuffer != null) {
-          indexBuffer.bind();
-          GL11.glDrawElements(modelPrimitive, indices.length, GL11.GL_UNSIGNED_INT, 0);
+          renderer.draw(state.shader, modelPrimitive, indexBuffer);
         } else {
-          GL11.glDrawArrays(GL11.GL_POINTS, 0, positions.length / 3);
-        }
-        state.shader.unbindAttribute(Constants.POSITION_ATTRIBUTE);
-        if (normalBuffer != null) {
-          state.shader.unbindAttribute(Constants.NORMAL_ATTRIBUTE);
+          renderer.draw(state.shader, GL11.GL_POINTS, positions.length / 3);
         }
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
 
@@ -126,7 +101,7 @@ public class Geometry {
       }
 
       @Override
-      public void dispose() {
+      public void dispose(Renderer renderer) {
         if (positionBuffer != null) {
           positionBuffer.delete();
           positionBuffer = null;

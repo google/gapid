@@ -45,7 +45,7 @@ public class MatD {
       double e, double f, double g, double h,
       double i, double j, double k, double l,
       double m, double n, double o, double p) {
-    return new MatD(new double[] { a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p});
+    return new MatD(new double[] { a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p });
   }
 
   public static MatD copyOf(MatD m) {

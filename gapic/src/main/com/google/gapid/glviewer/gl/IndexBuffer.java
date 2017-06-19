@@ -15,43 +15,34 @@
  */
 package com.google.gapid.glviewer.gl;
 
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 /**
- * Helper object for GL buffers.
+ * An OpenGL GL_ELEMENT_ARRAY_BUFFER buffer.
  */
-public class Buffer {
-  private final int target;
-  private final int handle;
-  private int size;
+public class IndexBuffer extends GlObject {
+  final int handle;
+  final int count;
+  final int type;
 
-  public Buffer(int target) {
-    this.target = target;
+  IndexBuffer(Renderer owner, int[] data) {
+    super(owner);
     this.handle = GL15.glGenBuffers();
+    this.count = data.length;
+    this.type = GL11.GL_UNSIGNED_INT;
+    owner.register(this);
+
+    bind();
+    GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
   }
 
-  public Buffer bind() {
-    GL15.glBindBuffer(target, handle);
-    return this;
+  void bind() {
+    GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, handle);
   }
 
-  public Buffer loadData(float[] data) {
-    this.size = data.length * 4;
-    GL15.glBufferData(target, data, GL15.GL_STATIC_DRAW);
-    return this;
-  }
-
-  public Buffer loadData(int[] data) {
-    this.size = data.length * 4;
-    GL15.glBufferData(target, data, GL15.GL_STATIC_DRAW);
-    return this;
-  }
-
-  public int getSize() {
-    return size;
-  }
-
-  public void delete() {
+  @Override
+  protected void release() {
     GL15.glDeleteBuffers(handle);
   }
 }

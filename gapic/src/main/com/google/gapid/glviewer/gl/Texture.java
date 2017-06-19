@@ -15,6 +15,7 @@
  */
 package com.google.gapid.glviewer.gl;
 
+import org.eclipse.swt.graphics.Color;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL33;
@@ -22,51 +23,68 @@ import org.lwjgl.opengl.GL33;
 import java.nio.ByteBuffer;
 
 /**
- * Helper object for GL textures.
+ * An OpenGL texture.
  */
-public class Texture {
+public class Texture extends GlObject {
   private final int target;
   private final int handle;
 
-  public Texture(int target) {
+  Texture(Renderer owner, int target) {
+    super(owner);
     this.target = target;
     this.handle = GL11.glGenTextures();
-  }
-
-  public Texture bind() {
-    GL11.glBindTexture(target, handle);
-    return this;
+    owner.register(this);
   }
 
   public Texture setMinMagFilter(int min, int mag) {
+    bind();
     GL11.glTexParameteri(target, GL11.GL_TEXTURE_MIN_FILTER, min);
     GL11.glTexParameteri(target, GL11.GL_TEXTURE_MAG_FILTER, mag);
     return this;
   }
 
+  public Texture setBorderColor(Color color) {
+    bind();
+    GL11.glTexParameterfv(target, GL11.GL_TEXTURE_BORDER_COLOR, new float[]{
+        color.getRed() / 255.f,
+        color.getGreen() / 255.f,
+        color.getBlue() / 255.f,
+        color.getAlpha() / 255.f,
+    });
+    return this;
+  }
+
   public Texture setWrapMode(int wrapS, int wrapT) {
+    bind();
     GL11.glTexParameteri(target, GL11.GL_TEXTURE_WRAP_S, wrapS);
     GL11.glTexParameteri(target, GL11.GL_TEXTURE_WRAP_T, wrapT);
     return this;
   }
 
   public Texture setSwizzle(int r, int g, int b, int a) {
+    bind();
     GL11.glTexParameteriv(target, GL33.GL_TEXTURE_SWIZZLE_RGBA, new int[] { r, g, b, a });
     return this;
   }
 
   public Texture loadData(
       int width, int height, int internalFormat, int format, int type, ByteBuffer data) {
+    bind();
     GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
     GL11.glTexImage2D(target, 0, internalFormat, width, height, 0, format, type, data);
     return this;
   }
 
-  public static void activate(int unit) {
+  static void activate(int unit) {
     GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
   }
 
-  public void delete() {
+  void bind() {
+    GL11.glBindTexture(target, handle);
+  }
+
+  @Override
+  protected void release() {
     GL11.glDeleteTextures(handle);
   }
 }

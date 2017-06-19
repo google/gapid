@@ -102,13 +102,13 @@ public class FramebufferView extends Composite
     setLayout(new GridLayout(2, false));
 
     ToolBar toolBar = createToolBar(widgets.theme);
-    imagePanel = new ImagePanel(this, widgets);
+    imagePanel = new ImagePanel(this, widgets, true);
     loading = imagePanel.getLoading();
 
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    imagePanel.createToolbar(toolBar, widgets.theme, true);
+    imagePanel.createToolbar(toolBar, widgets.theme);
     // Work around for https://bugs.eclipse.org/bugs/show_bug.cgi?id=517480
     Widgets.createSeparator(toolBar);
 
