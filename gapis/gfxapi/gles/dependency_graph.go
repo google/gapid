@@ -292,6 +292,22 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					b.read(g, getAttachmentSize(g, c, fb.StencilAttachment))
 					b.write(g, getAttachmentData(g, c, fb.StencilAttachment))
 				}
+			case *GlCopyImageSubData:
+				// TODO: This assumes whole-image copy.  Handle sub-range copies.
+				if a.SrcTarget == GLenum_GL_RENDERBUFFER {
+					b.read(g, renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(a.SrcName)]})
+				} else {
+					data, size := c.Objects.Shared.Textures[TextureId(a.SrcName)].getTextureDataAndSize()
+					b.read(g, data)
+					b.read(g, size)
+				}
+				if a.DstTarget == GLenum_GL_RENDERBUFFER {
+					b.write(g, renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(a.DstName)]})
+				} else {
+					data, size := c.Objects.Shared.Textures[TextureId(a.DstName)].getTextureDataAndSize()
+					b.write(g, data)
+					b.write(g, size)
+				}
 			case *GlFramebufferTexture2D:
 				b.read(g, textureSizeKey{c.Objects.Shared.Textures[a.Texture], a.Texture})
 				b.KeepAlive = true // Changes untracked state
@@ -371,6 +387,10 @@ func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, un
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
+	return tex.getTextureDataAndSize()
+}
+
+func (tex *Texture) getTextureDataAndSize() (stateKey, stateKey) {
 	if tex.EGLImage != nil {
 		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
 	} else {
