@@ -97,7 +97,7 @@ public class FetchedImage implements MultiLevelImage {
   public static ListenableFuture<ImageData> loadLevel(
       ListenableFuture<FetchedImage> futureImage, final int level) {
     return Futures.transformAsync(futureImage, image -> Futures.transform(
-        image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getData().getImageData()));
+        image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getImageData()));
   }
 
   public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
@@ -212,7 +212,7 @@ public class FetchedImage implements MultiLevelImage {
   /**
    * A single mipmap level {@link Image} of a {@link FetchedImage}.
    */
-  private abstract static class Level implements Function<ArrayImageBuffer, Image>, Image {
+  private abstract static class Level implements Function<Image, Image> {
     public static final Level EMPTY_LEVEL = new Level(null) {
       @Override
       public ListenableFuture<Image> get() {
@@ -220,64 +220,43 @@ public class FetchedImage implements MultiLevelImage {
       }
 
       @Override
-      protected ListenableFuture<ArrayImageBuffer> doLoad() {
+      protected ListenableFuture<Image> doLoad() {
         return null;
       }
     };
 
     protected final Images.Format format;
-    private ArrayImageBuffer image;
+    private Image image;
 
     public Level(Images.Format format) {
       this.format = format;
     }
 
     public ListenableFuture<Image> get() {
-      ImageBuffer result;
+      Image result;
       synchronized (this) {
         result = image;
       }
-      return (result == null) ? Futures.transform(doLoad(), this) : immediateFuture(this);
+      return (result == null) ? Futures.transform(doLoad(), this) : immediateFuture(result);
     }
 
     @Override
-    public Image apply(ArrayImageBuffer input) {
+    public Image apply(Image input) {
       synchronized (this) {
         image = input;
       }
-      return this;
-    }
-
-    @Override
-    public int getWidth() {
-      return image.width;
-    }
-
-    @Override
-    public int getHeight() {
-      return image.height;
-    }
-
-    @Override
-    public int getDepth() {
-      return image.depth;
-    }
-
-    @Override
-    public ImageBuffer getData() {
       return image;
     }
 
-    protected abstract ListenableFuture<ArrayImageBuffer> doLoad();
+    protected abstract ListenableFuture<Image> doLoad();
 
-    protected static ArrayImageBuffer convertImage(Info info, Images.Format format, byte[] data) {
+    protected static Image convertImage(Info info, Images.Format format, byte[] data) {
       return format.builder(info.getWidth(), info.getHeight(), info.getDepth())
           .update(data, 0, 0, 0, info.getWidth(), info.getHeight(), info.getDepth())
           .build();
     }
 
-    protected static ArrayImageBuffer convertImage(
-        Info[] infos, Images.Format format, byte[][] data) {
+    protected static Image convertImage(Info[] infos, Images.Format format, byte[][] data) {
       assert (infos.length == data.length && infos.length == 6);
       // Typically these are all the same, but let's be safe.
       int width = Math.max(
@@ -323,14 +302,9 @@ public class FetchedImage implements MultiLevelImage {
     }
 
     @Override
-    protected ListenableFuture<ArrayImageBuffer> doLoad() {
-      return Futures.transform(
-          client.get(blob(imageInfo.getBytes())), new Function<Service.Value, ArrayImageBuffer>() {
-        @Override
-        public ArrayImageBuffer apply(Service.Value data) {
-          return convertImage(imageInfo, format, Values.getBytes(data));
-        }
-      });
+    protected ListenableFuture<Image> doLoad() {
+      return Futures.transform(client.get(blob(imageInfo.getBytes())), data ->
+        convertImage(imageInfo, format, Values.getBytes(data)));
     }
   }
 
@@ -352,22 +326,18 @@ public class FetchedImage implements MultiLevelImage {
     }
 
     @Override
-    protected ListenableFuture<ArrayImageBuffer> doLoad() {
+    protected ListenableFuture<Image> doLoad() {
       @SuppressWarnings("unchecked")
       ListenableFuture<Service.Value>[] futures = new ListenableFuture[imageInfos.length];
       for (int i = 0; i < imageInfos.length; i++) {
         futures[i] = client.get(blob(imageInfos[i].getBytes()));
       }
-      return Futures.transform(
-          Futures.allAsList(futures), new Function<List<Service.Value>, ArrayImageBuffer>() {
-        @Override
-        public ArrayImageBuffer apply(List<Service.Value> values) {
-          byte[][] data = new byte[values.size()][];
-          for (int i = 0; i < data.length; i++) {
-            data[i] = Values.getBytes(values.get(i));
-          }
-          return convertImage(imageInfos, format, data);
+      return Futures.transform(Futures.allAsList(futures), values -> {
+        byte[][] data = new byte[values.size()][];
+        for (int i = 0; i < data.length; i++) {
+          data[i] = Values.getBytes(values.get(i));
         }
+        return convertImage(imageInfos, format, data);
       });
     }
   }

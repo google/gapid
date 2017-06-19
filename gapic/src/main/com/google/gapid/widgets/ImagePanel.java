@@ -246,7 +246,7 @@ public class ImagePanel extends Composite {
     String path = dialog.open();
     if (path != null) {
       ImageLoader saver = new ImageLoader();
-      saver.data = new ImageData[] { level.getData().getImageData() };
+      saver.data = new ImageData[] { level.getImageData() };
       saver.save(path, SWT.IMAGE_PNG);
     }
   }
@@ -490,7 +490,7 @@ public class ImagePanel extends Composite {
       float u = (float)imageNormalized.x * 0.5f + 0.5f;
       float v = (float)imageNormalized.y * (settings.flipped ? 0.5f : 0.5f) + 0.5f;
       int sampleY = settings.flipped ? (image.getHeight() - y - 1) : y;
-      return new Pixel(x, y, u, v, image.getData().getPixel(x, sampleY, 1));
+      return new Pixel(x, y, u, v, image.getPixel(x, sampleY, 1));
     }
 
     public void setZoomToFit(boolean zoomToFit) {
@@ -682,11 +682,11 @@ public class ImagePanel extends Composite {
             .newTexture(GL11.GL_TEXTURE_2D)
             .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
             .setBorderColor(newData.borderColor);
-        newData.image.getData().uploadToTexture(texture);
+        newData.image.uploadToTexture(texture);
         shader.setUniform("uTexture", texture);
 
         // Get range limits, update uniforms.
-        PixelInfo info = newData.image.getData().getInfo();
+        PixelInfo info = data.image.getInfo();
         uRange[0] = info.getMin();
         uRange[1] = info.getMax() - info.getMin();
         shader.setUniform("uRange", uRange);

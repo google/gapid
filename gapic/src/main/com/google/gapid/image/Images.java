@@ -223,32 +223,32 @@ public class Images {
   public static enum Format {
     Color8(FMT_RGBA_U8_NORM, 4 * 1) {
       @Override
-      protected ArrayImageBuffer build(int width, int height, int depth, byte[] data) {
-        return new ArrayImageBuffer.RGBA8ImageBuffer(width, height, depth, data);
+      protected ArrayImage build(int width, int height, int depth, byte[] data) {
+        return new ArrayImage.RGBA8Image(width, height, depth, data);
       }
     },
     Depth8(FMT_DEPTH_U8_NORM, 1 *1) {
       @Override
-      protected ArrayImageBuffer build(int width, int height, int depth, byte[] data) {
-        return new ArrayImageBuffer.Luminance8ImageBuffer(width, height, depth, data);
+      protected ArrayImage build(int width, int height, int depth, byte[] data) {
+        return new ArrayImage.Luminance8Image(width, height, depth, data);
       }
     },
     ColorFloat(FMT_RGBA_FLOAT, 4 * 4) {
       @Override
-      protected ArrayImageBuffer build(int width, int height, int depth, byte[] data) {
-        return new ArrayImageBuffer.RGBAFloatImageBuffer(width, height, depth, data);
+      protected ArrayImage build(int width, int height, int depth, byte[] data) {
+        return new ArrayImage.RGBAFloatImage(width, height, depth, data);
       }
     },
     DepthFloat(FMT_DEPTH_FLOAT, 1 * 4) {
       @Override
-      protected ArrayImageBuffer build(int width, int height, int depth, byte[] data) {
-        return new ArrayImageBuffer.LuminanceFloatImageBuffer(width, height, depth, data);
+      protected ArrayImage build(int width, int height, int depth, byte[] data) {
+        return new ArrayImage.LuminanceFloatImage(width, height, depth, data);
       }
     },
     LuminanceFloat(FMT_LUMINANCE_FLOAT, 1 * 4) {
       @Override
-      protected ArrayImageBuffer build(int width, int height, int depth, byte[] data) {
-        return new ArrayImageBuffer.LuminanceFloatImageBuffer(width, height, depth, data);
+      protected ArrayImage build(int width, int height, int depth, byte[] data) {
+        return new ArrayImage.LuminanceFloatImage(width, height, depth, data);
       }
     };
 
@@ -273,15 +273,15 @@ public class Images {
       }
     }
 
-    public ArrayImageBuffer.Builder builder(int width, int height, int depth) {
-      return new ArrayImageBuffer.Builder(width, height, depth, pixelSize) {
+    public ArrayImage.Builder builder(int width, int height, int depth) {
+      return new ArrayImage.Builder(width, height, depth, pixelSize) {
         @Override
-        protected ArrayImageBuffer build() {
+        protected ArrayImage build() {
           return Format.this.build(width, height, depth, data);
         }
       };
     }
 
-    protected abstract ArrayImageBuffer build(int width, int height, int depth, byte[] data);
+    protected abstract ArrayImage build(int width, int height, int depth, byte[] data);
   }
 }
