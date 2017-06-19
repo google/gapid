@@ -35,6 +35,8 @@ var (
 	U6 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{6}}}
 	// U8 represents a 8-bit unsigned integer.
 	U8 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{8}}}
+	// U9 represents a 9-bit unsigned integer.
+	U9 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{9}}}
 	// U10 represents a 10-bit unsigned integer.
 	U10 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{10}}}
 	// U11 represents a 11-bit unsigned integer.

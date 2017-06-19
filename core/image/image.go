@@ -113,7 +113,7 @@ func Difference(a, b *Data) (float32, error) {
 	}
 
 	if len(channels) == 0 {
-		return 1, fmt.Errorf("No common channels between %v and %v.",
+		return 1, fmt.Errorf("No common channels between %v and %v",
 			aChannels, bChannels)
 	}
 

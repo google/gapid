@@ -70,6 +70,10 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 		dstOffset += d.DataType.Bits()
 	}
 
+	if src.HasComponent(Channel_SharedExponent) && !dst.HasComponent(Channel_SharedExponent) {
+		return convertSharedExponent(dst, src, data)
+	}
+
 	// Some components can be implicitly added (alpha, Y, Z, W).
 	mappings = resolveImplicitMappings(count, mappings, src, data)
 

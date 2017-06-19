@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/stream"
+	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
@@ -187,12 +188,8 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 		addComponent(0, &stream.F11)
 		addComponent(1, &stream.F11)
 		addComponent(2, &stream.F10)
-	// TODO: This requires some extra work for the shared exponent.
-	// case GLenum_GL_UNSIGNED_INT_5_9_9_9_REV:
-	// 	addComponent(0, &stream.U9)
-	// 	addComponent(1, &stream.U9)
-	// 	addComponent(2, &stream.U9)
-	// 	addComponent(3, &stream.U5)
+	case GLenum_GL_UNSIGNED_INT_5_9_9_9_REV:
+		return fmts.RGBE_U9U9U9U5, nil
 	case GLenum_GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
 		addComponent(0, &stream.F32)
 		addComponent(1, &stream.U8)

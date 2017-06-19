@@ -118,6 +118,17 @@ func (f *Format) Component(c ...Channel) (*Component, error) {
 	}
 }
 
+// HasComponent returns true if the Format contains a component with the channel
+// c.
+func (f *Format) HasComponent(c Channel) bool {
+	for _, t := range f.Components {
+		if t.Channel == c {
+			return true
+		}
+	}
+	return false
+}
+
 // HasColorComponent returns true if the format contains a color component.
 // See ColorChannels for channels considered colors.
 func (f *Format) HasColorComponent() bool {
@@ -132,7 +143,7 @@ func (f *Format) HasColorComponent() bool {
 // GetSingleColorComponent returns a component if the format contains a single
 // color component, otherwise nil. See ColorChannels for channels considered colors.
 func (f *Format) GetSingleColorComponent() *Component {
-	var c *Component = nil
+	var c *Component
 	for _, t := range f.Components {
 		if t.Channel.IsColor() {
 			if c != nil {

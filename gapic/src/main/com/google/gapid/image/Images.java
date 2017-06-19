@@ -210,11 +210,11 @@ public class Images {
 
   public static boolean isColorFormat(Stream.Format format) {
     for (Stream.Component c : format.getComponentsList()) {
-      if (!COLOR_CHANNELS.contains(c.getChannel())) {
-        return false;
+      if (COLOR_CHANNELS.contains(c.getChannel())) {
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   /**
