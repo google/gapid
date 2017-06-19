@@ -42,9 +42,29 @@ public interface Image {
   public int getDepth();
 
   /**
-   * @return the {@link ImageBuffer pixel data} of this image.
+   * Returns the 2D slice at the specified z-depth of a 3D image.
    */
-  public ImageBuffer getData();
+  public Image getSlice(int z);
+
+  /**
+   * Uploads this image data to the given texture.
+   */
+  public void uploadToTexture(Texture texture);
+
+  /**
+   * Converts this image data to a SWT {@link ImageData} object.
+   */
+  public ImageData getImageData();
+
+  /**
+   * @return the {@link PixelValue} at the given pixel location.
+   */
+  public PixelValue getPixel(int x, int y, int z);
+
+  /**
+   * @return the {@link PixelInfo} for this buffer.
+   */
+  public PixelInfo getInfo();
 
   public static final ImageData EMPTY_IMAGE =
       new ImageData(1, 1, 1, new PaletteData(new RGB(0, 0, 0)));
@@ -66,57 +86,28 @@ public interface Image {
     }
 
     @Override
-    public ImageBuffer getData() {
-      return ImageBuffer.EMPTY_BUFFER;
+    public Image getSlice(int z) { return this; }
+
+    @Override
+    public void uploadToTexture(Texture texture) {
+      texture.loadData(0, 0, GL11.GL_RGB, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, null);
+    }
+
+    @Override
+    public ImageData getImageData() {
+      return EMPTY_IMAGE;
+    }
+
+    @Override
+    public PixelValue getPixel(int x, int y, int z) {
+      return PixelValue.NULL_PIXEL;
+    }
+
+    @Override
+    public PixelInfo getInfo() {
+      return PixelInfo.NULL_INFO;
     }
   };
-
-  /**
-   * Contains the bytes of the {@link Image Image's} pixel data.
-   */
-  public static interface ImageBuffer {
-    public static final ImageBuffer EMPTY_BUFFER = new ImageBuffer() {
-      @Override
-      public void uploadToTexture(Texture texture) {
-        texture.loadData(0, 0, GL11.GL_RGB, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, null);
-      }
-
-      @Override
-      public ImageData getImageData() {
-        return EMPTY_IMAGE;
-      }
-
-      @Override
-      public PixelValue getPixel(int x, int y, int z) {
-        return PixelValue.NULL_PIXEL;
-      }
-
-      @Override
-      public PixelInfo getInfo() {
-        return PixelInfo.NULL_INFO;
-      }
-    };
-
-    /**
-     * Uploads this image data to the given texture.
-     */
-    public void uploadToTexture(Texture texture);
-
-    /**
-     * Converts this image data to a SWT {@link ImageData} object.
-     */
-    public ImageData getImageData();
-
-    /**
-     * @return the {@link PixelValue} at the given pixel location.
-     */
-    public PixelValue getPixel(int x, int y, int z);
-
-    /**
-     * @return the {@link PixelInfo} for this buffer.
-     */
-    public PixelInfo getInfo();
-  }
 
   /**
    * Information about a specific pixel in an image.

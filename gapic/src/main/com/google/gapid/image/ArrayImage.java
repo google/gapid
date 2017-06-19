@@ -20,11 +20,11 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
 import com.google.gapid.glviewer.gl.Texture;
-import com.google.gapid.image.Image.ImageBuffer;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
 import com.google.gapid.util.Colors;
 
+import java.util.Arrays;
 import org.eclipse.swt.graphics.ImageData;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -35,23 +35,52 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * An {@link ImageBuffer} backed by a byte array.
+ * An {@link Image} backed by a byte array.
  */
-public abstract class ArrayImageBuffer implements ImageBuffer {
-  public final int width, height, depth;
+public abstract class ArrayImage implements Image {
+  public final int width, height, depth, bytesPerPixel;
   private final byte[] data;
   private final int internalFormat, format, type;
 
-  public ArrayImageBuffer(int width, int height, int depth, byte[] data,
+  public ArrayImage(int width, int height, int depth, int bytesPerPixel, byte[] data,
       int internalFormat, int format, int type) {
     this.width = width;
     this.height = height;
     this.depth = depth;
+    this.bytesPerPixel = bytesPerPixel;
     this.data = data;
     this.internalFormat = internalFormat;
     this.format = format;
     this.type = type;
   }
+
+  @Override
+  public int getWidth() {
+    return width;
+  }
+
+  @Override
+  public int getHeight() {
+    return height;
+  }
+
+  @Override
+  public int getDepth() {
+    return depth;
+  }
+
+  @Override
+  public Image getSlice(int z) {
+    int sliceSize = width * height * bytesPerPixel;
+    byte[] sliceData = Arrays.copyOfRange(data, sliceSize * z, sliceSize * (z + 1));
+    return create(width, height, 1, sliceData);
+  }
+
+  /**
+   * Constructs and returns a new {@link ArrayImage} of the same format with the given
+   * dimensions and data.
+   */
+  protected abstract ArrayImage create(int width, int height, int depth, byte[] data);
 
   @Override
   public void uploadToTexture(Texture texture) {
@@ -85,7 +114,7 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
   }
 
   /**
-   * An {@link ArrayImageBuffer} builder.
+   * An {@link ArrayImage} builder.
    */
   public abstract static class Builder {
     public final int width, height, depth;
@@ -132,15 +161,20 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
       return this;
     }
 
-    protected abstract ArrayImageBuffer build();
+    protected abstract ArrayImage build();
   }
 
   /**
-   * An {@link ArrayImageBuffer} that represents an RGBA image with 8bit color channels.
+   * An {@link ArrayImage} that represents an RGBA image with 8bit color channels.
    */
-  public static class RGBA8ImageBuffer extends ArrayImageBuffer {
-    public RGBA8ImageBuffer(int width, int height, int depth, byte[] data) {
-      super(width, height, depth, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
+  public static class RGBA8Image extends ArrayImage {
+    public RGBA8Image(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, 4, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
+    }
+
+    @Override
+    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+      return new RGBA8Image(width, height, depth, data);
     }
 
     @Override
@@ -191,16 +225,21 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
   }
 
   /**
-   * An {@link ArrayImageBuffer} that represents an RGBA image with 32bit float color channels.
+   * An {@link ArrayImage} that represents an RGBA image with 32bit float color channels.
    */
-  public static class RGBAFloatImageBuffer extends ArrayImageBuffer {
+  public static class RGBAFloatImage extends ArrayImage {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public RGBAFloatImageBuffer(int width, int height, int depth, byte[] data) {
-      super(width, height, depth, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
+    public RGBAFloatImage(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, 16, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
       this.info = FloatPixelInfo.compute(buffer, true);
+    }
+
+    @Override
+    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+      return new RGBAFloatImage(width, height, depth, data);
     }
 
     @Override
@@ -250,12 +289,17 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
   }
 
   /**
-   * An {@link ArrayImageBuffer} that represents an 8bit luminance image.
+   * An {@link ArrayImage} that represents an 8bit luminance image.
    */
   // TODO: The client may not actually need to distinguish between luminance and RGBA
-  public static class Luminance8ImageBuffer extends ArrayImageBuffer {
-    public Luminance8ImageBuffer(int width, int height, int depth, byte[] data) {
-      super(width, height, depth, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
+  public static class Luminance8Image extends ArrayImage {
+    public Luminance8Image(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, 1, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
+    }
+
+    @Override
+    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+      return new Luminance8Image(width, height, depth, data);
     }
 
     @Override
@@ -307,17 +351,22 @@ public abstract class ArrayImageBuffer implements ImageBuffer {
   }
 
   /**
-   * An {@link ArrayImageBuffer} that represents a 32bit float luminance image.
+   * An {@link ArrayImage} that represents a 32bit float luminance image.
    */
   //TODO: The client may not actually need to distinguish between luminance and RGBA
-  public static class LuminanceFloatImageBuffer extends ArrayImageBuffer {
+  public static class LuminanceFloatImage extends ArrayImage {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public LuminanceFloatImageBuffer(int width, int height, int depth, byte[] data) {
-      super(width, height, depth, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
+    public LuminanceFloatImage(int width, int height, int depth, byte[] data) {
+      super(width, height, depth, 4, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
       this.info = FloatPixelInfo.compute(buffer, false);
+    }
+
+    @Override
+    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+      return new LuminanceFloatImage(width, height, depth, data);
     }
 
     @Override
