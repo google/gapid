@@ -466,22 +466,22 @@ public class Formatter {
   }
 
   public static String atomIndex(Path.Command cmd) {
-    return atomIndex(cmd.getIndicesList());
+    return index(cmd.getIndicesList());
   }
 
   public static String firstIndex(Path.Commands cmd) {
-    return atomIndex(cmd.getFromList());
+    return index(cmd.getFromList());
   }
 
   public static String lastIndex(Path.Commands cmd) {
-    return atomIndex(cmd.getToList());
+    return index(cmd.getToList());
   }
 
   public static String toString(Service.Constant constant) {
     return constant.getName() + " (0x" + Long.toHexString(constant.getValue()) + ")";
   }
 
-  private static String atomIndex(List<Long> cmd) {
+  public static String index(List<Long> cmd) {
     switch (cmd.size()) {
       case 0: return "";
       case 1: return Long.toString(cmd.get(0));
