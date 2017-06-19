@@ -40,6 +40,18 @@ public class MatD {
     return new MatD(Arrays.copyOf(m, 16));
   }
 
+  public static MatD of(
+      double a, double b, double c, double d,
+      double e, double f, double g, double h,
+      double i, double j, double k, double l,
+      double m, double n, double o, double p) {
+    return new MatD(new double[] { a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p});
+  }
+
+  public static MatD copyOf(MatD m) {
+    return new MatD(Arrays.copyOf(m.m, 16));
+  }
+
   public float[] toFloatArray() {
     return new float[] {
         (float)m[0], (float)m[1], (float)m[2], (float)m[3], (float)m[4], (float)m[5], (float)m[6],
@@ -64,12 +76,28 @@ public class MatD {
     };
   }
 
+  public MatD translate(VecD v) {
+    return translate(v.x, v.y, v.z);
+  }
+
   public MatD translate(double tx, double ty, double tz) {
     double[] r = m.clone();
     r[12] = m[0] * tx + m[4] * ty + m[8] * tz;
     r[13] = m[1] * tx + m[5] * ty + m[9] * tz;
     r[14] = m[2] * tx + m[6] * ty + m[10] * tz;
     return new MatD(r);
+  }
+
+  public MatD scale(double s) {
+    return scale(s, s, s);
+  }
+
+  public MatD scale(double sx, double sy, double sz) {
+    return multiply(makeScale(sx, sy, sz));
+  }
+
+  public MatD scale(VecD v) {
+    return scale(v.x, v.y, v.z);
   }
 
   public double[] inverseOfTop3x3() {
@@ -182,6 +210,37 @@ public class MatD {
       sinY, -sinX * cosY, cosX * cosY, 0,
       tx, ty, tz, 1
     });
+  }
+
+  /**
+   * Creates a scale matrix.
+   */
+  public static MatD makeScale(double scale) {
+    return new MatD(new double[] {
+        scale, 0, 0, 0,
+        0, scale, 0, 0,
+        0, 0, scale, 0,
+        0, 0, 0, 1
+    });
+  }
+
+  /**
+   * Creates a scale matrix.
+   */
+  public static MatD makeScale(double sx, double sy, double sz) {
+    return new MatD(new double[] {
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, sz, 0,
+        0, 0, 0, 1
+    });
+  }
+
+  /**
+   * Creates a scale matrix.
+   */
+  public static MatD makeScale(VecD v) {
+    return makeScale(v.x, v.y, v.z);
   }
 
   /**

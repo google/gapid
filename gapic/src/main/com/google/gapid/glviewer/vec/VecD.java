@@ -21,6 +21,11 @@ import static java.lang.Double.doubleToLongBits;
  * A 3 element double precision vector.
  */
 public class VecD {
+  public final static VecD ZERO = new VecD();
+  public final static VecD ONE = new VecD(1, 1, 1);
+  public final static VecD MIN = new VecD(Double.MIN_VALUE, Double.MIN_VALUE, Double.MIN_VALUE);
+  public final static VecD MAX = new VecD(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+
   public final double x, y, z;
   private final int h;
 
@@ -35,6 +40,11 @@ public class VecD {
 
     long hl = doubleToLongBits(x) + 31 * (doubleToLongBits(y) + 31 * doubleToLongBits(z));
     this.h = (int)(hl ^ (hl >>> 32));
+  }
+
+  @Override
+  public String toString() {
+    return String.format("[%f, %f, %f]", x, y, z);
   }
 
   @Override
@@ -60,12 +70,33 @@ public class VecD {
     }
   }
 
+  public VecD set(int idx, double value) {
+    switch (idx) {
+      case 0: return new VecD(value, y, z);
+      case 1: return new VecD(x, value, z);
+      case 2: return new VecD(x, y, value);
+      default: throw new IndexOutOfBoundsException();
+    }
+  }
+
+  public VecD negate() {
+    return new VecD(-x, -y, -z);
+  }
+
+  public VecD clamp(VecD min, VecD max) {
+    return this.max(min).min(max);
+  }
+
   public VecD add(VecD v) {
     return new VecD(x + v.x, y + v.y, z + v.z);
   }
 
   public VecD add(double v) {
     return new VecD(x + v, y + v, z + v);
+  }
+
+  public VecD add(double x, double y, double z) {
+    return new VecD(this.x + x, this.y + y, this.z + z);
   }
 
   public VecD addScaled(VecD v, double s) {
@@ -80,16 +111,42 @@ public class VecD {
     return new VecD(x - v, y - v, z - v);
   }
 
+  public VecD subtract(double x, double y, double z) {
+    return new VecD(this.x - x, this.y - y, this.z - z);
+  }
+
   public VecD multiply(VecD v) {
     return new VecD(x * v.x, y * v.y, z * v.z);
+  }
+
+  public VecD multiply(double x, double y, double z) {
+    return new VecD(this.x * x, this.y * y, this.z * z);
   }
 
   public VecD scale(double v) {
     return new VecD(x * v, y * v, z * v);
   }
 
+  public VecD divide(VecD v) {
+    return new VecD(x / v.x, y / v.y, z / v.z);
+  }
+
   public VecD divide(double v) {
     return new VecD(x / v, y / v, z / v);
+  }
+
+  public VecD divide(double x, double y, double z) {
+    return new VecD(this.x / x, this.y / y, this.z / z);
+  }
+
+  /**
+   * Like {@link #divide(VecD)}, but divide by zeros result in zero.
+   */
+  public VecD safeDivide(VecD v) {
+    return new VecD(
+        (v.x == 0) ? 0 : (x / v.x),
+        (v.y == 0) ? 0 : (y / v.y),
+        (v.z == 0) ? 0 : (z / v.z));
   }
 
   public double magnitudeSquared() {
@@ -120,12 +177,28 @@ public class VecD {
     return new VecD(Math.abs(x), Math.abs(y), Math.abs(z));
   }
 
+  public double min() {
+    return Math.min(minXY(), z);
+  }
+
+  public double minXY() {
+    return Math.min(x, y);
+  }
+
   public VecD min(VecD v) {
     return new VecD(Math.min(x, v.x), Math.min(y, v.y), Math.min(z, v.z));
   }
 
   public VecD min(double v) {
     return new VecD(Math.min(x, v), Math.min(y, v), Math.min(z, v));
+  }
+
+  public double max() {
+    return Math.max(maxXY(), z);
+  }
+
+  public double maxXY() {
+    return Math.max(x, y);
   }
 
   public VecD max(VecD v) {
