@@ -23,6 +23,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
+import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -173,6 +174,7 @@ public class Main {
     Flags.version,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
+    GapisProcess.disableGapisTimeout,
     Server.gapis,
     Server.gapisAuthToken,
     Logging.logLevel,
