@@ -81,7 +81,7 @@ class Texture {
   // GL_OES_EGL_image
   // EGL image which is used as storage for this texture.
   // TODO: Standard glTex* methods which define new storage should clear this.
-  @unused GLeglImageOES EGLImage
+  @unused ref!EGLImage EGLImage
 }
 
 @internal

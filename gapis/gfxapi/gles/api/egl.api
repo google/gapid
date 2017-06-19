@@ -47,8 +47,29 @@ sub void ObserveAttribList(const EGLint* attrib_list) {
   }
 }
 
+sub GLenum EGLSizedFormat2GLSizedFormat(AndroidGraphicsBufferFormat eglSizedFormat) {
+  return switch eglSizedFormat {
+    case HAL_PIXEL_FORMAT_RGBA_8888:    GL_RGBA8
+    case HAL_PIXEL_FORMAT_RGBX_8888:    GL_RGB8 // Does not have a precise match
+    case HAL_PIXEL_FORMAT_RGB_888:      GL_RGB8
+    case HAL_PIXEL_FORMAT_RGB_565:      GL_RGB565
+    case HAL_PIXEL_FORMAT_BGRA_8888:    GL_BGRA8_EXT
+    case HAL_PIXEL_FORMAT_RGBA_5551:    GL_RGB5_A1
+    case HAL_PIXEL_FORMAT_RGBA_4444:    GL_RGB4
+    case HAL_PIXEL_FORMAT_YCrCb_420_SP: GL_RGB8 // Does not have a precise match
+    default: GL_RGBA8 // TODO: Report warning
+  }
+}
+
+@internal
+class EGLImage {
+  EGLImageKHR     ID
+  ref!Image       Image
+  @hide TextureId CompatReplacement
+}
+
 map!(EGLContext, ref!Context) EGLContexts
-map!(EGLImageKHR, ref!AndroidNativeBufferExtra) EGLImages
+map!(EGLImageKHR, ref!EGLImage) EGLImages
 
 @no_replay
 cmd EGLBoolean eglGetConfigAttrib(EGLDisplay display,
@@ -366,7 +387,17 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
   ObserveAttribList(attrib_list)
   img := ?
   if target == EGL_NATIVE_BUFFER_ANDROID {
-    EGLImages[img] = GetAndroidNativeBufferExtra(as!void*(buffer))
+    info := GetAndroidNativeBufferExtra(as!void*(buffer))
+    sf := EGLSizedFormat2GLSizedFormat(info.Format)
+    sfInfo := GetSizedFormatInfo(sf)
+    i := new!Image(
+      Width:       as!GLsizei(info.Width),
+      Height:      as!GLsizei(info.Height),
+      SizedFormat: sf,
+      DataFormat:  sfInfo.UnsizedFormat,
+      DataType:    sfInfo.DataType,
+    )
+    EGLImages[img] = new!EGLImage(ID: img, Image: i)
   }
   // TODO
   return img

@@ -77,6 +77,15 @@ func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bo
 func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
+		if tex := ctx.Objects.Shared.Textures[i]; tex != nil && tex.EGLImage != nil {
+			i := tex.EGLImage.CompatReplacement
+			// We are not sure which context the replacement was created in - just search them.
+			for _, ctx := range GetState(s).Contexts {
+				if ctx != nil && ctx.Info.Initialized && ctx.Objects.Shared.Textures.Contains(i) {
+					return objectKey{&ctx.Objects.Shared.Textures, i}, true
+				}
+			}
+		}
 		key, remap = objectKey{&ctx.Objects.Shared.Textures, i}, true
 	}
 	return
@@ -171,11 +180,11 @@ func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, r
 func (i SrcImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	switch a := a.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(GLuint(a.SrcName), a.SrcTarget, s)
+		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
 	default:
 		panic(fmt.Errorf("Remap of SrcImageId for unhandeled atom: %v", a))
 	}
@@ -185,24 +194,24 @@ func (i SrcImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap 
 func (i DstImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	switch a := a.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(GLuint(a.DstName), a.DstTarget, s)
+		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
 	default:
 		panic(fmt.Errorf("Remap of DstImageId for unhandeled atom: %v", a))
 	}
 	return
 }
 
-func remapImageId(name GLuint, target GLenum, s *gfxapi.State) (key interface{}, remap bool) {
+func remapImageId(a atom.Atom, s *gfxapi.State, name GLuint, target GLenum) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && name != 0 {
 		if target == GLenum_GL_RENDERBUFFER {
-			key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, RenderbufferId(name)}, true
+			return RenderbufferId(name).remap(a, s)
 		} else {
-			key, remap = objectKey{&ctx.Objects.Shared.Textures, TextureId(name)}, true
+			return TextureId(name).remap(a, s)
 		}
 	}
 	return
