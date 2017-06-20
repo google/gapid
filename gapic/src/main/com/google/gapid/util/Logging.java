@@ -98,6 +98,10 @@ public class Logging {
       "log-level", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
   public static final Flag<String> logDir = Flags.value(
       "log-dir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
+  public static final Flag<LogLevel> gapisLogLevel = Flags.value(
+      "gapis-log-level", LogLevel.INFO, "Gapis log level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
+  public static final Flag<LogLevel> gapirLogLevel = Flags.value(
+      "gapir-log-level", LogLevel.INFO, "Gapir log level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
 
   private static final int BUFFER_SIZE = 1000;
 
