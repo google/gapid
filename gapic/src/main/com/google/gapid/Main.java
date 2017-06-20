@@ -180,6 +180,8 @@ public class Main {
     GapisProcess.gapirArgs,
     GapisProcess.gapisArgs,
     Logging.logLevel,
+    Logging.gapisLogLevel,
+    Logging.gapirLogLevel,
     Logging.logDir,
     Follower.logFollowRequests,
     Server.useCache,
