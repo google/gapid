@@ -43,7 +43,12 @@ func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *gfxapi.Stat
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
-	if ϟa.Length >= 0 {
+	// This is incorrect, fudging for a bug in Unity which has been fixed but not
+	// rolled out.
+	// See https://github.com/google/gapid/issues/459 for reference.
+	// TODO: Consider removing once the fixed version is mainstream.
+	// if ϟa.Length >= 0 {
+	if ϟa.Length > 0 {
 		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
@@ -52,7 +57,12 @@ func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *gfxapi.State) str
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *gfxapi.State) string {
 	ptr := Charᵖ(ϟa.Message)
-	if ϟa.Length >= 0 {
+	// This is incorrect, fudging for a bug in Unity which has been fixed but not
+	// rolled out.
+	// See https://github.com/google/gapid/issues/459 for reference.
+	// TODO: Consider removing once the fixed version is mainstream.
+	// if ϟa.Length >= 0 {
+	if ϟa.Length > 0 {
 		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
 	}
 	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")

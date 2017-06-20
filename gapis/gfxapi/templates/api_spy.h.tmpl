@@ -159,7 +159,7 @@ otherwise returns nothing.
 
   {{Template "TemplateArgs" $}}
   {{$args := Strings "CallObserver* observer" "const std::function<void()>& call" (Macro "C++.CallParameters" $) | JoinWith ", "}}
-  {{Template "C++.ReturnType" $}} {{Template "C++.MethodName" $}}({{$args}});
+  {{Template "C++.SubReturnType" $}} {{Template "C++.MethodName" $}}({{$args}});
 {{end}}
 
 

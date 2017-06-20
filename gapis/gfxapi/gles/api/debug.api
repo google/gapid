@@ -122,7 +122,7 @@ sub void DebugMessageInsert(GLenum source, GLenum type, GLuint id, GLenum severi
     }
   }
   _ = id // TODO
-  readString(length, message, false)
+  _ = readString(length, message, false)
 }
 
 sub void GetDebugMessageLog(GLuint   count,
@@ -231,18 +231,13 @@ cmd void glObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLc
 }
 
 sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLchar* label) {
-  str := switch label != null {
-    case true:
-      switch length < 0 {
-        case true:
-          // Negative length implies null-terminated string
-          as!string(as!char*(label))
-        case false:
-          as!string(as!char[](label[0:length]))
-      }
-    case false:
-      as!string(null)
-  }
+  // This is incorrect, fudging for a bug in Unity which has been fixed but not
+  // rolled out.
+  // See https://github.com/google/gapid/issues/459 for reference.
+  // TODO: Consider removing once the fixed version is mainstream.
+  consider_zero_length_nt := true
+
+  str := readString(length, label, consider_zero_length_nt)
 
   ctx := GetContext()
   switch (identifier) {
@@ -304,7 +299,7 @@ cmd void glObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) 
 
 sub void ObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
   _ = ptr // TODO
-  readString(length, label, false)
+  _ = readString(length, label, false)
 }
 
 @if(Version.GLES32)
@@ -342,5 +337,5 @@ sub void PushDebugGroup(GLenum source, GLuint id, GLsizei length, const GLchar* 
   consider_zero_length_nt := true
 
   _ = id // TODO
-  readString(length, message, consider_zero_length_nt)
+  _ = readString(length, message, consider_zero_length_nt)
 }
