@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(ANDROID)
+    return()
+endif()
+
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/Version.java.in"
     "${JAVA_GENERATED}/com/google/gapid/Version.java"
