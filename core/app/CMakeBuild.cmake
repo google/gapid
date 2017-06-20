@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(DISABLED_GO)
+    return()
+endif()
+
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/default_version.go.in"
     "${CMAKE_CURRENT_SOURCE_DIR}/default_version.go"
