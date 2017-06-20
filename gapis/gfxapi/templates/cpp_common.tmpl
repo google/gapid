@@ -282,6 +282,19 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the C++ return type for the given subroutine.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.SubReturnType"}}
+  {{AssertType $ "Function"}}
+
+  {{$ty := TypeOf $.Return}}
+  {{if IsString $ty}}std::string{{else}}{{Macro "C++.ReturnType" $}}{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the C++ logic for all the statements in the given block.
 -------------------------------------------------------------------------------
 */}}
