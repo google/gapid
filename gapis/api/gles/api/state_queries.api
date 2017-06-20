@@ -1010,6 +1010,10 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     case GL_MAX_VERTEX_UNIFORM_VECTORS: {
       v[0] = as!T(ctx.Constants.MaxVertexUniformVectors)
     }
+    @if(Extension.GL_OVR_multiview)
+    case GL_MAX_VIEWS_OVR: {
+      v[0] = as!T(ctx.Constants.MaxViewsExt)
+    }
     @if(Version.GLES20)
     case GL_MAX_VIEWPORT_DIMS: {
       s := v[0:2]

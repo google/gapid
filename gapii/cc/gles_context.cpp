@@ -300,6 +300,7 @@ void GlesSpy::getContextConstants(Constants& out) {
 
     // Constants defined in extensions
     GET(glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &out.mMaxTextureMaxAnisotropyExt);
+    GET(glGetIntegerv, GL_MAX_VIEWS_OVR, &out.mMaxViewsExt);
 }
 
 
