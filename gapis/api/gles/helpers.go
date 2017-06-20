@@ -175,6 +175,7 @@ func DefaultConstants30() Constants {
 		MaxTransformFeedbackSeparateAttribs:       4,
 		MaxTransformFeedbackSeparateComponents:    4,
 		MaxTextureMaxAnisotropyExt:                2.0,
+		MaxViewsExt:                               2,
 		CompressedTextureFormats:                  NewU32ːGLenumᵐ(),
 		ProgramBinaryFormats:                      NewU32ːGLenumᵐ(),
 		ShaderBinaryFormats:                       NewU32ːGLenumᵐ(),

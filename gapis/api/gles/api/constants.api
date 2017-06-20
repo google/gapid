@@ -178,6 +178,7 @@ class Constants {
 
   // Constants defined in extensions
   GLfloat MaxTextureMaxAnisotropyExt
+  GLint   MaxViewsExt
 }
 
 @internal
