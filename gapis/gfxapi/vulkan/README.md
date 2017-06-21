@@ -85,9 +85,9 @@ are as follows.
 | vkCmdSetEvent                                         |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
 | vkCmdSetLineWidth                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetScissor                                       |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
-| vkCmdSetStencilCompareMask                            |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
-| vkCmdSetStencilReference                              |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
-| vkCmdSetStencilWriteMask                              |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
+| vkCmdSetStencilCompareMask                            |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
+| vkCmdSetStencilReference                              |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
+| vkCmdSetStencilWriteMask                              |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetViewport                                      |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdUpdateBuffer                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdWaitEvents                                       |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
@@ -176,7 +176,7 @@ are as follows.
 | vkQueueSubmit                                         |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
 | vkQueueWaitIdle                                       |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkResetCommandBuffer                                  |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
-| vkResetCommandPool                                    |   :white_medium_square:   |      :white_medium_square:      |      :heavy_minus_sign:         |
+| vkResetCommandPool                                    |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
 | vkResetDescriptorPool                                 |   :white_check_mark:      |      :white_medium_square:      |      :heavy_minus_sign:         |
 | vkResetEvent                                          |   :white_medium_square:   |      :white_medium_square:      |      :heavy_minus_sign:         |
 | vkResetFences                                         |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
