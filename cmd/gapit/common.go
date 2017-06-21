@@ -53,6 +53,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	if gapisFlags.Profile != "" {
 		args = append(args, "-cpuprofile", gapisFlags.Profile)
 	}
+	args = append(args, "--idle-timeout", "10000")
 
 	var token auth.Token
 	if gapisFlags.Port == 0 {
