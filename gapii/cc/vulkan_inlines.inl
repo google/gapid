@@ -229,6 +229,13 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetDepthBiasData>>::
         t->mDepthBiasConstantFactor, t->mDepthBiasClamp, t->mDepthBiasSlopeFactor);
 }
 
+template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetDepthBoundsData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdSetDepthBoundsData>& t) {
+  spy->RecreateCmdSetDepthBounds(observer, commandBuf, t->mMinDepthBounds, t->mMaxDepthBounds);
+}
+
 template<>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdSetLineWidthData>>::operator()(
     VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
