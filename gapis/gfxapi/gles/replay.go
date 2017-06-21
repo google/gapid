@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -101,13 +102,13 @@ func (a api) Replay(
 	var issues *findIssues
 
 	// Prepare data for dead-code-elimination.
-	dependencyGraph, err := GetDependencyGraph(ctx)
+	dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Skip unnecessary atoms.
-	deadCodeElimination := newDeadCodeElimination(ctx, dependencyGraph)
+	deadCodeElimination := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
 	// Transform for all framebuffer reads.
 	readFramebuffer := newReadFramebuffer(ctx)

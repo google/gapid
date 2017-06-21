@@ -23,7 +23,3 @@ message GLSLParseResolvable {
 	string shader_source = 1;
 	uint32 language = 2;
 }
-
-message DependencyGraphResolvable {
-	path.Capture capture = 1;
-}

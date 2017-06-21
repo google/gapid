@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -109,4 +110,8 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 
 func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
 	return nil
+}
+
+func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
+	return newGlesDependencyGraphBehaviourProvider()
 }

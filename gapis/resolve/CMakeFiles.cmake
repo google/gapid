@@ -20,10 +20,10 @@
 set(files
     as.go
     atoms.go
-    commands.go
-    contexts.go
     command_tree.go
+    commands.go
     constant_set.go
+    contexts.go
     doc.go
     errors.go
     events.go
@@ -46,13 +46,14 @@ set(files
     resource_data.go
     resource_meta.go
     resources.go
-    set.go
     service.go
+    set.go
     state.go
-    state_tree_test.go
     state_tree.go
+    state_tree_test.go
+    synchronization_data.go
     thumbnail.go
 )
 set(dirs
-
+    dependencygraph
 )
