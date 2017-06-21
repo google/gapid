@@ -5328,6 +5328,8 @@ cmd void vkCmdBindPipeline(
 class Unimplemented {
 }
 
+// Enqueued when a command buffer command is not going to carry any
+// observations or alter global state when the command is executed.
 sub void doCmdNop(Unimplemented args) {}
 
 extern void addCmd(VkCommandBuffer cmdBuf, any recreatePayload, any payload, any func)
@@ -5380,9 +5382,6 @@ cmd void RecreateCmdSetViewport(
   read(pViewports[0:viewportCount])
 }
 
-sub void doCmdSetViewport(u32 unused) {
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetViewport(
@@ -5397,7 +5396,7 @@ cmd void vkCmdSetViewport(
   for i in (0 .. viewportCount) {
     recreate_info.Viewports[i] = viewports[i]
   }
-  addCmd(commandBuffer, recreate_info, as!u32(0), doCmdSetViewport)
+  addCmd(commandBuffer, recreate_info, Unimplemented(), doCmdNop)
 }
 
 @internal
@@ -5417,9 +5416,6 @@ cmd void RecreateCmdSetScissor(
   read(pScissors[0:scissorCount])
 }
 
-sub void doCmdSetScissor(u32 unused) {
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetScissor(
@@ -5434,7 +5430,7 @@ cmd void vkCmdSetScissor(
   for i in (0 .. scissorCount) {
     recreate_info.Scissors[i] = scissors[i]
   }
-  addCmd(commandBuffer, recreate_info, as!u32(0), doCmdSetScissor)
+  addCmd(commandBuffer, recreate_info, Unimplemented(), doCmdNop)
 }
 
 
@@ -5456,7 +5452,7 @@ cmd void RecreateCmdSetLineWidth(
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
-  addCmd(commandBuffer, new!RecreateCmdSetLineWidthData(lineWidth),Unimplemented(), doCmdNop)
+  addCmd(commandBuffer, new!RecreateCmdSetLineWidthData(lineWidth), Unimplemented(), doCmdNop)
 }
 
 @internal
@@ -5476,9 +5472,6 @@ cmd void RecreateCmdSetDepthBias(
     f32             depthBiasSlopeFactor) {
 }
 
-sub void doCmdSetDepthBias(u32 unused) {
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetDepthBias(
@@ -5490,7 +5483,7 @@ cmd void vkCmdSetDepthBias(
     depthBiasConstantFactor,
     depthBiasClamp,
     depthBiasSlopeFactor
-  ), as!u32(0), doCmdSetDepthBias)
+  ), Unimplemented(), doCmdNop)
 }
 
 @internal
@@ -5549,12 +5542,46 @@ cmd void vkCmdSetDepthBounds(
         maxDepthBounds), Unimplemented(), doCmdNop)
 }
 
+@internal
+class RecreateCmdSetStencilCompareMaskData{
+    VkStencilFaceFlags  FaceMask,
+    u32                 CompareMask
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetStencilCompareMask(
+    VkCommandBuffer     commandBuffer,
+    VkStencilFaceFlags  faceMask,
+    u32                 compareMask) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetStencilCompareMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                compareMask) {
+  addCmd(commandBuffer, new!RecreateCmdSetStencilCompareMaskData(
+        faceMask,
+        compareMask
+  ), Unimplemented(), doCmdNop)
+}
+
+@internal
+class RecreateCmdSetStencilWriteMaskData{
+  VkStencilFaceFlags  FaceMask,
+  u32                 WriteMask
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetStencilWriteMask(
+    VkCommandBuffer     commandBuffer,
+    VkStencilFaceFlags  faceMask,
+    u32                 writeMask) {
 }
 
 @threadSafety("app")
@@ -5563,7 +5590,27 @@ cmd void vkCmdSetStencilWriteMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                writeMask) {
+  addCmd(commandBuffer, new!RecreateCmdSetStencilWriteMaskData(
+        faceMask,
+        writeMask
+  ), Unimplemented(), doCmdNop)
 }
+
+@internal
+class RecreateCmdSetStencilReferenceData{
+  VkStencilFaceFlags  FaceMask,
+  u32                 Reference
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetStencilReference(
+    VkCommandBuffer     commandBuffer,
+    VkStencilFaceFlags  faceMask,
+    u32                 reference) {
+}
+
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -5571,6 +5618,10 @@ cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                reference) {
+  addCmd(commandBuffer, new!RecreateCmdSetStencilReferenceData(
+        faceMask,
+        reference
+  ), Unimplemented(), doCmdNop)
 }
 
 @internal
@@ -6119,9 +6170,6 @@ RecreateCmdDispatchData {
     u32             GroupCountZ
 }
 
-sub void doCmdDispatch(u32 unused) {
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdDispatch(
@@ -6130,7 +6178,7 @@ cmd void vkCmdDispatch(
     u32             groupCountY,
     u32             groupCountZ) {
   addCmd(commandBuffer,
-    new!RecreateCmdDispatchData(groupCountX, groupCountY, groupCountZ), as!u32(0), doCmdDispatch)
+    new!RecreateCmdDispatchData(groupCountX, groupCountY, groupCountZ), Unimplemented(), doCmdNop)
 }
 
 @internal class CmdDispatchIndirect {
@@ -7060,9 +7108,6 @@ RecreateCmdResolveImageData {
   map!(u32, VkImageResolve) ResolveRegions
 }
 
-sub void doCmdResolveImage(u32 unused) {
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdResolveImage(
@@ -7083,7 +7128,7 @@ cmd void vkCmdResolveImage(
   for i in (0 .. regionCount) {
     recreate_data.ResolveRegions[i] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, as!(u32)(0), doCmdResolveImage)
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 sub void doCmdSetEvent(VkEvent event) {
@@ -7511,9 +7556,6 @@ RecreateCmdPushConstantsData {
   u32                Size,
 }
 
-sub void doCmdPushConstants(u32 unused) {
-}
-
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdPushConstants(
     VkCommandBuffer    commandBuffer,
@@ -7525,7 +7567,7 @@ cmd void vkCmdPushConstants(
   read(as!u8*(pValues)[0:size])
   addCmd(commandBuffer, createPushConstantsData(
     layout, stageFlags, offset, size, pValues
-  ), as!u32(0), doCmdPushConstants)
+  ), Unimplemented(), doCmdNop)
 }
 
 @override

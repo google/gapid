@@ -208,6 +208,13 @@ void SpyOverride_RecreateCmdSetDepthBias(VkCommandBuffer, float, float, float) {
 void SpyOverride_RecreateCmdSetDepthBounds(VkCommandBuffer, float, float) {
 }
 void SpyOverride_RecreateCmdSetLineWidth(VkCommandBuffer, float) {}
+void SpyOverride_RecreateCmdSetStencilCompareMask(VkCommandBuffer,
+                                                  VkStencilFaceFlags,
+                                                  uint32_t) {}
+void SpyOverride_RecreateCmdSetStencilWriteMask(VkCommandBuffer,
+                                                VkStencilFaceFlags, uint32_t) {}
+void SpyOverride_RecreateCmdSetStencilReference(VkCommandBuffer,
+                                                VkStencilFaceFlags, uint32_t) {}
 void SpyOverride_RecreateCmdPushConstants(VkCommandBuffer, VkPipelineLayout,
                                           uint32_t, uint32_t, uint32_t,
                                           const void*) {}

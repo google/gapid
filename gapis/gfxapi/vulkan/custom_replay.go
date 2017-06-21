@@ -518,6 +518,36 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, s *gfxapi.Sta
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetStencilCompareMask(
+		a.CommandBuffer,
+		a.FaceMask,
+		a.CompareMask,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetStencilWriteMask(
+		a.CommandBuffer,
+		a.FaceMask,
+		a.WriteMask,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdSetStencilReference(
+		a.CommandBuffer,
+		a.FaceMask,
+		a.Reference,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdFillBuffer(
 		a.CommandBuffer,
