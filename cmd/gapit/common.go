@@ -21,6 +21,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/log"
@@ -53,7 +54,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	if gapisFlags.Profile != "" {
 		args = append(args, "-cpuprofile", gapisFlags.Profile)
 	}
-	args = append(args, "--idle-timeout", "10000")
+	args = append(args, "--idle-timeout", "10000ms")
 
 	var token auth.Token
 	if gapisFlags.Port == 0 {
@@ -69,6 +70,23 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
+
+	// We start this goroutine to send a heartbeat to gapis.
+	// It has an idle-timeout of 10s, so for long requests,
+	// pinging every 2s should prevent it from closing down unexpectedly.
+	go func() {
+		hb := time.NewTicker(time.Millisecond * 2000)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-hb.C:
+				if err := client.Ping(ctx); err != nil {
+					return
+				}
+			}
+		}
+	}()
 
 	if h := log.GetHandler(ctx); h != nil {
 		go client.GetLogStream(ctx, h)
