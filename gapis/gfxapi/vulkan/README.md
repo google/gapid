@@ -91,7 +91,7 @@ are as follows.
 | vkCmdSetViewport                                      |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdUpdateBuffer                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdWaitEvents                                       |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
-| vkCmdWriteTimestamp                                   |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
+| vkCmdWriteTimestamp                                   |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCreateAndroidSurfaceKHR                             |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
 | vkCreateBuffer                                        |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
 | vkCreateBufferView                                    |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |
