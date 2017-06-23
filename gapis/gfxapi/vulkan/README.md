@@ -166,7 +166,7 @@ are as follows.
 | vkGetPhysicalDeviceXlibPresentationSupportKHR         |   :white_medium_square:   |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkGetPipelineCacheData                                |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkGetQueryPoolResults                                 |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
-| vkGetRenderAreaGranularity                            |   :white_medium_square:   |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
+| vkGetRenderAreaGranularity                            |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkGetSwapchainImagesKHR                               |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkInvalidateMappedMemoryRanges                        |   :white_check_mark:      |      :heavy_minus_sign:         |      :heavy_minus_sign:         |
 | vkMapMemory                                           |   :white_check_mark:      |      :white_check_mark:         |      :heavy_minus_sign:         |

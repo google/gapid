@@ -5114,6 +5114,7 @@ cmd void vkGetRenderAreaGranularity(
     VkDevice     device,
     VkRenderPass renderPass,
     VkExtent2D*  pGranularity) {
+  write(pGranularity[0:1])
 }
 
 @override
