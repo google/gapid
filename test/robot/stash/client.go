@@ -97,6 +97,9 @@ func (c *Client) GetFile(ctx context.Context, id string, filename file.Path) err
 		mode = 0755
 	}
 	f, err := os.OpenFile(filename.System(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 	r, err := c.Open(ctx, id)
 	if err != nil {
