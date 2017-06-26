@@ -166,19 +166,30 @@ func (v *buildUploadVerb) process(ctx context.Context, id string) error {
 	return nil
 }
 
-func zipFile(zip *zip.Writer, zipVirtualPath string, filePath file.Path) error {
+func zipFile(zipWriter *zip.Writer, zipVirtualPath string, filePath file.Path) error {
 	fileReader, err := os.Open(filePath.String())
 	if err != nil {
 		return err
 	}
 	defer fileReader.Close()
 
-	zipWriter, err := zip.Create(zipVirtualPath)
+	fileHeader, err := fileReader.Stat()
 	if err != nil {
 		return err
 	}
 
-	_, err = io.Copy(zipWriter, fileReader)
+	zipHeader, err := zip.FileInfoHeader(fileHeader)
+	if err != nil {
+		return err
+	}
+	zipHeader.Name = zipVirtualPath
+
+	zipFile, err := zipWriter.CreateHeader(zipHeader)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(zipFile, fileReader)
 	if err != nil {
 		return err
 	}
@@ -219,13 +230,18 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 
 	androidBasePath := "gapid/android/"
 	// TODO(baldwinn): these hardcoded architectures come from core/app/layout/layout.go, move this to a better place
-	for _, arch := range []device.Architecture{device.ARMv7a, device.ARMv8a, device.X86_64} {
-		gapidApkPath, err := layout.GapidApk(ctx, &device.ABI{Architecture: arch})
+	androidAbiList := []*device.ABI{
+		device.AndroidARMv7a,
+		device.AndroidARM64v8a,
+		device.AndroidX86,
+	}
+	for _, abi := range androidAbiList {
+		gapidApkPath, err := layout.GapidApk(ctx, abi)
 		if err != nil || !gapidApkPath.Exists() {
 			continue
 		}
-		if err := zipFile(artifacts, androidBasePath+arch.String()+"/gapid.apk", gapidApkPath); err != nil {
-			return log.Errf(ctx, err, "Failed to Zip the gapid.apk for arch %s at path %s", arch.String(), gapidApkPath)
+		if err := zipFile(artifacts, androidBasePath+abi.Name+"/gapid.apk", gapidApkPath); err != nil {
+			return log.Errf(ctx, err, "Failed to Zip the gapid.apk for abi %s at path %s", abi.Name, gapidApkPath)
 		}
 	}
 
