@@ -175,7 +175,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	output, err := cmd.Call(ctx)
 	output = fmt.Sprintf("%s\n\n%s", cmd, output)
 	if err != nil {
-		return nil, log.Errf(ctx, err, "gapit call failed %v", output);
+		return nil, log.Errf(ctx, err, "gapit call failed %v", output)
 	}
 
 	outputObj := &Output{}
