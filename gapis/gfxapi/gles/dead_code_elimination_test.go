@@ -22,79 +22,12 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
+	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
-
-func TestLivenessTree(t *testing.T) {
-	ctx := log.Testing(t)
-	ctx = database.Put(ctx, database.NewInMemory(ctx))
-
-	//
-	//          root
-	//         /    \
-	//     child1  child2
-	//      /  \
-	// childA  childB
-	//
-	root := StateAddress(1)
-	child1 := StateAddress(2)
-	child2 := StateAddress(3)
-	childA := StateAddress(4)
-	childB := StateAddress(5)
-	tree := newLivenessTree(map[StateAddress]StateAddress{
-		nullStateAddress: nullStateAddress,
-		root:             nullStateAddress,
-		child1:           root,
-		child2:           root,
-		childA:           child1,
-		childB:           child1,
-	})
-
-	tree.MarkLive(child1)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(true)
-
-	tree.MarkDead(root)
-	tree.MarkLive(child1)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(true)
-
-	tree.MarkLive(root)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(true)
-
-	tree.MarkDead(child1)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(false)
-
-	tree.MarkDead(root)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(false)
-
-	tree.MarkLive(childA)
-	assert.With(ctx).That(tree.IsLive(root)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child1)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(child2)).Equals(false)
-	assert.With(ctx).That(tree.IsLive(childA)).Equals(true)
-	assert.With(ctx).That(tree.IsLive(childB)).Equals(false)
-}
 
 func TestDeadAtomRemoval(t *testing.T) {
 	ctx := log.Testing(t)
@@ -236,11 +169,11 @@ func TestDeadAtomRemoval(t *testing.T) {
 		}
 		ctx = capture.Put(ctx, capturePath)
 
-		dependencyGraph, err := GetDependencyGraph(ctx)
+		dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx)
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		transform := newDeadCodeElimination(ctx, dependencyGraph)
+		transform := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
 		expectedAtoms := []atom.Atom{}
 		for i, a := range inputAtoms {

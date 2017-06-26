@@ -18,54 +18,10 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    api.go
-    backwards_compat.go
-    compat.go
-    compat_test.go
-    constant_sets.go
-    context.go
-    convert.go
-    custom_replay.go
-    dead_code_elimination_test.go
-    dependency_graph_behaviour_provider.go
-    doc.go
-    draw_call.go
-    draw_call_mesh.go
-    enum.go
-    externs.go
-    extras.go
-    find_issues.go
-    gles.go
-    glsl_compat.go
-    glsl_compat_test.go
-    guess_semantics.go
-    helpers.go
-    image.go
-    issue_whitelist.go
-    links.go
-    markers.go
-    markers_test.go
-    mutate.go
-    read_framebuffer.go
-    replay.go
+    dependency_graph.go
     resolvables.pb.go
     resolvables.proto
-    resources.go
-    resources_test.go
-    state.go
-    string.go
-    stub_program.go
-    stub_program_test.go
-    texture_compat.go
-    tweaker.go
-    undefined_framebuffer.go
-    version.go
-    vertex_attribute_array.go
-    wireframe.go
 )
 set(dirs
-    api
-    gles_pb
-    glsl
-    templates
+    
 )

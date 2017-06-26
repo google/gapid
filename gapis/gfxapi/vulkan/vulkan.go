@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -122,4 +123,8 @@ func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.Synchronization
 		}
 	}
 	return nil
+}
+
+func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
+	return newVulkanDependencyGraphBehaviourProvider()
 }

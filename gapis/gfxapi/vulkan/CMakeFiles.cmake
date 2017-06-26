@@ -23,8 +23,7 @@ set(files
     command_buffer_rebuilder.go
     convert.go
     custom_replay.go
-    dead_code_elimination.go
-    dependency_graph.go
+    dependency_graph_behaviour_provider.go
     doc.go
     drawCall.go
     draw_call_mesh.go

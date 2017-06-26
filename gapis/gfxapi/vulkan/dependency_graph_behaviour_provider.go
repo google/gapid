@@ -1,3 +1,17 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package vulkan
 
 import (
@@ -5,29 +19,16 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
-
-var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
-
-type StateAddress uint32
-
-// To conform with the DCE interface of GLES, here we define Vulkan handles
-// as stateKeys. For device memories and command buffers, type composition is
-// needed.
-type stateKey interface {
-	Parent() stateKey
-}
 
 type vulkanStateKey uint64
 
-func (h vulkanStateKey) Parent() stateKey {
+func (h vulkanStateKey) Parent() dependencygraph.StateKey {
 	return nil
 }
 
@@ -57,19 +58,19 @@ type vulkanDeviceMemoryData struct {
 	binding *vulkanDeviceMemoryBinding
 }
 
-func (m *vulkanDeviceMemory) Parent() stateKey {
+func (m *vulkanDeviceMemory) Parent() dependencygraph.StateKey {
 	return nil
 }
 
-func (h *vulkanDeviceMemoryHandle) Parent() stateKey {
+func (h *vulkanDeviceMemoryHandle) Parent() dependencygraph.StateKey {
 	return h.memory
 }
 
-func (b *vulkanDeviceMemoryBinding) Parent() stateKey {
+func (b *vulkanDeviceMemoryBinding) Parent() dependencygraph.StateKey {
 	return b.memory
 }
 
-func (d *vulkanDeviceMemoryData) Parent() stateKey {
+func (d *vulkanDeviceMemoryData) Parent() dependencygraph.StateKey {
 	return d.binding
 }
 
@@ -127,76 +128,42 @@ type vulkanCommandBufferHandle struct {
 
 type vulkanRecordedCommands struct {
 	CommandBuffer *vulkanCommandBuffer
-	Commands      []func(b *AtomBehaviour)
+	Commands      []func(b *dependencygraph.AtomBehaviour)
 }
 
 func newVulkanCommandBuffer(handle VkCommandBuffer) *vulkanCommandBuffer {
 	cb := &vulkanCommandBuffer{handle: nil, records: nil}
 	cb.handle = &vulkanCommandBufferHandle{CommandBuffer: cb, vkCommandBuffer: handle}
-	cb.records = &vulkanRecordedCommands{CommandBuffer: cb, Commands: []func(b *AtomBehaviour){}}
+	cb.records = &vulkanRecordedCommands{CommandBuffer: cb, Commands: []func(b *dependencygraph.AtomBehaviour){}}
 	return cb
 }
 
-func (cb *vulkanCommandBuffer) Parent() stateKey {
+func (cb *vulkanCommandBuffer) Parent() dependencygraph.StateKey {
 	return nil
 }
 
-func (h *vulkanCommandBufferHandle) Parent() stateKey {
+func (h *vulkanCommandBufferHandle) Parent() dependencygraph.StateKey {
 	return h.CommandBuffer
 }
 
-func (c *vulkanRecordedCommands) Parent() stateKey {
+func (c *vulkanRecordedCommands) Parent() dependencygraph.StateKey {
 	return c.CommandBuffer
 }
 
-func (c *vulkanRecordedCommands) appendCommand(f func(b *AtomBehaviour)) *vulkanRecordedCommands {
+func (c *vulkanRecordedCommands) appendCommand(f func(b *dependencygraph.AtomBehaviour)) *vulkanRecordedCommands {
 	c.Commands = append(c.Commands, f)
 	return c
 }
 
-// Dependency graph and the node type in the graph
-// TODO(qining): Move the dependency graph and other types, which are shared
-// with GLES, to another proper place.
-const nullStateAddress = StateAddress(0)
-
-type DependencyGraph struct {
-	atoms          []atom.Atom           // Atom list which this graph was build for.
-	behaviours     []AtomBehaviour       // State reads/writes for each atom (graph edges).
-	roots          map[StateAddress]bool // State to mark live at requested atoms.
-	addressMap     addressMapping        // Remap state keys to integers for performance.
+type VulkanDependencyGraphBehaviourProvider struct {
 	deviceMemories map[VkDeviceMemory]*vulkanDeviceMemory
 	commandBuffers map[VkCommandBuffer]*vulkanCommandBuffer
 }
 
-type AtomBehaviour struct {
-	Read      []StateAddress // State read by an atom.
-	Modify    []StateAddress // State read and written by an atom.
-	Write     []StateAddress // State written by an atom.
-	KeepAlive bool           // Force the atom to be live.
-	Aborted   bool           // Mutation of this command aborts.
-}
-
-type addressMapping struct {
-	address map[stateKey]StateAddress
-	key     map[StateAddress]stateKey
-	parent  map[StateAddress]StateAddress
-}
-
-func (g *DependencyGraph) Print(ctx context.Context, b *AtomBehaviour) {
-	for _, read := range b.Read {
-		key := g.addressMap.key[read]
-		log.I(ctx, " - read [%v]%T%+v", read, key, key)
-	}
-	for _, modify := range b.Modify {
-		key := g.addressMap.key[modify]
-		log.I(ctx, " - modify [%v]%T%+v", modify, key, key)
-	}
-	for _, write := range b.Write {
-		key := g.addressMap.key[write]
-		log.I(ctx, " - write [%v]%T%+v", write, key, key)
-	}
-	if b.Aborted {
-		log.I(ctx, " - aborted")
+func newVulkanDependencyGraphBehaviourProvider() *VulkanDependencyGraphBehaviourProvider {
+	return &VulkanDependencyGraphBehaviourProvider{
+		deviceMemories: map[VkDeviceMemory]*vulkanDeviceMemory{},
+		commandBuffers: map[VkCommandBuffer]*vulkanCommandBuffer{},
 	}
 }
 
@@ -204,12 +171,12 @@ func (g *DependencyGraph) Print(ctx context.Context, b *AtomBehaviour) {
 // stateKey of the device memory if it has been created and added to the graph
 // before. Otherwise, creates and adds the stateKey for the handle and returns
 // the new created stateKey
-func (g *DependencyGraph) getOrCreateDeviceMemory(handle VkDeviceMemory) *vulkanDeviceMemory {
-	if m, ok := g.deviceMemories[handle]; ok {
+func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateDeviceMemory(handle VkDeviceMemory) *vulkanDeviceMemory {
+	if m, ok := p.deviceMemories[handle]; ok {
 		return m
 	}
 	newM := newVulkanDeviceMemory(handle)
-	g.deviceMemories[handle] = newM
+	p.deviceMemories[handle] = newM
 	return newM
 }
 
@@ -217,90 +184,18 @@ func (g *DependencyGraph) getOrCreateDeviceMemory(handle VkDeviceMemory) *vulkan
 // stateKey of the command buffer if it has been created and added to the graph
 // before. Otherwise, creates and adds the stateKey for the handle and returns
 // the new created stateKey
-func (g *DependencyGraph) getOrCreateCommandBuffer(handle VkCommandBuffer) *vulkanCommandBuffer {
-	if cb, ok := g.commandBuffers[handle]; ok {
+func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(handle VkCommandBuffer) *vulkanCommandBuffer {
+	if cb, ok := p.commandBuffers[handle]; ok {
 		return cb
 	}
 	newCb := newVulkanCommandBuffer(handle)
-	g.commandBuffers[handle] = newCb
+	p.commandBuffers[handle] = newCb
 	return newCb
 }
 
-// The public accessible entrance of building a dep graph from atom list
-func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
-	r, err := database.Build(ctx, &DependencyGraphResolvable{Capture: capture.Get(ctx)})
-	if err != nil {
-		return nil, fmt.Errorf("Could not calculate dependency graph: %v", err)
-	}
-	return r.(*DependencyGraph), nil
-}
-
-// The real entrance of dep graph building
-func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
-	if err != nil {
-		return nil, err
-	}
-	atoms := c.Atoms
-
-	g := &DependencyGraph{
-		atoms:      atoms,
-		behaviours: make([]AtomBehaviour, len(atoms)),
-		roots:      map[StateAddress]bool{},
-		addressMap: addressMapping{
-			address: map[stateKey]StateAddress{nil: nullStateAddress},
-			key:     map[StateAddress]stateKey{nullStateAddress: nil},
-			parent:  map[StateAddress]StateAddress{nullStateAddress: nullStateAddress},
-		},
-		deviceMemories: map[VkDeviceMemory]*vulkanDeviceMemory{},
-		commandBuffers: map[VkCommandBuffer]*vulkanCommandBuffer{},
-	}
-
-	s := c.NewState()
-	t0 := dependencyGraphBuildCounter.Start()
-	for i, a := range g.atoms {
-		g.behaviours[i] = g.getBehaviour(ctx, s, atom.ID(i), a)
-	}
-	dependencyGraphBuildCounter.Stop(t0)
-	return g, nil
-}
-
-// State address is assigned in the function addressOf() and used as the
-// identity of Vulkan handles (vulkan object), Device memory stateKey or
-// CommandBuffer stateKey in the dependency graph.
-func (m *addressMapping) addressOf(state stateKey) StateAddress {
-	if a, ok := m.address[state]; ok {
-		return a
-	}
-	address := StateAddress(len(m.address))
-	m.address[state] = address
-	m.key[address] = state
-	m.parent[address] = m.addressOf(state.Parent())
-	return address
-}
-
-func (b *AtomBehaviour) read(g *DependencyGraph, state stateKey) {
-	if state != nil {
-		b.Read = append(b.Read, g.addressMap.addressOf(state))
-	}
-}
-
-func (b *AtomBehaviour) modify(g *DependencyGraph, state stateKey) {
-	if state != nil {
-		b.Modify = append(b.Modify, g.addressMap.addressOf(state))
-	}
-}
-
-func (b *AtomBehaviour) write(g *DependencyGraph, state stateKey) {
-	if state != nil {
-		b.Write = append(b.Write, g.addressMap.addressOf(state))
-	}
-}
-
-// Build the corresponding dep graph node for a given atom
-// Note this function is called on a new graphics state
-func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id atom.ID, a atom.Atom) AtomBehaviour {
-	b := AtomBehaviour{}
+func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
+	ctx context.Context, s *gfxapi.State, id atom.ID, g *dependencygraph.DependencyGraph, a atom.Atom) dependencygraph.AtomBehaviour {
+	b := dependencygraph.AtomBehaviour{}
 	l := s.MemoryLayout
 
 	// Helper function for debug info logging when debug info dumpping is turned on
@@ -310,24 +205,24 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 	}
 
-	// Wraps AtomBehaviour's read/write/modify to add debug info.
-	addRead := func(b *AtomBehaviour, g *DependencyGraph, state stateKey) {
-		b.read(g, state)
-		debug("\tread: stateKey: %v, stateAddress: %v", state, g.addressMap.addressOf(state))
+	// Wraps dependencygraph.AtomBehaviour's read/write/modify to add debug info.
+	addRead := func(b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, state dependencygraph.StateKey) {
+		b.Read(g, state)
+		debug("\tread: stateKey: %v, stateAddress: %v", state, g.GetStateAddressOf(state))
 	}
-	addWrite := func(b *AtomBehaviour, g *DependencyGraph, state stateKey) {
-		b.write(g, state)
-		debug("\twrite: stateKey: %v, stateAddress: %v", state, g.addressMap.addressOf(state))
+	addWrite := func(b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, state dependencygraph.StateKey) {
+		b.Write(g, state)
+		debug("\twrite: stateKey: %v, stateAddress: %v", state, g.GetStateAddressOf(state))
 	}
-	addModify := func(b *AtomBehaviour, g *DependencyGraph, state stateKey) {
-		b.modify(g, state)
-		debug("\tmodify: stateKey: %v, stateAddress: %v", state, g.addressMap.addressOf(state))
+	addModify := func(b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, state dependencygraph.StateKey) {
+		b.Modify(g, state)
+		debug("\tmodify: stateKey: %v, stateAddress: %v", state, g.GetStateAddressOf(state))
 	}
 
 	// Helper function that gets overlapped memory bindings with a given offset and size
 	getOverlappingMemoryBindings := func(memory VkDeviceMemory,
 		offset, size uint64) []*vulkanDeviceMemoryBinding {
-		return g.getOrCreateDeviceMemory(memory).getOverlappedBindings(offset, size)
+		return p.getOrCreateDeviceMemory(memory).getOverlappedBindings(offset, size)
 	}
 
 	// Helper function that gets the overlapped memory bindings for a given image
@@ -374,39 +269,39 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	// Helper function that reads the given image handle, and returns the memory
 	// bindings of the image
-	readImageHandleAndGetBindings := func(b *AtomBehaviour, image VkImage) []*vulkanDeviceMemoryBinding {
-		b.read(g, vulkanStateKey(image))
+	readImageHandleAndGetBindings := func(b *dependencygraph.AtomBehaviour, image VkImage) []*vulkanDeviceMemoryBinding {
+		b.Read(g, vulkanStateKey(image))
 		return getOverlappedBindingsForImage(image)
 	}
 
 	// Helper function that reads the given buffer handle, and returns the memory
 	// bindings of the buffer
-	readBufferHandleAndGetBindings := func(b *AtomBehaviour, buffer VkBuffer) []*vulkanDeviceMemoryBinding {
-		b.read(g, vulkanStateKey(buffer))
+	readBufferHandleAndGetBindings := func(b *dependencygraph.AtomBehaviour, buffer VkBuffer) []*vulkanDeviceMemoryBinding {
+		b.Read(g, vulkanStateKey(buffer))
 		return getOverlappedBindingsForBuffer(buffer)
 	}
 
 	// Helper function that 'read' the given memory bindings
-	readMemoryBindingsData := func(pb *AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
+	readMemoryBindingsData := func(pb *dependencygraph.AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
-			pb.read(g, binding.data)
-			debug("\tread binding data: %v <-  binding: %v <- memory: %v", g.addressMap.addressOf(binding.data), g.addressMap.addressOf(binding), g.addressMap.addressOf(binding.Parent()))
+			pb.Read(g, binding.data)
+			debug("\tread binding data: %v <-  binding: %v <- memory: %v", g.GetStateAddressOf(binding.data), g.GetStateAddressOf(binding), g.GetStateAddressOf(binding.Parent()))
 		}
 	}
 
 	// Helper function that 'write' the given memory bindings
-	writeMemoryBindingsData := func(pb *AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
+	writeMemoryBindingsData := func(pb *dependencygraph.AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
-			pb.write(g, binding.data)
-			debug("\twrite binding data: %v <- binding: %v <- memory: %v", g.addressMap.addressOf(binding.data), g.addressMap.addressOf(binding), g.addressMap.addressOf(binding.Parent()))
+			pb.Write(g, binding.data)
+			debug("\twrite binding data: %v <- binding: %v <- memory: %v", g.GetStateAddressOf(binding.data), g.GetStateAddressOf(binding), g.GetStateAddressOf(binding.Parent()))
 		}
 	}
 
 	// Helper function that 'modify' the given memory bindings
-	modifyMemoryBindingsData := func(pb *AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
+	modifyMemoryBindingsData := func(pb *dependencygraph.AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
-			pb.modify(g, binding.data)
-			debug("\tmodify binding data: %v <- binding: %v <- memory: %v", binding.data, g.addressMap.addressOf(binding.data), g.addressMap.addressOf(binding), g.addressMap.addressOf(binding.Parent()))
+			pb.Modify(g, binding.data)
+			debug("\tmodify binding data: %v <- binding: %v <- memory: %v", binding.data, g.GetStateAddressOf(binding.data), g.GetStateAddressOf(binding), g.GetStateAddressOf(binding.Parent()))
 		}
 	}
 
@@ -414,17 +309,17 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	// 'modify' to the given comamnd buffer records to the current behavior, if
 	// such behaviours have not been added before. And records a callback to
 	// carry out other behaviours later when the command buffer is submitted.
-	recordCommand := func(currentBehaviour *AtomBehaviour,
+	recordCommand := func(currentBehaviour *dependencygraph.AtomBehaviour,
 		handle VkCommandBuffer,
-		c func(futureBehaviour *AtomBehaviour)) {
-		cmdBuf := g.getOrCreateCommandBuffer(handle)
-		if len(currentBehaviour.Read) == 0 || currentBehaviour.Read[len(currentBehaviour.Read)-1] !=
-			g.addressMap.addressOf(cmdBuf.handle) {
-			currentBehaviour.read(g, cmdBuf.handle)
+		c func(futureBehaviour *dependencygraph.AtomBehaviour)) {
+		cmdBuf := p.getOrCreateCommandBuffer(handle)
+		if len(currentBehaviour.Reads) == 0 || currentBehaviour.Reads[len(currentBehaviour.Reads)-1] !=
+			g.GetStateAddressOf(cmdBuf.handle) {
+			currentBehaviour.Read(g, cmdBuf.handle)
 		}
-		if len(currentBehaviour.Modify) == 0 || currentBehaviour.Modify[len(currentBehaviour.Modify)-1] !=
-			g.addressMap.addressOf(cmdBuf.records) {
-			currentBehaviour.modify(g, cmdBuf.records)
+		if len(currentBehaviour.Modifies) == 0 || currentBehaviour.Modifies[len(currentBehaviour.Modifies)-1] !=
+			g.GetStateAddressOf(cmdBuf.records) {
+			currentBehaviour.Modify(g, cmdBuf.records)
 		}
 
 		cmdBuf.records.appendCommand(c)
@@ -436,20 +331,20 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	// given read memory bindings, 'modify' of the given modify memory bindings
 	// and 'write' of the given write memory bindings, to be carried out later
 	// when the command buffer is submitted.
-	recordTouchingMemoryBindingsData := func(currentBehaviour *AtomBehaviour,
+	recordTouchingMemoryBindingsData := func(currentBehaviour *dependencygraph.AtomBehaviour,
 		handle VkCommandBuffer,
 		readBindings, modifyBindings, writeBindings []*vulkanDeviceMemoryBinding) {
-		cmdBuf := g.getOrCreateCommandBuffer(handle)
-		if len(currentBehaviour.Read) == 0 || currentBehaviour.Read[len(currentBehaviour.Read)-1] !=
-			g.addressMap.addressOf(cmdBuf.handle) {
-			currentBehaviour.read(g, cmdBuf.handle)
+		cmdBuf := p.getOrCreateCommandBuffer(handle)
+		if len(currentBehaviour.Reads) == 0 || currentBehaviour.Reads[len(currentBehaviour.Reads)-1] !=
+			g.GetStateAddressOf(cmdBuf.handle) {
+			currentBehaviour.Read(g, cmdBuf.handle)
 		}
-		if len(currentBehaviour.Modify) == 0 || currentBehaviour.Modify[len(currentBehaviour.Modify)-1] !=
-			g.addressMap.addressOf(cmdBuf.records) {
-			currentBehaviour.modify(g, cmdBuf.records)
+		if len(currentBehaviour.Modifies) == 0 || currentBehaviour.Modifies[len(currentBehaviour.Modifies)-1] !=
+			g.GetStateAddressOf(cmdBuf.records) {
+			currentBehaviour.Modify(g, cmdBuf.records)
 		}
 
-		cmdBuf.records.appendCommand(func(b *AtomBehaviour) {
+		cmdBuf.records.appendCommand(func(b *dependencygraph.AtomBehaviour) {
 			readMemoryBindingsData(b, readBindings)
 			modifyMemoryBindingsData(b, modifyBindings)
 			writeMemoryBindingsData(b, writeBindings)
@@ -459,7 +354,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	// Mutate the state with the atom.
 	if err := a.Mutate(ctx, s, nil); err != nil {
 		log.E(ctx, "Atom %v %v: %v", id, a, err)
-		return AtomBehaviour{Aborted: true}
+		return dependencygraph.AtomBehaviour{Aborted: true}
 	}
 
 	debug("DCE::DependencyGraph::getBehaviour: %v, %v", id, reflect.TypeOf(a))
@@ -507,7 +402,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	case *VkAllocateMemory:
 		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
 		memory := a.PMemory.Read(ctx, a, s, nil)
-		addWrite(&b, g, g.getOrCreateDeviceMemory(memory))
+		addWrite(&b, g, p.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
 		if allocateInfo.PNext != (Voidᶜᵖ{}) {
@@ -533,7 +428,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	case *RecreateDeviceMemory:
 		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
 		memory := a.PMemory.Read(ctx, a, s, nil)
-		addWrite(&b, g, g.getOrCreateDeviceMemory(memory))
+		addWrite(&b, g, p.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
 		if allocateInfo.PNext != (Voidᶜᵖ{}) {
@@ -568,7 +463,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		image := a.Image
 		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(image))
-		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
+		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
 			offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
 			// In some applications, `vkGetImageMemoryRequirements` is not called so we
@@ -584,10 +479,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
-				return AtomBehaviour{Aborted: true}
+				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
-			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
 
@@ -595,11 +490,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		buffer := a.Buffer
 		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(buffer))
-		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
+		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
 			offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
 			size := uint64(GetState(s).Buffers.Get(buffer).Info.Size)
-			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
 
@@ -607,16 +502,16 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		image := a.Image
 		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(image))
-		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
+		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
 			offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
 			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
-				return AtomBehaviour{Aborted: true}
+				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
-			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
 
@@ -624,11 +519,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		buffer := a.Buffer
 		memory := a.Memory
 		addModify(&b, g, vulkanStateKey(buffer))
-		addRead(&b, g, g.getOrCreateDeviceMemory(memory).handle)
+		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
 			offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
 			size := uint64(GetState(s).Buffers.Get(buffer).Info.Size)
-			binding := g.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
 			addWrite(&b, g, binding)
 		}
 
@@ -664,11 +559,11 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkMapMemory:
 		memory := a.Memory
-		addModify(&b, g, g.getOrCreateDeviceMemory(memory))
+		addModify(&b, g, p.getOrCreateDeviceMemory(memory))
 
 	case *VkUnmapMemory:
 		memory := a.Memory
-		addModify(&b, g, g.getOrCreateDeviceMemory(memory))
+		addModify(&b, g, p.getOrCreateDeviceMemory(memory))
 
 	case *VkFlushMappedMemoryRanges:
 		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), l)
@@ -747,7 +642,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
-				return AtomBehaviour{Aborted: true}
+				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 		}
 		// handle descriptor copies
@@ -770,7 +665,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
 			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
-				return AtomBehaviour{Aborted: true}
+				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 		}
 
@@ -1048,7 +943,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		for i := uint64(0); i < uint64(count); i++ {
 			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
@@ -1063,7 +958,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		for i := uint64(0); i < uint64(count); i++ {
 			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
@@ -1075,7 +970,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	case *VkCmdBindIndexBuffer:
 		buffer := a.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
@@ -1086,7 +981,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 	case *RecreateCmdBindIndexBuffer:
 		buffer := a.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
@@ -1095,16 +990,16 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		})
 
 	case *VkCmdDraw:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDraw:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDrawIndexed:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDrawIndexed:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDrawIndirect:
 		indirectBuf := a.Buffer
@@ -1131,10 +1026,10 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdDispatch:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDispatch:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDispatchIndirect:
 		buffer := a.Buffer
@@ -1248,40 +1143,40 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkCmdEndRenderPass:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdEndRenderPass:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdNextSubpass:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdNextSubpass:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdPushConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdPushConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetLineWidth:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetLineWidth:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetScissor:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetScissor:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetViewport:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetViewport:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdBindDescriptorSets:
 		descriptorSetCount := a.DescriptorSetCount
@@ -1294,7 +1189,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					for _, bufferInfo := range descBinding.BufferBinding {
 						buf := bufferInfo.Buffer
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							// Descriptors might be modified
 							addModify(b, g, vulkanStateKey(buf))
 							// Advance the read/modify behavior of the descriptors from
@@ -1306,7 +1201,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					for _, imageInfo := range descBinding.ImageBinding {
 						view := imageInfo.ImageView
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(view))
 							if GetState(s).ImageViews.Contains(view) {
 								img := GetState(s).ImageViews.Get(view).Image.VulkanHandle
@@ -1319,7 +1214,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					}
 					for _, bufferView := range descBinding.BufferViewBindings {
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(bufferView))
 							if GetState(s).BufferViews.Contains(bufferView) {
 								buf := GetState(s).BufferViews.Get(bufferView).Buffer.VulkanHandle
@@ -1345,7 +1240,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					for _, bufferInfo := range descBinding.BufferBinding {
 						buf := bufferInfo.Buffer
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							// Descriptors might be modified
 							addModify(b, g, vulkanStateKey(buf))
 						})
@@ -1353,13 +1248,13 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 					for _, imageInfo := range descBinding.ImageBinding {
 						view := imageInfo.ImageView
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(view))
 						})
 					}
 					for _, bufferView := range descBinding.BufferViewBindings {
 
-						recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(bufferView))
 						})
 					}
@@ -1368,20 +1263,20 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkBeginCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
 		addRead(&b, g, cmdbuf.handle)
 		addWrite(&b, g, cmdbuf.records)
 
 	case *VkEndCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *RecreateAndBeginCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(a.PCommandBuffer.Read(ctx, a, s, nil))
+		cmdbuf := p.getOrCreateCommandBuffer(a.PCommandBuffer.Read(ctx, a, s, nil))
 		addWrite(&b, g, cmdbuf)
 
 	case *RecreateEndCommandBuffer:
-		cmdbuf := g.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *VkCmdPipelineBarrier:
@@ -1437,97 +1332,97 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		}
 
 	case *VkCmdBindPipeline:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			addRead(b, g, vulkanStateKey(a.Pipeline))
 		})
 		addRead(&b, g, vulkanStateKey(a.Pipeline))
 
 	case *RecreateCmdBindPipeline:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			addRead(b, g, vulkanStateKey(a.Pipeline))
 		})
 		addRead(&b, g, vulkanStateKey(a.Pipeline))
 
 	case *VkCmdBeginQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdBeginQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdEndQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdEndQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdResetQueryPool:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdResetQueryPool:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdClearAttachments:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdClearAttachments:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the case that the attachment is fully cleared.
 
 	case *VkCmdClearColorImage:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *RecreateCmdClearColorImage:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *VkCmdClearDepthStencilImage:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *RecreateCmdClearDepthStencilImage:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *VkCmdSetDepthBias:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetDepthBias:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetBlendConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetBlendConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdResetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdResetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdWaitEvents:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *RecreateCmdWaitEvents:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *VkCmdExecuteCommands:
 		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
 		for i := uint32(0); i < a.CommandBufferCount; i++ {
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
-			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
+			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				for _, c := range scb.records.Commands {
 					c(b)
 				}
@@ -1538,9 +1433,9 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
 		for i := uint32(0); i < a.CommandBufferCount; i++ {
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
-			scb := g.getOrCreateCommandBuffer(secondaryCmdBuf)
+			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {
+			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				for _, c := range scb.records.Commands {
 					c(b)
 				}
@@ -1563,7 +1458,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 			commandBuffers := submit.PCommandBuffers.Slice(0, uint64(commandBufferCount), l)
 			for j := uint32(0); j < submit.CommandBufferCount; j++ {
 				vkCmdBuf := commandBuffers.Index(uint64(j), l).Read(ctx, a, s, nil)
-				cb := g.getOrCreateCommandBuffer(vkCmdBuf)
+				cb := p.getOrCreateCommandBuffer(vkCmdBuf)
 				// All the commands that are submitted will not be dropped.
 				addRead(&b, g, cb)
 
@@ -1576,7 +1471,7 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 	case *VkQueuePresentKHR:
 		addRead(&b, g, vulkanStateKey(a.Queue))
-		g.roots[g.addressMap.addressOf(vulkanStateKey(a.Queue))] = true
+		g.SetRoot(vulkanStateKey(a.Queue))
 		b.KeepAlive = true
 
 	default:
@@ -1590,14 +1485,14 @@ func (g *DependencyGraph) getBehaviour(ctx context.Context, s *gfxapi.State, id 
 
 // Traverse through the given VkWriteDescriptorSet slice, add behaviors to
 // |b| according to the descriptor type.
-func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g *DependencyGraph, ctx context.Context, a atom.Atom, s *gfxapi.State) error {
+func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, ctx context.Context, a atom.Atom, s *gfxapi.State) error {
 	l := s.MemoryLayout
 	writeCount := writes.count
 	for i := uint64(0); i < writeCount; i++ {
 		write := writes.Index(uint64(i), l).Read(ctx, a, s, nil)
 		if write.DescriptorCount > 0 {
 			// handle the target descriptor set
-			b.modify(g, vulkanStateKey(write.DstSet))
+			b.Modify(g, vulkanStateKey(write.DstSet))
 			switch write.DescriptorType {
 			case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -1609,8 +1504,8 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 					imageInfo := imageInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					sampler := imageInfo.Sampler
 					imageView := imageInfo.ImageView
-					b.read(g, vulkanStateKey(sampler))
-					b.read(g, vulkanStateKey(imageView))
+					b.Read(g, vulkanStateKey(sampler))
+					b.Read(g, vulkanStateKey(imageView))
 				}
 			case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1620,14 +1515,14 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *AtomBehaviour, g 
 				for j := uint64(0); j < bufferInfos.count; j++ {
 					bufferInfo := bufferInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
 					buffer := bufferInfo.Buffer
-					b.read(g, vulkanStateKey(buffer))
+					b.Read(g, vulkanStateKey(buffer))
 				}
 			case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 				bufferViews := write.PTexelBufferView.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < bufferViews.count; j++ {
 					bufferView := bufferViews.Index(uint64(j), l).Read(ctx, a, s, nil)
-					b.read(g, vulkanStateKey(bufferView))
+					b.Read(g, vulkanStateKey(bufferView))
 				}
 			default:
 				return fmt.Errorf("Unhandled DescriptorType: %v", write.DescriptorType)

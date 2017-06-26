@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -81,8 +82,8 @@ type framebufferRequest struct {
 }
 
 type deadCodeEliminationInfo struct {
-	dependencyGraph     *DependencyGraph
-	deadCodeElimination *DeadCodeElimination
+	dependencyGraph     *dependencygraph.DependencyGraph
+	deadCodeElimination *transform.DeadCodeElimination
 }
 
 // color/depth/stencil attachment bit.
@@ -485,12 +486,12 @@ func (a api) Replay(
 	// Prepare data for dead-code-elimination
 	dceInfo := deadCodeEliminationInfo{}
 	if !config.DisableDeadCodeElimination {
-		dg, err := GetDependencyGraph(ctx)
+		dg, err := dependencygraph.GetDependencyGraph(ctx)
 		if err != nil {
 			return err
 		}
 		dceInfo.dependencyGraph = dg
-		dceInfo.deadCodeElimination = newDeadCodeElimination(ctx, dceInfo.dependencyGraph)
+		dceInfo.deadCodeElimination = transform.NewDeadCodeElimination(ctx, dceInfo.dependencyGraph)
 	}
 
 	for _, rr := range rrs {

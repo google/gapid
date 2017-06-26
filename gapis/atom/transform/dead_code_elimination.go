@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gles
+// TODO: This file is exactly the same as gles/dead_code_elimination.go. Find
+// a way to extract the dependency graph building logic and move this file,
+// also the gles one and also the definition of dependency graph to another
+// proper place so they can be shared from both GLES and Vulkan side.
+
+package transform
 
 import (
 	"context"
@@ -21,8 +26,8 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
 var (
@@ -41,12 +46,12 @@ var (
 // It is named after the standard compiler optimization.
 // (state is like memory and atoms are instructions which read/write it).
 type DeadCodeElimination struct {
-	dependencyGraph *DependencyGraph
+	dependencyGraph *dependencygraph.DependencyGraph
 	requests        atom.IDSet
 	lastRequest     atom.ID
 }
 
-func newDeadCodeElimination(ctx context.Context, dependencyGraph *DependencyGraph) *DeadCodeElimination {
+func NewDeadCodeElimination(ctx context.Context, dependencyGraph *dependencygraph.DependencyGraph) *DeadCodeElimination {
 	return &DeadCodeElimination{
 		dependencyGraph: dependencyGraph,
 		requests:        make(atom.IDSet),
@@ -61,17 +66,17 @@ func (t *DeadCodeElimination) Request(id atom.ID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
 	panic(fmt.Errorf("This transform does not accept input atoms"))
 }
 
-func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
+func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
-			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.atoms[i])
+			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.Atoms[i])
 		}
 	}
 }
@@ -79,9 +84,9 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
 func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 	isLive := make([]bool, t.lastRequest+1)
-	state := newLivenessTree(t.dependencyGraph.addressMap.parent)
+	state := newLivenessTree(t.dependencyGraph.GetHierarchyStateMap())
 	for i := int(t.lastRequest); i >= 0; i-- {
-		b := t.dependencyGraph.behaviours[i]
+		b := t.dependencyGraph.Behaviours[i]
 		isLive[i] = b.KeepAlive
 		// Always ignore commands that abort.
 		if b.Aborted {
@@ -90,12 +95,12 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		// If this is requested ID, mark all root state as live.
 		if t.requests.Contains(atom.ID(i)) {
 			isLive[i] = true
-			for root := range t.dependencyGraph.roots {
+			for root := range t.dependencyGraph.Roots {
 				state.MarkLive(root)
 			}
 		}
 		// If any output state is live then this atom is live as well.
-		for _, write := range b.Write {
+		for _, write := range b.Writes {
 			if state.IsLive(write) {
 				isLive[i] = true
 				// We just completely wrote the state, so we do not care about
@@ -104,7 +109,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			}
 		}
 		// Modification is just combined read and write
-		for _, modify := range b.Modify {
+		for _, modify := range b.Modifies {
 			if state.IsLive(modify) {
 				isLive[i] = true
 				// We will mark it as live since it is also a read, but we have
@@ -113,16 +118,16 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		}
 		// Mark input state as live so that we get all dependencies.
 		if isLive[i] {
-			for _, modify := range b.Modify {
+			for _, modify := range b.Modifies {
 				state.MarkLive(modify) // GEN
 			}
-			for _, read := range b.Read {
+			for _, read := range b.Reads {
 				state.MarkLive(read) // GEN
 			}
 		}
 		// Debug output
 		if config.DebugDeadCodeElimination && t.requests.Contains(atom.ID(i)) {
-			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.atoms[i])
+			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.Atoms[i])
 			t.dependencyGraph.Print(ctx, &b)
 		}
 	}
@@ -132,7 +137,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		num, numDead, numDeadDraws, numLive, numLiveDraws := len(isLive), 0, 0, 0, 0
 		deadMem, liveMem := uint64(0), uint64(0)
 		for i := 0; i < num; i++ {
-			a := t.dependencyGraph.atoms[i]
+			a := t.dependencyGraph.Atoms[i]
 			mem := uint64(0)
 			if e := a.Extras(); e != nil && e.Observations() != nil {
 				for _, r := range e.Observations().Reads {
@@ -189,10 +194,10 @@ type livenessNode struct {
 // newLivenessTree creates a new tree.
 // The parent map defines parent for each node,
 // and it must be continuous with no gaps.
-func newLivenessTree(parents map[StateAddress]StateAddress) livenessTree {
+func newLivenessTree(parents map[dependencygraph.StateAddress]dependencygraph.StateAddress) livenessTree {
 	nodes := make([]livenessNode, len(parents))
 	for address, parent := range parents {
-		if parent != nullStateAddress {
+		if parent != dependencygraph.NullStateAddress {
 			nodes[address].parent = &nodes[parent]
 		}
 	}
@@ -200,7 +205,7 @@ func newLivenessTree(parents map[StateAddress]StateAddress) livenessTree {
 }
 
 // IsLive returns true if the state, or any of its descendants, are live.
-func (l *livenessTree) IsLive(address StateAddress) bool {
+func (l *livenessTree) IsLive(address dependencygraph.StateAddress) bool {
 	node := &l.nodes[address]
 	live := node.anyLive // Check descendants as well.
 	for p := node.parent; p != nil; p = p.parent {
@@ -213,7 +218,7 @@ func (l *livenessTree) IsLive(address StateAddress) bool {
 }
 
 // MarkDead makes the given state, and all of its descendants, dead.
-func (l *livenessTree) MarkDead(address StateAddress) {
+func (l *livenessTree) MarkDead(address dependencygraph.StateAddress) {
 	node := &l.nodes[address]
 	node.live = false
 	node.anyLive = false
@@ -222,7 +227,7 @@ func (l *livenessTree) MarkDead(address StateAddress) {
 }
 
 // MarkLive makes the given state, and all of its descendants, live.
-func (l *livenessTree) MarkLive(address StateAddress) {
+func (l *livenessTree) MarkLive(address dependencygraph.StateAddress) {
 	node := &l.nodes[address]
 	node.live = true
 	node.anyLive = true
