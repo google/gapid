@@ -25,8 +25,11 @@ import "C"
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"unsafe"
 )
+
+var mutex sync.Mutex
 
 // Instruction represents a SPIR-V instruction.
 type Instruction struct {
@@ -94,6 +97,9 @@ type Option struct {
 // modifications includes creating output variables for input variables,
 // prefixing all non-builtin symbols with a given prefix, etc.
 func ConvertGlsl(source string, option *Option) CodeWithDebugInfo {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	np := C.CString(option.NamesPrefix)
 	op := C.CString(option.OutputPrefix)
 	opts := C.struct_options_t{
