@@ -390,9 +390,7 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, err
 	}
 	atomIdx := r.Path.After.Indices[0]
-	if len(r.Path.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
-	}
+
 	api := c.Atoms[atomIdx].API()
 	if api == nil {
 		return nil, fmt.Errorf("Command has no API")

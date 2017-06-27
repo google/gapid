@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gfxapi
+package synchronization
 
-import "sort"
+import (
+	"sort"
 
-// An index, typically an atom ID that defines the location of one side
+	"github.com/google/gapid/gapis/atom"
+)
+
+// An index defines the location of one side
 // synchronization dependency.
-type SynchronizationIndex uint64
+type SynchronizationIndex atom.ID
 type SynchronizationIndices []SynchronizationIndex
 
 // The index of a subcommand within a command

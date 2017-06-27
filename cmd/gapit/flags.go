@@ -17,6 +17,7 @@ package main
 import (
 	"time"
 
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -151,7 +152,7 @@ type (
 	StateFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
-		At    int `help:"command index to get the state after."`
+		At    flags.U64Slice `help:"command/subcommand index to get the state after. Empty for last"`
 	}
 	StressTestFlags struct {
 		Gapis GapisFlags

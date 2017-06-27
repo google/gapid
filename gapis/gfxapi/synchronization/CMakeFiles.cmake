@@ -18,23 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    api.go
-    context.go
-    doc.go
-    gfxapi.pb.go
-    gfxapi.proto
-    mesh.go
-    resource.go
-    state.go
-    texture.go
+    synchronization_data.go
+    synchronized_api.go
 )
 set(dirs
-    .vscode
-    all
-    core
-    gles
-    synchronization
-    templates
-    test
-    vulkan
+
 )

@@ -30,7 +30,6 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service/box"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 type AtomA struct {
@@ -136,9 +135,6 @@ func (API) Index() uint8                 { return 15 }
 func (API) ConstantSets() *constset.Pack { return nil }
 func (API) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (uint32, uint32, *image.Format, error) {
 	return 0, 0, nil, nil
-}
-func (API) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
-	return nil
 }
 func (API) Context(*gfxapi.State) gfxapi.Context { return nil }
 

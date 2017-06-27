@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package transform
 
 import (
-	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/gfxapi"
+	"context"
+
+	"github.com/google/gapid/gapis/atom"
 )
 
-type CustomState struct{}
-
-// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
-	return 0, 0, nil, nil
-}
-
-// Context returns the active context for the given state.
-func (api) Context(*gfxapi.State) gfxapi.Context {
-	return nil
+// Terminator is an interface that rewrites a set of atoms to only
+// mutate the given commands
+type Terminator interface {
+	// Adds the given atom, and subcommand as the last atom that
+	// must be observed
+	Add(context.Context, atom.ID, []uint64) error
+	// The transformer Interface
+	Transform(context.Context, atom.ID, atom.Atom, Writer)
+	Flush(context.Context, Writer)
 }

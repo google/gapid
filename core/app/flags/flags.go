@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,6 +30,29 @@ type (
 		Raw flag.FlagSet
 	}
 )
+
+type U64Slice []uint64
+
+func (i *U64Slice) String() string {
+	return fmt.Sprintf("%d", *i)
+}
+
+func (i *U64Slice) Set(v string) error {
+	*i = make(U64Slice, 0)
+	if v[0] != '[' || v[len(v)-1] != ']' {
+		return fmt.Errorf("Expected [n, n, n, n], could not parse %s", v)
+	}
+	x := strings.Split(v[1:len(v)-1], ",")
+
+	for _, val := range x {
+		tmp, err := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse slice %s", val)
+		}
+		*i = append(*i, uint64(tmp))
+	}
+	return nil
+}
 
 func bindName(prefix string, name string, partial string, full string) string {
 	if partial != "" {

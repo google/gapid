@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/synchronization"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
@@ -63,8 +64,8 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	startScope gfxapi.SynchronizationIndex
-	endScope   gfxapi.SynchronizationIndex
+	startScope synchronization.SynchronizationIndex
+	endScope   synchronization.SynchronizationIndex
 }
 
 type imgRes struct {
@@ -503,7 +504,10 @@ func (a api) Replay(
 			issues.reportTo(rr.Result)
 
 		case framebufferRequest:
-			earlyTerminator.Add(req.after)
+			// TODO(subcommands): Add subcommand support here
+			if err := earlyTerminator.Add(ctx, req.after, []uint64{0}); err != nil {
+				return err
+			}
 
 			if !config.DisableDeadCodeElimination {
 				dceInfo.deadCodeElimination.Request(req.after)
@@ -579,18 +583,18 @@ func (a api) QueryFramebufferAttachment(
 	if err != nil {
 		return nil, err
 	}
-	s, ok := sync.(*gfxapi.SynchronizationData)
+	s, ok := sync.(*synchronization.SynchronizationData)
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
-	beginIndex := gfxapi.SynchronizationIndex(0)
-	endIndex := gfxapi.SynchronizationIndex(0)
+	beginIndex := synchronization.SynchronizationIndex(0)
+	endIndex := synchronization.SynchronizationIndex(0)
 	for _, v := range s.SortedKeys() {
-		if v > gfxapi.SynchronizationIndex(after) {
+		if v > synchronization.SynchronizationIndex(after) {
 			break
 		}
 		for _, k := range s.CommandRanges[v].SortedKeys() {
-			if k > gfxapi.SynchronizationIndex(atom.ID(after)) {
+			if k > synchronization.SynchronizationIndex(atom.ID(after)) {
 				beginIndex = v
 				endIndex = k
 			}
