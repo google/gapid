@@ -2,6 +2,18 @@ std::string ExtensionToString(Extension extension) {
   switch (extension) {
     case Extension::kSPV_AMD_gcn_shader:
       return "SPV_AMD_gcn_shader";
+    case Extension::kSPV_AMD_gpu_shader_half_float:
+      return "SPV_AMD_gpu_shader_half_float";
+    case Extension::kSPV_AMD_gpu_shader_int16:
+      return "SPV_AMD_gpu_shader_int16";
+    case Extension::kSPV_AMD_shader_ballot:
+      return "SPV_AMD_shader_ballot";
+    case Extension::kSPV_AMD_shader_explicit_vertex_parameter:
+      return "SPV_AMD_shader_explicit_vertex_parameter";
+    case Extension::kSPV_AMD_shader_trinary_minmax:
+      return "SPV_AMD_shader_trinary_minmax";
+    case Extension::kSPV_AMD_texture_gather_bias_lod:
+      return "SPV_AMD_texture_gather_bias_lod";
     case Extension::kSPV_KHR_16bit_storage:
       return "SPV_KHR_16bit_storage";
     case Extension::kSPV_KHR_device_group:
@@ -12,8 +24,12 @@ std::string ExtensionToString(Extension extension) {
       return "SPV_KHR_shader_ballot";
     case Extension::kSPV_KHR_shader_draw_parameters:
       return "SPV_KHR_shader_draw_parameters";
+    case Extension::kSPV_KHR_storage_buffer_storage_class:
+      return "SPV_KHR_storage_buffer_storage_class";
     case Extension::kSPV_KHR_subgroup_vote:
       return "SPV_KHR_subgroup_vote";
+    case Extension::kSPV_KHR_variable_pointers:
+      return "SPV_KHR_variable_pointers";
     case Extension::kSPV_NVX_multiview_per_view_attributes:
       return "SPV_NVX_multiview_per_view_attributes";
     case Extension::kSPV_NV_geometry_shader_passthrough:
@@ -24,6 +40,8 @@ std::string ExtensionToString(Extension extension) {
       return "SPV_NV_stereo_view_rendering";
     case Extension::kSPV_NV_viewport_array2:
       return "SPV_NV_viewport_array2";
+    case Extension::kSPV_VALIDATOR_ignore_type_decl_unique:
+      return "SPV_VALIDATOR_ignore_type_decl_unique";
   };
 
   return "";
@@ -34,6 +52,18 @@ bool GetExtensionFromString(const std::string& str, Extension* extension) {
 {
   {"SPV_AMD_gcn_shader",
    Extension::kSPV_AMD_gcn_shader},
+  {"SPV_AMD_gpu_shader_half_float",
+   Extension::kSPV_AMD_gpu_shader_half_float},
+  {"SPV_AMD_gpu_shader_int16",
+   Extension::kSPV_AMD_gpu_shader_int16},
+  {"SPV_AMD_shader_ballot",
+   Extension::kSPV_AMD_shader_ballot},
+  {"SPV_AMD_shader_explicit_vertex_parameter",
+   Extension::kSPV_AMD_shader_explicit_vertex_parameter},
+  {"SPV_AMD_shader_trinary_minmax",
+   Extension::kSPV_AMD_shader_trinary_minmax},
+  {"SPV_AMD_texture_gather_bias_lod",
+   Extension::kSPV_AMD_texture_gather_bias_lod},
   {"SPV_KHR_16bit_storage",
    Extension::kSPV_KHR_16bit_storage},
   {"SPV_KHR_device_group",
@@ -44,8 +74,12 @@ bool GetExtensionFromString(const std::string& str, Extension* extension) {
    Extension::kSPV_KHR_shader_ballot},
   {"SPV_KHR_shader_draw_parameters",
    Extension::kSPV_KHR_shader_draw_parameters},
+  {"SPV_KHR_storage_buffer_storage_class",
+   Extension::kSPV_KHR_storage_buffer_storage_class},
   {"SPV_KHR_subgroup_vote",
    Extension::kSPV_KHR_subgroup_vote},
+  {"SPV_KHR_variable_pointers",
+   Extension::kSPV_KHR_variable_pointers},
   {"SPV_NVX_multiview_per_view_attributes",
    Extension::kSPV_NVX_multiview_per_view_attributes},
   {"SPV_NV_geometry_shader_passthrough",
@@ -55,7 +89,9 @@ bool GetExtensionFromString(const std::string& str, Extension* extension) {
   {"SPV_NV_stereo_view_rendering",
    Extension::kSPV_NV_stereo_view_rendering},
   {"SPV_NV_viewport_array2",
-   Extension::kSPV_NV_viewport_array2}
+   Extension::kSPV_NV_viewport_array2},
+  {"SPV_VALIDATOR_ignore_type_decl_unique",
+   Extension::kSPV_VALIDATOR_ignore_type_decl_unique}
 };
 
   const auto it = mapping.find(str);
@@ -192,10 +228,10 @@ std::string CapabilityToString(SpvCapability capability) {
       return "DrawParameters";
     case SpvCapabilitySubgroupVoteKHR:
       return "SubgroupVoteKHR";
-    case SpvCapabilityStorageUniformBufferBlock16:
-      return "StorageUniformBufferBlock16";
-    case SpvCapabilityStorageUniform16:
-      return "StorageUniform16";
+    case SpvCapabilityStorageBuffer16BitAccess:
+      return "StorageBuffer16BitAccess";
+    case SpvCapabilityUniformAndStorageBuffer16BitAccess:
+      return "UniformAndStorageBuffer16BitAccess";
     case SpvCapabilityStoragePushConstant16:
       return "StoragePushConstant16";
     case SpvCapabilityStorageInputOutput16:
@@ -204,6 +240,10 @@ std::string CapabilityToString(SpvCapability capability) {
       return "DeviceGroup";
     case SpvCapabilityMultiView:
       return "MultiView";
+    case SpvCapabilityVariablePointersStorageBuffer:
+      return "VariablePointersStorageBuffer";
+    case SpvCapabilityVariablePointers:
+      return "VariablePointers";
     case SpvCapabilitySampleMaskOverrideCoverageNV:
       return "SampleMaskOverrideCoverageNV";
     case SpvCapabilityGeometryShaderPassthroughNV:
