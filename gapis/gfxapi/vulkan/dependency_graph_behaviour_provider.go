@@ -1417,22 +1417,22 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		//TODO: handle the image and buffer memory barriers?
 
 	case *VkCmdSetStencilCompareMask:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilCompareMask:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetStencilWriteMask:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilWriteMask:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetStencilReference:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilReference:
-		recordCommand(&b, a.CommandBuffer, func(b *AtomBehaviour) {})
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdExecuteCommands:
 		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
