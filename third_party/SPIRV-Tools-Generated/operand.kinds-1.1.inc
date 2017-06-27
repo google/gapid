@@ -73,7 +73,8 @@ static const spv_operand_desc_t pygen_variable_SourceLanguageEntries[] = {
   {"ESSL", 1, {}, {}, {}},
   {"GLSL", 2, {}, {}, {}},
   {"OpenCL_C", 3, {}, {}, {}},
-  {"OpenCL_CPP", 4, {}, {}, {}}
+  {"OpenCL_CPP", 4, {}, {}, {}},
+  {"HLSL", 5, {}, {}, {}}
 };
 
 static const spv_operand_desc_t pygen_variable_ExecutionModelEntries[] = {
@@ -148,7 +149,8 @@ static const spv_operand_desc_t pygen_variable_StorageClassEntries[] = {
   {"Generic", 8, {SpvCapabilityGenericPointer}, {}, {}},
   {"PushConstant", 9, {SpvCapabilityShader}, {}, {}},
   {"AtomicCounter", 10, {SpvCapabilityAtomicStorage}, {}, {}},
-  {"Image", 11, {}, {}, {}}
+  {"Image", 11, {}, {}, {}},
+  {"StorageBuffer", 12, {}, {libspirv::Extension::kSPV_KHR_storage_buffer_storage_class, libspirv::Extension::kSPV_KHR_variable_pointers}, {}}
 };
 
 static const spv_operand_desc_t pygen_variable_DimEntries[] = {
@@ -482,12 +484,16 @@ static const spv_operand_desc_t pygen_variable_CapabilityEntries[] = {
   {"SubgroupBallotKHR", 4423, {}, {libspirv::Extension::kSPV_KHR_shader_ballot}, {}},
   {"DrawParameters", 4427, {}, {libspirv::Extension::kSPV_KHR_shader_draw_parameters}, {}},
   {"SubgroupVoteKHR", 4431, {}, {libspirv::Extension::kSPV_KHR_subgroup_vote}, {}},
+  {"StorageBuffer16BitAccess", 4433, {}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
   {"StorageUniformBufferBlock16", 4433, {}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
-  {"StorageUniform16", 4434, {}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
+  {"UniformAndStorageBuffer16BitAccess", 4434, {SpvCapabilityStorageBuffer16BitAccess, SpvCapabilityStorageUniformBufferBlock16}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
+  {"StorageUniform16", 4434, {SpvCapabilityStorageBuffer16BitAccess, SpvCapabilityStorageUniformBufferBlock16}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
   {"StoragePushConstant16", 4435, {}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
   {"StorageInputOutput16", 4436, {}, {libspirv::Extension::kSPV_KHR_16bit_storage}, {}},
   {"DeviceGroup", 4437, {}, {libspirv::Extension::kSPV_KHR_device_group}, {}},
   {"MultiView", 4439, {SpvCapabilityShader}, {libspirv::Extension::kSPV_KHR_multiview}, {}},
+  {"VariablePointersStorageBuffer", 4441, {SpvCapabilityShader}, {libspirv::Extension::kSPV_KHR_variable_pointers}, {}},
+  {"VariablePointers", 4442, {SpvCapabilityVariablePointersStorageBuffer}, {libspirv::Extension::kSPV_KHR_variable_pointers}, {}},
   {"SampleMaskOverrideCoverageNV", 5249, {SpvCapabilitySampleRateShading}, {libspirv::Extension::kSPV_NV_sample_mask_override_coverage}, {}},
   {"GeometryShaderPassthroughNV", 5251, {SpvCapabilityGeometry}, {libspirv::Extension::kSPV_NV_geometry_shader_passthrough}, {}},
   {"ShaderViewportIndexLayerNV", 5254, {SpvCapabilityMultiViewport}, {libspirv::Extension::kSPV_NV_viewport_array2}, {}},

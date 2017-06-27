@@ -32,8 +32,8 @@ glob(sources
     third_party/glslang/glslang/MachineIndependent/preprocessor
     third_party/glslang/hlsl
   INCLUDE ".cpp$"
-  EXCLUDE "enum_set.cpp$"
 )
+add_definitions(-DENABLE_HLSL=1)
 
 if(WIN32)
   glob(os_sources

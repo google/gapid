@@ -28,7 +28,9 @@ static const spv_operand_desc_t pygen_variable_SelectionControlEntries[] = {
 static const spv_operand_desc_t pygen_variable_LoopControlEntries[] = {
   {"None", 0x0000, {}, {}, {}},
   {"Unroll", 0x0001, {}, {}, {}},
-  {"DontUnroll", 0x0002, {}, {}, {}}
+  {"DontUnroll", 0x0002, {}, {}, {}},
+  {"DependencyInfinite", 0x0004, {}, {}, {}},
+  {"DependencyLength", 0x0008, {}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}}
 };
 
 static const spv_operand_desc_t pygen_variable_FunctionControlEntries[] = {
@@ -128,7 +130,14 @@ static const spv_operand_desc_t pygen_variable_ExecutionModeEntries[] = {
   {"OutputLineStrip", 28, {SpvCapabilityGeometry}, {}, {}},
   {"OutputTriangleStrip", 29, {SpvCapabilityGeometry}, {}, {}},
   {"VecTypeHint", 30, {SpvCapabilityKernel}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
-  {"ContractionOff", 31, {SpvCapabilityKernel}, {}, {}}
+  {"ContractionOff", 31, {SpvCapabilityKernel}, {}, {}},
+  {"Initializer", 33, {SpvCapabilityKernel}, {}, {}},
+  {"Finalizer", 34, {SpvCapabilityKernel}, {}, {}},
+  {"SubgroupSize", 35, {SpvCapabilitySubgroupDispatch}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
+  {"SubgroupsPerWorkgroup", 36, {SpvCapabilitySubgroupDispatch}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
+  {"SubgroupsPerWorkgroupId", 37, {SpvCapabilitySubgroupDispatch}, {}, {SPV_OPERAND_TYPE_ID}},
+  {"LocalSizeId", 38, {}, {}, {SPV_OPERAND_TYPE_ID, SPV_OPERAND_TYPE_ID, SPV_OPERAND_TYPE_ID}},
+  {"LocalSizeHintId", 39, {SpvCapabilityKernel}, {}, {SPV_OPERAND_TYPE_ID}}
 };
 
 static const spv_operand_desc_t pygen_variable_StorageClassEntries[] = {
@@ -287,7 +296,7 @@ static const spv_operand_desc_t pygen_variable_FunctionParameterAttributeEntries
 
 static const spv_operand_desc_t pygen_variable_DecorationEntries[] = {
   {"RelaxedPrecision", 0, {SpvCapabilityShader}, {}, {}},
-  {"SpecId", 1, {SpvCapabilityShader}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
+  {"SpecId", 1, {SpvCapabilityShader, SpvCapabilityKernel}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
   {"Block", 2, {SpvCapabilityShader}, {}, {}},
   {"BufferBlock", 3, {SpvCapabilityShader}, {}, {}},
   {"RowMajor", 4, {SpvCapabilityMatrix}, {}, {}},
@@ -329,6 +338,9 @@ static const spv_operand_desc_t pygen_variable_DecorationEntries[] = {
   {"NoContraction", 42, {SpvCapabilityShader}, {}, {}},
   {"InputAttachmentIndex", 43, {SpvCapabilityInputAttachment}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
   {"Alignment", 44, {SpvCapabilityKernel}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
+  {"MaxByteOffset", 45, {SpvCapabilityAddresses}, {}, {SPV_OPERAND_TYPE_LITERAL_INTEGER}},
+  {"AlignmentId", 46, {SpvCapabilityKernel}, {}, {SPV_OPERAND_TYPE_ID}},
+  {"MaxByteOffsetId", 47, {SpvCapabilityAddresses}, {}, {SPV_OPERAND_TYPE_ID}},
   {"OverrideCoverageNV", 5248, {SpvCapabilitySampleMaskOverrideCoverageNV}, {}, {}},
   {"PassthroughNV", 5250, {SpvCapabilityGeometryShaderPassthroughNV}, {}, {}},
   {"ViewportRelativeNV", 5252, {SpvCapabilityShaderViewportMaskNV}, {}, {}},
@@ -471,6 +483,9 @@ static const spv_operand_desc_t pygen_variable_CapabilityEntries[] = {
   {"StorageImageReadWithoutFormat", 55, {SpvCapabilityShader}, {}, {}},
   {"StorageImageWriteWithoutFormat", 56, {SpvCapabilityShader}, {}, {}},
   {"MultiViewport", 57, {SpvCapabilityGeometry}, {}, {}},
+  {"SubgroupDispatch", 58, {SpvCapabilityDeviceEnqueue}, {}, {}},
+  {"NamedBarrier", 59, {SpvCapabilityKernel}, {}, {}},
+  {"PipeStorage", 60, {SpvCapabilityPipes}, {}, {}},
   {"SubgroupBallotKHR", 4423, {}, {libspirv::Extension::kSPV_KHR_shader_ballot}, {}},
   {"DrawParameters", 4427, {}, {libspirv::Extension::kSPV_KHR_shader_draw_parameters}, {}},
   {"SubgroupVoteKHR", 4431, {}, {libspirv::Extension::kSPV_KHR_subgroup_vote}, {}},

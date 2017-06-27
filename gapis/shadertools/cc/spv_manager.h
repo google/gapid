@@ -19,7 +19,7 @@
 
 #define DEBUG
 
-#include "third_party/SPIRV-Headers/include/spirv/1.1/spirv.hpp"
+#include "third_party/SPIRV-Headers/include/spirv/1.2/spirv.hpp"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #include "third_party/SPIRV-Tools/source/assembly_grammar.h"
 #include "third_party/SPIRV-Tools/source/opcode.h"
