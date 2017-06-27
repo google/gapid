@@ -163,7 +163,8 @@ std::vector<unsigned int> parseGlslang(const char* code, std::string* err_msg, b
     glslang::GlslangToSpv(*program.getIntermediate(lang), spirv, &logger);
   }
 
-  glslang::FinalizeProcess();
+  // The compiler initialization is fairly expensive, so keep it initialized indefinitely.
+  // glslang::FinalizeProcess();
 
   return spirv;
 }
