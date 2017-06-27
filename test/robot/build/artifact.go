@@ -162,7 +162,7 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 	if len(hostABIs) != 1 {
 		log.W(ctx, "(*artifacts) get() received multiple host ABIs, taking first one. %v", hostABIs[0])
 	}
-	toolSet := new(ToolSet{Abi: hostABIs[0], Host: new(HostToolSet)})
+	toolSet := ToolSet{Abi: hostABIs[0], Host: new(HostToolSet)}
 	// TODO(baldwinn): move these paths to layout
 	toolSetIdByZipEntry := map[string]*string{
 		"gapid/gapir":                          &toolSet.Host.Gapir,
@@ -174,9 +174,9 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 	for _, f := range zipFile.File {
 		z := &zipEntry{file: f}
 		if dirs := strings.Split(f.Name, "/"); dirs[1] == "android" {
-			toolSet.Android = append(toolset.Android, &AndroidToolSet{Abi: device.ABIByName(dirs[2]), GapidApk: z.GetID(ctx, a)})
+			toolSet.Android = append(toolSet.Android, &AndroidToolSet{Abi: device.ABIByName(dirs[2]), GapidApk: z.GetID(ctx, a)})
 		} else if id, ok := toolSetIdByZipEntry[f.Name]; ok {
-			id = z.GetID(ctx, a)
+			*id = z.GetID(ctx, a)
 		}
 	}
 	entry := &Artifact{Id: id, Tool: &toolSet}
