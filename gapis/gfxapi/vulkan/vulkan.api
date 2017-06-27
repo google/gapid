@@ -5163,6 +5163,12 @@ cmd VkResult vkResetCommandPool(
     VkDevice                device,
     VkCommandPool           commandPool,
     VkCommandPoolResetFlags flags) {
+  pool := CommandPools[commandPool]
+  for _, k, b in pool.CommandBuffers {
+    b.BeginInfo = null
+    b.Recording = NOT_STARTED
+    resetCmd(k)
+  }
   return ?
 }
 
