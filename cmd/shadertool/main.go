@@ -22,14 +22,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/gapis/shadertools"
 )
 
 var (
-	output     = flag.String("out", "", "Destination for the converted shader")
-	debuggable = flag.Bool("debuggable", false, "Make the shader debuggable")
+	out   = flag.String("out", "", "Directory for the converted shaders")
+	check = flag.Bool("check", true, "Verify that the output compiles")
+	debug = flag.Bool("debug", false, "Make the shader debuggable")
+	asm   = flag.Bool("asm", false, "Print disassembled info")
 )
 
 func main() {
@@ -43,30 +46,43 @@ func run(ctx context.Context) error {
 	args := flag.Args()
 	if len(args) == 0 {
 		flag.Usage()
+		return nil
 	}
 
 	// Read input
-	input := args[0]
-	source, err := ioutil.ReadFile(input)
-	if err != nil {
-		return err
-	}
-
-	// Process the shader
-	result, err := convert(string(source), filepath.Ext(input))
-	if err != nil {
-		return err
-	}
-
-	// Write output
-	if *output == "" {
-		fmt.Print(result)
-	} else {
-		err := ioutil.WriteFile(*output, []byte(result), 0666)
+	var wg sync.WaitGroup
+	for _, input := range args {
+		input := input
+		source, err := ioutil.ReadFile(input)
 		if err != nil {
 			return err
 		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// Process the shader
+			result, err := convert(string(source), filepath.Ext(input))
+			if err != nil {
+				fmt.Printf("%v: %v\n", input, err)
+				return
+			}
+
+			// Write output
+			if *out == "" {
+				fmt.Print(result)
+			} else {
+				output := filepath.Join(*out, filepath.Base(input))
+				err := ioutil.WriteFile(output, []byte(result), 0666)
+				if err != nil {
+					fmt.Printf("%v: %v\n", input, err)
+					return
+				}
+			}
+		}()
 	}
+	wg.Wait()
 
 	return nil
 }
@@ -81,11 +97,17 @@ func convert(source, shaderType string) (result string, err error) {
 	default:
 		return "", fmt.Errorf("File extension must be .vert or .frag (seen %v)", shaderType)
 	}
-	opts.MakeDebuggable = *debuggable
+	opts.MakeDebuggable = *debug
+	opts.CheckAfterChanges = *check
+	opts.Disassemble = *asm
 	res := shadertools.ConvertGlsl(string(source), &opts)
 	if !res.Ok {
 		return "", fmt.Errorf("Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, source)
 	}
-	debugInfo := shadertools.FormatDebugInfo(res.Info, "// ")
-	return debugInfo + res.SourceCode, nil
+	if *asm {
+		result += "/* Disassembly:\n" + res.DisassemblyString + "\n*/\n"
+		result += "/* Debug info:\n" + shadertools.FormatDebugInfo(res.Info, "  ") + "\n*/\n"
+	}
+	result += res.SourceCode
+	return result, nil
 }
