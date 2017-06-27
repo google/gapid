@@ -312,6 +312,14 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdResetQueryPoolData>>
 }
 
 template <>
+void inline CommandListRecreator<std::shared_ptr<RecreateCmdWriteTimestampData>>::operator()(
+    VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+    const std::shared_ptr<RecreateCmdWriteTimestampData>& t) {
+    spy->RecreateCmdWriteTimestamp(observer, commandBuf, t->mPipelineStage,
+                                  t->mQueryPool, t->mQuery);
+}
+
+template <>
 void inline CommandListRecreator<
     std::shared_ptr<RecreateCmdCopyQueryPoolResultsData>>::
 operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,

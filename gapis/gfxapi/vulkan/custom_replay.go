@@ -744,6 +744,17 @@ func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, s *gfxapi.
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	hijack := NewVkCmdWriteTimestamp(
+		a.CommandBuffer,
+		a.PipelineStage,
+		a.QueryPool,
+		a.Query,
+	)
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	hijack := NewVkCmdSetEvent(
 		a.CommandBuffer,

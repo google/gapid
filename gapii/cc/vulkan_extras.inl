@@ -227,6 +227,9 @@ void SpyOverride_RecreateCmdCopyQueryPoolResults(VkCommandBuffer, VkQueryPool,
                                                  uint32_t, uint32_t, VkBuffer,
                                                  VkDeviceSize, VkDeviceSize,
                                                  VkQueryResultFlags) {}
+void SpyOverride_RecreateCmdWriteTimestamp(
+    VkCommandBuffer, uint32_t /* VkPipelineStageFlagBits */, VkQueryPool,
+    uint32_t) {}
 void SpyOverride_RecreateCmdSetBlendConstants(VkCommandBuffer, float[4]) {}
 void SpyOverride_RecreateCmdFillBuffer(VkCommandBuffer, VkBuffer, uint64_t,
                                        uint64_t, uint32_t) {}

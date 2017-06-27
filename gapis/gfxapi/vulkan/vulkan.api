@@ -7484,6 +7484,23 @@ cmd void vkCmdResetQueryPool(
   doCmdResetQueryPool)
 }
 
+@internal class
+RecreateCmdWriteTimestampData {
+  VkPipelineStageFlagBits PipelineStage,
+  VkQueryPool             QueryPool,
+  u32                     Query
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdWriteTimestamp(
+    VkCommandBuffer         commandBuffer,
+    VkPipelineStageFlagBits pipelineStage,
+    VkQueryPool             queryPool,
+    u32                     query) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdWriteTimestamp(
@@ -7491,6 +7508,9 @@ cmd void vkCmdWriteTimestamp(
     VkPipelineStageFlagBits pipelineStage,
     VkQueryPool             queryPool,
     u32                     query) {
+  addCmd(commandBuffer, new!RecreateCmdWriteTimestampData(
+    pipelineStage, queryPool, query
+  ), Unimplemented(), doCmdNop)
 }
 
 @internal
