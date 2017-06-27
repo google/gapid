@@ -205,6 +205,8 @@ void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t,
                                         const VkViewport*) {}
 void SpyOverride_RecreateCmdSetDepthBias(VkCommandBuffer, float, float, float) {
 }
+void SpyOverride_RecreateCmdSetDepthBounds(VkCommandBuffer, float, float) {
+}
 void SpyOverride_RecreateCmdSetLineWidth(VkCommandBuffer, float) {}
 void SpyOverride_RecreateCmdPushConstants(VkCommandBuffer, VkPipelineLayout,
                                           uint32_t, uint32_t, uint32_t,

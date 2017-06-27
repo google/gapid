@@ -81,7 +81,7 @@ are as follows.
 | vkCmdResolveImage                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetBlendConstants                                |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetDepthBias                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
-| vkCmdSetDepthBounds                                   |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
+| vkCmdSetDepthBounds                                   |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetEvent                                         |   :white_medium_square:   |      :white_medium_square:      |      :white_medium_square:      |
 | vkCmdSetLineWidth                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdSetScissor                                       |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |

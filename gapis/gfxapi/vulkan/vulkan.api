@@ -5522,12 +5522,31 @@ cmd void vkCmdSetBlendConstants(
       blendConstants[3]), Unimplemented(), doCmdNop)
 }
 
+@internal
+class RecreateCmdSetDepthBoundsData{
+  f32 MinDepthBounds,
+  f32 MaxDepthBounds
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdSetDepthBounds(
+    VkCommandBuffer commandBuffer,
+    f32             minDepthBounds,
+    f32             maxDepthBounds) {
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetDepthBounds(
     VkCommandBuffer commandBuffer,
     f32             minDepthBounds,
     f32             maxDepthBounds) {
+  addCmd(commandBuffer,
+      new!RecreateCmdSetDepthBoundsData(
+        minDepthBounds,
+        maxDepthBounds), Unimplemented(), doCmdNop)
 }
 
 @threadSafety("app")
