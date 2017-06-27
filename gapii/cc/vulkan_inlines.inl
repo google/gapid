@@ -553,6 +553,33 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
 }
 
 template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdSetStencilCompareMaskData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdSetStencilCompareMaskData>& t) {
+  spy->RecreateCmdSetStencilCompareMask(observer, commandBuf, t->mFaceMask,
+                                        t->mCompareMask);
+}
+
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdSetStencilWriteMaskData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdSetStencilWriteMaskData>& t) {
+  spy->RecreateCmdSetStencilWriteMask(observer, commandBuf, t->mFaceMask,
+                                      t->mWriteMask);
+}
+
+template <>
+void inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdSetStencilReferenceData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdSetStencilReferenceData>& t) {
+  spy->RecreateCmdSetStencilReference(observer, commandBuf, t->mFaceMask,
+                                      t->mReference);
+}
+
+template <>
 void inline CommandListRecreator<std::shared_ptr<RecreateCmdWaitEventsData>>::
 operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
            const std::shared_ptr<RecreateCmdWaitEventsData>& t) {
