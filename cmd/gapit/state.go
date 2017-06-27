@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/client"
@@ -34,7 +35,7 @@ type stateVerb struct{ StateFlags }
 func init() {
 	verb := &stateVerb{
 		StateFlags{
-			At: -1,
+			At: flags.U64Slice{},
 		},
 	}
 
@@ -68,15 +69,15 @@ func (verb *stateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	if verb.At == -1 {
+	if len(verb.At) == 0 {
 		boxedCapture, err := client.Get(ctx, c.Path())
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
-		verb.At = int(boxedCapture.(*service.Capture).NumCommands) - 1
+		verb.At = []uint64{uint64(boxedCapture.(*service.Capture).NumCommands) - 1}
 	}
 
-	boxedTree, err := client.Get(ctx, c.Command(uint64(verb.At)).StateTreeAfter().Path())
+	boxedTree, err := client.Get(ctx, c.Command(uint64(verb.At[0]), verb.At[1:]...).StateTreeAfter().Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the command tree")
 	}

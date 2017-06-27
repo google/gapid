@@ -108,10 +108,6 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 	return nil, nil
 }
 
-func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
-	return nil
-}
-
 func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
 	return newGlesDependencyGraphBehaviourProvider()
 }

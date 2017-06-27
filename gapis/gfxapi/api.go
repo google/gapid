@@ -15,13 +15,11 @@
 package gfxapi
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapil/constset"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 // API is the common interface to a graphics programming api.
@@ -43,10 +41,6 @@ type API interface {
 
 	// Context returns the active context for the given state.
 	Context(*State) Context
-
-	// ResolveSynchroniation fills the given SynchronizationData with the
-	// set of blocking operations between commands in the given capture for this API.
-	ResolveSynchronization(ctx context.Context, d *SynchronizationData, c *path.Capture) error
 }
 
 // ID is an API identifier

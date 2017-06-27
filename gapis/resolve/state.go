@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/synchronization"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -50,10 +51,11 @@ func APIState(ctx context.Context, p *path.State) (interface{}, error) {
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
 	atomIdx := r.Path.After.Indices[0]
-	if len(r.Path.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+	atoms, err := Atoms(ctx, r.Path.After.Capture)
+	if err != nil {
+		return nil, err
 	}
-	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
+	list, err := synchronization.GetMutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(atomIdx), r.Path.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +63,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range list.Atoms[:atomIdx+1] {
+	for _, a := range list.Atoms {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}

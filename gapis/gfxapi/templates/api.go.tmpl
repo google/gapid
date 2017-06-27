@@ -951,7 +951,7 @@
   {{AssertType $ "Class"}}
   {{range $v := $.Fields}}
     {{$cs := ConstantSetIndex $v}}
-    {{Title $v.Name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}
+    {{Title $v.Name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}{{if GetAnnotation $v "hidden"}}`nobox:"true"`{{end}}
   {{end}}
 {{end}}
 

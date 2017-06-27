@@ -8827,7 +8827,7 @@ enum RecordingState {
   VkDeviceSize            MappedSize
   void*                   MappedLocation
   u32                     MemoryTypeIndex
-  @internal u8[]          Data
+  @hidden @internal u8[]  Data
   ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
 }
 
@@ -8895,7 +8895,7 @@ enum RecordingState {
   u32            Width
   u32            Height
   @unused u32    Depth
-  @internal u8[] Data
+  @hidden @internal u8[] Data
   @unused u32    Size
 }
 

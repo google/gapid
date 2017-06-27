@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/synchronization"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
@@ -41,31 +42,59 @@ import (
 //      TODO(awoloszyn): Handle #2
 // This takes advantage of the fact that all atoms will be in order.
 type VulkanTerminator struct {
-	lastRequest    atom.ID
-	stopped        bool
-	syncData       *gfxapi.SynchronizationData
-	blockingEvents []VkEvent
+	lastRequest     atom.ID
+	requestSubIndex []uint64
+	stopped         bool
+	syncData        *synchronization.SynchronizationData
 }
+
+var _ transform.Terminator = &VulkanTerminator{}
 
 func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTerminator, error) {
 	sync, err := database.Build(ctx, &resolve.SynchronizationResolvable{capture})
 	if err != nil {
 		return nil, err
 	}
-	s, ok := sync.(*gfxapi.SynchronizationData)
+	s, ok := sync.(*synchronization.SynchronizationData)
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
 
-	return &VulkanTerminator{atom.ID(0), false, s, []VkEvent(nil)}, nil
+	return &VulkanTerminator{atom.ID(0), make([]uint64, 0), false, s}, nil
 }
 
 // Add adds the atom with identifier id to the set of atoms that must be seen
 // before the VulkanTerminator will consume all atoms (excluding the EOS atom).
-func (t *VulkanTerminator) Add(id atom.ID) {
+func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uint64) error {
+	if len(t.requestSubIndex) != 0 {
+		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
+	}
+
 	if id > t.lastRequest {
 		t.lastRequest = id
 	}
+
+	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
+	sc := synchronization.SubcommandIndex(t.requestSubIndex[1:])
+	handled := false
+	if rng, ok := t.syncData.CommandRanges[synchronization.SynchronizationIndex(id)]; ok {
+
+		for _, k := range rng.SortedKeys() {
+			if !rng.Ranges[k].LessThan(sc) {
+				t.lastRequest = atom.ID(k)
+				handled = true
+				break
+			}
+		}
+	} else {
+		return log.Errf(ctx, nil, "The given atom does not have a subcommands")
+	}
+
+	if !handled {
+		return log.Errf(ctx, nil, "Can not find the given subindex")
+	}
+
+	return nil
 }
 
 func walkCommands(s *State,
@@ -82,14 +111,14 @@ func walkCommands(s *State,
 	}
 }
 
-func getExtra(idx gfxapi.SubcommandIndex, loopLevel int) int {
+func getExtra(idx synchronization.SubcommandIndex, loopLevel int) int {
 	if len(idx) == loopLevel+1 {
 		return 1
 	}
 	return 0
 }
 
-func incrementLoopLevel(idx gfxapi.SubcommandIndex, loopLevel *int) bool {
+func incrementLoopLevel(idx synchronization.SubcommandIndex, loopLevel *int) bool {
 	if len(idx) == *loopLevel+1 {
 		return false
 	}
@@ -100,7 +129,7 @@ func incrementLoopLevel(idx gfxapi.SubcommandIndex, loopLevel *int) bool {
 // resolveCurrentRenderPass walks all of the current and pending commands
 // to determine what renderpass we are in after the idx'th subcommand
 func resolveCurrentRenderPass(ctx context.Context, s *gfxapi.State, submit *VkQueueSubmit,
-	idx gfxapi.SubcommandIndex, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
+	idx synchronization.SubcommandIndex, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
 	if len(idx) == 0 {
 		return lrp, subpass
 	}
@@ -181,7 +210,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *gfxapi.State, submit *VkQu
 func rebuildCommandBuffer(ctx context.Context,
 	commandBuffer *CommandBufferObject,
 	s *gfxapi.State,
-	idx gfxapi.SubcommandIndex,
+	idx synchronization.SubcommandIndex,
 	additionalCommands []interface{}) (VkCommandBuffer, []atom.Atom, []func()) {
 
 	x := make([]atom.Atom, 0)
@@ -261,7 +290,7 @@ func rebuildCommandBuffer(ctx context.Context,
 // index it would remain valid. This means closing any open
 // RenderPasses.
 func cutCommandBuffer(ctx context.Context, id atom.ID,
-	a atom.Atom, idx gfxapi.SubcommandIndex, out transform.Writer) {
+	a atom.Atom, idx synchronization.SubcommandIndex, out transform.Writer) {
 	submit := a.(*VkQueueSubmit)
 	s := out.State()
 	c := GetState(s)
@@ -321,13 +350,13 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	if lrp != nil {
 		numSubpasses := uint32(len(lrp.SubpassDescriptions))
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
-			extraCommands = append(extraCommands, RecreateCmdNextSubpassData{})
+			extraCommands = append(extraCommands, &RecreateCmdNextSubpassData{})
 		}
-		extraCommands = append(extraCommands, RecreateCmdEndRenderPassData{})
+		extraCommands = append(extraCommands, &RecreateCmdEndRenderPassData{})
 	}
 
 	cmdBuffer := c.CommandBuffers[newCommandBuffers[lastCommandBuffer]]
-	subIdx := make(gfxapi.SubcommandIndex, 0)
+	subIdx := make(synchronization.SubcommandIndex, 0)
 	if !skipAll {
 		subIdx = idx[2:]
 	}
@@ -362,22 +391,33 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, a atom.Ato
 	}
 
 	doCut := false
-	cutIndex := gfxapi.SubcommandIndex(nil)
-	if rng, ok := t.syncData.CommandRanges[gfxapi.SynchronizationIndex(id)]; ok {
+	cutIndex := synchronization.SubcommandIndex(nil)
+	if rng, ok := t.syncData.CommandRanges[synchronization.SynchronizationIndex(id)]; ok {
 		for k, v := range rng.Ranges {
 			if atom.ID(k) > t.lastRequest {
 				doCut = true
 			} else {
 				if len(cutIndex) == 0 || cutIndex.LessThan(v) {
 					cutIndex = v
+					cutIndex.Decrement()
 				}
 			}
 		}
 	}
 
+	// If we have been requested to cut at a particular subindex,
+	// then do that instead of cutting at the derived cutIndex.
+	// It is guaranteed to be safe as long as the requestedSubIndex is
+	// less than the calculated one (i.e. we are cutting more)
+	if len(t.requestSubIndex) > 1 && t.requestSubIndex[0] == uint64(id) {
+		if len(cutIndex) == 0 || !cutIndex.LessThan(t.requestSubIndex[1:]) {
+			cutIndex = t.requestSubIndex[1:]
+			doCut = true
+		}
+	}
+
 	// We have to cut somewhere
 	if doCut {
-		cutIndex.Decrement()
 		cutCommandBuffer(ctx, id, a, cutIndex, out)
 	} else {
 		out.MutateAndWrite(ctx, id, a)

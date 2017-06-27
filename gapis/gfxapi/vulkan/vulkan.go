@@ -20,15 +20,16 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/synchronization"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 type CustomState struct {
-	SubcommandIndex   gfxapi.SubcommandIndex
+	SubcommandIndex   synchronization.SubcommandIndex
 	CurrentSubmission *atom.Atom
 	HandleSubcommand  func(interface{}) `nobox:"true"`
 }
@@ -81,7 +82,7 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 	return nil, fmt.Errorf("Cannot get the mesh data from %v", o)
 }
 
-func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
+func (api) ResolveSynchronization(ctx context.Context, d *synchronization.SynchronizationData, c *path.Capture) error {
 	ctx = capture.Put(ctx, c)
 	st, err := capture.NewState(ctx)
 	if err != nil {
@@ -92,32 +93,32 @@ func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.Synchronization
 		return err
 	}
 	s := GetState(st)
-	i := gfxapi.SynchronizationIndex(0)
-	submissionMap := make(map[*atom.Atom]gfxapi.SynchronizationIndex)
+	i := synchronization.SynchronizationIndex(0)
+	submissionMap := make(map[*atom.Atom]synchronization.SynchronizationIndex)
 
 	s.HandleSubcommand = func(a interface{}) {
-		rootIdx := gfxapi.SynchronizationIndex(i)
+		rootIdx := synchronization.SynchronizationIndex(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
-			rootIdx = gfxapi.SynchronizationIndex(k)
+			rootIdx = synchronization.SynchronizationIndex(k)
 		} else {
 			submissionMap[s.CurrentSubmission] = i
 		}
 
 		if rng, ok := d.CommandRanges[rootIdx]; ok {
-			rng.LastIndex = append(gfxapi.SubcommandIndex(nil), s.SubcommandIndex...)
+			rng.LastIndex = append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...)
 			rng.Ranges[i] = rng.LastIndex
 		} else {
-			er := gfxapi.ExecutionRanges{
-				LastIndex: append(gfxapi.SubcommandIndex(nil), s.SubcommandIndex...),
-				Ranges:    make(map[gfxapi.SynchronizationIndex]gfxapi.SubcommandIndex),
+			er := synchronization.ExecutionRanges{
+				LastIndex: append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...),
+				Ranges:    make(map[synchronization.SynchronizationIndex]synchronization.SubcommandIndex),
 			}
-			er.Ranges[i] = append(gfxapi.SubcommandIndex(nil), s.SubcommandIndex...)
+			er.Ranges[i] = append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...)
 			d.CommandRanges[rootIdx] = er
 		}
 	}
 
 	for idx, a := range a.Atoms {
-		i = gfxapi.SynchronizationIndex(idx)
+		i = synchronization.SynchronizationIndex(idx)
 		if err := a.Mutate(ctx, st, nil); err != nil {
 			return err
 		}
@@ -125,6 +126,9 @@ func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.Synchronization
 	return nil
 }
 
-func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
-	return newVulkanDependencyGraphBehaviourProvider()
+// Interface check
+var _ synchronization.SynchronizedApi = &api{}
+
+func (api) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
+	return NewVulkanTerminator(ctx, c)
 }

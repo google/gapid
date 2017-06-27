@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/synchronization"
 )
 
 // Resolve builds a SynchronizationResolvable object for the given capture
@@ -27,11 +27,13 @@ func (r *SynchronizationResolvable) Resolve(ctx context.Context) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
-	s := gfxapi.NewSynchronizationData()
+	s := synchronization.NewSynchronizationData()
 
 	for _, api := range capture.APIs {
-		if err = api.ResolveSynchronization(ctx, s, r.Capture); err != nil {
-			return nil, err
+		if sync, ok := api.(synchronization.SynchronizedApi); ok {
+			if err = sync.ResolveSynchronization(ctx, s, r.Capture); err != nil {
+				return nil, err
+			}
 		}
 	}
 

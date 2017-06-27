@@ -15,12 +15,9 @@
 package test
 
 import (
-	"context"
-
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 type CustomState struct{}
@@ -29,9 +26,6 @@ func (api) GetFramebufferAttachmentInfo(*gfxapi.State, gfxapi.FramebufferAttachm
 	return 0, 0, nil, nil
 }
 
-func (api) ResolveSynchronization(ctx context.Context, d *gfxapi.SynchronizationData, c *path.Capture) error {
-	return nil
-}
 func (api) Context(*gfxapi.State) gfxapi.Context { return nil }
 
 func (i remapped) remap(a atom.Atom, s *gfxapi.State) (interface{}, bool) {

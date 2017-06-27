@@ -45,9 +45,9 @@ func TestEarlyTerminator(t *testing.T) {
 	)
 
 	transform := &EarlyTerminator{}
-	transform.Add(20)
-	transform.Add(50)
-	transform.Add(70)
+	transform.Add(ctx, 20, []uint64{0})
+	transform.Add(ctx, 50, []uint64{})
+	transform.Add(ctx, 70, []uint64{1})
 
 	CheckTransform(ctx, t, transform, inputs, expected)
 }
