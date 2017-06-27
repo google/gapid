@@ -7469,10 +7469,6 @@ cmd void RecreateCmdResetQueryPool(
     VkQueryPool     queryPool,
     u32             firstQuery
     u32             queryCount) {
-  addCmd(commandBuffer, new!RecreateCmdResetQueryPoolData(
-    queryPool, firstQuery, queryCount
-  ), RecreateCmdResetQueryPoolData(queryPool, firstQuery, queryCount),
-  doCmdResetQueryPool)
 }
 
 @threadSafety("app")
@@ -7482,6 +7478,10 @@ cmd void vkCmdResetQueryPool(
     VkQueryPool     queryPool,
     u32             firstQuery,
     u32             queryCount) {
+  addCmd(commandBuffer, new!RecreateCmdResetQueryPoolData(
+    queryPool, firstQuery, queryCount
+  ), RecreateCmdResetQueryPoolData(queryPool, firstQuery, queryCount),
+  doCmdResetQueryPool)
 }
 
 @threadSafety("app")
