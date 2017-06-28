@@ -53,7 +53,7 @@ protected:
 }  // anonymous namespace
 
 TEST_F(InterpreterTest, PushIUint8) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint8_t>{210});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint8_t>{210});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint8, 210),
@@ -63,7 +63,7 @@ TEST_F(InterpreterTest, PushIUint8) {
 }
 
 TEST_F(InterpreterTest, PushIInt16Minus1) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<int16_t>{-1});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<int16_t>{-1});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int16, 0xffff),  // -1
@@ -73,7 +73,7 @@ TEST_F(InterpreterTest, PushIInt16Minus1) {
 }
 
 TEST_F(InterpreterTest, PushIInt32Minus1) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<int32_t>{-1});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<int32_t>{-1});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int32, 0xfffff),  // -1
@@ -83,7 +83,7 @@ TEST_F(InterpreterTest, PushIInt32Minus1) {
 }
 
 TEST_F(InterpreterTest, PushIFloat1) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<float>{1.0f});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<float>{1.0f});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x7f),  // 1.0 exp
@@ -93,7 +93,7 @@ TEST_F(InterpreterTest, PushIFloat1) {
 }
 
 TEST_F(InterpreterTest, PushIDouble1) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<double>{1.0});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<double>{1.0});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Double, 0x3ff),  // 1.0 exp
@@ -109,7 +109,7 @@ TEST_F(InterpreterTest, LoadC) {
     memcpy(constantBaseAddress, &constantMemory, sizeof(constantMemory));
     mMemoryManager->setConstantMemory({constantBaseAddress, sizeof(constantMemory)});
 
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint16_t>{0x7856});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint16_t>{0x7856});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::LOAD_C, BaseType::Uint16, 4),
@@ -120,7 +120,7 @@ TEST_F(InterpreterTest, LoadC) {
 
 TEST_F(InterpreterTest, LoadV) {
     *static_cast<int32_t*>(mMemoryManager->volatileToAbsolute(784)) = -987654321;
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<int32_t>{-987654321});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<int32_t>{-987654321});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::LOAD_V, BaseType::Int32, 784),
@@ -136,7 +136,7 @@ TEST_F(InterpreterTest, LoadConstantAddress) {
     memcpy(constantBaseAddress, &constantMemory, 7);
     mMemoryManager->setConstantMemory({constantBaseAddress, 7});
 
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint16_t>{0x7856});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint16_t>{0x7856});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 4),
@@ -148,7 +148,7 @@ TEST_F(InterpreterTest, LoadConstantAddress) {
 
 TEST_F(InterpreterTest, LoadVolatileAddress) {
     *static_cast<int32_t*>(mMemoryManager->volatileToAbsolute(784)) = -987654321;
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<int32_t>{-987654321});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<int32_t>{-987654321});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 784),
@@ -159,7 +159,7 @@ TEST_F(InterpreterTest, LoadVolatileAddress) {
 }
 
 TEST_F(InterpreterTest, Pop) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint32_t>{123456});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint32_t>{123456});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 123456),
@@ -212,7 +212,7 @@ TEST_F(InterpreterTest, Copy) {
 }
 
 TEST_F(InterpreterTest, Clone) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint32_t>{123456});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint32_t>{123456});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 123456),
@@ -227,7 +227,7 @@ TEST_F(InterpreterTest, Clone) {
 }
 
 TEST_F(InterpreterTest, ExtendInt32) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<int32_t>{0x76543210});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<int32_t>{0x76543210});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int32, 0x1d),
@@ -238,7 +238,7 @@ TEST_F(InterpreterTest, ExtendInt32) {
 }
 
 TEST_F(InterpreterTest, ExtendFloat) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<float>{1.1f});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<float>{1.1f});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x7f),
@@ -249,7 +249,7 @@ TEST_F(InterpreterTest, ExtendFloat) {
 }
 
 TEST_F(InterpreterTest, ExtendDouble) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<double>{1.4});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<double>{1.4});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Double, 0x3ff),
@@ -261,7 +261,7 @@ TEST_F(InterpreterTest, ExtendDouble) {
 }
 
 TEST_F(InterpreterTest, Add2xUint32) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint32_t>{15});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint32_t>{15});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 5),
@@ -273,7 +273,7 @@ TEST_F(InterpreterTest, Add2xUint32) {
 }
 
 TEST_F(InterpreterTest, Add3xFloat) {
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<float>{3.5});
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<float>{3.5});
 
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x7f),  // 1.0 exp
@@ -343,7 +343,7 @@ TEST_F(InterpreterTest, Post) {
         return true;
     };
 
-    mInterpreter->registerBuiltin(Interpreter::POST_FUNCTION_ID, post);
+    mInterpreter->registerBuiltin(0, Interpreter::POST_FUNCTION_ID, post);
 
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::POST)};
     bool res = mInterpreter->run({&instructions.front(), instructions.size()});
@@ -358,8 +358,8 @@ TEST_F(InterpreterTest, Resource) {
         return true;
     };
 
-    mInterpreter->registerBuiltin(0, CheckTopOfStack<uint32_t>{123});
-    mInterpreter->registerBuiltin(Interpreter::RESOURCE_FUNCTION_ID, resource);
+    mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint32_t>{123});
+    mInterpreter->registerBuiltin(0, Interpreter::RESOURCE_FUNCTION_ID, resource);
 
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::RESOURCE, 123),
                                        instruction(Interpreter::InstructionCode::CALL, 0)};

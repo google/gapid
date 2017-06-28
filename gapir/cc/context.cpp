@@ -147,23 +147,23 @@ void Context::onDebugMessage(int severity, const char* msg) {
 
 void Context::registerCallbacks(Interpreter* interpreter) {
     // Custom function for posting and fetching resources to and from the server
-    interpreter->registerBuiltin(Interpreter::POST_FUNCTION_ID,
+    interpreter->registerBuiltin(Interpreter::GLOBAL_INDEX, Interpreter::POST_FUNCTION_ID,
                                  [this](Stack* stack, bool) { return this->postData(stack); });
-    interpreter->registerBuiltin(Interpreter::RESOURCE_FUNCTION_ID,
+    interpreter->registerBuiltin(Interpreter::GLOBAL_INDEX, Interpreter::RESOURCE_FUNCTION_ID,
                                  [this](Stack* stack, bool) { return this->loadResource(stack); });
 
     // Registering custom synthetic functions
-    interpreter->registerBuiltin(Builtins::StartTimer,
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::StartTimer,
                                  [this](Stack* stack, bool) { return this->startTimer(stack); });
-    interpreter->registerBuiltin(Builtins::StopTimer,
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::StopTimer,
                                  [this](Stack* stack, bool pushReturn) {
         return this->stopTimer(stack, pushReturn);
     });
-    interpreter->registerBuiltin(Builtins::FlushPostBuffer, [this](Stack* stack, bool) {
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::FlushPostBuffer, [this](Stack* stack, bool) {
         return this->flushPostBuffer(stack);
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayCreateRenderer, [this](Stack* stack, bool) {
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayCreateRenderer, [this](Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
             GAPID_INFO("replayCreateRenderer(%u)", id);
@@ -189,7 +189,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayBindRenderer, [this, interpreter](Stack* stack, bool) {
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayBindRenderer, [this, interpreter](Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
             GAPID_DEBUG("replayBindRenderer(%u)", id);
@@ -209,7 +209,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayChangeBackbuffer, [this](Stack* stack, bool) {
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayChangeBackbuffer, [this](Stack* stack, bool) {
         GlesRenderer::Backbuffer backbuffer;
 
         bool resetViewportScissor = stack->pop<bool>();
@@ -251,7 +251,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayCreateVkInstance,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkInstance,
                                  [this, interpreter](Stack* stack, bool pushReturn) {
         GAPID_INFO("replayCreateVkInstance()");
 
@@ -264,7 +264,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayCreateVkDevice,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkDevice,
                                  [this, interpreter](Stack* stack, bool pushReturn) {
         GAPID_INFO("replayCreateVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -276,7 +276,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayRegisterVkInstance,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkInstance,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayRegisterVkInstance()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -288,7 +288,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayUnregisterVkInstance,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkInstance,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayUnregisterVkInstance()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -300,7 +300,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayRegisterVkDevice,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkDevice,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayRegisterVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -312,7 +312,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayUnregisterVkDevice,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkDevice,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayUnregisterVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -324,7 +324,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayRegisterVkCommandBuffers,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkCommandBuffers,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayRegisterVkCommandBuffers()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -336,7 +336,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayUnregisterVkCommandBuffers,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkCommandBuffers,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("replayUnregisterVkCommandBuffers()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -348,7 +348,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ToggleVirtualSwapchainReturnAcquiredImage,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ToggleVirtualSwapchainReturnAcquiredImage,
                                  [this, interpreter](Stack* stack, bool) {
         GAPID_INFO("ToggleVirtualSwapchainReturnAcquiredImage()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -361,6 +361,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     });
 
     interpreter->registerBuiltin(
+        Vulkan::INDEX,
         Builtins::ReplayAllocateImageMemory,
         [this, interpreter](Stack* stack, bool push_return) {
             GAPID_INFO("replayAllocateImageMemory()");
@@ -374,7 +375,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             }
         });
 
-    interpreter->registerBuiltin(Builtins::ReplayGetFenceStatus,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetFenceStatus,
                                  [this, interpreter](Stack* stack, bool push_return) {
         GAPID_INFO("ReplayGetFenceStatus()");
         if (mBoundVulkanRenderer != nullptr) {
@@ -386,7 +387,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Builtins::ReplayGetEventStatus,
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetEventStatus,
                                  [this, interpreter](Stack* stack, bool push_return) {
         GAPID_INFO("ReplayGetEventStatus()");
         if (mBoundVulkanRenderer != nullptr) {

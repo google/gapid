@@ -17,11 +17,9 @@ package template
 import (
 	"errors"
 	"fmt"
-	"unicode"
-
 	"reflect"
-
 	"strings"
+	"unicode"
 
 	"github.com/google/gapid/gapil/semantic"
 )
