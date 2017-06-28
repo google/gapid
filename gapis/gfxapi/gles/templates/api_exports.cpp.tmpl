@@ -100,7 +100,9 @@ Symbol kGLESExports[] = {
         Spy* s = Spy::get();
         GAPID_DEBUG({{Template "C++.PrintfCommandCall" $c}});
         if (!s->try_to_enter()) {
-          GAPID_INFO("{{$name}} at %p: GAPII re-entered. Just invoking imported function at %p", {{$name}}, s->{{$imports}}.{{$name}});
+          {{if not (GetAnnotation $c "ignore_reentry")}}
+            GAPID_INFO("{{$name}} at %p: GAPII re-entered. Just invoking imported function at %p", {{$name}}, s->{{$imports}}.{{$name}});
+          {{end}}
           {{if not (IsVoid $c.Return.Type)}}auto _result_ = §{{end}}
           s->{{$imports}}.{{$name}}({{Template "C++.CallArguments" $c}});
           GAPID_DEBUG("{{$name}}() -- done");
