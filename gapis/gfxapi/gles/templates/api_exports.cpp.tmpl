@@ -62,7 +62,7 @@ extern "C" {«
 namespace gapii {
 
 Symbol kGLESExports[] = {
-{{range $i, $c := AllCommands $}}
+{{range $i, $c := AllCommandsSorted $}}
   {{$name := Macro "CmdName" $c}}
   {{if not (GetAnnotation $c "synthetic")}}
     {"{{$name}}", reinterpret_cast<void*>({{$name}})},

@@ -17,6 +17,7 @@ package template
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/google/gapid/gapil/semantic"
 )
@@ -117,10 +118,10 @@ func (f *Functions) Decompose(ty semantic.Type) semantic.Type {
 
 // AllCommands returns a list of all cmd entries for a given API, regardless
 // of whether they are free functions, class methods or pseudonym methods.
-func (f *Functions) AllCommands(api interface{}) ([]interface{}, error) {
+func (f *Functions) AllCommands(api interface{}) ([]*semantic.Function, error) {
 	switch api := api.(type) {
 	case *semantic.API:
-		var commands []interface{}
+		var commands []*semantic.Function
 		for _, function := range api.Functions {
 			commands = append(commands, function)
 		}
@@ -138,6 +139,17 @@ func (f *Functions) AllCommands(api interface{}) ([]interface{}, error) {
 	default:
 		return nil, fmt.Errorf("first argument must be of type *semantic.API, was %T", api)
 	}
+}
+
+// AllCommandsSorted returns the list of commands retuned by AllCommands, sorted
+// lexicographically.
+func (f *Functions) AllCommandsSorted(api interface{}) ([]*semantic.Function, error) {
+	cmds, err := f.AllCommands(api)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(cmds, func(i, j int) bool { return cmds[i].Name() < cmds[j].Name() })
+	return cmds, nil
 }
 
 // PackageOf walks the ownership hierarchy to find the API that the supplied
