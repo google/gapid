@@ -161,15 +161,9 @@ func (pkg *Package) mergeTool(ctx context.Context, tool *ToolSet) {
 			}
 			for _, android := range tool.Android {
 				if android.GapidApk != "" {
-					merged := false
-					for _, a := range t.Android {
-						if a.Abi.SameAs(android.Abi) {
-							a.GapidApk = android.GapidApk
-							merged = true
-							break
-						}
-					}
-					if !merged {
+					if a := t.FindAndroidToolSet(android.Abi); a != nil {
+						a.GapidApk = android.GapidApk
+					} else {
 						t.Android = append(t.Android, android)
 					}
 				}
@@ -181,9 +175,9 @@ func (pkg *Package) mergeTool(ctx context.Context, tool *ToolSet) {
 	pkg.Tool = append(pkg.Tool, tool)
 }
 
-// GetTools will return the toolset that match the abi, if there is one.
-func (p *Package) GetHostTools(abi *device.ABI) *ToolSet {
-	for _, t := range p.Tool {
+// GetHostTools will return the toolset that match the abi, if there is one.
+func (pkg *Package) GetHostTools(abi *device.ABI) *ToolSet {
+	for _, t := range pkg.Tool {
 		if t.Abi.SameAs(abi) {
 			return t
 		}
@@ -191,16 +185,22 @@ func (p *Package) GetHostTools(abi *device.ABI) *ToolSet {
 	return nil
 }
 
-func (p *Package) GetTargetTools(hostAbi *device.ABI, targetAbi *device.ABI) *AndroidToolSet {
-	hostTools := p.GetHostTools(hostAbi)
-	if hostTools == nil {
-		return nil
-	}
-
-	for _, a := range hostTools.Android {
-		if a.Abi.SameAs(targetAbi) {
+// FindAndroidToolSet will return the toolset for a target ABI, if there is one.
+func (t *ToolSet) FindAndroidToolSet(abi *device.ABI) *AndroidToolSet {
+	for _, a := range t.Android {
+		if a.Abi.SameAs(abi) {
 			return a
 		}
 	}
 	return nil
+}
+
+// GetTargetTools will return the toolset for a target ABI that was build by a host ABI, if there is one.
+func (pkg *Package) GetTargetTools(hostAbi *device.ABI, targetAbi *device.ABI) *AndroidToolSet {
+	hostTools := pkg.GetHostTools(hostAbi)
+	if hostTools == nil {
+		return nil
+	}
+
+	return hostTools.FindAndroidToolSet(targetAbi)
 }
