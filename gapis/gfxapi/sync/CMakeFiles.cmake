@@ -18,8 +18,8 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    synchronization_data.go
-    synchronized_api.go
+    data.go
+    sync.go
 )
 set(dirs
 

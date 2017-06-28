@@ -19,23 +19,23 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/gfxapi/synchronization"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 )
 
 func TestSubcommandLessThan(t *testing.T) {
 	ctx := log.Testing(t)
-	assert.With(ctx).That(synchronization.SubcommandIndex{0}.LessThan(synchronization.SubcommandIndex{1})).Equals(true)
-	assert.With(ctx).That(synchronization.SubcommandIndex{1}.LessThan(synchronization.SubcommandIndex{0})).Equals(false)
-	assert.With(ctx).That(synchronization.SubcommandIndex{0}.LessThan(synchronization.SubcommandIndex{0})).Equals(false)
-	assert.With(ctx).That(synchronization.SubcommandIndex{0, 0}.LessThan(synchronization.SubcommandIndex{0, 1})).Equals(true)
-	assert.With(ctx).That(synchronization.SubcommandIndex{1, 0}.LessThan(synchronization.SubcommandIndex{0, 1})).Equals(false)
-	assert.With(ctx).That(synchronization.SubcommandIndex{1, 0}.LessThan(synchronization.SubcommandIndex{0, 1})).Equals(false)
+	assert.With(ctx).That(sync.SubcommandIndex{0}.LessThan(sync.SubcommandIndex{1})).Equals(true)
+	assert.With(ctx).That(sync.SubcommandIndex{1}.LessThan(sync.SubcommandIndex{0})).Equals(false)
+	assert.With(ctx).That(sync.SubcommandIndex{0}.LessThan(sync.SubcommandIndex{0})).Equals(false)
+	assert.With(ctx).That(sync.SubcommandIndex{0, 0}.LessThan(sync.SubcommandIndex{0, 1})).Equals(true)
+	assert.With(ctx).That(sync.SubcommandIndex{1, 0}.LessThan(sync.SubcommandIndex{0, 1})).Equals(false)
+	assert.With(ctx).That(sync.SubcommandIndex{1, 0}.LessThan(sync.SubcommandIndex{0, 1})).Equals(false)
 
-	assert.With(ctx).That(synchronization.SubcommandIndex{1, 0}.LessThan(synchronization.SubcommandIndex{1})).Equals(true)
-	assert.With(ctx).That(synchronization.SubcommandIndex{1}.LessThan(synchronization.SubcommandIndex{1, 0})).Equals(false)
+	assert.With(ctx).That(sync.SubcommandIndex{1, 0}.LessThan(sync.SubcommandIndex{1})).Equals(true)
+	assert.With(ctx).That(sync.SubcommandIndex{1}.LessThan(sync.SubcommandIndex{1, 0})).Equals(false)
 }
 
-func deceq(s synchronization.SubcommandIndex, s2 synchronization.SubcommandIndex) bool {
+func deceq(s sync.SubcommandIndex, s2 sync.SubcommandIndex) bool {
 	r := s
 	r.Decrement()
 	return !((r.LessThan(s2)) || s2.LessThan(r))
@@ -43,10 +43,10 @@ func deceq(s synchronization.SubcommandIndex, s2 synchronization.SubcommandIndex
 
 func TestDecrement(t *testing.T) {
 	ctx := log.Testing(t)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{1}, synchronization.SubcommandIndex{0})).Equals(true)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{1, 1}, synchronization.SubcommandIndex{1, 0})).Equals(true)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{1, 0}, synchronization.SubcommandIndex{0})).Equals(true)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{2, 3, 4}, synchronization.SubcommandIndex{2, 3, 3})).Equals(true)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{0}, synchronization.SubcommandIndex{})).Equals(true)
-	assert.With(ctx).That(deceq(synchronization.SubcommandIndex{2, 3, 0}, synchronization.SubcommandIndex{2, 2})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{1}, sync.SubcommandIndex{0})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{1, 1}, sync.SubcommandIndex{1, 0})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{1, 0}, sync.SubcommandIndex{0})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{2, 3, 4}, sync.SubcommandIndex{2, 3, 3})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{0}, sync.SubcommandIndex{})).Equals(true)
+	assert.With(ctx).That(deceq(sync.SubcommandIndex{2, 3, 0}, sync.SubcommandIndex{2, 2})).Equals(true)
 }

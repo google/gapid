@@ -23,13 +23,13 @@ import (
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/synchronization"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 type CustomState struct {
-	SubcommandIndex   synchronization.SubcommandIndex
+	SubcommandIndex   sync.SubcommandIndex
 	CurrentSubmission *atom.Atom
 	HandleSubcommand  func(interface{}) `nobox:"true"`
 }
@@ -82,7 +82,7 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 	return nil, fmt.Errorf("Cannot get the mesh data from %v", o)
 }
 
-func (api) ResolveSynchronization(ctx context.Context, d *synchronization.SynchronizationData, c *path.Capture) error {
+func (api) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
 	ctx = capture.Put(ctx, c)
 	st, err := capture.NewState(ctx)
 	if err != nil {
@@ -93,32 +93,32 @@ func (api) ResolveSynchronization(ctx context.Context, d *synchronization.Synchr
 		return err
 	}
 	s := GetState(st)
-	i := synchronization.SynchronizationIndex(0)
-	submissionMap := make(map[*atom.Atom]synchronization.SynchronizationIndex)
+	i := atom.ID(0)
+	submissionMap := make(map[*atom.Atom]atom.ID)
 
 	s.HandleSubcommand = func(a interface{}) {
-		rootIdx := synchronization.SynchronizationIndex(i)
+		rootIdx := atom.ID(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
-			rootIdx = synchronization.SynchronizationIndex(k)
+			rootIdx = atom.ID(k)
 		} else {
 			submissionMap[s.CurrentSubmission] = i
 		}
 
 		if rng, ok := d.CommandRanges[rootIdx]; ok {
-			rng.LastIndex = append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...)
+			rng.LastIndex = append(sync.SubcommandIndex(nil), s.SubcommandIndex...)
 			rng.Ranges[i] = rng.LastIndex
 		} else {
-			er := synchronization.ExecutionRanges{
-				LastIndex: append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...),
-				Ranges:    make(map[synchronization.SynchronizationIndex]synchronization.SubcommandIndex),
+			er := sync.ExecutionRanges{
+				LastIndex: append(sync.SubcommandIndex(nil), s.SubcommandIndex...),
+				Ranges:    make(map[atom.ID]sync.SubcommandIndex),
 			}
-			er.Ranges[i] = append(synchronization.SubcommandIndex(nil), s.SubcommandIndex...)
+			er.Ranges[i] = append(sync.SubcommandIndex(nil), s.SubcommandIndex...)
 			d.CommandRanges[rootIdx] = er
 		}
 	}
 
 	for idx, a := range a.Atoms {
-		i = synchronization.SynchronizationIndex(idx)
+		i = atom.ID(idx)
 		if err := a.Mutate(ctx, st, nil); err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (api) ResolveSynchronization(ctx context.Context, d *synchronization.Synchr
 }
 
 // Interface check
-var _ synchronization.SynchronizedApi = &api{}
+var _ sync.SynchronizedAPI = &api{}
 
 func (api) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
 	return NewVulkanTerminator(ctx, c)

@@ -27,7 +27,7 @@ import (
 type EarlyTerminator struct {
 	lastIndex atom.ID
 	done      bool
-	ApiIdx    gfxapi.ID
+	APIIdx    gfxapi.ID
 }
 
 // Interface check
@@ -46,7 +46,7 @@ func (t *EarlyTerminator) Add(ctx context.Context, id atom.ID, idx []uint64) err
 }
 
 func (t *EarlyTerminator) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
-	if t.done && (a.API() == nil || a.API().ID() == t.ApiIdx) {
+	if t.done && (a.API() == nil || a.API().ID() == t.APIIdx) {
 		return
 	}
 

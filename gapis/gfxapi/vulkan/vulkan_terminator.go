@@ -22,7 +22,7 @@ import (
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/synchronization"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
@@ -45,17 +45,17 @@ type VulkanTerminator struct {
 	lastRequest     atom.ID
 	requestSubIndex []uint64
 	stopped         bool
-	syncData        *synchronization.SynchronizationData
+	syncData        *sync.Data
 }
 
 var _ transform.Terminator = &VulkanTerminator{}
 
 func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTerminator, error) {
-	sync, err := database.Build(ctx, &resolve.SynchronizationResolvable{capture})
+	syncData, err := database.Build(ctx, &resolve.SynchronizationResolvable{capture})
 	if err != nil {
 		return nil, err
 	}
-	s, ok := sync.(*synchronization.SynchronizationData)
+	s, ok := syncData.(*sync.Data)
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
@@ -75,9 +75,9 @@ func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uin
 	}
 
 	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
-	sc := synchronization.SubcommandIndex(t.requestSubIndex[1:])
+	sc := sync.SubcommandIndex(t.requestSubIndex[1:])
 	handled := false
-	if rng, ok := t.syncData.CommandRanges[synchronization.SynchronizationIndex(id)]; ok {
+	if rng, ok := t.syncData.CommandRanges[id]; ok {
 
 		for _, k := range rng.SortedKeys() {
 			if !rng.Ranges[k].LessThan(sc) {
@@ -111,14 +111,14 @@ func walkCommands(s *State,
 	}
 }
 
-func getExtra(idx synchronization.SubcommandIndex, loopLevel int) int {
+func getExtra(idx sync.SubcommandIndex, loopLevel int) int {
 	if len(idx) == loopLevel+1 {
 		return 1
 	}
 	return 0
 }
 
-func incrementLoopLevel(idx synchronization.SubcommandIndex, loopLevel *int) bool {
+func incrementLoopLevel(idx sync.SubcommandIndex, loopLevel *int) bool {
 	if len(idx) == *loopLevel+1 {
 		return false
 	}
@@ -129,7 +129,7 @@ func incrementLoopLevel(idx synchronization.SubcommandIndex, loopLevel *int) boo
 // resolveCurrentRenderPass walks all of the current and pending commands
 // to determine what renderpass we are in after the idx'th subcommand
 func resolveCurrentRenderPass(ctx context.Context, s *gfxapi.State, submit *VkQueueSubmit,
-	idx synchronization.SubcommandIndex, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
+	idx sync.SubcommandIndex, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
 	if len(idx) == 0 {
 		return lrp, subpass
 	}
@@ -210,7 +210,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *gfxapi.State, submit *VkQu
 func rebuildCommandBuffer(ctx context.Context,
 	commandBuffer *CommandBufferObject,
 	s *gfxapi.State,
-	idx synchronization.SubcommandIndex,
+	idx sync.SubcommandIndex,
 	additionalCommands []interface{}) (VkCommandBuffer, []atom.Atom, []func()) {
 
 	x := make([]atom.Atom, 0)
@@ -290,7 +290,7 @@ func rebuildCommandBuffer(ctx context.Context,
 // index it would remain valid. This means closing any open
 // RenderPasses.
 func cutCommandBuffer(ctx context.Context, id atom.ID,
-	a atom.Atom, idx synchronization.SubcommandIndex, out transform.Writer) {
+	a atom.Atom, idx sync.SubcommandIndex, out transform.Writer) {
 	submit := a.(*VkQueueSubmit)
 	s := out.State()
 	c := GetState(s)
@@ -356,7 +356,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	}
 
 	cmdBuffer := c.CommandBuffers[newCommandBuffers[lastCommandBuffer]]
-	subIdx := make(synchronization.SubcommandIndex, 0)
+	subIdx := make(sync.SubcommandIndex, 0)
 	if !skipAll {
 		subIdx = idx[2:]
 	}
@@ -391,8 +391,8 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, a atom.Ato
 	}
 
 	doCut := false
-	cutIndex := synchronization.SubcommandIndex(nil)
-	if rng, ok := t.syncData.CommandRanges[synchronization.SynchronizationIndex(id)]; ok {
+	cutIndex := sync.SubcommandIndex(nil)
+	if rng, ok := t.syncData.CommandRanges[id]; ok {
 		for k, v := range rng.Ranges {
 			if atom.ID(k) > t.lastRequest {
 				doCut = true

@@ -33,7 +33,7 @@ set(dirs
     all
     core
     gles
-    synchronization
+    sync
     templates
     test
     vulkan

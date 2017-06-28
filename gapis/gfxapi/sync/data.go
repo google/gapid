@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package synchronization
+package sync
 
 import (
 	"sort"
@@ -22,8 +22,7 @@ import (
 
 // An index defines the location of one side
 // synchronization dependency.
-type SynchronizationIndex atom.ID
-type SynchronizationIndices []SynchronizationIndex
+type SynchronizationIndices []atom.ID
 
 // The index of a subcommand within a command
 type SubcommandIndex []uint64
@@ -34,20 +33,20 @@ type SubcommandIndex []uint64
 // which subcommandis the last that will be run at that point.
 type ExecutionRanges struct {
 	LastIndex SubcommandIndex
-	Ranges    map[SynchronizationIndex]SubcommandIndex
+	Ranges    map[atom.ID]SubcommandIndex
 }
 
-// SynchronizationData contains a map of synchronization pairs.
-// The SynchronizationIndex is the command that will be blocked from
+// Data contains a map of synchronization pairs.
+// The atom.ID is the command that will be blocked from
 // completion, and what subcommands will be made available by future commands.
-type SynchronizationData struct {
-	CommandRanges map[SynchronizationIndex]ExecutionRanges
+type Data struct {
+	CommandRanges map[atom.ID]ExecutionRanges
 }
 
-// NewSynchronizationData creates a new clean SynchronizationData object
-func NewSynchronizationData() *SynchronizationData {
-	s := new(SynchronizationData)
-	s.CommandRanges = make(map[SynchronizationIndex]ExecutionRanges)
+// NewData creates a new clean Data object
+func NewData() *Data {
+	s := new(Data)
+	s.CommandRanges = make(map[atom.ID]ExecutionRanges)
 	return s
 }
 
@@ -101,7 +100,7 @@ func (s SynchronizationIndices) Less(i, j int) bool {
 }
 
 // SortedKeys returns the keys of 's' in sorted order
-func (s SynchronizationData) SortedKeys() SynchronizationIndices {
+func (s Data) SortedKeys() SynchronizationIndices {
 	v := make(SynchronizationIndices, 0, len(s.CommandRanges))
 	for k, _ := range s.CommandRanges {
 		v = append(v, k)
