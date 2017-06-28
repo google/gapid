@@ -486,6 +486,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					moveClientVBsToVAs(ctx, t, clientVAs, first, count, i, a, s, c, out)
 				}
 			}
+			MultiviewDraw(ctx, i, a, out)
+			return
 
 		case *GlDrawElements:
 			if target.vertexArrayObjects == required {
@@ -523,9 +525,10 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 					}
 
-					glDrawElements := *a
-					glDrawElements.Indices.addr = 0
-					a = &glDrawElements
+					a := *a
+					a.Indices.addr = 0
+					MultiviewDraw(ctx, i, &a, out)
+					return
 
 				} else if clientVB { // GL_ELEMENT_ARRAY_BUFFER is bound
 					// Some of the vertex arrays for the glDrawElements call is in
@@ -540,6 +543,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, i, a, s, c, out)
 				}
 			}
+			MultiviewDraw(ctx, i, a, out)
+			return
 
 		case *GlCompressedTexImage2D:
 			if _, supported := target.compressedTextureFormats[a.Internalformat]; !supported {
@@ -1049,44 +1054,16 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
+		case *GlClear: // TODO:Generalize
+			MultiviewDraw(ctx, i, a, out)
+			return
+
 		default:
-			if a.AtomFlags().IsDrawCall() && clientVAsBound(c, clientVAs) {
-				log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Atom: %v", a)
-			}
-		}
-
-		// Naive multiview implementation - invoke each draw call several times with different layers
-		_, isClearCall := a.(*GlClear) // TODO: Generalize
-		if a.AtomFlags().IsDrawCall() || isClearCall {
-			numViews := uint32(1)
-			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
-				numViews = u32.Max(numViews, uint32(att.NumViews))
-			})
-			if numViews > 1 {
-				for viewID := GLuint(0); viewID < GLuint(numViews); viewID++ {
-					// Set the magic uniform which shaders use to fetch view-dependent attributes.
-					// It is missing from the observed extras, so normal mutation would fail.
-					out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-						if c.Bound.Program != nil {
-							viewIDLocation := UniformLocation(0x7FFF0000)
-							NewGlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
-							NewGlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
-						}
-						return nil
-					}))
-
-					// For each attachment, bind the layer corresponding to this ViewID.
-					// Do not modify the state so that we do not revert to single-view for next draw call.
-					c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
-						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-							if a.Texture != nil {
-								NewGlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
-							}
-							return nil
-						}))
-					})
-					out.MutateAndWrite(ctx, i, a)
+			if a.AtomFlags().IsDrawCall() {
+				if clientVAsBound(c, clientVAs) {
+					log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Atom: %v", a)
 				}
+				MultiviewDraw(ctx, i, a, out)
 				return
 			}
 		}
@@ -1095,6 +1072,45 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	})
 
 	return t, nil
+}
+
+// Naive multiview implementation - invoke each draw call several times with different layers
+func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+	s := out.State()
+	c := GetContext(s)
+	dID := i.Derived()
+	numViews := uint32(1)
+	c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
+		numViews = u32.Max(numViews, uint32(att.NumViews))
+	})
+	if numViews > 1 {
+		for viewID := GLuint(0); viewID < GLuint(numViews); viewID++ {
+			// Set the magic uniform which shaders use to fetch view-dependent attributes.
+			// It is missing from the observed extras, so normal mutation would fail.
+			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+				if c.Bound.Program != nil {
+					viewIDLocation := UniformLocation(0x7FFF0000)
+					NewGlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
+					NewGlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
+				}
+				return nil
+			}))
+
+			// For each attachment, bind the layer corresponding to this ViewID.
+			// Do not modify the state so that we do not revert to single-view for next draw call.
+			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
+				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+					if a.Texture != nil {
+						NewGlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
+					}
+					return nil
+				}))
+			})
+			out.MutateAndWrite(ctx, i, a)
+		}
+	} else {
+		out.MutateAndWrite(ctx, i, a)
+	}
 }
 
 func (fb *Framebuffer) ForEachAttachment(action func(GLenum, FramebufferAttachment)) {
