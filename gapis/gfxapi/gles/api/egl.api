@@ -57,7 +57,7 @@ sub GLenum EGLSizedFormat2GLSizedFormat(AndroidGraphicsBufferFormat eglSizedForm
     case HAL_PIXEL_FORMAT_RGBA_5551:    GL_RGB5_A1
     case HAL_PIXEL_FORMAT_RGBA_4444:    GL_RGB4
     case HAL_PIXEL_FORMAT_YCrCb_420_SP: GL_RGB8 // Does not have a precise match
-    default: GL_RGBA8 // TODO: Report warning
+    default:                            GL_RGBA8 // TODO: Report warning
   }
 }
 
@@ -68,7 +68,7 @@ class EGLImage {
   @hide TextureId CompatReplacement
 }
 
-map!(EGLContext, ref!Context) EGLContexts
+map!(EGLContext, ref!Context)   EGLContexts
 map!(EGLImageKHR, ref!EGLImage) EGLImages
 
 @no_replay
@@ -122,10 +122,10 @@ cmd EGLBoolean eglCopyBuffers(EGLDisplay          display,
 
 @custom @no_replay
 ///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglCreateContext.xhtml
-cmd EGLContext eglCreateContext(EGLDisplay    display,
-                                EGLConfig     config,
-                                EGLContext    share_context,
-                                EGLint*       attrib_list) {
+cmd EGLContext eglCreateContext(EGLDisplay display,
+                                EGLConfig  config,
+                                EGLContext share_context,
+                                EGLint*    attrib_list) {
   ObserveAttribList(as!EGLint const*(attrib_list))
   context := ?
   EGLContexts[context] = CreateContext(EGLContexts[share_context])
@@ -391,13 +391,13 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
     sf := EGLSizedFormat2GLSizedFormat(info.Format)
     sfInfo := GetSizedFormatInfo(sf)
     i := new!Image(
-      Width:       as!GLsizei(info.Width),
-      Height:      as!GLsizei(info.Height),
-      SizedFormat: sf,
-      DataFormat:  sfInfo.UnsizedFormat,
-      DataType:    sfInfo.DataType,
+      Width:        as!GLsizei(info.Width),
+      Height:       as!GLsizei(info.Height),
+      SizedFormat:  sf,
+      DataFormat:   sfInfo.UnsizedFormat,
+      DataType:     sfInfo.DataType,
     )
-    EGLImages[img] = new!EGLImage(ID: img, Image: i)
+    EGLImages[img] = new!EGLImage(ID: img,Image:  i)
   }
   // TODO
   return img
@@ -413,8 +413,30 @@ cmd EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR image) {
 
 @if(Extension.EGL_ANDROID_create_native_client_buffer)
 @doc("https://www.khronos.org/registry/egl/extensions/ANDROID/EGL_ANDROID_create_native_client_buffer.txt", Extension.EGL_ANDROID_create_native_client_buffer)
+@no_replay
 cmd EGLClientBuffer eglCreateNativeClientBufferANDROID(const EGLint* attrib_list) {
   ObserveAttribList(attrib_list)
   // TODO
   return ?
+}
+
+@no_replay
+cmd EGLClientBuffer eglGetNativeClientBufferANDROID(AHardwareBuffer buffer) {
+  return ? // TODO
+}
+
+@if(Extension.EGL_ANDROID_native_fence_sync)
+@doc("https://www.khronos.org/registry/EGL/extensions/ANDROID/EGL_ANDROID_native_fence_sync.txt", Extension.EGL_ANDROID_native_fence_sync)
+@no_replay
+cmd EGLint eglDupNativeFenceFDANDROID(EGLDisplay dpy, EGLSyncKHR sync) {
+  return ? // TODO
+}
+
+@if(Extension.EGL_KHR_wait_sync)
+@doc("https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_wait_sync.txt", Extension.EGL_KHR_wait_sync)
+@no_replay
+cmd EGLint eglWaitSyncKHR(EGLDisplay dpy,
+                          EGLSyncKHR sync,
+                          EGLint     flags) {
+  return ? // TODO
 }
