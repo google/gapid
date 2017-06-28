@@ -498,17 +498,17 @@ func classInitializer(rv *resolver, class *semantic.Class, in *ast.Call) *semant
 		for _, a := range in.Arguments {
 			n, ok := a.(*ast.NamedArg)
 			if !ok {
-				rv.errorf(a, "class %s has no field %s", class.Name, n.Name.Value)
+				rv.errorf(a, "initializer for class %s uses a mix of named and unnamed arguments", class.Name())
 				return out
 			}
 			m := class.Member(n.Name.Value)
 			if m == nil {
-				rv.errorf(n.Name, "class %s has no field %s", class.Name, n.Name.Value)
+				rv.errorf(n.Name, "class %s has no field %s", class.Name(), n.Name.Value)
 				return out
 			}
 			f, ok := m.(*semantic.Field)
 			if !ok {
-				rv.errorf(n.Name, "member %s of class %s is not a field [%T]", n.Name.Value, class.Name, m)
+				rv.errorf(n.Name, "member %s of class %s is not a field [%T]", n.Name.Value, class.Name(), m)
 				return out
 			}
 			rv.mappings.add(n.Name, f)
