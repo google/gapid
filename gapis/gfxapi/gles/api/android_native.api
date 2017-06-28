@@ -22,6 +22,8 @@ class AndroidNativeBufferExtra {
   @unused AndroidGraphicsBufferUsage  Usage
 }
 
+type void* AHardwareBuffer
+
 @post_fence
 extern ref!AndroidNativeBufferExtra GetAndroidNativeBufferExtra(void* buffer)
 
