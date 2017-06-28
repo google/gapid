@@ -17,8 +17,9 @@
 #ifndef GAPIR_FUNCTION_TABLE_H
 #define GAPIR_FUNCTION_TABLE_H
 
-#include <stdint.h>
+#include "core/cc/log.h"
 
+#include <stdint.h>
 #include <functional>
 #include <unordered_map>
 
@@ -61,6 +62,10 @@ inline FunctionTable::Function* FunctionTable::lookup(Id id) {
 }
 
 inline void FunctionTable::insert(Id id, Function func) {
+    if (mFunctions.count(id) != 0) {
+        GAPID_ERROR("Duplicate functions inserted into table");
+    }
+
     mFunctions[id] = func;
 }
 
