@@ -63,9 +63,11 @@ sub GLenum EGLSizedFormat2GLSizedFormat(AndroidGraphicsBufferFormat eglSizedForm
 
 @internal
 class EGLImage {
-  EGLImageKHR     ID
-  ref!Image       Image
-  @hide TextureId CompatReplacement
+  EGLImageKHR ID
+  ref!Image   Image
+  // This points to the underlying storage for this EGLImage
+  ContextID   TargetContext
+  TextureId   TargetTexture
 }
 
 map!(EGLContext, ref!Context)   EGLContexts
@@ -387,20 +389,34 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
                                   const EGLint*   attrib_list) {
   ObserveAttribList(attrib_list)
   img := ?
-  if target == EGL_NATIVE_BUFFER_ANDROID {
-    info := GetAndroidNativeBufferExtra(as!void*(buffer))
-    sf := EGLSizedFormat2GLSizedFormat(info.Format)
-    sfInfo := GetSizedFormatInfo(sf)
-    i := new!Image(
-      Width:        as!GLsizei(info.Width),
-      Height:       as!GLsizei(info.Height),
-      SizedFormat:  sf,
-      DataFormat:   sfInfo.UnsizedFormat,
-      DataType:     sfInfo.DataType,
-    )
-    EGLImages[img] = new!EGLImage(ID: img,Image:  i)
+  switch target {
+    case EGL_GL_TEXTURE_2D: {
+      c := EGLContexts[ctx]
+      assert(c != null) // EGL_BAD_CONTEXT
+      t := c.Objects.Shared.Textures[as!TextureId(as!u64(buffer))]
+      assert(t != null) // EGL_BAD_PARAMETER
+      i := t.Levels[0].Layers[0]
+      assert(i != null) // EGL_BAD_PARAMETER
+      EGLImages[img] = new!EGLImage(
+        ID: img,
+        Image: i,
+        TargetContext: c.Identifier,
+        TargetTexture: t.ID)
+    }
+    case EGL_NATIVE_BUFFER_ANDROID: {
+      info := GetAndroidNativeBufferExtra(as!void*(buffer))
+      sf := EGLSizedFormat2GLSizedFormat(info.Format)
+      sfInfo := GetSizedFormatInfo(sf)
+      i := new!Image(
+        Width:        as!GLsizei(info.Width),
+        Height:       as!GLsizei(info.Height),
+        SizedFormat:  sf,
+        DataFormat:   sfInfo.UnsizedFormat,
+        DataType:     sfInfo.DataType,
+      )
+      EGLImages[img] = new!EGLImage(ID: img,Image:  i)
+    }
   }
-  // TODO
   return img
 }
 

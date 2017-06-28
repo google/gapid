@@ -77,13 +77,21 @@ func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bo
 func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
 	ctx := GetContext(s)
 	if ctx != nil && i != 0 {
-		if tex := ctx.Objects.Shared.Textures[i]; tex != nil && tex.EGLImage != nil {
-			i := tex.EGLImage.CompatReplacement
-			// We are not sure which context the replacement was created in - just search them.
-			for _, ctx := range GetState(s).Contexts {
-				if ctx != nil && ctx.Info.Initialized && ctx.Objects.Shared.Textures.Contains(i) {
-					return objectKey{&ctx.Objects.Shared.Textures, i}, true
+		if tex := ctx.Objects.Shared.Textures[i]; tex != nil {
+			_, isDeleteCmd := a.(*GlDeleteTextures)
+			if eglImage := tex.EGLImage; eglImage != nil && !isDeleteCmd {
+				// Ignore this texture and use the data that EGLImage points to.
+				// (unless it is a delete command - we do not want kill the shared data)
+				ctxId, i := eglImage.TargetContext, eglImage.TargetTexture
+				for _, ctx := range GetState(s).Contexts {
+					if ctx != nil && ctx.Info.Initialized && ctx.Identifier == ctxId {
+						if !ctx.Objects.Shared.Textures.Contains(i) {
+							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
+						}
+						return objectKey{&ctx.Objects.Shared.Textures, i}, true
+					}
 				}
+				panic(fmt.Errorf("Can not find EGL replacement context %v", ctxId))
 			}
 		}
 		key, remap = objectKey{&ctx.Objects.Shared.Textures, i}, true
