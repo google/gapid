@@ -975,19 +975,29 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}))
 
 				// Create GL texture as compat replacement of the EGL image
-				texId := newTexture(i, out)
-				t := newTweaker(ctx, out, dID)
-				defer t.revert()
-				t.glBindTexture_2D(texId)
-				img := GetState(s).EGLImages[a.Result].Image
-				sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
-				textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
-				out.MutateAndWrite(ctx, dID, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+				switch a.Target {
+				case EGLenum_EGL_GL_TEXTURE_2D:
+					{
+						// The mutate sets the target fileds
+					}
+				case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
+					{
+						texId := newTexture(i, out)
+						t := newTweaker(ctx, out, dID)
+						defer t.revert()
+						t.glBindTexture_2D(texId)
+						img := GetState(s).EGLImages[a.Result].Image
+						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
+						textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
+						out.MutateAndWrite(ctx, dID, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
-				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-					GetState(s).EGLImages[a.Result].CompatReplacement = texId
-					return nil
-				}))
+						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+							GetState(s).EGLImages[a.Result].TargetContext = c.Identifier
+							GetState(s).EGLImages[a.Result].TargetTexture = texId
+							return nil
+						}))
+					}
+				}
 				return
 			}
 
