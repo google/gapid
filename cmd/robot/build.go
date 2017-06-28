@@ -206,17 +206,16 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 	defer artifacts.Close()
 
 	basePath := "gapid/"
-	bindLayoutVirtualSwapChainFunc := func(layoutFunc func(context.Context, layout.LibraryType) (file.Path, error)) func(context.Context) (file.Path, error) {
-		return func(ctx context.Context) (file.Path, error) {
-			return layoutFunc(ctx, layout.LibVirtualSwapChain)
-		}
-	}
 	toolSetPathFunc := map[string]func(context.Context) (file.Path, error){
 		"gapis": layout.Gapis,
 		"gapit": layout.Gapit,
 		"gapir": layout.Gapir,
-		"libVkLayer_VirtualSwapchain.so": bindLayoutVirtualSwapChainFunc(layout.Library),
-		"VirtualSwapchainLayer.json":     bindLayoutVirtualSwapChainFunc(layout.Json),
+		"libVkLayer_VirtualSwapchain.so": func(ctx context.Context) (file.Path, error) {
+			return layout.Library(ctx, layout.LibVirtualSwapChain)
+		},
+		"VirtualSwapchainLayer.json": func(ctx context.Context) (file.Path, error) {
+			return layout.Json(ctx, layout.LibVirtualSwapChain)
+		},
 	}
 	for toolName, pathFunc := range toolSetPathFunc {
 		path, err := pathFunc(ctx)
@@ -256,7 +255,7 @@ type packageUploadVerb struct {
 func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if v.ArtifactPath.IsEmpty() {
 		if len(flags.Args()) != 1 {
-			err := errors.New("Missing expeced argument")
+			err := errors.New("Missing expected argument")
 			return log.Err(ctx, err, "`do robot upload` package expects a single filepath as argument")
 		}
 		log.I(ctx, "Running packageUploadVerb, artifact arg is %s", flags.Args()[0])

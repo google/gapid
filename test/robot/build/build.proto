@@ -95,7 +95,7 @@ message HostToolSet {
 
 // AndroidToolSet is the information for the tools extracted from a package for a particular android ABI.
 message AndroidToolSet {
-  // The type of host system this tool set runs on.
+  // The Android ABI this tool set runs on.
   device.ABI abi = 1;
   // The stash id of the gapid.apk.
   string gapid_apk = 2;
