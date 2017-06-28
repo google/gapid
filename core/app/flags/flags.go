@@ -40,7 +40,7 @@ func (i *U64Slice) String() string {
 func (i *U64Slice) Set(v string) error {
 	*i = make(U64Slice, 0)
 	if v[0] != '[' || v[len(v)-1] != ']' {
-		return fmt.Errorf("Expected [n, n, n, n], could not parse %s", v)
+		return fmt.Errorf("Expected [n, ...], could not parse %s", v)
 	}
 	x := strings.Split(v[1:len(v)-1], ",")
 

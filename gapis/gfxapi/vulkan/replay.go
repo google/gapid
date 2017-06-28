@@ -28,7 +28,7 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/synchronization"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
@@ -64,8 +64,8 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	startScope synchronization.SynchronizationIndex
-	endScope   synchronization.SynchronizationIndex
+	startScope atom.ID
+	endScope   atom.ID
 }
 
 type imgRes struct {
@@ -579,22 +579,22 @@ func (a api) QueryFramebufferAttachment(
 	wireframeMode replay.WireframeMode,
 	hints *service.UsageHints) (*image.Data, error) {
 
-	sync, err := database.Build(ctx, &resolve.SynchronizationResolvable{intent.Capture})
+	syncData, err := database.Build(ctx, &resolve.SynchronizationResolvable{intent.Capture})
 	if err != nil {
 		return nil, err
 	}
-	s, ok := sync.(*synchronization.SynchronizationData)
+	s, ok := syncData.(*sync.Data)
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
-	beginIndex := synchronization.SynchronizationIndex(0)
-	endIndex := synchronization.SynchronizationIndex(0)
+	beginIndex := atom.ID(0)
+	endIndex := atom.ID(0)
 	for _, v := range s.SortedKeys() {
-		if v > synchronization.SynchronizationIndex(after) {
+		if v > after {
 			break
 		}
 		for _, k := range s.CommandRanges[v].SortedKeys() {
-			if k > synchronization.SynchronizationIndex(atom.ID(after)) {
+			if k > after {
 				beginIndex = v
 				endIndex = k
 			}

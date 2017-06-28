@@ -22,7 +22,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/synchronization"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -55,7 +55,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	list, err := synchronization.GetMutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(atomIdx), r.Path.After.Indices[1:])
+	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(atomIdx), r.Path.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}

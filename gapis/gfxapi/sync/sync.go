@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package synchronization
+// Package sync provides interfaces for managing externally synchronized APIs.
+//
+// The methods allow queries to be performed on an API to allow
+// the determination of where blocking operations between threads
+// of execution happen. These methods allow us to reason about
+// execution in a non-linear way.
+package sync
 
 import (
 	"context"
@@ -27,14 +33,14 @@ import (
 // SynchronizedApi defines an API that explicitly has multiple threads of
 // execution. This means that replays are not necessarily linear in terms
 // of atoms.
-type SynchronizedApi interface {
-	// GetTerminator returns a tranform that will allow the given capture to be terminated
+type SynchronizedAPI interface {
+	// GetTerminator returns a transform that will allow the given capture to be terminated
 	// after a atom
 	GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error)
 
 	// ResolveSynchronization resolve all of the synchronization information for
 	// the given API
-	ResolveSynchronization(ctx context.Context, d *SynchronizationData, c *path.Capture) error
+	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 }
 
 type writer struct {
@@ -51,22 +57,22 @@ func (s writer) MutateAndWrite(ctx context.Context, id atom.ID, atom atom.Atom) 
 	s.Atoms.Atoms = append(s.Atoms.Atoms, atom)
 }
 
-// Returns a list of atoms that represent the correct mutations to have the state for all
+// MutationAtomsFor returns a list of atoms that represent the correct mutations to have the state for all
 // atoms before and including the given index.
-func GetMutationAtomsFor(ctx context.Context, cap *path.Capture, atoms *atom.List, id atom.ID, subindex []uint64) (*atom.List, error) {
+func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id atom.ID, subindex []uint64) (*atom.List, error) {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
-	c, err := capture.ResolveFromPath(ctx, cap)
+	rc, err := capture.ResolveFromPath(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 	terminators := make([]transform.Terminator, 0)
 	transforms := transform.Transforms{}
 
-	for _, api := range c.APIs {
-		if sync, ok := api.(SynchronizedApi); ok {
-			term, err := sync.GetTerminator(ctx, cap)
+	for _, api := range rc.APIs {
+		if sync, ok := api.(SynchronizedAPI); ok {
+			term, err := sync.GetTerminator(ctx, c)
 			if err == nil {
 				terminators = append(terminators, term)
 			} else {
@@ -74,7 +80,7 @@ func GetMutationAtomsFor(ctx context.Context, cap *path.Capture, atoms *atom.Lis
 			}
 
 		} else {
-			terminators = append(terminators, &transform.EarlyTerminator{ApiIdx: api.ID()})
+			terminators = append(terminators, &transform.EarlyTerminator{APIIdx: api.ID()})
 		}
 	}
 	for _, t := range terminators {
@@ -84,7 +90,7 @@ func GetMutationAtomsFor(ctx context.Context, cap *path.Capture, atoms *atom.Lis
 		transforms.Add(t)
 	}
 
-	state := c.NewState()
+	state := rc.NewState()
 	a := atom.List{make([]atom.Atom, 0)}
 	w := writer{state, &a}
 	transforms.Transform(ctx, *atoms, w)

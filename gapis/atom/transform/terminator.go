@@ -26,7 +26,7 @@ type Terminator interface {
 	// Adds the given atom, and subcommand as the last atom that
 	// must be observed
 	Add(context.Context, atom.ID, []uint64) error
-	// The transformer Interface
+	// The transformer interface
 	Transform(context.Context, atom.ID, atom.Atom, Writer)
 	Flush(context.Context, Writer)
 }
