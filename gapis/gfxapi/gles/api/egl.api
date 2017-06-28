@@ -225,6 +225,7 @@ cmd EGLDisplay eglGetDisplay(EGLNativeDisplayType native_display) {
 }
 
 @no_replay
+@ignore_reentry // Many drivers internally call eglGetError(). Silence warnings.
 cmd EGLint eglGetError() {
   return ? // TODO
 }
