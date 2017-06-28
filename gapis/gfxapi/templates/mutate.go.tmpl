@@ -287,15 +287,22 @@
 {{define "DeclareBuilderFunctionInfos"}}
   {{AssertType $ "API"}}
 
-  {{range $i, $f := $.Functions}}
+  {{$functions  := $.Functions | WithoutAnnotation "synthetic"}}
+  {{$synthetics := $.Functions | WithAnnotation    "synthetic"}}
+
+  {{range $i, $f := $functions}}
     var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
       ApiIndex:   {{$.Index}},§
-      {{if not (GetAnnotation $f "synthetic")}}
-        ID:         {{$i}},§
-      {{else}}
-        {{/* 0xff81..0xffff reserved for synthetic functions */}}
-        ID:         0x10000 - {{len $.Functions}} + {{$i}},§
-      {{end}}
+      ID:         {{$i}},§
+      ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
+      Parameters: {{len $f.CallParameters}},§
+    }
+  {{end}}
+  {{range $i, $f := $synthetics}}
+    var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
+      ApiIndex:   {{$.Index}},§
+      {{/* 0xff81..0xffff reserved for synthetic functions */}}
+      ID:         0x10000 - {{len $synthetics}} + {{$i}},§
       ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
       Parameters: {{len $f.CallParameters}},§
     }

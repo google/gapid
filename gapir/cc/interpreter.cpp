@@ -50,14 +50,14 @@ Interpreter::Interpreter(const MemoryManager* memoryManager, uint32_t stackDepth
         apiRequestCallback(std::move(callback)),
         mStack(stackDepth, mMemoryManager),
         mLabel(0) {
-    registerBuiltin(PRINT_STACK_FUNCTION_ID, [](Stack* stack, bool) {
+    registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID, [](Stack* stack, bool) {
         stack->printStack();
         return true;
     });
 }
 
-void Interpreter::registerBuiltin(FunctionTable::Id id, FunctionTable::Function func) {
-    mBuiltins.insert(id, func);
+void Interpreter::registerBuiltin(uint8_t api, FunctionTable::Id id, FunctionTable::Function func) {
+    mBuiltins[api].insert(id, func);
 }
 
 void Interpreter::setRendererFunctions(uint8_t api, FunctionTable* functionTable) {
@@ -96,7 +96,7 @@ bool Interpreter::registerApi(uint8_t api) {
 bool Interpreter::call(uint32_t opcode) {
     auto id = opcode & FUNCTION_ID_MASK;
     auto api = (opcode & API_INDEX_MASK) >> API_BIT_SHIFT;
-    auto func = mBuiltins.lookup(id);
+    auto func = mBuiltins[api].lookup(id);
     if (func == nullptr) {
         if (mRendererFunctions.count(api) > 0) {
             func = mRendererFunctions[api]->lookup(id);

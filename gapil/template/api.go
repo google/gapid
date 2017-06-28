@@ -16,6 +16,7 @@ package template
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/google/gapid/gapil/semantic"
 )
@@ -36,6 +37,34 @@ func (*Functions) GetAnnotation(ty interface{}, name string) *semantic.Annotatio
 		return nil
 	}
 	return a.GetAnnotation(name)
+}
+
+// WithAnnotation returns the list l filtered to those items with the specified
+// annotation.
+func (*Functions) WithAnnotation(name string, l interface{}) []interface{} {
+	v := reflect.ValueOf(l)
+	out := []interface{}{}
+	for i, c := 0, v.Len(); i < c; i++ {
+		n := v.Index(i).Interface()
+		if n, ok := n.(semantic.Annotated); ok && n.GetAnnotation(name) != nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// WithoutAnnotation returns the list l filtered to those items without the
+// specified annotation.
+func (*Functions) WithoutAnnotation(name string, l interface{}) []interface{} {
+	v := reflect.ValueOf(l)
+	out := []interface{}{}
+	for i, c := 0, v.Len(); i < c; i++ {
+		n := v.Index(i).Interface()
+		if n, ok := n.(semantic.Annotated); !ok || n.GetAnnotation(name) == nil {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // Underlying returns the underlying type for ty by recursively traversing the

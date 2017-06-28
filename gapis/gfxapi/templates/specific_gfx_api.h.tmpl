@@ -118,11 +118,10 @@ class {{Title (Global "API")}} : public Api {
 // TODO(antiagainst): create a separate file for these builtins.
 namespace Builtins {«
 ¶
-  {{range $i, $c := $.Functions}}
-    {{if (GetAnnotation $c "synthetic")}}
-      {{/* 0xff81..0xffff reserved for synthetic functions */}}
-      static const uint16_t {{Template "C++.Public" (Macro "CmdName" $c)}} = 0x10000 - {{len $.Functions}} + {{$i}};
-    {{end}}
+  {{$synthetics := $.Functions | WithAnnotation "synthetic"}}
+  {{range $i, $c := $synthetics}}
+    {{/* 0xff81..0xffff reserved for synthetic functions */}}
+    static const uint16_t {{Template "C++.Public" (Macro "CmdName" $c)}} = 0x10000 - {{len $synthetics}} + {{$i}};
   {{end}}
 ¶
 }  // namespace Builtins

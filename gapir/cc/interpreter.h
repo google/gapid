@@ -40,6 +40,11 @@ public:
     // It should return true if the request is fulfilled.
     using ApiRequestCallback = std::function<bool(Interpreter*, uint8_t)>;
 
+    enum : uint32_t {
+        // The API index to use for global builtin functions.
+        GLOBAL_INDEX     = 0,
+    };
+
     // Function ids for implementation specific functions and special debugging functions. These
     // functions shouldn't be called by the opcode stream
     enum FunctionIds : uint16_t {
@@ -78,7 +83,7 @@ public:
                 ApiRequestCallback callback);
 
     // Registers a builtin function to the builtin function table.
-    void registerBuiltin(FunctionTable::Id, FunctionTable::Function);
+    void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
 
     // Assigns the function table as the renderer functions to use for the given api.
     void setRendererFunctions(uint8_t api, FunctionTable* functionTable);
@@ -153,7 +158,7 @@ private:
     const MemoryManager* mMemoryManager;
 
     // The builtin functions.
-    FunctionTable mBuiltins;
+    std::unordered_map<uint8_t, FunctionTable> mBuiltins;
 
     // The current renderer functions.
     std::unordered_map<uint8_t, FunctionTable*> mRendererFunctions;
