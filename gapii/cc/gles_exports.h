@@ -24,7 +24,7 @@ struct Symbol {
   void *mFunc;
 };
 
-extern const Symbol kGLESExports[];
+extern Symbol kGLESExports[];
 }
 
 #endif

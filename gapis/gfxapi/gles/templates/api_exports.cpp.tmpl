@@ -61,7 +61,7 @@ extern "C" {«
 
 namespace gapii {
 
-const Symbol kGLESExports[] = {
+Symbol kGLESExports[] = {
 {{range $i, $c := AllCommands $}}
   {{$name := Macro "CmdName" $c}}
   {{if not (GetAnnotation $c "synthetic")}}

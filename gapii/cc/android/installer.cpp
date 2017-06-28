@@ -141,13 +141,20 @@ public:
         for (int i = 0; gapii::kGLESExports[i].mName != nullptr; ++i) {
             const char* name = gapii::kGLESExports[i].mName;
             void* func_export = gapii::kGLESExports[i].mFunc;
+            bool import_found = false;
             for (int i = 0; i < NELEM(gDriverPaths); ++i) {
                 if (void* func_import = dlsym(drivers[i], name)) {
+                    import_found = true;
                     functions[func_import] = func{name, func_export};
                 }
             }
             if (void* func_import = core::GetGlesProcAddress(name, true)) {
+                import_found = true;
                 functions[func_import] = func{name, func_export};
+            }
+            if (!import_found) {
+                // Don't export this function if the driver didn't export it.
+                gapii::kGLESExports[i].mFunc = nullptr;
             }
         }
 
