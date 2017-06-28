@@ -30,3 +30,10 @@ sub T Align!T(T value, T alignment) {
   a := SelectNonZero!T(alignment, 1)
   return ((value + a - 1) / a) * a
 }
+
+sub T min!T(T a, T b) {
+  return switch (a < b) {
+    case true:  a
+    case false: b
+  }
+}

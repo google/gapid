@@ -106,12 +106,12 @@ sub void DrawElements(ref!Context    ctx,
     if (index_buffer != null) {
       // Element array buffer bound - indices is an offset on the buffer.
       index_data := index_buffer.Data
-      offset := as!s32(as!u64(indices))
+      offset := as!u64(indices)
 
       // Read the vertices
       index_size := IndexSize(indices_type)
-      index_start := min(offset, len(index_data)) // Clamp offset
-      index_end := min(offset+as!s32(index_size*count), len(index_data)) // Clamp count
+      index_start := min!u64(offset, len(index_data)) // Clamp offset
+      index_end := min!u64(offset+as!u64(index_size*count), len(index_data)) // Clamp count
       limits := IndexLimits(index_data[index_start:index_end], as!s32(index_size))
       ReadVertexArrays(ctx, limits.first + as!u32(base_vertex), limits.count, as!u32(instance_count))
 

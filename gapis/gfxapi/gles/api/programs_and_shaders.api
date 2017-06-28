@@ -676,7 +676,7 @@ cmd void glGetAttachedShaders(ProgramId program,
   _ = GetProgramOrError(program)
   if buffer_length < 0 { glErrorInvalidValue() }
   p := ctx.Objects.Shared.Programs[program]
-  l := min(as!s32(buffer_length), len(p.Shaders))
+  l := min!s32(as!s32(buffer_length), len(p.Shaders))
   if shaders_length_written != null {
     shaders_length_written[0] = as!GLsizei(l)
   }

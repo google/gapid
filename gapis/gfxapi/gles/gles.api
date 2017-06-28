@@ -398,13 +398,6 @@ class StringSet {
   map!(string, bool) Strings
 }
 
-sub s32 min(s32 a, s32 b) {
-  return switch (a < b) {
-    case true:  a
-    case false: b
-  }
-}
-
 @internal
 class Color {
   GLfloat Red
