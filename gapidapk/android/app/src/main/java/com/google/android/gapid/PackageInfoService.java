@@ -318,7 +318,12 @@ public class PackageInfoService extends IntentService {
                 return -1;
             }
 
-            Drawable drawable = resources.getDrawableForDensity(iconId, iconDensity);
+            Drawable drawable = null;
+            try {
+                drawable = resources.getDrawableForDensity(iconId, iconDensity);
+            } catch (Resources.NotFoundException ex) {
+                return -1;
+            }
             if (drawable == null || !(drawable instanceof BitmapDrawable)) {
                 return -1;
             }
