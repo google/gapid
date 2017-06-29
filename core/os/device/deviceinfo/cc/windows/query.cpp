@@ -47,7 +47,7 @@ struct Context {
     HDC mHDC;
     HGLRC mCtx;
     int mNumCores;
-    char mHostName[MAX_COMPUTERNAME_LENGTH+1];
+    char mHostName[MAX_COMPUTERNAME_LENGTH*4+1]; // Stored as UTF-8
     OSVERSIONINFOEX mOsVersion;
     const char* mOsName;
 };
@@ -146,7 +146,21 @@ bool createContext(void* platform_data) {
     gContext.mNumCores = sysInfo.dwNumberOfProcessors;
 
     DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
-    GetComputerNameA(gContext.mHostName, &size);
+    WCHAR host_wide[MAX_COMPUTERNAME_LENGTH + 1];
+    if (!GetComputerNameW(host_wide, &size)) {
+        snprintf(gContext.mError, sizeof(gContext.mError),
+                 "Couldn't get host name: %d", GetLastError());
+    }
+    WideCharToMultiByte(
+        CP_UTF8,                    // CodePage
+        0,                          // dwFlags
+        host_wide,                  // lpWideCharStr
+        -1,                         // cchWideChar
+        gContext.mHostName,         // lpMultiByteStr
+        sizeof(gContext.mHostName), // cbMultiByte
+        nullptr,                    // lpDefaultChar
+        nullptr                     // lpUsedDefaultChar
+    );
 
     return true;
 }
