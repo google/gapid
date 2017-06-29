@@ -91,14 +91,37 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
 	t.lastGlError = GLenum_GL_NO_ERROR
-	if err := a.Mutate(ctx, t.state, nil /* no builder */); err != nil {
-		if atom.IsAbortedError(err) && t.lastGlError != GLenum_GL_NO_ERROR {
+	mutateErr := a.Mutate(ctx, t.state, nil /* no builder */)
+	if mutateErr != nil {
+		if atom.IsAbortedError(mutateErr) && t.lastGlError != GLenum_GL_NO_ERROR {
 			// GL errors have already been reported - so do not log it again.
 		} else {
-			t.onIssue(a, i, service.Severity_ErrorLevel, err)
+			t.onIssue(a, i, service.Severity_ErrorLevel, mutateErr)
 		}
 	}
+
 	mutatorsGlError := t.lastGlError
+	if e := FindErrorState(a.Extras()); e != nil {
+		// Check that our API file agrees with the driver which we used for tracking.
+		if (e.TraceDriversGlError != GLenum_GL_NO_ERROR) != (mutatorsGlError != GLenum_GL_NO_ERROR) {
+			errorMsg := ErrUnexpectedDriverTraceError{
+				DriverError:   e.TraceDriversGlError,
+				ExpectedError: mutatorsGlError,
+			}
+			t.onIssue(a, i, service.Severity_FatalLevel, errorMsg)
+		}
+		// Check that the C++ and Go versions of the generated code precisely agree.
+		if e.InterceptorsGlError != mutatorsGlError {
+			t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
+				e.InterceptorsGlError.ErrorString(), mutatorsGlError.ErrorString()))
+		}
+	}
+
+	if mutateErr != nil {
+		// Ignore since downstream transform layers can only consume valid commands
+		return
+	}
+
 	out.MutateAndWrite(ctx, i, a)
 
 	dID := i.Derived()
@@ -117,32 +140,14 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			if err != nil {
 				return err
 			}
-			v := r.Uint32()
+			v := GLenum(r.Uint32())
 			err = r.Error()
 			if err != nil {
 				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
 				return err
 			}
-			replayDriversGlError := GLenum(v)
-			if e := FindErrorState(a.Extras()); e != nil {
-				// Check that our API file agrees with the driver which we used for tracking.
-				if (e.TraceDriversGlError != GLenum_GL_NO_ERROR) != (mutatorsGlError != GLenum_GL_NO_ERROR) {
-					err := ErrUnexpectedDriverTraceError{
-						DriverError:   e.TraceDriversGlError,
-						ExpectedError: mutatorsGlError,
-					}
-					t.onIssue(a, i, service.Severity_FatalLevel, err)
-				}
-				// Check that the C++ and Go versions of the generated code precisely agree.
-				if e.InterceptorsGlError != mutatorsGlError {
-					t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
-						e.InterceptorsGlError.ErrorString(), mutatorsGlError.ErrorString()))
-				}
-			}
-			// The compatibility layer should not produce errors but it can propagate or silence them.
-			if (replayDriversGlError != GLenum_GL_NO_ERROR) && (mutatorsGlError == GLenum_GL_NO_ERROR) {
-				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in replay driver, but we expected %s",
-					replayDriversGlError.ErrorString(), mutatorsGlError.ErrorString()))
+			if v != GLenum_GL_NO_ERROR {
+				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%v in replay driver", v))
 			}
 			return nil
 		}))
@@ -158,12 +163,6 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			}
 		}
 		return strings.TrimSpace(s)
-	}
-
-	// Do not do any further checks if we have already determined the command fails.
-	// Furthermore, invalid commands run into risk of accessing invalid state.
-	if mutatorsGlError != GLenum_GL_NO_ERROR {
-		return
 	}
 
 	switch a := a.(type) {
