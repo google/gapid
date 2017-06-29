@@ -534,6 +534,7 @@ class GeneratedSharedObjectNames {
 @internal
 class ContextCreationInfo {
   bool              Initialized
+  string            ThreadName
   @unused bool      PreserveBuffersOnSwap
   @unused ContextID SharedContext
 }
@@ -659,6 +660,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     // First initialization for the context.
     ctx.Constants = staticState.Constants
+    ctx.Info.ThreadName = staticState.ThreadName
     InitVersions(ctx)
     InitExtensions(ctx)
 

@@ -16,6 +16,7 @@
 @internal @serialize
 class StaticContextState {
   Constants Constants
+  string    ThreadName
 }
 
 @post_fence

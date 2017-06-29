@@ -43,6 +43,7 @@
 #endif //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
+#include <sys/prctl.h>
 #include <jni.h>
 static JavaVM* gJavaVM = nullptr;
 extern "C"
@@ -262,7 +263,15 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
 
     Constants constants;
     getContextConstants(constants);
-    std::shared_ptr<StaticContextState> out(new StaticContextState(constants));
+
+    std::string threadName;
+#if TARGET_OS == GAPID_OS_ANDROID
+    char buffer[256] = { 0 };
+    prctl(PR_GET_NAME, (unsigned long)buffer, 0, 0, 0);
+    threadName = std::string(buffer);
+#endif
+
+    std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
 
     // Store the StaticContextState as an extra.
     observer->addExtra(out->toProto());
