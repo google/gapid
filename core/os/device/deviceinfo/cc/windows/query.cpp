@@ -150,6 +150,7 @@ bool createContext(void* platform_data) {
     if (!GetComputerNameW(host_wide, &size)) {
         snprintf(gContext.mError, sizeof(gContext.mError),
                  "Couldn't get host name: %d", GetLastError());
+        return false;
     }
     WideCharToMultiByte(
         CP_UTF8,                    // CodePage
