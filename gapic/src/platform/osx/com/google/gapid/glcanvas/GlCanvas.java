@@ -84,6 +84,7 @@ public class GlCanvas extends Canvas {
     Listener listener = event -> {
       switch (event.type) {
         case SWT.Dispose:
+          terminate();
           setData(GLCONTEXT_KEY, null);
           NSNotificationCenter.defaultCenter().removeObserver(view);
 
@@ -111,4 +112,7 @@ public class GlCanvas extends Canvas {
     checkWidget();
     context.flushBuffer();
   }
+
+  /** Override to perform GL cleanup handling. */
+  protected void terminate() {}
 }
