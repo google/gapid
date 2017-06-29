@@ -42,18 +42,6 @@ func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
 	return info.UnsizedFormat, info.DataType
 }
 
-// getImageFormatOrPanic returns the *image.Format for the given
-// format-type tuple, or panics if the format cannot be matched.
-// TODO: We shouldn't be panicing in this package.
-// Handle errors gracefully and remove.
-func getImageFormatOrPanic(format, ty GLenum) *image.Format {
-	i, e := getImageFormat(format, ty)
-	if e != nil {
-		panic(e)
-	}
-	return i
-}
-
 // getImageFormat returns the *image.Format for the given format-type tuple.
 // The tuple must be in one of the following two forms:
 //   (unsizedFormat, ty) - Uncompressed data.

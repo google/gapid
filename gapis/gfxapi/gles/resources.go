@@ -67,8 +67,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.Re
 				// TODO: Make other results available
 				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
+			format, err := getImageFormat(img.DataFormat, img.DataType)
+			if err != nil {
+				return nil, err
+			}
 			levels[i] = &image.Info{
-				Format: getImageFormatOrPanic(img.DataFormat, img.DataType),
+				Format: format,
 				Width:  uint32(img.Width),
 				Height: uint32(img.Height),
 				Depth:  1,
@@ -86,8 +90,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *gfxapi.State) (*gfxapi.Re
 					// TODO: Make other results available
 					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 				}
+				format, err := getImageFormat(face.DataFormat, face.DataType)
+				if err != nil {
+					return nil, err
+				}
 				img := &image.Info{
-					Format: getImageFormatOrPanic(face.DataFormat, face.DataType),
+					Format: format,
 					Width:  uint32(face.Width),
 					Height: uint32(face.Height),
 					Depth:  1,

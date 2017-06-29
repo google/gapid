@@ -421,6 +421,7 @@ sub void TexImage(TexImageFlags  flags,
         if (ctx.Bound.PixelUnpackBuffer == null) && (data != null) {
           // TODO: Implement sub-range updates
           img.Data = clone(as!u8*(data)[0:data_size])
+          img.DataFormat = data_format
         }
       }
     }

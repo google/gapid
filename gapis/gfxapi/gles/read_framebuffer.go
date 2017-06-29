@@ -144,7 +144,11 @@ func postColorData(ctx context.Context,
 	res replay.Result) {
 
 	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
-	imgFmt := getImageFormatOrPanic(unsizedFormat, ty)
+	imgFmt, err := getImageFormat(unsizedFormat, ty)
+	if err != nil {
+		res(nil, err)
+		return
+	}
 
 	dID := id.Derived()
 	t := newTweaker(ctx, out, dID)
