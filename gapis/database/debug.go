@@ -94,6 +94,10 @@ func (d *memory) resolvePanicHandler(ctx context.Context) {
 			fmt.Fprintln(buf, indent(r.created.String(), 2))
 			fmt.Fprintln(buf)
 			for i, c := range r.resolveState.callstacks {
+				if i >= 10 {
+					fmt.Fprintf(buf, " ... %d more Build() calls (truncated)\n", len(r.resolveState.callstacks)-i-1)
+					break
+				}
 				fmt.Fprintf(buf, " Build() #%d:\n", i)
 				fmt.Fprintln(buf, indent(c.String(), 2))
 			}
