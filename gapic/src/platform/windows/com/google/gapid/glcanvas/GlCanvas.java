@@ -71,7 +71,10 @@ public class GlCanvas extends Canvas {
     dummyContext.release();
     dummy.dispose();
 
-    addListener(SWT.Dispose, e -> WGL.wglDeleteContext(context));
+    addListener(SWT.Dispose, e -> {
+      terminate();
+      WGL.wglDeleteContext(context);
+    });
   }
 
   private static int checkStyle(Composite parent, int style) {
@@ -96,6 +99,9 @@ public class GlCanvas extends Canvas {
     GDI32.SwapBuffers(dc);
     User32.ReleaseDC(handle, dc);
   }
+
+  /** Override to perform GL cleanup handling. */
+  protected void terminate() {}
 
   private static class Context {
     public final long handle;

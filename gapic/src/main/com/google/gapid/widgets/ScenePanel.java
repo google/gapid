@@ -60,7 +60,6 @@ public class ScenePanel<T> extends GlCanvas {
 
     addListener(SWT.Resize, e -> { /* register to handle resizes in dispatchEvents */ });
     addListener(SWT.Paint, e -> update(true));
-    addListener(SWT.Dispose, e -> terminate());
   }
 
   // Intercept addListener calls so that we can reduce the number of updates per event to one,
@@ -96,17 +95,18 @@ public class ScenePanel<T> extends GlCanvas {
     update(true);
   }
 
+  @Override
+  protected void terminate() {
+    setCurrent();
+    GL.setCapabilities(caps);
+    renderer.terminate();
+  }
+
   private void initialize() {
     renderer.initialize();
     Point size = DPIUtil.autoScaleUp(getSize());
     renderer.setSize(size.x, size.y);
     scene.init(renderer);
-  }
-
-  private void terminate() {
-    setCurrent();
-    GL.setCapabilities(caps);
-    renderer.terminate();
   }
 
   private void dispatchEvents(Event event) {

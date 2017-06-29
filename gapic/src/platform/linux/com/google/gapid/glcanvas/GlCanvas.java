@@ -15,6 +15,7 @@
  */
 package com.google.gapid.glcanvas;
 
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.opengl.GLCanvas;
 import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Composite;
@@ -23,6 +24,7 @@ import org.eclipse.swt.widgets.Composite;
 public class GlCanvas extends GLCanvas {
   public GlCanvas(Composite parent, int style) {
     super(parent, style, getGlData());
+    addListener(SWT.Dispose, e -> terminate());
   }
 
   private static GLData getGlData() {
@@ -32,4 +34,10 @@ public class GlCanvas extends GLCanvas {
     result.samples = 4;
     return result;
   }
+
+  /**
+   * Override to perform GL cleanup handling.
+   * TODO: Actually call this function *before* the context is destroyed. Is this even possible?
+   */
+  protected void terminate() {}
 }
