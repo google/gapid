@@ -505,7 +505,7 @@ func (a api) Replay(
 
 		case framebufferRequest:
 			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, req.after, []uint64{0}); err != nil {
+			if err := earlyTerminator.Add(ctx, req.after, []uint64{}); err != nil {
 				return err
 			}
 

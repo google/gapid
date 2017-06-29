@@ -74,6 +74,11 @@ func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uin
 		t.lastRequest = id
 	}
 
+	// If we are not trying to index a subcommand, then just continue on our way.
+	if len(subcommand) == 0 {
+		return nil
+	}
+
 	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
 	sc := sync.SubcommandIndex(t.requestSubIndex[1:])
 	handled := false
