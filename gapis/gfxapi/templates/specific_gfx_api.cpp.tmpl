@@ -50,8 +50,9 @@
   {{$api}}::{{$api}}() {
     using namespace std::placeholders;
     ¶
-    {{range $i, $c := AllCommands $}}
-      {{if and (not (GetAnnotation $c "synthetic")) (not (GetAnnotation $c "pfn"))}}
+    {{$non_synthetics := $.Functions | WithoutAnnotation "synthetic"}}
+    {{range $i, $c := $non_synthetics}}
+      {{if (not (GetAnnotation $c "pfn"))}}
         {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
         mFunctions.insert({{$i}}, std::bind(&{{$api}}::call{{$name}}, this, _1, _2));
       {{end}}
