@@ -53,7 +53,7 @@ cat <<EOF>gapid-config
     "JavaHome": "$(/usr/libexec/java_home -v 1.8)",
     "AndroidSDKRoot": "$BUILD_ROOT/android",
     "AndroidNDKRoot": "$BUILD_ROOT/android/ndk-bundle",
-    "CMakePath": "/Applications/CMake.app/Contents/bin/cmake",
+    "CMakePath": "/usr/local/bin/cmake",
     "NinjaPath": "$BUILD_ROOT/ninja",
     "PythonPath": "/usr/bin/python",
     "MSYS2Path": ""
