@@ -2871,13 +2871,13 @@ cmd void glDepthRangeArrayfvOES(GLuint first, GLsizei count, const GLfloat* v) {
 cmd void glDepthRangeIndexedfOES(GLuint index, GLfloat n, GLfloat f) {
 }
 
-// TODO: @DrawCall
+@DrawCall
 @if(Extension.GL_EXT_draw_transform_feedback)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", Extension.GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackEXT(GLenum mode, GLuint id) {
 }
 
-// TODO: @DrawCall
+@DrawCall
 @if(Extension.GL_EXT_draw_transform_feedback)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", Extension.GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackInstancedEXT(GLenum mode, GLuint id, GLsizei instancecount) {

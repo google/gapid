@@ -201,3 +201,9 @@ func (GlDrawTexxOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uin
 func (GlDrawTexxvOES) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
 	return nil, 0, fmt.Errorf("GlDrawTexxvOES.getIndices() not implemented")
 }
+func (GlDrawTransformFeedbackEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+	return nil, 0, fmt.Errorf("GlDrawTransformFeedbackEXT.getIndices() not implemented")
+}
+func (GlDrawTransformFeedbackInstancedEXT) getIndices(context.Context, *Context, *gfxapi.State) ([]uint32, GLenum, error) {
+	return nil, 0, fmt.Errorf("GlDrawTransformFeedbackInstancedEXT.getIndices() not implemented")
+}
