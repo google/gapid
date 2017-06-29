@@ -1035,13 +1035,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Forcefully get all uniform locations, so that we can remap for applications that
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
-				prog := c.Objects.Shared.Programs[a.Program]
-				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
-					uniform := prog.ActiveUniforms[uniformIndex]
-					for i := 0; i < int(uniform.ArraySize); i++ {
-						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
-						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
-						out.MutateAndWrite(ctx, dID, NewGlGetUniformLocation(a.Program, name, loc))
+				if prog := c.Objects.Shared.Programs[a.Program]; prog != nil {
+					for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
+						uniform := prog.ActiveUniforms[uniformIndex]
+						for i := 0; i < int(uniform.ArraySize); i++ {
+							name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
+							loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
+							out.MutateAndWrite(ctx, dID, NewGlGetUniformLocation(a.Program, name, loc))
+						}
 					}
 				}
 				return
