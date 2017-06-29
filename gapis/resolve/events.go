@@ -47,6 +47,12 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 			continue
 		}
 		f := a.AtomFlags()
+		if p.Clears && f.IsClear() {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_Clear,
+				Command: p.Capture.Command(uint64(i)),
+			})
+		}
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_DrawCall,

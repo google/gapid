@@ -1054,11 +1054,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
-		case *GlClear: // TODO:Generalize
-			MultiviewDraw(ctx, i, a, out)
-			return
-
 		default:
+			if a.AtomFlags().IsClear() {
+				MultiviewDraw(ctx, i, a, out)
+				return
+			}
 			if a.AtomFlags().IsDrawCall() {
 				if clientVAsBound(c, clientVAs) {
 					log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Atom: %v", a)
