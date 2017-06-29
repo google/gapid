@@ -47,6 +47,17 @@ class VkXlibSurfaceCreateInfoKHR {
   Window                      window
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateXlibSurfaceKHR(
+    VkInstance instance,
+    const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
+    VkSurfaceKHR*                     pSurface) {
+  read(pCreateInfo[0:1])
+  write(pSurface[0:1])
+}
+
 @extension("VK_KHR_xlib_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateXlibSurfaceKHR(
@@ -54,6 +65,17 @@ cmd VkResult vkCreateXlibSurfaceKHR(
     const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkSurfaceKHR*                     pSurface) {
+  _ = pCreateInfo[0]
+  surface := new!SurfaceObject()
+  surface.Instance = instance
+  surface.Type = SURFACE_TYPE_WAYLAND
+  // TODO: pAllocator
+
+  handle := ?
+  pSurface[0] = handle
+  surface.VulkanHandle = handle
+  Surfaces[handle] = surface
+
   return ?
 }
 
@@ -106,7 +128,8 @@ cmd VkResult vkCreateXcbSurfaceKHR(
     const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*     pAllocator,
     VkSurfaceKHR*                    pSurface) {
-  surface := createXCBSurfaceObject(pCreateInfo)
+  read(pCreateInfo[0:1])
+  surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_XCB
   // TODO: pAllocator
@@ -129,22 +152,6 @@ cmd VkBool32 vkGetPhysicalDeviceXcbPresentationSupportKHR(
   return ?
 }
 
-
-// ----------------------------------------------------------------------------
-// Struct subroutines
-// ----------------------------------------------------------------------------
-
-sub ref!SurfaceObject createXCBSurfaceObject(const VkXcbSurfaceCreateInfoKHR* data) {
-  object := new!SurfaceObject()
-  _ = data[0]
-
-  // TODO: pNext
-  // TODO: window?
-
-  return object
-}
-
-
 // ----------------------------------------------------------------------------
 // VK_KHR_wayland_surface
 // ----------------------------------------------------------------------------
@@ -165,6 +172,17 @@ class VkWaylandSurfaceCreateInfoKHR {
   wl_surface*                    surface
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateWaylandSurfaceKHR(
+    VkInstance instance,
+    const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
+    VkSurfaceKHR*                        pSurface) {
+  read(pCreateInfo[0:1])
+  write(pSurface[0:1])
+}
+
 @extension("VK_KHR_wayland_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateWaylandSurfaceKHR(
@@ -172,6 +190,17 @@ cmd VkResult vkCreateWaylandSurfaceKHR(
     const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*         pAllocator,
     VkSurfaceKHR*                        pSurface) {
+  _ = pCreateInfo[0]
+  surface := new!SurfaceObject()
+  surface.Instance = instance
+  surface.Type = SURFACE_TYPE_WAYLAND
+  // TODO: pAllocator
+
+  handle := ?
+  pSurface[0] = handle
+  surface.VulkanHandle = handle
+  Surfaces[handle] = surface
+
   return ?
 }
 
@@ -204,6 +233,17 @@ class VkMirSurfaceCreateInfoKHR {
   MirSurface*                mirSurface
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateMirSurfaceKHR(
+    VkInstance instance,
+    const VkMirSurfaceCreateInfoKHR* pCreateInfo,
+    VkSurfaceKHR*                    pSurface) {
+  read(pCreateInfo[0:1])
+  write(pSurface[0:1])
+}
+
 @extension("VK_KHR_mir_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateMirSurfaceKHR(
@@ -211,6 +251,17 @@ cmd VkResult vkCreateMirSurfaceKHR(
     const VkMirSurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*     pAllocator,
     VkSurfaceKHR*                    pSurface) {
+  _ = pCreateInfo[0]
+  surface := new!SurfaceObject()
+  surface.Instance = instance
+  surface.Type = SURFACE_TYPE_WAYLAND
+  // TODO: pAllocator
+
+  handle := ?
+  pSurface[0] = handle
+  surface.VulkanHandle = handle
+  Surfaces[handle] = surface
+
   return ?
 }
 

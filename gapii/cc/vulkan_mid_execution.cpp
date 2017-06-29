@@ -125,6 +125,42 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     RecreateWin32SurfaceKHR(observer, surface.second->mInstance, &create_info,
                         &surface.second->mVulkanHandle);
                 } break;
+                case SurfaceType::SURFACE_TYPE_WAYLAND: {
+                    VkWaylandSurfaceCreateInfoKHR create_info = {
+                        VkStructureType::VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+                        nullptr,
+                        0,
+                        nullptr,
+                        nullptr
+                    }; // We don't actually have to plug this in, our replay
+                       // handles this without any arguments just fine.
+                    RecreateWaylandSurfaceKHR(observer, surface.second->mInstance, &create_info,
+                        &surface.second->mVulkanHandle);
+                } break;
+                case SurfaceType::SURFACE_TYPE_XLIB: {
+                    VkXlibSurfaceCreateInfoKHR create_info = {
+                        VkStructureType::VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+                        nullptr,
+                        0,
+                        nullptr,
+                        0
+                    }; // We don't actually have to plug this in, our replay
+                       // handles this without any arguments just fine.
+                    RecreateXlibSurfaceKHR(observer, surface.second->mInstance, &create_info,
+                        &surface.second->mVulkanHandle);
+                } break;
+                case SurfaceType::SURFACE_TYPE_MIR: {
+                    VkMirSurfaceCreateInfoKHR create_info = {
+                        VkStructureType::VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR,
+                        nullptr,
+                        0,
+                        nullptr,
+                        nullptr
+                    }; // We don't actually have to plug this in, our replay
+                       // handles this without any arguments just fine.
+                    RecreateMirSurfaceKHR(observer, surface.second->mInstance, &create_info,
+                        &surface.second->mVulkanHandle);
+                } break;
                 default:
                     GAPID_FATAL("Unhandled surface type");
             }
