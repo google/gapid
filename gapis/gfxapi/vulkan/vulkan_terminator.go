@@ -83,7 +83,6 @@ func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uin
 	sc := sync.SubcommandIndex(t.requestSubIndex[1:])
 	handled := false
 	if rng, ok := t.syncData.CommandRanges[id]; ok {
-
 		for _, k := range rng.SortedKeys() {
 			if !rng.Ranges[k].LessThan(sc) {
 				t.lastRequest = atom.ID(k)

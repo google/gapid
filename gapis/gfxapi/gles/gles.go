@@ -79,17 +79,17 @@ func (b *Texture) GetID() TextureId {
 }
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
+func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
 	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	if sizedFormat == 0 {
-		return 0, 0, nil, fmt.Errorf("No format set")
+		return 0, 0, 0, nil, fmt.Errorf("No format set")
 	}
 	if err != nil {
-		return 0, 0, nil, err
+		return 0, 0, 0, nil, err
 	}
 	fmt, ty := getUnsizedFormatAndType(sizedFormat)
 	f, err := getImageFormat(fmt, ty)
-	return w, h, f, err
+	return w, h, uint32(attachment), f, err
 }
 
 // Context returns the active context for the given state.

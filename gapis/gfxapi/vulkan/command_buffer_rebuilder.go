@@ -108,6 +108,15 @@ func rebuildCmdDrawIndexed(
 		d.InstanceCount, d.FirstIndex, d.VertexOffset, d.FirstInstance)
 }
 
+func rebuildCmdSetLineWidth(ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	s *gfxapi.State,
+	d *RecreateCmdSetLineWidthData) (func(), atom.Atom) {
+	return func() {}, cb.VkCmdSetLineWidth(commandBuffer, d.LineWidth)
+
+}
+
 func rebuildCmdBindDescriptorSets(
 	ctx context.Context,
 	cb CommandBuilder,
@@ -303,6 +312,8 @@ func AddCommand(ctx context.Context,
 		return rebuildCmdPipelineBarrier(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdWaitEventsData:
 		return rebuildCmdWaitEvents(ctx, cb, commandBuffer, s, t)
+	case *RecreateCmdSetLineWidthData:
+		return rebuildCmdSetLineWidth(ctx, cb, commandBuffer, s, t)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/service"
@@ -73,11 +74,8 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att gfx
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
-	atomIdx := after.Indices[0]
-	if len(after.Indices) > 1 {
-		return framebufferAttachmentInfo{}, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
-	}
-	info, err := changes.attachments[att].after(ctx, atomIdx)
+
+	info, err := changes.attachments[att].after(ctx, sync.SubcommandIndex(after.Indices))
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
@@ -96,14 +94,15 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 	width, height := uniformScale(fbInfo.width, fbInfo.height, r.Settings.MaxWidth, r.Settings.MaxHeight)
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
-		Device:        r.Device,
-		After:         r.After,
-		Width:         width,
-		Height:        height,
-		Attachment:    r.Attachment,
-		WireframeMode: r.Settings.WireframeMode,
-		Hints:         r.Hints,
-		ImageFormat:   fbInfo.format,
+		Device:           r.Device,
+		After:            r.After,
+		Width:            width,
+		Height:           height,
+		Attachment:       r.Attachment,
+		FramebufferIndex: fbInfo.index,
+		WireframeMode:    r.Settings.WireframeMode,
+		Hints:            r.Hints,
+		ImageFormat:      fbInfo.format,
 	})
 	if err != nil {
 		return nil, err
@@ -140,15 +139,23 @@ type framebufferAttachmentChanges struct {
 // framebufferAttachmentInfo describes the dimensions and format of a
 // framebuffer attachment.
 type framebufferAttachmentInfo struct {
-	after  uint64 // index of the last atom to change the attachment.
+	after  sync.SubcommandIndex // index of the last atom to change the attachment.
 	width  uint32
 	height uint32
+	index  uint32 // The api-specific attachment index
 	format *image.Format
 	valid  bool
 }
 
-func (c framebufferAttachmentChanges) after(ctx context.Context, i uint64) (framebufferAttachmentInfo, error) {
-	idx := sort.Search(len(c.changes), func(x int) bool { return c.changes[x].after > i }) - 1
+func (f framebufferAttachmentInfo) equal(o framebufferAttachmentInfo) bool {
+	fe := (f.format == nil && o.format == nil) || (f.format != nil && o.format != nil && f.format.Name == o.format.Name)
+
+	return fe && f.width == o.width && f.height == o.height && f.index == o.index &&
+		f.valid == o.valid
+}
+
+func (c framebufferAttachmentChanges) after(ctx context.Context, i sync.SubcommandIndex) (framebufferAttachmentInfo, error) {
+	idx := sort.Search(len(c.changes), func(x int) bool { return i.LessThan(c.changes[x].after) }) - 1
 
 	if idx < 0 {
 		log.W(ctx, "No dimension records found after atom %d. FB dimension records = %d", i, len(c.changes))

@@ -72,15 +72,9 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
-func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
+func (t *readFramebuffer) Depth(id atom.ID, idx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
-		attachment := gfxapi.FramebufferAttachment_Depth
-		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
-		if err != nil {
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Depth attachment")})
-			return
-		}
 
 		c := GetState(s)
 		lastQueue := c.LastBoundQueue
@@ -94,29 +88,24 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 			res(nil, fmt.Errorf("There have been no previous draws"))
 			return
 		}
+		w, h := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height
 
-		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
+		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[idx]
 		depthImageObject := imageViewDepth.Image
 		cb := CommandBuilder{Thread: a.Thread()}
-		postImageData(ctx, cb, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
+		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Format, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
-		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
-		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
-		if err != nil {
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Color attachment")})
-			return
-		}
+		c := GetState(s)
 
 		cb := CommandBuilder{Thread: a.Thread()}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
-			c := GetState(s)
 			lastQueue := c.LastBoundQueue
 			if lastQueue == nil {
 				res(nil, fmt.Errorf("No previous queue submission"))
@@ -129,11 +118,17 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 				return
 			}
 
-			imageView := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
+			imageView := lastDrawInfo.Framebuffer.ImageAttachments[bufferIdx]
 			imageObject := imageView.Image
+			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Format
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {
-			imageObject := GetState(s).LastPresentInfo.PresentImages[attachmentIndex]
+			imageObject := GetState(s).LastPresentInfo.PresentImages[bufferIdx]
+			if imageObject == nil {
+				res(nil, fmt.Errorf("Could not find imageObject %V, %V", id, bufferIdx))
+				return
+			}
+			w, h, form := imageObject.Info.Extent.Width, imageObject.Info.Extent.Height, imageObject.Info.Format
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		}
 	})

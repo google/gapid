@@ -69,6 +69,25 @@ func (s SubcommandIndex) LessThan(s2 SubcommandIndex) bool {
 	return false
 }
 
+// LessThan returns true if s comes before s2.
+func (s SubcommandIndex) LEQ(s2 SubcommandIndex) bool {
+	for i := range s {
+		if i > len(s2)-1 {
+			// This case is a bit weird, but
+			// {0} > {0, 1}, since {0} represents
+			// the ALL commands under 0.
+			return true
+		}
+		if s[i] < s2[i] {
+			return true
+		}
+		if s[i] > s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // Decrement returns the subcommand that preceded this subcommand.
 // Decrement will decrement its way UP subcommand chains.
 // Eg: {0, 1}.Decrement() == {0, 0}
