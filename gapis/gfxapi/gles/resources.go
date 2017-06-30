@@ -185,7 +185,7 @@ func (shader *Shader) SetResourceData(
 
 	atomIdx := at.Indices[0]
 	if len(at.Indices) > 1 {
-		return fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		return fmt.Errorf("Subcommands currently not supported for GLES resources") // TODO: Subcommands
 	}
 
 	// Dirty. TODO: Make separate type for getting info for a single resource.

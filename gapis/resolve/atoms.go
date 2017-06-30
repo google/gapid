@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
@@ -50,9 +49,6 @@ func NAtoms(ctx context.Context, p *path.Capture, n uint64) (*atom.List, error) 
 // Atom resolves and returns the atom from the path p.
 func Atom(ctx context.Context, p *path.Command) (atom.Atom, error) {
 	atomIdx := p.Indices[0]
-	if len(p.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
-	}
 	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
