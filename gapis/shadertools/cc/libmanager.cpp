@@ -148,15 +148,13 @@ std::vector<unsigned int> parseGlslang(const char* code, std::string* err_msg, b
                              messages);
 
   if (!parsed) {
-    *err_msg = "Compile failed\n";
-    *err_msg += "InfoLog: " + std::string(shader.getInfoLog());
+    *err_msg += "Compilation failed:\n" + std::string(shader.getInfoLog());
   } else {
     glslang::TProgram program;
     program.addShader(&shader);
     bool linked = program.link(messages);
     if (!linked) {
-      *err_msg = "link failed\n";
-      *err_msg += "InfoLog:\n" + std::string(program.getInfoLog());
+      *err_msg += "Linking failed:\n" + std::string(program.getInfoLog());
     }
     std::string warningsErrors;
     spv::SpvBuildLogger logger;
@@ -181,14 +179,14 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   std::string err_msg;
 
   if (!options->is_fragment_shader && !options->is_vertex_shader) {
-    set_error_msg(result, "error: Only Fragment and Vertex shaders supported.");
+    set_error_msg(result, "Only Fragment and Vertex shaders supported.");
     return result;
   }
 
   std::vector<unsigned int> spirv = parseGlslang(input, &err_msg, options->is_fragment_shader, true);
 
   if (!err_msg.empty()) {
-    set_error_msg(result, "With original source code\n" + err_msg);
+    set_error_msg(result, "Failed to parse original source code:\n" + err_msg);
     return result;
   }
 
@@ -215,7 +213,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   std::vector<unsigned int> spirv_new = my_manager.getSpvBinary();
 
   if (spirv_new.empty()) {
-    set_error_msg(result, "error: SpvManager doesn't produce any code.");
+    set_error_msg(result, "SpvManager did not produce any code.");
     return result;
   }
 
@@ -239,7 +237,8 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   }
 
   if (!err_msg.empty()) {
-    set_error_msg(result, "After changes\n" + err_msg);
+    set_error_msg(result, "Failed to parse modified source code:\n" + err_msg +
+                          "\nModified source code:\n" + result->source_code);
     return result;
   }
 
