@@ -16,10 +16,8 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
@@ -36,11 +34,6 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 	after, err := Atom(ctx, r.After)
 	if err != nil {
 		return nil, err
-	}
-
-	atomIdx := r.After.Indices[0]
-	if len(r.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
 	}
 
 	api := after.API()
@@ -71,10 +64,11 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		ctx,
 		intent,
 		mgr,
-		atom.ID(atomIdx),
+		r.After.Indices,
 		r.Width,
 		r.Height,
 		r.Attachment,
+		r.FramebufferIndex,
 		wireframeMode,
 		r.Hints,
 	)

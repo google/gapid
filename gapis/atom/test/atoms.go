@@ -141,8 +141,8 @@ func (API) Name() string                 { return "foo" }
 func (API) ID() gfxapi.ID                { return APIID }
 func (API) Index() uint8                 { return 15 }
 func (API) ConstantSets() *constset.Pack { return nil }
-func (API) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (uint32, uint32, *image.Format, error) {
-	return 0, 0, nil, nil
+func (API) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+	return 0, 0, 0, nil, nil
 }
 func (API) Context(*gfxapi.State) gfxapi.Context { return nil }
 

@@ -22,8 +22,8 @@ import (
 type CustomState struct{}
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, format *image.Format, err error) {
-	return 0, 0, nil, nil
+func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
+	return 0, 0, 0, nil, nil
 }
 
 // Context returns the active context for the given state.

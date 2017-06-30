@@ -55,9 +55,10 @@ type QueryFramebufferAttachment interface {
 		ctx context.Context,
 		intent Intent,
 		mgr *Manager,
-		after atom.ID,
+		after []uint64,
 		width, height uint32,
 		attachment gfxapi.FramebufferAttachment,
+		framebufferIndex uint32,
 		wireframeMode WireframeMode,
 		hints *service.UsageHints) (*image.Data, error)
 }

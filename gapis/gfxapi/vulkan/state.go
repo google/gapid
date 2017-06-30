@@ -51,27 +51,19 @@ func (st *State) getSubmitAttachmentInfo(attachment gfxapi.FramebufferAttachment
 		gfxapi.FramebufferAttachment_Color1,
 		gfxapi.FramebufferAttachment_Color2,
 		gfxapi.FramebufferAttachment_Color3:
-		num_of_color_att_before_the_query_one := attachment - gfxapi.FramebufferAttachment_Color0
-		for _, att_ref_index := range subpass_desc.ColorAttachments.KeysSorted() {
-			att_ref := subpass_desc.ColorAttachments[att_ref_index]
-			color_img := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment].Image
-			if uint32(color_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0 {
-				if num_of_color_att_before_the_query_one == 0 {
-					return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, att_ref.Attachment, nil
-				} else {
-					num_of_color_att_before_the_query_one -= 1
-				}
+		attachment_index := uint32(attachment - gfxapi.FramebufferAttachment_Color0)
+		if att_ref, ok := subpass_desc.ColorAttachments[attachment_index]; ok {
+			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
+				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Format, att_ref.Attachment, nil
 			}
+
 		}
 	case gfxapi.FramebufferAttachment_Depth:
 		if subpass_desc.DepthStencilAttachment != nil && lastDrawInfo.Framebuffer != nil {
 			att_ref := subpass_desc.DepthStencilAttachment
 			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
 				depth_img := attachment.Image
-				if (uint32(depth_img.Info.Usage)&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) &&
-					(depth_img.Info.Samples == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT) {
-					return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
-				}
+				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
 			}
 		}
 	case gfxapi.FramebufferAttachment_Stencil:
@@ -108,7 +100,7 @@ func (st *State) getPresentAttachmentInfo(attachment gfxapi.FramebufferAttachmen
 	}
 }
 
-func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
+func (st *State) getFramebufferAttachmentInfo(attachment gfxapi.FramebufferAttachment) (uint32, uint32, VkFormat, uint32, error) {
 	if st.LastSubmission == LastSubmissionType_SUBMIT {
 		return st.getSubmitAttachmentInfo(attachment)
 	} else {

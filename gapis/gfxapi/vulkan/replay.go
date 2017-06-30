@@ -66,6 +66,7 @@ type makeAttachementReadable struct {
 type drawConfig struct {
 	startScope atom.ID
 	endScope   atom.ID
+	subindices string // drawConfig needs to be comparable, so we cannot use a slice
 }
 
 type imgRes struct {
@@ -75,9 +76,10 @@ type imgRes struct {
 
 // framebufferRequest requests a postback of a framebuffer's attachment.
 type framebufferRequest struct {
-	after            atom.ID
+	after            []uint64
 	width, height    uint32
 	attachment       gfxapi.FramebufferAttachment
+	framebufferIndex uint32
 	out              chan imgRes
 	wireframeOverlay bool
 }
@@ -507,22 +509,31 @@ func (a api) Replay(
 
 		case framebufferRequest:
 			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, req.after, []uint64{}); err != nil {
+			if err := earlyTerminator.Add(ctx, atom.ID(req.after[0]), req.after[1:]); err != nil {
 				return err
 			}
 
+			after := atom.ID(req.after[0])
+			if len(req.after) > 1 {
+				// If we are dealing with subcommands, 2 things are true.
+				// 1) We will never get multiple requests at the same time for different locations.
+				// 2) the earlyTerminator.lastRequest is the last atom we have to actually run.
+				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
+				after = earlyTerminator.lastRequest
+			}
+
 			if !config.DisableDeadCodeElimination {
-				dceInfo.deadCodeElimination.Request(req.after)
+				dceInfo.deadCodeElimination.Request(after)
+
 			}
 
 			switch req.attachment {
 			case gfxapi.FramebufferAttachment_Depth:
-				readFramebuffer.Depth(req.after, rr.Result)
+				readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
 			case gfxapi.FramebufferAttachment_Stencil:
 				return fmt.Errorf("Stencil attachments are not currently supported")
 			default:
-				idx := uint32(req.attachment - gfxapi.FramebufferAttachment_Color0)
-				readFramebuffer.Color(req.after, req.width, req.height, idx, rr.Result)
+				readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
 			}
 		}
 	}
@@ -575,9 +586,10 @@ func (a api) QueryFramebufferAttachment(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
-	after atom.ID,
+	after []uint64,
 	width, height uint32,
 	attachment gfxapi.FramebufferAttachment,
+	framebufferIndex uint32,
 	wireframeMode replay.WireframeMode,
 	hints *service.UsageHints) (*image.Data, error) {
 
@@ -591,21 +603,35 @@ func (a api) QueryFramebufferAttachment(
 	}
 	beginIndex := atom.ID(0)
 	endIndex := atom.ID(0)
-	for _, v := range s.SortedKeys() {
-		if v > after {
-			break
-		}
-		for _, k := range s.CommandRanges[v].SortedKeys() {
-			if k > after {
-				beginIndex = v
-				endIndex = k
+	subcommand := ""
+	if len(after) == 1 {
+		a := atom.ID(after[0])
+		// If we are not running subcommands we can probably batch
+		for _, v := range s.SortedKeys() {
+			if v > a {
+				break
 			}
+			for _, k := range s.CommandRanges[v].SortedKeys() {
+				if k > a {
+					beginIndex = v
+					endIndex = k
+				}
+			}
+		}
+	} else { // If we are replaying subcommands, then we can't batch at all
+		beginIndex = atom.ID(after[0])
+		endIndex = atom.ID(after[0])
+		for i, j := range after[1:] {
+			if i != 0 {
+				subcommand += ":"
+			}
+			subcommand += fmt.Sprintf("%d", j)
 		}
 	}
 
-	c := drawConfig{beginIndex, endIndex}
+	c := drawConfig{beginIndex, endIndex, subcommand}
 	out := make(chan imgRes, 1)
-	r := framebufferRequest{after: after, width: width, height: height, attachment: attachment, out: out}
+	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err

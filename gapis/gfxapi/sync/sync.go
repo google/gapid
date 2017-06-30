@@ -41,6 +41,9 @@ type SynchronizedAPI interface {
 	// ResolveSynchronization resolve all of the synchronization information for
 	// the given API
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
+
+	// MutateSubcommands mutates the given Atom, but calls callbackafter each subcmomand is executed
+	MutateSubcommands(ctx context.Context, a atom.Atom, id atom.ID, s *gfxapi.State, callback func(*gfxapi.State, []uint64, atom.Atom)) error
 }
 
 type writer struct {
@@ -95,4 +98,32 @@ func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id
 	w := writer{state, &a}
 	transforms.Transform(ctx, *atoms, w)
 	return &a, nil
+}
+
+// Returns a list of atoms that represent the correct mutations to have the state for all
+// atoms before and including the given index.
+func MutateWithSubcommands(ctx context.Context, c *path.Capture, atoms atom.List, callback func(state *gfxapi.State, subcommandIndex []uint64, a atom.Atom)) error {
+	// This is where we want to handle sub-states
+	// This involves transforming the tree for the given Indices, and
+	//   then mutating that.
+	rc, err := capture.ResolveFromPath(ctx, c)
+	if err != nil {
+		return err
+	}
+	s := rc.NewState()
+
+	for id, a := range atoms.Atoms {
+		if sync, ok := a.API().(SynchronizedAPI); ok {
+			if err := sync.MutateSubcommands(ctx, a, atom.ID(id), s, callback); err != nil && err == context.Canceled {
+				return err
+			}
+		} else {
+			if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+				return err
+			}
+		}
+		callback(s, []uint64{uint64(id)}, a)
+	}
+
+	return nil
 }

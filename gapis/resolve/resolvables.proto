@@ -64,6 +64,7 @@ message FramebufferAttachmentBytesResolvable {
 	service.WireframeMode wireframe_mode = 6;
 	service.UsageHints hints = 7;
 	image.Format image_format = 8;
+	uint32 framebuffer_index = 9;
 }
 
 // Get resolves the object, value or memory at Path.

@@ -54,23 +54,23 @@ func (api) Context(s *gfxapi.State) gfxapi.Context {
 	return VulkanContext{}
 }
 
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (w, h uint32, f *image.Format, err error) {
-	w, h, form, _, err := GetState(state).getFramebufferAttachmentInfo(attachment)
+func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
+	w, h, form, i, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	switch attachment {
 	case gfxapi.FramebufferAttachment_Stencil:
-		return 0, 0, nil, fmt.Errorf("Unsupported Stencil")
+		return 0, 0, 0, nil, fmt.Errorf("Unsupported Stencil")
 	case gfxapi.FramebufferAttachment_Depth:
 		format, err := getDepthImageFormatFromVulkanFormat(form)
 		if err != nil {
-			return 0, 0, nil, fmt.Errorf("Unknown format for Depth attachment")
+			return 0, 0, 0, nil, fmt.Errorf("Unknown format for Depth attachment")
 		}
-		return w, h, format, err
+		return w, h, i, format, err
 	default:
 		format, err := getImageFormatFromVulkanFormat(form)
 		if err != nil {
-			return 0, 0, nil, fmt.Errorf("Unknown format for Color attachment")
+			return 0, 0, 0, nil, fmt.Errorf("Unknown format for Color attachment")
 		}
-		return w, h, format, err
+		return w, h, i, format, err
 	}
 }
 
@@ -137,4 +137,15 @@ func (api) GetTerminator(ctx context.Context, c *path.Capture) (transform.Termin
 // GetDependencyGraphBehaviourProvider implements dependencygraph.DependencyGraphBehaviourProvider interface
 func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
 	return newVulkanDependencyGraphBehaviourProvider()
+}
+
+func (api) MutateSubcommands(ctx context.Context, a atom.Atom, id atom.ID, s *gfxapi.State, callback func(state *gfxapi.State, commandIndex []uint64, a atom.Atom)) error {
+	c := GetState(s)
+	c.HandleSubcommand = func(_ interface{}) {
+		callback(s, append([]uint64{uint64(id)}, c.SubcommandIndex...), a)
+	}
+	if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+		return err
+	}
+	return nil
 }

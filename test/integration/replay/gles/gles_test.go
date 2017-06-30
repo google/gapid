@@ -254,7 +254,7 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Color0, replay.WireframeMode_None, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, gfxapi.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}
@@ -269,7 +269,7 @@ func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, after, w, h, gfxapi.FramebufferAttachment_Depth, replay.WireframeMode_None, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, gfxapi.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}

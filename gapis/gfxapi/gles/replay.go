@@ -225,17 +225,22 @@ func (a api) QueryFramebufferAttachment(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
-	after atom.ID,
+	after []uint64,
 	width, height uint32,
 	attachment gfxapi.FramebufferAttachment,
+	framebufferIndex uint32,
 	wireframeMode replay.WireframeMode,
 	hints *service.UsageHints) (*image.Data, error) {
 
+	if len(after) > 1 {
+		return nil, log.Errf(ctx, nil, "GLES does not support subcommands")
+	}
+
 	c := drawConfig{wireframeMode: wireframeMode}
 	if wireframeMode == replay.WireframeMode_Overlay {
-		c.wireframeOverlayID = after
+		c.wireframeOverlayID = atom.ID(after[0])
 	}
-	r := framebufferRequest{after: after, width: width, height: height, attachment: attachment}
+	r := framebufferRequest{after: atom.ID(after[0]), width: width, height: height, attachment: attachment}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err

@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -62,26 +63,23 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, gfxapi.FramebufferAttachment_Color3+1),
 	}
 
-	s := c.NewState()
-	for i, a := range c.Atoms {
-		id = atom.ID(i)
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-			return nil, err
-		}
+	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *gfxapi.State, subcommandIndex []uint64, a atom.Atom) {
 		api := a.API()
+		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {
-			info := framebufferAttachmentInfo{after: uint64(i)}
+			info := framebufferAttachmentInfo{after: idx}
 			if api != nil {
-				if w, h, f, err := api.GetFramebufferAttachmentInfo(s, att); err == nil && f != nil {
-					info.width, info.height, info.format, info.valid = w, h, f, true
+				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(s, att); err == nil && f != nil {
+					info.width, info.height, info.index, info.format, info.valid = w, h, i, f, true
 				}
 			}
-			if last := out.attachments[att].last(); last != info {
+			if last := out.attachments[att].last(); !last.equal(info) {
 				attachment := out.attachments[att]
 				attachment.changes = append(attachment.changes, info)
 				out.attachments[att] = attachment
 			}
 		}
-	}
+	})
+
 	return out, nil
 }
