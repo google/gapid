@@ -110,7 +110,7 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	atomIdx := p.Command.Indices[0]
 	if len(p.Command.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		return nil, fmt.Errorf("Subcommands currently not supported for Command Tree") // TODO: Subcommands
 	}
 
 	return &path.CommandTreeNode{

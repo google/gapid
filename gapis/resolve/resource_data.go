@@ -48,7 +48,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
 	atomIdx := p.Indices[0]
 	if len(p.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		return nil, fmt.Errorf("Subcommands currently not supported for resources") // TODO: Subcommands
 	}
 
 	list, err := NAtoms(ctx, p.Capture, atomIdx+1)

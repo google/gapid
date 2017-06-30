@@ -31,7 +31,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 
 	atomIdx := p.After.Indices[0]
 	if len(p.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		return nil, fmt.Errorf("Subcommands currently not supported for Memory") // TODO: Subcommands
 	}
 
 	list, err := NAtoms(ctx, p.After.Capture, atomIdx+1)

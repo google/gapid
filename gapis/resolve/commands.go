@@ -32,7 +32,7 @@ func Commands(ctx context.Context, p *path.Commands) (*service.Commands, error) 
 	}
 	atomIdxFrom, atomIdxTo := p.From[0], p.To[0]
 	if len(p.From) > 1 || len(p.To) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported") // TODO: Subcommands
+		return nil, fmt.Errorf("Subcommands currently not supported for Commands") // TODO: Subcommands
 	}
 	count := uint64(len(c.Atoms))
 	atomIdxFrom = u64.Min(atomIdxFrom, count-1)
