@@ -215,4 +215,9 @@ type (
 		DataHeader  string         `help:"marker to write before package data"`
 		ADB         string         `help: "Path to the adb executable; leave empty to search the environment"`
 	}
+	ScreenshotFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		At    flags.U64Slice `help:"command/subcommand index for the screenshot. Empty for last"`
+	}
 )

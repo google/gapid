@@ -29,6 +29,7 @@ set(files
     main.go
     packages.go
     report.go
+    screenshot.go
     state.go
     stresstest.go
     sxs_video.go
