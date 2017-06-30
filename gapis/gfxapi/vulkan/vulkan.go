@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -131,4 +132,9 @@ var _ sync.SynchronizedAPI = &api{}
 
 func (api) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
 	return NewVulkanTerminator(ctx, c)
+}
+
+// GetDependencyGraphBehaviourProvider implements dependencygraph.DependencyGraphBehaviourProvider interface
+func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
+	return newVulkanDependencyGraphBehaviourProvider()
 }

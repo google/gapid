@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
@@ -128,13 +129,19 @@ type vulkanCommandBufferHandle struct {
 
 type vulkanRecordedCommands struct {
 	CommandBuffer *vulkanCommandBuffer
-	Commands      []func(b *dependencygraph.AtomBehaviour)
+	Commands      []*recordedCommand
+}
+
+type recordedCommand struct {
+	recordedBehaviours      []func(b *dependencygraph.AtomBehaviour)
+	secondaryCommandBuffers []*vulkanCommandBuffer
 }
 
 func newVulkanCommandBuffer(handle VkCommandBuffer) *vulkanCommandBuffer {
 	cb := &vulkanCommandBuffer{handle: nil, records: nil}
 	cb.handle = &vulkanCommandBufferHandle{CommandBuffer: cb, vkCommandBuffer: handle}
-	cb.records = &vulkanRecordedCommands{CommandBuffer: cb, Commands: []func(b *dependencygraph.AtomBehaviour){}}
+	cb.records = &vulkanRecordedCommands{CommandBuffer: cb,
+		Commands: []*recordedCommand{}}
 	return cb
 }
 
@@ -150,20 +157,30 @@ func (c *vulkanRecordedCommands) Parent() dependencygraph.StateKey {
 	return c.CommandBuffer
 }
 
-func (c *vulkanRecordedCommands) appendCommand(f func(b *dependencygraph.AtomBehaviour)) *vulkanRecordedCommands {
-	c.Commands = append(c.Commands, f)
-	return c
+func (c *vulkanRecordedCommands) appendCommand(cmd *recordedCommand) {
+	c.Commands = append(c.Commands, cmd)
+}
+
+func (r *recordedCommand) appendBehaviour(f func(b *dependencygraph.AtomBehaviour)) {
+	r.recordedBehaviours = append(r.recordedBehaviours, f)
+}
+
+type submitInfo struct {
+	commandBuffers []*vulkanCommandBuffer
 }
 
 type VulkanDependencyGraphBehaviourProvider struct {
 	deviceMemories map[VkDeviceMemory]*vulkanDeviceMemory
 	commandBuffers map[VkCommandBuffer]*vulkanCommandBuffer
+
+	submissions map[*VkQueueSubmit][]submitInfo
 }
 
 func newVulkanDependencyGraphBehaviourProvider() *VulkanDependencyGraphBehaviourProvider {
 	return &VulkanDependencyGraphBehaviourProvider{
 		deviceMemories: map[VkDeviceMemory]*vulkanDeviceMemory{},
 		commandBuffers: map[VkCommandBuffer]*vulkanCommandBuffer{},
+		submissions:    map[*VkQueueSubmit][]submitInfo{},
 	}
 }
 
@@ -171,7 +188,8 @@ func newVulkanDependencyGraphBehaviourProvider() *VulkanDependencyGraphBehaviour
 // stateKey of the device memory if it has been created and added to the graph
 // before. Otherwise, creates and adds the stateKey for the handle and returns
 // the new created stateKey
-func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateDeviceMemory(handle VkDeviceMemory) *vulkanDeviceMemory {
+func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateDeviceMemory(
+	handle VkDeviceMemory) *vulkanDeviceMemory {
 	if m, ok := p.deviceMemories[handle]; ok {
 		return m
 	}
@@ -180,11 +198,17 @@ func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateDeviceMemory(handle 
 	return newM
 }
 
+type executedCommandIndex struct {
+	submit  *VkQueueSubmit
+	Indices sync.SubcommandIndex
+}
+
 // For a given Vulkan handle of command buffer, returns the corresponding
 // stateKey of the command buffer if it has been created and added to the graph
 // before. Otherwise, creates and adds the stateKey for the handle and returns
 // the new created stateKey
-func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(handle VkCommandBuffer) *vulkanCommandBuffer {
+func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(
+	handle VkCommandBuffer) *vulkanCommandBuffer {
 	if cb, ok := p.commandBuffers[handle]; ok {
 		return cb
 	}
@@ -195,8 +219,31 @@ func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(handle
 
 func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	ctx context.Context, s *gfxapi.State, id atom.ID, g *dependencygraph.DependencyGraph, a atom.Atom) dependencygraph.AtomBehaviour {
+	// The behaviour going to be populated and returned.
 	b := dependencygraph.AtomBehaviour{}
+	// The recordedCommand going to be filled with behaviours which will be
+	// carried out later when the command is executed.
+	rc := &recordedCommand{
+		recordedBehaviours:      []func(b *dependencygraph.AtomBehaviour){},
+		secondaryCommandBuffers: []*vulkanCommandBuffer{},
+	}
+
 	l := s.MemoryLayout
+
+	// Records all the truely executed commandbuffer commands. The behaviours
+	// carried by those commands should only be rolled out when they are executed.
+	// All the behaviours added by the executed commands will be rolled out when
+	// processing vkQueueSubmit or vkSetEvent atoms.
+	executedCommands := []executedCommandIndex{}
+	GetState(s).HandleSubcommand = func(a interface{}) {
+		subcommandIndex := append(sync.SubcommandIndex(nil), GetState(s).SubcommandIndex...)
+		submitAtom, ok := (*GetState(s).CurrentSubmission).(*VkQueueSubmit)
+		if !ok {
+			return
+		}
+		executedCommands = append(executedCommands,
+			executedCommandIndex{submitAtom, subcommandIndex})
+	}
 
 	// Helper function for debug info logging when debug info dumpping is turned on
 	debug := func(fmt string, args ...interface{}) {
@@ -285,7 +332,10 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	readMemoryBindingsData := func(pb *dependencygraph.AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
 			pb.Read(g, binding.data)
-			debug("\tread binding data: %v <-  binding: %v <- memory: %v", g.GetStateAddressOf(binding.data), g.GetStateAddressOf(binding), g.GetStateAddressOf(binding.Parent()))
+			debug("\tread binding data: %v <-  binding: %v <- memory: %v",
+				g.GetStateAddressOf(binding.data),
+				g.GetStateAddressOf(binding),
+				g.GetStateAddressOf(binding.Parent()))
 		}
 	}
 
@@ -293,7 +343,10 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	writeMemoryBindingsData := func(pb *dependencygraph.AtomBehaviour, bindings []*vulkanDeviceMemoryBinding) {
 		for _, binding := range bindings {
 			pb.Write(g, binding.data)
-			debug("\twrite binding data: %v <- binding: %v <- memory: %v", g.GetStateAddressOf(binding.data), g.GetStateAddressOf(binding), g.GetStateAddressOf(binding.Parent()))
+			debug("\twrite binding data: %v <- binding: %v <- memory: %v",
+				g.GetStateAddressOf(binding.data),
+				g.GetStateAddressOf(binding),
+				g.GetStateAddressOf(binding.Parent()))
 		}
 	}
 
@@ -306,23 +359,61 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	}
 
 	// Helper function that adds 'read' to the given command buffer handle and
-	// 'modify' to the given comamnd buffer records to the current behavior, if
+	// 'modify' to the given comamnd buffer records to the current behavior if
 	// such behaviours have not been added before. And records a callback to
 	// carry out other behaviours later when the command buffer is submitted.
 	recordCommand := func(currentBehaviour *dependencygraph.AtomBehaviour,
 		handle VkCommandBuffer,
 		c func(futureBehaviour *dependencygraph.AtomBehaviour)) {
 		cmdBuf := p.getOrCreateCommandBuffer(handle)
-		if len(currentBehaviour.Reads) == 0 || currentBehaviour.Reads[len(currentBehaviour.Reads)-1] !=
-			g.GetStateAddressOf(cmdBuf.handle) {
+		if len(currentBehaviour.Reads) == 0 ||
+			currentBehaviour.Reads[len(currentBehaviour.Reads)-1] !=
+				g.GetStateAddressOf(cmdBuf.handle) {
 			currentBehaviour.Read(g, cmdBuf.handle)
 		}
-		if len(currentBehaviour.Modifies) == 0 || currentBehaviour.Modifies[len(currentBehaviour.Modifies)-1] !=
-			g.GetStateAddressOf(cmdBuf.records) {
+		if len(currentBehaviour.Modifies) == 0 ||
+			currentBehaviour.Modifies[len(currentBehaviour.Modifies)-1] !=
+				g.GetStateAddressOf(cmdBuf.records) {
 			currentBehaviour.Modify(g, cmdBuf.records)
 		}
+		rc.appendBehaviour(c)
+		// If current recordedCommand is not same as the last one in the command
+		// buffer, this must be a new command, and it should be appended to the
+		// list of recorded commands
+		if len(cmdBuf.records.Commands) == 0 ||
+			rc != cmdBuf.records.Commands[len(cmdBuf.records.Commands)-1] {
+			cmdBuf.records.Commands = append(cmdBuf.records.Commands, rc)
+		}
+	}
 
-		cmdBuf.records.appendCommand(c)
+	// Helper function that adds 'read' to the given command buffer handle and
+	// 'modify' to the given command buffer records to the current behaviour if
+	// such behaviours have not been added before. And adds a secondary command
+	// buffer to the current command, so that later we can roll out the behaviours
+	// registered in the secondary command buffer.
+	recordSecondaryCommandBuffer := func(
+		currentBehaviour *dependencygraph.AtomBehaviour,
+		handle VkCommandBuffer,
+		scb *vulkanCommandBuffer) {
+		cmdBuf := p.getOrCreateCommandBuffer(handle)
+		if len(currentBehaviour.Reads) == 0 ||
+			currentBehaviour.Reads[len(currentBehaviour.Reads)-1] !=
+				g.GetStateAddressOf(cmdBuf.handle) {
+			currentBehaviour.Read(g, cmdBuf.handle)
+		}
+		if len(currentBehaviour.Modifies) == 0 ||
+			currentBehaviour.Modifies[len(currentBehaviour.Modifies)-1] !=
+				g.GetStateAddressOf(cmdBuf.records) {
+			currentBehaviour.Modify(g, cmdBuf.records)
+		}
+		rc.secondaryCommandBuffers = append(rc.secondaryCommandBuffers, scb)
+		// If current recordedCommand is not same as the last one in the command
+		// buffer, this must be a new command, and it should be appended to the
+		// list of recorded commands
+		if len(cmdBuf.records.Commands) == 0 ||
+			rc != cmdBuf.records.Commands[len(cmdBuf.records.Commands)-1] {
+			cmdBuf.records.Commands = append(cmdBuf.records.Commands, rc)
+		}
 	}
 
 	// Helper function that adds 'read' to the given command buffer handle and
@@ -344,11 +435,18 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			currentBehaviour.Modify(g, cmdBuf.records)
 		}
 
-		cmdBuf.records.appendCommand(func(b *dependencygraph.AtomBehaviour) {
+		rc.appendBehaviour(func(b *dependencygraph.AtomBehaviour) {
 			readMemoryBindingsData(b, readBindings)
 			modifyMemoryBindingsData(b, modifyBindings)
 			writeMemoryBindingsData(b, writeBindings)
 		})
+		// If current recordedCommand is not same as the last one in the command
+		// buffer, this must be a new command, and it should be appended to the
+		// list of recorded commands
+		if len(cmdBuf.records.Commands) == 0 ||
+			rc != cmdBuf.records.Commands[len(cmdBuf.records.Commands)-1] {
+			cmdBuf.records.Commands = append(cmdBuf.records.Commands, rc)
+		}
 	}
 
 	// Mutate the state with the atom.
@@ -462,10 +560,10 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	case *VkBindImageMemory:
 		image := a.Image
 		memory := a.Memory
+		offset := a.MemoryOffset
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
-			offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
 			// In some applications, `vkGetImageMemoryRequirements` is not called so we
 			// don't have the image size. However, a memory binding for a zero-sized
 			// memory range will also be created here and used later to check
@@ -482,48 +580,48 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
-			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(uint64(offset), size)
 			addWrite(&b, g, binding)
 		}
 
 	case *VkBindBufferMemory:
 		buffer := a.Buffer
 		memory := a.Memory
+		offset := a.MemoryOffset
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
-			offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
 			size := uint64(GetState(s).Buffers.Get(buffer).Info.Size)
-			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(uint64(offset), size)
 			addWrite(&b, g, binding)
 		}
 
 	case *RecreateBindImageMemory:
 		image := a.Image
 		memory := a.Memory
+		offset := a.Offset
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
-			offset := uint64(GetState(s).Images.Get(image).BoundMemoryOffset)
 			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
-			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(uint64(offset), size)
 			addWrite(&b, g, binding)
 		}
 
 	case *RecreateBindBufferMemory:
 		buffer := a.Buffer
 		memory := a.Memory
+		offset := a.Offset
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
-			offset := uint64(GetState(s).Buffers.Get(buffer).MemoryOffset)
 			size := uint64(GetState(s).Buffers.Get(buffer).Info.Size)
-			binding := p.getOrCreateDeviceMemory(memory).addBinding(offset, size)
+			binding := p.getOrCreateDeviceMemory(memory).addBinding(uint64(offset), size)
 			addWrite(&b, g, binding)
 		}
 
@@ -1361,6 +1459,12 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	case *RecreateCmdResetQueryPool:
 		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
+	case *VkCmdWriteTimestamp:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+
+	case *RecreateCmdWriteTimestamp:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+
 	case *VkCmdClearAttachments:
 		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
@@ -1388,6 +1492,12 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetDepthBias:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+
+	case *VkCmdSetDepthBounds:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+
+	case *RecreateCmdSetDepthBounds:
 		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetBlendConstants:
@@ -1440,11 +1550,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
 			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
-				for _, c := range scb.records.Commands {
-					c(b)
-				}
-			})
+			recordSecondaryCommandBuffer(&b, a.CommandBuffer, scb)
 		}
 
 	case *RecreateCmdExecuteCommands:
@@ -1453,11 +1559,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
 			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
-				for _, c := range scb.records.Commands {
-					c(b)
-				}
-			})
+			recordSecondaryCommandBuffer(&b, a.CommandBuffer, scb)
 		}
 
 	case *VkQueueSubmit:
@@ -1470,22 +1572,27 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		// handle command buffers
 		submitCount := a.SubmitCount
 		submits := a.PSubmits.Slice(0, uint64(submitCount), l)
+		p.submissions[a] = []submitInfo{}
 		for i := uint32(0); i < submitCount; i++ {
+			p.submissions[a] = append(p.submissions[a], submitInfo{})
 			submit := submits.Index(uint64(i), l).Read(ctx, a, s, nil)
 			commandBufferCount := submit.CommandBufferCount
 			commandBuffers := submit.PCommandBuffers.Slice(0, uint64(commandBufferCount), l)
 			for j := uint32(0); j < submit.CommandBufferCount; j++ {
 				vkCmdBuf := commandBuffers.Index(uint64(j), l).Read(ctx, a, s, nil)
 				cb := p.getOrCreateCommandBuffer(vkCmdBuf)
+				p.submissions[a][i].commandBuffers = append(p.submissions[a][i].commandBuffers, cb)
 				// All the commands that are submitted will not be dropped.
 				addRead(&b, g, cb)
-
-				// Carry out the behaviors in the recorded commands.
-				for _, c := range cb.records.Commands {
-					c(&b)
-				}
 			}
 		}
+		log.W(ctx, "Queue Submit: Executed Commands: %v", executedCommands)
+		p.rollOutBehavioursForExecutedCommands(&b, executedCommands)
+
+	case *VkSetEvent:
+		b.KeepAlive = true
+		log.W(ctx, "SetEvent Executed Commands: %v", executedCommands)
+		p.rollOutBehavioursForExecutedCommands(&b, executedCommands)
 
 	case *VkQueuePresentKHR:
 		addRead(&b, g, vulkanStateKey(a.Queue))
@@ -1499,6 +1606,27 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		debug("\tNot handled by DCE, kept alive")
 	}
 	return b
+}
+
+func (p *VulkanDependencyGraphBehaviourProvider) rollOutBehavioursForExecutedCommands(
+	b *dependencygraph.AtomBehaviour, executedCommands []executedCommandIndex) {
+	for _, e := range executedCommands {
+		submit := e.submit
+		si := e.Indices[0]
+		cbi := e.Indices[1]
+		ci := e.Indices[2]
+		command := p.submissions[submit][si].commandBuffers[cbi].records.Commands[ci]
+		behaviours := command.recordedBehaviours
+		// Handle secondary command buffers
+		if len(e.Indices) == 5 {
+			scbi := e.Indices[3]
+			sci := e.Indices[4]
+			behaviours = command.secondaryCommandBuffers[scbi].records.Commands[sci].recordedBehaviours
+		}
+		for _, rb := range behaviours {
+			rb(b)
+		}
+	}
 }
 
 // Traverse through the given VkWriteDescriptorSet slice, add behaviors to
