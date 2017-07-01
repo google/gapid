@@ -1599,11 +1599,11 @@ class VkBindSparseInfo {
   const void*                              pNext
   u32                                      waitSemaphoreCount
   const VkSemaphore*                       pWaitSemaphores
-  u32                                      numBufferBinds
+  u32                                      bufferBindCount
   const VkSparseBufferMemoryBindInfo*      pBufferBinds
-  u32                                      numImageOpaqueBinds
+  u32                                      imageOpaqueBindCount
   const VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds
-  u32                                      numImageBinds
+  u32                                      imageBindCount
   const VkSparseImageMemoryBindInfo*       pImageBinds
   u32                                      signalSemaphoreCount
   const VkSemaphore*                       pSignalSemaphores
@@ -3055,6 +3055,7 @@ cmd void vkGetDeviceMemoryCommitment(
     VkDevice       device,
     VkDeviceMemory memory,
     VkDeviceSize*  pCommittedMemoryInBytes) {
+  _ = pCommittedMemoryInBytes[0]
 }
 
 @override
@@ -3167,6 +3168,18 @@ cmd void vkGetImageSparseMemoryRequirements(
     VkImage                          image,
     u32*                             pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+  read(pSparseMemoryRequirementCount[0:1])
+
+  if pSparseMemoryRequirements == null {
+    pSparseMemoryRequirementCount[0] = ?
+  } else {
+    count := as!u32(?)
+    requirements := pSparseMemoryRequirements[0:count]
+    for i in (0 .. count) {
+      requirements[i] = ?
+    }
+    pSparseMemoryRequirementCount[0] = count
+  }
 }
 
 @indirect("VkPhysicalDevice", "VkInstance")
@@ -3199,6 +3212,30 @@ cmd VkResult vkQueueBindSparse(
     u32                     bindInfoCount,
     const VkBindSparseInfo* pBindInfo,
     VkFence                 fence) {
+  infos := pBindInfo[0:bindInfoCount]
+  for i in (0 .. bindInfoCount) {
+    read(infos[i].pWaitSemaphores[0:infos[i].waitSemaphoreCount])
+
+    bufferBinds := infos[i].pBufferBinds[0:infos[i].bufferBindCount]
+    for j in (0 .. infos[i].bufferBindCount) {
+      bufferBindInfo := bufferBinds[j]
+      read(bufferBindInfo.pBinds[0:bufferBindInfo.bindCount])
+    }
+
+    opaqueBinds := infos[i].pImageOpaqueBinds[0:infos[i].imageOpaqueBindCount]
+    for j in (0 .. infos[i].imageOpaqueBindCount) {
+      opaqueBindInfo := opaqueBinds[j]
+      read(opaqueBindInfo.pBinds[0:opaqueBindInfo.bindCount])
+    }
+
+    imageBinds := infos[i].pImageBinds[0:infos[i].imageBindCount]
+    for j in (0 .. infos[i].imageBindCount) {
+      imageBindInfo := imageBinds[j]
+      read(imageBindInfo.pBinds[0:imageBindInfo.bindCount])
+    }
+
+    read(infos[i].pSignalSemaphores[0:infos[i].signalSemaphoreCount])
+  }
   return ?
 }
 
@@ -3932,6 +3969,7 @@ cmd VkResult vkMergePipelineCaches(
     VkPipelineCache        dstCache,
     u32                    srcCacheCount,
     const VkPipelineCache* pSrcCaches) {
+  read(pSrcCaches[0:srcCacheCount])
   return ?
 }
 
@@ -9176,6 +9214,9 @@ enum SurfaceType {
   SURFACE_TYPE_XCB = 1
   SURFACE_TYPE_ANDROID = 2
   SURFACE_TYPE_WIN32 = 3
+  SURFACE_TYPE_WAYLAND = 4
+  SURFACE_TYPE_XLIB = 5
+  SURFACE_TYPE_MIR = 6
 }
 
 @internal class SurfaceObject {

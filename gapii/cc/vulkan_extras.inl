@@ -274,5 +274,14 @@ void SpyOverride_RecreateAndroidSurfaceKHR(VkDevice,
 void SpyOverride_RecreateWin32SurfaceKHR(VkDevice,
                                          const VkWin32SurfaceCreateInfoKHR*,
                                          VkSurfaceKHR*) {}
+void SpyOverride_RecreateXlibSurfaceKHR(VkDevice,
+                                        const VkXlibSurfaceCreateInfoKHR*,
+                                        VkSurfaceKHR*) {}
+void SpyOverride_RecreateWaylandSurfaceKHR(VkDevice,
+                                           const VkWaylandSurfaceCreateInfoKHR*,
+                                           VkSurfaceKHR*) {}
+void SpyOverride_RecreateMirSurfaceKHR(VkDevice,
+                                       const VkMirSurfaceCreateInfoKHR*,
+                                       VkSurfaceKHR*) {}
 
 void EnumerateVulkanResources(CallObserver* observer);

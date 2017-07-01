@@ -946,6 +946,27 @@ func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	allocator := memory.Nullptr
+	hijack := NewVkCreateXlibSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	allocator := memory.Nullptr
+	hijack := NewVkCreateWaylandSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+	allocator := memory.Nullptr
+	hijack := NewVkCreateMirSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
+	hijack.Extras().Add(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	allocator := memory.Nullptr
 	hijack := NewVkCreateAndroidSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
