@@ -33,3 +33,4 @@ A section is either a type or a object:
 ------- | ---------------- | ------------
  tag    | `varint`         | Type index `- 1`
  data   | `byte[]`         | Proto data
+ parent | `varint`         | Optional: Relative index to 'parent' object.
