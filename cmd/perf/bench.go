@@ -40,7 +40,6 @@ const (
 )
 
 type session struct {
-	ctx       context.Context
 	bench     *Benchmark
 	tracefile string
 	runIdx    int
@@ -105,17 +104,17 @@ func stringOrEmpty(s fmt.Stringer) string {
 }
 
 func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile string) error {
-	s := &session{ctx: ctx, bench: bench, tracefile: tracefile, runIdx: runIdx}
-	if err := s.gapisConnect(); err != nil {
+	s := &session{bench: bench, tracefile: tracefile, runIdx: runIdx}
+	if err := s.gapisConnect(ctx); err != nil {
 		return err
 	}
 	defer s.client.Close()
 
 	start := time.Now()
-	var actions []func() error
+	var actions []func(context.Context) error
 	switch bench.Input.BenchmarkType {
 	case "state", "frames":
-		actions = []func() error{
+		actions = []func(context.Context) error{
 			s.getDevices,
 			s.loadCapture,
 			s.getAtoms,
@@ -124,23 +123,23 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 			s.maybeSaveProfileData,
 		}
 	case "startup":
-		actions = []func() error{
+		actions = []func(context.Context) error{
 			s.maybeBeginProfile,
 			s.getStringTables,
 			s.getDevices,
 			s.loadCapture,
 			s.getAtoms,
-			func() error {
-				return s.get("Resources", s.capture.Resources(), &(s.resourceBundles))
+			func(ctx context.Context) error {
+				return s.get(ctx, "Resources", s.capture.Resources(), &(s.resourceBundles))
 			},
-			func() error {
-				return s.get("Report", s.capture.Report(nil, nil), &(s.report))
+			func(ctx context.Context) error {
+				return s.get(ctx, "Report", s.capture.Report(nil, nil), &(s.report))
 			},
-			func() error {
-				return s.get("Contexts", s.capture.Contexts(), &(s.contexts))
+			func(ctx context.Context) error {
+				return s.get(ctx, "Contexts", s.capture.Contexts(), &(s.contexts))
 			},
-			func() error {
-				return s.get("CommandTree", s.capture.CommandTree(nil), &(s.commandTree))
+			func(ctx context.Context) error {
+				return s.get(ctx, "CommandTree", s.capture.CommandTree(nil), &(s.commandTree))
 			},
 			s.maybeSaveProfileData,
 		}
@@ -149,7 +148,7 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 	}
 
 	for _, action := range actions {
-		if err := action(); err != nil {
+		if err := action(ctx); err != nil {
 			return err
 		}
 	}
@@ -170,16 +169,16 @@ func singleRun(ctx context.Context, bench *Benchmark, runIdx int, tracefile stri
 	return nil
 }
 
-func (s *session) maybeBeginProfile() error {
+func (s *session) maybeBeginProfile(ctx context.Context) error {
 	if s.bench.Input.EnableCPUProfile {
-		return s.client.BeginCPUProfile(s.ctx)
+		return s.client.BeginCPUProfile(ctx)
 	}
 	return nil
 }
 
-func (s *session) maybeSaveProfileData() error {
+func (s *session) maybeSaveProfileData(ctx context.Context) error {
 	if s.bench.Input.EnableCPUProfile {
-		data, err := s.client.EndCPUProfile(s.ctx)
+		data, err := s.client.EndCPUProfile(ctx)
 		if err != nil {
 			return err
 		}
@@ -188,7 +187,7 @@ func (s *session) maybeSaveProfileData() error {
 		}
 	}
 	if s.bench.Input.EnableHeapProfile {
-		data, err := s.client.GetProfile(s.ctx, "heap", 0)
+		data, err := s.client.GetProfile(ctx, "heap", 0)
 		if err != nil {
 			return err
 		}
@@ -214,10 +213,10 @@ func (s *session) saveProfileDataEntry(data []byte, key string) error {
 
 type sampleGrabber func(context.Context, *session, *path.Command) error
 
-func (s *session) gapisConnect() error {
-	log.I(s.ctx, "Connecting to GAPIS...")
+func (s *session) gapisConnect(ctx context.Context) error {
+	log.I(ctx, "Connecting to GAPIS...")
 	start := time.Now()
-	ctx := log.PutFilter(s.ctx, log.SeverityFilter(log.Info))
+	ctx = log.PutFilter(ctx, log.SeverityFilter(log.Info))
 	client, err := client.Connect(ctx, client.Config{})
 	if err != nil {
 		return fmt.Errorf("Failed to connect to the GAPIS server: %v", err)
@@ -227,12 +226,12 @@ func (s *session) gapisConnect() error {
 	return nil
 }
 
-func (s *session) getDevices() error {
-	log.I(s.ctx, "Getting devices...")
+func (s *session) getDevices(ctx context.Context) error {
+	log.I(ctx, "Getting devices...")
 	start := time.Now()
-	devices, err := s.client.GetDevices(s.ctx)
+	devices, err := s.client.GetDevices(ctx)
 	if err != nil {
-		return log.Err(s.ctx, err, "GetDevices")
+		return log.Err(ctx, err, "GetDevices")
 	}
 	s.bench.Metric("GetDevices", time.Since(start))
 	if len(devices) != 0 {
@@ -241,19 +240,19 @@ func (s *session) getDevices() error {
 	return nil
 }
 
-func (s *session) getStringTables() error {
-	log.I(s.ctx, "Getting string tables...")
+func (s *session) getStringTables(ctx context.Context) error {
+	log.I(ctx, "Getting string tables...")
 
 	start := time.Now()
-	stringTableInfos, err := s.client.GetAvailableStringTables(s.ctx)
+	stringTableInfos, err := s.client.GetAvailableStringTables(ctx)
 	if err != nil {
-		return log.Err(s.ctx, err, "GetAvailableStringTables")
+		return log.Err(ctx, err, "GetAvailableStringTables")
 	}
 	s.bench.Metric("GetAvailableStringTables", time.Since(start))
 
 	s.stringTables = make([]*stringtable.StringTable, len(stringTableInfos))
 	for i := range s.stringTables {
-		stringTable, err := s.client.GetStringTable(s.ctx, stringTableInfos[i])
+		stringTable, err := s.client.GetStringTable(ctx, stringTableInfos[i])
 		if err != nil {
 			return err
 		}
@@ -263,34 +262,34 @@ func (s *session) getStringTables() error {
 	return nil
 }
 
-func (s *session) loadCapture() error {
-	log.I(s.ctx, "Loading capture file %s...", s.tracefile)
+func (s *session) loadCapture(ctx context.Context) error {
+	log.I(ctx, "Loading capture file %s...", s.tracefile)
 	start := time.Now()
-	capture, err := s.client.LoadCapture(s.ctx, s.tracefile)
+	capture, err := s.client.LoadCapture(ctx, s.tracefile)
 	if err != nil {
-		return log.Err(s.ctx, err, "Failed to load the capture file")
+		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 	s.bench.Metric("LoadCapture", time.Since(start))
 	s.capture = capture
 	return nil
 }
 
-func (s *session) get(what string, p path.Node, dest *interface{}) error {
+func (s *session) get(ctx context.Context, what string, p path.Node, dest *interface{}) error {
 	metric := fmt.Sprintf("Get%s", what)
-	log.I(s.ctx, "Getting: %s...", what)
+	log.I(ctx, "Getting: %s...", what)
 	start := time.Now()
 	var err error
-	*dest, err = s.client.Get(s.ctx, p.Path())
+	*dest, err = s.client.Get(ctx, p.Path())
 	if err != nil {
-		return log.Err(s.ctx, err, metric)
+		return log.Err(ctx, err, metric)
 	}
 	s.bench.Metric(metric, time.Since(start))
 	return nil
 }
 
-func (s *session) getAtoms() error {
+func (s *session) getAtoms(ctx context.Context) error {
 	var result interface{}
-	if err := s.get("Commands", s.capture.Commands(), &result); err != nil {
+	if err := s.get(ctx, "Commands", s.capture.Commands(), &result); err != nil {
 		return err
 	}
 	s.atoms = result.(*atom.List).Atoms
@@ -325,8 +324,7 @@ func getAtomIndicesAndSampleGrabber(bench *Benchmark, session *session) (err err
 	return nil, arr, grab
 }
 
-func (s *session) grabSamples() error {
-	ctx := s.ctx
+func (s *session) grabSamples(ctx context.Context) error {
 	if s.bench.Input.Timeout > 0 {
 		ctx, _ = task.WithTimeout(ctx, s.bench.Input.Timeout)
 	}

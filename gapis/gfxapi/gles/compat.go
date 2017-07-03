@@ -186,9 +186,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	clientVAs := map[*VertexAttributeArray]*GlVertexAttribPointer{}
 
 	textureCompat := &textureCompat{
-		f:   target,
-		v:   version,
-		ctx: ctx,
+		f: target,
+		v: version,
 		origSwizzle: map[GLenum]map[*Texture]GLenum{
 			GLenum_GL_TEXTURE_SWIZZLE_R: {},
 			GLenum_GL_TEXTURE_SWIZZLE_G: {},
@@ -482,8 +481,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if clientVAsBound(c, clientVAs) {
 					first := uint32(a.FirstIndex)
 					count := uint32(a.IndicesCount)
-					t := newTweaker(ctx, out, dID, cb)
-					defer t.revert()
+					t := newTweaker(out, dID, cb)
+					defer t.revert(ctx)
 					moveClientVBsToVAs(ctx, t, clientVAs, first, count, i, a, s, c, out)
 				}
 			}
@@ -493,8 +492,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlDrawElements:
 			if target.vertexArrayObjects == required {
 				e := externs{ctx: ctx, a: a, s: s}
-				t := newTweaker(ctx, out, dID, cb)
-				defer t.revert()
+				t := newTweaker(out, dID, cb)
+				defer t.revert(ctx)
 
 				ib := c.Bound.VertexArray.ElementArrayBuffer
 				clientIB := ib == nil
@@ -504,8 +503,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// We need to move this into a temporary buffer.
 
 					// Generate a new element array buffer and bind it.
-					id := t.glGenBuffer()
-					t.GlBindBuffer_ElementArrayBuffer(id)
+					id := t.glGenBuffer(ctx)
+					t.GlBindBuffer_ElementArrayBuffer(ctx, id)
 
 					// By moving the draw call's observations earlier, populate the element array buffer.
 					size, base := DataTypeSize(a.IndicesType)*int(a.IndicesCount), memory.Pointer(a.Indices)
@@ -568,7 +567,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage1DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage1D(a.Target, a.Levels, a.Internalformat, a.Width)
 					out.MutateAndWrite(ctx, i, a)
@@ -580,14 +579,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage2DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage2D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height)
 					out.MutateAndWrite(ctx, i, a)
@@ -599,21 +598,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage2DMultisample:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3D:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage3D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height, a.Depth)
 					out.MutateAndWrite(ctx, i, a)
@@ -625,14 +624,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage3DMultisample:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3DMultisampleOES:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage3DMultisample(a.Target, a.Samples, a.Internalformat, a.Width, a.Height, a.Depth, a.Fixedsamplelocations)
 					out.MutateAndWrite(ctx, i, a)
@@ -645,7 +644,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				a := *a
 				internalformat := GLenum(a.Internalformat)
-				textureCompat.convertFormat(a.Target, &internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, i)
 				a.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, i, &a)
 				return
@@ -654,7 +653,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				a := *a
 				internalformat := GLenum(a.Internalformat)
-				textureCompat.convertFormat(a.Target, &internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, i)
 				a.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, i, &a)
 				return
@@ -662,7 +661,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexImage3DOES:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, &a.Format, &a.Type, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
 					a := cb.GlTexImage3D(a.Target, a.Level, GLint(a.Internalformat), a.Width, a.Height, a.Depth, a.Border, a.Format, a.Type, memory.Pointer(a.Pixels))
@@ -676,21 +675,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexSubImage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexSubImage3D:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexSubImage3DOES:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
 					a := cb.GlTexSubImage3D(a.Target, a.Level, a.Xoffset, a.Yoffset, a.Zoffset, a.Width, a.Height, a.Depth, a.Format, a.Type, memory.Pointer(a.Pixels))
@@ -704,7 +703,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlCopyTexImage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
@@ -714,7 +713,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterIuivOES:
@@ -722,7 +721,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterIiv:
@@ -730,7 +729,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterIuiv:
@@ -738,7 +737,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterf:
@@ -746,7 +745,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i)
 				return
 			}
 		case *GlTexParameterfv:
@@ -754,7 +753,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameteri:
@@ -762,7 +761,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Parameter, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i)
 				return
 			}
 		case *GlTexParameteriv:
@@ -770,7 +769,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterIivEXT:
@@ -778,7 +777,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 		case *GlTexParameterIuivEXT:
@@ -786,7 +785,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
 				return
 			}
 
@@ -984,12 +983,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
 					{
 						texId := newTexture(i, cb, out)
-						t := newTweaker(ctx, out, dID, cb)
-						defer t.revert()
-						t.glBindTexture_2D(texId)
+						t := newTweaker(out, dID, cb)
+						defer t.revert(ctx)
+						t.glBindTexture_2D(ctx, texId)
 						img := GetState(s).EGLImages[a.Result].Image
 						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
-						textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
+						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
 						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -1202,7 +1201,7 @@ func moveClientVBsToVAs(
 	// use. These are populated with data below.
 	ids := make([]BufferId, len(rngs))
 	for i := range rngs {
-		ids[i] = t.glGenBuffer()
+		ids[i] = t.glGenBuffer(ctx)
 	}
 
 	// Apply the memory observations that were made by the draw call now.
@@ -1220,7 +1219,7 @@ func moveClientVBsToVAs(
 	for i, rng := range rngs {
 		base := memory.BytePtr(rng.First, memory.ApplicationPool)
 		size := GLsizeiptr(rng.Count)
-		t.GlBindBuffer_ArrayBuffer(ids[i])
+		t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 		out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
 	}
 
@@ -1231,7 +1230,7 @@ func moveClientVBsToVAs(
 			if a, ok := clientVAs[arr]; ok {
 				a := *a // Copy
 				i := interval.IndexOf(&rngs, a.Data.addr)
-				t.GlBindBuffer_ArrayBuffer(ids[i])
+				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 				a.Data = VertexPointer{a.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
 				out.MutateAndWrite(ctx, dID, &a)
 			}
