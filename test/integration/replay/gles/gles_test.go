@@ -153,20 +153,20 @@ func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
 }
 
 type Fixture struct {
-	ctx          context.Context
 	mgr          *replay.Manager
 	device       bind.Device
 	memoryLayout *device.MemoryLayout
 	s            *gfxapi.State
 	nextID       uint32
+	cb           gles.CommandBuilder
 }
 
 // p returns a unique pointer. Meant to be used to generate
 // pointers representing driver-side data, so the allocation
 // itself is not relevant.
-func (f *Fixture) p() memory.Pointer {
+func (f *Fixture) p(ctx context.Context) memory.Pointer {
 	base, err := f.s.Allocator.Alloc(8, 8)
-	assert.With(f.ctx).ThatError(err).Succeeded()
+	assert.With(ctx).ThatError(err).Succeeded()
 	return memory.BytePtr(base, memory.ApplicationPool)
 }
 
@@ -183,7 +183,6 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 	s := gfxapi.NewStateWithEmptyAllocator(memoryLayout)
 
 	return ctx, &Fixture{
-		ctx:          ctx,
 		mgr:          m,
 		device:       dev,
 		memoryLayout: memoryLayout,
@@ -305,27 +304,26 @@ func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatc
 	}
 }
 
-func initContext(f *Fixture, width, height int, preserveBuffersOnSwap bool) (atoms *atom.List, eglContext memory.Pointer, eglSurface memory.Pointer) {
-	eglContext = f.p()
-	eglSurface = f.p()
-
-	eglConfig := f.p()
+func (f *Fixture) initContext(ctx context.Context, width, height int, preserveBuffersOnSwap bool) (atoms *atom.List, eglContext memory.Pointer, eglSurface memory.Pointer) {
+	eglContext = f.p(ctx)
+	eglSurface = f.p(ctx)
+	eglConfig := f.p(ctx)
 
 	eglShareContext := memory.Nullptr
 	// TODO: We don't observe attribute lists properly. We should.
 	atoms = atom.NewList(
-		gles.NewEglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
-		gles.NewEglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
-		gles.NewEglCreateContext(eglDisplay, eglConfig, eglShareContext, f.p(), eglContext),
-		makeCurrent(eglSurface, eglContext, width, height, preserveBuffersOnSwap),
+		f.cb.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
+		f.cb.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
+		f.cb.EglCreateContext(eglDisplay, eglConfig, eglShareContext, f.p(ctx), eglContext),
+		f.makeCurrent(eglSurface, eglContext, width, height, preserveBuffersOnSwap),
 	)
 	return atoms, eglContext, eglSurface
 }
 
-func makeCurrent(eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) atom.Atom {
+func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) atom.Atom {
 	eglTrue := gles.EGLBoolean(1)
 	return atom.WithExtras(
-		gles.NewEglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
+		f.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextState(),
 		gles.NewDynamicContextState(width, height, preserveBuffersOnSwap),
 	)
@@ -334,7 +332,7 @@ func makeCurrent(eglSurface, eglContext memory.Pointer, width, height int, prese
 func TestClear(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx)
+	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx, f.cb)
 
 	capture := f.storeCapture(ctx, atoms)
 
@@ -357,18 +355,18 @@ func TestClear(t *testing.T) {
 }
 
 type traceVerifier func(context.Context, *path.Capture, *replay.Manager, bind.Device)
-type traceGenerator func(f *Fixture) (*path.Capture, traceVerifier)
+type traceGenerator func(Fixture, context.Context) (*path.Capture, traceVerifier)
 
 // mergeCaptures creates a capture from the atoms of several existing captures, by interleaving them
-// arbitrarily, with switchThread atoms inserted whenever switching between captures.
-func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
+// arbitrarily, on different threads.
+func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture {
 	lists := [][]atom.Atom{}
 	threads := []core.ThreadID{}
 	remainingAtoms := 0
 
 	for i, path := range captures {
-		c, err := capture.ResolveFromPath(f.ctx, path)
-		assert.With(f.ctx).ThatError(err).Succeeded()
+		c, err := capture.ResolveFromPath(ctx, path)
+		assert.With(ctx).ThatError(err).Succeeded()
 		lists = append(lists, c.Atoms)
 		remainingAtoms += len(c.Atoms)
 		threads = append(threads, core.ThreadID(0x10000+i))
@@ -381,7 +379,7 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 		if cmdsUntilSwitchThread > 0 && len(lists[threadIndex]) > 0 {
 			if threadIndex != prevThreadIndex {
 				prevThreadIndex = threadIndex
-				merged = append(merged, core.NewSwitchThread(threads[threadIndex]))
+				merged = append(merged, core.CommandBuilder{}.SwitchThread(threads[threadIndex]))
 			}
 			merged = append(merged, lists[threadIndex][0])
 			lists[threadIndex] = lists[threadIndex][1:]
@@ -398,12 +396,11 @@ func mergeCaptures(f *Fixture, captures ...*path.Capture) *path.Capture {
 			modFourCounter = (modFourCounter + 1) % 4
 		}
 	}
-	return f.storeCapture(f.ctx, atom.NewList(merged...))
+	return f.storeCapture(ctx, atom.NewList(merged...))
 }
 
-func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier) {
-	ctx := f.ctx
-	atoms, _, square := samples.DrawTexturedSquare(ctx, false)
+func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
+	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, false)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -418,9 +415,8 @@ func generateDrawTexturedSquareCapture(f *Fixture) (*path.Capture, traceVerifier
 	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
-func generateDrawTexturedSquareCaptureWithSharedContext(f *Fixture) (*path.Capture, traceVerifier) {
-	ctx := f.ctx
-	atoms, _, square := samples.DrawTexturedSquare(ctx, true)
+func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context) (*path.Capture, traceVerifier) {
+	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, true)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -435,11 +431,10 @@ func generateDrawTexturedSquareCaptureWithSharedContext(f *Fixture) (*path.Captu
 	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
-func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
-	ctx := f.ctx
+func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, traceVerifier) {
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
 	missingProg := gles.ProgramId(f.newID())
-	atoms, _, eglSurface := initContext(f, 128, 128, false)
+	atoms, _, eglSurface := f.initContext(ctx, 128, 128, false)
 	texLoc := gles.UniformLocation(0)
 
 	s := gfxapi.NewStateWithEmptyAllocator(f.memoryLayout)
@@ -452,14 +447,14 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 
 	someString := atom.Must(atom.AllocData(ctx, f.s, "hello world"))
 
-	atoms.Add(gles.BuildProgram(ctx, s, vs, fs, prog, textureVSSource, textureFSSource)...)
+	atoms.Add(gles.BuildProgram(ctx, s, f.cb, vs, fs, prog, textureVSSource, textureFSSource)...)
 	atoms.Add(
-		gles.NewGlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		gles.NewGlClearColor(0.0, 1.0, 0.0, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI),
+		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		f.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI),
 
 		atom.WithExtras(
-			gles.NewGlLinkProgram(prog),
+			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
 				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
@@ -471,24 +466,24 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 					},
 				},
 			}),
-		gles.NewGlUseProgram(missingProg),
-		gles.NewGlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()),
-		gles.NewGlGetError(0),
-		gles.NewGlUseProgram(prog),
-		gles.NewGlGenTextures(1, textureNamesR.Ptr()).AddWrite(textureNamesR.Data()),
-		gles.NewGlGetUniformLocation(prog, "tex", texLoc),
-		gles.NewGlActiveTexture(gles.GLenum_GL_TEXTURE0),
-		gles.NewGlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		gles.NewGlUniform1i(texLoc, 0),
-		gles.NewGlGetAttribLocation(prog, "position", gles.GLint(pos)),
-		gles.NewGlEnableVertexAttribArray(pos),
-		gles.NewGlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesR.Ptr()),
-		gles.NewGlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesR.Ptr()).
+		f.cb.GlUseProgram(missingProg),
+		f.cb.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()),
+		f.cb.GlGetError(0),
+		f.cb.GlUseProgram(prog),
+		f.cb.GlGenTextures(1, textureNamesR.Ptr()).AddWrite(textureNamesR.Data()),
+		f.cb.GlGetUniformLocation(prog, "tex", texLoc),
+		f.cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		f.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		f.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		f.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		f.cb.GlUniform1i(texLoc, 0),
+		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		f.cb.GlEnableVertexAttribArray(pos),
+		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesR.Ptr()),
+		f.cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesR.Ptr()).
 			AddRead(squareIndicesR.Data()).
 			AddRead(squareVerticesR.Data()),
-		gles.NewEglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
+		f.cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
@@ -508,30 +503,29 @@ func generateCaptureWithIssues(f *Fixture) (*path.Capture, traceVerifier) {
 	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
-func generateDrawTriangleCapture(f *Fixture) (*path.Capture, traceVerifier) {
-	return generateDrawTriangleCaptureEx(f, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0)
+func (f Fixture) generateDrawTriangleCapture(ctx context.Context) (*path.Capture, traceVerifier) {
+	return f.generateDrawTriangleCaptureEx(ctx, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0)
 }
 
 // generateDrawTriangleCaptureEx generates a capture with several frames containing
 // a rotating triangle of color RGB(fr, fg, fb) on a RGB(br, bg, bb) background.
-func generateDrawTriangleCaptureEx(f *Fixture, br, bg, bb, fr, fg, fb gles.GLfloat) (*path.Capture, traceVerifier) {
-	ctx := f.ctx
+func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, fr, fg, fb gles.GLfloat) (*path.Capture, traceVerifier) {
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
 	angleLoc := gles.UniformLocation(0)
-	atoms, _, eglSurface := initContext(f, 64, 64, false)
-	atoms.Add(gles.NewGlEnable(gles.GLenum_GL_DEPTH_TEST)) // Required for depth-writing
+	atoms, _, eglSurface := f.initContext(ctx, 64, 64, false)
+	atoms.Add(f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST)) // Required for depth-writing
 
 	clear := atoms.Add(
-		gles.NewGlClearColor(br, bg, bb, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+		f.cb.GlClearColor(br, bg, bb, 1.0),
+		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
 	)
-	atoms.Add(gles.BuildProgram(ctx, f.s, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...)
+	atoms.Add(gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...)
 
 	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
 
 	triangle := atoms.Add(
 		atom.WithExtras(
-			gles.NewGlLinkProgram(prog),
+			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
 				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
@@ -543,23 +537,23 @@ func generateDrawTriangleCaptureEx(f *Fixture, br, bg, bb, fr, fg, fb gles.GLflo
 					},
 				},
 			}),
-		gles.NewGlUseProgram(prog),
-		gles.NewGlGetUniformLocation(prog, "angle", angleLoc),
-		gles.NewGlUniform1f(angleLoc, gles.GLfloat(0)),
-		gles.NewGlGetAttribLocation(prog, "position", gles.GLint(pos)),
-		gles.NewGlEnableVertexAttribArray(pos),
-		gles.NewGlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
-		gles.NewGlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
+		f.cb.GlUseProgram(prog),
+		f.cb.GlGetUniformLocation(prog, "angle", angleLoc),
+		f.cb.GlUniform1f(angleLoc, gles.GLfloat(0)),
+		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		f.cb.GlEnableVertexAttribArray(pos),
+		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
+		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
 
 	angle := 0.0
 	for i := 0; i < 30; i++ {
 		angle += math.Pi / 30.0
 		atoms.Add(
-			gles.NewEglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
-			gles.NewGlUniform1f(angleLoc, gles.GLfloat(angle)),
-			gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
-			gles.NewGlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
+			f.cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
+			f.cb.GlUniform1f(angleLoc, gles.GLfloat(angle)),
+			f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+			f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 		)
 	}
 	rotatedTriangle := atoms.Add()
@@ -587,31 +581,31 @@ func generateDrawTriangleCaptureEx(f *Fixture, br, bg, bb, fr, fg, fb gles.GLflo
 
 func testTrace(t *testing.T, name string, tg traceGenerator) {
 	ctx, f := newFixture(log.Testing(t))
-	capture, verifyTrace := tg(f)
+	capture, verifyTrace := tg(*f, ctx)
 	maybeExportCapture(ctx, name, capture)
 	verifyTrace(ctx, capture, f.mgr, f.device)
 }
 
 func TestDrawTexturedSquare(t *testing.T) {
-	testTrace(t, "textured_square", generateDrawTexturedSquareCapture)
+	testTrace(t, "textured_square", Fixture.generateDrawTexturedSquareCapture)
 }
 
 func TestDrawTexturedSquareWithSharedContext(t *testing.T) {
 	testTrace(t, "textured_square_with_shared_context",
-		generateDrawTexturedSquareCaptureWithSharedContext)
+		Fixture.generateDrawTexturedSquareCaptureWithSharedContext)
 }
 
 func TestDrawTriangle(t *testing.T) {
-	testTrace(t, "draw_triangle", generateDrawTriangleCapture)
+	testTrace(t, "draw_triangle", Fixture.generateDrawTriangleCapture)
 }
 
 func TestMultiContextCapture(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	t1, _ := generateDrawTriangleCaptureEx(f, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0)
-	t2, _ := generateDrawTriangleCaptureEx(f, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
-	t3, _ := generateDrawTriangleCaptureEx(f, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
-	capture := mergeCaptures(f, t1, t2, t3)
+	t1, _ := f.generateDrawTriangleCaptureEx(ctx, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0)
+	t2, _ := f.generateDrawTriangleCaptureEx(ctx, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+	t3, _ := f.generateDrawTriangleCaptureEx(ctx, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
+	capture := f.mergeCaptures(ctx, t1, t2, t3)
 	maybeExportCapture(ctx, "multi_context", capture)
 
 	contexts, err := resolve.Contexts(ctx, capture.Contexts())
@@ -620,12 +614,12 @@ func TestMultiContextCapture(t *testing.T) {
 }
 
 func TestTraceWithIssues(t *testing.T) {
-	testTrace(t, "with_issues", generateCaptureWithIssues)
+	testTrace(t, "with_issues", Fixture.generateCaptureWithIssues)
 }
 
 func TestExportAndImportCapture(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
-	c, verifyTrace := generateDrawTriangleCapture(f)
+	c, verifyTrace := f.generateDrawTriangleCapture(ctx)
 
 	var exported bytes.Buffer
 	err := capture.Export(ctx, c, &exported)
@@ -645,20 +639,20 @@ func TestResizeRenderer(t *testing.T) {
 	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
 
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
-	atoms, eglContext, eglSurface := initContext(f, 8, 8, false) // start with a small backbuffer
-	atoms.Add(gles.BuildProgram(ctx, f.s, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...)
+	atoms, eglContext, eglSurface := f.initContext(ctx, 8, 8, false) // start with a small backbuffer
+	atoms.Add(gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...)
 	atoms.Add(
-		gles.NewGlLinkProgram(prog),
-		gles.NewGlUseProgram(prog),
-		gles.NewGlGetAttribLocation(prog, "position", gles.GLint(pos)),
-		gles.NewGlEnableVertexAttribArray(pos),
-		gles.NewGlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
+		f.cb.GlLinkProgram(prog),
+		f.cb.GlUseProgram(prog),
+		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		f.cb.GlEnableVertexAttribArray(pos),
+		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
 	)
 	triangle := atoms.Add(
-		makeCurrent(eglSurface, eglContext, 64, 64, false),
-		gles.NewGlClearColor(0.0, 0.0, 1.0, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-		gles.NewGlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
+		f.makeCurrent(eglSurface, eglContext, 64, 64, false),
+		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
+		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
 	capture := f.storeCapture(ctx, atoms)
 	intent := replay.Intent{
@@ -676,14 +670,14 @@ func TestResizeRenderer(t *testing.T) {
 func TestPreserveBuffersOnSwap(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	atoms, _, _ := initContext(f, 64, 64, true)
+	atoms, _, _ := f.initContext(ctx, 64, 64, true)
 	clear := atoms.Add(
-		gles.NewGlClearColor(0.0, 0.0, 1.0, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
+		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	swapA := atoms.Add(gles.NewEglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapB := atoms.Add(gles.NewEglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapC := atoms.Add(gles.NewEglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapA := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapB := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapC := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
 
 	intent := replay.Intent{
 		Capture: f.storeCapture(ctx, atoms),
@@ -713,13 +707,13 @@ func TestIssues(t *testing.T) {
 		{
 			"glClear - no errors",
 			[]atom.Atom{
-				gles.NewGlClearColor(0.0, 0.0, 1.0, 1.0),
-				gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+				f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
+				f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 			},
 			[]replay.Issue{},
 		},
 	} {
-		atoms, _, _ := initContext(f, 64, 64, true)
+		atoms, _, _ := f.initContext(ctx, 64, 64, true)
 		atoms.Add(test.atoms...)
 		intent := replay.Intent{
 			Capture: f.storeCapture(ctx, atoms),

@@ -87,13 +87,14 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 
-	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
+	cb := gles.CommandBuilder{}
+	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []atom.Atom{
-		gles.NewEglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
+		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
-		gles.NewGlCreateShader(shaderType, 0x10),
-		gles.NewGlShaderSource(0x10, 1, p(0x100000), p(0x100010)).
+		cb.GlCreateShader(shaderType, 0x10),
+		cb.GlShaderSource(0x10, 1, p(0x100000), p(0x100010)).
 			AddRead(atom.Data(ctx, a, p(0x100000), p(0x100020))).
 			AddRead(atom.Data(ctx, a, p(0x100010), int32(len(c.source)))).
 			AddRead(atom.Data(ctx, a, p(0x100020), c.source)),
@@ -171,15 +172,16 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
-	eglMakeCurrent := gles.NewEglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
+	cb := gles.CommandBuilder{}
+	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []atom.Atom{
-		gles.NewEglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
+		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
-		gles.NewGlEnableVertexAttribArray(0),
-		gles.NewGlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
+		cb.GlEnableVertexAttribArray(0),
+		cb.GlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
 			AddRead(atom.Data(ctx, a, p(0x100000), positions)),
-		gles.NewGlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
+		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(atom.Data(ctx, a, p(0x200000), indices)),
 	} {
 		transform.Transform(ctx, atom.NoID, a, mw)

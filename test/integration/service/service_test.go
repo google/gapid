@@ -32,6 +32,7 @@ import (
 	gapis "github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/server"
 	"github.com/google/gapid/gapis/service"
@@ -125,7 +126,8 @@ func init() {
 	cfg.DeviceScanDone = deviceScanDone
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	atoms, draw, swap := samples.DrawTexturedSquare(ctx, false)
+	cb := gles.CommandBuilder{}
+	atoms, draw, swap := samples.DrawTexturedSquare(ctx, cb, false)
 	h := &capture.Header{Abi: device.WindowsX86_64}
 	p, err := capture.New(ctx, "sample", h, atoms.Atoms)
 	check(err)

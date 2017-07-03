@@ -261,6 +261,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		return
 	}
 
+	cb := CommandBuilder{}
+
 	// Delete all Renderbuffers.
 	renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
 	for renderbufferId := range c.Objects.Shared.Renderbuffers {
@@ -271,7 +273,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(renderbuffers) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, renderbuffers))
-		out.MutateAndWrite(ctx, id, NewGlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 
 	// Delete all Textures.
@@ -281,7 +283,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(textures) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, textures))
-		out.MutateAndWrite(ctx, id, NewGlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 
 	// Delete all Framebuffers.
@@ -291,7 +293,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(framebuffers) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, framebuffers))
-		out.MutateAndWrite(ctx, id, NewGlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 
 	// Delete all Buffers.
@@ -301,7 +303,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(buffers) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, buffers))
-		out.MutateAndWrite(ctx, id, NewGlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 
 	// Delete all VertexArrays.
@@ -311,17 +313,17 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(vertexArrays) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, vertexArrays))
-		out.MutateAndWrite(ctx, id, NewGlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 
 	// Delete all Shaders.
 	for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
-		out.MutateAndWrite(ctx, id, NewGlDeleteShader(shaderId))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteShader(shaderId))
 	}
 
 	// Delete all Programs.
 	for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
-		out.MutateAndWrite(ctx, id, NewGlDeleteProgram(programId))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteProgram(programId))
 	}
 
 	// Delete all Queries.
@@ -331,6 +333,6 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	if len(queries) > 0 {
 		tmp := atom.Must(atom.AllocData(ctx, s, queries))
-		out.MutateAndWrite(ctx, id, NewGlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
+		out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
 	}
 }

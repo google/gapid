@@ -162,21 +162,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 	scratchBuffers := map[interface{}]scratchBuffer{}
 	nextBufferID := BufferId(0xffff0000)
-	newBuffer := func(i atom.ID, out transform.Writer) BufferId {
+	newBuffer := func(i atom.ID, cb CommandBuilder, out transform.Writer) BufferId {
 		s := out.State()
 		id := nextBufferID
 		tmp := atom.Must(atom.AllocData(ctx, s, id))
-		out.MutateAndWrite(ctx, i.Derived(), NewGlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
+		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextBufferID--
 		return id
 	}
 
 	nextTextureID := TextureId(0xffff0000)
-	newTexture := func(i atom.ID, out transform.Writer) TextureId {
+	newTexture := func(i atom.ID, cb CommandBuilder, out transform.Writer) TextureId {
 		s := out.State()
 		id := nextTextureID
 		tmp := atom.Must(atom.AllocData(ctx, s, id))
-		out.MutateAndWrite(ctx, i.Derived(), NewGlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
+		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextTextureID--
 		return id
 	}
@@ -211,6 +211,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	t = transform.Transform("compat", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		dID := i.Derived()
 		s := out.State()
+		cb := CommandBuilder{}
 		switch a := a.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
 			// The compatibility layer introduces calls to GL functions that are defined for desktop GL
@@ -261,8 +262,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Satisfy the target by creating and binding a single VAO
 				// which we will use instead of the default VAO (id 0).
 				tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(DefaultVertexArrayId)))
-				out.MutateAndWrite(ctx, dID, NewGlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
-				out.MutateAndWrite(ctx, dID, NewGlBindVertexArray(DefaultVertexArrayId))
+				out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
+				out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId))
 			}
 			return
 		}
@@ -279,7 +280,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			if a.Buffer != 0 && !c.Objects.Shared.GeneratedNames.Buffers[a.Buffer] {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := atom.Must(atom.AllocData(ctx, s, a.Buffer))
-				out.MutateAndWrite(ctx, dID, NewGlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
+				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
 			}
 
 		case *GlBindTexture:
@@ -288,7 +289,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if a.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures[a.Texture] {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(a.Texture)))
-					out.MutateAndWrite(ctx, dID, NewGlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
+					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
 				}
 
 				convertTexTarget(&a.Target)
@@ -304,7 +305,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// NB: This leaks state change upstream.
 					// In particular, when the tweaker saves and then restores vertex array binding,
 					// it will restore it to DefaultVertexArrayId instead of 0.  It is harmless.
-					out.MutateAndWrite(ctx, i, NewGlBindVertexArray(DefaultVertexArrayId))
+					out.MutateAndWrite(ctx, i, cb.GlBindVertexArray(DefaultVertexArrayId))
 					return
 				}
 			}
@@ -313,7 +314,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			if a.Array == VertexArrayId(0) {
 				if target.vertexArrayObjects == required &&
 					contexts[c].vertexArrayObjects != required {
-					out.MutateAndWrite(ctx, i, NewGlBindVertexArray(DefaultVertexArrayId))
+					out.MutateAndWrite(ctx, i, cb.GlBindVertexArray(DefaultVertexArrayId))
 					return
 				}
 			}
@@ -341,31 +342,31 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Look for pre-existing buffer we can reuse.
 				buffer, ok := scratchBuffers[key]
 				if !ok {
-					buffer.id = newBuffer(dID, out)
+					buffer.id = newBuffer(dID, cb, out)
 					scratchBuffers[key] = buffer
 				}
 
 				// Bind the scratch buffer to GL_COPY_WRITE_BUFFER
 				origCopyWriteBuffer := c.Bound.CopyWriteBuffer
-				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, buffer.id))
+				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, buffer.id))
 
 				if buffer.size < a.Size {
 					// Resize the scratch buffer
-					out.MutateAndWrite(ctx, dID, NewGlBufferData(GLenum_GL_COPY_WRITE_BUFFER, a.Size, memory.Nullptr, GLenum_GL_DYNAMIC_COPY))
+					out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_COPY_WRITE_BUFFER, a.Size, memory.Nullptr, GLenum_GL_DYNAMIC_COPY))
 					buffer.size = a.Size
 					scratchBuffers[key] = buffer
 				}
 
 				// Copy out the misaligned data to the scratch buffer in the
 				// GL_COPY_WRITE_BUFFER binding.
-				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(a.Target, a.Buffer))
-				out.MutateAndWrite(ctx, dID, NewGlCopyBufferSubData(a.Target, GLenum_GL_COPY_WRITE_BUFFER, a.Offset, 0, a.Size))
+				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(a.Target, a.Buffer))
+				out.MutateAndWrite(ctx, dID, cb.GlCopyBufferSubData(a.Target, GLenum_GL_COPY_WRITE_BUFFER, a.Offset, 0, a.Size))
 
 				// We can now bind the range with correct alignment.
-				out.MutateAndWrite(ctx, i, NewGlBindBufferRange(a.Target, a.Index, buffer.id, 0, a.Size))
+				out.MutateAndWrite(ctx, i, cb.GlBindBufferRange(a.Target, a.Index, buffer.id, 0, a.Size))
 
 				// Restore old GL_COPY_WRITE_BUFFER binding.
-				out.MutateAndWrite(ctx, dID, NewGlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, origCopyWriteBuffer.GetID()))
+				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, origCopyWriteBuffer.GetID()))
 
 				return
 			}
@@ -451,7 +452,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 			tmpSrc := atom.Must(atom.AllocData(ctx, s, src))
 			tmpPtrToSrc := atom.Must(atom.AllocData(ctx, s, tmpSrc.Ptr()))
-			a = NewGlShaderSource(a.Shader, 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
+			a = cb.GlShaderSource(a.Shader, 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
 				AddRead(tmpSrc.Data()).
 				AddRead(tmpPtrToSrc.Data())
 			out.MutateAndWrite(ctx, i, a)
@@ -463,7 +464,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlVertexAttribPointer:
 			if a.Type == GLenum_GL_HALF_FLOAT_OES && target.vertexHalfFloatOES == unsupported {
 				// Convert GL_HALF_FLOAT_OES to GL_HALF_FLOAT_ARB.
-				a = NewGlVertexAttribPointer(a.Location, a.Size, GLenum_GL_HALF_FLOAT_ARB, a.Normalized, a.Stride, memory.Pointer(a.Data))
+				a = cb.GlVertexAttribPointer(a.Location, a.Size, GLenum_GL_HALF_FLOAT_ARB, a.Normalized, a.Stride, memory.Pointer(a.Data))
 			}
 			vaa := c.Bound.VertexArray.VertexAttributeArrays[a.Location]
 			if target.vertexArrayObjects == required && c.Bound.ArrayBuffer == nil {
@@ -481,7 +482,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if clientVAsBound(c, clientVAs) {
 					first := uint32(a.FirstIndex)
 					count := uint32(a.IndicesCount)
-					t := newTweaker(ctx, out, dID)
+					t := newTweaker(ctx, out, dID, cb)
 					defer t.revert()
 					moveClientVBsToVAs(ctx, t, clientVAs, first, count, i, a, s, c, out)
 				}
@@ -492,7 +493,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlDrawElements:
 			if target.vertexArrayObjects == required {
 				e := externs{ctx: ctx, a: a, s: s}
-				t := newTweaker(ctx, out, dID)
+				t := newTweaker(ctx, out, dID, cb)
 				defer t.revert()
 
 				ib := c.Bound.VertexArray.ElementArrayBuffer
@@ -508,7 +509,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 					// By moving the draw call's observations earlier, populate the element array buffer.
 					size, base := DataTypeSize(a.IndicesType)*int(a.IndicesCount), memory.Pointer(a.Indices)
-					glBufferData := NewGlBufferData(GLenum_GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(size), memory.Pointer(base), GLenum_GL_STATIC_DRAW)
+					glBufferData := cb.GlBufferData(GLenum_GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(size), memory.Pointer(base), GLenum_GL_STATIC_DRAW)
 					glBufferData.extras = a.extras
 					out.MutateAndWrite(ctx, dID, glBufferData)
 
@@ -569,7 +570,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
-					a := NewGlTexStorage1D(a.Target, a.Levels, a.Internalformat, a.Width)
+					a := cb.GlTexStorage1D(a.Target, a.Levels, a.Internalformat, a.Width)
 					out.MutateAndWrite(ctx, i, a)
 					return
 				}
@@ -588,7 +589,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
-					a := NewGlTexStorage2D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height)
+					a := cb.GlTexStorage2D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height)
 					out.MutateAndWrite(ctx, i, a)
 					return
 				}
@@ -614,7 +615,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
-					a := NewGlTexStorage3D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height, a.Depth)
+					a := cb.GlTexStorage3D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height, a.Depth)
 					out.MutateAndWrite(ctx, i, a)
 					return
 				}
@@ -633,7 +634,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				textureCompat.convertFormat(a.Target, &a.Internalformat, nil, nil, out, i)
 				if !version.IsES { // Strip suffix on desktop.
-					a := NewGlTexStorage3DMultisample(a.Target, a.Samples, a.Internalformat, a.Width, a.Height, a.Depth, a.Fixedsamplelocations)
+					a := cb.GlTexStorage3DMultisample(a.Target, a.Samples, a.Internalformat, a.Width, a.Height, a.Depth, a.Fixedsamplelocations)
 					out.MutateAndWrite(ctx, i, a)
 					return
 				}
@@ -664,7 +665,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				textureCompat.convertFormat(a.Target, &a.Internalformat, &a.Format, &a.Type, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
-					a := NewGlTexImage3D(a.Target, a.Level, GLint(a.Internalformat), a.Width, a.Height, a.Depth, a.Border, a.Format, a.Type, memory.Pointer(a.Pixels))
+					a := cb.GlTexImage3D(a.Target, a.Level, GLint(a.Internalformat), a.Width, a.Height, a.Depth, a.Border, a.Format, a.Type, memory.Pointer(a.Pixels))
 					a.extras = extras
 					out.MutateAndWrite(ctx, i, a)
 					return
@@ -692,7 +693,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				textureCompat.convertFormat(a.Target, nil, &a.Format, &a.Type, out, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
-					a := NewGlTexSubImage3D(a.Target, a.Level, a.Xoffset, a.Yoffset, a.Zoffset, a.Width, a.Height, a.Depth, a.Format, a.Type, memory.Pointer(a.Pixels))
+					a := cb.GlTexSubImage3D(a.Target, a.Level, a.Xoffset, a.Yoffset, a.Zoffset, a.Width, a.Height, a.Depth, a.Format, a.Type, memory.Pointer(a.Pixels))
 					a.extras = extras
 					out.MutateAndWrite(ctx, i, a)
 					return
@@ -912,14 +913,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlMapBufferOES:
 			if !version.IsES { // Remove extension suffix on desktop.
-				a := NewGlMapBuffer(a.Target, a.Access, memory.Pointer(a.Result))
+				a := cb.GlMapBuffer(a.Target, a.Access, memory.Pointer(a.Result))
 				out.MutateAndWrite(ctx, i, a)
 				return
 			}
 
 		case *GlMapBufferRangeEXT:
 			if !version.IsES { // Remove extension suffix on desktop.
-				a := NewGlMapBufferRange(a.Target, a.Offset, a.Length, a.Access, memory.Pointer(a.Result))
+				a := cb.GlMapBufferRange(a.Target, a.Offset, a.Length, a.Access, memory.Pointer(a.Result))
 				out.MutateAndWrite(ctx, i, a)
 				return
 			}
@@ -927,7 +928,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlFlushMappedBufferRangeEXT:
 			if !version.IsES { // Remove extension suffix on desktop.
 				extras := a.extras
-				a := NewGlFlushMappedBufferRange(a.Target, a.Offset, a.Length)
+				a := cb.GlFlushMappedBufferRange(a.Target, a.Offset, a.Length)
 				a.extras = extras
 				out.MutateAndWrite(ctx, i, a)
 				return
@@ -936,7 +937,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlUnmapBufferOES:
 			if !version.IsES { // Remove extension suffix on desktop.
 				extras := a.extras
-				a := NewGlUnmapBuffer(a.Target, a.Result)
+				a := cb.GlUnmapBuffer(a.Target, a.Result)
 				a.extras = extras
 				out.MutateAndWrite(ctx, i, a)
 				return
@@ -957,9 +958,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if a.Target == GLenum_GL_FRAMEBUFFER || a.Target == GLenum_GL_DRAW_FRAMEBUFFER {
 					origSrgb := c.Pixel.FramebufferSrgb
 					if a.Framebuffer == 0 {
-						out.MutateAndWrite(ctx, dID, NewGlDisable(GLenum_GL_FRAMEBUFFER_SRGB))
+						out.MutateAndWrite(ctx, dID, cb.GlDisable(GLenum_GL_FRAMEBUFFER_SRGB))
 					} else {
-						out.MutateAndWrite(ctx, dID, NewGlEnable(GLenum_GL_FRAMEBUFFER_SRGB))
+						out.MutateAndWrite(ctx, dID, cb.GlEnable(GLenum_GL_FRAMEBUFFER_SRGB))
 					}
 					// Change the replay driver state, but keep our mutated state,
 					// so we know what to do the next time we see glBindFramebuffer.
@@ -982,14 +983,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					}
 				case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
 					{
-						texId := newTexture(i, out)
-						t := newTweaker(ctx, out, dID)
+						texId := newTexture(i, cb, out)
+						t := newTweaker(ctx, out, dID, cb)
 						defer t.revert()
 						t.glBindTexture_2D(texId)
 						img := GetState(s).EGLImages[a.Result].Image
 						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
 						textureCompat.convertFormat(GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
-						out.MutateAndWrite(ctx, dID, NewGlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
 						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 							GetState(s).EGLImages[a.Result].TargetContext = c.Identifier
@@ -1011,7 +1012,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
 				// the remapping layer will use the ID of the EGL image replacement texture now.
-				out.MutateAndWrite(ctx, dID, NewGlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
+				out.MutateAndWrite(ctx, dID, cb.GlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
 				return
 			}
 
@@ -1019,7 +1020,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlRenderbufferStorageMultisampleEXT:
 			{
 				// TODO: Support multi-sample rendering.
-				a := NewGlRenderbufferStorage(a.Target, a.Internalformat, a.Width, a.Height)
+				a := cb.GlRenderbufferStorage(a.Target, a.Internalformat, a.Width, a.Height)
 				out.MutateAndWrite(ctx, i, a)
 				return
 			}
@@ -1028,7 +1029,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlFramebufferTexture2DMultisampleEXT:
 			{
 				// TODO: Support multi-sample rendering.
-				a := NewGlFramebufferTexture2D(a.Target, a.Attachment, a.Textarget, a.Texture, a.Level)
+				a := cb.GlFramebufferTexture2D(a.Target, a.Attachment, a.Textarget, a.Texture, a.Level)
 				out.MutateAndWrite(ctx, i, a)
 				return
 			}
@@ -1051,7 +1052,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					for i := 0; i < int(uniform.ArraySize); i++ {
 						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
 						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
-						out.MutateAndWrite(ctx, dID, NewGlGetUniformLocation(a.Program, name, loc))
+						out.MutateAndWrite(ctx, dID, cb.GlGetUniformLocation(a.Program, name, loc))
 					}
 				}
 				return
@@ -1089,6 +1090,7 @@ func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Wr
 	s := out.State()
 	c := GetContext(s)
 	dID := i.Derived()
+	cb := CommandBuilder{}
 	numViews := uint32(1)
 	c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
 		numViews = u32.Max(numViews, uint32(att.NumViews))
@@ -1100,8 +1102,8 @@ func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Wr
 			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 				if c.Bound.Program != nil {
 					viewIDLocation := UniformLocation(0x7FFF0000)
-					NewGlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
-					NewGlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
+					cb.GlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
+					cb.GlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
 				}
 				return nil
 			}))
@@ -1111,7 +1113,7 @@ func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Wr
 			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
 				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 					if a.Texture != nil {
-						NewGlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
+						cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
 					}
 					return nil
 				}))
@@ -1168,6 +1170,7 @@ func moveClientVBsToVAs(
 		return
 	}
 
+	cb := CommandBuilder{}
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.
@@ -1218,7 +1221,7 @@ func moveClientVBsToVAs(
 		base := memory.BytePtr(rng.First, memory.ApplicationPool)
 		size := GLsizeiptr(rng.Count)
 		t.GlBindBuffer_ArrayBuffer(ids[i])
-		out.MutateAndWrite(ctx, dID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
+		out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
 	}
 
 	// Redirect all the vertex attrib arrays to point to the array-buffer data.

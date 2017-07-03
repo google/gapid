@@ -93,8 +93,8 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		)
 
 		dID := id.Derived()
-		t := newTweaker(ctx, out, dID)
-
+		cb := CommandBuilder{}
+		t := newTweaker(ctx, out, dID, cb)
 		t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
 
 		// TODO: These glReadBuffer calls need to be changed for on-device
@@ -105,7 +105,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
-				NewGlReadBuffer(GLenum_GL_FRONT).Call(ctx, s, b)
+				cb.GlReadBuffer(GLenum_GL_FRONT).Call(ctx, s, b)
 				return nil
 			}))
 		} else {
@@ -122,9 +122,9 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			t.glBindRenderbuffer(renderbufferID)
 
 			mutateAndWriteEach(ctx, out, dID,
-				NewGlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
-				NewGlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
-				NewGlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
+				cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
+				cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
+				cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
 			)
 			t.glBindFramebuffer_Read(framebufferID)
 
@@ -151,7 +151,8 @@ func postColorData(ctx context.Context,
 	}
 
 	dID := id.Derived()
-	t := newTweaker(ctx, out, dID)
+	cb := CommandBuilder{}
+	t := newTweaker(ctx, out, dID, cb)
 	t.setPackStorage(PixelStorageState{Alignment: 1}, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height), 1)
@@ -163,7 +164,7 @@ func postColorData(ctx context.Context,
 		// depth buffer.
 
 		b.ReserveMemory(tmp.Range())
-		NewGlReadPixels(0, 0, GLsizei(width), GLsizei(height), unsizedFormat, ty, tmp.Ptr()).
+		cb.GlReadPixels(0, 0, GLsizei(width), GLsizei(height), unsizedFormat, ty, tmp.Ptr()).
 			Call(ctx, s, b)
 
 		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r binary.Reader, err error) error {
@@ -191,7 +192,7 @@ func postColorData(ctx context.Context,
 	}))
 	tmp.Free()
 
-	out.MutateAndWrite(ctx, dID, NewGlGetError(0)) // Check for errors.
+	out.MutateAndWrite(ctx, dID, cb.GlGetError(0)) // Check for errors.
 
 	t.revert()
 }

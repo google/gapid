@@ -118,10 +118,11 @@ func max(a, b int) int {
 func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoid(),
+			cb.CmdVoid(),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -135,12 +136,13 @@ func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 func TestOperationsOpCall_Clone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdClone(p(0x100000), 5).AddRead(rng, rID),
+			cb.CmdClone(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
 			resources: []id.ID{rID},
@@ -159,10 +161,11 @@ func TestOperationsOpCall_Clone(t *testing.T) {
 func TestOperationsOpCall_Make(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdMake(5),
+			cb.CmdMake(5),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -177,12 +180,13 @@ func TestOperationsOpCall_Make(t *testing.T) {
 func TestOperationsOpCall_Copy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdCopy(p(0x100000), 5).AddRead(rng, rID),
+			cb.CmdCopy(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
 			resources: []id.ID{rID},
@@ -201,12 +205,13 @@ func TestOperationsOpCall_Copy(t *testing.T) {
 func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 0, 8, 9})
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdCharsliceToString(p(0x100000), 5).AddRead(rng, rID),
+			cb.CmdCharsliceToString(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
 			resources: []id.ID{rID},
@@ -225,12 +230,13 @@ func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	_, rID := atom.Data(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0})
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdCharptrToString(p(0x100000)).
+			cb.CmdCharptrToString(p(0x100000)).
 				AddRead(atom.Data(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0, 'd', 'a', 'y'})),
 		},
 		expected: expected{
@@ -249,6 +255,7 @@ func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 func TestOperationsOpCall_Unknowns(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 4},
@@ -266,11 +273,11 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdUnknownRet(10),
-			NewCmdUnknownWritePtr(p(0x200000)).
+			cb.CmdUnknownRet(10),
+			cb.CmdUnknownWritePtr(p(0x200000)).
 				AddRead(atom.Data(ctx, a, p(0x200000), int(100))).
 				AddWrite(atom.Data(ctx, a, p(0x200000), int(200))),
-			NewCmdUnknownWriteSlice(p(0x100000)).
+			cb.CmdUnknownWriteSlice(p(0x100000)).
 				AddRead(atom.Data(ctx, a, p(0x100000), []int{0, 1, 2, 3, 4})).
 				AddWrite(atom.Data(ctx, a, p(0x100000), []int{5, 6, 7, 8, 9})),
 		},
@@ -294,21 +301,22 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidU8(20),
-			NewCmdVoidS8(-20),
-			NewCmdVoidU16(200),
-			NewCmdVoidS16(-200),
-			NewCmdVoidF32(1.0),
-			NewCmdVoidU32(2000),
-			NewCmdVoidS32(-2000),
-			NewCmdVoidF64(1.0),
-			NewCmdVoidU64(20000),
-			NewCmdVoidS64(-20000),
-			NewCmdVoidBool(true),
-			NewCmdVoidString("hello"),
+			cb.CmdVoidU8(20),
+			cb.CmdVoidS8(-20),
+			cb.CmdVoidU16(200),
+			cb.CmdVoidS16(-200),
+			cb.CmdVoidF32(1.0),
+			cb.CmdVoidU32(2000),
+			cb.CmdVoidS32(-2000),
+			cb.CmdVoidF64(1.0),
+			cb.CmdVoidU64(20000),
+			cb.CmdVoidS64(-20000),
+			cb.CmdVoidBool(true),
+			cb.CmdVoidString("hello"),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -368,10 +376,11 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 func TestOperationsOpCall_3_Strings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoid3Strings("hello", "world", "hello"),
+			cb.CmdVoid3Strings("hello", "world", "hello"),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -392,6 +401,7 @@ func TestOperationsOpCall_3_Strings(t *testing.T) {
 func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little64
 
 	aRng, aID := atom.Data(ctx, a, p(0x40000+5* /* sizeof(u8)  */ 1), []uint8{
@@ -406,7 +416,7 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoid3InArrays(p(0x40000), p(0x50000), p(0x60000)).
+			cb.CmdVoid3InArrays(p(0x40000), p(0x50000), p(0x60000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
 				AddRead(cRng, cID),
@@ -442,6 +452,7 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 
 	aRng, aID := atom.Data(ctx, a, p(0x100000), "array")
@@ -462,7 +473,7 @@ func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 			// 0x500008: 0x100000
 			// 0x50000c: 0x200000
 			// 0x500010: 0x300000
-			NewCmdVoidInArrayOfStrings(p(0x500000), 5).
+			cb.CmdVoidInArrayOfStrings(p(0x500000), 5).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
 				AddRead(cRng, cID).
@@ -520,6 +531,7 @@ func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	ca := device.Little32
 	ra := device.Little64
 
@@ -541,7 +553,7 @@ func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 			// 0x500008: 0x100000
 			// 0x50000c: 0x200000
 			// 0x500010: 0x300000
-			NewCmdVoidInArrayOfStrings(p(0x500000), 5).
+			cb.CmdVoidInArrayOfStrings(p(0x500000), 5).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
 				AddRead(cRng, cID).
@@ -599,6 +611,7 @@ func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	p := memory.Pointer(p(0x100000))
 	rng1, id1 := atom.Data(ctx, a, p, []byte{
@@ -615,20 +628,20 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 	})
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadBool(p).AddRead(rng1, id1),
-			NewCmdVoidReadU8(p).AddRead(rng1, id1),
-			NewCmdVoidReadS8(p).AddRead(rng1, id1),
-			NewCmdVoidReadU16(p).AddRead(rng2, id2),
-			NewCmdVoidReadS16(p).AddRead(rng2, id2),
-			NewCmdVoidReadF32(p).AddRead(rng4, id4),
-			NewCmdVoidReadU32(p).AddRead(rng4, id4),
-			NewCmdVoidReadS32(p).AddRead(rng4, id4),
-			NewCmdVoidReadF64(p).AddRead(rng8, id8),
-			NewCmdVoidReadU64(p).AddRead(rng8, id8),
-			NewCmdVoidReadS64(p).AddRead(rng8, id8),
+			cb.CmdVoidReadBool(p).AddRead(rng1, id1),
+			cb.CmdVoidReadU8(p).AddRead(rng1, id1),
+			cb.CmdVoidReadS8(p).AddRead(rng1, id1),
+			cb.CmdVoidReadU16(p).AddRead(rng2, id2),
+			cb.CmdVoidReadS16(p).AddRead(rng2, id2),
+			cb.CmdVoidReadF32(p).AddRead(rng4, id4),
+			cb.CmdVoidReadU32(p).AddRead(rng4, id4),
+			cb.CmdVoidReadS32(p).AddRead(rng4, id4),
+			cb.CmdVoidReadF64(p).AddRead(rng8, id8),
+			cb.CmdVoidReadU64(p).AddRead(rng8, id8),
+			cb.CmdVoidReadS64(p).AddRead(rng8, id8),
 
-			NewCmdVoidReadS32(p),  // Uses previous observations
-			NewCmdVoidReadBool(p), // Uses previous observations
+			cb.CmdVoidReadS32(p),  // Uses previous observations
+			cb.CmdVoidReadBool(p), // Uses previous observations
 		},
 		expected: expected{
 			resources: []id.ID{id1, id2, id4, id8, id4, id1},
@@ -718,6 +731,7 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
@@ -738,7 +752,7 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	cRng, cID := atom.Data(ctx, a, p(0x300000), false)
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadPtrs(p(0x100000), p(0x200000), p(0x300000)).
+			cb.CmdVoidReadPtrs(p(0x100000), p(0x200000), p(0x300000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
 				AddRead(cRng, cID),
@@ -765,30 +779,31 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidWriteU8(p(0x100000)).
+			cb.CmdVoidWriteU8(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), uint8(1))),
-			NewCmdVoidWriteS8(p(0x200000)).
+			cb.CmdVoidWriteS8(p(0x200000)).
 				AddWrite(atom.Data(ctx, a, p(0x200000), int8(1))),
-			NewCmdVoidWriteU16(p(0x300000)).
+			cb.CmdVoidWriteU16(p(0x300000)).
 				AddWrite(atom.Data(ctx, a, p(0x300000), uint16(1))),
-			NewCmdVoidWriteS16(p(0x400000)).
+			cb.CmdVoidWriteS16(p(0x400000)).
 				AddWrite(atom.Data(ctx, a, p(0x400000), int16(1))),
-			NewCmdVoidWriteF32(p(0x500000)).
+			cb.CmdVoidWriteF32(p(0x500000)).
 				AddWrite(atom.Data(ctx, a, p(0x500000), float32(1))),
-			NewCmdVoidWriteU32(p(0x600000)).
+			cb.CmdVoidWriteU32(p(0x600000)).
 				AddWrite(atom.Data(ctx, a, p(0x600000), uint32(1))),
-			NewCmdVoidWriteS32(p(0x700000)).
+			cb.CmdVoidWriteS32(p(0x700000)).
 				AddWrite(atom.Data(ctx, a, p(0x700000), int32(1))),
-			NewCmdVoidWriteF64(p(0x800000)).
+			cb.CmdVoidWriteF64(p(0x800000)).
 				AddWrite(atom.Data(ctx, a, p(0x800000), float64(1))),
-			NewCmdVoidWriteU64(p(0x900000)).
+			cb.CmdVoidWriteU64(p(0x900000)).
 				AddWrite(atom.Data(ctx, a, p(0x900000), uint64(1))),
-			NewCmdVoidWriteS64(p(0xa00000)).
+			cb.CmdVoidWriteS64(p(0xa00000)).
 				AddWrite(atom.Data(ctx, a, p(0xa00000), int64(1))),
-			NewCmdVoidWriteBool(p(0xb00000)).
+			cb.CmdVoidWriteBool(p(0xb00000)).
 				AddWrite(atom.Data(ctx, a, p(0xb00000), bool(true))),
 		},
 		expected: expected{
@@ -834,6 +849,7 @@ func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
@@ -850,7 +866,7 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 	}
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidWritePtrs(p(0x100000), p(0x200000), p(0x300000)),
+			cb.CmdVoidWritePtrs(p(0x100000), p(0x200000), p(0x300000)),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -867,22 +883,23 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 func TestOperationsOpCall_ReturnValue(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdU8(20),
-			NewCmdS8(-20),
-			NewCmdU16(200),
-			NewCmdS16(-200),
-			NewCmdF32(1.0),
-			NewCmdU32(2000),
-			NewCmdS32(-2000),
-			NewCmdF64(1.0),
-			NewCmdU64(20000),
-			NewCmdS64(-20000),
-			NewCmdBool(true),
-			NewCmdString("hello"),
-			NewCmdPointer(p(0x10000)),
+			cb.CmdU8(20),
+			cb.CmdS8(-20),
+			cb.CmdU16(200),
+			cb.CmdS16(-200),
+			cb.CmdF32(1.0),
+			cb.CmdU32(2000),
+			cb.CmdS32(-2000),
+			cb.CmdF64(1.0),
+			cb.CmdU64(20000),
+			cb.CmdS64(-20000),
+			cb.CmdBool(true),
+			cb.CmdString("hello"),
+			cb.CmdPointer(p(0x10000)),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -920,10 +937,11 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 func TestOperationsOpCall_3Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoid3Remapped(0x10, 0x20, 0x10),
+			cb.CmdVoid3Remapped(0x10, 0x20, 0x10),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -949,6 +967,7 @@ func TestOperationsOpCall_3Remapped(t *testing.T) {
 func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	rng, id := atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})
 
@@ -957,7 +976,7 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidInArrayOfRemapped(p(0x100000)).
+			cb.CmdVoidInArrayOfRemapped(p(0x100000)).
 				AddRead(rng, id),
 		},
 		expected: expected{
@@ -1000,13 +1019,14 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidOutArrayOfRemapped(p(0x100000)).
+			cb.CmdVoidOutArrayOfRemapped(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
@@ -1043,13 +1063,14 @@ func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidOutArrayOfUnknownRemapped(p(0x100000)).
+			cb.CmdVoidOutArrayOfUnknownRemapped(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
@@ -1086,11 +1107,12 @@ func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 func TestOperationsOpCall_Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	test{
 		atoms: []atom.Atom{
-			NewCmdRemapped(200),
-			NewCmdVoid3Remapped(100, 200, 300),
+			cb.CmdRemapped(200),
+			cb.CmdVoid3Remapped(100, 200, 300),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -1119,17 +1141,18 @@ func TestOperationsOpCall_Remapped(t *testing.T) {
 func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	aRng, aID := atom.Data(ctx, a, p(0x100000), RemappedStruct{F1: 10, Handle: 20, F3: 30})
 	bRng, bID := atom.Data(ctx, a, p(0x200000), RemappedStruct{F1: 40, Handle: 20, F3: 50})
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadRemappedStruct(p(0x100000)).
+			cb.CmdVoidReadRemappedStruct(p(0x100000)).
 				AddRead(aRng, aID),
-			NewCmdVoidReadRemappedStruct(p(0x100000)).
+			cb.CmdVoidReadRemappedStruct(p(0x100000)).
 				AddRead(aRng, aID), // reading the same struct
-			NewCmdVoidReadRemappedStruct(p(0x200000)).
+			cb.CmdVoidReadRemappedStruct(p(0x200000)).
 				AddRead(bRng, bID), // reading a different struct with the same handle
 		},
 		expected: expected{
@@ -1191,6 +1214,7 @@ func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	aRng, aID := atom.Data(
 		ctx, a, p(0x100000),
@@ -1202,13 +1226,13 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadPointerStruct(p(0x100000)).
+			cb.CmdVoidReadPointerStruct(p(0x100000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID),
-			NewCmdVoidReadPointerStruct(p(0x100000)).
+			cb.CmdVoidReadPointerStruct(p(0x100000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID), // same PointerStruct
-			NewCmdVoidReadPointerStruct(p(0x300000)).
+			cb.CmdVoidReadPointerStruct(p(0x300000)).
 				AddRead(cRng, cID).
 				AddRead(bRng, bID), // different PointerStruct
 		},
@@ -1275,6 +1299,7 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	nestedRng, nestedID := atom.Data(
 		ctx, a, p(0x100000),
@@ -1289,14 +1314,14 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadNestedStruct(p(0x100000)).
+			cb.CmdVoidReadNestedStruct(p(0x100000)).
 				AddRead(nestedRng, nestedID).
 				AddRead(rsRng, rsID).
 				AddRead(psRng, psID).
 				AddRead(pRng, pID),
-			NewCmdVoidReadRemappedStruct(p(0x200000)).
+			cb.CmdVoidReadRemappedStruct(p(0x200000)).
 				AddRead(rsRng, rsID), // use the remapped struct again
-			NewCmdVoidReadPointerStruct(p(0x300000)).
+			cb.CmdVoidReadPointerStruct(p(0x300000)).
 				AddRead(psRng, psID).
 				AddRead(pRng, pID), // use the pointer struct again
 		},
@@ -1390,6 +1415,7 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	aRng, aID := atom.Data(ctx, a, p(0x100000), "array")
 	bRng, bID := atom.Data(ctx, a, p(0x200000), "of")
@@ -1404,7 +1430,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 
 	test{
 		atoms: []atom.Atom{
-			NewCmdVoidReadStringStruct(p(0x500000)).
+			cb.CmdVoidReadStringStruct(p(0x500000)).
 				AddRead(ssRng, ssID).
 				AddRead(pRng, pID).
 				AddRead(aRng, aID).
@@ -1475,6 +1501,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	a := device.Little32
 	rRng, rID := atom.Data(ctx, a, p(0x100000), uint32(3))                  // read for all cases
 	awcRng, awcID := atom.Data(ctx, a, p(0x100000), uint32(2))              // write to count for Case 1
@@ -1486,21 +1513,21 @@ func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	test{
 		atoms: []atom.Atom{
 			// Case 1: only update the count. So we pass null to pHandles.
-			NewCmdVoidReadAndConditionalWrite(p(0x100000), p(0x0)).
+			cb.CmdVoidReadAndConditionalWrite(p(0x100000), p(0x0)).
 				AddRead(rRng, rID).
 				AddWrite(awcRng, awcID),
 			// Case 2: update handles up to the count provided. pHandles is at 0x200000.
-			NewCmdVoidReadAndConditionalWrite(p(0x100000), p(0x200000)).
+			cb.CmdVoidReadAndConditionalWrite(p(0x100000), p(0x200000)).
 				AddRead(rRng, rID).
 				AddWrite(bwcRng, bwcID).
 				AddWrite(bwhRng, bwhID),
 			// Case 3: update handles less than the count provided. pHandles is at 0x300000.
-			NewCmdVoidReadAndConditionalWrite(p(0x100000), p(0x300000)).
+			cb.CmdVoidReadAndConditionalWrite(p(0x100000), p(0x300000)).
 				AddRead(rRng, rID).
 				AddWrite(cwcRng, cwcID).
 				AddWrite(cwhRng, cwhID),
 			// Let's use some of the handles generated.
-			NewCmdVoid3Remapped(10, 20, 40),
+			cb.CmdVoid3Remapped(10, 20, 40),
 		},
 		expected: expected{
 			resources: []id.ID{rID},

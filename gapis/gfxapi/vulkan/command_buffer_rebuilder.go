@@ -25,6 +25,7 @@ import (
 
 func rebuildCmdBeginRenderPass(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdBeginRenderPassData) (func(), atom.Atom) {
@@ -50,7 +51,7 @@ func rebuildCmdBeginRenderPass(
 	return func() {
 			clearValuesData.Free()
 			beginData.Free()
-		}, NewVkCmdBeginRenderPass(
+		}, cb.VkCmdBeginRenderPass(
 			commandBuffer,
 			beginData.Ptr(),
 			d.Contents).AddRead(beginData.Data()).AddRead(clearValuesData.Data())
@@ -58,52 +59,58 @@ func rebuildCmdBeginRenderPass(
 
 func rebuildCmdEndRenderPass(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdEndRenderPassData) (func(), atom.Atom) {
-	return func() {}, NewVkCmdEndRenderPass(commandBuffer)
+	return func() {}, cb.VkCmdEndRenderPass(commandBuffer)
 }
 
 func rebuildCmdNextSubpass(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdNextSubpassData) (func(), atom.Atom) {
-	return func() {}, NewVkCmdNextSubpass(commandBuffer, d.Contents)
+	return func() {}, cb.VkCmdNextSubpass(commandBuffer, d.Contents)
 }
 
 func rebuildCmdBindPipeline(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdBindPipelineData) (func(), atom.Atom) {
 
-	return func() {}, NewVkCmdBindPipeline(commandBuffer,
+	return func() {}, cb.VkCmdBindPipeline(commandBuffer,
 		d.PipelineBindPoint, d.Pipeline)
 }
 
 func rebuildCmdBindIndexBuffer(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdBindIndexBufferData) (func(), atom.Atom) {
 
-	return func() {}, NewVkCmdBindIndexBuffer(commandBuffer,
+	return func() {}, cb.VkCmdBindIndexBuffer(commandBuffer,
 		d.Buffer, d.Offset, d.IndexType)
 }
 
 func rebuildCmdDrawIndexed(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdDrawIndexedData) (func(), atom.Atom) {
 
-	return func() {}, NewVkCmdDrawIndexed(commandBuffer, d.IndexCount,
+	return func() {}, cb.VkCmdDrawIndexed(commandBuffer, d.IndexCount,
 		d.InstanceCount, d.FirstIndex, d.VertexOffset, d.FirstInstance)
 }
 
 func rebuildCmdBindDescriptorSets(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdBindDescriptorSetsData) (func(), atom.Atom) {
@@ -125,7 +132,7 @@ func rebuildCmdBindDescriptorSets(
 	return func() {
 			descriptorSetData.Free()
 			dynamicOffsetData.Free()
-		}, NewVkCmdBindDescriptorSets(commandBuffer,
+		}, cb.VkCmdBindDescriptorSets(commandBuffer,
 			d.PipelineBindPoint,
 			d.Layout,
 			d.FirstSet,
@@ -140,6 +147,7 @@ func rebuildCmdBindDescriptorSets(
 
 func rebuildCmdBindVertexBuffers(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdBindVertexBuffersData) (func(), atom.Atom) {
@@ -161,7 +169,7 @@ func rebuildCmdBindVertexBuffers(
 	return func() {
 			bufferData.Free()
 			offsetData.Free()
-		}, NewVkCmdBindVertexBuffers(commandBuffer,
+		}, cb.VkCmdBindVertexBuffers(commandBuffer,
 			d.FirstBinding,
 			d.BindingCount,
 			bufferData.Ptr(),
@@ -171,6 +179,7 @@ func rebuildCmdBindVertexBuffers(
 
 func rebuildCmdWaitEvents(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdWaitEventsData) (func(), atom.Atom) {
@@ -206,7 +215,7 @@ func rebuildCmdWaitEvents(
 			memoryBarrierData.Free()
 			bufferMemoryBarrierData.Free()
 			imageMemoryBarrierData.Free()
-		}, NewVkCmdWaitEvents(commandBuffer,
+		}, cb.VkCmdWaitEvents(commandBuffer,
 			uint32(len(events)),
 			eventData.Ptr(),
 			d.SrcStageMask,
@@ -222,6 +231,7 @@ func rebuildCmdWaitEvents(
 
 func rebuildCmdPipelineBarrier(
 	ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	d *RecreateCmdPipelineBarrierData) (func(), atom.Atom) {
@@ -250,7 +260,7 @@ func rebuildCmdPipelineBarrier(
 			memoryBarrierData.Free()
 			bufferMemoryBarrierData.Free()
 			imageMemoryBarrierData.Free()
-		}, NewVkCmdPipelineBarrier(commandBuffer,
+		}, cb.VkCmdPipelineBarrier(commandBuffer,
 			d.SrcStageMask,
 			d.DstStageMask,
 			d.DependencyFlags,
@@ -268,30 +278,31 @@ func rebuildCmdPipelineBarrier(
 // had to create in order to satisfy the command. It also returns a function
 // to clean up the data that was allocated during the creation.
 func AddCommand(ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *gfxapi.State,
 	rebuildInfo interface{}) (func(), atom.Atom) {
 	switch t := rebuildInfo.(type) {
 	case *RecreateCmdBeginRenderPassData:
-		return rebuildCmdBeginRenderPass(ctx, commandBuffer, s, t)
+		return rebuildCmdBeginRenderPass(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdEndRenderPassData:
-		return rebuildCmdEndRenderPass(ctx, commandBuffer, s, t)
+		return rebuildCmdEndRenderPass(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdNextSubpassData:
-		return rebuildCmdNextSubpass(ctx, commandBuffer, s, t)
+		return rebuildCmdNextSubpass(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdBindPipelineData:
-		return rebuildCmdBindPipeline(ctx, commandBuffer, s, t)
+		return rebuildCmdBindPipeline(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdBindDescriptorSetsData:
-		return rebuildCmdBindDescriptorSets(ctx, commandBuffer, s, t)
+		return rebuildCmdBindDescriptorSets(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdBindVertexBuffersData:
-		return rebuildCmdBindVertexBuffers(ctx, commandBuffer, s, t)
+		return rebuildCmdBindVertexBuffers(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdBindIndexBufferData:
-		return rebuildCmdBindIndexBuffer(ctx, commandBuffer, s, t)
+		return rebuildCmdBindIndexBuffer(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdDrawIndexedData:
-		return rebuildCmdDrawIndexed(ctx, commandBuffer, s, t)
+		return rebuildCmdDrawIndexed(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdPipelineBarrierData:
-		return rebuildCmdPipelineBarrier(ctx, commandBuffer, s, t)
+		return rebuildCmdPipelineBarrier(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdWaitEventsData:
-		return rebuildCmdWaitEvents(ctx, commandBuffer, s, t)
+		return rebuildCmdWaitEvents(ctx, cb, commandBuffer, s, t)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)
