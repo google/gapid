@@ -16,12 +16,14 @@ package binary
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/google/gapid/core/math/f16"
 )
 
 // Reader provides methods for decoding values.
 type Reader interface {
+	io.Reader
 	// Data reads the data bytes in their entirety.
 	Data([]byte)
 	// Bool decodes and returns a boolean value from the Reader.
