@@ -62,6 +62,10 @@ type writer struct {
 	err       error
 }
 
+func (r *reader) Read(p []byte) (n int, err error) {
+	return r.reader.Read(p)
+}
+
 func (r *reader) Data(p []byte) {
 	if r.err != nil {
 		return
