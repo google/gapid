@@ -37,16 +37,16 @@ func wireframe(ctx context.Context) transform.Transformer {
 			s := out.State()
 			dID := i.Derived()
 			cb := CommandBuilder{}
-			t := newTweaker(ctx, out, dID, cb)
-			t.glEnable(GLenum_GL_LINE_SMOOTH)
-			t.glEnable(GLenum_GL_BLEND)
-			t.glBlendFunc(GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
+			t := newTweaker(out, dID, cb)
+			t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
+			t.glEnable(ctx, GLenum_GL_BLEND)
+			t.glBlendFunc(ctx, GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
 
 			if err := drawWireframe(ctx, i, dc, s, out); err != nil {
 				log.E(ctx, "%v", err)
 			}
 
-			t.revert()
+			t.revert(ctx)
 		} else {
 			out.MutateAndWrite(ctx, i, a)
 		}
@@ -65,20 +65,20 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 
 				dID := id.Derived()
 				cb := CommandBuilder{}
-				t := newTweaker(ctx, out, dID, cb)
-				t.glEnable(GLenum_GL_POLYGON_OFFSET_LINE)
-				t.glPolygonOffset(-1, -1)
-				t.glEnable(GLenum_GL_BLEND)
-				t.glBlendColor(1.0, 0.5, 1.0, 1.0)
-				t.glBlendFunc(GLenum_GL_CONSTANT_COLOR, GLenum_GL_ZERO)
-				t.glEnable(GLenum_GL_LINE_SMOOTH)
-				t.glLineWidth(1.5)
+				t := newTweaker(out, dID, cb)
+				t.glEnable(ctx, GLenum_GL_POLYGON_OFFSET_LINE)
+				t.glPolygonOffset(ctx, -1, -1)
+				t.glEnable(ctx, GLenum_GL_BLEND)
+				t.glBlendColor(ctx, 1.0, 0.5, 1.0, 1.0)
+				t.glBlendFunc(ctx, GLenum_GL_CONSTANT_COLOR, GLenum_GL_ZERO)
+				t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
+				t.glLineWidth(ctx, 1.5)
 
 				if err := drawWireframe(ctx, i, dc, s, out); err != nil {
 					log.E(ctx, "%v", err)
 				}
 
-				t.revert()
+				t.revert(ctx)
 				return
 			}
 		}

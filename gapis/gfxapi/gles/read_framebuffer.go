@@ -94,8 +94,8 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 
 		dID := id.Derived()
 		cb := CommandBuilder{}
-		t := newTweaker(ctx, out, dID, cb)
-		t.glBindFramebuffer_Read(c.Bound.DrawFramebuffer.GetID())
+		t := newTweaker(out, dID, cb)
+		t.glBindFramebuffer_Read(ctx, c.Bound.DrawFramebuffer.GetID())
 
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
@@ -109,29 +109,29 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 				return nil
 			}))
 		} else {
-			t.glReadBuffer(GLenum_GL_COLOR_ATTACHMENT0 + GLenum(bufferIdx))
+			t.glReadBuffer(ctx, GLenum_GL_COLOR_ATTACHMENT0+GLenum(bufferIdx))
 		}
 
 		if inW == outW && inH == outH {
 			postColorData(ctx, s, outW, outH, fmt, out, id, res)
 		} else {
-			t.glScissor(0, 0, GLsizei(inW), GLsizei(inH))
-			framebufferID := t.glGenFramebuffer()
-			t.glBindFramebuffer_Draw(framebufferID)
-			renderbufferID := t.glGenRenderbuffer()
-			t.glBindRenderbuffer(renderbufferID)
+			t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
+			framebufferID := t.glGenFramebuffer(ctx)
+			t.glBindFramebuffer_Draw(ctx, framebufferID)
+			renderbufferID := t.glGenRenderbuffer(ctx)
+			t.glBindRenderbuffer(ctx, renderbufferID)
 
 			mutateAndWriteEach(ctx, out, dID,
 				cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
 				cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
 				cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
 			)
-			t.glBindFramebuffer_Read(framebufferID)
+			t.glBindFramebuffer_Read(ctx, framebufferID)
 
 			postColorData(ctx, s, outW, outH, fmt, out, id, res)
 		}
 
-		t.revert()
+		t.revert(ctx)
 	})
 }
 
@@ -152,8 +152,8 @@ func postColorData(ctx context.Context,
 
 	dID := id.Derived()
 	cb := CommandBuilder{}
-	t := newTweaker(ctx, out, dID, cb)
-	t.setPackStorage(PixelStorageState{Alignment: 1}, 0)
+	t := newTweaker(out, dID, cb)
+	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height), 1)
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
@@ -194,7 +194,7 @@ func postColorData(ctx context.Context,
 
 	out.MutateAndWrite(ctx, dID, cb.GlGetError(0)) // Check for errors.
 
-	t.revert()
+	t.revert(ctx)
 }
 
 func mutateAndWriteEach(ctx context.Context, out transform.Writer, id atom.ID, atoms ...atom.Atom) {

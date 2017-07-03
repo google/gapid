@@ -65,12 +65,11 @@ func run(ctx context.Context) error {
 	}
 
 	return apk.ApkDebugifier{
-		Ctx:          ctx,
 		JarSignCmd:   *jarSignCmd,
 		ZipAlignCmd:  *zipAlignCmd,
 		KeyPass:      *keyPass,
 		KeyAlias:     *keyAlias,
 		StorePass:    *storePass,
 		KeyStorePath: *keyStore,
-	}.Run(src, dst)
+	}.Run(ctx, src, dst)
 }

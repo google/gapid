@@ -78,33 +78,33 @@ func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, devi
 
 	dID := id.Derived()
 	cb := CommandBuilder{}
-	t := newTweaker(ctx, out, id, cb)
+	t := newTweaker(out, id, cb)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.
-	t.glDisable(GLenum_GL_BLEND)
-	t.glDisable(GLenum_GL_CULL_FACE)
-	t.glDisable(GLenum_GL_DEPTH_TEST)
-	t.glDisable(GLenum_GL_SCISSOR_TEST)
-	t.glDisable(GLenum_GL_STENCIL_TEST)
-	t.makeVertexArray(aScreenCoordsLocation)
+	t.glDisable(ctx, GLenum_GL_BLEND)
+	t.glDisable(ctx, GLenum_GL_CULL_FACE)
+	t.glDisable(ctx, GLenum_GL_DEPTH_TEST)
+	t.glDisable(ctx, GLenum_GL_SCISSOR_TEST)
+	t.glDisable(ctx, GLenum_GL_STENCIL_TEST)
+	t.makeVertexArray(ctx, aScreenCoordsLocation)
 
-	programID := t.makeProgram(vertexShaderSource, fragmentShaderSource)
+	programID := t.makeProgram(ctx, vertexShaderSource, fragmentShaderSource)
 
 	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
 	out.MutateAndWrite(ctx, dID, cb.GlLinkProgram(programID))
-	t.glUseProgram(programID)
+	t.glUseProgram(ctx, programID)
 
-	bufferID := t.glGenBuffer()
-	t.GlBindBuffer_ArrayBuffer(bufferID)
+	bufferID := t.glGenBuffer(ctx)
+	t.GlBindBuffer_ArrayBuffer(ctx, bufferID)
 
-	tmp := t.AllocData(positions)
+	tmp := t.AllocData(ctx, positions)
 	out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
 		AddRead(tmp.Data()))
 
 	out.MutateAndWrite(ctx, dID, cb.GlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
 	out.MutateAndWrite(ctx, dID, cb.GlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
 
-	t.revert()
+	t.revert(ctx)
 
 	return nil
 }
