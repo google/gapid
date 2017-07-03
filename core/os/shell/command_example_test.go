@@ -52,7 +52,7 @@ func ExampleVerbose() {
 		log.F(ctx, "Unable to say hello: %v", err)
 	}
 	// Output:
-	//I: [Example] Exec (Command: echo Hello "from the shell")
+	//I: [Example] Exec
 	//I: [Example] <echo> Hello from the shell
 }
 
@@ -67,9 +67,9 @@ func ExampleCapture() {
 	log.I(ctx, "<{<%s}>", stdout.String())
 	log.W(ctx, "<!{<%s}!>", stderr.String())
 	// Output:
-	//I: [Example] Exec (Command: echo "First echo")
+	//I: [Example] Exec
 	//I: [Example] <echo> First echo
-	//I: [Example] Exec (Command: echo "Second echo")
+	//I: [Example] Exec
 	//I: [Example] <echo> Second echo
 	//I: [Example] <{<First echo
 	//Second echo

@@ -70,7 +70,7 @@ var testMessages = []testMessage{
 
 		raw:      "info with values",
 		brief:    "I: info with values",
-		normal:   "12:34:56.789 I: info with values (cat: meow, dog: woof)",
+		normal:   "12:34:56.789 I: info with values",
 		detailed: "12:34:56.789 Info: info with values \n  cat: meow\n  dog: woof",
 	},
 }

@@ -39,7 +39,7 @@ var (
 	}
 
 	// Normal is a style that prints the timestamp, tag, trace, process,
-	// short severity and single line values.
+	// short severity.
 	Normal = Style{
 		Name:      "normal",
 		Timestamp: true,
@@ -47,7 +47,7 @@ var (
 		Trace:     true,
 		Process:   true,
 		Severity:  SeverityShort,
-		Values:    ValuesSingleLine,
+		Values:    NoValues,
 	}
 
 	// Detailed is a style that prints the timestamp, tag, trace, process,
