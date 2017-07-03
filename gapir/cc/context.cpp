@@ -92,7 +92,7 @@ void Context::prefetch(ResourceInMemoryCache* cache) const {
 
     auto resources = mReplayRequest->getResources();
     if (resources.size() > 0) {
-        GAPID_INFO("Prefetching resources...");
+        GAPID_INFO("Prefetching %d resources...", resources.size());
         mResourceProvider->prefetch(resources.data(), resources.size(), mServer,
                                     mMemoryManager->getVolatileAddress(),
                                     mReplayRequest->getVolatileMemorySize());
