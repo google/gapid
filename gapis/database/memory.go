@@ -86,7 +86,7 @@ type memory struct {
 }
 
 // Implements Database
-func (d *memory) store(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
+func (d *memory) Store(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	return d.storeLocked(ctx, id, v, m)
@@ -109,7 +109,7 @@ func (d *memory) storeLocked(ctx context.Context, id id.ID, v interface{}, m pro
 }
 
 // Implements Database
-func (d *memory) resolve(ctx context.Context, id id.ID) (interface{}, error) {
+func (d *memory) Resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	return d.resolveLocked(ctx, id)
@@ -192,7 +192,7 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 }
 
 // Implements Database
-func (d *memory) contains(ctx context.Context, id id.ID) (res bool) {
+func (d *memory) Contains(ctx context.Context, id id.ID) (res bool) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	_, got := d.records[id]

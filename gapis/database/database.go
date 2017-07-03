@@ -25,14 +25,14 @@ import (
 
 // Database is the interface to a resource store.
 type Database interface {
-	// store adds a key-value pair to the database.
+	// Store adds a key-value pair to the database.
 	// It is an error if the id is already mapped to an object.
-	store(context.Context, id.ID, interface{}, proto.Message) error
-	// resolve attempts to resolve the final value associated with an id.
+	Store(context.Context, id.ID, interface{}, proto.Message) error
+	//Rresolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
-	resolve(context.Context, id.ID) (interface{}, error)
-	// containts returns true if the database has an entry for the specified id.
-	contains(context.Context, id.ID) bool
+	Resolve(context.Context, id.ID) (interface{}, error)
+	// Contains returns true if the database has an entry for the specified id.
+	Contains(context.Context, id.ID) bool
 }
 
 // Store stores v to the database held by the context.
@@ -48,7 +48,7 @@ func Store(ctx context.Context, v interface{}) (id.ID, error) {
 	if v == m {
 		v = nil // v is the proto.
 	}
-	if err := Get(ctx).store(ctx, i, v, m); err != nil {
+	if err := Get(ctx).Store(ctx, i, v, m); err != nil {
 		return id.ID{}, err
 	}
 	return i, nil
@@ -56,7 +56,7 @@ func Store(ctx context.Context, v interface{}) (id.ID, error) {
 
 // Resolve resolves id with the database held by the context.
 func Resolve(ctx context.Context, id id.ID) (interface{}, error) {
-	return Get(ctx).resolve(ctx, id)
+	return Get(ctx).Resolve(ctx, id)
 }
 
 // Build stores resolvable into d, and then resolves and returns the resolved
@@ -66,7 +66,7 @@ func Build(ctx context.Context, r Resolvable) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Get(ctx).resolve(ctx, id)
+	return Get(ctx).Resolve(ctx, id)
 }
 
 type databaseKeyTy string
