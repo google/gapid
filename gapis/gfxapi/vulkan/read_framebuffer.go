@@ -33,12 +33,12 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(ctx context.Context, out transform.Writer)
+	injections map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(ctx context.Context, out transform.Writer)),
+		injections: make(map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)),
 	}
 }
 
@@ -60,7 +60,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
-			injection(ctx, out)
+			injection(ctx, a, out)
 		}
 		delete(t.injections, id)
 	}
@@ -73,7 +73,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Depth
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
@@ -97,12 +97,13 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 
 		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		depthImageObject := imageViewDepth.Image
-		postImageData(ctx, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
+		cb := CommandBuilder{}
+		postImageData(ctx, cb, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
 		w, h, form, attachmentIndex, err := GetState(s).getFramebufferAttachmentInfo(attachment)
@@ -110,6 +111,8 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid Color attachment")})
 			return
 		}
+
+		cb := CommandBuilder{}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
@@ -128,10 +131,10 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 
 			imageView := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 			imageObject := imageView.Image
-			postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {
 			imageObject := GetState(s).LastPresentInfo.PresentImages[attachmentIndex]
-			postImageData(ctx, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		}
 	})
 }
@@ -155,6 +158,7 @@ func newUnusedID(isDispatchable bool, existenceTest func(uint64) bool) uint64 {
 }
 
 func postImageData(ctx context.Context,
+	cb CommandBuilder,
 	s *gfxapi.State,
 	imageObject *ImageObject,
 	vkFormat VkFormat,
@@ -641,7 +645,7 @@ func postImageData(ctx context.Context,
 	// Write atoms to writer
 	// Create staging image, allocate and bind memory
 	writeEach(ctx, out,
-		NewVkCreateImage(
+		cb.VkCreateImage(
 			vkDevice,
 			stagingImageCreateInfoData.Ptr(),
 			memory.Nullptr,
@@ -652,7 +656,7 @@ func postImageData(ctx context.Context,
 		).AddWrite(
 			stagingImageData.Data(),
 		),
-		NewReplayAllocateImageMemory(
+		cb.ReplayAllocateImageMemory(
 			vkDevice,
 			physicalDeviceMemoryPropertiesData.Ptr(),
 			stagingImageId,
@@ -663,7 +667,7 @@ func postImageData(ctx context.Context,
 		).AddWrite(
 			stagingImageMemoryData.Data(),
 		),
-		NewVkBindImageMemory(
+		cb.VkBindImageMemory(
 			vkDevice,
 			stagingImageId,
 			stagingImageMemoryId,
@@ -673,7 +677,7 @@ func postImageData(ctx context.Context,
 	)
 	// Create buffer, allocate and bind memory
 	writeEach(ctx, out,
-		NewVkCreateBuffer(
+		cb.VkCreateBuffer(
 			vkDevice,
 			bufferCreateInfoData.Ptr(),
 			memory.Nullptr,
@@ -684,7 +688,7 @@ func postImageData(ctx context.Context,
 		).AddWrite(
 			bufferData.Data(),
 		),
-		NewVkAllocateMemory(
+		cb.VkAllocateMemory(
 			vkDevice,
 			bufferMemoryAllocateInfoData.Ptr(),
 			memory.Nullptr,
@@ -695,7 +699,7 @@ func postImageData(ctx context.Context,
 		).AddWrite(
 			bufferMemoryData.Data(),
 		),
-		NewVkBindBufferMemory(
+		cb.VkBindBufferMemory(
 			vkDevice,
 			bufferId,
 			bufferMemoryId,
@@ -708,7 +712,7 @@ func postImageData(ctx context.Context,
 	// Create resolve image, allocate and bind memory
 	if imageObject.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		writeEach(ctx, out,
-			NewVkCreateImage(
+			cb.VkCreateImage(
 				vkDevice,
 				resolveImageCreateInfoData.Ptr(),
 				memory.Nullptr,
@@ -719,7 +723,7 @@ func postImageData(ctx context.Context,
 			).AddWrite(
 				resolveImageData.Data(),
 			),
-			NewReplayAllocateImageMemory(
+			cb.ReplayAllocateImageMemory(
 				vkDevice,
 				physicalDeviceMemoryPropertiesData.Ptr(),
 				resolveImageId,
@@ -730,7 +734,7 @@ func postImageData(ctx context.Context,
 			).AddWrite(
 				resolveImageMemoryData.Data(),
 			),
-			NewVkBindImageMemory(
+			cb.VkBindImageMemory(
 				vkDevice,
 				resolveImageId,
 				resolveImageMemoryId,
@@ -742,7 +746,7 @@ func postImageData(ctx context.Context,
 
 	// Create command pool, allocate command buffer
 	writeEach(ctx, out,
-		NewVkCreateCommandPool(
+		cb.VkCreateCommandPool(
 			vkDevice,
 			commandPoolCreateInfoData.Ptr(),
 			memory.Nullptr,
@@ -753,7 +757,7 @@ func postImageData(ctx context.Context,
 		).AddWrite(
 			commandPoolData.Data(),
 		),
-		NewVkAllocateCommandBuffers(
+		cb.VkAllocateCommandBuffers(
 			vkDevice,
 			commandBufferAllocateInfoData.Ptr(),
 			commandBufferData.Ptr(),
@@ -767,7 +771,7 @@ func postImageData(ctx context.Context,
 
 	// Create a fence
 	writeEach(ctx, out,
-		NewVkCreateFence(
+		cb.VkCreateFence(
 			vkDevice,
 			fenceCreateData.Ptr(),
 			memory.Nullptr,
@@ -782,14 +786,14 @@ func postImageData(ctx context.Context,
 
 	// Begin command buffer, change attachment image and staging image layout
 	writeEach(ctx, out,
-		NewVkBeginCommandBuffer(
+		cb.VkBeginCommandBuffer(
 			commandBufferId,
 			beginCommandBufferInfoData.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddRead(
 			beginCommandBufferInfoData.Data(),
 		),
-		NewVkCmdPipelineBarrier(
+		cb.VkCmdPipelineBarrier(
 			commandBufferId,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -803,7 +807,7 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			attachmentImageToSrcBarrierData.Data(),
 		),
-		NewVkCmdPipelineBarrier(
+		cb.VkCmdPipelineBarrier(
 			commandBufferId,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -824,7 +828,7 @@ func postImageData(ctx context.Context,
 	// image layout again.fmt
 	if imageObject.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		writeEach(ctx, out,
-			NewVkCmdPipelineBarrier(
+			cb.VkCmdPipelineBarrier(
 				commandBufferId,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -838,7 +842,7 @@ func postImageData(ctx context.Context,
 			).AddRead(
 				resolveImageToDstBarrierData.Data(),
 			),
-			NewVkCmdResolveImage(
+			cb.VkCmdResolveImage(
 				commandBufferId,
 				imageObject.VulkanHandle,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -847,7 +851,7 @@ func postImageData(ctx context.Context,
 				1,
 				imageResolveData.Ptr(),
 			).AddRead(imageResolveData.Data()),
-			NewVkCmdPipelineBarrier(
+			cb.VkCmdPipelineBarrier(
 				commandBufferId,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -876,7 +880,7 @@ func postImageData(ctx context.Context,
 		filter = VkFilter_VK_FILTER_NEAREST
 	}
 	writeEach(ctx, out,
-		NewVkCmdBlitImage(
+		cb.VkCmdBlitImage(
 			commandBufferId,
 			blitSrcImage,
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -891,7 +895,7 @@ func postImageData(ctx context.Context,
 	// Change the layout of staging image and attachment image, copy staging image to buffer,
 	// end command buffer
 	writeEach(ctx, out,
-		NewVkCmdPipelineBarrier(
+		cb.VkCmdPipelineBarrier(
 			commandBufferId,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -905,7 +909,7 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			stagingImageToSrcBarrierData.Data(),
 		),
-		NewVkCmdPipelineBarrier(
+		cb.VkCmdPipelineBarrier(
 			commandBufferId,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -919,7 +923,7 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			attachmentImageResetLayoutBarrierData.Data(),
 		),
-		NewVkCmdCopyImageToBuffer(
+		cb.VkCmdCopyImageToBuffer(
 			commandBufferId,
 			stagingImageId,
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -929,15 +933,15 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			bufferImageCopyData.Data(),
 		),
-		NewVkEndCommandBuffer(
+		cb.VkEndCommandBuffer(
 			commandBufferId,
 			VkResult_VK_SUCCESS,
 		))
 
 	// Submit all the commands above, wait until finish.
 	writeEach(ctx, out,
-		NewVkDeviceWaitIdle(vkDevice, VkResult_VK_SUCCESS),
-		NewVkQueueSubmit(
+		cb.VkDeviceWaitIdle(vkDevice, VkResult_VK_SUCCESS),
+		cb.VkQueueSubmit(
 			vkQueue,
 			1,
 			submitInfoData.Ptr(),
@@ -948,7 +952,7 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			commandBuffers.Data(),
 		),
-		NewVkWaitForFences(
+		cb.VkWaitForFences(
 			vkDevice,
 			1,
 			fenceData.Ptr(),
@@ -958,12 +962,12 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			fenceData.Data(),
 		),
-		NewVkDeviceWaitIdle(vkDevice, VkResult_VK_SUCCESS),
+		cb.VkDeviceWaitIdle(vkDevice, VkResult_VK_SUCCESS),
 	)
 
 	// Dump the buffer data to host
 	writeEach(ctx, out,
-		NewVkMapMemory(
+		cb.VkMapMemory(
 			vkDevice,
 			bufferMemoryId,
 			VkDeviceSize(0),
@@ -972,7 +976,7 @@ func postImageData(ctx context.Context,
 			mappedPointer.Ptr(),
 			VkResult_VK_SUCCESS,
 		).AddWrite(mappedPointer.Data()),
-		NewVkInvalidateMappedMemoryRanges(
+		cb.VkInvalidateMappedMemoryRanges(
 			vkDevice,
 			1,
 			mappedMemoryRangeData.Ptr(),
@@ -1024,16 +1028,16 @@ func postImageData(ctx context.Context,
 	)
 	// Free the device resources used for reading framebuffer
 	writeEach(ctx, out,
-		NewVkUnmapMemory(vkDevice, bufferMemoryId),
-		NewVkDestroyBuffer(vkDevice, bufferId, memory.Nullptr),
-		NewVkDestroyCommandPool(vkDevice, commandPoolId, memory.Nullptr),
-		NewVkDestroyImage(vkDevice, stagingImageId, memory.Nullptr),
-		NewVkFreeMemory(vkDevice, stagingImageMemoryId, memory.Nullptr),
-		NewVkFreeMemory(vkDevice, bufferMemoryId, memory.Nullptr))
+		cb.VkUnmapMemory(vkDevice, bufferMemoryId),
+		cb.VkDestroyBuffer(vkDevice, bufferId, memory.Nullptr),
+		cb.VkDestroyCommandPool(vkDevice, commandPoolId, memory.Nullptr),
+		cb.VkDestroyImage(vkDevice, stagingImageId, memory.Nullptr),
+		cb.VkFreeMemory(vkDevice, stagingImageMemoryId, memory.Nullptr),
+		cb.VkFreeMemory(vkDevice, bufferMemoryId, memory.Nullptr))
 	if imageObject.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		writeEach(ctx, out,
-			NewVkDestroyImage(vkDevice, resolveImageId, memory.Nullptr),
-			NewVkFreeMemory(vkDevice, resolveImageMemoryId, memory.Nullptr))
+			cb.VkDestroyImage(vkDevice, resolveImageId, memory.Nullptr),
+			cb.VkFreeMemory(vkDevice, resolveImageMemoryId, memory.Nullptr))
 	}
-	writeEach(ctx, out, NewVkDestroyFence(vkDevice, fenceId, memory.Nullptr))
+	writeEach(ctx, out, cb.VkDestroyFence(vkDevice, fenceId, memory.Nullptr))
 }

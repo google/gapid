@@ -36,7 +36,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 		if dc, ok := a.(drawCall); ok {
 			s := out.State()
 			dID := i.Derived()
-			t := newTweaker(ctx, out, dID)
+			cb := CommandBuilder{}
+			t := newTweaker(ctx, out, dID, cb)
 			t.glEnable(GLenum_GL_LINE_SMOOTH)
 			t.glEnable(GLenum_GL_BLEND)
 			t.glBlendFunc(GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
@@ -63,7 +64,8 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 				out.MutateAndWrite(ctx, i, dc)
 
 				dID := id.Derived()
-				t := newTweaker(ctx, out, dID)
+				cb := CommandBuilder{}
+				t := newTweaker(ctx, out, dID, cb)
 				t.glEnable(GLenum_GL_POLYGON_OFFSET_LINE)
 				t.glPolygonOffset(-1, -1)
 				t.glEnable(GLenum_GL_BLEND)
@@ -87,6 +89,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 
 func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
 	c := GetContext(s)
+	cb := CommandBuilder{}
 	dID := i.Derived()
 
 	indices, drawMode, err := dc.getIndices(ctx, c, s)
@@ -109,15 +112,15 @@ func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State,
 	tmp := atom.Must(atom.Alloc(ctx, s, uint64(len(wireframeData))))
 	oldIndexBuffer := c.Bound.VertexArray.ElementArrayBuffer
 	out.MutateAndWrite(ctx, dID,
-		NewGlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).
+		cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).
 			AddRead(tmp.Range(), resID))
 
 	// Draw the wire-frame
-	out.MutateAndWrite(ctx, i, NewGlDrawElements(
+	out.MutateAndWrite(ctx, i, cb.GlDrawElements(
 		drawMode, GLsizei(len(indices)), wireframeDataType, tmp.Ptr()))
 
 	// Rebind the old index buffer
-	out.MutateAndWrite(ctx, dID, NewGlBindBuffer(
+	out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(
 		GLenum_GL_ELEMENT_ARRAY_BUFFER, oldIndexBuffer.GetID()))
 
 	return nil

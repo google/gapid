@@ -270,7 +270,8 @@ func OnSwitchThread(ctx context.Context, gs *gfxapi.State, b *builder.Builder) e
 		return nil
 	}
 	ctxID := uint32(context.Identifier)
-	return NewReplayBindRenderer(ctxID).Mutate(ctx, gs, b)
+	cb := CommandBuilder{}
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, gs, b)
 }
 
 func (ω *EglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -279,7 +280,8 @@ func (ω *EglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Result].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -292,17 +294,18 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 		return nil
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
+	cb := CommandBuilder{}
 	if !wasCreated {
 		// The eglCreateContext call was missing, so fake it (can happen on Samsung).
-		if err := NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b); err != nil {
+		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b); err != nil {
 			return err
 		}
 	}
-	if err := NewReplayBindRenderer(ctxID).Mutate(ctx, s, b); err != nil {
+	if err := cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b); err != nil {
 		return err
 	}
 	if cs := FindDynamicContextState(ω.Extras()); cs != nil {
-		cmd := NewReplayChangeBackbuffer(
+		cmd := cb.ReplayChangeBackbuffer(
 			cs.BackbufferWidth,
 			cs.BackbufferHeight,
 			cs.BackbufferColorFmt,
@@ -323,7 +326,8 @@ func (ω *WglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -332,7 +336,8 @@ func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, s *gfxapi.Stat
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -344,7 +349,8 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 		return nil
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Hglrc].Identifier)
-	return NewReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *CGLCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -353,7 +359,8 @@ func (ω *CGLCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.Read(ctx, ω, s, b)].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -365,7 +372,8 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *gfxapi.State, b *
 		return nil
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx].Identifier)
-	return NewReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *GlXCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -374,7 +382,8 @@ func (ω *GlXCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *GlXCreateNewContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -383,7 +392,8 @@ func (ω *GlXCreateNewContext) Mutate(ctx context.Context, s *gfxapi.State, b *b
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
-	return NewReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -395,15 +405,17 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b 
 		return nil
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Ctx].Identifier)
-	return NewReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	cb := CommandBuilder{}
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
 // Force all attributes to use the capture-observed locations during replay.
 func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(a.Extras())
 	if pi != nil && b != nil {
+		cb := CommandBuilder{}
 		for _, attr := range pi.ActiveAttributes {
-			a := NewGlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
+			a := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
 			if err := a.Mutate(ctx, s, b); err != nil {
 				return err
 			}
@@ -416,9 +428,10 @@ func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *b
 func bindUniformBlocks(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(a.Extras())
 	if pi != nil && b != nil {
+		cb := CommandBuilder{}
 		for i, ub := range pi.ActiveUniformBlocks {
 			// Query replay-time uniform block index so that the remapping is established
-			a := NewGlGetUniformBlockIndex(pid, ub.Name, i)
+			a := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
 			if err := a.Mutate(ctx, s, b); err != nil {
 				return err
 			}

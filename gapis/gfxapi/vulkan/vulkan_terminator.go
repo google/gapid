@@ -213,6 +213,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *gfxapi.State, submit *VkQu
 // including idx. It then appends any recreate* arguments to the end
 // of the command buffer.
 func rebuildCommandBuffer(ctx context.Context,
+	cb CommandBuilder,
 	commandBuffer *CommandBufferObject,
 	s *gfxapi.State,
 	idx sync.SubcommandIndex,
@@ -240,7 +241,7 @@ func rebuildCommandBuffer(ctx context.Context,
 	commandBufferData := atom.Must(atom.AllocData(ctx, s, commandBufferId))
 
 	x = append(x,
-		NewVkAllocateCommandBuffers(commandBuffer.Device,
+		cb.VkAllocateCommandBuffers(commandBuffer.Device,
 			allocateData.Ptr(), commandBufferData.Ptr(), VkResult_VK_SUCCESS,
 		).AddRead(allocateData.Data()).AddWrite(commandBufferData.Data()))
 
@@ -253,7 +254,7 @@ func rebuildCommandBuffer(ctx context.Context,
 
 	beginInfoData := atom.Must(atom.AllocData(ctx, s, beginInfo))
 	x = append(x,
-		NewVkBeginCommandBuffer(commandBufferId, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
+		cb.VkBeginCommandBuffer(commandBufferId, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
 
 	// If we have ANY data, then we need to copy up to that point
 	commandsToCopy := uint64(0)
@@ -269,17 +270,17 @@ func rebuildCommandBuffer(ctx context.Context,
 
 	for i := 0; i < int(commandsToCopy); i++ {
 		cmd := commandBuffer.Commands[i]
-		c, a := AddCommand(ctx, commandBufferId, s, cmd.recreateData)
+		c, a := AddCommand(ctx, cb, commandBufferId, s, cmd.recreateData)
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
 	for i := range additionalCommands {
-		c, a := AddCommand(ctx, commandBufferId, s, additionalCommands[i])
+		c, a := AddCommand(ctx, cb, commandBufferId, s, additionalCommands[i])
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
 	x = append(x,
-		NewVkEndCommandBuffer(commandBufferId, VkResult_VK_SUCCESS))
+		cb.VkEndCommandBuffer(commandBufferId, VkResult_VK_SUCCESS))
 	cleanup = append(cleanup, func() {
 		allocateData.Free()
 		commandBufferData.Free()
@@ -295,14 +296,14 @@ func rebuildCommandBuffer(ctx context.Context,
 // index it would remain valid. This means closing any open
 // RenderPasses.
 func cutCommandBuffer(ctx context.Context, id atom.ID,
-	a atom.Atom, idx sync.SubcommandIndex, out transform.Writer) {
-	submit := a.(*VkQueueSubmit)
+	a *VkQueueSubmit, idx sync.SubcommandIndex, out transform.Writer) {
+	cb := CommandBuilder{}
 	s := out.State()
 	c := GetState(s)
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
-	submitInfo := submit.PSubmits.Slice(uint64(0), uint64(submit.SubmitCount), l)
+	submitInfo := a.PSubmits.Slice(uint64(0), uint64(a.SubmitCount), l)
 	skipAll := len(idx) == 0
 
 	// Notes:
@@ -312,8 +313,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	// idx[2] is the command index in the primary command-buffer
 	// idx[3] is the secondary command buffer index inside a vkCmdExecuteCommands
 	// idx[4] is the secondary command inside the secondary command-buffer
-	submitCopy := NewVkQueueSubmit(submit.Queue, submit.SubmitCount, submit.PSubmits,
-		submit.Fence, submit.Result)
+	submitCopy := cb.VkQueueSubmit(a.Queue, a.SubmitCount, a.PSubmits, a.Fence, a.Result)
 	submitCopy.Extras().Add(a.Extras().All()...)
 
 	newCommandBuffers := make([]VkCommandBuffer, 1)
@@ -340,7 +340,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 
 	var lrp *RenderPassObject
 	lsp := uint32(0)
-	if lastDrawInfo, ok := c.LastDrawInfos[submit.Queue]; ok {
+	if lastDrawInfo, ok := c.LastDrawInfos[a.Queue]; ok {
 		if lastDrawInfo.InRenderPass {
 			lrp = lastDrawInfo.RenderPass
 			lsp = lastDrawInfo.LastSubpass
@@ -349,7 +349,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 			lsp = 0
 		}
 	}
-	lrp, lsp = resolveCurrentRenderPass(ctx, s, submit, idx, lrp, lsp)
+	lrp, lsp = resolveCurrentRenderPass(ctx, s, a, idx, lrp, lsp)
 
 	extraCommands := make([]interface{}, 0)
 	if lrp != nil {
@@ -366,7 +366,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 		subIdx = idx[2:]
 	}
 	b, newCommands, cleanup :=
-		rebuildCommandBuffer(ctx, cmdBuffer, s, subIdx, extraCommands)
+		rebuildCommandBuffer(ctx, cb, cmdBuffer, s, subIdx, extraCommands)
 	newCommandBuffers[lastCommandBuffer] = b
 
 	bufferMemory := atom.Must(atom.AllocData(ctx, s, newCommandBuffers))
@@ -423,7 +423,7 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, a atom.Ato
 
 	// We have to cut somewhere
 	if doCut {
-		cutCommandBuffer(ctx, id, a, cutIndex, out)
+		cutCommandBuffer(ctx, id, a.(*VkQueueSubmit), cutIndex, out)
 	} else {
 		out.MutateAndWrite(ctx, id, a)
 	}

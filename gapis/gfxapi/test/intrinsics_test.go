@@ -33,10 +33,11 @@ func p(addr uint64) memory.Pointer {
 func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
-		NewCmdClone(p(0x1234), 10).
+		cb.CmdClone(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
 	} {
 		a.Mutate(ctx, s, nil)
@@ -48,9 +49,10 @@ func TestClone(t *testing.T) {
 func TestMake(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
-	NewCmdMake(10).Mutate(ctx, s, nil)
+	cb.CmdMake(10).Mutate(ctx, s, nil)
 	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count()).Equals(uint64(10))
 	assert.For(ctx, "final NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(2))
 }
@@ -58,11 +60,12 @@ func TestMake(t *testing.T) {
 func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
-		NewCmdMake(10),
-		NewCmdCopy(p(0x1234), 10).
+		cb.CmdMake(10),
+		cb.CmdCopy(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
 	} {
 		a.Mutate(ctx, s, nil)
@@ -74,9 +77,10 @@ func TestCopy(t *testing.T) {
 func TestCharsliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
-	NewCmdCharsliceToString(p(0x1234), uint32(len(expected))).
+	cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
 		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
 		Mutate(ctx, s, nil)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
@@ -85,9 +89,10 @@ func TestCharsliceToString(t *testing.T) {
 func TestCharptrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
-	NewCmdCharptrToString(p(0x1234)).
+	cb.CmdCharptrToString(p(0x1234)).
 		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
 		Mutate(ctx, s, nil)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
@@ -96,11 +101,12 @@ func TestCharptrToString(t *testing.T) {
 func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = l
-	NewCmdSliceCasts(p(0x1234), 10).Mutate(ctx, s, nil)
+	cb.CmdSliceCasts(p(0x1234), 10).Mutate(ctx, s, nil)
 
 	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(U8ᵖ{0x1234, 0}.Slice(0, 20, l))
 	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(U16ᵖ{0x1234, 0}.Slice(0, 10, l))

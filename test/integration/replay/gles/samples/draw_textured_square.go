@@ -24,7 +24,7 @@ import (
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx context.Context, sharedContext bool) (atoms *atom.List, draw atom.ID, swap atom.ID) {
+func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (atoms *atom.List, draw atom.ID, swap atom.ID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -77,7 +77,7 @@ func DrawTexturedSquare(ctx context.Context, sharedContext bool) (atoms *atom.Li
 	b.program(ctx, vs, fs, prog, textureVSSource, textureFSSource)
 	b.Add(
 		atom.WithExtras(
-			gles.NewGlLinkProgram(prog),
+			cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
 				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
@@ -89,16 +89,16 @@ func DrawTexturedSquare(ctx context.Context, sharedContext bool) (atoms *atom.Li
 					},
 				},
 			}),
-		gles.NewGlGetUniformLocation(prog, "tex", texLoc),
+		cb.GlGetUniformLocation(prog, "tex", texLoc),
 	)
 
 	// Build the texture resource
 	b.Add(
-		gles.NewGlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
-		gles.NewGlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		gles.NewGlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		gles.NewGlTexImage2D(
+		cb.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
+		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		cb.GlTexImage2D(
 			gles.GLenum_GL_TEXTURE_2D,
 			0,
 			gles.GLint(gles.GLenum_GL_RGB),
@@ -118,22 +118,22 @@ func DrawTexturedSquare(ctx context.Context, sharedContext bool) (atoms *atom.Li
 
 	// Render square using the build program and texture
 	draw = b.Add(
-		gles.NewGlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		gles.NewGlClearColor(0.0, 1.0, 0.0, 1.0),
-		gles.NewGlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
-		gles.NewGlUseProgram(prog),
-		gles.NewGlActiveTexture(gles.GLenum_GL_TEXTURE0),
-		gles.NewGlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		gles.NewGlUniform1i(texLoc, 0),
-		gles.NewGlGetAttribLocation(prog, "position", gles.GLint(pos)),
-		gles.NewGlEnableVertexAttribArray(pos),
-		gles.NewGlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
-		gles.NewGlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
+		cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+		cb.GlUseProgram(prog),
+		cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		cb.GlUniform1i(texLoc, 0),
+		cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		cb.GlEnableVertexAttribArray(pos),
+		cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
+		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
 	)
 	swap = b.Add(
-		gles.NewEglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
+		cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
 
 	return &b.List, draw, swap

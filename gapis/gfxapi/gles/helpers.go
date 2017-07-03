@@ -23,18 +23,18 @@ import (
 
 // BuildProgram returns the atoms to create a shader program with compiled vertex
 // and fragment shaders. The returned program is not linked.
-func BuildProgram(ctx context.Context, s *gfxapi.State,
+func BuildProgram(ctx context.Context, s *gfxapi.State, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
-	return append([]atom.Atom{NewGlCreateProgram(programID)},
-		CompileProgram(ctx, s, vertexShaderID, fragmentShaderID, programID, vertexShaderSource, fragmentShaderSource)...,
+	return append([]atom.Atom{cb.GlCreateProgram(programID)},
+		CompileProgram(ctx, s, cb, vertexShaderID, fragmentShaderID, programID, vertexShaderSource, fragmentShaderSource)...,
 	)
 }
 
 // CompileProgram returns the atoms to compile and then attach vertex and
 // fragment shaders to an existing shader program.
 // The returned program is not linked.
-func CompileProgram(ctx context.Context, s *gfxapi.State,
+func CompileProgram(ctx context.Context, s *gfxapi.State, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
 
@@ -46,20 +46,20 @@ func CompileProgram(ctx context.Context, s *gfxapi.State,
 	tmpPtrToFragmentSrc := atom.Must(atom.AllocData(ctx, s, tmpFragmentSrc.Ptr()))
 
 	a := []atom.Atom{
-		NewGlCreateShader(GLenum_GL_VERTEX_SHADER, vertexShaderID),
-		NewGlShaderSource(vertexShaderID, 1, tmpPtrToVertexSrc.Ptr(), tmpVertexSrcLen.Ptr()).
+		cb.GlCreateShader(GLenum_GL_VERTEX_SHADER, vertexShaderID),
+		cb.GlShaderSource(vertexShaderID, 1, tmpPtrToVertexSrc.Ptr(), tmpVertexSrcLen.Ptr()).
 			AddRead(tmpPtrToVertexSrc.Data()).
 			AddRead(tmpVertexSrcLen.Data()).
 			AddRead(tmpVertexSrc.Data()),
-		NewGlCompileShader(vertexShaderID),
-		NewGlCreateShader(GLenum_GL_FRAGMENT_SHADER, fragmentShaderID),
-		NewGlShaderSource(fragmentShaderID, 1, tmpPtrToFragmentSrc.Ptr(), tmpFragmentSrcLen.Ptr()).
+		cb.GlCompileShader(vertexShaderID),
+		cb.GlCreateShader(GLenum_GL_FRAGMENT_SHADER, fragmentShaderID),
+		cb.GlShaderSource(fragmentShaderID, 1, tmpPtrToFragmentSrc.Ptr(), tmpFragmentSrcLen.Ptr()).
 			AddRead(tmpPtrToFragmentSrc.Data()).
 			AddRead(tmpFragmentSrcLen.Data()).
 			AddRead(tmpFragmentSrc.Data()),
-		NewGlCompileShader(fragmentShaderID),
-		NewGlAttachShader(programID, vertexShaderID),
-		NewGlAttachShader(programID, fragmentShaderID),
+		cb.GlCompileShader(fragmentShaderID),
+		cb.GlAttachShader(programID, vertexShaderID),
+		cb.GlAttachShader(programID, fragmentShaderID),
 		// TODO: We should be able to delete the shaders here.
 	}
 

@@ -28,8 +28,9 @@ import (
 func TestSubAdd(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	cb := CommandBuilder{}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
-	NewCmdAdd(10, 20).Mutate(ctx, s, nil)
+	cb.CmdAdd(10, 20).Mutate(ctx, s, nil)
 	got := GetState(s).Ints.Read(ctx, nil, s, nil)
 	expected := []memory.Int{30}
 	assert.With(ctx).ThatSlice(got).Equals(expected)

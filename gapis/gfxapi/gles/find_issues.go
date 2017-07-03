@@ -90,6 +90,7 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 
 func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
+	cb := CommandBuilder{}
 	t.lastGlError = GLenum_GL_NO_ERROR
 	mutateErr := a.Mutate(ctx, t.state, nil /* no builder */)
 	if mutateErr != nil {
@@ -196,7 +197,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		tmp := atom.Must(atom.Alloc(ctx, t.state, buflen))
 
 		infoLog := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, NewGlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -210,7 +211,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		}))
 
 		source := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, NewGlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -223,7 +224,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			return nil
 		}))
 
-		out.MutateAndWrite(ctx, dID, NewGlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) error {
@@ -247,8 +248,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	case *GlLinkProgram:
 		const buflen = 2048
 		tmp := atom.Must(atom.Alloc(ctx, t.state, 4+buflen))
-		out.MutateAndWrite(ctx, dID, NewGlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, NewGlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) error {

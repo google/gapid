@@ -634,6 +634,7 @@ func (shader *ShaderModuleObject) SetResourceData(
 
 func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *gfxapi.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
+	cb := CommandBuilder{}
 	state := c.NewState()
 	a.Mutate(ctx, state, nil)
 
@@ -663,7 +664,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
 	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
-	newAtom := NewVkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
+	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
 	for _, e := range a.Extras().All() {
@@ -683,6 +684,7 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 
 func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *gfxapi.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
+	cb := CommandBuilder{}
 	state := c.NewState()
 	a.Mutate(ctx, state, nil)
 
@@ -710,7 +712,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
 	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
 	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
-	newAtom := NewRecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
+	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
 	for _, e := range a.Extras().All() {

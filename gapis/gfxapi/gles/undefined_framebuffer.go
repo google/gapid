@@ -77,7 +77,8 @@ func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, devi
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
 	dID := id.Derived()
-	t := newTweaker(ctx, out, id)
+	cb := CommandBuilder{}
+	t := newTweaker(ctx, out, id, cb)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.
 	t.glDisable(GLenum_GL_BLEND)
@@ -89,19 +90,19 @@ func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, devi
 
 	programID := t.makeProgram(vertexShaderSource, fragmentShaderSource)
 
-	out.MutateAndWrite(ctx, dID, NewGlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
-	out.MutateAndWrite(ctx, dID, NewGlLinkProgram(programID))
+	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
+	out.MutateAndWrite(ctx, dID, cb.GlLinkProgram(programID))
 	t.glUseProgram(programID)
 
 	bufferID := t.glGenBuffer()
 	t.GlBindBuffer_ArrayBuffer(bufferID)
 
 	tmp := t.AllocData(positions)
-	out.MutateAndWrite(ctx, dID, NewGlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
+	out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
 		AddRead(tmp.Data()))
 
-	out.MutateAndWrite(ctx, dID, NewGlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
-	out.MutateAndWrite(ctx, dID, NewGlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
+	out.MutateAndWrite(ctx, dID, cb.GlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
+	out.MutateAndWrite(ctx, dID, cb.GlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))
 
 	t.revert()
 

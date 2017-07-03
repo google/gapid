@@ -45,9 +45,10 @@ func buildStubProgram(ctx context.Context, e *atom.Extras, s *gfxapi.State, prog
 		_, ok := c.Objects.Shared.Buffers[BufferId(x)]
 		return ok || x == uint32(vertexShaderID)
 	}))
+	cb := CommandBuilder{}
 	return append(
-		CompileProgram(ctx, s, vertexShaderID, fragmentShaderID, programID, vss, fss),
-		NewGlLinkProgram(programID),
+		CompileProgram(ctx, s, cb, vertexShaderID, fragmentShaderID, programID, vss, fss),
+		cb.GlLinkProgram(programID),
 	)
 }
 

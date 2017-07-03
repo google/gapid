@@ -73,7 +73,7 @@
 
   {{template "State" $}}
 
-  {{template "NewAtoms" $}}
+  {{template "CommandBuilder" $}}
 
   {{template "API" $}}
 
@@ -1189,13 +1189,17 @@
   Emits an Atom constructor for each command.
 -------------------------------------------------------------------------------
 */}}
-{{define "NewAtoms"}}
+{{define "CommandBuilder"}}
   {{AssertType $ "API"}}
 
+  // CommandBuilder is used to construct new {{$.Name}} commands.
+  type CommandBuilder struct {
+  }
+  ¶
   {{range $c := AllCommands $}}
     {{if not (GetAnnotation $c "pfn")}}
       {{$name := $c | GoCommandName}}
-      func New{{$name}}(§
+      func (cb CommandBuilder) {{Title $name}}(§
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
               {{Title $p.Name}} ϟmem.Pointer,§
