@@ -20,7 +20,6 @@
 #include "abort_exception.h"
 #include "call_observer.h"
 #include "pack_encoder.h"
-#include "return_handler.h"
 #include "slice.h"
 
 #include "core/cc/assert.h"
@@ -67,20 +66,6 @@ public:
     // writes do not change the memory contents. If false, then
     // no-observations are made and writes change the application memory.
     inline void setObserveApplicationPool(bool observeApplicationPool);
-
-    // Set the handler to use when handle() is called with an abort
-    // exception. This allows different treatment for different
-    // aborts without requiring API specific knowledge.
-    typedef std::function<void(CallObserver* observer, const AbortException&)> AbortHandler;
-    inline void setHandler(AbortHandler handler);
-
-    // Returns true if the spy should compute the expected return value and
-    // call setExpectedReturn(v). Default is false.
-    inline bool shouldComputeExpectedReturn() const;
-
-    // Set the handler to use when setExpectedReturn(val) is called.
-    // By default the return value specified is ignored.
-    inline void setReturnHandler(std::shared_ptr<ReturnHandler> handler);
 
     // Returns the set of resources ids.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -213,13 +198,6 @@ private:
     // True if we should observe the application pool.
     bool mObserveApplicationPool;
 
-    // If non-null this handler is used instead of defaultAbortHandler.
-    AbortHandler mAbortHandler;
-
-    // If non-null this is a class which can accept return values of arbitrary
-    // types (with a copy constructor and assignment operator).
-    std::shared_ptr<ReturnHandler> mReturnHandler;
-
     // Initially set to zero for all threads. This is set to a non-zero value
     // for every thread that calls try_to_enter with a true return value,
     // and reset for that thread when the matching exit() function is called.
@@ -251,20 +229,6 @@ const typename Map::mapped_type& findOrZero(const Map& m, const typename Map::ke
   return it->second;
 }
 
-inline bool SpyBase::shouldComputeExpectedReturn() const {
-    return !mObserveApplicationPool && mReturnHandler != nullptr;
-}
-
-inline void SpyBase::setReturnHandler(std::shared_ptr<ReturnHandler> handler) {
-    mReturnHandler = handler;
-}
-
-template <typename T>
-void SpyBase::setExpectedReturn(const T& t) {
-    GAPID_ASSERT(shouldComputeExpectedReturn() /* setExpectedReturn called, but shouldComputeExpectedReturn is false */);
-    mReturnHandler->setReturnValue(t);
-}
-
 template <class T>
 bool SpyBase::shouldObserve(const Slice<T>& slice) const {
     return mObserveApplicationPool && slice.isApplicationPool();
@@ -272,10 +236,6 @@ bool SpyBase::shouldObserve(const Slice<T>& slice) const {
 
 inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
     mObserveApplicationPool = observeApplicationPool;
-}
-
-inline void SpyBase::setHandler(AbortHandler handler) {
-    mAbortHandler = handler;
 }
 
 template<typename T>

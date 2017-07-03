@@ -57,7 +57,6 @@ set(files
     pack_encoder.cpp
     pool.cpp
     pool.h
-    return_handler.h
     slice.h
     spy.cpp
     spy.h

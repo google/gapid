@@ -346,22 +346,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Predicate to see if a value originated from an unknown ? expression
-  Emits true if it was otherwise empty string.
--------------------------------------------------------------------------------
-*/}}
-{{define "WasUnknown"}}
-  {{if IsUnknown $}}
-    true
-  {{else if IsLocal $}}
-    {{if IsUnknown (Unpack $).Value}}
-      true
-    {{end}}
-  {{end}}
-{{end}}
-
-{{/*
--------------------------------------------------------------------------------
   An override for the "C++.Return" macro.
 -------------------------------------------------------------------------------
 */}}
@@ -371,13 +355,6 @@
   {{if $.Function.Subroutine}}
     {{Template "C++.Return" $}}
   {{else}}
-    {{if $.Value}}
-      {{if not (Macro "WasUnknown" $.Value)}}
-        if (UNLIKELY(shouldComputeExpectedReturn())) {
-          setExpectedReturn<{{Template "C++.Type" $.Value}}>({{Template "C++.Read" $.Value}});
-        }
-      {{end}}
-    {{end}}
     break;
   {{end}}
 {{end}}

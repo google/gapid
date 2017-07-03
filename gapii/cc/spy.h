@@ -21,6 +21,7 @@
 #include "gapii/cc/gles_spy.h"
 #include "gapii/cc/vulkan_spy.h"
 
+#include <atomic>
 #include <memory>
 #include <unordered_map>
 
