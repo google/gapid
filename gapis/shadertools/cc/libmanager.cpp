@@ -209,6 +209,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   if (options->make_debuggable) {
     my_manager.makeSpvDebuggable();
   }
+  my_manager.renameViewIndex();
 
   std::vector<unsigned int> spirv_new = my_manager.getSpvBinary();
 
