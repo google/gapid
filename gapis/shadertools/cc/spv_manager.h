@@ -68,6 +68,7 @@ class SpvManager {
     globals.sampler.name = "gapid_sampler";
     globals.coordinate.name = "gapid_coor";
     globals.curr_step.name = "gapid_curr_step";
+    globals.viewID.name = "gapid_gl_ViewID_OVR";
     globals.uint_type_id = 0;
     globals.void_id = 0;
     globals.label_print_id = 0;
@@ -87,6 +88,7 @@ class SpvManager {
 
   void addOutputForInputs(std::string = "_out");
   void mapDeclarationNames(std::string = "x");
+  void renameViewIndex();
   void makeSpvDebuggable();
   std::vector<unsigned int> getSpvBinary();
   debug_instructions_t* getDebugInstructions();
@@ -103,6 +105,7 @@ class SpvManager {
     Variable sampler;
     Variable coordinate;
     Variable curr_step;
+    Variable viewID;
     uint32_t uint_type_id;
     uint32_t void_id;
     uint32_t label_print_id;

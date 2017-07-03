@@ -95,6 +95,23 @@ void SpvManager::mapDeclarationNames(std::string name_pref) {
   }
 }
 
+// Replace the built-in gl_ViewID_OVR with custom uniform.
+void SpvManager::renameViewIndex() {
+  for (auto& id : name_mgr->getNamedIds()) {
+    if (name_mgr->getStrName(id) == "gl_ViewID_OVR") {
+      Instruction* inst = def_use_mgr->GetDef(id);
+      globals.viewID.type_id = addTypeInst(SpvOpTypeInt, {{WIDTH}, {0}});
+      addGlobalVariable(spv::StorageClassUniformConstant, &globals.viewID);
+      for (auto& use : *def_use_mgr->GetUses(id)) {
+        if (use.inst->opcode() == SpvOpLoad) {
+          use.inst->SetInOperand(0, {globals.viewID.ref_id});
+        }
+      }
+      return;
+    }
+  }
+}
+
 /**
  * Return binary currently handled by module
  **/
