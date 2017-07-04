@@ -16,13 +16,11 @@
 package executor
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 
-	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
@@ -35,6 +33,7 @@ import (
 type executor struct {
 	payload      protocol.Payload
 	decoder      builder.ResponseDecoder
+	connection   io.ReadWriteCloser
 	memoryLayout *device.MemoryLayout
 }
 
@@ -53,26 +52,27 @@ func Execute(
 	return executor{
 		payload:      payload,
 		decoder:      decoder,
+		connection:   connection,
 		memoryLayout: memoryLayout,
-	}.execute(ctx, connection)
+	}.execute(ctx)
 }
 
-func (e executor) execute(ctx context.Context, connection io.ReadWriteCloser) error {
+func (r executor) execute(ctx context.Context) error {
 	// Encode the payload
 	// TODO: Make this a proto.
 	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, e.memoryLayout.GetEndian())
-	w.Uint32(e.payload.StackSize)
-	w.Uint32(e.payload.VolatileMemorySize)
-	w.Uint32(uint32(len(e.payload.Constants)))
-	w.Data(e.payload.Constants)
-	w.Uint32(uint32(len(e.payload.Resources)))
-	for _, r := range e.payload.Resources {
+	w := endian.Writer(buf, r.memoryLayout.GetEndian())
+	w.Uint32(r.payload.StackSize)
+	w.Uint32(r.payload.VolatileMemorySize)
+	w.Uint32(uint32(len(r.payload.Constants)))
+	w.Data(r.payload.Constants)
+	w.Uint32(uint32(len(r.payload.Resources)))
+	for _, r := range r.payload.Resources {
 		w.String(r.ID)
 		w.Uint32(r.Size)
 	}
-	w.Uint32(uint32(len(e.payload.Opcodes)))
-	w.Data(e.payload.Opcodes)
+	w.Uint32(uint32(len(r.payload.Opcodes)))
+	w.Data(r.payload.Opcodes)
 
 	data := buf.Bytes()
 
@@ -86,7 +86,7 @@ func (e executor) execute(ctx context.Context, connection io.ReadWriteCloser) er
 	responseR, responseW := io.Pipe()
 	comErr := make(chan error)
 	go func() {
-		err := e.handleReplayCommunication(ctx, connection, id, uint32(len(data)), responseW)
+		err := r.handleReplayCommunication(ctx, id, uint32(len(data)), responseW)
 		if err != nil {
 			log.W(ctx, "Replay communication failed: %v", err)
 			if closeErr := responseW.CloseWithError(err); closeErr != nil {
@@ -101,7 +101,7 @@ func (e executor) execute(ctx context.Context, connection io.ReadWriteCloser) er
 	}()
 
 	// Decode and handle postbacks as they are received
-	e.decoder(responseR, nil)
+	r.decoder(responseR, nil)
 
 	err = <-comErr
 	if closeErr := responseR.Close(); closeErr != nil {
@@ -113,58 +113,52 @@ func (e executor) execute(ctx context.Context, connection io.ReadWriteCloser) er
 	return nil
 }
 
-func (e executor) handleReplayCommunication(ctx context.Context, connection io.ReadWriteCloser, replayID id.ID, replaySize uint32, postbacks io.WriteCloser) error {
+func (r executor) handleReplayCommunication(ctx context.Context, replayID id.ID, replaySize uint32, postbacks io.WriteCloser) error {
+	connection := r.connection
 	defer connection.Close()
-	bw := bufio.NewWriter(connection)
-	br := bufio.NewReader(connection)
-	w := endian.Writer(bw, e.memoryLayout.GetEndian())
-	r := endian.Reader(br, e.memoryLayout.GetEndian())
+	e := endian.Writer(connection, r.memoryLayout.GetEndian())
+	d := endian.Reader(connection, r.memoryLayout.GetEndian())
 
-	w.Uint8(uint8(protocol.ConnectionType_Replay))
-	w.String(replayID.String())
-	w.Uint32(replaySize)
-	if err := w.Error(); err != nil {
-		return err
-	}
-	if err := bw.Flush(); err != nil {
-		return err
+	e.Uint8(uint8(protocol.ConnectionType_Replay))
+	e.String(replayID.String())
+	e.Uint32(replaySize)
+	if e.Error() != nil {
+		return e.Error()
 	}
 
 	for {
-		msg := r.Uint8()
+		msg := d.Uint8()
 		switch {
-		case r.Error() == io.EOF:
+		case d.Error() == io.EOF:
 			return nil
-		case r.Error() != nil:
-			return r.Error()
+		case d.Error() != nil:
+			return d.Error()
 		}
 
 		switch protocol.MessageType(msg) {
 		case protocol.MessageType_Get:
-			if err := e.handleGetData(ctx, r, w); err != nil {
+			if err := r.handleGetData(ctx); err != nil {
 				return fmt.Errorf("Failed to read replay postback data: %v", err)
 			}
 		case protocol.MessageType_Post:
-			if err := e.handleDataResponse(ctx, r, postbacks); err != nil {
+			if err := r.handleDataResponse(ctx, postbacks); err != nil {
 				return fmt.Errorf("Failed to send replay resource data: %v", err)
 			}
 		default:
-			return fmt.Errorf("Unknown message type: %v", msg)
-		}
-
-		if err := bw.Flush(); err != nil {
-			return err
+			return fmt.Errorf("Unknown message type: %v\n", msg)
 		}
 	}
 }
 
-func (e executor) handleDataResponse(ctx context.Context, r binary.Reader, postbacks io.Writer) error {
-	n := r.Uint32()
-	if r.Error() != nil {
-		return r.Error()
+func (r executor) handleDataResponse(ctx context.Context, postbacks io.Writer) error {
+	d := endian.Reader(r.connection, r.memoryLayout.GetEndian())
+
+	n := d.Uint32()
+	if d.Error() != nil {
+		return d.Error()
 	}
 
-	c, err := io.CopyN(postbacks, r, int64(n))
+	c, err := io.CopyN(postbacks, r.connection, int64(n))
 	if c != int64(n) {
 		return err
 	}
@@ -172,50 +166,52 @@ func (e executor) handleDataResponse(ctx context.Context, r binary.Reader, postb
 	return nil
 }
 
-func (e executor) handleGetData(ctx context.Context, r binary.Reader, w binary.Writer) error {
+func (r executor) handleGetData(ctx context.Context) error {
 	ctx = log.Enter(ctx, "handleGetData")
+	d := endian.Reader(r.connection, r.memoryLayout.GetEndian())
 
-	resourceCount := r.Uint32()
-	if err := r.Error(); err != nil {
+	resourceCount := d.Uint32()
+	if err := d.Error(); err != nil {
 		return log.Err(ctx, err, "Failed to decode resource count")
 	}
 
-	totalExpectedSize := r.Uint64()
-	if err := r.Error(); err != nil {
+	totalExpectedSize := d.Uint64()
+	if err := d.Error(); err != nil {
 		return log.Err(ctx, err, "Failed to decode total expected size")
 	}
 
-	totalReturnedSize := 0
-
-	db := database.Get(ctx)
-	for i := uint32(0); i < resourceCount; i++ {
-		idString := r.String()
-		if r.Error() != nil {
-			return r.Error()
+	resourceIDs := make([]id.ID, resourceCount)
+	for i := range resourceIDs {
+		idString := d.String()
+		if d.Error() != nil {
+			return d.Error()
 		}
-
-		rID, err := id.Parse(idString)
+		var err error
+		resourceIDs[i], err = id.Parse(idString)
 		if err != nil {
 			return log.Errf(ctx, err, "Failed to parse resource id: %v", idString)
 		}
+	}
 
-		obj, err := db.Resolve(ctx, rID)
+	totalReturnedSize := uint64(0)
+	for _, rid := range resourceIDs {
+		obj, err := database.Resolve(ctx, rid)
 		if err != nil {
-			return log.Errf(ctx, err, "Failed to resolve resource with id: %v", rID)
+			return log.Errf(ctx, err, "Failed to resolve resource with id: %v", rid)
 		}
 
 		data := obj.([]byte)
-		w.Data(data)
-		if w.Error() != nil {
-			return log.Errf(ctx, w.Error(), "Failed to send resources")
+		n, err := r.connection.Write(data)
+		if err != nil {
+			return log.Errf(ctx, err, "Failed to send resource with id: %v", rid)
 		}
-		totalReturnedSize += len(data)
+
+		totalReturnedSize += uint64(n)
 	}
 
-	if totalExpectedSize != uint64(totalReturnedSize) {
+	if totalExpectedSize != totalReturnedSize {
 		return log.Errf(ctx, nil, "Total resources size mismatch. expected: %v, got: %v",
 			totalExpectedSize, totalReturnedSize)
 	}
-
 	return nil
 }
