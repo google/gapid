@@ -139,10 +139,10 @@ func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygr
 	return newVulkanDependencyGraphBehaviourProvider()
 }
 
-func (api) MutateSubcommands(ctx context.Context, a atom.Atom, id atom.ID, s *gfxapi.State, callback func(state *gfxapi.State, commandIndex []uint64, a atom.Atom)) error {
+func (api) MutateSubcommands(ctx context.Context, a atom.Atom, id atom.ID, s *gfxapi.State, callback func(state *gfxapi.State, commandIndex sync.SubcommandIndex, a atom.Atom)) error {
 	c := GetState(s)
 	c.HandleSubcommand = func(_ interface{}) {
-		callback(s, append([]uint64{uint64(id)}, c.SubcommandIndex...), a)
+		callback(s, append(sync.SubcommandIndex{uint64(id)}, c.SubcommandIndex...), a)
 	}
 	if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 		return err

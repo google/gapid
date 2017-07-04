@@ -36,7 +36,8 @@ type API interface {
 	// ConstantSets returns the constant set pack for the API.
 	ConstantSets() *constset.Pack
 
-	// GetFramebufferAttachmentInfo returns the width, height, revised index, and format of the specified framebuffer attachment.
+	// GetFramebufferAttachmentInfo returns the width, height, and format of the specified framebuffer attachment.
+	// It also returns an API specific index that maps the given attachment into an API specific representation.
 	GetFramebufferAttachmentInfo(state *State, attachment FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error)
 
 	// Context returns the active context for the given state.

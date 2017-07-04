@@ -69,7 +69,7 @@ func (s SubcommandIndex) LessThan(s2 SubcommandIndex) bool {
 	return false
 }
 
-// LessThan returns true if s comes before s2.
+// LEQ returns true if s comes before s2.
 func (s SubcommandIndex) LEQ(s2 SubcommandIndex) bool {
 	for i := range s {
 		if i > len(s2)-1 {

@@ -88,7 +88,7 @@ func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{}, error) {
 	atomIdx := p.After.Indices[0]
 	if len(p.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported api state") // TODO: Subcommands
+		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
 	}
 	if count := uint64(len(atoms)); atomIdx >= count {
 		return nil, errPathOOB(atomIdx, "Index", 0, count-1, p)
