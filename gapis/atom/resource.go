@@ -37,11 +37,13 @@ func (a *Resource) String() string {
 	return fmt.Sprintf("ID: %s - 0x%x bytes", a.ID, len(a.Data))
 }
 
-func (a *Resource) AtomName() string { return "<Resource>" }
-func (a *Resource) API() gfxapi.API  { return nil }
-func (a *Resource) AtomFlags() Flags { return 0 }
-func (a *Resource) Extras() *Extras  { return nil }
-func (a *Resource) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (Resource) Thread() uint64   { return 0 }
+func (Resource) SetThread(uint64) {}
+func (Resource) AtomName() string { return "<Resource>" }
+func (Resource) API() gfxapi.API  { return nil }
+func (Resource) AtomFlags() Flags { return 0 }
+func (Resource) Extras() *Extras  { return nil }
+func (Resource) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	return nil
 }
 

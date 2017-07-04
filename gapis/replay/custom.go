@@ -36,6 +36,8 @@ func (c Custom) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder)
 }
 
 // atom.Atom compliance
+func (Custom) Thread() uint64        { return 0 }
+func (Custom) SetThread(uint64)      {}
 func (Custom) AtomName() string      { return "<Custom>" }
 func (Custom) API() gfxapi.API       { return nil }
 func (Custom) AtomFlags() atom.Flags { return 0 }
