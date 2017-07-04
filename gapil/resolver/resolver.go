@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/text/parse"
 )
 
 type resolver struct {
@@ -230,6 +230,14 @@ func (rv *resolver) disambiguate(matches []interface{}) []interface{} {
 func (rv *resolver) get(at ast.Node, name string) interface{} {
 	if name == "_" {
 		return &semantic.Ignore{AST: at}
+	}
+	if strings.HasPrefix(name, "$") {
+		for _, g := range semantic.BuiltinGlobals {
+			if name == g.Name() {
+				return g
+			}
+		}
+		rv.errorf(at, "Unknown builtin global %s", name)
 	}
 	matches := rv.disambiguate(rv.find(name))
 	switch len(matches) {

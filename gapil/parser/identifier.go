@@ -15,11 +15,12 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/ast"
 )
 
 func identifier(p *parse.Parser, cst *parse.Branch) *ast.Identifier {
+	p.Rune('$')
 	if !p.AlphaNumeric() {
 		return nil
 	}

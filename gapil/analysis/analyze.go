@@ -38,6 +38,10 @@ func Analyze(api *semantic.API, mappings *resolver.Mappings) *Results {
 		globals:    map[*semantic.Global]Value{},
 		instances:  map[*semantic.Create]Value{},
 	}
+	// Populate builtin globals.
+	for _, g := range semantic.BuiltinGlobals {
+		s.globals[g] = s.unknownOf(g.Type)
+	}
 	// Populate all the globals with their default values.
 	for _, global := range api.Globals {
 		var value Value

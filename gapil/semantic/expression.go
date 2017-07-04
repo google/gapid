@@ -16,6 +16,20 @@ package semantic
 
 import "github.com/google/gapid/gapil/ast"
 
+var (
+	// BuiltinThreadGlobal represents the $Thread global variable.
+	BuiltinThreadGlobal = &Global{
+		Type:    Uint64Type,
+		Named:   "$Thread",
+		Default: Uint64Value(0),
+	}
+
+	// BuiltinGlobals is the list of all builtin globals.
+	BuiltinGlobals = []*Global{
+		BuiltinThreadGlobal,
+	}
+)
+
 // Select is the expression form of a switch.
 type Select struct {
 	AST     *ast.Switch // the underlying syntax node this was built from
