@@ -90,7 +90,7 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 
 func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.Thread()}
 	t.lastGlError = GLenum_GL_NO_ERROR
 	mutateErr := a.Mutate(ctx, t.state, nil /* no builder */)
 	if mutateErr != nil {

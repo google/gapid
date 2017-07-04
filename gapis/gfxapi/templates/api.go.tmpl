@@ -1199,6 +1199,7 @@
 
   // CommandBuilder is used to construct new {{$.Name}} commands.
   type CommandBuilder struct {
+    Thread uint64
   }
   ¶
   {{range $c := AllCommands $}}
@@ -1214,6 +1215,7 @@
           {{end}}
         ) *{{$name}} {
         return &{{$name}} {§
+          thread: cb.Thread,
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
               {{$p | GoPublicName}}: New{{Template "Go.Type" $p}}({{Title $p.Name}}),§

@@ -55,7 +55,7 @@ func TestDeadAtomRemoval(t *testing.T) {
 
 	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)
 	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	prologue := []atom.Atom{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1),
 		atom.WithExtras(

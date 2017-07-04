@@ -33,7 +33,7 @@ func p(addr uint64) memory.Pointer {
 func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
@@ -49,7 +49,7 @@ func TestClone(t *testing.T) {
 func TestMake(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
 	cb.CmdMake(10).Mutate(ctx, s, nil)
@@ -60,7 +60,7 @@ func TestMake(t *testing.T) {
 func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	for _, a := range []atom.Atom{
@@ -77,7 +77,7 @@ func TestCopy(t *testing.T) {
 func TestCharsliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
 	cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
@@ -89,7 +89,7 @@ func TestCharsliceToString(t *testing.T) {
 func TestCharptrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
 	cb.CmdCharptrToString(p(0x1234)).
@@ -101,7 +101,7 @@ func TestCharptrToString(t *testing.T) {
 func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16

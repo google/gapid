@@ -36,7 +36,7 @@ func wireframe(ctx context.Context) transform.Transformer {
 		if dc, ok := a.(drawCall); ok {
 			s := out.State()
 			dID := i.Derived()
-			cb := CommandBuilder{}
+			cb := CommandBuilder{Thread: a.Thread()}
 			t := newTweaker(out, dID, cb)
 			t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
 			t.glEnable(ctx, GLenum_GL_BLEND)
@@ -64,7 +64,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 				out.MutateAndWrite(ctx, i, dc)
 
 				dID := id.Derived()
-				cb := CommandBuilder{}
+				cb := CommandBuilder{Thread: a.Thread()}
 				t := newTweaker(out, dID, cb)
 				t.glEnable(ctx, GLenum_GL_POLYGON_OFFSET_LINE)
 				t.glPolygonOffset(ctx, -1, -1)
@@ -89,7 +89,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 
 func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
 	c := GetContext(s)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: dc.Thread()}
 	dID := i.Derived()
 
 	indices, drawMode, err := dc.getIndices(ctx, c, s)

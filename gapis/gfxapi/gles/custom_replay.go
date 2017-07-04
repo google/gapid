@@ -280,7 +280,7 @@ func (ω *EglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Result].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -294,7 +294,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 		return nil
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	if !wasCreated {
 		// The eglCreateContext call was missing, so fake it (can happen on Samsung).
 		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b); err != nil {
@@ -326,7 +326,7 @@ func (ω *WglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -336,7 +336,7 @@ func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, s *gfxapi.Stat
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -349,7 +349,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 		return nil
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Hglrc].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -359,7 +359,7 @@ func (ω *CGLCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.Read(ctx, ω, s, b)].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -372,7 +372,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *gfxapi.State, b *
 		return nil
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -382,7 +382,7 @@ func (ω *GlXCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -392,7 +392,7 @@ func (ω *GlXCreateNewContext) Mutate(ctx context.Context, s *gfxapi.State, b *b
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -405,7 +405,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b 
 		return nil
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Ctx].Identifier)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
 }
 
@@ -413,7 +413,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *gfxapi.State, b 
 func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(a.Extras())
 	if pi != nil && b != nil {
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 		for _, attr := range pi.ActiveAttributes {
 			a := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
 			if err := a.Mutate(ctx, s, b); err != nil {
@@ -428,7 +428,7 @@ func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *b
 func bindUniformBlocks(ctx context.Context, a atom.Atom, s *gfxapi.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(a.Extras())
 	if pi != nil && b != nil {
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 		for i, ub := range pi.ActiveUniformBlocks {
 			// Query replay-time uniform block index so that the remapping is established
 			a := cb.GlGetUniformBlockIndex(pid, ub.Name, i)

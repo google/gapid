@@ -126,7 +126,7 @@ func init() {
 	cfg.DeviceScanDone = deviceScanDone
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := gles.CommandBuilder{}
+	cb := gles.CommandBuilder{Thread: 0}
 	atoms, draw, swap := samples.DrawTexturedSquare(ctx, cb, false)
 	h := &capture.Header{Abi: device.WindowsX86_64}
 	p, err := capture.New(ctx, "sample", h, atoms.Atoms)

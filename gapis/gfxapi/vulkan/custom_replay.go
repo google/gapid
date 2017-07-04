@@ -234,7 +234,7 @@ func (i VkDebugReportCallbackEXT) remap(_ atom.Atom, _ *gfxapi.State) (key inter
 }
 
 func (a *VkCreateInstance) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
 	// As long as we guarantee that the synthetic replayCreateVkInstance API function has the same
@@ -257,7 +257,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, s *gfxapi.State, b *build
 }
 
 func (a *VkDestroyInstance) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	// Call the underlying vkDestroyInstance() and do the observation.
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
@@ -268,7 +268,7 @@ func (a *VkDestroyInstance) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 }
 
 func (a *RecreateInstance) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateInstance(a.PCreateInfo, allocator, a.PInstance, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -276,27 +276,27 @@ func (a *RecreateInstance) Mutate(ctx context.Context, s *gfxapi.State, b *build
 }
 
 func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEnumeratePhysicalDevices(a.Instance, a.Count, a.PPhysicalDevices, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateDevice) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDevice(a.PhysicalDevice, a.PCreateInfo, allocator, a.PDevice, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 func (a *RecreateQueue) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkGetDeviceQueue(a.Device, a.QueueFamilyIndex, a.QueueIndex, a.PQueue)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkAllocateMemory(a.Device, a.PAllocateInfo, allocator, a.PMemory, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -315,7 +315,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *gfxapi.State, b *b
 }
 
 func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateCommandBuffers(a.Device, a.PAllocateInfo, a.PCommandBuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
@@ -333,7 +333,7 @@ func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, s *gfxapi.St
 }
 
 func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEndCommandBuffer(a.CommandBuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
@@ -342,14 +342,14 @@ func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, s *gfxapi.State, 
 ////////////// Command Buffer Commands
 
 func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdUpdateBuffer(a.CommandBuffer, a.DstBuffer, a.DstOffset, a.DataSize, a.PData)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdPipelineBarrier(a.CommandBuffer,
 		a.SrcStageMask,
 		a.DstStageMask,
@@ -365,35 +365,35 @@ func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, s *gfxapi.State
 }
 
 func (a *RecreateCmdCopyBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyBuffer(a.CommandBuffer, a.SrcBuffer, a.DstBuffer, a.RegionCount, a.PRegions)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateCmdResolveImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResolveImage(a.CommandBuffer, a.SrcImage, a.SrcImageLayout, a.DstImage, a.DstImageLayout, a.RegionCount, a.PRegions)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateCmdBeginRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBeginRenderPass(a.CommandBuffer, a.PRenderPassBegin, a.Contents)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateCmdBindPipeline) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindPipeline(a.CommandBuffer, a.PipelineBindPoint, a.Pipeline)
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindDescriptorSets(
 		a.CommandBuffer,
 		a.PipelineBindPoint,
@@ -408,7 +408,7 @@ func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, s *gfxapi.St
 }
 
 func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindVertexBuffers(
 		a.CommandBuffer,
 		a.FirstBinding,
@@ -420,7 +420,7 @@ func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, s *gfxapi.Sta
 }
 
 func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindIndexBuffer(
 		a.CommandBuffer,
 		a.Buffer,
@@ -431,7 +431,7 @@ func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, s *gfxapi.State
 }
 
 func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdEndRenderPass(
 		a.CommandBuffer)
 	hijack.Extras().Add(a.Extras().All()...)
@@ -439,7 +439,7 @@ func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, s *gfxapi.State, 
 }
 
 func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdExecuteCommands(
 		a.CommandBuffer,
 		a.CommandBufferCount,
@@ -450,7 +450,7 @@ func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, s *gfxapi.State
 }
 
 func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdNextSubpass(
 		a.CommandBuffer,
 		a.Contents,
@@ -460,7 +460,7 @@ func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndexed(
 		a.CommandBuffer,
 		a.IndexCount,
@@ -473,7 +473,7 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateCmdDispatch) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDispatch(
 		a.CommandBuffer,
 		a.GroupCountX,
@@ -484,7 +484,7 @@ func (a *RecreateCmdDispatch) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 }
 
 func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDispatchIndirect(
 		a.CommandBuffer,
 		a.Buffer,
@@ -494,7 +494,7 @@ func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, s *gfxapi.Stat
 }
 
 func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndirect(
 		a.CommandBuffer,
 		a.Buffer,
@@ -506,7 +506,7 @@ func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, s *gfxapi.State, b
 }
 
 func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndexedIndirect(
 		a.CommandBuffer,
 		a.Buffer,
@@ -518,7 +518,7 @@ func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, s *gfxapi.S
 }
 
 func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetDepthBias(
 		a.CommandBuffer,
 		a.DepthBiasConstantFactor,
@@ -529,7 +529,7 @@ func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, s *gfxapi.State, b
 }
 
 func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetDepthBounds(
 		a.CommandBuffer,
 		a.MinDepthBounds,
@@ -539,7 +539,7 @@ func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, s *gfxapi.State,
 }
 
 func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetBlendConstants(
 		a.CommandBuffer,
 		a.BlendConstants)
@@ -548,7 +548,7 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, s *gfxapi.Sta
 }
 
 func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilCompareMask(
 		a.CommandBuffer,
 		a.FaceMask,
@@ -559,7 +559,7 @@ func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, s *gfxapi
 }
 
 func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilWriteMask(
 		a.CommandBuffer,
 		a.FaceMask,
@@ -570,7 +570,7 @@ func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, s *gfxapi.S
 }
 
 func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilReference(
 		a.CommandBuffer,
 		a.FaceMask,
@@ -581,7 +581,7 @@ func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, s *gfxapi.S
 }
 
 func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdFillBuffer(
 		a.CommandBuffer,
 		a.DstBuffer,
@@ -593,7 +593,7 @@ func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetLineWidth(
 		a.CommandBuffer,
 		a.LineWidth)
@@ -602,7 +602,7 @@ func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, s *gfxapi.State, b
 }
 
 func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyBufferToImage(
 		a.CommandBuffer,
 		a.SrcBuffer,
@@ -615,7 +615,7 @@ func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, s *gfxapi.Sta
 }
 
 func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyImageToBuffer(
 		a.CommandBuffer,
 		a.SrcImage,
@@ -628,7 +628,7 @@ func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, s *gfxapi.Sta
 }
 
 func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBlitImage(
 		a.CommandBuffer,
 		a.SrcImage,
@@ -644,7 +644,7 @@ func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, s *gfxapi.State, b *b
 }
 
 func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyImage(
 		a.CommandBuffer,
 		a.SrcImage,
@@ -658,7 +658,7 @@ func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, s *gfxapi.State, b *b
 }
 
 func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdPushConstants(
 		a.CommandBuffer,
 		a.Layout,
@@ -671,7 +671,7 @@ func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, s *gfxapi.State, 
 }
 
 func (a *RecreateCmdDraw) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDraw(
 		a.CommandBuffer,
 		a.VertexCount,
@@ -683,7 +683,7 @@ func (a *RecreateCmdDraw) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 }
 
 func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetScissor(
 		a.CommandBuffer,
 		a.FirstScissor,
@@ -694,7 +694,7 @@ func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetViewport(
 		a.CommandBuffer,
 		a.FirstViewport,
@@ -705,7 +705,7 @@ func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBeginQuery(
 		a.CommandBuffer,
 		a.QueryPool,
@@ -716,7 +716,7 @@ func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdEndQuery(
 		a.CommandBuffer,
 		a.QueryPool,
@@ -726,7 +726,7 @@ func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 }
 
 func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearAttachments(
 		a.CommandBuffer,
 		a.AttachmentCount,
@@ -739,7 +739,7 @@ func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, s *gfxapi.Stat
 }
 
 func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearColorImage(
 		a.CommandBuffer,
 		a.Image,
@@ -753,7 +753,7 @@ func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, s *gfxapi.State
 }
 
 func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearDepthStencilImage(
 		a.CommandBuffer,
 		a.Image,
@@ -767,7 +767,7 @@ func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, s *gfxap
 }
 
 func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResetQueryPool(
 		a.CommandBuffer,
 		a.QueryPool,
@@ -778,7 +778,7 @@ func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, s *gfxapi.State,
 }
 
 func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyQueryPoolResults(
 		a.CommandBuffer,
 		a.QueryPool,
@@ -794,7 +794,7 @@ func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, s *gfxapi.
 }
 
 func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdWriteTimestamp(
 		a.CommandBuffer,
 		a.PipelineStage,
@@ -806,7 +806,7 @@ func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, s *gfxapi.State,
 }
 
 func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetEvent(
 		a.CommandBuffer,
 		a.Event,
@@ -817,7 +817,7 @@ func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 }
 
 func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResetEvent(
 		a.CommandBuffer,
 		a.Event,
@@ -828,7 +828,7 @@ func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdWaitEvents(
 		a.CommandBuffer,
 		a.EventCount,
@@ -847,7 +847,7 @@ func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkGetPhysicalDeviceQueueFamilyProperties(
 		a.PhysicalDevice,
 		a.PQueueFamilyPropertyCount,
@@ -865,7 +865,7 @@ func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *gfxapi
 }
 
 func (a *RecreateSemaphore) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateSemaphore(a.Device, a.PCreateInfo, allocator, a.PSemaphore, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -911,7 +911,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 }
 
 func (a *RecreateFence) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateFence(a.Device, a.PCreateInfo, allocator, a.PFence, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -919,7 +919,7 @@ func (a *RecreateFence) Mutate(ctx context.Context, s *gfxapi.State, b *builder.
 }
 
 func (a *RecreateEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 
 	hijack := cb.VkCreateEvent(a.Device, a.PCreateInfo, allocator, a.PEvent, VkResult(0))
@@ -941,7 +941,7 @@ func (a *RecreateEvent) Mutate(ctx context.Context, s *gfxapi.State, b *builder.
 }
 
 func (a *RecreateCommandPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateCommandPool(a.Device, a.PCreateInfo, allocator, a.PCommandPool, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -949,7 +949,7 @@ func (a *RecreateCommandPool) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 }
 
 func (a *RecreatePipelineCache) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreatePipelineCache(a.Device, a.PCreateInfo, allocator, a.PPipelineCache, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -957,7 +957,7 @@ func (a *RecreatePipelineCache) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDescriptorSetLayout(a.Device, a.PCreateInfo, allocator, a.PSetLayout, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -965,7 +965,7 @@ func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, s *gfxapi.Stat
 }
 
 func (a *RecreatePipelineLayout) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreatePipelineLayout(a.Device, a.PCreateInfo, allocator, a.PPipelineLayout, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -973,7 +973,7 @@ func (a *RecreatePipelineLayout) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateRenderPass(a.Device, a.PCreateInfo, allocator, a.PRenderPass, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -981,7 +981,7 @@ func (a *RecreateRenderPass) Mutate(ctx context.Context, s *gfxapi.State, b *bui
 }
 
 func (a *RecreateShaderModule) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateShaderModule(a.Device, a.PCreateInfo, allocator, a.PShaderModule, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -989,7 +989,7 @@ func (a *RecreateShaderModule) Mutate(ctx context.Context, s *gfxapi.State, b *b
 }
 
 func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkDestroyShaderModule(a.Device, a.ShaderModule, allocator)
 	hijack.Extras().Add(a.Extras().All()...)
@@ -997,7 +997,7 @@ func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, s *gfxapi.Stat
 }
 
 func (a *RecreateDescriptorPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDescriptorPool(a.Device, a.PCreateInfo, allocator, a.PDescriptorPool, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1005,7 +1005,7 @@ func (a *RecreateDescriptorPool) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateXcbSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1013,7 +1013,7 @@ func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateXlibSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1021,7 +1021,7 @@ func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b 
 }
 
 func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateWaylandSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1029,7 +1029,7 @@ func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State,
 }
 
 func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateMirSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1037,7 +1037,7 @@ func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateAndroidSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1045,7 +1045,7 @@ func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, s *gfxapi.State,
 }
 
 func (a *RecreateImageView) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateImageView(a.Device, a.PCreateInfo, allocator, a.PImageView, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1053,7 +1053,7 @@ func (a *RecreateImageView) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 }
 
 func (a *RecreateSampler) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateSampler(
 		a.Device,
 		a.PCreateInfo,
@@ -1065,7 +1065,7 @@ func (a *RecreateSampler) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 }
 
 func (a *RecreateFramebuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateFramebuffer(a.Device, a.PCreateInfo, allocator, a.PFramebuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1073,7 +1073,7 @@ func (a *RecreateFramebuffer) Mutate(ctx context.Context, s *gfxapi.State, b *bu
 }
 
 func (a *RecreateDescriptorSet) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateDescriptorSets(a.Device, a.PAllocateInfo, a.PDescriptorSet, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
@@ -1085,14 +1085,14 @@ func (a *RecreateDescriptorSet) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *RecreateGraphicsPipeline) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateGraphicsPipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
 func (a *RecreateComputePipeline) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateComputePipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
@@ -1102,7 +1102,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, s *gfxapi.State, b *builder
 	// Hijack VkCreateDevice's Mutate() method entirely with our ReplayCreateVkDevice's Mutate().
 	// Similar to VkCreateInstance's Mutate() above.
 
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, a.PCreateInfo, a.PAllocator, a.PDevice, a.Result)
 	hijack.Extras().Add(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
@@ -1118,7 +1118,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, s *gfxapi.State, b *builder
 
 func (a *VkDestroyDevice) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1129,7 +1129,7 @@ func (a *VkDestroyDevice) Mutate(ctx context.Context, s *gfxapi.State, b *builde
 
 func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1141,7 +1141,7 @@ func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, s *gfxapi.State, 
 
 func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1153,7 +1153,7 @@ func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, s *gfxapi.State, b *b
 
 func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	// Call the underlying VkCreateSwapchainKHR() and do the observation
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1178,7 +1178,7 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, s *gfxapi.State, b *
 }
 
 func (a *VkGetFenceStatus) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1188,7 +1188,7 @@ func (a *VkGetFenceStatus) Mutate(ctx context.Context, s *gfxapi.State, b *build
 }
 
 func (a *VkGetEventStatus) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, s, b)
 	if b == nil || err != nil {
 		return err
@@ -1430,7 +1430,7 @@ func createAndBindSourceBuffer(ctx context.Context, cb CommandBuilder, s *gfxapi
 }
 
 func (a *RecreateBufferView) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateBufferView(a.Device, a.PCreateInfo, allocator, a.PBufferView, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1540,7 +1540,7 @@ func destroyCommandPool(ctx context.Context, cb CommandBuilder, s *gfxapi.State,
 }
 
 func (a *RecreateImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateImage(a.Device, a.PCreateInfo, allocator, a.PImage, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1552,7 +1552,7 @@ func (a *RecreateImage) Mutate(ctx context.Context, s *gfxapi.State, b *builder.
 
 func (a *RecreateBindImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if a.Memory != VkDeviceMemory(0) {
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.thread}
 		if err := cb.VkBindImageMemory(a.Device, a.Image, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
@@ -1565,7 +1565,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
 	imageObject := GetState(s).Images[a.Image]
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 		queueObject := GetState(s).Queues[a.LastBoundQueue]
 		device := queueObject.Device
@@ -1706,7 +1706,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder
 	createInfoData := atom.Must(atom.AllocData(ctx, s, createInfo))
 	defer createInfoData.Free()
 	allocator := memory.Nullptr
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateBuffer(a.Device, createInfoData.Ptr(), allocator, a.PBuffer, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	hijack.AddRead(createInfoData.Data())
@@ -1718,7 +1718,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, s *gfxapi.State, b *builder
 
 func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	if a.Memory != VkDeviceMemory(0) {
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.thread}
 		if err := cb.VkBindBufferMemory(a.Device, a.Buffer, a.Memory, a.Offset, VkResult_VK_SUCCESS).Mutate(ctx, s, b); err != nil {
 			return err
 		}
@@ -1738,7 +1738,7 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, s *gfxapi.State, b *bui
 		device := queueObject.Device
 		bufferObject := GetState(s).Buffers[a.Buffer]
 		bufferInfo := bufferObject.Info
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.thread}
 
 		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, cb, s, b, device, bufferInfo.Size, a.HostBufferMemoryIndex)
 		if err != nil {
@@ -1835,7 +1835,7 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *gfxapi.State) VkQu
 func (a *RecreateQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	l := s.MemoryLayout
 	allocator := memory.Nullptr
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 
 	hijack := cb.VkCreateQueryPool(a.Device, a.PCreateInfo, allocator, a.PPool, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
@@ -1902,7 +1902,7 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 func (a *RecreateSwapchain) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	l := s.MemoryLayout
 	allocator := memory.Nullptr
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateSwapchainKHR(a.Device, a.PCreateInfo, allocator, a.PSwapchain, VkResult(0))
 	hijack.Extras().Add(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
