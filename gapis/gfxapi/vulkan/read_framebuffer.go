@@ -125,7 +125,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		} else {
 			imageObject := GetState(s).LastPresentInfo.PresentImages[bufferIdx]
 			if imageObject == nil {
-				res(nil, fmt.Errorf("Could not find imageObject %V, %V", id, bufferIdx))
+				res(nil, fmt.Errorf("Could not find imageObject %v, %v", id, bufferIdx))
 				return
 			}
 			w, h, form := imageObject.Info.Extent.Width, imageObject.Info.Extent.Height, imageObject.Info.Format

@@ -63,7 +63,7 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, gfxapi.FramebufferAttachment_Color3+1),
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *gfxapi.State, subcommandIndex []uint64, a atom.Atom) {
+	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *gfxapi.State, subcommandIndex sync.SubcommandIndex, a atom.Atom) {
 		api := a.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {
