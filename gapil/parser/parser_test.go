@@ -18,9 +18,9 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/core/text/parse/test"
+	"github.com/google/gapid/gapil/parser"
 )
 
 var (
