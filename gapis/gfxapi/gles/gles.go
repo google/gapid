@@ -108,6 +108,7 @@ func (api) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh,
 	return nil, nil
 }
 
+// GetDependencyGraphBehaviourProvider implements dependencygraph.DependencyGraphBehaviourProvider interface
 func (api) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
 	return newGlesDependencyGraphBehaviourProvider()
 }
