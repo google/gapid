@@ -26,10 +26,6 @@ import (
 // event in a capture stream. Typical implementations of Atom describe an
 // application's call to a graphics API function or provide meta-data describing
 // observed memory or state at the time of capture.
-//
-// Each implementation of Atom should have a unique and stable Signature to ensure
-// binary compatibility with old capture formats. Any change to the Atom's
-// binary format should also result in a new Signature.
 type Atom interface {
 	// All atoms belong to an API
 	gfxapi.APIObject
