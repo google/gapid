@@ -261,7 +261,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		return
 	}
 
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 
 	// Delete all Renderbuffers.
 	renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)

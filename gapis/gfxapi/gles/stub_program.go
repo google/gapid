@@ -31,7 +31,7 @@ var (
 	VisibleForTestingStubShaderSource = stubShaderSource
 )
 
-func buildStubProgram(ctx context.Context, e *atom.Extras, s *gfxapi.State, programID ProgramId) []atom.Atom {
+func buildStubProgram(ctx context.Context, thread uint64, e *atom.Extras, s *gfxapi.State, programID ProgramId) []atom.Atom {
 	vss, fss, err := stubShaderSource(FindProgramInfo(e))
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)
@@ -45,7 +45,7 @@ func buildStubProgram(ctx context.Context, e *atom.Extras, s *gfxapi.State, prog
 		_, ok := c.Objects.Shared.Buffers[BufferId(x)]
 		return ok || x == uint32(vertexShaderID)
 	}))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: thread}
 	return append(
 		CompileProgram(ctx, s, cb, vertexShaderID, fragmentShaderID, programID, vss, fss),
 		cb.GlLinkProgram(programID),

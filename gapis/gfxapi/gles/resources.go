@@ -227,7 +227,7 @@ func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *
 	src, _ := atom.AllocData(ctx, state, source)
 	srcLen, _ := atom.AllocData(ctx, state, GLint(len(source)))
 	srcPtr, _ := atom.AllocData(ctx, state, src.Ptr())
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	return cb.GlShaderSource(a.Shader, 1, srcPtr.Ptr(), srcLen.Ptr()).
 		AddRead(srcPtr.Data()).
 		AddRead(srcLen.Data()).

@@ -87,7 +87,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 
-	cb := gles.CommandBuilder{}
+	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []atom.Atom{
@@ -172,7 +172,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &test.MockAtomWriter{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
-	cb := gles.CommandBuilder{}
+	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []atom.Atom{

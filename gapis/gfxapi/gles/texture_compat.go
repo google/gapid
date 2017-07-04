@@ -114,6 +114,7 @@ func (tc *textureCompat) convertFormat(
 	target GLenum,
 	internalformat, format, componentType *GLenum,
 	out transform.Writer,
+	a atom.Atom,
 	id atom.ID) {
 
 	if tc.v.IsES {
@@ -145,7 +146,7 @@ func (tc *textureCompat) convertFormat(
 				// Remove the compat mapping and reset swizzles to the original values below.
 				delete(tc.compatSwizzle, t)
 			}
-			cb := CommandBuilder{}
+			cb := CommandBuilder{Thread: a.Thread()}
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_R, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_G, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_B, out, id)
@@ -190,7 +191,7 @@ func (tc *textureCompat) convertFormat(
 	}
 }
 
-func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id atom.ID) {
+func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id atom.ID, a atom.Atom) {
 	if tc.v.IsES {
 		return
 	}
@@ -203,7 +204,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
 			// Combine the original and compat swizzles and write out the commands to set it.
-			cb := CommandBuilder{}
+			cb := CommandBuilder{Thread: a.Thread()}
 			tc.writeCompatSwizzle(ctx, cb, t, parameter, out, id)
 		}
 	case GLenum_GL_TEXTURE_SWIZZLE_RGBA:
@@ -217,7 +218,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
 	c := GetContext(s)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	data := a.Data
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
 		base := a.Data.addr
@@ -270,7 +271,7 @@ func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexS
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
 	c := GetContext(s)
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.thread}
 	data := a.Data
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
 		base := a.Data.addr

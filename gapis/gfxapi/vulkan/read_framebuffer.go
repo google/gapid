@@ -97,7 +97,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 
 		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[attachmentIndex]
 		depthImageObject := imageViewDepth.Image
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 		postImageData(ctx, cb, s, depthImageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
@@ -112,7 +112,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			return
 		}
 
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {

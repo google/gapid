@@ -210,7 +210,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	t = transform.Transform("compat", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		dID := i.Derived()
 		s := out.State()
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 		switch a := a.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
 			// The compatibility layer introduces calls to GL functions that are defined for desktop GL
@@ -567,7 +567,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage1DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage1D(a.Target, a.Levels, a.Internalformat, a.Width)
 					out.MutateAndWrite(ctx, i, a)
@@ -579,14 +579,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage2DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage2D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height)
 					out.MutateAndWrite(ctx, i, a)
@@ -598,21 +598,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage2DMultisample:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3D:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3DEXT:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage3D(a.Target, a.Levels, a.Internalformat, a.Width, a.Height, a.Depth)
 					out.MutateAndWrite(ctx, i, a)
@@ -624,14 +624,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexStorage3DMultisample:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexStorage3DMultisampleOES:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					a := cb.GlTexStorage3DMultisample(a.Target, a.Samples, a.Internalformat, a.Width, a.Height, a.Depth, a.Fixedsamplelocations)
 					out.MutateAndWrite(ctx, i, a)
@@ -644,7 +644,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				a := *a
 				internalformat := GLenum(a.Internalformat)
-				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, &a, i)
 				a.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, i, &a)
 				return
@@ -653,7 +653,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				a := *a
 				internalformat := GLenum(a.Internalformat)
-				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &internalformat, &a.Format, &a.Type, out, &a, i)
 				a.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, i, &a)
 				return
@@ -661,7 +661,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexImage3DOES:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, &a.Format, &a.Type, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
 					a := cb.GlTexImage3D(a.Target, a.Level, GLint(a.Internalformat), a.Width, a.Height, a.Depth, a.Border, a.Format, a.Type, memory.Pointer(a.Pixels))
@@ -675,21 +675,21 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlTexSubImage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexSubImage3D:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
 		case *GlTexSubImage3DOES:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, i)
+				textureCompat.convertFormat(ctx, a.Target, nil, &a.Format, &a.Type, out, &a, i)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := a.extras
 					a := cb.GlTexSubImage3D(a.Target, a.Level, a.Xoffset, a.Yoffset, a.Zoffset, a.Width, a.Height, a.Depth, a.Format, a.Type, memory.Pointer(a.Pixels))
@@ -703,7 +703,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlCopyTexImage2D:
 			{
 				a := *a
-				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, i)
+				textureCompat.convertFormat(ctx, a.Target, &a.Internalformat, nil, nil, out, &a, i)
 				out.MutateAndWrite(ctx, i, &a)
 				return
 			}
@@ -713,7 +713,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterIuivOES:
@@ -721,7 +721,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterIiv:
@@ -729,7 +729,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterIuiv:
@@ -737,7 +737,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterf:
@@ -745,7 +745,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i, &a)
 				return
 			}
 		case *GlTexParameterfv:
@@ -753,7 +753,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameteri:
@@ -761,7 +761,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Parameter, out, i, &a)
 				return
 			}
 		case *GlTexParameteriv:
@@ -769,7 +769,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterIivEXT:
@@ -777,7 +777,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 		case *GlTexParameterIuivEXT:
@@ -785,13 +785,13 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, i, &a)
-				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i)
+				textureCompat.postTexParameter(ctx, a.Target, a.Pname, out, i, &a)
 				return
 			}
 
 		case *GlProgramBinary:
 			if !canUsePrecompiledShader(c, glDev) {
-				for _, a := range buildStubProgram(ctx, a.Extras(), s, a.Program) {
+				for _, a := range buildStubProgram(ctx, a.Thread(), a.Extras(), s, a.Program) {
 					t.Transform(ctx, i, a, out)
 				}
 				return
@@ -799,7 +799,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlProgramBinaryOES:
 			if !canUsePrecompiledShader(c, glDev) {
-				for _, a := range buildStubProgram(ctx, a.Extras(), s, a.Program) {
+				for _, a := range buildStubProgram(ctx, a.Thread(), a.Extras(), s, a.Program) {
 					t.Transform(ctx, i, a, out)
 				}
 				return
@@ -988,7 +988,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						t.glBindTexture_2D(ctx, texId)
 						img := GetState(s).EGLImages[a.Result].Image
 						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
-						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, i)
+						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, a, i)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
 						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
@@ -1089,7 +1089,7 @@ func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Wr
 	s := out.State()
 	c := GetContext(s)
 	dID := i.Derived()
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.Thread()}
 	numViews := uint32(1)
 	c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
 		numViews = u32.Max(numViews, uint32(att.NumViews))
@@ -1169,7 +1169,7 @@ func moveClientVBsToVAs(
 		return
 	}
 
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.Thread()}
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.

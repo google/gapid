@@ -33,12 +33,12 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(ctx context.Context, out transform.Writer)
+	injections map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(ctx context.Context, out transform.Writer)),
+		injections: make(map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)),
 	}
 }
 
@@ -46,7 +46,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 	out.MutateAndWrite(ctx, id, a)
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
-			injection(ctx, out)
+			injection(ctx, a, out)
 		}
 		delete(t.injections, id)
 	}
@@ -55,7 +55,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(gfxapi.FramebufferAttachment_Depth)
 		if err != nil {
@@ -63,12 +63,12 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 			return
 		}
 
-		postColorData(ctx, s, int32(width), int32(height), format, out, id, res)
+		postColorData(ctx, s, int32(width), int32(height), format, out, a, id, res)
 	})
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s)
 
@@ -93,7 +93,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		)
 
 		dID := id.Derived()
-		cb := CommandBuilder{}
+		cb := CommandBuilder{Thread: a.Thread()}
 		t := newTweaker(out, dID, cb)
 		t.glBindFramebuffer_Read(ctx, c.Bound.DrawFramebuffer.GetID())
 
@@ -113,7 +113,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, id, res)
+			postColorData(ctx, s, outW, outH, fmt, out, a, id, res)
 		} else {
 			t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
 			framebufferID := t.glGenFramebuffer(ctx)
@@ -128,7 +128,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			)
 			t.glBindFramebuffer_Read(ctx, framebufferID)
 
-			postColorData(ctx, s, outW, outH, fmt, out, id, res)
+			postColorData(ctx, s, outW, outH, fmt, out, a, id, res)
 		}
 
 		t.revert(ctx)
@@ -140,6 +140,7 @@ func postColorData(ctx context.Context,
 	width, height int32,
 	sizedFormat GLenum,
 	out transform.Writer,
+	a atom.Atom,
 	id atom.ID,
 	res replay.Result) {
 
@@ -151,7 +152,7 @@ func postColorData(ctx context.Context,
 	}
 
 	dID := id.Derived()
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: a.Thread()}
 	t := newTweaker(out, dID, cb)
 	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
 

@@ -28,7 +28,7 @@ import (
 func TestSubAdd(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{}
+	cb := CommandBuilder{Thread: 0}
 	s := gfxapi.NewStateWithEmptyAllocator(device.Little32)
 	cb.CmdAdd(10, 20).Mutate(ctx, s, nil)
 	got := GetState(s).Ints.Read(ctx, nil, s, nil)
