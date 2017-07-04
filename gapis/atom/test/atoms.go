@@ -37,6 +37,8 @@ type AtomA struct {
 	Flags atom.Flags
 }
 
+func (a *AtomA) Thread() uint64        { return 1 }
+func (a *AtomA) SetThread(uint64)      {}
 func (a *AtomA) AtomName() string      { return "AtomA" }
 func (a *AtomA) API() gfxapi.API       { return nil }
 func (a *AtomA) AtomFlags() atom.Flags { return a.Flags }
@@ -50,6 +52,8 @@ type AtomB struct {
 	Bool bool
 }
 
+func (a *AtomB) Thread() uint64        { return 1 }
+func (a *AtomB) SetThread(uint64)      {}
 func (a *AtomB) AtomName() string      { return "AtomB" }
 func (a *AtomB) API() gfxapi.API       { return nil }
 func (a *AtomB) AtomFlags() atom.Flags { return 0 }
@@ -62,6 +66,8 @@ type AtomC struct {
 	String string
 }
 
+func (a *AtomC) Thread() uint64        { return 1 }
+func (a *AtomC) SetThread(uint64)      {}
 func (a *AtomC) AtomName() string      { return "AtomC" }
 func (a *AtomC) API() gfxapi.API       { return nil }
 func (a *AtomC) AtomFlags() atom.Flags { return 0 }
@@ -119,6 +125,8 @@ type AtomX struct {
 	PMap IntːStructPtr `param:"PMap"`
 }
 
+func (AtomX) Thread() uint64        { return 1 }
+func (AtomX) SetThread(uint64)      {}
 func (AtomX) AtomName() string      { return "AtomX" }
 func (AtomX) API() gfxapi.API       { return gfxapi.Find(APIID) }
 func (AtomX) AtomFlags() atom.Flags { return 0 }

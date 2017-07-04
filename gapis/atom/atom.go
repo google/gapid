@@ -30,6 +30,12 @@ type Atom interface {
 	// All atoms belong to an API
 	gfxapi.APIObject
 
+	// Thread returns the thread index this atom was executed on.
+	Thread() uint64
+
+	// SetThread changes the thread index.
+	SetThread(uint64)
+
 	// AtomName returns the name of the atom.
 	AtomName() string
 

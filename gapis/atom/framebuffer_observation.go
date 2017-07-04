@@ -40,6 +40,8 @@ func (a *FramebufferObservation) String() string {
 }
 
 // Atom compliance
+func (FramebufferObservation) Thread() uint64   { return 0 }
+func (FramebufferObservation) SetThread(uint64) {}
 func (FramebufferObservation) AtomName() string { return "<FramebufferObservation>" }
 func (FramebufferObservation) API() gfxapi.API  { return nil }
 func (FramebufferObservation) AtomFlags() Flags { return 0 }
