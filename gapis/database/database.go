@@ -28,7 +28,7 @@ type Database interface {
 	// Store adds a key-value pair to the database.
 	// It is an error if the id is already mapped to an object.
 	Store(context.Context, id.ID, interface{}, proto.Message) error
-	//Rresolve attempts to resolve the final value associated with an id.
+	// Resolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
 	Resolve(context.Context, id.ID) (interface{}, error)
 	// Contains returns true if the database has an entry for the specified id.

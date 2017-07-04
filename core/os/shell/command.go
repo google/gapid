@@ -136,9 +136,8 @@ func (cmd Cmd) Run(ctx context.Context) error {
 		}
 	}
 	// Ready to start
-	ctx = log.V{"Command": cmd}.Bind(ctx)
 	if cmd.Verbosity {
-		log.I(ctx, "Exec")
+		log.I(ctx, "Exec: %v", cmd)
 	}
 	// We build a child context that we always cancel, so that the watchdog quits even on normal process exit
 	process, err := cmd.Target.Start(cmd)
