@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom/atom_pb"
+	"github.com/google/gapid/gapis/gfxapi/core/core_pb"
 )
 
 // ProtoToAtom returns a function that converts all the storage atoms it is
@@ -32,6 +33,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 		invoked      bool
 		count        int
 	)
+	var threadID uint64
 	return func(ctx context.Context, in atom_pb.Atom) error {
 		count++
 		if in == nil {
@@ -41,6 +43,11 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			last = nil
 			return nil
 		}
+
+		if in, ok := in.(*core_pb.SwitchThread); ok {
+			threadID = in.ThreadID
+		}
+
 		out, err := protoconv.ToObject(ctx, in)
 		if err != nil {
 			return nil
@@ -53,6 +60,8 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			last = out
 			invoked = false
 			observations = nil
+			out.SetThread(threadID)
+
 		case Observation:
 			if observations == nil {
 				observations = &Observations{}
