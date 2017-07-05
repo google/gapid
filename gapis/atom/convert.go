@@ -76,7 +76,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			} else {
 				observations.Writes = append(observations.Writes, out)
 			}
-		case invokeMarker:
+		case *invokeMarker:
 			invoked = true
 		case Extra:
 			e := last.Extras()
