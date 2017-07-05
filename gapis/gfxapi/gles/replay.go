@@ -261,12 +261,13 @@ func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a ato
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	id := atom.NoID
 	s := out.State()
-	c := GetContext(s)
+	thread := (uint64)(GetState(s).CurrentThread)
+	c := GetState(s).GetContext(thread)
 	if c == nil {
 		return
 	}
 
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: thread}
 
 	// Delete all Renderbuffers.
 	renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)

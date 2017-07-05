@@ -35,7 +35,7 @@ type tweaker struct {
 
 func newTweaker(out transform.Writer, id atom.ID, cb CommandBuilder) *tweaker {
 	s := out.State()
-	c := GetContext(s)
+	c := GetContext(s, cb.Thread)
 	dID := id.Derived()
 	return &tweaker{out: out, cb: cb, dID: dID, s: s, c: c}
 }
@@ -68,7 +68,7 @@ func (t *tweaker) getCapability(ctx context.Context, name GLenum) bool {
 	o := a.Extras().Observations()
 	s := t.out.State()
 	i := GLuint(0) // capability index.
-	res, err := subGetCapability(ctx, a, o, s, GetState(s), nil, name, i)
+	res, err := subGetCapability(ctx, a, o, s, GetState(s), a.thread, nil, name, i)
 	if err != nil {
 		panic(err)
 	}

@@ -236,7 +236,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
 			if api := a.API(); api != nil {
-				if context := api.Context(s); context != nil {
+				if context := api.Context(s, a.Thread()); context != nil {
 					return context.ID(), context.Name()
 				}
 			}

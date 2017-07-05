@@ -44,7 +44,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*gfxapi.Mesh,
 		return nil, err
 	}
 
-	c := GetContext(s)
+	c := GetContext(s, dc.Thread())
 
 	indices, glPrimitive, err := dc.getIndices(ctx, c, s)
 	if err != nil {

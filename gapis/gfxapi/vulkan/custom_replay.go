@@ -1562,6 +1562,7 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, s *gfxapi.State, b
 
 func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	l := s.MemoryLayout
+	t := a.thread
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory[memory.ApplicationPool])
 	imageObject := GetState(s).Images[a.Image]
@@ -1616,9 +1617,9 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 			offset := VkDeviceSize(0)
 
 			for i := uint32(0); i < imageInfo.MipLevels; i++ {
-				width, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Width, i)
-				height, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Height, i)
-				depth, _ := subGetMipSize(ctx, a, nil, s, nil, nil, imageInfo.Extent.Depth, i)
+				width, _ := subGetMipSize(ctx, a, nil, s, nil, t, nil, imageInfo.Extent.Width, i)
+				height, _ := subGetMipSize(ctx, a, nil, s, nil, t, nil, imageInfo.Extent.Height, i)
+				depth, _ := subGetMipSize(ctx, a, nil, s, nil, t, nil, imageInfo.Extent.Depth, i)
 				copies = append(copies, VkBufferImageCopy{
 					BufferOffset:      offset,
 					BufferRowLength:   0, // Tightly packed
@@ -1641,7 +1642,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *gfxapi.State, b *buil
 					},
 				})
 
-				infer_level_size, err := subInferImageLevelSize(ctx, a, nil, s, nil, nil, imageObject, i)
+				infer_level_size, err := subInferImageLevelSize(ctx, a, nil, s, nil, t, nil, imageObject, i)
 				if err != nil {
 					return err
 				}

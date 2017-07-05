@@ -26,8 +26,13 @@ import (
 
 type CustomState struct{}
 
-func GetContext(s *gfxapi.State) *Context {
-	return GetState(s).getContext()
+func GetContext(s *gfxapi.State, thread uint64) *Context {
+	return GetState(s).GetContext(thread)
+}
+
+func (s *State) GetContext(thread uint64) *Context {
+	// TODO: Switch to using thread.
+	return s.Contexts[s.CurrentThread]
 }
 
 func (b *Buffer) GetID() BufferId {
@@ -79,8 +84,8 @@ func (b *Texture) GetID() TextureId {
 }
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
-	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(attachment)
+func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, thread uint64, attachment gfxapi.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
+	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(thread, attachment)
 	if sizedFormat == 0 {
 		return 0, 0, 0, nil, fmt.Errorf("No format set")
 	}
@@ -92,9 +97,9 @@ func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.F
 	return w, h, uint32(attachment), f, err
 }
 
-// Context returns the active context for the given state.
-func (api) Context(s *gfxapi.State) gfxapi.Context {
-	if c := GetContext(s); c != nil {
+// Context returns the active context for the given state and thread.
+func (api) Context(s *gfxapi.State, thread uint64) gfxapi.Context {
+	if c := GetContext(s, thread); c != nil {
 		return c
 	}
 	return nil

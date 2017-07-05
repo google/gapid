@@ -236,7 +236,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// Mutate to set the context, Version and Extensions strings.
 			out.MutateAndWrite(ctx, i, a)
 
-			c := GetContext(s)
+			c := GetContext(s, a.Thread())
 			if c == nil || !c.Info.Initialized {
 				return
 			}
@@ -267,7 +267,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			return
 		}
 
-		c := GetContext(s)
+		c := GetContext(s, a.Thread())
 		if c == nil || !c.Info.Initialized {
 			// The compatibility translations below assume that we have a valid context.
 			out.MutateAndWrite(ctx, i, a)
@@ -1087,7 +1087,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 // Naive multiview implementation - invoke each draw call several times with different layers
 func MultiviewDraw(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 	s := out.State()
-	c := GetContext(s)
+	c := GetContext(s, a.Thread())
 	dID := i.Derived()
 	cb := CommandBuilder{Thread: a.Thread()}
 	numViews := uint32(1)

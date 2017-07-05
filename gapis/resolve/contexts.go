@@ -88,7 +88,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		if api == nil {
 			continue
 		}
-		if context := api.Context(s); context != nil {
+		if context := api.Context(s, a.Thread()); context != nil {
 			ctxID := context.ID()
 			idx, ok := seen[ctxID]
 			if !ok {

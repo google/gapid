@@ -94,6 +94,7 @@
       ϟo *atom.Observations, §
       ϟs *gfxapi.State, §
       ϟc *State, §
+      ϟt uint64, §
       ϟb *builder.Builder, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
@@ -145,10 +146,10 @@
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
-      ϟc := GetState(ϟs)
+      ϟc, ϟt := GetState(ϟs), ϟa.thread
       ϟl := ϟs.MemoryLayout
       ϟo := ϟa.Extras().Observations()
-      _, _ = ϟc, ϟl
+      _, _, _ = ϟc, ϟl, ϟt
 
       {{Global "CurrentFunction" $}}
 
@@ -499,7 +500,7 @@
     {{if $call.Target.Function.Subroutine}}
       {{/* Transform: v := sub() -> v, err := sub() */}}
       {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟo, ϟs, ϟc, ϟb, {{$args}})
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}})
       if ϟerr != nil {
         {{Template "Go.ReturnErr" "ϟerr"}}
       }

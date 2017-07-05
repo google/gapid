@@ -35,7 +35,7 @@ type objectKey struct {
 }
 
 func (i BufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Buffers, i}, true
 	}
@@ -43,7 +43,7 @@ func (i BufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bo
 }
 
 func (i FramebufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Framebuffers, i}, true
 	}
@@ -51,7 +51,7 @@ func (i FramebufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, rem
 }
 
 func (i RenderbufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, i}, true
 	}
@@ -59,7 +59,7 @@ func (i RenderbufferId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, re
 }
 
 func (i ProgramId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Programs, i}, true
 	}
@@ -67,7 +67,7 @@ func (i ProgramId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 }
 
 func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Shaders, i}, true
 	}
@@ -75,7 +75,7 @@ func (i ShaderId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bo
 }
 
 func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		if tex := ctx.Objects.Shared.Textures[i]; tex != nil {
 			_, isDeleteCmd := a.(*GlDeleteTextures)
@@ -100,7 +100,7 @@ func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 }
 
 func (i UniformBlockIndex) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	program := ctx.Bound.Program.GetID()
 	switch a := a.(type) {
 	case *GlGetActiveUniformBlockName:
@@ -119,7 +119,7 @@ func (i UniformBlockIndex) remap(a atom.Atom, s *gfxapi.State) (key interface{},
 }
 
 func (i VertexArrayId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.VertexArrays, i}, true
 	}
@@ -127,7 +127,7 @@ func (i VertexArrayId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, rem
 }
 
 func (i QueryId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Queries, i}, true
 	}
@@ -135,7 +135,7 @@ func (i QueryId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap boo
 }
 
 func (i GLsync) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && !i.IsNullptr() {
 		key, remap = objectKey{&ctx.Objects.Shared.SyncObjects, i}, true
 	}
@@ -147,7 +147,7 @@ func (i GLsync) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Va
 }
 
 func (i SamplerId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Samplers, i}, true
 	}
@@ -155,7 +155,7 @@ func (i SamplerId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 }
 
 func (i PipelineId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Pipelines, i}, true
 	}
@@ -163,7 +163,7 @@ func (i PipelineId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap 
 }
 
 func (i TransformFeedbackId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.TransformFeedbacks, i}, true
 	}
@@ -171,7 +171,7 @@ func (i TransformFeedbackId) remap(a atom.Atom, s *gfxapi.State) (key interface{
 }
 
 func (i UniformLocation) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	program := ctx.Bound.Program.GetID()
 	switch a := a.(type) {
 	case *GlGetActiveUniform:
@@ -214,7 +214,7 @@ func (i DstImageId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap 
 }
 
 func remapImageId(a atom.Atom, s *gfxapi.State, name GLuint, target GLenum) (key interface{}, remap bool) {
-	ctx := GetContext(s)
+	ctx := GetContext(s, a.Thread())
 	if ctx != nil && name != 0 {
 		if target == GLenum_GL_RENDERBUFFER {
 			return RenderbufferId(name).remap(a, s)
@@ -226,7 +226,7 @@ func remapImageId(a atom.Atom, s *gfxapi.State, name GLuint, target GLenum) (key
 }
 
 func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	c := GetContext(s)
+	c := GetContext(s, a.Thread())
 	if c.Bound.VertexArray.ElementArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
@@ -235,7 +235,7 @@ func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) 
 }
 
 func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	c := GetContext(s)
+	c := GetContext(s, a.Thread())
 	if c.Bound.ArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
@@ -244,7 +244,7 @@ func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) v
 }
 
 func (i TexturePointer) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) value.Value {
-	if i.addr == 0 || GetContext(s).Bound.PixelUnpackBuffer != nil {
+	if i.addr == 0 || GetContext(s, a.Thread()).Bound.PixelUnpackBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
 		return value.ObservedPointer(i.addr)

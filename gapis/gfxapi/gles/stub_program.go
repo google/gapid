@@ -36,7 +36,7 @@ func buildStubProgram(ctx context.Context, thread uint64, e *atom.Extras, s *gfx
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)
 	}
-	c := GetContext(s)
+	c := GetContext(s, thread)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
 		_, ok := c.Objects.Shared.Buffers[BufferId(x)]
 		return ok
