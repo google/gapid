@@ -1586,12 +1586,12 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				addRead(&b, g, cb)
 			}
 		}
-		log.W(ctx, "Queue Submit: Executed Commands: %v", executedCommands)
+		debug("\tvkQueueSubmit: Executed Commands: %v", executedCommands)
 		p.rollOutBehavioursForExecutedCommands(&b, executedCommands)
 
 	case *VkSetEvent:
 		b.KeepAlive = true
-		log.W(ctx, "SetEvent Executed Commands: %v", executedCommands)
+		debug("\tvkSetEvent Executed Commands: %v", executedCommands)
 		p.rollOutBehavioursForExecutedCommands(&b, executedCommands)
 
 	case *VkQueuePresentKHR:
