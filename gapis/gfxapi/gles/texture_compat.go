@@ -138,7 +138,7 @@ func (tc *textureCompat) convertFormat(
 		}
 
 		// Luminance/Alpha is not supported on desktop so convert it to R/G.
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), a.Thread(), nil, target); err == nil {
 			if laCompat, ok := luminanceAlphaCompat[*internalformat]; ok {
 				*internalformat = laCompat.rgFormat
 				tc.compatSwizzle[t] = laCompat.compatSwizzle
@@ -199,7 +199,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 	s := out.State()
 	switch parameter {
 	case GLenum_GL_TEXTURE_SWIZZLE_R, GLenum_GL_TEXTURE_SWIZZLE_G, GLenum_GL_TEXTURE_SWIZZLE_B, GLenum_GL_TEXTURE_SWIZZLE_A:
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), a.Thread(), nil, target); err == nil {
 			_, curr := tc.getSwizzle(t, parameter)
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
@@ -217,7 +217,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
-	c := GetContext(s)
+	c := GetContext(s, a.thread)
 	cb := CommandBuilder{Thread: a.thread}
 	data := a.Data
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
@@ -270,7 +270,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *gfxapi.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
-	c := GetContext(s)
+	c := GetContext(s, a.thread)
 	cb := CommandBuilder{Thread: a.thread}
 	data := a.Data
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {

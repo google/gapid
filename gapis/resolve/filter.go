@@ -39,7 +39,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 		ctxID := gfxapi.ContextID(id)
 		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
 			if api := a.API(); api != nil {
-				if ctx := api.Context(s); ctx != nil {
+				if ctx := api.Context(s, a.Thread()); ctx != nil {
 					return ctx.ID() == ctxID
 				}
 			}

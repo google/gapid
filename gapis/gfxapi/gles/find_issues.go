@@ -127,7 +127,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 
 	dID := i.Derived()
 	s := GetState(t.state)
-	c := s.getContext()
+	c := s.GetContext(a.Thread())
 	if c == nil {
 		return
 	}

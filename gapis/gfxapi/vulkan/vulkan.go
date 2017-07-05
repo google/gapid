@@ -50,11 +50,11 @@ func (VulkanContext) ID() gfxapi.ContextID {
 	return gfxapi.ContextID{1}
 }
 
-func (api) Context(s *gfxapi.State) gfxapi.Context {
+func (api) Context(s *gfxapi.State, thread uint64) gfxapi.Context {
 	return VulkanContext{}
 }
 
-func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, attachment gfxapi.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
+func (api) GetFramebufferAttachmentInfo(state *gfxapi.State, thread uint64, attachment gfxapi.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
 	w, h, form, i, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	switch attachment {
 	case gfxapi.FramebufferAttachment_Stencil:

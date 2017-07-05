@@ -20,14 +20,10 @@ import (
 	"github.com/google/gapid/gapis/gfxapi"
 )
 
-func (s *State) getContext() *Context {
-	return s.Contexts[s.CurrentThread]
-}
-
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-func (s *State) getFramebufferAttachmentInfo(att gfxapi.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
-	c := s.getContext()
+func (s *State) getFramebufferAttachmentInfo(thread uint64, att gfxapi.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
+	c := s.GetContext(thread)
 	if c == nil {
 		return 0, 0, 0, fmt.Errorf("No context bound")
 	}

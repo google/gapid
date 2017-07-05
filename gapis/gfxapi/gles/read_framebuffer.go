@@ -57,7 +57,7 @@ func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
-		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(gfxapi.FramebufferAttachment_Depth)
+		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(a.Thread(), gfxapi.FramebufferAttachment_Depth)
 		if err != nil {
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
@@ -70,10 +70,10 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
 		s := out.State()
-		c := GetContext(s)
+		c := GetContext(s, a.Thread())
 
 		attachment := gfxapi.FramebufferAttachment_Color0 + gfxapi.FramebufferAttachment(bufferIdx)
-		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(attachment)
+		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(a.Thread(), attachment)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after atom %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})

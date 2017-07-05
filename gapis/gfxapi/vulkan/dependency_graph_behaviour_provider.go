@@ -284,7 +284,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		} else if imageObj.BoundMemory != nil {
 			boundMemory := imageObj.BoundMemory.VulkanHandle
 			offset := uint64(imageObj.BoundMemoryOffset)
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, imageObj)
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, imageObj)
 			if err != nil {
 				log.E(ctx, "Error Image: %v: Cannot infer the size of the image", image)
 			}
@@ -574,7 +574,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			// not allowed, execept for the vkCmdBeginRenderPass, whose target is
 			// always an image as a whole.
 			// TODO(qining) Fix this
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
@@ -603,7 +603,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}

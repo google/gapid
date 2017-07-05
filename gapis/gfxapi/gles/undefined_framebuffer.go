@@ -31,7 +31,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
 		out.MutateAndWrite(ctx, i, a)
 		s := out.State()
-		c := GetState(s).getContext()
+		c := GetContext(s, a.Thread())
 		if c == nil || !c.Info.Initialized {
 			return // We can't do anything without a context.
 		}

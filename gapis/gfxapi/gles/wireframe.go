@@ -41,7 +41,6 @@ func wireframe(ctx context.Context) transform.Transformer {
 			t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
 			t.glEnable(ctx, GLenum_GL_BLEND)
 			t.glBlendFunc(ctx, GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
-
 			if err := drawWireframe(ctx, i, dc, s, out); err != nil {
 				log.E(ctx, "%v", err)
 			}
@@ -88,7 +87,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 }
 
 func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *gfxapi.State, out transform.Writer) error {
-	c := GetContext(s)
+	c := GetContext(s, dc.Thread())
 	cb := CommandBuilder{Thread: dc.Thread()}
 	dID := i.Derived()
 

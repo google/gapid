@@ -92,7 +92,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 		ib = &gfxapi.IndexBuffer{Indices: []uint32(indices)}
 
 		// Get the current bound vertex buffers
-		vb, err = getVertexBuffers(ctx, s, p.VertexCount, p.FirstVertex)
+		vb, err = getVertexBuffers(ctx, s, dc.thread, p.VertexCount, p.FirstVertex)
 		if err != nil {
 			log.W(ctx, "err is not NIL!")
 			return nil, err
@@ -119,7 +119,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*gfxapi
 		}
 		vertexCount := maxIndex - minIndex + 1
 		// Get the current bound vertex buffers
-		vb, err = getVertexBuffers(ctx, s, vertexCount, minIndex)
+		vb, err = getVertexBuffers(ctx, s, dc.thread, vertexCount, minIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func getIndicesData(ctx context.Context, s *gfxapi.State, boundIndexBuffer *Boun
 	return []uint32{}
 }
 
-func getVertexBuffers(ctx context.Context, s *gfxapi.State,
+func getVertexBuffers(ctx context.Context, s *gfxapi.State, thread uint64,
 	vertexCount, firstVertex uint32) (*vertex.Buffer, error) {
 
 	if vertexCount == 0 {
@@ -230,7 +230,7 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 			continue
 		}
 		boundVertexBuffer := lastDrawInfo.BoundVertexBuffers.Get(binding.Binding)
-		vertexData, err := getVerticesData(ctx, s, boundVertexBuffer,
+		vertexData, err := getVerticesData(ctx, s, thread, boundVertexBuffer,
 			vertexCount, firstVertex, binding, attribute)
 		if err != nil {
 			return nil, err
@@ -257,8 +257,9 @@ func getVertexBuffers(ctx context.Context, s *gfxapi.State,
 	return vb, nil
 }
 
-func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer BoundBuffer,
-	vertexCount, firstVertex uint32, binding VkVertexInputBindingDescription,
+func getVerticesData(ctx context.Context, s *gfxapi.State, thread uint64,
+	boundVertexBuffer BoundBuffer, vertexCount, firstVertex uint32,
+	binding VkVertexInputBindingDescription,
 	attribute VkVertexInputAttributeDescription) ([]byte, error) {
 
 	if vertexCount == 0 {
@@ -277,7 +278,7 @@ func getVerticesData(ctx context.Context, s *gfxapi.State, boundVertexBuffer Bou
 	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize, s.MemoryLayout)
 
 	formatElementAndTexelBlockSize, err :=
-		subGetElementAndTexelBlockSize(ctx, nil, nil, s, nil, nil, attribute.Format)
+		subGetElementAndTexelBlockSize(ctx, nil, nil, s, nil, thread, nil, attribute.Format)
 	if err != nil {
 		return nil, err
 	}

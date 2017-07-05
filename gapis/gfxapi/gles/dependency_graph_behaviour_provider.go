@@ -115,7 +115,7 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	ctx context.Context, s *gfxapi.State, id atom.ID, g *dependencygraph.DependencyGraph, a atom.Atom) dependencygraph.AtomBehaviour {
 	b := dependencygraph.AtomBehaviour{}
-	c := GetContext(s)
+	c := GetContext(s, a.Thread())
 	if c != nil && c.Info.Initialized {
 		_, isEglSwapBuffers := a.(*EglSwapBuffers)
 		_, isEglSwapBuffersWithDamageKHR := a.(*EglSwapBuffersWithDamageKHR)
@@ -228,7 +228,7 @@ func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 		for _, activeUniform := range prog.ActiveUniforms {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
-				target, _ := subGetTextureTargetFromSamplerType(ctx, a, nil, s, GetState(s), nil, activeUniform.Type)
+				target, _ := subGetTextureTargetFromSamplerType(ctx, a, nil, s, GetState(s), a.Thread(), nil, activeUniform.Type)
 				if target == GLenum_GL_NONE {
 					continue // Not a sampler type
 				}
@@ -252,7 +252,7 @@ func getAllUsedTextureData(ctx context.Context, a atom.Atom, s *gfxapi.State, c 
 }
 
 func getTextureDataAndSize(ctx context.Context, a atom.Atom, s *gfxapi.State, unit *TextureUnit, target GLenum) (dependencygraph.StateKey, dependencygraph.StateKey) {
-	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), nil, unit, target)
+	tex, err := subGetBoundTextureForUnit(ctx, a, nil, s, GetState(s), a.Thread(), nil, unit, target)
 	if tex == nil || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil

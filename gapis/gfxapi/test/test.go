@@ -22,11 +22,11 @@ import (
 
 type CustomState struct{}
 
-func (api) GetFramebufferAttachmentInfo(*gfxapi.State, gfxapi.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (api) GetFramebufferAttachmentInfo(*gfxapi.State, uint64, gfxapi.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
 	return 0, 0, 0, nil, nil
 }
 
-func (api) Context(*gfxapi.State) gfxapi.Context { return nil }
+func (api) Context(*gfxapi.State, uint64) gfxapi.Context { return nil }
 
 func (i remapped) remap(a atom.Atom, s *gfxapi.State) (interface{}, bool) {
 	return i, true
