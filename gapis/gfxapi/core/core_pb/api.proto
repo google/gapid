@@ -1,0 +1,17 @@
+////////////////////////////////////////////////////////////////////////////////
+// Automatically generated file. Do not modify!
+////////////////////////////////////////////////////////////////////////////////
+
+
+syntax = "proto3";
+
+package core_pb;
+// cc_package
+
+import "gapis/memory/memory_pb/memory.proto";
+
+option optimize_for = CODE_SIZE;
+// switchThread is the structure for serializing the api call switchThread
+message switchThread {
+    uint64 threadID = 1;
+}

@@ -18,11 +18,7 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    api.go
-    convert.go
-    core.go
-    doc.go
-    mutate.go
+    
 )
 set(dirs
     core_pb

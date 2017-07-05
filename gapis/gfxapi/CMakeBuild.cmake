@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(core)
 build_subdirectory(test)
 build_subdirectory(gles)
 build_subdirectory(vulkan)
