@@ -678,6 +678,19 @@ func rebuildCmdSetEvent(
 		)
 }
 
+func rebuildCmdResetEvent(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	s *gfxapi.State,
+	d *RecreateCmdResetEventData) (func(), atom.Atom) {
+	return func() {
+		}, cb.VkCmdResetEvent(commandBuffer,
+			d.Event,
+			d.StageMask,
+		)
+}
+
 func rebuildCmdSetScissor(
 	ctx context.Context,
 	cb CommandBuilder,
@@ -870,6 +883,8 @@ func AddCommand(ctx context.Context,
 		return rebuildCmdSetDepthBounds(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdSetEventData:
 		return rebuildCmdSetEvent(ctx, cb, commandBuffer, s, t)
+	case *RecreateCmdResetEventData:
+		return rebuildCmdResetEvent(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdSetLineWidthData:
 		return rebuildCmdSetLineWidth(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdSetScissorData:
