@@ -51,7 +51,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 
 		out, err := protoconv.ToObject(ctx, in)
 		if err != nil {
-			return nil
+			return err
 		}
 		switch out := out.(type) {
 		case Atom:
@@ -109,11 +109,11 @@ func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error
 
 		for _, e := range in.Extras().All() {
 			switch e := e.(type) {
-			case Observations:
+			case *Observations:
 				for _, o := range e.Reads {
 					p, err := protoconv.ToProto(ctx, o)
 					if err != nil {
-						return nil
+						return err
 					}
 					handler(p)
 				}
@@ -121,14 +121,14 @@ func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error
 				for _, o := range e.Writes {
 					p, err := protoconv.ToProto(ctx, o)
 					if err != nil {
-						return nil
+						return err
 					}
 					handler(p)
 				}
 			default:
 				p, err := protoconv.ToProto(ctx, e)
 				if err != nil {
-					return nil
+					return err
 				}
 				handler(p)
 			}
