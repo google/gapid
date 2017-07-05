@@ -4718,6 +4718,12 @@ cmd VkResult vkAllocateDescriptorSets(
   return ?
 }
 
+sub void deleteDescriptorSet(VkDescriptorSet s) {
+  p := DescriptorSets[s].DescriptorPool
+  delete(p.DescriptorSets, s)
+  delete(DescriptorSets, s)
+}
+
 @indirect("VkDevice")
 cmd VkResult vkFreeDescriptorSets(
     VkDevice               device,
