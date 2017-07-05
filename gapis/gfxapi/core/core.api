@@ -20,6 +20,6 @@ api_index 0
 type u64 ThreadID
 
 // switchThread changes the current thread to the thread with the specified identifier.
-@synthetic @custom
+@no_replay
 cmd void switchThread(ThreadID threadID) {
 }
