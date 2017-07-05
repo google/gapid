@@ -46,6 +46,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 
 		if in, ok := in.(*core_pb.SwitchThread); ok {
 			threadID = in.ThreadID
+			return nil
 		}
 
 		out, err := protoconv.ToObject(ctx, in)
@@ -94,7 +95,12 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 // AtomToProto returns a function that converts all the atoms it is handed,
 // passing the generated proto atoms to the handler.
 func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error {
+	var threadID uint64
 	return func(ctx context.Context, in Atom) error {
+		if in.Thread() != threadID {
+			threadID = in.Thread()
+			handler(&core_pb.SwitchThread{ThreadID: threadID})
+		}
 		out, err := protoconv.ToProto(ctx, in)
 		if err != nil {
 			return err
