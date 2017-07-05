@@ -176,9 +176,6 @@ func Visit(node Node, visitor func(Node)) {
 	case *Identifier:
 
 	case *Import:
-		if n.Name != nil {
-			visitor(n.Name)
-		}
 		visitor(n.Path)
 
 	case *Imported:

@@ -152,33 +152,6 @@ func (f *Functions) AllCommandsSorted(api interface{}) ([]*semantic.Function, er
 	return cmds, nil
 }
 
-// PackageOf walks the ownership hierarchy to find the API that the supplied
-// object belongs to. If it is not the api being processed, then the import
-// name of the api is returned.
-func (f *Functions) PackageOf(v semantic.Node) string {
-	switch v := v.(type) {
-	case *semantic.API:
-		if f.api == v {
-			return ""
-		}
-		pkg := "unknown_"
-		if f.api.Imported != nil {
-			f.api.Imported.Visit(func(name string, node semantic.Node) {
-				if api, ok := node.(*semantic.API); ok {
-					if api == v {
-						pkg = name
-					}
-				}
-			})
-		}
-		return pkg
-	case semantic.Owned:
-		return f.PackageOf(v.Owner())
-	default:
-		return ""
-	}
-}
-
 // TokenOf returns the cst token string that represents the supplied semantic node
 func (f *Functions) TokenOf(v semantic.Node) string {
 	ast := f.mappings.SemanticToAST[v]

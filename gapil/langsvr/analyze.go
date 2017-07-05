@@ -283,9 +283,6 @@ func (a *analyzer) doAnalysis(
 		importerWD, _ := filepath.Split(importerPath)
 		if importerAST := importerDA.ast; importerAST != nil {
 			for _, i := range importerAST.Imports {
-				if i.Name != nil {
-					continue // Named imports are not inlined.
-				}
 				importeePath, _ := filepath.Abs(filepath.Join(importerWD, i.Path.Value))
 				if importeeDA, ok := das[importeePath]; ok {
 					delete(roots, importeePath)

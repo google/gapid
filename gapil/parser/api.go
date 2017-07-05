@@ -15,8 +15,8 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/ast"
 )
 
 // { import | extern | enum | alias | pseudonym | class | command | field }
@@ -108,7 +108,6 @@ func import_(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Import
 	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
 		p.SetCST(i, cst)
 		requireKeyword(ast.KeywordImport, p, cst)
-		i.Name = identifier(p, cst)
 		i.Path = requireString(p, cst)
 	})
 	return i

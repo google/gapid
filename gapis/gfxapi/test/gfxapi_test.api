@@ -15,11 +15,11 @@
 api_index 15
 
 import "gfxapi_test_include.api"
-import imported "gfxapi_test_import.api"
+import "gfxapi_test_import.api"
 
 class AClass {
-  imported.Imported A
-  Included          B
+  Imported A
+  Included B
 }
 
 ////////////////////////////////////////////////////////////////
