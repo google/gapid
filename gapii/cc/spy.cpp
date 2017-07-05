@@ -31,6 +31,7 @@
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
+#include "gapis/gfxapi/core/core_pb/api.pb.h"
 #include "gapis/gfxapi/gles/gles_pb/api.pb.h"
 #include "gapis/gfxapi/gles/gles_pb/extras.pb.h"
 
@@ -134,7 +135,7 @@ Spy* Spy::get() {
         if (!s->try_to_enter()) {
             GAPID_FATAL("Couldn't enter on init?!")
         }
-        CallObserver observer(s, CoreSpy::kApiIndex);
+        CallObserver observer(s, 0);
         s->lock(&observer, "writeHeader");
         s->writeHeader();
         s->unlock();
@@ -189,12 +190,11 @@ Spy::Spy()
     GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
     GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
 
-    CallObserver observer(this, CoreSpy::kApiIndex);
+    CallObserver observer(this, 0);
 
     mEncoder = gapii::PackEncoder::create(mConnection);
 
     GlesSpy::init();
-    CoreSpy::init();
     VulkanSpy::init();
     SpyBase::init(&observer, mEncoder);
 
@@ -488,11 +488,6 @@ void Spy::observeFramebuffer(uint8_t api, bool pendMessaging) {
     uint32_t h = 0;
     std::vector<uint8_t> data;
     switch(api) {
-        case CoreSpy::kApiIndex:
-            if (!CoreSpy::observeFramebuffer(&w, &h, &data)) {
-                return;
-            }
-            break;
         case GlesSpy::kApiIndex:
             if (!GlesSpy::observeFramebuffer(&w, &h, &data)) {
                 return;
@@ -568,7 +563,9 @@ uint32_t Spy::glGetError(CallObserver* observer) {
 }
 
 void Spy::onThreadSwitched(CallObserver* observer, uint64_t threadID) {
-    CoreSpy::switchThread(observer, threadID);
+    auto st = new core_pb::switchThread();
+    st->set_threadid(threadID);
+    observer->encodeAndDeleteCommand(st);
 }
 
 #if 0 // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED

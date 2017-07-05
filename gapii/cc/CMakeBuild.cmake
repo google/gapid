@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(api core/core.api)
-
-apic(${api} TEMPLATE api_imports.h.tmpl)
-apic(${api} TEMPLATE api_spy.h.tmpl)
-apic(${api} TEMPLATE api_spy.cpp.tmpl)
-apic(${api} TEMPLATE api_types.cpp.tmpl)
-apic(${api} TEMPLATE api_types.h.tmpl)
-
 set(api gles/gles.api)
 
 apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_exports.cpp.tmpl)
