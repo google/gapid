@@ -25,18 +25,6 @@ set(files
     connection_header.h
     connection_stream.cpp
     connection_stream.h
-    core_extras.cpp
-    core_imports.cpp
-    core_imports.h
-    core_spy.h
-    core_spy_0.cpp
-    core_spy_1.cpp
-    core_spy_2.cpp
-    core_spy_3.cpp
-    core_spy_subroutines_0.cpp
-    core_spy_subroutines_1.cpp
-    core_types.cpp
-    core_types.h
     gles_context.cpp
     gles_exports.cpp
     gles_exports.h

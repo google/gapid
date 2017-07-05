@@ -16,8 +16,8 @@
 
 #ifndef GAPII_SPY_H
 #define GAPII_SPY_H
+
 #include "core/cc/thread.h"
-#include "gapii/cc/core_spy.h"
 #include "gapii/cc/gles_spy.h"
 #include "gapii/cc/vulkan_spy.h"
 
@@ -27,7 +27,7 @@
 
 namespace gapii {
 class ConnectionStream;
-class Spy : public GlesSpy, public VulkanSpy, public CoreSpy {
+class Spy : public GlesSpy, public VulkanSpy {
  public:
   // get lazily constructs and returns the singleton instance to the spy.
   static Spy* get();
