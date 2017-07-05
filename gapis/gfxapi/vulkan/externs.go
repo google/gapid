@@ -208,12 +208,37 @@ func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled boo
 	}
 }
 
-func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data interface{}) *RecreateAndBeginCommandBuffer {
-	return nil
+type RecreateCmdUpdateBufferDataExpanded struct {
+	DstBuffer VkBuffer
+	DstOffset VkDeviceSize
+	DataSize  VkDeviceSize
+	Data      []uint8
 }
 
-func (e externs) createPushConstantsData(layout VkPipelineLayout, stageFlags VkShaderStageFlags, offset uint32, size uint32, data interface{}) *RecreateCmdPushConstantsData {
-	return nil
+func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data Voidᶜᵖ) *RecreateCmdUpdateBufferDataExpanded {
+	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.a, e.s, e.b)
+	return &RecreateCmdUpdateBufferDataExpanded{
+		buffer, offset, size, d,
+	}
+}
+
+type RecreateCmdPushConstantsDataExpanded struct {
+	Layout     VkPipelineLayout
+	StageFlags VkShaderStageFlags
+	Offset     uint32
+	Size       uint32
+	Data       []uint8
+}
+
+func (e externs) createPushConstantsData(layout VkPipelineLayout, stageFlags VkShaderStageFlags, offset uint32, size uint32, data Voidᶜᵖ) *RecreateCmdPushConstantsDataExpanded {
+	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.a, e.s, e.b)
+	return &RecreateCmdPushConstantsDataExpanded{
+		Layout:     layout,
+		StageFlags: stageFlags,
+		Offset:     offset,
+		Size:       size,
+		Data:       d,
+	}
 }
 
 func (e externs) addWords(module VkShaderModule, numBytes interface{}, data interface{}) {
