@@ -614,24 +614,22 @@ class Context {
   OtherState          Other
 }
 
-type u64 ThreadID
 
 // Globals
-ContextID                   NextContextID
-ThreadID                    CurrentThread
-map!(ThreadID, ref!Context) Contexts
+ContextID              NextContextID
+map!(u64, ref!Context) Contexts
 
 sub ref!Context GetContext() {
-  context := Contexts[CurrentThread]
+  context := Contexts[$Thread]
   if context == null {
-    _ = newMsg(SEVERITY_ERROR, new!ERR_NO_CONTEXT_BOUND(thread: as!u64(CurrentThread)))
+    _ = newMsg(SEVERITY_ERROR, new!ERR_NO_CONTEXT_BOUND(thread: $Thread))
     abort
   }
   return context
 }
 
 sub void SetContext(ref!Context context) {
-  Contexts[CurrentThread] = context
+  Contexts[$Thread] = context
 }
 
 sub ref!Context CreateContext(ref!Context sharedContext) {

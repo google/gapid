@@ -700,10 +700,8 @@
 {{define "Go.Global"}}
   {{AssertType $ "Global"}}
 
-  {{if $api := Macro "ExternalAPI" $}}
-    {{$api}}.GetState(ϟs).{{Title $.Name}}
-  {{else}}
-    ϟc.{{Title $.Name}}
+  {{if eq $.Name "$Thread"}}ϟt
+  {{else                  }}ϟc.{{Title $.Name}}
   {{end}}
 {{end}}
 

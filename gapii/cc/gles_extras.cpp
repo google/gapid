@@ -191,7 +191,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
 bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
-    std::shared_ptr<Context> ctx = Contexts[CurrentThread];
+    std::shared_ptr<Context> ctx = Contexts[mCurrentThread];
     if (ctx == nullptr) {
       return false;
     }

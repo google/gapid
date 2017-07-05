@@ -261,84 +261,88 @@ func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a ato
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	id := atom.NoID
 	s := out.State()
-	thread := (uint64)(GetState(s).CurrentThread)
-	c := GetState(s).GetContext(thread)
-	if c == nil {
-		return
-	}
-
-	cb := CommandBuilder{Thread: thread}
-
-	// Delete all Renderbuffers.
-	renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
-	for renderbufferId := range c.Objects.Shared.Renderbuffers {
-		// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
-		if renderbufferId < 0xf0000000 {
-			renderbuffers = append(renderbuffers, renderbufferId)
+	for t, c := range GetState(s).Contexts {
+		if c == nil {
+			continue
 		}
-	}
-	if len(renderbuffers) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, renderbuffers))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
-	}
 
-	// Delete all Textures.
-	textures := make([]TextureId, 0, len(c.Objects.Shared.Textures))
-	for textureId := range c.Objects.Shared.Textures {
-		textures = append(textures, textureId)
-	}
-	if len(textures) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, textures))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
-	}
+		cb := CommandBuilder{Thread: t}
 
-	// Delete all Framebuffers.
-	framebuffers := make([]FramebufferId, 0, len(c.Objects.Framebuffers))
-	for framebufferId := range c.Objects.Framebuffers {
-		framebuffers = append(framebuffers, framebufferId)
-	}
-	if len(framebuffers) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, framebuffers))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
-	}
+		// TODO: This is just looping over the threads - we need to loop over
+		// all contexts and destroy everything there. That requires a structural
+		// change to the gles.api file.
 
-	// Delete all Buffers.
-	buffers := make([]BufferId, 0, len(c.Objects.Shared.Buffers))
-	for bufferId := range c.Objects.Shared.Buffers {
-		buffers = append(buffers, bufferId)
-	}
-	if len(buffers) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, buffers))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
-	}
+		// Delete all Renderbuffers.
+		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
+		for renderbufferId := range c.Objects.Shared.Renderbuffers {
+			// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
+			if renderbufferId < 0xf0000000 {
+				renderbuffers = append(renderbuffers, renderbufferId)
+			}
+		}
+		if len(renderbuffers) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, renderbuffers))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
 
-	// Delete all VertexArrays.
-	vertexArrays := make([]VertexArrayId, 0, len(c.Objects.VertexArrays))
-	for vertexArrayId := range c.Objects.VertexArrays {
-		vertexArrays = append(vertexArrays, vertexArrayId)
-	}
-	if len(vertexArrays) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, vertexArrays))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
-	}
+		// Delete all Textures.
+		textures := make([]TextureId, 0, len(c.Objects.Shared.Textures))
+		for textureId := range c.Objects.Shared.Textures {
+			textures = append(textures, textureId)
+		}
+		if len(textures) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, textures))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
 
-	// Delete all Shaders.
-	for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
-		out.MutateAndWrite(ctx, id, cb.GlDeleteShader(shaderId))
-	}
+		// Delete all Framebuffers.
+		framebuffers := make([]FramebufferId, 0, len(c.Objects.Framebuffers))
+		for framebufferId := range c.Objects.Framebuffers {
+			framebuffers = append(framebuffers, framebufferId)
+		}
+		if len(framebuffers) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, framebuffers))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
 
-	// Delete all Programs.
-	for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
-		out.MutateAndWrite(ctx, id, cb.GlDeleteProgram(programId))
-	}
+		// Delete all Buffers.
+		buffers := make([]BufferId, 0, len(c.Objects.Shared.Buffers))
+		for bufferId := range c.Objects.Shared.Buffers {
+			buffers = append(buffers, bufferId)
+		}
+		if len(buffers) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, buffers))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
 
-	// Delete all Queries.
-	queries := make([]QueryId, 0, len(c.Objects.Queries))
-	for queryId := range c.Objects.Queries {
-		queries = append(queries, queryId)
-	}
-	if len(queries) > 0 {
-		tmp := atom.Must(atom.AllocData(ctx, s, queries))
-		out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
+		// Delete all VertexArrays.
+		vertexArrays := make([]VertexArrayId, 0, len(c.Objects.VertexArrays))
+		for vertexArrayId := range c.Objects.VertexArrays {
+			vertexArrays = append(vertexArrays, vertexArrayId)
+		}
+		if len(vertexArrays) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, vertexArrays))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
+
+		// Delete all Shaders.
+		for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
+			out.MutateAndWrite(ctx, id, cb.GlDeleteShader(shaderId))
+		}
+
+		// Delete all Programs.
+		for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
+			out.MutateAndWrite(ctx, id, cb.GlDeleteProgram(programId))
+		}
+
+		// Delete all Queries.
+		queries := make([]QueryId, 0, len(c.Objects.Queries))
+		for queryId := range c.Objects.Queries {
+			queries = append(queries, queryId)
+		}
+		if len(queries) > 0 {
+			tmp := atom.Must(atom.AllocData(ctx, s, queries))
+			out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
+		}
 	}
 }

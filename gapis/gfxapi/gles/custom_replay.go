@@ -263,9 +263,12 @@ func (i GLeglImageOES) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) v
 	return value.AbsolutePointer(i.addr)
 }
 
-func OnSwitchThread(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
+func OnSwitchThread(ctx context.Context, t uint64, gs *gfxapi.State, b *builder.Builder) error {
+	if b == nil {
+		return nil
+	}
 	s := GetState(gs)
-	context := s.Contexts[s.CurrentThread]
+	context := s.Contexts[t]
 	if context == nil {
 		return nil
 	}

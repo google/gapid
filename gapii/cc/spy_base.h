@@ -181,6 +181,9 @@ protected:
 #ifdef COHERENT_TRACKING_ENABLED
     TrackMemory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
+
+    // The current thread ID.
+    uint64_t mCurrentThread;
 private:
     template <class T> bool shouldObserve(const Slice<T>& slice) const;
 
@@ -189,9 +192,6 @@ private:
 
     // The list of observations that have already been encoded.
     IdSet mResources;
-
-    // The current thread ID.
-    uint64_t mCurrentThread;
 
     // The mutex that should be locked for the duration of each of the intercepted commands.
     core::Mutex mMutex;

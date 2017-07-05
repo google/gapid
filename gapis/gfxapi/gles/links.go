@@ -25,18 +25,24 @@ import (
 // context, and the context at p.
 func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
+		a, err := resolve.Atom(ctx, cmdPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		thread := a.Thread()
+
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
 			return nil, nil, err
 		}
 		state := stateObj.(*State)
-		context, ok := state.Contexts[state.CurrentThread]
+		context, ok := state.Contexts[thread]
 		if !ok {
 			return nil, nil, nil
 		}
 		return cmdPath.StateAfter().
 			Field("Contexts").
-			MapIndex(state.CurrentThread).
+			MapIndex(thread).
 			Field("Objects"), context, nil
 	}
 	return nil, nil, nil
@@ -46,18 +52,24 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 // context, and the context at p.
 func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
+		a, err := resolve.Atom(ctx, cmdPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		thread := a.Thread()
+
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
 			return nil, nil, err
 		}
 		state := stateObj.(*State)
-		context, ok := state.Contexts[state.CurrentThread]
+		context, ok := state.Contexts[thread]
 		if !ok {
 			return nil, nil, nil
 		}
 		return cmdPath.StateAfter().
 			Field("Contexts").
-			MapIndex(state.CurrentThread).
+			MapIndex(thread).
 			Field("Objects").
 			Field("Shared"), context, nil
 	}

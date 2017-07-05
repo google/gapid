@@ -26,9 +26,5 @@ import (
 var _ atom.Atom = &SwitchThread{}
 
 func (a *SwitchThread) Mutate(ctx context.Context, gs *gfxapi.State, b *builder.Builder) error {
-	err := a.mutate(ctx, gs, nil)
-	if b == nil || err != nil {
-		return err
-	}
-	return gles.OnSwitchThread(ctx, gs, b)
+	return gles.OnSwitchThread(ctx, (uint64)(a.ThreadID), gs, b)
 }

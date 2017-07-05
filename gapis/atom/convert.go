@@ -62,10 +62,6 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			observations = nil
 			out.SetThread(threadID)
 
-			if _, ok := in.(*core_pb.SwitchThread); ok {
-				out.SetThread(0xcafef00d)
-			}
-
 		case Observation:
 			if observations == nil {
 				observations = &Observations{}
