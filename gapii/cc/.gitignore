@@ -16,5 +16,5 @@
 /vulkan_VkPhysicalDevice_exports.cpp
 /vulkan_VkQueue_exports.cpp
 /*_spy.h
-/*_spy_[0-9].cpp
+/*_spy_[0-3].cpp
 /*_spy_subroutines_[0-9].cpp
