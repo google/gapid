@@ -39,7 +39,6 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/core"
 	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
@@ -361,7 +360,7 @@ type traceGenerator func(Fixture, context.Context) (*path.Capture, traceVerifier
 // arbitrarily, on different threads.
 func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture {
 	lists := [][]atom.Atom{}
-	threads := []core.ThreadID{}
+	threads := []uint64{}
 	remainingAtoms := 0
 
 	for i, path := range captures {
@@ -369,19 +368,17 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 		assert.With(ctx).ThatError(err).Succeeded()
 		lists = append(lists, c.Atoms)
 		remainingAtoms += len(c.Atoms)
-		threads = append(threads, core.ThreadID(0x10000+i))
+		threads = append(threads, uint64(0x10000+i))
 	}
 
 	merged := []atom.Atom{}
-	threadIndex, prevThreadIndex := 0, -1
+	threadIndex := 0
 	cmdsUntilSwitchThread, modFourCounter := 4, 3
 	for remainingAtoms > 0 {
 		if cmdsUntilSwitchThread > 0 && len(lists[threadIndex]) > 0 {
-			if threadIndex != prevThreadIndex {
-				prevThreadIndex = threadIndex
-				merged = append(merged, core.CommandBuilder{}.SwitchThread(threads[threadIndex]))
-			}
-			merged = append(merged, lists[threadIndex][0])
+			atom := lists[threadIndex][0]
+			atom.SetThread(threads[threadIndex])
+			merged = append(merged, atom)
 			lists[threadIndex] = lists[threadIndex][1:]
 			remainingAtoms--
 			cmdsUntilSwitchThread--

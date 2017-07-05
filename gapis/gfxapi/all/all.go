@@ -16,7 +16,6 @@
 package all
 
 import (
-	_ "github.com/google/gapid/gapis/gfxapi/core"
 	_ "github.com/google/gapid/gapis/gfxapi/gles"
 	_ "github.com/google/gapid/gapis/gfxapi/vulkan"
 )

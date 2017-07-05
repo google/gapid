@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package core_pb describes the serialization format for the core api.
+// Package core_pb contains legacy protos which will be removed soon.
 package core_pb
 
 // The following are the imports that generated source files pull in when present
