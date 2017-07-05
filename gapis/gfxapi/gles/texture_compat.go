@@ -114,8 +114,8 @@ func (tc *textureCompat) convertFormat(
 	target GLenum,
 	internalformat, format, componentType *GLenum,
 	out transform.Writer,
-	a atom.Atom,
-	id atom.ID) {
+	id atom.ID,
+	a atom.Atom) {
 
 	if tc.v.IsES {
 		return
