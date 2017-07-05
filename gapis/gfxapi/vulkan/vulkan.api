@@ -4607,6 +4607,9 @@ cmd VkResult vkResetDescriptorPool(
     VkDevice                   device,
     VkDescriptorPool           descriptorPool,
     VkDescriptorPoolResetFlags flags) {
+  for _, s, _ in DescriptorPools[descriptorPool].DescriptorSets {
+    deleteDescriptorSet(s)
+  }
   return ?
 }
 
@@ -4664,6 +4667,7 @@ cmd VkResult vkAllocateDescriptorSets(
     sets[i] = handle
     object := new!DescriptorSetObject(device, handle,
       DescriptorPools[info.descriptorPool])
+    DescriptorPools[info.descriptorPool].DescriptorSets[handle] = object
     object.Layout = DescriptorSetLayouts[layouts[i]]
     for j in (0 .. object.Layout.MaximumBinding + 1) {
       if j in object.Layout.Bindings {
@@ -4703,6 +4707,12 @@ cmd VkResult vkAllocateDescriptorSets(
   return ?
 }
 
+sub void deleteDescriptorSet(VkDescriptorSet s) {
+  p := DescriptorSets[s].DescriptorPool
+  delete(p.DescriptorSets, s)
+  delete(DescriptorSets, s)
+}
+
 @indirect("VkDevice")
 cmd VkResult vkFreeDescriptorSets(
     VkDevice               device,
@@ -4711,7 +4721,7 @@ cmd VkResult vkFreeDescriptorSets(
     const VkDescriptorSet* pDescriptorSets) {
   sets := pDescriptorSets[0:descriptorSetCount]
   for i in (0 .. descriptorSetCount) {
-    delete(DescriptorSets, sets[i])
+    deleteDescriptorSet(sets[i])
   }
 
   return ?
@@ -9132,6 +9142,7 @@ enum RecordingState {
   @unused VkDescriptorPoolCreateFlags     Flags
   @unused u32                             MaxSets
   @unused map!(u32, VkDescriptorPoolSize) Sizes
+  @unused map!(VkDescriptorSet, ref!DescriptorSetObject) DescriptorSets
 }
 
 @internal class FenceObject {
