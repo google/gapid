@@ -250,7 +250,7 @@ void inline CommandListRecreator<std::shared_ptr<RecreateCmdFillBufferData>>::op
     if (!spy->Buffers.count(t->mBuffer)) {
         return;
     }
-    spy->RecreateCmdFillBuffer(observer, commandBuf, t->mBuffer, t->mDstBuffer, t->mSize, t->mData);
+    spy->RecreateCmdFillBuffer(observer, commandBuf, t->mBuffer, t->mDstOffset, t->mSize, t->mData);
 }
 
 template<>
