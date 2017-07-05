@@ -706,10 +706,8 @@
 {{define "C++.Global"}}
   {{AssertType $ "Global"}}
 
-  {{if $api := Macro "ExternalAPI" $}}
-    dynamic_cast<{{Title $api}}Spy*>(this)->{{$.Name}}
-  {{else}}
-    this->{{$.Name}}
+  {{if eq $.Name "$Thread"}}mCurrentThread
+  {{else                  }}this->{{$.Name}}
   {{end}}
 {{end}}
 

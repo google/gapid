@@ -544,7 +544,7 @@ void Spy::onPostFence(CallObserver* observer) {
 }
 
 void Spy::setFakeGlError(GLenum_Error error) {
-    std::shared_ptr<Context> ctx = this->Contexts[this->CurrentThread];
+    std::shared_ptr<Context> ctx = this->Contexts[mCurrentThread];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError == 0) {
@@ -554,7 +554,7 @@ void Spy::setFakeGlError(GLenum_Error error) {
 }
 
 uint32_t Spy::glGetError(CallObserver* observer) {
-    std::shared_ptr<Context> ctx = this->Contexts[this->CurrentThread];
+    std::shared_ptr<Context> ctx = this->Contexts[mCurrentThread];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {

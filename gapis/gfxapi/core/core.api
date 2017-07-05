@@ -22,5 +22,4 @@ type u64 ThreadID
 // switchThread changes the current thread to the thread with the specified identifier.
 @synthetic @custom
 cmd void switchThread(ThreadID threadID) {
-  gles.CurrentThread = as!gles.ThreadID(threadID)
 }
