@@ -8147,8 +8147,8 @@ cmd VkResult vkGetSwapchainImagesKHR(
       object.Layers[0].Levels[0] = level
       if !(images[i] in Images) {
         Images[images[i]] = object
-        swapchainObject.SwapchainImages[i] = Images[images[i]]
       }
+      swapchainObject.SwapchainImages[i] = Images[images[i]]
     }
     pSwapchainImageCount[0] = count
   }
@@ -8479,6 +8479,45 @@ cmd VkResult vkCreateSharedSwapchainsKHR(
     const VkSwapchainCreateInfoKHR* pCreateInfos,
     const VkAllocationCallbacks*    pAllocator,
     VkSwapchainKHR*                 pSwapchains) {
+  create_infos := pCreateInfos[0:swapchainCount]
+  fence
+  swapchains := pSwapchains[0:swapchainCount]
+  for i in (0 .. swapchainCount) {
+    create_info := create_infos[i]
+    queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
+    // TODO: pAllocator
+
+    swapchainObject := new!SwapchainObject(Device: device,
+      Info:                   ImageInfo(
+        ImageType:    VK_IMAGE_TYPE_2D,
+        Format:       create_info.imageFormat,
+        Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+        MipLevels:    1,
+        ArrayLayers:  create_info.imageArrayLayers,
+        Samples:      VK_SAMPLE_COUNT_1_BIT,
+        Tiling:       VK_IMAGE_TILING_OPTIMAL,
+        Usage:        create_info.imageUsage,
+        SharingMode:  create_info.imageSharingMode,
+        Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+      ),
+      Surface:         Surfaces[create_info.surface],
+      ColorSpace:      create_info.imageColorSpace,
+      PreTransform:    create_info.preTransform,
+      CompositeAlpha:  create_info.compositeAlpha,
+      PresentMode:     create_info.presentMode,
+      Clipped:         create_info.clipped
+    )
+
+    for j in (0 .. create_info.queueFamilyIndexCount) {
+      swapchainObject.Info.QueueFamilyIndices[j] =
+      queueFamilyIndices[j]
+    }
+
+    handle := ?
+    swapchains[i] = handle
+    swapchainObject.VulkanHandle = handle
+    Swapchains[handle] = swapchainObject
+  }
   return ?
 }
 
