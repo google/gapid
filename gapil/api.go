@@ -179,6 +179,9 @@ func (p *Processor) resolve(base file.Path) (*semantic.API, parse.ErrorList) {
 	// Parse the API file and gather all the includes
 	includes := map[string]*ast.API{}
 	allErrs := p.parseIncludesResursive(base, includes)
+	if len(allErrs) > 0 && !p.ResolveOnParseError {
+		return nil, allErrs
+	}
 	// Build a sorted list of includes
 	names := make(sort.StringSlice, 0, len(includes))
 	for name := range includes {
@@ -189,41 +192,8 @@ func (p *Processor) resolve(base file.Path) (*semantic.API, parse.ErrorList) {
 	for i, name := range names {
 		list[i] = includes[name]
 	}
-	// Resolve all the named imports
-	imports := &semantic.Symbols{}
-	importPaths := map[string]file.Path{}
-	for _, api := range list {
-		for _, i := range api.Imports {
-			if i.Name == nil {
-				// unnamed imports have already been included
-				continue
-			}
-			child := p.Loader.Find(base.Parent().Join(i.Path.Value))
-			if importedPath, seen := importPaths[i.Name.Value]; seen {
-				if child.System() == importedPath.System() {
-					// import with same path and name already included
-					continue
-				}
-				return nil, parse.ErrorList{parse.Error{
-					Message: fmt.Sprintf("Import name '%s' used for different paths (%s != %s)",
-						i.Name.Value, child, importedPath)},
-				}
-			}
-			api, errs := p.resolve(child)
-			if len(errs) > 0 {
-				allErrs = append(errs, allErrs...)
-			}
-			if api != nil {
-				imports.Add(i.Name.Value, api)
-				importPaths[i.Name.Value] = child
-			}
-		}
-	}
-	if len(allErrs) > 0 && !p.ResolveOnParseError {
-		return nil, allErrs
-	}
 	// Now resolve the api set as a single unit
-	api, errs := resolver.Resolve(list, imports, p.Mappings)
+	api, errs := resolver.Resolve(list, p.Mappings)
 	if len(errs) > 0 {
 		allErrs = append(errs, allErrs...)
 	}
@@ -247,10 +217,6 @@ func (p *Processor) parseIncludesResursive(base file.Path, includes map[string]*
 	}
 	includes[absname] = api
 	for _, i := range api.Imports {
-		if i.Name != nil {
-			// named imports don't get merged
-			continue
-		}
 		child := p.Loader.Find(base.Parent().Join(i.Path.Value))
 		if errs := p.parseIncludesResursive(child, includes); len(errs) > 0 {
 			allErrs = append(allErrs, errs...)

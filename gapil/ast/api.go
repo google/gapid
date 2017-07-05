@@ -60,7 +60,6 @@ func (a Annotations) GetAnnotation(name string) *Annotation {
 // Import is the AST node that represents «import name "path"» constructs
 type Import struct {
 	Annotations Annotations // the annotations applied to the import
-	Name        *Identifier // the name to import an api file as
 	Path        *String     // the relative path to the api file
 }
 

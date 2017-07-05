@@ -20,10 +20,10 @@ package resolver
 import (
 	"fmt"
 
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/text/parse"
 )
 
 // Mappings is a two-way relational map of AST nodes to semantic nodes.
@@ -74,11 +74,9 @@ func (m *Mappings) MergeIn(other *Mappings) {
 // are undefined.
 // If there are semantic problems with the ast, Resolve will return the set of
 // errors it finds, and the returned graph may be incomplete/invalid.
-func Resolve(includes []*ast.API, symbols *semantic.Symbols, mappings *Mappings) (*semantic.API, parse.ErrorList) {
+func Resolve(includes []*ast.API, mappings *Mappings) (*semantic.API, parse.ErrorList) {
 	rv := &resolver{
-		api: &semantic.API{
-			Imported: symbols,
-		},
+		api: &semantic.API{},
 		scope: &scope{
 			types: map[string]semantic.Type{},
 		},

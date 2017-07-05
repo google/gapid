@@ -23,9 +23,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
-	"github.com/google/gapid/core/text/parse"
 )
 
 const tabwriterFlags = 0 // | tabwriter.Debug
@@ -257,9 +257,6 @@ func (p *printer) markup(n ast.Node) {
 		p.inject(n.Map, afterPrefix, "•")
 
 	case *ast.Import:
-		if n.Name != nil {
-			p.inject(n.Name, afterPrefix, "•")
-		}
 		p.inject(n.Path, afterPrefix, "•")
 
 	case *ast.Label:

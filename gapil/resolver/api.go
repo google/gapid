@@ -112,9 +112,6 @@ func apiNames(rv *resolver, in *ast.API) {
 func resolve(rv *resolver) {
 	rv.globals = rv.scope
 
-	if rv.api.Imported != nil {
-		rv.addSymbols(rv.api.Imported)
-	}
 	rv.addMembers(rv.api)
 	// First resolve enum entries
 	for _, e := range rv.api.Enums {
