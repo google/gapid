@@ -263,20 +263,6 @@ func (i GLeglImageOES) value(b *builder.Builder, a atom.Atom, s *gfxapi.State) v
 	return value.AbsolutePointer(i.addr)
 }
 
-func OnSwitchThread(ctx context.Context, t uint64, gs *gfxapi.State, b *builder.Builder) error {
-	if b == nil {
-		return nil
-	}
-	s := GetState(gs)
-	context := s.Contexts[t]
-	if context == nil {
-		return nil
-	}
-	ctxID := uint32(context.Identifier)
-	cb := CommandBuilder{}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, gs, b)
-}
-
 func (ω *EglCreateContext) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {

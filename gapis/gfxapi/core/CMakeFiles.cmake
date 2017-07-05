@@ -21,7 +21,6 @@ set(files
     api.go
     convert.go
     core.go
-    custom_mutate.go
     doc.go
     mutate.go
 )

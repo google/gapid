@@ -180,6 +180,9 @@ func (a api) Replay(
 	// Cleanup
 	transforms.Add(&destroyResourcesAtEOS{})
 
+	// Replay
+	transforms.Add(&bindRendererOnContextSwitch{})
+
 	if config.DebugReplay {
 		log.I(ctx, "Replaying %d atoms using transform chain:", len(atoms.Atoms))
 		for i, t := range transforms {
@@ -346,3 +349,21 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 	}
 }
+
+// bindRendererOnContextSwitch is a transform that
+type bindRendererOnContextSwitch struct {
+	context *Context
+}
+
+func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+	thread := a.Thread()
+	if context := GetContext(out.State(), thread); context != nil && t.context != context {
+		t.context = context
+		ctxID := uint32(context.Identifier)
+		cb := CommandBuilder{Thread: thread}
+		out.MutateAndWrite(ctx, atom.NoID, cb.ReplayBindRenderer(ctxID))
+	}
+	out.MutateAndWrite(ctx, id, a)
+}
+
+func (t *bindRendererOnContextSwitch) Flush(ctx context.Context, out transform.Writer) {}
