@@ -32,6 +32,9 @@ func GetContext(s *gfxapi.State, thread uint64) *Context {
 
 func (s *State) GetContext(thread uint64) *Context {
 	// TODO: Switch to using thread.
+	if s.CurrentThread != ThreadID(thread) && thread != 0xcafef00d {
+		panic(fmt.Errorf("Thread mismatch: CurrentThread: %x, thread: %x", s.CurrentThread, thread))
+	}
 	return s.Contexts[s.CurrentThread]
 }
 
