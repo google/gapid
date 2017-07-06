@@ -19,7 +19,6 @@
 
 set(files
     api.go
-    backwards_compat.go
     compat.go
     compat_test.go
     constant_sets.go
