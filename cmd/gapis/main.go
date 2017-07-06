@@ -90,17 +90,17 @@ func run(ctx context.Context) error {
 
 	grpclog.SetLogger(log.From(ctx))
 
+	if *addLocalDevice {
+		host := bind.Host(ctx)
+		r.AddDevice(ctx, host)
+		r.SetDeviceProperty(ctx, host, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
+	}
+
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
 	if *scanAndroidDevs {
 		go monitorAndroidDevices(ctx, r, onDeviceScanDone)
 	} else {
 		onDeviceScanDone(ctx)
-	}
-
-	if *addLocalDevice {
-		host := bind.Host(ctx)
-		r.AddDevice(ctx, host)
-		r.SetDeviceProperty(ctx, host, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 	}
 
 	return server.Listen(ctx, *rpc, server.Config{

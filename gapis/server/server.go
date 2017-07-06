@@ -132,7 +132,7 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	ctx = log.Enter(ctx, "GetDevices")
 	s.deviceScanDone.Wait(ctx)
-	devices := devices.Sorted(ctx)
+	devices := bind.GetRegistry(ctx).Devices()
 	paths := make([]*path.Device, len(devices))
 	for i, d := range devices {
 		paths[i] = path.NewDevice(d.Instance().Id.ID())
