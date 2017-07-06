@@ -392,6 +392,11 @@ func (n *Capture) Context(id *ID) *Context {
 	return &Context{Capture: n, Id: id}
 }
 
+// Thread returns the path node to the thread with the given ID.
+func (n *Capture) Thread(id uint64) *Thread {
+	return &Thread{Capture: n, Id: id}
+}
+
 // MemoryAfter returns the path node to the memory after this command.
 func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 	return &Memory{addr, size, pool, n, false, false}
@@ -465,7 +470,6 @@ func (n *MapIndex) MapIndex(k interface{}) *MapIndex  { return NewMapIndex(k, n)
 func (n *MapIndex) Slice(s, e uint64) *Slice          { return NewSlice(s, e, n) }
 func (n *Slice) ArrayIndex(i uint64) *ArrayIndex      { return NewArrayIndex(i, n) }
 func (n *Slice) Slice(s, e uint64) *Slice             { return NewSlice(s, e, n) }
-
 
 func (n *MapIndex) KeyValue() interface{} {
 	switch k := protoutil.OneOf(n.Key).(type) {

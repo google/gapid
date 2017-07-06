@@ -46,8 +46,16 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 			return false
 		})
 	}
-	if t := f.GetThread(); t.IsValid() {
-		// TODO: Thread filter.
+	if len(f.GetThreads()) > 0 {
+		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
+			thread := a.Thread()
+			for _, t := range f.Threads {
+				if t == thread {
+					return true
+				}
+			}
+			return false
+		})
 	}
 	return func(a atom.Atom, s *gfxapi.State) bool {
 		for _, f := range filters {

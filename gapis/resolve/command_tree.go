@@ -245,10 +245,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByThread {
-		// TODO: Threads
-		// groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
-		// 	return s.Thread, fmt.Sprintf("Thread: 0x%x", s.Thread)
-		// }})
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+			thread := a.Thread()
+			return thread, fmt.Sprintf("Thread: 0x%x", thread)
+		}})
 	}
 
 	if p.GroupByUserMarkers {

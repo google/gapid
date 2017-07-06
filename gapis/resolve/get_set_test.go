@@ -50,6 +50,7 @@ var (
 			{Name: "Map", Value: box.NewValue(test.P.Map)},
 			{Name: "PMap", Value: box.NewValue(test.P.PMap)},
 		},
+		Thread: test.P.Thread(),
 	}
 
 	cmdB = &service.Command{
@@ -63,6 +64,7 @@ var (
 			{Name: "Map", Value: box.NewValue(test.Q.Map)},
 			{Name: "PMap", Value: box.NewValue(test.Q.PMap)},
 		},
+		Thread: test.Q.Thread(),
 	}
 )
 
