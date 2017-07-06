@@ -75,23 +75,3 @@
   {{AssertType $ "string"}}
   {{print (Tail 1 (SplitPascalCase $))}}
 {{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  ExternalAPI returns the API that owns the semantic node if different from
-  this API. If the node is part of the same API then an empty string is
-  returned.
--------------------------------------------------------------------------------
-*/}}
-{{define "ExternalAPI"}}
-  {{if IsOwned $}}
-    {{if IsAPI $.Owner}}
-      {{if ne $.Owner.Name (Global "API")}}
-        {{/* type belongs in a different package... */}}
-        {{$.Owner.Name}}
-      {{end}}
-    {{end}}
-  {{end}}
-{{end}}
-
