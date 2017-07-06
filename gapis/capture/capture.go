@@ -261,7 +261,9 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 			header = h
 			continue
 		}
-		convert(ctx, msg)
+		if err := convert(ctx, msg); err != nil {
+			return nil, err
+		}
 	}
 
 	if header == nil {
