@@ -968,8 +968,13 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 			}
 
+		case *EglDestroyContext:
+			// Removing the context would interfere with the EGLImage compat below,
+			// since TextureID remapping relies on being able to find the Context by ID.
+			return
+
 		case *EglCreateImageKHR:
-			if !version.IsES {
+			{
 				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
 					return a.Mutate(ctx, s, nil) // do not call, just mutate
 				}))
@@ -1002,7 +1007,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlEGLImageTargetTexture2DOES:
-			if !version.IsES {
+			{
 				a := *a
 				convertTexTarget(&a.Target)
 				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {

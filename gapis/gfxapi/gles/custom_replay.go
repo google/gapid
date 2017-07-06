@@ -83,7 +83,7 @@ func (i TextureId) remap(a atom.Atom, s *gfxapi.State) (key interface{}, remap b
 				// Ignore this texture and use the data that EGLImage points to.
 				// (unless it is a delete command - we do not want kill the shared data)
 				ctxId, i := eglImage.TargetContext, eglImage.TargetTexture
-				for _, ctx := range GetState(s).Contexts {
+				for _, ctx := range GetState(s).EGLContexts {
 					if ctx != nil && ctx.Info.Initialized && ctx.Identifier == ctxId {
 						if !ctx.Objects.Shared.Textures.Contains(i) {
 							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
