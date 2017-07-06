@@ -116,12 +116,6 @@ func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture
 	}
 }
 
-// AtomsImportHandler is the interface optionally implements by APIs that want
-// to process the atom stream on import.
-type AtomsImportHandler interface {
-	TransformAtomStream(context.Context, []atom.Atom) ([]atom.Atom, error)
-}
-
 // Captures returns all the captures stored by the database by identifier.
 func Captures() []*path.Capture {
 	capturesLock.RLock()
@@ -339,16 +333,6 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 				}
 			}
 			out.Atoms = append(out.Atoms, a)
-		}
-	}
-
-	for _, api := range out.APIs {
-		if aih, ok := api.(AtomsImportHandler); ok {
-			var err error
-			out.Atoms, err = aih.TransformAtomStream(ctx, out.Atoms)
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
 
