@@ -173,7 +173,7 @@ func init() {
 	gfxapi.Register(API{})
 	atom.Register(API{}, &AtomX{})
 	protoconv.Register(func(ctx context.Context, a *AtomX) (*test_pb.AtomX, error) {
-		return &test_pb.AtomX{Data: box.NewValue(a)}, nil
+		return &test_pb.AtomX{Data: box.NewValue(*a)}, nil
 	}, func(ctx context.Context, b *test_pb.AtomX) (*AtomX, error) {
 		var a AtomX
 		if err := b.Data.AssignTo(&a); err != nil {
