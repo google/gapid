@@ -23,6 +23,7 @@ import org.eclipse.jface.viewers.StyledCellLabelProvider;
 import org.eclipse.jface.viewers.StyledString;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.custom.StyleRange;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -69,11 +70,19 @@ public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider
         cell.setText("");
       }
     }
+    Color bgcolor = getBackgroundColor(cell.getElement());
+    if (bgcolor != null) {
+      cell.setBackground(bgcolor);
+    }
     cell.setImage(getImage(cell.getElement()));
     cell.setText(newText);
   }
 
   protected Image getImage(@SuppressWarnings("unused") Object element) {
+    return null;
+  }
+
+  protected Color getBackgroundColor(@SuppressWarnings("unused") Object element) {
     return null;
   }
 

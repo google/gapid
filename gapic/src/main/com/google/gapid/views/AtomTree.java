@@ -31,6 +31,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.glviewer.vec.VecD;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
@@ -69,6 +70,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
+import java.util.HashMap;
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
@@ -76,9 +78,11 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -633,8 +637,10 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
    */
   private static class ViewLabelProvider extends MeasuringViewLabelProvider
       implements VisibilityTrackingTreeViewer.Listener {
+    private static final float COLOR_INTENSITY = 0.15f;
     private final ConstantSets constants;
     private final ImageProvider imageProvider;
+    private final Map<Long, Color> threadBackgroundColors;
     private TreeItem hoveredItem;
     private Follower.Prefetcher<String> follower;
 
@@ -643,11 +649,53 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       super(viewer, theme);
       this.constants = constants;
       this.imageProvider = imageProvider;
+      this.threadBackgroundColors = new HashMap<>();
     }
 
     public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<String> follower) {
       this.hoveredItem = hoveredItem;
       this.follower = follower;
+    }
+
+    @Override
+    protected Color getBackgroundColor(Object element) {
+      Command cmd = ((AtomStream.Node)element).getCommand();
+      if (cmd == null) {
+        return null;
+      }
+      long threadId = cmd.getThread();
+      Color color = threadBackgroundColors.get(threadId);
+      if (color == null) {
+        // TODO: The index should be the i'th thread in use by the capture, not a hash of the
+        // thread ID. This requires using the list of threads exposed by the service.Capture.
+        long hash = threadId ^ (threadId >>> 32);
+        hash = hash ^ (hash >>> 16);
+        hash = hash ^ (hash >>> 8);
+        long index = hash & 0xff;
+        double goldenAngle = 2.39996322972865332f; // https://en.wikipedia.org/wiki/Golden_angle
+        double angle = index * goldenAngle;
+        Control control = getViewer().getControl();
+        Display display = control.getDisplay();
+
+        RGBA rgba = control.getBackground().getRGBA();
+        VecD col = new VecD(rgba.rgb.red, rgba.rgb.green, rgba.rgb.blue);
+        col = hue(angle).lerp(col, COLOR_INTENSITY);
+        col = col.clamp(VecD.ZERO, new VecD(255, 255, 255));
+        color = new Color(display, (int)col.x, (int)col.y, (int)col.z, rgba.alpha);
+        // TODO: Dispose of colors created here.
+        threadBackgroundColors.put(threadId, color);
+      }
+      return color;
+    }
+
+    private static VecD hue(double angle) {
+      return new VecD(
+          Math.sin(angle + Math.PI * 0.0 / 3.0),
+          Math.sin(angle + Math.PI * 2.0 / 3.0),
+          Math.sin(angle + Math.PI * 4.0 / 3.0))
+          .add(1.0)
+          .normalize()
+          .scale(255);
     }
 
     @Override
