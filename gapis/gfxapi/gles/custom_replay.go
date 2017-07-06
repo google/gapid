@@ -17,7 +17,9 @@ package gles
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -404,9 +406,16 @@ func bindAttribLocations(ctx context.Context, a atom.Atom, s *gfxapi.State, b *b
 	if pi != nil && b != nil {
 		cb := CommandBuilder{Thread: a.Thread()}
 		for _, attr := range pi.ActiveAttributes {
-			a := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
-			if err := a.Mutate(ctx, s, b); err != nil {
-				return err
+			if int32(attr.Location) != -1 {
+				a := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
+				if strings.HasPrefix(attr.Name, "gl_") {
+					// Active built-in mush have location of -1
+					log.E(ctx, "Can not set location for built-in attribute: %v", a)
+					continue
+				}
+				if err := a.Mutate(ctx, s, b); err != nil {
+					return err
+				}
 			}
 		}
 	}
