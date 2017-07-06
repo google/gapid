@@ -28,25 +28,10 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Returns '<package name>.' if the semantic node belongs to an external API.
-  If the semantic node belongs to this API then an empty string is returned.
--------------------------------------------------------------------------------
-*/}}
-{{define "Go.PackagePrefix"}}
-  {{if $api := Macro "ExternalAPI" $}}
-    {{$api}}.§
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the go type for the provided AST type or expression.
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Type"}}
-
-  {{Macro "Go.PackagePrefix" $}}
 
   {{if not (IsType $)}}{{Template "Go.Type" (TypeOf $)}}
   {{else if IsAny           $}}interface{}
@@ -203,7 +188,7 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
-  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{Macro "Go.PackagePrefix" $}}{{$.Name}}{}), ϟl)
+  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{$.Name}}{}), ϟl)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
@@ -238,7 +223,7 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.AlignOf" $.ValueType}}
-  {{else if IsClass       $}}ϟmem.AlignOf(reflect.TypeOf({{Macro "Go.PackagePrefix" $}}{{$.Name}}{}), ϟl)
+  {{else if IsClass       $}}ϟmem.AlignOf(reflect.TypeOf({{$.Name}}{}), ϟl)
   {{else                   }}{{Error "macro Go.AlignOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
