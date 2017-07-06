@@ -43,7 +43,10 @@ const (
 
 // ToService returns the service command representing atom a.
 func ToService(a Atom) (*service.Command, error) {
-	out := &service.Command{Name: a.AtomName()}
+	out := &service.Command{
+		Name:   a.AtomName(),
+		Thread: a.Thread(),
+	}
 
 	if api := a.API(); api != nil {
 		out.Api = &path.API{Id: path.NewID(id.ID(api.ID()))}

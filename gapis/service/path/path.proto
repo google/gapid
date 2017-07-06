@@ -174,7 +174,7 @@ message Threads {
 // Thread is a path to a single thread in a capture.
 message Thread {
     Capture capture = 1;
-    ID id = 2;
+    uint64 id = 2;
 }
 
 // Contexts is path to a list of contexts in a capture.
@@ -210,8 +210,8 @@ message Field {
 message CommandFilter {
     // context filters the commands to the specified context.
     ID context = 1;
-    // thread filters the commands to the specified thread.
-    ID thread = 2;
+    // thread filters the commands to those with the specified threads.
+    repeated uint64 threads = 2;
 }
 
 // CommandTree is a path to a hierarchy of command tree nodes.

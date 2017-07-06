@@ -615,10 +615,8 @@ message Command {
   repeated Parameter parameters = 3;
   // The function return value 'parameter'.
   Parameter result = 4;
-  // The thread associated with this comand. May be nil.
-  path.Thread thread = 5;
-  // The context associated with this comand. May be nil.
-  path.Context context = 6;
+  // The identifier of the thread that issued this command.
+  uint64 thread = 5;
 }
 
 // Parameter is a parameter of a command.
