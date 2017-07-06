@@ -337,8 +337,7 @@ service Gapid {
   // GetDevices returns the full list of replay devices avaliable to the server.
   // These include local replay devices and any connected Android devices.
   // This list may change over time, as devices are connected and disconnected.
-  // If both connected Android and Local replay devices are found,
-  // the local Android devices will be returned first.
+  // The primary device (usually host) will be first.
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
 
   // GetDevicesForReplay returns the list of replay devices avaliable to the
