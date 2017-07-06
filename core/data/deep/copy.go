@@ -43,6 +43,13 @@ func Copy(dst, src interface{}) error {
 
 func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect.Value) error {
 	//	fmt.Printf("%v: d:%v (%v), s:%v (%v) %+v\n", path, d.Type(), d.Kind(), s.Type(), s.Kind(), s.Interface())
+	if !d.CanSet() {
+		return fmt.Errorf("Cannot assign to %v", path)
+	}
+	if a, ok := d.Addr().Interface().(data.Assignable); ok && a.Assign(s.Interface()) {
+		return nil
+	}
+
 	if d.Kind() != s.Kind() && d.Kind() != reflect.Interface {
 		if d.Kind() == reflect.Ptr && s.Kind() == reflect.Interface {
 			// To workaround https://github.com/golang/go/issues/20013, cyclic
@@ -53,13 +60,6 @@ func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect
 		}
 		return fmt.Errorf("Kind mismatch at %v. %v (%v) != %v (%v)",
 			path, d.Kind(), d.Type(), s.Kind(), s.Type())
-	}
-	if !d.CanSet() {
-		return fmt.Errorf("Cannot assign to %v", path)
-	}
-
-	if a, ok := d.Addr().Interface().(data.Assignable); ok && a.Assign(s.Interface()) {
-		return nil
 	}
 
 	switch d.Kind() {
