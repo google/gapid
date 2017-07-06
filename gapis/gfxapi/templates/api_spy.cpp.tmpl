@@ -196,10 +196,10 @@
       auto call = [{{Macro "CallCapture" $}}] {
         called = true;
         {{if GetAnnotation $ "StartOfFrame"}}
-          onPreStartOfFrame({{Global "ApiIndex"}});
+          onPreStartOfFrame(observer, {{Global "ApiIndex"}});
         {{end}}
         {{if GetAnnotation $ "EndOfFrame"}}
-          onPreEndOfFrame({{Global "ApiIndex"}});
+          onPreEndOfFrame(observer, {{Global "ApiIndex"}});
         {{end}}
 
         observer->invoke();
@@ -254,11 +254,11 @@
       };
       observer->encodeAndDeleteCommand(c.toProto());
 
-      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall({{Global "ApiIndex"}});{{end}}
+      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
       {{if GetAnnotation $ "StartOfFrame"}}onPostStartOfFrame(observer);{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
 ¶
-      {{if not (IsVoid $.Return.Type)}}¶
+      {{if not (IsVoid $.Return.Type)}}
         return result;
       {{end}}
     }

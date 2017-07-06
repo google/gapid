@@ -27,8 +27,8 @@ struct destroyer {
     std::function<void(void)> destroy;
 };
 
-bool VulkanSpy::observeFramebuffer(uint32_t* w, uint32_t* h,
-        std::vector<uint8_t>* data) {
+bool VulkanSpy::observeFramebuffer(CallObserver* observer,
+        uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
     std::shared_ptr<ImageObject> image;
     if (LastSubmission == LastSubmissionType::SUBMIT) {
         if (!LastBoundQueue) {

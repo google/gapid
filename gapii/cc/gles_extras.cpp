@@ -190,7 +190,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
 
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
+bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height) {
     std::shared_ptr<Context> ctx = Contexts[mCurrentThread];
     if (ctx == nullptr) {
       return false;
@@ -235,8 +235,8 @@ bool GlesSpy::getFramebufferAttachmentSize(uint32_t* width, uint32_t* height) {
     return false;
 }
 
-bool GlesSpy::observeFramebuffer(uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
-    if (!getFramebufferAttachmentSize(w, h)) {
+bool GlesSpy::observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
+    if (!getFramebufferAttachmentSize(observer, w, h)) {
         return false; // Could not get the framebuffer size.
     }
     data->resize((*w) * (*h) * 4);
