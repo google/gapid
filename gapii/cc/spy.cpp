@@ -350,25 +350,25 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
 #undef EGL_GET_CONFIG_ATTRIB
 
 
-void Spy::onPostDrawCall(uint8_t api) {
+void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
          return;
     }
     if (mObserveDrawFrequency != 0 && (mNumDraws % mObserveDrawFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after draw call %d", mNumDraws);
-        observeFramebuffer(api);
+        observeFramebuffer(observer, api);
     }
     mNumDraws++;
     mNumDrawsPerFrame++;
 }
 
-void Spy::onPreStartOfFrame(uint8_t api) {
+void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
         return;
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-        observeFramebuffer(api);
+        observeFramebuffer(observer, api);
     }
     GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d",
                mNumFrames, mNumDraws, mNumDrawsPerFrame);
@@ -392,7 +392,7 @@ void Spy::onPostStartOfFrame(CallObserver* observer) {
     }
 }
 
-void Spy::onPreEndOfFrame(uint8_t api) {
+void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
         return;
     }
@@ -405,7 +405,7 @@ void Spy::onPreEndOfFrame(uint8_t api) {
         // vkQueuePresentKHR.  However, the data must be messaged after the
         // vkQueuePresentKHR so the server knows the observed framebuffer is
         // that specific vkQueuePresentKHR.
-        observeFramebuffer(api, api == VulkanSpy::kApiIndex);
+        observeFramebuffer(observer, api, api == VulkanSpy::kApiIndex);
     }
     GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d",
                mNumFrames, mNumDraws, mNumDrawsPerFrame);
@@ -483,18 +483,18 @@ static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW,
 
 // observeFramebuffer captures the currently bound framebuffer, and writes
 // it to a FramebufferObservation atom.
-void Spy::observeFramebuffer(uint8_t api, bool pendMessaging) {
+void Spy::observeFramebuffer(CallObserver* observer, uint8_t api, bool pendMessaging) {
     uint32_t w = 0;
     uint32_t h = 0;
     std::vector<uint8_t> data;
     switch(api) {
         case GlesSpy::kApiIndex:
-            if (!GlesSpy::observeFramebuffer(&w, &h, &data)) {
+            if (!GlesSpy::observeFramebuffer(observer, &w, &h, &data)) {
                 return;
             }
             break;
         case VulkanSpy::kApiIndex:
-            if (!VulkanSpy::observeFramebuffer(&w, &h, &data)) {
+            if (!VulkanSpy::observeFramebuffer(observer, &w, &h, &data)) {
                 return;
             }
             break;

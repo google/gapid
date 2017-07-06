@@ -137,16 +137,16 @@ protected:
     void abort();
 
     // onPostDrawCall is after any command annotated with @DrawCall
-    inline virtual void onPostDrawCall(uint8_t) {}
+    inline virtual void onPostDrawCall(CallObserver*, uint8_t) {}
 
     // onPreStartOfFrame is before any command annotated with @StartOfFrame
-    inline virtual void onPreStartOfFrame(uint8_t) {}
+    inline virtual void onPreStartOfFrame(CallObserver*, uint8_t) {}
 
     // onPostStrartOfFrame is after any command annotated with @StartOfFrame
     inline virtual void onPostStartOfFrame(CallObserver* observer) {}
 
     // onPreEndOfFrame is before any command annotated with @EndOfFrame
-    inline virtual void onPreEndOfFrame(uint8_t) {}
+    inline virtual void onPreEndOfFrame(CallObserver*, uint8_t) {}
 
     // onPostEndOfFrame is after any command annotated with @EndOfFrame
     inline virtual void onPostEndOfFrame(CallObserver* observer) {}
@@ -174,10 +174,6 @@ protected:
     // starts at 0 before any atoms have been sent.
     uint64_t mExpectedNextCommandStartCounterValue;
 
-    // Used by the generated code to indicate that the API file compute t as the
-    // return for this call. The actual return value comes from the driver.
-    template <typename T> void setExpectedReturn(const T& t);
-
 #ifdef COHERENT_TRACKING_ENABLED
     TrackMemory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
@@ -195,6 +191,7 @@ private:
 
     // The mutex that should be locked for the duration of each of the intercepted commands.
     core::Mutex mMutex;
+
     // True if we should observe the application pool.
     bool mObserveApplicationPool;
 

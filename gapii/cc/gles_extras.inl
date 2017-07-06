@@ -24,4 +24,4 @@
 // Declared in gles_context.cpp.
 void getContextConstants(Constants&);
 
-bool getFramebufferAttachmentSize(uint32_t* width, uint32_t* height);
+bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height);
