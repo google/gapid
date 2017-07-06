@@ -18,6 +18,7 @@ protoc_go("github.com/google/gapid/core/data/pack" "core/data/pack" "pack.proto"
 protoc_cc("core/data/pack" "core/data/pack" "pack.proto")
 protoc_go("github.com/google/gapid/core/data/pod" "core/data/pod" "pod.proto")
 protoc_java("core/data/pod" "pod.proto" "com/google/gapid/proto/core/pod/Pod")
+protoc_go("github.com/google/gapid/core/data/protoutil/testprotos" "core/data/protoutil/testprotos" "testprotos.proto")
 protoc_go("github.com/google/gapid/core/image" "core/image" "image.proto")
 protoc_java("core/image" "image.proto" "com/google/gapid/proto/image/Image")
 protoc_go("github.com/google/gapid/core/log/log_pb" "core/log/log_pb" "log.proto")
