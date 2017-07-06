@@ -16,6 +16,7 @@ package transform
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
@@ -28,6 +29,14 @@ type Transforms []Transformer
 // Transform sequentially transforms the atoms by each of the transformers in
 // the list, before writing the final output to the output atom Writer.
 func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) {
+	var currentIndex int
+	var currentAtom atom.Atom
+	defer func() {
+		if r := recover(); r != nil {
+			panic(fmt.Errorf("Panic at atom %v:%v:\n%v", currentIndex, currentAtom, r))
+		}
+	}()
+
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
 		s := out.State()
@@ -37,6 +46,7 @@ func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) 
 		chain = TransformWriter{s, l[i], chain}
 	}
 	for i, a := range atoms.Atoms {
+		currentIndex, currentAtom = i, a
 		chain.MutateAndWrite(ctx, atom.ID(i), a)
 	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
