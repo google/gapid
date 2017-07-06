@@ -138,9 +138,9 @@ void destroyContext() {
         return;
     }
 
-    auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(core::GetGlesProcAddress("eglDestroyContext", false));
-    auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(core::GetGlesProcAddress("eglDestroySurface", false));
-    auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(core::GetGlesProcAddress("eglTerminate", false));
+    auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(core::GetGlesProcAddress("eglDestroyContext", true));
+    auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(core::GetGlesProcAddress("eglDestroySurface", true));
+    auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(core::GetGlesProcAddress("eglTerminate", true));
 
     if (gContext.mContext) {
         eglDestroyContext(gContext.mDisplay, gContext.mContext);
