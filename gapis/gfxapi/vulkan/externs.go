@@ -69,6 +69,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}
 		reflect.ValueOf(&atom.Observations{}),
 		reflect.ValueOf(e.s),
 		reflect.ValueOf(GetState(e.s)),
+		reflect.ValueOf(e.a.Thread()),
 		reflect.ValueOf(e.b),
 		reflect.ValueOf(data),
 	}
