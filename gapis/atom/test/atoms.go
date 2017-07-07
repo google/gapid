@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test/test_pb"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -145,6 +144,14 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 	return 0, 0, 0, nil, nil
 }
 func (API) Context(*api.State, uint64) api.Context { return nil }
+func (API) CreateCmd(name string) api.Cmd {
+	switch name {
+	case "AtomX":
+		return &AtomX{}
+	default:
+		return nil
+	}
+}
 
 var (
 	APIID = api.ID{1, 2, 3}
@@ -171,7 +178,6 @@ var (
 
 func init() {
 	api.Register(API{})
-	atom.Register(API{}, &AtomX{})
 	protoconv.Register(func(ctx context.Context, a *AtomX) (*test_pb.AtomX, error) {
 		return &test_pb.AtomX{Data: box.NewValue(*a)}, nil
 	}, func(ctx context.Context, b *test_pb.AtomX) (*AtomX, error) {

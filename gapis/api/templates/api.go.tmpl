@@ -1123,6 +1123,20 @@
   func (API) Index() uint8 {
     return uint8({{$.Index}})
   }
+
+	// CreateCmd constructs and returns a new command with the specified name.
+	func (API) CreateCmd(name string) api.Cmd {
+    switch name {
+      {{range $c := AllCommands $}}
+        {{if not (GetAnnotation $c "pfn")}}
+          case "{{$c.Name}}":
+            return &{{$c | GoCommandName}}{}
+        {{end}}
+      {{end}}
+      default:
+        return nil
+    }
+  }
 {{end}}
 
 

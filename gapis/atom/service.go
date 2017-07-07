@@ -92,7 +92,7 @@ func ToAtom(c *service.Command) (api.Cmd, error) {
 	if api == nil {
 		return nil, fmt.Errorf("Unknown api '%v'", c.GetApi())
 	}
-	a := Create(api, c.Name)
+	a := api.CreateCmd(c.Name)
 	if a == nil {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}
