@@ -31,6 +31,8 @@ set(files
     cmd_id_set.go
     cmd_id.go
     cmd_observations.go
+    cmd_service_test.go
+    cmd_service.go
     cmd.go
     context.go
     doc.go

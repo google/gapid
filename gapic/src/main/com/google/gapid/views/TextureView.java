@@ -512,9 +512,9 @@ public class TextureView extends Composite
         if (child.getData() instanceof Path.Command) {
           Path.Command path = (Path.Command)child.getData();
           Rpc.listen(models.atoms.loadCommand(path),
-              new UiCallback<Service.Command, String>(child, LOG) {
+              new UiCallback<API.Command, String>(child, LOG) {
             @Override
-            protected String onRpcThread(Result<Service.Command> result)
+            protected String onRpcThread(Result<API.Command> result)
                 throws RpcException, ExecutionException {
               return Formatter.atomIndex(path) + ": " +
                 Formatter.toString(result.get(), models.constants::getConstants);

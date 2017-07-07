@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
@@ -72,10 +73,10 @@ public class Follower {
   /**
    * Prefetches all the follow paths for the given command.
    */
-  public Prefetcher<String> prepare(Path.Command path, Service.Command atom, Runnable onResult) {
+  public Prefetcher<String> prepare(Path.Command path, API.Command atom, Runnable onResult) {
     LazyMap<String, Path.Any> paths = new LazyMap<String, Path.Any>();
     List<ListenableFuture<Path.Any>> futures = Lists.newArrayList();
-    for (Service.Parameter p : atom.getParametersList()) {
+    for (API.Parameter p : atom.getParametersList()) {
       Path.Any follow = Paths.atomField(path, p.getName());
       ListenableFuture<Path.Any> future = client.follow(follow);
       Futures.addCallback(future, callback(follow, v -> paths.put(p.getName(), v), onResult));

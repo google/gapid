@@ -27,6 +27,7 @@ import com.google.common.collect.Lists;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -82,11 +83,11 @@ public class AtomEditor {
     this.models = models;
   }
 
-  public static boolean shouldShowEditPopup(Service.Command command) {
+  public static boolean shouldShowEditPopup(API.Command command) {
     return command.getParametersCount() > 0;
   }
 
-  public void showEditPopup(Shell parent, Path.Command path, Service.Command command) {
+  public void showEditPopup(Shell parent, Path.Command path, API.Command command) {
     EditDialog dialog = new EditDialog(parent, models, command);
     if (dialog.open() == Window.OK) {
       Rpc.listen(client.set(Paths.any(path), Values.value(dialog.newAtom)),
@@ -110,11 +111,11 @@ public class AtomEditor {
    */
   private static class EditDialog extends TitleAreaDialog {
     private final Models models;
-    private final Service.Command atom;
+    private final API.Command atom;
     private final List<Editor<?>> editors = Lists.newArrayList();
-    public Service.Command newAtom;
+    public API.Command newAtom;
 
-    public EditDialog(Shell parentShell, Models models, Service.Command atom) {
+    public EditDialog(Shell parentShell, Models models, API.Command atom) {
       super(parentShell);
       this.models = models;
       this.atom = atom;
@@ -139,7 +140,7 @@ public class AtomEditor {
       Composite container = Widgets.createComposite(area, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      for (Service.Parameter param : atom.getParametersList()) {
+      for (API.Parameter param : atom.getParametersList()) {
         Service.ConstantSet constants = models.constants.getConstants(param.getConstants());
         String typeString = Editor.getTypeString(param);
         typeString = typeString.isEmpty() ? "" : " (" + typeString + ")";
@@ -159,7 +160,7 @@ public class AtomEditor {
 
     @Override
     protected void okPressed() {
-      Service.Command.Builder builder = atom.toBuilder();
+      API.Command.Builder builder = atom.toBuilder();
       for (int i = atom.getParametersCount() - 1; i >= 0; i--) {
         editors.get(i).update(builder.getParametersBuilder(i).getValueBuilder());
       }
@@ -183,7 +184,7 @@ public class AtomEditor {
       public abstract void update(Box.Value.Builder param);
 
       public static Editor<?> getFor(
-          Composite parent, Service.Parameter param, Service.ConstantSet constants) {
+          Composite parent, API.Parameter param, Service.ConstantSet constants) {
         Box.Value value = param.getValue();
         switch (value.getValCase()) {
           case POD:
@@ -221,7 +222,7 @@ public class AtomEditor {
         return new NoEditEditor(parent, value, constants);
       }
 
-      public static String getTypeString(Service.Parameter param) {
+      public static String getTypeString(API.Parameter param) {
         Box.Value value = param.getValue();
         switch (value.getValCase()) {
           case POD: return value.getPod().getValCase().name().toLowerCase();

@@ -42,8 +42,8 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
@@ -352,7 +352,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         StringBuilder result = new StringBuilder();
         if (data.getGroup().isEmpty() && data.hasCommands()) {
           result.append(data.getCommands().getTo(0)).append(": ");
-          Command cmd = node.getCommand();
+          API.Command cmd = node.getCommand();
           if (cmd == null) {
             // Copy before loaded. Not ideal, but this is unlikely.
             result.append("Loading...");
@@ -659,7 +659,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     protected Color getBackgroundColor(Object element) {
-      Command cmd = ((AtomStream.Node)element).getCommand();
+      API.Command cmd = ((AtomStream.Node)element).getCommand();
       if (cmd == null) {
         return null;
       }
@@ -706,7 +706,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       } else {
         if (data.getGroup().isEmpty() && data.hasCommands()) {
           string.append(Formatter.lastIndex(data.getCommands()) + ": ", string.defaultStyle());
-          Command cmd = ((AtomStream.Node)element).getCommand();
+          API.Command cmd = ((AtomStream.Node)element).getCommand();
           if (cmd == null) {
             string.append("Loading...", string.structureStyle());
           } else {

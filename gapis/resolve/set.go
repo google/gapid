@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -173,10 +172,10 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		case *path.Parameter:
 			// TODO: Deal with parameters belonging to sub-commands.
 			cmd := obj.Interface().(api.Cmd)
-			err := atom.SetParameter(ctx, cmd, p.Name, val)
+			err := api.SetParameter(ctx, cmd, p.Name, val)
 			switch err {
 			case nil:
-			case atom.ErrParameterNotFound:
+			case api.ErrParameterNotFound:
 				return nil, &service.ErrInvalidPath{
 					Reason: messages.ErrParameterDoesNotExist(cmd.CmdName(), p.Name),
 					Path:   p.Path(),
@@ -194,10 +193,10 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		case *path.Result:
 			// TODO: Deal with parameters belonging to sub-commands.
 			cmd := obj.Interface().(api.Cmd)
-			err := atom.SetResult(ctx, cmd, val)
+			err := api.SetResult(ctx, cmd, val)
 			switch err {
 			case nil:
-			case atom.ErrResultNotFound:
+			case api.ErrResultNotFound:
 				return nil, &service.ErrInvalidPath{
 					Reason: messages.ErrResultDoesNotExist(cmd.CmdName()),
 					Path:   p.Path(),

@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/core/math/f32"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/text/reflow"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -79,7 +80,7 @@ func (verb *videoVerb) sxsVideoSource(
 			if err != nil {
 				return nil, log.Err(ctx, err, "Couldn't get framebuffer observation")
 			}
-			fbo := asFbo(cmd.(*service.Command))
+			fbo := asFbo(cmd.(*api.Command))
 			if int(fbo.DataWidth) > w {
 				w = int(fbo.DataWidth)
 			}

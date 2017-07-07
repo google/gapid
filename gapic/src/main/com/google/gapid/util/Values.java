@@ -16,6 +16,7 @@
 package com.google.gapid.util;
 
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 
 /**
  * Utility functions to deal with {@code Service.Value} protos.
@@ -24,7 +25,7 @@ public class Values {
   private Values() {
   }
 
-  public static Service.Value value(Service.Command command) {
+  public static Service.Value value(API.Command command) {
     return Service.Value.newBuilder()
         .setCommand(command)
         .build();

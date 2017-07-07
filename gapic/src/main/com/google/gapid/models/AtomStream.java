@@ -28,9 +28,9 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Command;
 import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.Service.Value;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
@@ -118,7 +118,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         }));
   }
 
-  public ListenableFuture<Service.Command> loadCommand(Path.Command path) {
+  public ListenableFuture<API.Command> loadCommand(Path.Command path) {
     return Futures.transformAsync(client.get(any(path)), value ->
         Futures.transform(constants.loadConstants(value.getCommand()), ignore ->
             value.getCommand()));
@@ -335,7 +335,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     private final int index;
     private Node[] children;
     private CommandTreeNode data;
-    private Command command;
+    private API.Command command;
     private ListenableFuture<Node> loadFuture;
 
     public Node(CommandTreeNode data) {
@@ -373,7 +373,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       return data;
     }
 
-    public Command getCommand() {
+    public API.Command getCommand() {
       return command;
     }
 
@@ -462,9 +462,9 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
   private static class NodeData {
     public final CommandTreeNode data;
-    public final Command command;
+    public final API.Command command;
 
-    public NodeData(CommandTreeNode data, Command command) {
+    public NodeData(CommandTreeNode data, API.Command command) {
       this.data = data;
       this.command = command;
     }
