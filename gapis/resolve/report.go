@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -133,7 +132,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		err := cmd.Mutate(ctx, state, nil /* no builder, just mutate */)
 
 		if len(items) == 0 {
-			if err != nil && !atom.IsAbortedError(err) {
+			if err != nil && !api.IsErrCmdAborted(err) {
 				items = append(items, r.newReportItem(log.Error, uint64(i),
 					messages.ErrMessage(err)))
 			} else if lastError != nil {

@@ -18,7 +18,6 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    abort.go
     atom.go
     data.go
     doc.go

@@ -12,19 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
-import "fmt"
+import (
+	"fmt"
 
-// ErrAborted is the error returned by Atom.Mutate() when the execution of the
-// state mutator was terminated by an API call to the abort() intrinsic.
-type ErrAborted string
+	"github.com/pkg/errors"
+)
 
-func (e ErrAborted) Error() string {
+// ErrCmdAborted is the error returned by Cmd.Mutate() when the execution was
+// terminated by the abort() intrinsic.
+type ErrCmdAborted string
+
+func (e ErrCmdAborted) Error() string {
 	return fmt.Sprintf("aborted(%s)", string(e))
 }
 
-func IsAbortedError(err error) bool {
-	_, ok := err.(ErrAborted)
+// IsErrCmdAborted returns true if the cause of the error err was due to an
+// abort() in the command.
+func IsErrCmdAborted(err error) bool {
+	_, ok := errors.Cause(err).(ErrCmdAborted)
 	return ok
 }

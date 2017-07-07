@@ -22,6 +22,7 @@ set(files
     api.pb.go
     api.proto
     cmd_convert.go
+    cmd_errors.go
     cmd_extras.go
     cmd_flags.go
     cmd_id_group_test.go
