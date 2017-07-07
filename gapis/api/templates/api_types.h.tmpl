@@ -64,9 +64,6 @@
   {{range $p := $.Pseudonyms}}
     {{Template "DeclareType" $p}}
   {{end}}
-  {{range $c := $.Classes}}
-    {{if GetAnnotation $c "internal"}} class {{$c.Name}}; {{end}}
-  {{end}}
   {{range $m := $.Maps}}
     {{Template "DeclareType" $m}}
   {{end}}
