@@ -24,7 +24,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/transform"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -79,7 +79,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 			}
 			terminators = append(terminators, term)
 		} else {
-			terminators = append(terminators, &transform.EarlyTerminator{APIIdx: api.ID()})
+			terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
 		}
 	}
 	for _, t := range terminators {

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom/test"
 )
 
@@ -44,7 +45,7 @@ func TestEarlyTerminator(t *testing.T) {
 		&test.AtomA{ID: 70},
 	)
 
-	transform := &EarlyTerminator{}
+	transform := NewEarlyTerminator(api.ID{})
 	transform.Add(ctx, 20, []uint64{0})
 	transform.Add(ctx, 50, []uint64{})
 	transform.Add(ctx, 70, []uint64{1})

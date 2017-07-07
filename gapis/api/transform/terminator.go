@@ -20,13 +20,12 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-// Terminator is an interface that rewrites a set of atoms to only
-// mutate the given commands
+// Terminator is an Transformer that prevents commands passing-through it after
+// a certain point in the stream.
 type Terminator interface {
-	// Adds the given atom, and subcommand as the last atom that
-	// must be observed
+	Transformer
+
+	// Add relaxes the termination limit to pass-through all commands before and
+	// including the command or subcommand.
 	Add(context.Context, api.CmdID, []uint64) error
-	// The transformer interface
-	Transform(context.Context, api.CmdID, api.Cmd, Writer)
-	Flush(context.Context, Writer)
 }

@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package transform provides implementations of the atom Transformer interface.
+// Package transform provides transforms on commands.
 package transform

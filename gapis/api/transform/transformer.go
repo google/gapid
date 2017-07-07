@@ -22,20 +22,21 @@ import (
 
 // Transformer is the interface that wraps the basic Transform method.
 type Transformer interface {
-	// Transform takes a given atom and identifier and Writes out a new atom and
-	// identifier to the output. Transform must not modify the atom in any way.
+	// Transform takes a given command and identifier and Writes out a possibly
+	// transformed set of commands to the output.
+	// Transform must not modify cmd in any way.
 	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)
-	// Flush is called at the end of an atom stream to cause Transformers that
-	// cache atoms to send any they have stored into the output.
+	// Flush is called at the end of an command stream to cause Transformers
+	// that cache commands to send any they have stored into the output.
 	Flush(ctx context.Context, output Writer)
 }
 
 // Writer is the interface which consumes the output of an Transformer.
-// It also keeps track of state changes caused by all atoms written to it.
+// It also keeps track of state changes caused by all commands written to it.
 // Conceptually, each Writer object contains its own separate State object,
 // which is modified when MutateAndWrite is called.
 // This allows the transform to access the state both before and after the
-// mutation of state happens. It is also possible to omit/insert atoms.
+// mutation of state happens. It is also possible to omit/insert commands.
 // In practice, single state object can be shared by all transforms for
 // performance (i.e. the mutation is done only once at the very end).
 // This potentially allows state changes to leak upstream so care is needed.

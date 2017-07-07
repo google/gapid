@@ -23,8 +23,8 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/database"
 )
 

@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/transform"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"

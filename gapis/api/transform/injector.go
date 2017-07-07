@@ -20,14 +20,13 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-// Injector is an implementation of Transformer that can inject atoms into the
-// atom stream.
+// Injector is an implementation of Transformer that can inject commands into
+// the stream.
 type Injector struct {
 	injections map[api.CmdID][]api.Cmd
 }
 
-// Inject emits the atom a with identifier id after the command with identifier
-// after.
+// Inject emits cmd after the command with identifier after.
 func (t *Injector) Inject(after api.CmdID, cmd api.Cmd) {
 	if t.injections == nil {
 		t.injections = make(map[api.CmdID][]api.Cmd)
@@ -35,6 +34,7 @@ func (t *Injector) Inject(after api.CmdID, cmd api.Cmd) {
 	t.injections[after] = append(t.injections[after], cmd)
 }
 
+// Transform implements the Transformer interface.
 func (t *Injector) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	out.MutateAndWrite(ctx, id, cmd)
 
@@ -46,4 +46,5 @@ func (t *Injector) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out
 	}
 }
 
+// Flush implements the Transformer interface.
 func (t *Injector) Flush(ctx context.Context, out Writer) {}
