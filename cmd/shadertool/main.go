@@ -101,12 +101,12 @@ func convert(source, shaderType string) (result string, err error) {
 	opts.CheckAfterChanges = *check
 	opts.Disassemble = *asm
 	res := shadertools.ConvertGlsl(string(source), &opts)
-	if !res.Ok {
-		return "", fmt.Errorf("Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, source)
-	}
 	if *asm {
 		result += "/* Disassembly:\n" + res.DisassemblyString + "\n*/\n"
 		result += "/* Debug info:\n" + shadertools.FormatDebugInfo(res.Info, "  ") + "\n*/\n"
+	}
+	if !res.Ok {
+		return "", fmt.Errorf("Failed to translate GLSL:\n%s\nOriginal source:\n%s\n%s\n", res.Message, source, result)
 	}
 	result += res.SourceCode
 	return result, nil
