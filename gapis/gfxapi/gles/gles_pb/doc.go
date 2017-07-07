@@ -14,3 +14,8 @@
 
 // Package gles_pb describes the serialization format for the gles api.
 package gles_pb
+
+import (
+	_ "github.com/golang/protobuf/proto"
+	_ "github.com/google/gapid/gapis/memory/memory_pb"
+)
