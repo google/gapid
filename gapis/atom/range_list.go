@@ -20,7 +20,7 @@ import (
 )
 
 // RangeList is a list of atom ranges.
-type RangeList []Range
+type RangeList []api.CmdIDRange
 
 // Length returns the number of ranges in the list.
 func (l RangeList) Length() int { return len(l) }
@@ -33,7 +33,7 @@ func (l RangeList) SetSpan(index int, span interval.U64Span) { l[index].SetSpan(
 
 // New creates a new element at the specifed index with the specified span
 func (l *RangeList) New(index int, span interval.U64Span) {
-	(*l)[index] = Range{api.CmdID(span.Start), api.CmdID(span.End)}
+	(*l)[index] = api.CmdIDRange{Start: api.CmdID(span.Start), End: api.CmdID(span.End)}
 }
 
 // Copy copies count ranges within the list.

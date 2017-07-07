@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
 import (
 	"bytes"
@@ -23,28 +23,27 @@ import (
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/sint"
-	"github.com/google/gapid/gapis/api"
 )
 
-// Group represents a named group of atoms with support for sparse sub-groups
-// and sub-atom-ranges.
-// Groups are ideal for expressing nested hierarchies of atoms.
+// CmdIDGroup represents a named group of commands with support for sparse
+// sub-groups and sub-command-ranges.
+// Groups are ideal for expressing nested hierarchies of commands.
 //
 // Groups have the concept of items. An item is either an immediate sub-group,
-// or an atom range that is within this group's span but outside of any
+// or an command range that is within this group's span but outside of any
 // sub-group.
-type Group struct {
-	Name  string // Name of this group.
-	Range Range  // The range of atoms this group (and items) represents.
-	Spans Spans  // All sub-groups and sub-ranges of this group.
+type CmdIDGroup struct {
+	Name  string     // Name of this group.
+	Range CmdIDRange // The range of commands this group (and items) represents.
+	Spans Spans      // All sub-groups and sub-ranges of this group.
 }
 
 // Spans is a list of Span elements. Functions in this package expect the
-// list to be in ascending atom index order, and maintain that order on
+// list to be in ascending command index order, and maintain that order on
 // mutation.
 type Spans []Span
 
-// IndexOf returns the index of the group that contains the atom index or
+// IndexOf returns the index of the group that contains the command index or
 // -1 if not found.
 func (l *Spans) IndexOf(atomIndex uint64) int {
 	return interval.IndexOf(l, atomIndex)
@@ -55,59 +54,58 @@ func (l Spans) Length() int {
 	return len(l)
 }
 
-// GetSpan returns the atom index span for the group at index in the list.
+// GetSpan returns the command index span for the group at index in the list.
 func (l Spans) GetSpan(index int) interval.U64Span {
 	return l[index].Bounds().Span()
 }
 
-// Span is a child of a Group. It is implemented by Group and Range.
+// Span is a child of a CmdIDGroup. It is implemented by CmdIDGroup and Range.
 type Span interface {
-	// Bounds returns the absolute range of atom indices for the span.
-	Bounds() Range
+	// Bounds returns the absolute range of command indices for the span.
+	Bounds() CmdIDRange
 
 	// itemCount returns the number of items this span represents to its parent.
 	// For a Range, this is the interval length.
-	// For a Group, this is always 1.
+	// For a CmdIDGroup, this is always 1.
 	itemCount() uint64
 
 	// item returns the i'th sub-item for this span.
-	// For a Range, this is the i'th api.CmdID in the interval.
-	// For a Group, this is always the group itself.
-	item(i uint64) GroupOrID
+	// For a Range, this is the i'th CmdID in the interval.
+	// For a CmdIDGroup, this is always the group itself.
+	item(i uint64) CmdIDGroupOrID
 
-	// itemIndex returns the item sub-index for the given api.CmdID.
-	// For a Range, this is i minus the first api.CmdID in the interval.
-	// For a Group, this is always 0.
-	itemIndex(i api.CmdID) uint64
+	// itemIndex returns the item sub-index for the given CmdID.
+	// For a Range, this is i minus the first CmdID in the interval.
+	// For a CmdIDGroup, this is always 0.
+	itemIndex(i CmdID) uint64
 
 	// split returns two spans over the same range as this span, but where the
 	// first contains the given number of items and the second the rest.
 	split(i uint64) (Span, Span)
 }
 
-// GroupOrID is a dummy interface exclusively implemented by Group and api.CmdID.
-type GroupOrID interface {
-	// 	isGroupOrID()
+// CmdIDGroupOrID is a dummy interface exclusively implemented by CmdIDGroup and CmdID.
+type CmdIDGroupOrID interface {
+	isGroupOrID()
 }
 
-// TODO:
-// func (Group) isGroupOrID()     {}
-// func (api.CmdID) isGroupOrID() {}
+func (CmdIDGroup) isGroupOrID() {}
+func (CmdID) isGroupOrID()      {}
 
-func (r Range) Bounds() Range                { return r }
-func (r Range) itemCount() uint64            { return r.Length() }
-func (r Range) item(i uint64) GroupOrID      { return r.Start + api.CmdID(i) }
-func (r Range) itemIndex(i api.CmdID) uint64 { return uint64(i - r.Start) }
-func (r Range) split(i uint64) (Span, Span)  { return r.Split(i) }
+func (r CmdIDRange) Bounds() CmdIDRange           { return r }
+func (r CmdIDRange) itemCount() uint64            { return r.Length() }
+func (r CmdIDRange) item(i uint64) CmdIDGroupOrID { return r.Start + CmdID(i) }
+func (r CmdIDRange) itemIndex(i CmdID) uint64     { return uint64(i - r.Start) }
+func (r CmdIDRange) split(i uint64) (Span, Span)  { return r.Split(i) }
 
-func (g Group) Bounds() Range                { return g.Range }
-func (g Group) itemCount() uint64            { return 1 }
-func (g Group) item(uint64) GroupOrID        { return g }
-func (g Group) itemIndex(i api.CmdID) uint64 { return 0 }
-func (g Group) split(i uint64) (Span, Span)  { return g, nil }
+func (g CmdIDGroup) Bounds() CmdIDRange          { return g.Range }
+func (g CmdIDGroup) itemCount() uint64           { return 1 }
+func (g CmdIDGroup) item(uint64) CmdIDGroupOrID  { return g }
+func (g CmdIDGroup) itemIndex(i CmdID) uint64    { return 0 }
+func (g CmdIDGroup) split(i uint64) (Span, Span) { return g, nil }
 
 // Format writes a string representing the group's name, range and sub-groups.
-func (g Group) Format(f fmt.State, r rune) {
+func (g CmdIDGroup) Format(f fmt.State, r rune) {
 	align := 12
 	pad := strings.Repeat(" ", sint.Max(align+2, 0))
 
@@ -142,7 +140,7 @@ func (g Group) Format(f fmt.State, r rune) {
 			buf.WriteString(strings.Repeat("─", sint.Max(align-len(idxSpan), 0)))
 			buf.WriteRune(' ')
 			switch span.(type) {
-			case Range:
+			case CmdIDRange:
 				buf.WriteString("Atoms ")
 			}
 			buf.WriteString(strings.Replace(fmt.Sprintf("%+v", span), "\n", nl, -1))
@@ -153,7 +151,7 @@ func (g Group) Format(f fmt.State, r rune) {
 }
 
 // Count returns the number of immediate items this group contains.
-func (g Group) Count() uint64 {
+func (g CmdIDGroup) Count() uint64 {
 	var count uint64
 	for _, s := range g.Spans {
 		count += s.itemCount()
@@ -164,11 +162,11 @@ func (g Group) Count() uint64 {
 // DeepCount returns the total (recursive) number of items this group contains.
 // The given predicate determines wheter the tested group is counted as 1 or
 // is recursed into.
-func (g Group) DeepCount(pred func(g Group) bool) uint64 {
+func (g CmdIDGroup) DeepCount(pred func(g CmdIDGroup) bool) uint64 {
 	var count uint64
 	for _, s := range g.Spans {
 		switch s := s.(type) {
-		case Group:
+		case CmdIDGroup:
 			if pred(s) {
 				count += s.DeepCount(pred)
 			} else {
@@ -182,7 +180,7 @@ func (g Group) DeepCount(pred func(g Group) bool) uint64 {
 }
 
 // Index returns the item at the specified index.
-func (g Group) Index(index uint64) GroupOrID {
+func (g CmdIDGroup) Index(index uint64) CmdIDGroupOrID {
 	for _, s := range g.Spans {
 		c := s.itemCount()
 		if index < c {
@@ -194,7 +192,7 @@ func (g Group) Index(index uint64) GroupOrID {
 }
 
 // IndexOf returns the item index that id refers directly to, or contains id.
-func (g Group) IndexOf(id api.CmdID) uint64 {
+func (g CmdIDGroup) IndexOf(id CmdID) uint64 {
 	idx := uint64(0)
 	for _, s := range g.Spans {
 		if s.Bounds().Contains(id) {
@@ -205,12 +203,12 @@ func (g Group) IndexOf(id api.CmdID) uint64 {
 	return 0
 }
 
-// IterateForwards calls cb with each contained atom index or group starting
+// IterateForwards calls cb with each contained command index or group starting
 // with the item at index. If cb returns an error then traversal is stopped and
 // the error is returned.
-func (g Group) IterateForwards(index uint64, cb func(childIdx uint64, item GroupOrID) error) error {
+func (g CmdIDGroup) IterateForwards(index uint64, cb func(childIdx uint64, item CmdIDGroupOrID) error) error {
 	childIndex := uint64(0)
-	visit := func(item GroupOrID) error {
+	visit := func(item CmdIDGroupOrID) error {
 		idx := childIndex
 		childIndex++
 		if idx < index {
@@ -229,12 +227,12 @@ func (g Group) IterateForwards(index uint64, cb func(childIdx uint64, item Group
 	return nil
 }
 
-// IterateBackwards calls cb with each contained atom index or group starting
+// IterateBackwards calls cb with each contained command index or group starting
 // with the item at index. If cb returns an error then traversal is stopped and
 // the error is returned.
-func (g Group) IterateBackwards(index uint64, cb func(childIdx uint64, item GroupOrID) error) error {
+func (g CmdIDGroup) IterateBackwards(index uint64, cb func(childIdx uint64, item CmdIDGroupOrID) error) error {
 	childIndex := g.Count() - 1
-	visit := func(item GroupOrID) error {
+	visit := func(item CmdIDGroupOrID) error {
 		idx := childIndex
 		childIndex--
 		if idx > index {
@@ -257,20 +255,20 @@ func (g Group) IterateBackwards(index uint64, cb func(childIdx uint64, item Grou
 // AddGroup inserts a new sub-group with the specified range and name.
 //
 // If the new group does not overlap any existing groups in the list then it is
-// inserted into the list, keeping ascending atom-identifier order.
+// inserted into the list, keeping ascending command-identifier order.
 // If the new group sits completely within an existing group then this new group
 // will be added to the existing group's sub-groups.
 // If the new group completely wraps one or more existing groups in the list
 // then these existing groups are added as sub-groups to the new group and then
-// the new group is added to the list, keeping ascending atom-identifier order.
+// the new group is added to the list, keeping ascending command-identifier order.
 // If the new group partially overlaps any existing group then the function will
 // return an error.
 //
 // *** Warning ***
-// All groups must be added before atoms.
-// Attemping to call this function after atoms have been added may result in
+// All groups must be added before commands.
+// Attemping to call this function after commands have been added may result in
 // panics!
-func (g *Group) AddGroup(start, end api.CmdID, name string) error {
+func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
 	if start > end {
 		return fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
 	}
@@ -280,18 +278,18 @@ func (g *Group) AddGroup(start, end api.CmdID, name string) error {
 	if end > g.Range.End {
 		return fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
 	}
-	r := Range{Start: start, End: end}
+	r := CmdIDRange{Start: start, End: end}
 	s, c := interval.Intersect(&g.Spans, r.Span())
 	if c == 0 {
 		// No overlaps, clean insertion
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > start
 		})
-		slice.InsertBefore(&g.Spans, i, Group{Name: name, Range: r})
+		slice.InsertBefore(&g.Spans, i, CmdIDGroup{Name: name, Range: r})
 	} else {
 		// At least one overlap
-		first := g.Spans[s].(Group)
-		last := g.Spans[s+c-1].(Group)
+		first := g.Spans[s].(CmdIDGroup)
+		last := g.Spans[s+c-1].(CmdIDGroup)
 		sIn, eIn := first.Bounds().Contains(start), last.Bounds().Contains(end-1)
 		switch {
 		case c == 1 && sIn && eIn:
@@ -305,7 +303,7 @@ func (g *Group) AddGroup(start, end api.CmdID, name string) error {
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
-			n := Group{Name: name, Range: r, Spans: make(Spans, c)}
+			n := CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
 			copy(n.Spans, g.Spans[s:s+c])
 			slice.Replace(&g.Spans, s, c, n)
 		}
@@ -313,15 +311,15 @@ func (g *Group) AddGroup(start, end api.CmdID, name string) error {
 	return nil
 }
 
-// AddAtoms fills the group and sub-groups with atoms based on the predicate
+// AddAtoms fills the group and sub-groups with commands based on the predicate
 // pred. If maxChildren is positive, the group, and any of it's decendent
 // groups, which have more than maxChildren child elements, will have their
 // children grouped into new synthetic groups of at most maxChildren children.
-func (g *Group) AddAtoms(pred func(id api.CmdID) bool, maxChildren uint64) error {
+func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren uint64) error {
 	rng := g.Range
 	spans := make(Spans, 0, len(g.Spans))
 
-	scan := func(to api.CmdID) {
+	scan := func(to CmdID) {
 		for id := rng.Start; id < to; id++ {
 			if !pred(id) {
 				rng.End = id
@@ -340,7 +338,7 @@ func (g *Group) AddAtoms(pred func(id api.CmdID) bool, maxChildren uint64) error
 
 	for _, s := range g.Spans {
 		switch s := s.(type) {
-		case Group:
+		case CmdIDGroup:
 			scan(s.Bounds().Start)
 			s.AddAtoms(pred, maxChildren)
 			rng.Start = s.Bounds().End
@@ -371,9 +369,9 @@ outer:
 				head, tail = span.split(space)
 				current = append(current, head)
 			}
-			out = append(out, Group{
+			out = append(out, CmdIDGroup{
 				fmt.Sprintf("Sub Group %d", idx),
-				Range{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
+				CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 				current,
 			})
 			current, idx, count, space, span = nil, idx+1, 0, max, tail
@@ -386,9 +384,9 @@ outer:
 	}
 
 	if len(current) > 0 {
-		out = append(out, Group{
+		out = append(out, CmdIDGroup{
 			fmt.Sprintf("Sub Group %d", idx),
-			Range{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
+			CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 			current,
 		})
 	}
@@ -397,22 +395,22 @@ outer:
 
 // TraverseCallback is the function that's called for each traversed item in a
 // group.
-type TraverseCallback func(indices []uint64, item GroupOrID) error
+type TraverseCallback func(indices []uint64, item CmdIDGroupOrID) error
 
-// Traverse traverses the atom group starting with the specified index,
+// Traverse traverses the command group starting with the specified index,
 // calling cb for each encountered node.
-func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) error {
+func (g CmdIDGroup) Traverse(backwards bool, start []uint64, cb TraverseCallback) error {
 	t := groupTraverser{backwards: backwards, cb: cb}
 
 	// Make a copy of start as traversal alters the slice.
 	indices := make([]uint64, len(start))
 	copy(indices, start)
 
-	groups := make([]Group, 1, len(indices)+1)
+	groups := make([]CmdIDGroup, 1, len(indices)+1)
 	groups[0] = g
 	for i := range indices {
 		item := groups[i].Index(indices[i])
-		g, ok := item.(Group)
+		g, ok := item.(CmdIDGroup)
 		if !ok {
 			break
 		}
@@ -435,7 +433,7 @@ func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) err
 		var err error
 		switch {
 		case i >= len(indices):
-			// Group doesn't have an index specifiying a child to search from.
+			// CmdIDGroup doesn't have an index specifiying a child to search from.
 			// Search the entire group.
 			if backwards {
 				err = g.IterateBackwards(g.Count()-1, t.visit)
@@ -443,7 +441,7 @@ func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) err
 				err = g.IterateForwards(0, t.visit)
 			}
 		case i == len(groups)-1:
-			// Group is the deepest.
+			// CmdIDGroup is the deepest.
 			// Search from index that passes through this group.
 			if backwards {
 				if err := g.IterateBackwards(indices[i], t.visit); err != nil {
@@ -454,7 +452,7 @@ func (g Group) Traverse(backwards bool, start []uint64, cb TraverseCallback) err
 				err = g.IterateForwards(indices[i], t.visit)
 			}
 		default:
-			// Group is not the deepest.
+			// CmdIDGroup is not the deepest.
 			// Search after / before the index that passes through this group.
 			if backwards {
 				if indices[i] > 0 {
@@ -480,13 +478,13 @@ type groupTraverser struct {
 	indices   []uint64
 }
 
-func (s *groupTraverser) visit(childIdx uint64, item GroupOrID) error {
+func (s *groupTraverser) visit(childIdx uint64, item CmdIDGroupOrID) error {
 	if !s.backwards {
 		if err := s.cb(append(s.indices, childIdx), item); err != nil {
 			return err
 		}
 	}
-	if g, ok := item.(Group); ok {
+	if g, ok := item.(CmdIDGroup); ok {
 		s.indices = append(s.indices, childIdx)
 		var err error
 		if s.backwards {

@@ -23,12 +23,9 @@ set(files
     data.go
     doc.go
     framebuffer_observation.go
-    group.go
-    group_test.go
     labeled.go
     list.go
     list_test.go
-    range.go
     range_list.go
     registry.go
     resource.go
