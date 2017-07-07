@@ -16,6 +16,7 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.proto.service.memory.MemoryProtos.PoolNames.Application_VALUE;
+import static com.google.gapid.rpc.SharedFuture.shared;
 import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
@@ -35,6 +36,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SharedFuture;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -336,7 +338,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     private Node[] children;
     private CommandTreeNode data;
     private Command command;
-    private ListenableFuture<Node> loadFuture;
+    private SharedFuture<Node> loadFuture;
 
     public Node(CommandTreeNode data) {
       this(null, 0);
@@ -391,17 +393,17 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         // Already loaded.
         return null;
       } else if (loadFuture != null && !loadFuture.isCancelled()) {
-        return loadFuture;
+        return loadFuture.share();
       }
 
-      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+      return loadFuture = shared(Futures.transformAsync(loader.get(), newData ->
         submitIfNotDisposed(shell, () -> {
           data = newData.data;
           command = newData.command;
           children = new Node[(int)data.getNumChildren()];
           loadFuture = null; // Don't hang on to listeners.
           return Node.this;
-        }));
+        })));
     }
 
     @Override
