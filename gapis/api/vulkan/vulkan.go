@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/resolve"
@@ -94,13 +93,13 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return err
 	}
 	s := GetState(st)
-	i := atom.ID(0)
-	submissionMap := make(map[*api.Cmd]atom.ID)
+	i := api.CmdID(0)
+	submissionMap := make(map[*api.Cmd]api.CmdID)
 
 	s.HandleSubcommand = func(a interface{}) {
-		rootIdx := atom.ID(i)
+		rootIdx := api.CmdID(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
-			rootIdx = atom.ID(k)
+			rootIdx = api.CmdID(k)
 		} else {
 			submissionMap[s.CurrentSubmission] = i
 		}
@@ -111,7 +110,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		} else {
 			er := sync.ExecutionRanges{
 				LastIndex: append(sync.SubcommandIndex(nil), s.SubcommandIndex...),
-				Ranges:    make(map[atom.ID]sync.SubcommandIndex),
+				Ranges:    make(map[api.CmdID]sync.SubcommandIndex),
 			}
 			er.Ranges[i] = append(sync.SubcommandIndex(nil), s.SubcommandIndex...)
 			d.CommandRanges[rootIdx] = er
@@ -119,7 +118,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	for idx, a := range a.Atoms {
-		i = atom.ID(idx)
+		i = api.CmdID(idx)
 		if err := a.Mutate(ctx, st, nil); err != nil {
 			return err
 		}
@@ -139,7 +138,7 @@ func (API) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygr
 	return newVulkanDependencyGraphBehaviourProvider()
 }
 
-func (API) MutateSubcommands(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State, callback func(*api.State, sync.SubcommandIndex, api.Cmd)) error {
+func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, sync.SubcommandIndex, api.Cmd)) error {
 	c := GetState(s)
 	c.HandleSubcommand = func(_ interface{}) {
 		callback(s, append(sync.SubcommandIndex{uint64(id)}, c.SubcommandIndex...), cmd)

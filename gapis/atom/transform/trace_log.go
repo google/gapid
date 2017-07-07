@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 // Trace is an implementation of Transformer that records each atom id and atom
@@ -27,7 +26,7 @@ import (
 // written to the output Writer unaltered.
 type Trace struct{}
 
-func (t Trace) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+func (t Trace) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	log.I(ctx, "id: %v, atom: %v", id, cmd)
 	out.MutateAndWrite(ctx, id, cmd)
 }

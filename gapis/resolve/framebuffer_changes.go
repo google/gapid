@@ -46,7 +46,7 @@ type AttachmentFramebufferChanges struct {
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
-	var id atom.ID
+	var id api.CmdID
 	defer func() {
 		if err := recover(); err != nil {
 			panic(fmt.Errorf("Panic at atom %d: %v", id, err))

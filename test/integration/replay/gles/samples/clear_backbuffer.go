@@ -17,6 +17,7 @@ package samples
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
@@ -24,7 +25,7 @@ import (
 
 // ClearBackbuffer returns the atom list needed to create a context then clear,
 // sequentially the backbuffer to red, green, blue and black.
-func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder) (atoms *atom.List, red, green, blue, black atom.ID) {
+func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder) (atoms *atom.List, red, green, blue, black api.CmdID) {
 	b := newBuilder(ctx)
 	b.newEglContext(64, 64, memory.Nullptr, false)
 	red = b.Add(

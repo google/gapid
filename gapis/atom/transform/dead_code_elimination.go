@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
@@ -48,26 +47,26 @@ var (
 // (state is like memory and atoms are instructions which read/write it).
 type DeadCodeElimination struct {
 	dependencyGraph *dependencygraph.DependencyGraph
-	requests        atom.IDSet
-	lastRequest     atom.ID
+	requests        api.CmdIDSet
+	lastRequest     api.CmdID
 }
 
 func NewDeadCodeElimination(ctx context.Context, dependencyGraph *dependencygraph.DependencyGraph) *DeadCodeElimination {
 	return &DeadCodeElimination{
 		dependencyGraph: dependencyGraph,
-		requests:        make(atom.IDSet),
+		requests:        make(api.CmdIDSet),
 	}
 }
 
 // Request ensures that we keep alive all atoms needed to render framebuffer at the given point.
-func (t *DeadCodeElimination) Request(id atom.ID) {
+func (t *DeadCodeElimination) Request(id api.CmdID) {
 	t.requests.Add(id)
 	if id > t.lastRequest {
 		t.lastRequest = id
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, c api.Cmd, out Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out Writer) {
 	panic(fmt.Errorf("This transform does not accept input atoms"))
 }
 
@@ -77,7 +76,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
-			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.Commands[i])
+			out.MutateAndWrite(ctx, api.CmdID(i), t.dependencyGraph.Commands[i])
 		}
 	}
 }
@@ -94,7 +93,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			continue
 		}
 		// If this is requested ID, mark all root state as live.
-		if t.requests.Contains(atom.ID(i)) {
+		if t.requests.Contains(api.CmdID(i)) {
 			isLive[i] = true
 			for root := range t.dependencyGraph.Roots {
 				state.MarkLive(root)
@@ -127,7 +126,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			}
 		}
 		// Debug output
-		if config.DebugDeadCodeElimination && t.requests.Contains(atom.ID(i)) {
+		if config.DebugDeadCodeElimination && t.requests.Contains(api.CmdID(i)) {
 			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.Commands[i])
 			t.dependencyGraph.Print(ctx, &b)
 		}

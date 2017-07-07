@@ -41,7 +41,7 @@ func Report(ctx context.Context, p *path.Report) (*service.Report, error) {
 
 func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtable.Msg) *service.ReportItemRaw {
 	var cmd *path.Command
-	if c != uint64(atom.NoID) {
+	if c != uint64(api.CmdNoID) {
 		cmd = r.Path.Capture.Command(c)
 	}
 	return service.WrapReportItem(&service.ReportItem{
@@ -81,7 +81,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		items[i].Tags = append(items[i].Tags, t)
 	}
 
-	issues := map[atom.ID][]replay.Issue{}
+	issues := map[api.CmdID][]replay.Issue{}
 
 	if r.Path.Device != nil {
 		// Request is for a replay report too.
@@ -96,20 +96,20 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		// Iterate the APIs in use looking for those that support the
 		// QueryIssues interface. Call QueryIssues for each of these APIs.
 		hints := &service.UsageHints{Background: true}
-		for _, api := range c.APIs {
-			if qi, ok := api.(replay.QueryIssues); ok {
+		for _, a := range c.APIs {
+			if qi, ok := a.(replay.QueryIssues); ok {
 				apiIssues, err := qi.QueryIssues(ctx, intent, mgr, hints)
 				if err != nil {
 					issue := replay.Issue{
-						Atom:     atom.NoID,
+						Command:  api.CmdNoID,
 						Severity: service.Severity_ErrorLevel,
 						Error:    err,
 					}
-					issues[atom.NoID] = append(issues[atom.NoID], issue)
+					issues[api.CmdNoID] = append(issues[api.CmdNoID], issue)
 					continue
 				}
 				for _, issue := range apiIssues {
-					issues[issue.Atom] = append(issues[issue.Atom], issue)
+					issues[issue.Command] = append(issues[issue.Command], issue)
 				}
 			}
 		}
@@ -152,11 +152,11 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				item.Tags = append(item.Tags, getAtomNameTag(cmd))
 				builder.Add(ctx, item)
 			}
-			for _, issue := range issues[atom.ID(i)] {
-				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Atom),
+			for _, issue := range issues[api.CmdID(i)] {
+				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
 					messages.ErrReplayDriver(issue.Error.Error()))
-				if int(issue.Atom) < len(c.Commands) {
-					item.Tags = append(item.Tags, getAtomNameTag(c.Commands[issue.Atom]))
+				if int(issue.Command) < len(c.Commands) {
+					item.Tags = append(item.Tags, getAtomNameTag(c.Commands[issue.Command]))
 				}
 				builder.Add(ctx, item)
 			}

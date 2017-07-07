@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -28,7 +27,7 @@ import (
 // color buffer at the end of each frame.
 func undefinedFramebuffer(ctx context.Context, device *device.Instance) transform.Transformer {
 	seenSurfaces := make(map[EGLSurface]bool)
-	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		out.MutateAndWrite(ctx, id, cmd)
 		s := out.State()
 		c := GetContext(s, cmd.Thread())
@@ -48,7 +47,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 	})
 }
 
-func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, cmd api.Cmd, device *device.Instance, s *api.State, c *Context, out transform.Writer) error {
+func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, device *device.Instance, s *api.State, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 

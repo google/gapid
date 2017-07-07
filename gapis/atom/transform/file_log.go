@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 )
 
@@ -39,7 +38,7 @@ func NewFileLog(ctx context.Context, name string) *FileLog {
 	return &FileLog{file: f}
 }
 
-func (t *FileLog) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+func (t *FileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	if cmd.API() != nil {
 		t.file.WriteString(fmt.Sprintf("%v: %v\n", id, cmd))
 	} else {

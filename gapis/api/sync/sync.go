@@ -43,7 +43,7 @@ type SynchronizedAPI interface {
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 
 	// MutateSubcommands mutates the given Atom calling callback after each subcommand is executed.
-	MutateSubcommands(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State, callback func(*api.State, SubcommandIndex, api.Cmd)) error
+	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, SubcommandIndex, api.Cmd)) error
 }
 
 type writer struct {
@@ -55,14 +55,14 @@ func (s writer) State() *api.State {
 	return s.st
 }
 
-func (s writer) MutateAndWrite(ctx context.Context, id atom.ID, cmd api.Cmd) {
+func (s writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	cmd.Mutate(ctx, s.st, nil)
 	s.Atoms.Atoms = append(s.Atoms.Atoms, cmd)
 }
 
 // MutationAtomsFor returns a list of atoms that represent the correct mutations to have the state for all
 // atoms before and including the given index.
-func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id atom.ID, subindex []uint64) (*atom.List, error) {
+func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id api.CmdID, subindex []uint64) (*atom.List, error) {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -114,7 +114,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, atoms atom.List
 
 	for id, cmd := range atoms.Atoms {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			if err := sync.MutateSubcommands(ctx, atom.ID(id), cmd, s, callback); err != nil && err == context.Canceled {
+			if err := sync.MutateSubcommands(ctx, api.CmdID(id), cmd, s, callback); err != nil && err == context.Canceled {
 				return err
 			}
 		} else {

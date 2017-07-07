@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
-// IDSet is a set of IDs.
-type IDSet map[ID]struct{}
+// CmdIDSet is a set of CmdIDs.
+type CmdIDSet map[CmdID]struct{}
 
 // Remove removes id from the set. If the id was not in the set then the call
 // does nothing.
-func (s *IDSet) Remove(id ID) {
+func (s *CmdIDSet) Remove(id CmdID) {
 	delete(*s, id)
 }
 
 // Add adds id to the set. If the id was already in the set then the call does
 // nothing.
-func (s *IDSet) Add(id ID) {
+func (s *CmdIDSet) Add(id CmdID) {
 	(*s)[id] = struct{}{}
 }
 
 // Contains returns true if id is in the set, otherwise false.
-func (s IDSet) Contains(id ID) bool {
+func (s CmdIDSet) Contains(id CmdID) bool {
 	_, ok := s[id]
 	return ok
 }

@@ -245,7 +245,7 @@ func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
 
-func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
+func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
 	ctx = log.Enter(ctx, "ColorBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {
@@ -260,7 +260,7 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after atom.ID, done *sync.WaitGroup) {
+func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
 	ctx = log.Enter(ctx, "DepthBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {

@@ -33,16 +33,16 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)
+	injections map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)),
+		injections: make(map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)),
 	}
 }
 
-func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, cmd)
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
@@ -54,7 +54,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd
 
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
-func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
+func (t *readFramebuffer) Depth(id api.CmdID, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), api.FramebufferAttachment_Depth)
@@ -67,7 +67,7 @@ func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
 	})
 }
 
-func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
+func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s, cmd.Thread())
@@ -140,7 +140,7 @@ func postColorData(ctx context.Context,
 	width, height int32,
 	sizedFormat GLenum,
 	out transform.Writer,
-	id atom.ID,
+	id api.CmdID,
 	cmd api.Cmd,
 	res replay.Result) {
 
@@ -198,7 +198,7 @@ func postColorData(ctx context.Context,
 	t.revert(ctx)
 }
 
-func mutateAndWriteEach(ctx context.Context, out transform.Writer, id atom.ID, cmds ...api.Cmd) {
+func mutateAndWriteEach(ctx context.Context, out transform.Writer, id api.CmdID, cmds ...api.Cmd) {
 	for _, cmd := range cmds {
 		out.MutateAndWrite(ctx, id, cmd)
 	}

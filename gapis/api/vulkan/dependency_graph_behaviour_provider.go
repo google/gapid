@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
@@ -217,7 +216,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(
 }
 
 func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
-	ctx context.Context, s *api.State, id atom.ID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
+	ctx context.Context, s *api.State, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	// The behaviour going to be populated and returned.
 	b := dependencygraph.AtomBehaviour{}
 	// The recordedCommand going to be filled with behaviours which will be

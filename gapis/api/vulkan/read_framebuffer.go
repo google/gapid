@@ -33,18 +33,18 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)
+	injections map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)),
+		injections: make(map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)),
 	}
 }
 
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
-func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	isEof := cmd.CmdFlags().IsEndOfFrame()
 	doMutate := func() {
 		out.MutateAndWrite(ctx, id, cmd)
@@ -72,7 +72,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd
 
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
-func (t *readFramebuffer) Depth(id atom.ID, idx uint32, res replay.Result) {
+func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 
@@ -97,7 +97,7 @@ func (t *readFramebuffer) Depth(id atom.ID, idx uint32, res replay.Result) {
 	})
 }
 
-func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
+func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 		c := GetState(s)
@@ -136,7 +136,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 
 func writeEach(ctx context.Context, out transform.Writer, cmds ...api.Cmd) {
 	for _, cmd := range cmds {
-		out.MutateAndWrite(ctx, atom.NoID, cmd)
+		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
 	}
 }
 

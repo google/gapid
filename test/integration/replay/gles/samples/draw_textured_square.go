@@ -25,7 +25,7 @@ import (
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (atoms *atom.List, draw atom.ID, swap atom.ID) {
+func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (atoms *atom.List, draw api.CmdID, swap api.CmdID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,

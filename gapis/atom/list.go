@@ -33,7 +33,7 @@ func NewList(atoms ...api.Cmd) *List {
 // atom.
 func (l *List) WriteTo(ctx context.Context, w Writer) {
 	for i, a := range l.Atoms {
-		w.Write(ctx, ID(i), a)
+		w.Write(ctx, api.CmdID(i), a)
 	}
 }
 
@@ -46,13 +46,13 @@ func (l *List) Clone() *List {
 
 // Add appends a to the end of the atom list, returning the id of the last added
 // atom.
-func (l *List) Add(c ...api.Cmd) ID {
+func (l *List) Add(c ...api.Cmd) api.CmdID {
 	l.Atoms = append(l.Atoms, c...)
-	return ID(len(l.Atoms) - 1)
+	return api.CmdID(len(l.Atoms) - 1)
 }
 
 // AddAt adds c to the list before the atom at id.
-func (l *List) AddAt(c api.Cmd, id ID) {
+func (l *List) AddAt(c api.Cmd, id api.CmdID) {
 	l.Atoms = append(l.Atoms, nil)
 	copy(l.Atoms[id+1:], l.Atoms[id:])
 	l.Atoms[id] = c

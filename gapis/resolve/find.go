@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -80,7 +81,7 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			switch item := item.(type) {
 			case atom.Group:
 				return pred(item.Name)
-			case atom.ID:
+			case api.CmdID:
 				return pred(fmt.Sprint(c.Commands[item]))
 			default:
 				return false

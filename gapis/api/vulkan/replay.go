@@ -64,8 +64,8 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	startScope atom.ID
-	endScope   atom.ID
+	startScope api.CmdID
+	endScope   api.CmdID
 	subindices string // drawConfig needs to be comparable, so we cannot use a slice
 }
 
@@ -102,7 +102,7 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	return usage, false
 }
 
-func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread()}
@@ -331,14 +331,14 @@ func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Write
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	s := out.State()
 	so := getStateObject(s)
-	id := atom.NoID
+	id := api.CmdNoID
 	cb := CommandBuilder{Thread: 0} // TODO: Check that using any old thread is okay.
 	// TODO: use the correct pAllocator once we handle it.
 	p := memory.Nullptr
@@ -509,11 +509,11 @@ func (a API) Replay(
 
 		case framebufferRequest:
 			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, atom.ID(req.after[0]), req.after[1:]); err != nil {
+			if err := earlyTerminator.Add(ctx, api.CmdID(req.after[0]), req.after[1:]); err != nil {
 				return err
 			}
 
-			after := atom.ID(req.after[0])
+			after := api.CmdID(req.after[0])
 			if len(req.after) > 1 {
 				// If we are dealing with subcommands, 2 things are true.
 				// 1) We will never get multiple requests at the same time for different locations.
@@ -601,11 +601,11 @@ func (a API) QueryFramebufferAttachment(
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
-	beginIndex := atom.ID(0)
-	endIndex := atom.ID(0)
+	beginIndex := api.CmdID(0)
+	endIndex := api.CmdID(0)
 	subcommand := ""
 	if len(after) == 1 {
-		a := atom.ID(after[0])
+		a := api.CmdID(after[0])
 		// If we are not running subcommands we can probably batch
 		for _, v := range s.SortedKeys() {
 			if v > a {
@@ -619,8 +619,8 @@ func (a API) QueryFramebufferAttachment(
 			}
 		}
 	} else { // If we are replaying subcommands, then we can't batch at all
-		beginIndex = atom.ID(after[0])
-		endIndex = atom.ID(after[0])
+		beginIndex = api.CmdID(after[0])
+		endIndex = api.CmdID(after[0])
 		for i, j := range after[1:] {
 			if i != 0 {
 				subcommand += ":"

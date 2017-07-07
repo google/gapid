@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom/test"
 )
 
@@ -37,21 +37,21 @@ func TestInjector(t *testing.T) {
 	expected := test.List(
 		&test.AtomA{ID: 10},
 		&test.AtomA{ID: 30},
-		&test.AtomA{ID: atom.NoID, Flags: 1},
+		&test.AtomA{ID: api.CmdNoID, Flags: 1},
 		&test.AtomA{ID: 50},
 		&test.AtomA{ID: 90},
-		&test.AtomA{ID: atom.NoID, Flags: 2},
-		&test.AtomA{ID: atom.NoID, Flags: 3},
+		&test.AtomA{ID: api.CmdNoID, Flags: 2},
+		&test.AtomA{ID: api.CmdNoID, Flags: 3},
 		&test.AtomA{ID: 00},
 		&test.AtomA{ID: 60},
-		&test.AtomB{ID: atom.NoID},
+		&test.AtomB{ID: api.CmdNoID},
 	)
 
 	transform := &Injector{}
-	transform.Inject(30, &test.AtomA{ID: atom.NoID, Flags: 1})
-	transform.Inject(90, &test.AtomA{ID: atom.NoID, Flags: 2})
-	transform.Inject(90, &test.AtomA{ID: atom.NoID, Flags: 3})
-	transform.Inject(60, &test.AtomB{ID: atom.NoID})
+	transform.Inject(30, &test.AtomA{ID: api.CmdNoID, Flags: 1})
+	transform.Inject(90, &test.AtomA{ID: api.CmdNoID, Flags: 2})
+	transform.Inject(90, &test.AtomA{ID: api.CmdNoID, Flags: 3})
+	transform.Inject(60, &test.AtomB{ID: api.CmdNoID})
 
 	transform.Inject(40, &test.AtomA{ID: 100, Flags: 5}) // Should not be injected
 

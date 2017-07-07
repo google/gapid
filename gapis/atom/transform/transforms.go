@@ -47,7 +47,7 @@ func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) 
 	}
 	for i, a := range atoms.Atoms {
 		currentIndex, currentCmd = i, a
-		chain.MutateAndWrite(ctx, atom.ID(i), a)
+		chain.MutateAndWrite(ctx, api.CmdID(i), a)
 	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
 		chain = p.O
@@ -72,16 +72,16 @@ func (l *Transforms) Prepend(t Transformer) {
 
 // Transform is a helper for building simple Transformers that are implemented
 // by function f. name is used to identify the transform when logging.
-func Transform(name string, f func(ctx context.Context, id atom.ID, cmd api.Cmd, output Writer)) Transformer {
+func Transform(name string, f func(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)) Transformer {
 	return transform{name, f}
 }
 
 type transform struct {
-	N string                                          // Transform name. Used for debugging.
-	F func(context.Context, atom.ID, api.Cmd, Writer) // The transform function.
+	N string                                            // Transform name. Used for debugging.
+	F func(context.Context, api.CmdID, api.Cmd, Writer) // The transform function.
 }
 
-func (t transform) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, output Writer) {
+func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) {
 	t.F(ctx, id, cmd, output)
 }
 
@@ -101,7 +101,7 @@ func (p TransformWriter) State() *api.State {
 	return p.S
 }
 
-func (p TransformWriter) MutateAndWrite(ctx context.Context, id atom.ID, cmd api.Cmd) {
+func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if config.SeparateMutateStates {
 		cmd.Mutate(ctx, p.S, nil /* no builder, just mutate */)
 	}

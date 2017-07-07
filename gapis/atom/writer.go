@@ -25,5 +25,5 @@ import (
 // Write writes or processes the given atom and identifier. Write must not
 // modify the atom in any way.
 type Writer interface {
-	Write(ctx context.Context, id ID, c api.Cmd)
+	Write(ctx context.Context, id api.CmdID, c api.Cmd)
 }

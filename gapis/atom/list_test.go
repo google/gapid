@@ -33,12 +33,12 @@ var testList = atom.NewList(
 )
 
 type writeRecord struct {
-	id  atom.ID
+	id  api.CmdID
 	cmd api.Cmd
 }
 type writeRecordList []writeRecord
 
-func (t *writeRecordList) Write(ctx context.Context, id atom.ID, cmd api.Cmd) {
+func (t *writeRecordList) Write(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	*t = append(*t, writeRecord{id, cmd})
 }
 

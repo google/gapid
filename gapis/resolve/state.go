@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -55,7 +54,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(cmdIdx), r.Path.After.Indices[1:])
+	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, api.CmdID(cmdIdx), r.Path.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}

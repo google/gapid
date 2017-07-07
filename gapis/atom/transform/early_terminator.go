@@ -18,14 +18,13 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 // EarlyTerminator is an implementation of Transformer that will consume all
 // atoms (except for the EOS atom) once all the atoms passed to Add have passed
 // through the transformer. It will only remove atoms of the given API type
 type EarlyTerminator struct {
-	lastIndex atom.ID
+	lastIndex api.CmdID
 	done      bool
 	APIIdx    api.ID
 }
@@ -37,15 +36,15 @@ var _ Terminator = &EarlyTerminator{}
 // pass. Once the atom with the given id is found all atoms from this API
 // will be silenced.
 // This takes advantage of the fact that in practice IDs are sequential, and
-// atom.NoID is used for new atoms.
-func (t *EarlyTerminator) Add(ctx context.Context, id atom.ID, idx []uint64) error {
+// api.CmdNoID is used for new atoms.
+func (t *EarlyTerminator) Add(ctx context.Context, id api.CmdID, idx []uint64) error {
 	if id > t.lastIndex {
 		t.lastIndex = id
 	}
 	return nil
 }
 
-func (t *EarlyTerminator) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+func (t *EarlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	if t.done && (cmd.API() == nil || cmd.API().ID() == t.APIIdx) {
 		return
 	}

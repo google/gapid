@@ -42,7 +42,7 @@ import (
 //      TODO(awoloszyn): Handle #2
 // This takes advantage of the fact that all atoms will be in order.
 type VulkanTerminator struct {
-	lastRequest     atom.ID
+	lastRequest     api.CmdID
 	requestSubIndex []uint64
 	stopped         bool
 	syncData        *sync.Data
@@ -60,12 +60,12 @@ func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTer
 		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
 
-	return &VulkanTerminator{atom.ID(0), make([]uint64, 0), false, s}, nil
+	return &VulkanTerminator{api.CmdID(0), make([]uint64, 0), false, s}, nil
 }
 
 // Add adds the atom with identifier id to the set of atoms that must be seen
 // before the VulkanTerminator will consume all atoms (excluding the EOS atom).
-func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uint64) error {
+func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []uint64) error {
 	if len(t.requestSubIndex) != 0 {
 		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
 	}
@@ -85,7 +85,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, id atom.ID, subcommand []uin
 	if rng, ok := t.syncData.CommandRanges[id]; ok {
 		for _, k := range rng.SortedKeys() {
 			if !rng.Ranges[k].LessThan(sc) {
-				t.lastRequest = atom.ID(k)
+				t.lastRequest = api.CmdID(k)
 				handled = true
 				break
 			}
@@ -294,7 +294,7 @@ func rebuildCommandBuffer(ctx context.Context,
 // It will make sure that if the replay were to stop at the given
 // index it would remain valid. This means closing any open
 // RenderPasses.
-func cutCommandBuffer(ctx context.Context, id atom.ID,
+func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	a *VkQueueSubmit, idx sync.SubcommandIndex, out transform.Writer) {
 	cb := CommandBuilder{Thread: a.Thread()}
 	s := out.State()
@@ -376,7 +376,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	submitCopy.AddRead(bufferMemory.Data()).AddRead(newSubmitData.Data())
 
 	for _, c := range newCommands {
-		out.MutateAndWrite(ctx, atom.NoID, c)
+		out.MutateAndWrite(ctx, api.CmdNoID, c)
 	}
 
 	out.MutateAndWrite(ctx, id, submitCopy)
@@ -389,7 +389,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	newSubmitData.Free()
 }
 
-func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	if t.stopped {
 		return
 	}
@@ -398,7 +398,7 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, cmd api.Cm
 	cutIndex := sync.SubcommandIndex(nil)
 	if rng, ok := t.syncData.CommandRanges[id]; ok {
 		for k, v := range rng.Ranges {
-			if atom.ID(k) > t.lastRequest {
+			if api.CmdID(k) > t.lastRequest {
 				doCut = true
 			} else {
 				if len(cutIndex) == 0 || cutIndex.LessThan(v) {
