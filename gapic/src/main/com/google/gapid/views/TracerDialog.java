@@ -151,6 +151,7 @@ public class TracerDialog {
 
     protected final Settings settings;
     protected final Widgets widgets;
+    private ComboViewer api;
     private ComboViewer device;
     private LoadingIndicator.Widget deviceLoader;
     private Link adbWarning;
@@ -203,6 +204,15 @@ public class TracerDialog {
 
       Composite container = createComposite(area, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      createLabel(container, "API:");
+      Composite apiComposite = createComposite(container, new GridLayout(2, false));
+      api = createApiDropDown(apiComposite);
+      Api selectedApi = Api.parse(settings.traceApi);
+      if (selectedApi == null) {
+        selectedApi = Api.GLES;
+      }
+      api.setSelection(new StructuredSelection(selectedApi));
 
       createLabel(container, "Device:");
       Composite deviceComposite = createComposite(container, new GridLayout(2, false));
@@ -284,6 +294,21 @@ public class TracerDialog {
       return area;
     }
 
+    private static ComboViewer createApiDropDown(Composite parent) {
+      ComboViewer combo = createDropDownViewer(parent);
+      combo.setContentProvider(ArrayContentProvider.getInstance());
+      combo.setLabelProvider(new LabelProvider() {
+        @Override
+        public String getText(Object element) {
+          return ((Api)element).displayName;
+        }
+      });
+      for (Api api : Api.values()) {
+        combo.add(api);
+      }
+      return combo;
+    }
+
     private static ComboViewer createDeviceDropDown(Composite parent) {
       ComboViewer combo = createDropDownViewer(parent);
       combo.setContentProvider(ArrayContentProvider.getInstance());
@@ -337,6 +362,7 @@ public class TracerDialog {
             !traceTarget.getText().isEmpty() &&
             !file.getText().isEmpty());
       };
+      api.getCombo().addListener(SWT.Selection, modifyListener);
       device.getCombo().addListener(SWT.Selection, modifyListener);
       traceTarget.addBoxListener(SWT.Modify, modifyListener);
       file.addListener(SWT.Modify, modifyListener);
@@ -347,6 +373,7 @@ public class TracerDialog {
     @Override
     protected void buttonPressed(int buttonId) {
       if (buttonId == IDialogConstants.OK_ID) {
+        String selectedApi = getSelectedApi().getName();
         String target = traceTarget.getText();
         int actionSep = target.indexOf(":");
         int pkgSep = target.indexOf("/");
@@ -354,12 +381,13 @@ public class TracerDialog {
           String action = target.substring(0, actionSep);
           String pkg = target.substring(actionSep + 1, pkgSep);
           String activity = target.substring(pkgSep + 1);
-          value = new TraceRequest(getSelectedDevice(), pkg, activity, action, getOutputFile(),
-              clearCache.getSelection(), disablePcs.getSelection());
+          value = new TraceRequest(selectedApi, getSelectedDevice(), pkg, activity, action,
+              getOutputFile(), clearCache.getSelection(), disablePcs.getSelection());
         } else {
-          value = new TraceRequest(getSelectedDevice(), target, getOutputFile(),
+          value = new TraceRequest(selectedApi, getSelectedDevice(), target, getOutputFile(),
               clearCache.getSelection(), disablePcs.getSelection());
         }
+        settings.traceApi = getSelectedApi().getName();
         settings.traceDevice = getSelectedDevice().getSerial();
         settings.tracePackage = traceTarget.getText();
         settings.traceOutDir = directory.getText();
@@ -368,6 +396,10 @@ public class TracerDialog {
         settings.traceDisablePcs = disablePcs.getSelection();
       }
       super.buttonPressed(buttonId);
+    }
+
+    protected Api getSelectedApi() {
+      return (Api)api.getStructuredSelection().getFirstElement();
     }
 
     protected Device.Instance getSelectedDevice() {
@@ -392,6 +424,30 @@ public class TracerDialog {
 
       String dir = directory.getText();
       return dir.isEmpty() ? new File(name) : new File(dir, name);
+    }
+  }
+
+  private enum Api {
+    GLES("OpenGL ES"),
+    Vulkan("Vulkan");
+
+    private final String displayName;
+
+    Api(String displayName) {
+      this.displayName = displayName;
+    }
+
+    static Api parse(String name) {
+      for (Api api : Api.values()) {
+        if (api.getName().equals(name)) {
+          return api;
+        }
+      }
+      return null;
+    }
+
+    String getName() {
+      return toString().toLowerCase();
     }
   }
 

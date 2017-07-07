@@ -82,6 +82,7 @@ public class Tracer {
    * Contains information about how and what application to trace.
    */
   public static class TraceRequest {
+    public final String api;
     public final Device.Instance device;
     public final String pkg;
     public final String activity;
@@ -90,13 +91,14 @@ public class Tracer {
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public TraceRequest(Device.Instance device, String action, File output, boolean clearCache,
+    public TraceRequest(String api, Device.Instance device, String action, File output, boolean clearCache,
         boolean disablePcs) {
-      this(device, null, null, action, output, clearCache, disablePcs);
+      this(api, device, null, null, action, output, clearCache, disablePcs);
     }
 
-    public TraceRequest(Device.Instance device, String pkg, String activity, String action,
+    public TraceRequest(String api, Device.Instance device, String pkg, String activity, String action,
         File output, boolean clearCache, boolean disablePcs) {
+      this.api = api;
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
@@ -107,6 +109,10 @@ public class Tracer {
     }
 
     public List<String> appendCommandLine(List<String> cmd) {
+      if (api != null) {
+        cmd.add("-api");
+        cmd.add(api);
+      }
       if (!device.getSerial().isEmpty()) {
         cmd.add("-gapii-device");
         cmd.add(device.getSerial());
