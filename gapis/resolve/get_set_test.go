@@ -39,10 +39,10 @@ import (
 )
 
 var (
-	cmdA = &service.Command{
+	cmdA = &api.Command{
 		Name: "AtomX",
 		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
-		Parameters: []*service.Parameter{
+		Parameters: []*api.Parameter{
 			{Name: "Str", Value: box.NewValue(test.P.Str)},
 			{Name: "Sli", Value: box.NewValue(test.P.Sli)},
 			{Name: "Ref", Value: box.NewValue(test.P.Ref)},
@@ -53,10 +53,10 @@ var (
 		Thread: test.P.Thread(),
 	}
 
-	cmdB = &service.Command{
+	cmdB = &api.Command{
 		Name: "AtomX",
 		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
-		Parameters: []*service.Parameter{
+		Parameters: []*api.Parameter{
 			{Name: "Str", Value: box.NewValue(test.Q.Str)},
 			{Name: "Sli", Value: box.NewValue(test.Q.Sli)},
 			{Name: "Ref", Value: box.NewValue(test.Q.Ref)},

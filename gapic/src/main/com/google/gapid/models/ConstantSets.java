@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
@@ -41,9 +42,9 @@ public class ConstantSets {
     return cache.get(path);
   }
 
-  public ListenableFuture<List<Service.ConstantSet>> loadConstants(Service.Command cmd) {
+  public ListenableFuture<List<Service.ConstantSet>> loadConstants(API.Command cmd) {
     List<ListenableFuture<Service.ConstantSet>> sets = Lists.newArrayList();
-    for (Service.Parameter param : cmd.getParametersList()) {
+    for (API.Parameter param : cmd.getParametersList()) {
       if (param.hasConstants()) {
         sets.add(cache.get(param.getConstants()));
       }

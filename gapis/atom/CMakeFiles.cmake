@@ -22,8 +22,6 @@ set(files
     doc.go
     framebuffer_observation.go
     resource.go
-    service.go
-    service_test.go
 )
 set(dirs
     atom_pb

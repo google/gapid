@@ -181,7 +181,7 @@ func (verb *videoVerb) regularVideoSource(
 }
 
 // asFbo returns the atom as an *atom.FramebufferObservation if it represents one.
-func asFbo(a *service.Command) *atom.FramebufferObservation {
+func asFbo(a *api.Command) *atom.FramebufferObservation {
 	if a.Name == "<FramebufferObservation>" {
 		data := a.FindParameter("Data")
 		originalWidth := a.FindParameter("OriginalWidth")

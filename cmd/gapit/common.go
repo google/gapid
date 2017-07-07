@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
@@ -164,12 +165,12 @@ func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*
 	return b.(*service.Events).List, nil
 }
 
-func getCommand(ctx context.Context, client service.Service, p *path.Command) (*service.Command, error) {
+func getCommand(ctx context.Context, client service.Service, p *path.Command) (*api.Command, error) {
 	boxedCmd, err := client.Get(ctx, p.Path())
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Couldn't load command at: %v", p.Text())
 	}
-	return boxedCmd.(*service.Command), nil
+	return boxedCmd.(*api.Command), nil
 }
 
 var constantSetCache = map[string]*service.ConstantSet{}
@@ -188,7 +189,7 @@ func getConstantSet(ctx context.Context, client service.Service, p *path.Constan
 	return out, nil
 }
 
-func printCommand(ctx context.Context, client service.Service, p *path.Command, c *service.Command, of ObservationFlags) error {
+func printCommand(ctx context.Context, client service.Service, p *path.Command, c *api.Command, of ObservationFlags) error {
 	indices := make([]string, len(p.Indices))
 	for i, v := range p.Indices {
 		indices[i] = fmt.Sprintf("%d", v)

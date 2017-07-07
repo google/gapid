@@ -77,28 +77,28 @@ message Threads { repeated path.Thread list = 1; }
 message Value {
   oneof val {
     Capture capture = 1;
-    Command command = 2;
-    CommandTree command_tree = 3;
-    CommandTreeNode command_tree_node = 4;
-    Commands commands = 5;
-    Context context = 6;
-    Contexts contexts = 7;
-    ConstantSet constant_set = 8;
-    Event event = 9;
-    Events events = 10;
-    Memory memory = 11;
-    path.Any path = 12;
-    Report report = 13;
-    Resources resources = 14;
-    StateTree state_tree = 15;
-    StateTreeNode state_tree_node = 16;
-    Thread thread = 17;
-    Threads threads = 18;
+    CommandTree command_tree = 2;
+    CommandTreeNode command_tree_node = 3;
+    Commands commands = 4;
+    Context context = 5;
+    Contexts contexts = 6;
+    ConstantSet constant_set = 7;
+    Event event = 8;
+    Events events = 9;
+    Memory memory = 10;
+    path.Any path = 11;
+    Report report = 12;
+    Resources resources = 13;
+    StateTree state_tree = 14;
+    StateTreeNode state_tree_node = 15;
+    Thread thread = 16;
+    Threads threads = 17;
 
     device.Instance device = 20;
 
-    api.ResourceData resource_data = 30;
-    api.Mesh mesh = 31;
+    api.Command command = 30;
+    api.ResourceData resource_data = 31;
+    api.Mesh mesh = 32;
 
     image.Info image_info = 40;
 
@@ -603,30 +603,6 @@ message CommandTreeNode {
   path.Commands commands = 3;
   // Number of commands encapsulated by this group.
   uint64 num_commands = 4;
-}
-
-// Command describes a single intercepted command or sub-command.
-message Command {
-  // The function name.
-  string name = 1;
-  // The function's API.
-  path.API api = 2;
-  // The list of function parameters.
-  repeated Parameter parameters = 3;
-  // The function return value 'parameter'.
-  Parameter result = 4;
-  // The identifier of the thread that issued this command.
-  uint64 thread = 5;
-}
-
-// Parameter is a parameter of a command.
-message Parameter {
-  // The name of the parameter.
-  string name = 1;
-  // The value of the parameter.
-  box.Value value = 2;
-  // The possible alternative named values for the parameter.
-  path.ConstantSet constants = 3;
 }
 
 // ConstantSet is a collection on name-value pairs to be used as an enumeration

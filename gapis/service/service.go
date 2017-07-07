@@ -159,8 +159,6 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_Context{v}}
 	case *Contexts:
 		return &Value{&Value_Contexts{v}}
-	case *Command:
-		return &Value{&Value_Command{v}}
 	case *Commands:
 		return &Value{&Value_Commands{v}}
 	case *CommandTree:
@@ -187,6 +185,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_StateTree{v}}
 	case *StateTreeNode:
 		return &Value{&Value_StateTreeNode{v}}
+	case *api.Command:
+		return &Value{&Value_Command{v}}
 	case *api.Mesh:
 		return &Value{&Value_Mesh{v}}
 	case *api.ResourceData:

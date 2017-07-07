@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
@@ -64,11 +63,11 @@ func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 		return nil, err
 	}
 	cmd := obj.(api.Cmd)
-	param, err := atom.Parameter(ctx, cmd, p.Name)
+	param, err := api.GetParameter(ctx, cmd, p.Name)
 	switch err {
 	case nil:
 		return param, nil
-	case atom.ErrParameterNotFound:
+	case api.ErrParameterNotFound:
 		return nil, &service.ErrInvalidPath{
 			Reason: messages.ErrParameterDoesNotExist(cmd.CmdName(), p.Name),
 			Path:   p.Path(),
@@ -85,11 +84,11 @@ func Result(ctx context.Context, p *path.Result) (interface{}, error) {
 		return nil, err
 	}
 	cmd := obj.(api.Cmd)
-	param, err := atom.Result(ctx, cmd)
+	param, err := api.GetResult(ctx, cmd)
 	switch err {
 	case nil:
 		return param, nil
-	case atom.ErrResultNotFound:
+	case api.ErrResultNotFound:
 		return nil, &service.ErrInvalidPath{
 			Reason: messages.ErrResultDoesNotExist(cmd.CmdName()),
 			Path:   p.Path(),

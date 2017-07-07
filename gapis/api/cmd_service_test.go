@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package atom_test
+package api_test
 
 import (
 	"testing"
@@ -19,21 +19,20 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 )
 
-func TestToServiceToAtom(t *testing.T) {
+func TestToServiceToCmd(t *testing.T) {
 	ctx := log.Testing(t)
 	for n, cmd := range map[string]api.Cmd{"P": test.P, "Q": test.Q} {
-		s, err := atom.ToService(cmd)
-		if !assert.For(ctx, "ToService(%v)", n).ThatError(err).Succeeded() {
+		s, err := api.CmdToService(cmd)
+		if !assert.For(ctx, "CmdToService(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
-		g, err := atom.ToAtom(s)
-		if !assert.For(ctx, "ToAtom(%v)", n).ThatError(err).Succeeded() {
+		g, err := api.ServiceToCmd(s)
+		if !assert.For(ctx, "ServiceToCmd(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
-		assert.For(ctx, "ToService(%v) -> ToAtom", n).That(g).DeepEquals(cmd)
+		assert.For(ctx, "CmdToService(%v) -> ServiceToCmd", n).That(g).DeepEquals(cmd)
 	}
 }

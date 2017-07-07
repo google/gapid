@@ -23,6 +23,7 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.models.Follower;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.memory.MemoryProtos.PoolNames;
 import com.google.gapid.proto.service.path.Path;
@@ -48,7 +49,7 @@ public class Formatter {
   private Formatter() {
   }
 
-  public static void format(Service.Command atom,
+  public static void format(API.Command atom,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       Function<String, Path.Any> followResolver,
       StylingString string, Style style) {
@@ -57,7 +58,7 @@ public class Formatter {
     boolean needComma = false;
 
     for (int i = 0; i < atom.getParametersCount(); ++i) {
-      Service.Parameter field = atom.getParameters(i);
+      API.Parameter field = atom.getParameters(i);
       if (needComma) {
         string.append(", ", string.structureStyle());
       }
@@ -82,14 +83,14 @@ public class Formatter {
     }
   }
 
-  public static String toString(Service.Command atom,
+  public static String toString(API.Command atom,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver) {
     NoStyleStylingString string = new NoStyleStylingString();
     format(atom, constantResolver, s -> null, string, null);
     return string.toString();
   }
 
-  private static void format(Service.Parameter param,
+  private static void format(API.Parameter param,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       StylingString string, Style style) {
     Box.Value value = param.getValue();

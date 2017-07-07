@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 )
@@ -24,7 +23,7 @@ import (
 func internalToService(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
 	case api.Cmd:
-		return atom.ToService(v)
+		return api.CmdToService(v)
 	case *InternalContext:
 		return &service.Context{Name: v.Name, Api: v.Api}, nil
 	default:
@@ -34,8 +33,8 @@ func internalToService(v interface{}) (interface{}, error) {
 
 func serviceToInternal(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
-	case *service.Command:
-		return atom.ToAtom(v)
+	case *api.Command:
+		return api.ServiceToCmd(v)
 	case *box.Value:
 		return v.Get(), nil
 	default:
