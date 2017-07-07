@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 )
 
@@ -108,7 +107,7 @@ func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.State, 
 	}
 
 	// Unbind the index buffer
-	tmp := atom.Must(atom.Alloc(ctx, s, uint64(len(wireframeData))))
+	tmp := s.AllocOrPanic(ctx, uint64(len(wireframeData)))
 	oldIndexBuffer := c.Bound.VertexArray.ElementArrayBuffer
 	out.MutateAndWrite(ctx, dID,
 		cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).

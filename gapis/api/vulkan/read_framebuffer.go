@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
@@ -212,15 +211,14 @@ func postImageData(ctx context.Context,
 	}
 
 	// Wraps the data allocation so the data get freed at the end.
-	var allocated []*atom.AllocResult
+	var allocated []*api.AllocResult
 	defer func() {
 		for _, d := range allocated {
 			d.Free()
 		}
 	}()
-	MustAllocData := func(
-		ctx context.Context, s *api.State, v ...interface{}) atom.AllocResult {
-		allocate_result := atom.Must(atom.AllocData(ctx, s, v...))
+	MustAllocData := func(ctx context.Context, s *api.State, v ...interface{}) api.AllocResult {
+		allocate_result := s.AllocDataOrPanic(ctx, v...)
 		allocated = append(allocated, &allocate_result)
 		return allocate_result
 	}

@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay"
@@ -284,7 +283,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			}
 		}
 		if len(renderbuffers) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, renderbuffers))
+			tmp := s.AllocDataOrPanic(ctx, renderbuffers)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
@@ -294,7 +293,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			textures = append(textures, textureId)
 		}
 		if len(textures) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, textures))
+			tmp := s.AllocDataOrPanic(ctx, textures)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
@@ -304,7 +303,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			framebuffers = append(framebuffers, framebufferId)
 		}
 		if len(framebuffers) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, framebuffers))
+			tmp := s.AllocDataOrPanic(ctx, framebuffers)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
@@ -314,7 +313,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			buffers = append(buffers, bufferId)
 		}
 		if len(buffers) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, buffers))
+			tmp := s.AllocDataOrPanic(ctx, buffers)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
@@ -324,7 +323,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			vertexArrays = append(vertexArrays, vertexArrayId)
 		}
 		if len(vertexArrays) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, vertexArrays))
+			tmp := s.AllocDataOrPanic(ctx, vertexArrays)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
@@ -344,7 +343,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			queries = append(queries, queryId)
 		}
 		if len(queries) > 0 {
-			tmp := atom.Must(atom.AllocData(ctx, s, queries))
+			tmp := s.AllocDataOrPanic(ctx, queries)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 	}

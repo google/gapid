@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
@@ -644,7 +643,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 		return nil
 	}
 
-	code := atom.Must(atom.AllocData(ctx, state, codeSlice))
+	code := state.AllocDataOrPanic(ctx, codeSlice)
 	device := cmd.Device
 	pAlloc := memory.Pointer(cmd.PAllocator)
 	pShaderModule := memory.Pointer(cmd.PShaderModule)
@@ -663,7 +662,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
 	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
+	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
 	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
@@ -694,7 +693,7 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 		return nil
 	}
 
-	code := atom.Must(atom.AllocData(ctx, state, codeSlice))
+	code := state.AllocDataOrPanic(ctx, codeSlice)
 	device := cmd.Device
 	pShaderModule := memory.Pointer(cmd.PShaderModule)
 	createInfo := cmd.PCreateInfo.Read(ctx, cmd, state, nil)
@@ -711,7 +710,7 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	buf := &bytes.Buffer{}
 	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
 	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := atom.Must(atom.AllocData(ctx, state, buf.Bytes()))
+	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
 	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.

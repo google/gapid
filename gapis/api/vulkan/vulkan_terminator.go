@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/resolve"
@@ -236,8 +235,8 @@ func rebuildCommandBuffer(ctx context.Context,
 		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		uint32(1),
 	}
-	allocateData := atom.Must(atom.AllocData(ctx, s, allocate))
-	commandBufferData := atom.Must(atom.AllocData(ctx, s, commandBufferId))
+	allocateData := s.AllocDataOrPanic(ctx, allocate)
+	commandBufferData := s.AllocDataOrPanic(ctx, commandBufferId)
 
 	x = append(x,
 		cb.VkAllocateCommandBuffers(commandBuffer.Device,
@@ -251,7 +250,7 @@ func rebuildCommandBuffer(ctx context.Context,
 		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
 	}
 
-	beginInfoData := atom.Must(atom.AllocData(ctx, s, beginInfo))
+	beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)
 	x = append(x,
 		cb.VkBeginCommandBuffer(commandBufferId, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
 
@@ -368,10 +367,10 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 		rebuildCommandBuffer(ctx, cb, cmdBuffer, s, subIdx, extraCommands)
 	newCommandBuffers[lastCommandBuffer] = b
 
-	bufferMemory := atom.Must(atom.AllocData(ctx, s, newCommandBuffers))
+	bufferMemory := s.AllocDataOrPanic(ctx, newCommandBuffers)
 	newSubmits[lastSubmit].PCommandBuffers = NewVkCommandBufferᶜᵖ(bufferMemory.Ptr())
 
-	newSubmitData := atom.Must(atom.AllocData(ctx, s, newSubmits))
+	newSubmitData := s.AllocDataOrPanic(ctx, newSubmits)
 	submitCopy.PSubmits = NewVkSubmitInfoᶜᵖ(newSubmitData.Ptr())
 	submitCopy.AddRead(bufferMemory.Data()).AddRead(newSubmitData.Data())
 

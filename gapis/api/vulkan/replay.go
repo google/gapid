@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
@@ -118,7 +117,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			result := image.Result
 
 			info.Usage = newUsage
-			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newInfo := s.AllocDataOrPanic(ctx, info)
 			newAtom := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
 			// Carry all non-observation extras through.
 			for _, e := range image.Extras().All() {
@@ -152,7 +151,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			pimage := memory.Pointer(recreateImage.PImage)
 
 			info.Usage = newUsage
-			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newInfo := s.AllocDataOrPanic(ctx, info)
 			newAtom := cb.RecreateImage(device, newInfo.Ptr(), pimage)
 			// Carry all non-observation extras through.
 			for _, e := range recreateImage.Extras().All() {
@@ -188,7 +187,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			result := swapchain.Result
 
 			info.ImageUsage = newUsage
-			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newInfo := s.AllocDataOrPanic(ctx, info)
 			newAtom := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
 			for _, e := range swapchain.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
@@ -220,7 +219,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			pinitialQueues := memory.Pointer(recreateSwapchain.PInitialQueues)
 
 			info.ImageUsage = newUsage
-			newInfo := atom.Must(atom.AllocData(ctx, s, info))
+			newInfo := s.AllocDataOrPanic(ctx, info)
 			newAtom := cb.RecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
 			for _, e := range recreateSwapchain.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
@@ -258,9 +257,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 		// Build new attachments data, new create info and new atom
-		newAttachments := atom.Must(atom.AllocData(ctx, s, attachments))
+		newAttachments := s.AllocDataOrPanic(ctx, attachments)
 		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
-		newInfo := atom.Must(atom.AllocData(ctx, s, info))
+		newInfo := s.AllocDataOrPanic(ctx, info)
 		newAtom := cb.VkCreateRenderPass(createRenderPass.Device,
 			newInfo.Ptr(),
 			memory.Pointer(createRenderPass.PAllocator),
@@ -299,9 +298,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 		// Build new attachments data, new create info and new atom
-		newAttachments := atom.Must(atom.AllocData(ctx, s, attachments))
+		newAttachments := s.AllocDataOrPanic(ctx, attachments)
 		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
-		newInfo := atom.Must(atom.AllocData(ctx, s, info))
+		newInfo := s.AllocDataOrPanic(ctx, info)
 		newAtom := cb.RecreateRenderPass(recreateRenderPass.Device,
 			newInfo.Ptr(),
 			memory.Pointer(recreateRenderPass.PRenderPass))

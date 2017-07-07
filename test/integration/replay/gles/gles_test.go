@@ -37,7 +37,6 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -437,12 +436,12 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 	s := api.NewStateWithEmptyAllocator(f.memoryLayout)
 
 	textureNames := []gles.TextureId{1}
-	textureNamesR := atom.Must(atom.AllocData(ctx, f.s, textureNames))
+	textureNamesR := f.s.AllocDataOrPanic(ctx, textureNames)
 
-	squareIndicesR := atom.Must(atom.AllocData(ctx, f.s, squareIndices))
-	squareVerticesR := atom.Must(atom.AllocData(ctx, f.s, squareVertices))
+	squareIndicesR := f.s.AllocDataOrPanic(ctx, squareIndices)
+	squareVerticesR := f.s.AllocDataOrPanic(ctx, squareVertices)
 
-	someString := atom.Must(atom.AllocData(ctx, f.s, "hello world"))
+	someString := f.s.AllocDataOrPanic(ctx, "hello world")
 
 	cmds = append(cmds,
 		gles.BuildProgram(ctx, s, f.cb, vs, fs, prog, textureVSSource, textureFSSource)...,
@@ -527,7 +526,7 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...,
 	)
 
-	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
+	triangleVerticesR := f.s.AllocDataOrPanic(ctx, triangleVertices)
 
 	triangle := api.CmdID(len(cmds))
 	cmds = append(cmds,
@@ -643,7 +642,7 @@ func TestExportAndImportCapture(t *testing.T) {
 func TestResizeRenderer(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
+	triangleVerticesR := f.s.AllocDataOrPanic(ctx, triangleVertices)
 
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
 	cmds, eglContext, eglSurface := f.initContext(ctx, 8, 8, false) // start with a small backbuffer

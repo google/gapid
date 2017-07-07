@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -248,7 +247,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 
 	dstSize := a.Width * a.Height * 4
 
-	tmp := atom.Must(atom.Alloc(ctx, s, uint64(dstSize)))
+	tmp := s.AllocOrPanic(ctx, uint64(dstSize))
 	out.MutateAndWrite(ctx, i, cb.GlTexImage2D(
 		a.Target,
 		a.Level,
@@ -301,7 +300,7 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 
 	dstSize := a.Width * a.Height * 4
 
-	tmp := atom.Must(atom.Alloc(ctx, s, uint64(dstSize)))
+	tmp := s.AllocOrPanic(ctx, uint64(dstSize))
 	out.MutateAndWrite(ctx, i, cb.GlTexSubImage2D(
 		a.Target,
 		a.Level,

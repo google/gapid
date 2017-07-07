@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -55,11 +54,9 @@ func (t *tweaker) doAndUndo(ctx context.Context, do, undo api.Cmd) {
 	})
 }
 
-func (t *tweaker) AllocData(ctx context.Context, v ...interface{}) atom.AllocResult {
-	tmp := atom.Must(atom.AllocData(ctx, t.s, v...))
-	t.undo = append(t.undo, func(ctx context.Context) {
-		tmp.Free()
-	})
+func (t *tweaker) AllocData(ctx context.Context, v ...interface{}) api.AllocResult {
+	tmp := t.s.AllocDataOrPanic(ctx, v...)
+	t.undo = append(t.undo, func(ctx context.Context) { tmp.Free() })
 	return tmp
 }
 

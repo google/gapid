@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
@@ -224,9 +223,9 @@ func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *
 	state := c.NewState()
 	shader := data.GetShader()
 	source := shader.Source
-	src, _ := atom.AllocData(ctx, state, source)
-	srcLen, _ := atom.AllocData(ctx, state, GLint(len(source)))
-	srcPtr, _ := atom.AllocData(ctx, state, src.Ptr())
+	src := state.AllocDataOrPanic(ctx, source)
+	srcLen := state.AllocDataOrPanic(ctx, GLint(len(source)))
+	srcPtr := state.AllocDataOrPanic(ctx, src.Ptr())
 	cb := CommandBuilder{Thread: a.thread}
 	return cb.GlShaderSource(a.Shader, 1, srcPtr.Ptr(), srcLen.Ptr()).
 		AddRead(srcPtr.Data()).
