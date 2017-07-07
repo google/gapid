@@ -369,9 +369,9 @@
   {{$f := Global "CurrentFunction"}}
 
   {{if and $f.Subroutine (not (IsVoid $f.Return.Type))}}
-    return {{Template "Go.Null" $f.Return.Type}}, atom.ErrAborted("{{$f.Name}}")
+    return {{Template "Go.Null" $f.Return.Type}}, api.ErrCmdAborted("{{$f.Name}}")
   {{else}}
-    return atom.ErrAborted("{{$f.Name}}")
+    return api.ErrCmdAborted("{{$f.Name}}")
   {{end}}
 {{end}}
 
