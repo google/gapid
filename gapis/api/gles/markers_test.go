@@ -15,11 +15,11 @@
 package gles_test
 
 import (
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 )
 
-var _ = []atom.Labeled{
+var _ = []api.Labeled{
 	(*gles.GlPushGroupMarkerEXT)(nil),
 	(*gles.GlInsertEventMarkerEXT)(nil),
 }

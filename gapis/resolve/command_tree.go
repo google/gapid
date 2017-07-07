@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
@@ -167,7 +166,7 @@ type markerGrouper struct {
 
 func (g *markerGrouper) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
 	var name string
-	if l, ok := cmd.(atom.Labeled); ok {
+	if l, ok := cmd.(api.Labeled); ok {
 		name = l.Label(ctx, s)
 	}
 	if len(name) > 0 {
