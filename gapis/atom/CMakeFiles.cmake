@@ -24,8 +24,6 @@ set(files
     doc.go
     framebuffer_observation.go
     labeled.go
-    list.go
-    list_test.go
     range_list.go
     registry.go
     resource.go

@@ -26,7 +26,7 @@ import (
 
 type builder struct {
 	gles.CommandBuilder
-	atom.List
+	cmds   []api.Cmd
 	state  *api.State
 	lastID uint
 }
@@ -67,7 +67,7 @@ func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointe
 	eglConfig := b.p()
 
 	// TODO: We don't observe attribute lists properly. We should.
-	b.Add(
+	b.cmds = append(b.cmds,
 		b.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
 		b.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
 		b.EglCreateContext(eglDisplay, eglConfig, eglShareContext, b.p(), eglContext),
@@ -78,7 +78,7 @@ func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointe
 
 func (b *builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
 	eglTrue := gles.EGLBoolean(1)
-	b.Add(api.WithExtras(
+	b.cmds = append(b.cmds, api.WithExtras(
 		b.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextState(),
 		gles.NewDynamicContextState(width, height, preserveBuffersOnSwap),
@@ -90,8 +90,10 @@ func (b *builder) program(ctx context.Context,
 	programID gles.ProgramId,
 	vertexShaderSource, fragmentShaderSource string) {
 
-	b.Add(gles.BuildProgram(ctx, b.state, b.CommandBuilder,
-		vertexShaderID, fragmentShaderID,
-		programID,
-		vertexShaderSource, fragmentShaderSource)...)
+	b.cmds = append(b.cmds,
+		gles.BuildProgram(ctx, b.state, b.CommandBuilder,
+			vertexShaderID, fragmentShaderID,
+			programID,
+			vertexShaderSource, fragmentShaderSource)...,
+	)
 }

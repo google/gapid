@@ -265,7 +265,7 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 	case *path.Capture:
 		return Capture(ctx, p)
 	case *path.Command:
-		return Atom(ctx, p)
+		return Cmd(ctx, p)
 	case *path.Commands:
 		return Commands(ctx, p)
 	case *path.CommandTree:

@@ -25,11 +25,11 @@ import (
 // context, and the context at p.
 func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
-		a, err := resolve.Atom(ctx, cmdPath)
+		cmd, err := resolve.Cmd(ctx, cmdPath)
 		if err != nil {
 			return nil, nil, err
 		}
-		thread := a.Thread()
+		thread := cmd.Thread()
 
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
@@ -52,11 +52,11 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 // context, and the context at p.
 func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
-		a, err := resolve.Atom(ctx, cmdPath)
+		cmd, err := resolve.Cmd(ctx, cmdPath)
 		if err != nil {
 			return nil, nil, err
 		}
-		thread := a.Thread()
+		thread := cmd.Thread()
 
 		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
 		if err != nil {
@@ -171,17 +171,17 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 		return nil, err
 	}
 
-	atom, err := resolve.Atom(ctx, path.FindCommand(p))
+	cmd, err := resolve.Cmd(ctx, path.FindCommand(p))
 	if err != nil {
 		return nil, err
 	}
 
 	var program ProgramId
-	switch atom := atom.(type) {
+	switch cmd := cmd.(type) {
 	case *GlGetActiveUniform:
-		program = atom.Program
+		program = cmd.Program
 	case *GlGetUniformLocation:
-		program = atom.Program
+		program = cmd.Program
 	default:
 		program = c.Bound.Program.GetID()
 	}

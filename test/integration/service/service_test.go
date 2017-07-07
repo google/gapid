@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	gapis "github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/database"
@@ -127,9 +126,9 @@ func init() {
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := gles.CommandBuilder{Thread: 0}
-	atoms, draw, swap := samples.DrawTexturedSquare(ctx, cb, false)
+	cmds, draw, swap := samples.DrawTexturedSquare(ctx, cb, false)
 	h := &capture.Header{Abi: device.WindowsX86_64}
-	p, err := capture.New(ctx, "sample", h, atoms.Atoms)
+	p, err := capture.New(ctx, "sample", h, cmds)
 	check(err)
 	buf := bytes.Buffer{}
 	check(capture.Export(ctx, p, &buf))
@@ -218,7 +217,7 @@ func TestGet(t *testing.T) {
 	}{
 		{capture, T((*service.Capture)(nil))},
 		{capture.Contexts(), T([]*service.Context{})},
-		{capture.Commands(), T((*atom.List)(nil))},
+		{capture.Commands(), T(([]api.Cmd)(nil))},
 		{capture.Command(swapAtomIndex), T((*api.Cmd)(nil)).Elem()},
 		{capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},

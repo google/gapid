@@ -74,14 +74,16 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, fmt.Errorf("Subcommands currently not supported for changing") // TODO: Subcommands
 		}
 
-		oldList, err := NAtoms(ctx, p.After.Capture, cmdIdx+1)
+		oldCmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
 		if err != nil {
 			return nil, err
 		}
 
-		list := oldList.Clone()
+		cmds := make([]api.Cmd, len(oldCmds))
+		copy(cmds, oldCmds)
+
 		replaceCommands := func(where uint64, with interface{}) {
-			list.Atoms[where] = with.(api.Cmd)
+			cmds[where] = with.(api.Cmd)
 		}
 
 		data, ok := val.(*api.ResourceData)
@@ -93,8 +95,8 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, err
 		}
 
-		// Store the new atom list
-		c, err := changeCommands(ctx, p.After.Capture, list.Atoms)
+		// Store the new command list
+		c, err := changeCommands(ctx, p.After.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +116,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		// Resolve the command list
-		oldList, err := NAtoms(ctx, p.Capture, cmdIdx+1)
+		oldCmds, err := NCmds(ctx, p.Capture, cmdIdx+1)
 		if err != nil {
 			return nil, err
 		}
@@ -128,18 +130,19 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, fmt.Errorf("Expected Cmd, got %T", val)
 		}
 
-		// Clone the atom list
-		list := oldList.Clone()
+		// Clone the command list
+		cmds := make([]api.Cmd, len(oldCmds))
+		copy(cmds, oldCmds)
 
-		// Propagate extras if the new atom omitted them
-		oldCmd := oldList.Atoms[cmdIdx]
+		// Propagate extras if the new command omitted them
+		oldCmd := oldCmds[cmdIdx]
 		if len(cmd.Extras().All()) == 0 {
 			cmd.Extras().Add(oldCmd.Extras().All()...)
 		}
-		list.Atoms[cmdIdx] = cmd
+		cmds[cmdIdx] = cmd
 
-		// Store the new atom list
-		c, err := changeCommands(ctx, p.Capture, list.Atoms)
+		// Store the new command list
+		c, err := changeCommands(ctx, p.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}

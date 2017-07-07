@@ -31,7 +31,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		Capture: path.FindCapture(r.After),
 	}
 
-	after, err := Atom(ctx, r.After)
+	after, err := Cmd(ctx, r.After)
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -292,7 +291,7 @@ func (s *session) getAtoms(ctx context.Context) error {
 	if err := s.get(ctx, "Commands", s.capture.Commands(), &result); err != nil {
 		return err
 	}
-	s.commands = result.(*atom.List).Atoms
+	s.commands = result.([]api.Cmd)
 	return nil
 }
 

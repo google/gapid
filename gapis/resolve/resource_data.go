@@ -51,7 +51,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		return nil, fmt.Errorf("Subcommands currently not supported for resources") // TODO: Subcommands
 	}
 
-	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
+	cmds, err := NCmds(ctx, p.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
@@ -59,22 +59,22 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	var currentAtomIndex uint64
-	var currentAtomResourceCount int
+	var currentCmdIndex uint64
+	var currentCmdResourceCount int
 	idMap := api.ResourceMap{}
 
 	resources := make(map[id.ID]api.Resource)
 
 	state.OnResourceCreated = func(r api.Resource) {
-		currentAtomResourceCount++
-		i := genResourceID(currentAtomIndex, currentAtomResourceCount)
+		currentCmdResourceCount++
+		i := genResourceID(currentCmdIndex, currentCmdResourceCount)
 		idMap[r] = i
 		resources[i] = r
 	}
 
-	for i, a := range list.Atoms[:atomIdx+1] {
-		currentAtomResourceCount = 0
-		currentAtomIndex = uint64(i)
+	for i, a := range cmds[:atomIdx+1] {
+		currentCmdResourceCount = 0
+		currentCmdIndex = uint64(i)
 		if err := a.Mutate(ctx, state, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}

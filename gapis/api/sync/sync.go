@@ -24,13 +24,12 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// SynchronizedApi defines an API that explicitly has multiple threads of
+// SynchronizedAPI defines an API that explicitly has multiple threads of
 // execution. This means that replays are not necessarily linear in terms
 // of atoms.
 type SynchronizedAPI interface {
@@ -47,22 +46,21 @@ type SynchronizedAPI interface {
 }
 
 type writer struct {
-	st    *api.State
-	Atoms *atom.List
+	state *api.State
+	cmds  []api.Cmd
 }
 
-func (s writer) State() *api.State {
-	return s.st
+func (s *writer) State() *api.State { return s.state }
+
+func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+	cmd.Mutate(ctx, s.state, nil)
+	s.cmds = append(s.cmds, cmd)
 }
 
-func (s writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	cmd.Mutate(ctx, s.st, nil)
-	s.Atoms.Atoms = append(s.Atoms.Atoms, cmd)
-}
-
-// MutationAtomsFor returns a list of atoms that represent the correct mutations to have the state for all
-// atoms before and including the given index.
-func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id api.CmdID, subindex []uint64) (*atom.List, error) {
+// MutationCmdsFor returns a list of command that represent the correct
+// mutations to have the state for all commands before and including the given
+// index.
+func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id api.CmdID, subindex []uint64) ([]api.Cmd, error) {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -76,12 +74,10 @@ func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id
 	for _, api := range rc.APIs {
 		if sync, ok := api.(SynchronizedAPI); ok {
 			term, err := sync.GetTerminator(ctx, c)
-			if err == nil {
-				terminators = append(terminators, term)
-			} else {
+			if err != nil {
 				return nil, err
 			}
-
+			terminators = append(terminators, term)
 		} else {
 			terminators = append(terminators, &transform.EarlyTerminator{APIIdx: api.ID()})
 		}
@@ -93,16 +89,15 @@ func MutationAtomsFor(ctx context.Context, c *path.Capture, atoms *atom.List, id
 		transforms.Add(t)
 	}
 
-	state := rc.NewState()
-	a := atom.List{Atoms: make([]api.Cmd, 0)}
-	w := writer{state, &a}
-	transforms.Transform(ctx, *atoms, w)
-	return &a, nil
+	w := &writer{rc.NewState(), nil}
+	transforms.Transform(ctx, cmds, w)
+	return w.cmds, nil
 }
 
-// MutateWithSubcommands returns a list of atoms that represent the correct
-// mutations to have the state for all atoms before and including the given index.
-func MutateWithSubcommands(ctx context.Context, c *path.Capture, atoms atom.List, callback func(*api.State, SubcommandIndex, api.Cmd)) error {
+// MutateWithSubcommands returns a list of commands that represent the correct
+// mutations to have the state for all commands before and including the given
+// index.
+func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd, callback func(*api.State, SubcommandIndex, api.Cmd)) error {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -112,9 +107,9 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, atoms atom.List
 	}
 	s := rc.NewState()
 
-	for id, cmd := range atoms.Atoms {
+	for i, cmd := range cmds {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			if err := sync.MutateSubcommands(ctx, api.CmdID(id), cmd, s, callback); err != nil && err == context.Canceled {
+			if err := sync.MutateSubcommands(ctx, api.CmdID(i), cmd, s, callback); err != nil && err == context.Canceled {
 				return err
 			}
 		} else {
@@ -122,7 +117,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, atoms atom.List
 				return err
 			}
 		}
-		callback(s, SubcommandIndex{uint64(id)}, cmd)
+		callback(s, SubcommandIndex{uint64(i)}, cmd)
 	}
 
 	return nil

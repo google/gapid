@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service/path"
@@ -63,7 +62,7 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, api.FramebufferAttachment_Color3+1),
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Commands}, func(s *api.State, subcommandIndex sync.SubcommandIndex, cmd api.Cmd) {
+	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, func(s *api.State, subcommandIndex sync.SubcommandIndex, cmd api.Cmd) {
 		api := cmd.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {

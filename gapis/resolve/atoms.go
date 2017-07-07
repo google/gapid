@@ -25,36 +25,36 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// Atoms resolves and returns the atom list from the path p.
-func Atoms(ctx context.Context, p *path.Capture) (*atom.List, error) {
+// Cmds resolves and returns the command list from the path p.
+func Cmds(ctx context.Context, p *path.Capture) ([]api.Cmd, error) {
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	return atom.NewList(c.Commands...), nil
+	return c.Commands, nil
 }
 
-// NAtoms resolves and returns the atom list from the path p, ensuring
+// NCmds resolves and returns the command list from the path p, ensuring
 // that the number of commands is at least N.
-func NAtoms(ctx context.Context, p *path.Capture, n uint64) (*atom.List, error) {
-	list, err := Atoms(ctx, p)
+func NCmds(ctx context.Context, p *path.Capture, n uint64) ([]api.Cmd, error) {
+	list, err := Cmds(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	if count := uint64(len(list.Atoms)); n > count {
+	if count := uint64(len(list)); n > count {
 		return nil, errPathOOB(n-1, "Index", 0, count-1, p.Command(n-1))
 	}
 	return list, nil
 }
 
-// Atom resolves and returns the atom from the path p.
-func Atom(ctx context.Context, p *path.Command) (api.Cmd, error) {
+// Cmd resolves and returns the command from the path p.
+func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
 	atomIdx := p.Indices[0]
-	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
+	cmds, err := NCmds(ctx, p.Capture, atomIdx+1)
 	if err != nil {
 		return nil, err
 	}
-	return list.Atoms[atomIdx], nil
+	return cmds[atomIdx], nil
 }
 
 // Parameter resolves and returns the parameter from the path p.
