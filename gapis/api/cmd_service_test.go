@@ -19,12 +19,12 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/test"
+	"github.com/google/gapid/gapis/api/testcmd"
 )
 
 func TestToServiceToCmd(t *testing.T) {
 	ctx := log.Testing(t)
-	for n, cmd := range map[string]api.Cmd{"P": test.P, "Q": test.Q} {
+	for n, cmd := range map[string]api.Cmd{"P": testcmd.P, "Q": testcmd.Q} {
 		s, err := api.CmdToService(cmd)
 		if !assert.For(ctx, "CmdToService(%v)", n).ThatError(err).Succeeded() {
 			continue

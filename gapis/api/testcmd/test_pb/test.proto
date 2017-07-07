@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package test
+syntax = "proto3";
 
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/google/gapid/core/data/id"
-	_ "github.com/google/gapid/core/data/pod"
-)
+package test_pb;
+
+import "gapis/service/box/box.proto";
+
+message X {
+	box.Value data = 1;
+}

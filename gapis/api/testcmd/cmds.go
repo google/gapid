@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package test provides testing helpers for the atom package.
-package test
+// Package testcmd provides fake commands used for testing.
+package testcmd
 
 import (
 	"context"
@@ -25,53 +25,39 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/test/test_pb"
+	"github.com/google/gapid/gapis/api/testcmd/test_pb"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service/box"
 )
 
-type AtomA struct {
+type A struct {
 	ID    api.CmdID
 	Flags api.CmdFlags
 }
 
-func (a *AtomA) Thread() uint64         { return 1 }
-func (a *AtomA) SetThread(uint64)       {}
-func (a *AtomA) CmdName() string        { return "AtomA" }
-func (a *AtomA) API() api.API           { return nil }
-func (a *AtomA) CmdFlags() api.CmdFlags { return a.Flags }
-func (a *AtomA) Extras() *api.CmdExtras { return nil }
-func (a *AtomA) Mutate(context.Context, *api.State, *builder.Builder) error {
+func (a *A) Thread() uint64         { return 1 }
+func (a *A) SetThread(uint64)       {}
+func (a *A) CmdName() string        { return "A" }
+func (a *A) API() api.API           { return nil }
+func (a *A) CmdFlags() api.CmdFlags { return a.Flags }
+func (a *A) Extras() *api.CmdExtras { return nil }
+func (a *A) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
-type AtomB struct {
+type B struct {
 	ID   api.CmdID
 	Bool bool
 }
 
-func (a *AtomB) Thread() uint64         { return 1 }
-func (a *AtomB) SetThread(uint64)       {}
-func (a *AtomB) CmdName() string        { return "AtomB" }
-func (a *AtomB) API() api.API           { return nil }
-func (a *AtomB) CmdFlags() api.CmdFlags { return 0 }
-func (a *AtomB) Extras() *api.CmdExtras { return nil }
-func (a *AtomB) Mutate(context.Context, *api.State, *builder.Builder) error {
-	return nil
-}
-
-type AtomC struct {
-	String string
-}
-
-func (a *AtomC) Thread() uint64         { return 1 }
-func (a *AtomC) SetThread(uint64)       {}
-func (a *AtomC) CmdName() string        { return "AtomC" }
-func (a *AtomC) API() api.API           { return nil }
-func (a *AtomC) CmdFlags() api.CmdFlags { return 0 }
-func (a *AtomC) Extras() *api.CmdExtras { return nil }
-func (a *AtomC) Mutate(context.Context, *api.State, *builder.Builder) error {
+func (a *B) Thread() uint64         { return 1 }
+func (a *B) SetThread(uint64)       {}
+func (a *B) CmdName() string        { return "B" }
+func (a *B) API() api.API           { return nil }
+func (a *B) CmdFlags() api.CmdFlags { return 0 }
+func (a *B) Extras() *api.CmdExtras { return nil }
+func (a *B) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -115,7 +101,7 @@ func (p *Pointer) Assign(o interface{}) bool {
 	return false
 }
 
-type AtomX struct {
+type X struct {
 	Str  string        `param:"Str"`
 	Sli  []bool        `param:"Sli"`
 	Ref  *Struct       `param:"Ref"`
@@ -124,13 +110,13 @@ type AtomX struct {
 	PMap IntːStructPtr `param:"PMap"`
 }
 
-func (AtomX) Thread() uint64         { return 1 }
-func (AtomX) SetThread(uint64)       {}
-func (AtomX) CmdName() string        { return "AtomX" }
-func (AtomX) API() api.API           { return api.Find(APIID) }
-func (AtomX) CmdFlags() api.CmdFlags { return 0 }
-func (AtomX) Extras() *api.CmdExtras { return nil }
-func (AtomX) Mutate(context.Context, *api.State, *builder.Builder) error {
+func (X) Thread() uint64         { return 1 }
+func (X) SetThread(uint64)       {}
+func (X) CmdName() string        { return "X" }
+func (X) API() api.API           { return api.Find(APIID) }
+func (X) CmdFlags() api.CmdFlags { return 0 }
+func (X) Extras() *api.CmdExtras { return nil }
+func (X) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -146,8 +132,8 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 func (API) Context(*api.State, uint64) api.Context { return nil }
 func (API) CreateCmd(name string) api.Cmd {
 	switch name {
-	case "AtomX":
-		return &AtomX{}
+	case "X":
+		return &X{}
 	default:
 		return nil
 	}
@@ -156,7 +142,7 @@ func (API) CreateCmd(name string) api.Cmd {
 var (
 	APIID = api.ID{1, 2, 3}
 
-	P = &AtomX{
+	P = &X{
 		Str:  "aaa",
 		Sli:  []bool{true, false, true},
 		Ref:  &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
@@ -165,7 +151,7 @@ var (
 		PMap: IntːStructPtr{},
 	}
 
-	Q = &AtomX{
+	Q = &X{
 		Str: "xyz",
 		Sli: []bool{false, true, false},
 		Ptr: Pointer{0x321, 0x654},
@@ -178,10 +164,10 @@ var (
 
 func init() {
 	api.Register(API{})
-	protoconv.Register(func(ctx context.Context, a *AtomX) (*test_pb.AtomX, error) {
-		return &test_pb.AtomX{Data: box.NewValue(*a)}, nil
-	}, func(ctx context.Context, b *test_pb.AtomX) (*AtomX, error) {
-		var a AtomX
+	protoconv.Register(func(ctx context.Context, a *X) (*test_pb.X, error) {
+		return &test_pb.X{Data: box.NewValue(*a)}, nil
+	}, func(ctx context.Context, b *test_pb.X) (*X, error) {
+		var a X
 		if err := b.Data.AssignTo(&a); err != nil {
 			return nil, err
 		}

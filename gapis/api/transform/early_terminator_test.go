@@ -19,30 +19,30 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/test"
+	"github.com/google/gapid/gapis/api/testcmd"
 )
 
 func TestEarlyTerminator(t *testing.T) {
 	ctx := log.Testing(t)
-	inputs := test.List(
-		&test.AtomA{ID: 10},
-		&test.AtomA{ID: 30},
-		&test.AtomA{ID: 20},
-		&test.AtomA{ID: 50},
-		&test.AtomA{ID: 90},
-		&test.AtomA{ID: 70},
-		&test.AtomA{ID: 80},
-		&test.AtomA{ID: 00},
-		&test.AtomA{ID: 60},
-		&test.AtomA{ID: 40},
+	inputs := testcmd.List(
+		&testcmd.A{ID: 10},
+		&testcmd.A{ID: 30},
+		&testcmd.A{ID: 20},
+		&testcmd.A{ID: 50},
+		&testcmd.A{ID: 90},
+		&testcmd.A{ID: 70},
+		&testcmd.A{ID: 80},
+		&testcmd.A{ID: 00},
+		&testcmd.A{ID: 60},
+		&testcmd.A{ID: 40},
 	)
-	expected := test.List(
-		&test.AtomA{ID: 10},
-		&test.AtomA{ID: 30},
-		&test.AtomA{ID: 20},
-		&test.AtomA{ID: 50},
-		&test.AtomA{ID: 90},
-		&test.AtomA{ID: 70},
+	expected := testcmd.List(
+		&testcmd.A{ID: 10},
+		&testcmd.A{ID: 30},
+		&testcmd.A{ID: 20},
+		&testcmd.A{ID: 50},
+		&testcmd.A{ID: 90},
+		&testcmd.A{ID: 70},
 	)
 
 	transform := NewEarlyTerminator(api.ID{})

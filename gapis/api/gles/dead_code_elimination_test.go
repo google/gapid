@@ -21,8 +21,8 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -186,9 +186,9 @@ func TestDeadAtomRemoval(t *testing.T) {
 			}
 		}
 
-		w := &test.MockAtomWriter{}
+		w := &testcmd.Writer{}
 		transform.Flush(ctx, w)
 
-		assert.For(ctx, "Test '%v'", name).ThatSlice(w.Atoms).Equals(expectedAtoms)
+		assert.For(ctx, "Test '%v'", name).ThatSlice(w.Cmds).Equals(expectedAtoms)
 	}
 }

@@ -26,8 +26,8 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/gles/glsl/ast"
+	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
@@ -84,7 +84,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 		shaderType = gles.GLenum_GL_FRAGMENT_SHADER
 	}
 
-	mw := &test.MockAtomWriter{S: newState(ctx)}
+	mw := &testcmd.Writer{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 
 	cb := gles.CommandBuilder{Thread: 0}
@@ -104,17 +104,17 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 
 	// Find the output glShaderSource atom.
 	var cmd *gles.GlShaderSource
-	for _, a := range mw.Atoms {
-		if a, ok := a.(*gles.GlShaderSource); ok {
-			cmd = a
+	for _, c := range mw.Cmds {
+		if c, ok := c.(*gles.GlShaderSource); ok {
+			cmd = c
 			break
 		}
 	}
 
 	if cmd == nil {
-		t.Error("Transform did not produce a glShaderSource atom. Atoms produced:")
-		for i, a := range mw.Atoms {
-			t.Errorf("%d %T", i, a)
+		t.Error("Transform did not produce a glShaderSource command. Commands produced:")
+		for i, c := range mw.Cmds {
+			t.Errorf("%d %T", i, c)
 		}
 		return
 	}
@@ -125,8 +125,8 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	}
 
 	s := newState(ctx)
-	for _, a := range mw.Atoms {
-		a.Mutate(ctx, s, nil)
+	for _, c := range mw.Cmds {
+		c.Mutate(ctx, s, nil)
 	}
 
 	srcPtr := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
@@ -170,12 +170,12 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
-	mw := &test.MockAtomWriter{S: newState(ctx)}
+	mw := &testcmd.Writer{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
-	for _, a := range []api.Cmd{
+	for _, cmd := range []api.Cmd{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),
@@ -184,19 +184,19 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(atom.Data(ctx, a, p(0x200000), indices)),
 	} {
-		transform.Transform(ctx, api.CmdNoID, a, mw)
+		transform.Transform(ctx, api.CmdNoID, cmd, mw)
 	}
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
 	s := newState(ctx)
-	for _, a := range mw.Atoms {
-		err := a.Mutate(ctx, s, nil)
-		ctx := log.V{"atom": fmt.Sprintf("%T", a)}.Bind(ctx)
+	for _, cmd := range mw.Cmds {
+		err := cmd.Mutate(ctx, s, nil)
+		ctx := log.V{"atom": fmt.Sprintf("%T", cmd)}.Bind(ctx)
 		if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 			break
 		}
-		if _, ok := a.(*gles.GlDrawElements); ok {
-			ctx := gles.GetContext(s, a.Thread())
+		if _, ok := cmd.(*gles.GlDrawElements); ok {
+			ctx := gles.GetContext(s, cmd.Thread())
 			vao := ctx.Bound.VertexArray
 			array := vao.VertexAttributeArrays[0]
 			binding := vao.VertexBufferBindings[array.Binding]
