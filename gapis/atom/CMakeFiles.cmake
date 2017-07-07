@@ -23,7 +23,6 @@ set(files
     data.go
     doc.go
     framebuffer_observation.go
-    labeled.go
     range_list.go
     registry.go
     resource.go

@@ -12,16 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
-import (
-	"context"
+import "context"
 
-	"github.com/google/gapid/gapis/api"
-)
-
-// Labeled is the interface implemented by atoms that have a specific label.
+// Labeled is the interface implemented commands that have a label.
 type Labeled interface {
-	// Label returns the atom's label.
-	Label(ctx context.Context, s *api.State) string
+	// Label returns the commands's label.
+	Label(ctx context.Context, s *State) string
 }

@@ -19,6 +19,8 @@
 
 set(files
     api.go
+    api.pb.go
+    api.proto
     cmd_convert.go
     cmd_extras.go
     cmd_flags.go
@@ -31,8 +33,7 @@ set(files
     cmd.go
     context.go
     doc.go
-    api.pb.go
-    api.proto
+    labeled.go
     mesh.go
     resource.go
     state.go
