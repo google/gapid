@@ -99,7 +99,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 			AddRead(atom.Data(ctx, a, p(0x100010), int32(len(c.source)))).
 			AddRead(atom.Data(ctx, a, p(0x100020), c.source)),
 	} {
-		transform.Transform(ctx, atom.NoID, a, mw)
+		transform.Transform(ctx, api.CmdNoID, a, mw)
 	}
 
 	// Find the output glShaderSource atom.
@@ -184,7 +184,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(atom.Data(ctx, a, p(0x200000), indices)),
 	} {
-		transform.Transform(ctx, atom.NoID, a, mw)
+		transform.Transform(ctx, api.CmdNoID, a, mw)
 	}
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now

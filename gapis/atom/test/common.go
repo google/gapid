@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 type MockAtomWriter struct {
@@ -31,7 +30,7 @@ func (m *MockAtomWriter) State() *api.State {
 	return m.S
 }
 
-func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id atom.ID, c api.Cmd) {
+func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id api.CmdID, c api.Cmd) {
 	if m.S != nil {
 		c.Mutate(ctx, m.S, nil)
 	}
@@ -41,7 +40,7 @@ func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id atom.ID, c api.C
 
 type AtomAtomID struct {
 	Atom api.Cmd
-	Id   atom.ID
+	Id   api.CmdID
 }
 
 type AtomAtomIDList []AtomAtomID
@@ -66,6 +65,6 @@ func List(atoms ...interface{}) AtomAtomIDList {
 	return l
 }
 
-func (l *AtomAtomIDList) Write(ctx context.Context, id atom.ID, c api.Cmd) {
+func (l *AtomAtomIDList) Write(ctx context.Context, id api.CmdID, c api.Cmd) {
 	*l = append(*l, AtomAtomID{c, id})
 }

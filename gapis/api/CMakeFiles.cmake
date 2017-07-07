@@ -19,8 +19,11 @@
 
 set(files
     api.go
+    cmd_convert.go
     cmd_extras.go
     cmd_flags.go
+    cmd_id_set.go
+    cmd_id.go
     cmd_observations.go
     cmd.go
     context.go

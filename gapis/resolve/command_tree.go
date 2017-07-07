@@ -56,7 +56,7 @@ func (t *commandTree) index(indices []uint64) atom.GroupOrID {
 	return group
 }
 
-func (t *commandTree) indices(id atom.ID) []uint64 {
+func (t *commandTree) indices(id api.CmdID) []uint64 {
 	out := []uint64{}
 	group := t.root
 	for {
@@ -81,7 +81,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 	cmdTree := boxed.(*commandTree)
 
 	switch item := cmdTree.index(c.Indices).(type) {
-	case atom.ID:
+	case api.CmdID:
 		return &service.CommandTreeNode{
 			NumChildren: 0, // TODO: Subcommands
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item), uint64(item)),
@@ -115,31 +115,31 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	return &path.CommandTreeNode{
 		Tree:    p.Tree,
-		Indices: cmdTree.indices(atom.ID(atomIdx)),
+		Indices: cmdTree.indices(api.CmdID(atomIdx)),
 	}, nil
 }
 
 type group struct {
-	start atom.ID
-	end   atom.ID
+	start api.CmdID
+	end   api.CmdID
 	name  string
 }
 
 type grouper interface {
-	process(context.Context, atom.ID, api.Cmd, *api.State)
+	process(context.Context, api.CmdID, api.Cmd, *api.State)
 	flush(count uint64)
 	groups() []group
 }
 
 type runGrouper struct {
 	f       func(cmd api.Cmd, s *api.State) (value interface{}, name string)
-	start   atom.ID
+	start   api.CmdID
 	current interface{}
 	name    string
 	out     []group
 }
 
-func (g *runGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
+func (g *runGrouper) process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
 	val, name := g.f(cmd, s)
 	if val != g.current {
 		if g.current != nil {
@@ -151,7 +151,7 @@ func (g *runGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s *ap
 }
 
 func (g *runGrouper) flush(count uint64) {
-	end := atom.ID(count)
+	end := api.CmdID(count)
 	if g.current != nil && g.start != end {
 		g.out = append(g.out, group{g.start, end, g.name})
 	}
@@ -165,7 +165,7 @@ type markerGrouper struct {
 	out   []group
 }
 
-func (g *markerGrouper) push(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
+func (g *markerGrouper) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
 	var name string
 	if l, ok := cmd.(atom.Labeled); ok {
 		name = l.Label(ctx, s)
@@ -178,14 +178,14 @@ func (g *markerGrouper) push(ctx context.Context, id atom.ID, cmd api.Cmd, s *ap
 	}
 }
 
-func (g *markerGrouper) pop(id atom.ID) {
+func (g *markerGrouper) pop(id api.CmdID) {
 	m := g.stack[len(g.stack)-1]
 	m.end = id + 1 // +1 to include pop marker
 	g.out = append(g.out, m)
 	g.stack = g.stack[:len(g.stack)-1]
 }
 
-func (g *markerGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
+func (g *markerGrouper) process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
 	if cmd.CmdFlags().IsPushUserMarker() {
 		g.push(ctx, id, cmd, s)
 	}
@@ -196,7 +196,7 @@ func (g *markerGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s 
 
 func (g *markerGrouper) flush(count uint64) {
 	for len(g.stack) > 0 {
-		g.pop(atom.ID(count) - 1)
+		g.pop(api.CmdID(count) - 1)
 	}
 }
 
@@ -258,7 +258,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
 	for i, cmd := range c.Commands {
-		id := atom.ID(i)
+		id := api.CmdID(i)
 		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		path: p,
 		root: atom.Group{
 			Name:  "root",
-			Range: atom.Range{End: atom.ID(len(c.Commands))},
+			Range: atom.Range{End: api.CmdID(len(c.Commands))},
 		},
 	}
 	for _, g := range groupers {
@@ -287,13 +287,13 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByDrawCall || p.GroupByFrame {
-		addDrawAndFrameEvents(ctx, p, out, atom.ID(len(c.Commands)))
+		addDrawAndFrameEvents(ctx, p, out, api.CmdID(len(c.Commands)))
 	}
 
 	// Now we have all the groups, we finally need to add the filtered atoms.
 
 	s = c.NewState()
-	out.root.AddAtoms(func(i atom.ID) bool {
+	out.root.AddAtoms(func(i api.CmdID) bool {
 		cmd := c.Commands[i]
 		cmd.Mutate(ctx, s, nil)
 		return filter(cmd, s)
@@ -302,7 +302,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	return out, nil
 }
 
-func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree, last atom.ID) error {
+func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree, last api.CmdID) error {
 	events, err := Events(ctx, &path.Events{
 		Capture:      t.path.Capture,
 		Filter:       p.Filter,
@@ -314,11 +314,11 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 		return log.Errf(ctx, err, "Couldn't get events")
 	}
 
-	drawCount, drawStart := 0, atom.ID(0)
-	frameCount, frameStart, frameEnd := 0, atom.ID(0), atom.ID(0)
+	drawCount, drawStart := 0, api.CmdID(0)
+	frameCount, frameStart, frameEnd := 0, api.CmdID(0), api.CmdID(0)
 
 	for _, e := range events.List {
-		i := atom.ID(e.Command.Indices[0])
+		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
 			t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))

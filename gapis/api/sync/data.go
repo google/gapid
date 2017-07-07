@@ -17,12 +17,12 @@ package sync
 import (
 	"sort"
 
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/api"
 )
 
 // An index defines the location of one side
 // synchronization dependency.
-type SynchronizationIndices []atom.ID
+type SynchronizationIndices []api.CmdID
 
 // The index of a subcommand within a command
 type SubcommandIndex []uint64
@@ -33,20 +33,20 @@ type SubcommandIndex []uint64
 // which subcommandis the last that will be run at that point.
 type ExecutionRanges struct {
 	LastIndex SubcommandIndex
-	Ranges    map[atom.ID]SubcommandIndex
+	Ranges    map[api.CmdID]SubcommandIndex
 }
 
 // Data contains a map of synchronization pairs.
-// The atom.ID is the command that will be blocked from
+// The api.CmdID is the command that will be blocked from
 // completion, and what subcommands will be made available by future commands.
 type Data struct {
-	CommandRanges map[atom.ID]ExecutionRanges
+	CommandRanges map[api.CmdID]ExecutionRanges
 }
 
 // NewData creates a new clean Data object
 func NewData() *Data {
 	s := new(Data)
-	s.CommandRanges = make(map[atom.ID]ExecutionRanges)
+	s.CommandRanges = make(map[api.CmdID]ExecutionRanges)
 	return s
 }
 

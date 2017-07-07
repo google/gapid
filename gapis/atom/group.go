@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/sint"
+	"github.com/google/gapid/gapis/api"
 )
 
 // Group represents a named group of atoms with support for sparse sub-groups
@@ -70,39 +71,40 @@ type Span interface {
 	itemCount() uint64
 
 	// item returns the i'th sub-item for this span.
-	// For a Range, this is the i'th ID in the interval.
+	// For a Range, this is the i'th api.CmdID in the interval.
 	// For a Group, this is always the group itself.
 	item(i uint64) GroupOrID
 
-	// itemIndex returns the item sub-index for the given ID.
-	// For a Range, this is i minus the first ID in the interval.
+	// itemIndex returns the item sub-index for the given api.CmdID.
+	// For a Range, this is i minus the first api.CmdID in the interval.
 	// For a Group, this is always 0.
-	itemIndex(i ID) uint64
+	itemIndex(i api.CmdID) uint64
 
 	// split returns two spans over the same range as this span, but where the
 	// first contains the given number of items and the second the rest.
 	split(i uint64) (Span, Span)
 }
 
-// GroupOrID is a dummy interface exclusively implemented by Group and ID.
+// GroupOrID is a dummy interface exclusively implemented by Group and api.CmdID.
 type GroupOrID interface {
-	isGroupOrID()
+	// 	isGroupOrID()
 }
 
-func (Group) isGroupOrID() {}
-func (ID) isGroupOrID()    {}
+// TODO:
+// func (Group) isGroupOrID()     {}
+// func (api.CmdID) isGroupOrID() {}
 
-func (r Range) Bounds() Range               { return r }
-func (r Range) itemCount() uint64           { return r.Length() }
-func (r Range) item(i uint64) GroupOrID     { return r.Start + ID(i) }
-func (r Range) itemIndex(i ID) uint64       { return uint64(i - r.Start) }
-func (r Range) split(i uint64) (Span, Span) { return r.Split(i) }
+func (r Range) Bounds() Range                { return r }
+func (r Range) itemCount() uint64            { return r.Length() }
+func (r Range) item(i uint64) GroupOrID      { return r.Start + api.CmdID(i) }
+func (r Range) itemIndex(i api.CmdID) uint64 { return uint64(i - r.Start) }
+func (r Range) split(i uint64) (Span, Span)  { return r.Split(i) }
 
-func (g Group) Bounds() Range               { return g.Range }
-func (g Group) itemCount() uint64           { return 1 }
-func (g Group) item(uint64) GroupOrID       { return g }
-func (g Group) itemIndex(i ID) uint64       { return 0 }
-func (g Group) split(i uint64) (Span, Span) { return g, nil }
+func (g Group) Bounds() Range                { return g.Range }
+func (g Group) itemCount() uint64            { return 1 }
+func (g Group) item(uint64) GroupOrID        { return g }
+func (g Group) itemIndex(i api.CmdID) uint64 { return 0 }
+func (g Group) split(i uint64) (Span, Span)  { return g, nil }
 
 // Format writes a string representing the group's name, range and sub-groups.
 func (g Group) Format(f fmt.State, r rune) {
@@ -192,7 +194,7 @@ func (g Group) Index(index uint64) GroupOrID {
 }
 
 // IndexOf returns the item index that id refers directly to, or contains id.
-func (g Group) IndexOf(id ID) uint64 {
+func (g Group) IndexOf(id api.CmdID) uint64 {
 	idx := uint64(0)
 	for _, s := range g.Spans {
 		if s.Bounds().Contains(id) {
@@ -268,7 +270,7 @@ func (g Group) IterateBackwards(index uint64, cb func(childIdx uint64, item Grou
 // All groups must be added before atoms.
 // Attemping to call this function after atoms have been added may result in
 // panics!
-func (g *Group) AddGroup(start, end ID, name string) error {
+func (g *Group) AddGroup(start, end api.CmdID, name string) error {
 	if start > end {
 		return fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
 	}
@@ -315,11 +317,11 @@ func (g *Group) AddGroup(start, end ID, name string) error {
 // pred. If maxChildren is positive, the group, and any of it's decendent
 // groups, which have more than maxChildren child elements, will have their
 // children grouped into new synthetic groups of at most maxChildren children.
-func (g *Group) AddAtoms(pred func(id ID) bool, maxChildren uint64) error {
+func (g *Group) AddAtoms(pred func(id api.CmdID) bool, maxChildren uint64) error {
 	rng := g.Range
 	spans := make(Spans, 0, len(g.Spans))
 
-	scan := func(to ID) {
+	scan := func(to api.CmdID) {
 		for id := rng.Start; id < to; id++ {
 			if !pred(id) {
 				rng.End = id

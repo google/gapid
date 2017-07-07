@@ -25,7 +25,6 @@ set(files
     framebuffer_observation.go
     group.go
     group_test.go
-    id_set.go
     labeled.go
     list.go
     list_test.go

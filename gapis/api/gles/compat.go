@@ -162,7 +162,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 	scratchBuffers := map[interface{}]scratchBuffer{}
 	nextBufferID := BufferId(0xffff0000)
-	newBuffer := func(i atom.ID, cb CommandBuilder, out transform.Writer) BufferId {
+	newBuffer := func(i api.CmdID, cb CommandBuilder, out transform.Writer) BufferId {
 		s := out.State()
 		id := nextBufferID
 		tmp := atom.Must(atom.AllocData(ctx, s, id))
@@ -172,7 +172,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	}
 
 	nextTextureID := TextureId(0xffff0000)
-	newTexture := func(i atom.ID, cb CommandBuilder, out transform.Writer) TextureId {
+	newTexture := func(i api.CmdID, cb CommandBuilder, out transform.Writer) TextureId {
 		s := out.State()
 		id := nextTextureID
 		tmp := atom.Must(atom.AllocData(ctx, s, id))
@@ -207,7 +207,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	}
 
 	var t transform.Transformer
-	t = transform.Transform("compat", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	t = transform.Transform("compat", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		dID := id.Derived()
 		s := out.State()
 		cb := CommandBuilder{Thread: cmd.Thread()}
@@ -1090,7 +1090,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 }
 
 // Naive multiview implementation - invoke each draw call several times with different layers
-func MultiviewDraw(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func MultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	c := GetContext(s, cmd.Thread())
 	dID := id.Derived()
@@ -1164,7 +1164,7 @@ func moveClientVBsToVAs(
 	t *tweaker,
 	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
 	first, count uint32, // vertex indices
-	id atom.ID,
+	id api.CmdID,
 	cmd api.Cmd,
 	s *api.State,
 	c *Context,

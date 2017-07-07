@@ -18,12 +18,13 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapis/api"
 )
 
 // Range describes an interval of atoms in a stream.
 type Range struct {
-	Start ID // The first atom within the range.
-	End   ID // One past the last atom within the range.
+	Start api.CmdID // The first atom within the range.
+	End   api.CmdID // One past the last atom within the range.
 }
 
 // String returns a string representing the range.
@@ -32,12 +33,12 @@ func (i Range) String() string {
 }
 
 // Contains returns true if atomIndex is within the range, otherwise false.
-func (i Range) Contains(id ID) bool {
+func (i Range) Contains(id api.CmdID) bool {
 	return id >= i.Start && id < i.End
 }
 
 // Clamp returns the nearest index in the range to id.
-func (i Range) Clamp(id ID) ID {
+func (i Range) Clamp(id api.CmdID) api.CmdID {
 	if id < i.Start {
 		return i.Start
 	}
@@ -53,17 +54,17 @@ func (i Range) Length() uint64 {
 }
 
 // Range returns the start and end of the range.
-func (i Range) Range() (start, end ID) {
+func (i Range) Range() (start, end api.CmdID) {
 	return i.Start, i.End
 }
 
 // First returns the first atom index within the range.
-func (i Range) First() ID {
+func (i Range) First() api.CmdID {
 	return i.Start
 }
 
 // Last returns the last atom index within the range.
-func (i Range) Last() ID {
+func (i Range) Last() api.CmdID {
 	return i.End - 1
 }
 
@@ -74,8 +75,8 @@ func (i Range) Span() interval.U64Span {
 
 // SetSpan sets the start and end range using a U64Span.
 func (i *Range) SetSpan(span interval.U64Span) {
-	i.Start = ID(span.Start)
-	i.End = ID(span.End)
+	i.Start = api.CmdID(span.Start)
+	i.End = api.CmdID(span.End)
 }
 
 // Split splits this range into two subranges where the first range will have
@@ -84,6 +85,6 @@ func (r Range) Split(i uint64) (Range, Range) {
 	if i >= r.Length() {
 		return r, Range{0, 0}
 	}
-	x := r.Start + ID(i)
+	x := r.Start + api.CmdID(i)
 	return Range{r.Start, x}, Range{x, r.End}
 }

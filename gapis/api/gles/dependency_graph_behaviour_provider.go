@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
@@ -113,7 +112,7 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 // It is fine to overestimate reads, or to read parent state (i.e. superset).
 //
 func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
-	ctx context.Context, s *api.State, id atom.ID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
+	ctx context.Context, s *api.State, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	b := dependencygraph.AtomBehaviour{}
 	c := GetContext(s, cmd.Thread())
 	if c != nil && c.Info.Initialized {

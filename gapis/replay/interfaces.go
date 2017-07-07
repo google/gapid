@@ -20,7 +20,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -65,7 +64,7 @@ type QueryFramebufferAttachment interface {
 
 // Issue represents a single replay issue reported by QueryIssues.
 type Issue struct {
-	Atom     atom.ID          // The atom that reported the issue.
+	Command  api.CmdID        // The command that reported the issue.
 	Severity service.Severity // The severity of the issue.
 	Error    error            // The issue's error.
 }

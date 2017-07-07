@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -39,12 +38,12 @@ type findIssues struct {
 // reportTo adds r to the list of issue listeners.
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
-func (t *findIssues) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, api.CmdNoID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last

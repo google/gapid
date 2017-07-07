@@ -93,7 +93,7 @@ func (tc *textureCompat) getSwizzle(t *Texture, parameter GLenum) (orig, curr GL
 	return init, curr
 }
 
-func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, cb CommandBuilder, t *Texture, parameter GLenum, out transform.Writer, id atom.ID) {
+func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, cb CommandBuilder, t *Texture, parameter GLenum, out transform.Writer, id api.CmdID) {
 	target := t.Kind
 	orig, curr := tc.getSwizzle(t, parameter)
 	compat := orig
@@ -114,7 +114,7 @@ func (tc *textureCompat) convertFormat(
 	target GLenum,
 	internalformat, format, componentType *GLenum,
 	out transform.Writer,
-	id atom.ID,
+	id api.CmdID,
 	cmd api.Cmd) {
 
 	if tc.v.IsES {
@@ -191,7 +191,7 @@ func (tc *textureCompat) convertFormat(
 	}
 }
 
-func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id atom.ID, cmd api.Cmd) {
+func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id api.CmdID, cmd api.Cmd) {
 	if tc.v.IsES {
 		return
 	}
@@ -214,7 +214,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 
 // decompressTexImage2D writes a glTexImage2D using the decompressed data for
 // the given glCompressedTexImage2D.
-func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImage2D, s *api.State, out transform.Writer) error {
+func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexImage2D, s *api.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.thread)
@@ -267,7 +267,7 @@ func decompressTexImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexImag
 
 // decompressTexSubImage2D writes a glTexSubImage2D using the decompressed data for
 // the given glCompressedTexSubImage2D.
-func decompressTexSubImage2D(ctx context.Context, i atom.ID, a *GlCompressedTexSubImage2D, s *api.State, out transform.Writer) error {
+func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexSubImage2D, s *api.State, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.thread)

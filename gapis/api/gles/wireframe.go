@@ -32,7 +32,7 @@ import (
 // primitives with draw calls of a wireframe equivalent.
 func wireframe(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "Wireframe")
-	return transform.Transform("Wireframe", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("Wireframe", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		if dc, ok := cmd.(drawCall); ok {
 			s := out.State()
 			dID := id.Derived()
@@ -54,9 +54,9 @@ func wireframe(ctx context.Context) transform.Transformer {
 
 // wireframeOverlay returns an atom transform that renders the wireframe of the
 // mesh over of the specified draw call.
-func wireframeOverlay(ctx context.Context, i atom.ID) transform.Transformer {
+func wireframeOverlay(ctx context.Context, i api.CmdID) transform.Transformer {
 	ctx = log.Enter(ctx, "WireframeMode_Overlay")
-	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		if i == id {
 			if dc, ok := cmd.(drawCall); ok {
 				s := out.State()
@@ -86,7 +86,7 @@ func wireframeOverlay(ctx context.Context, i atom.ID) transform.Transformer {
 	})
 }
 
-func drawWireframe(ctx context.Context, i atom.ID, dc drawCall, s *api.State, out transform.Writer) error {
+func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.State, out transform.Writer) error {
 	c := GetContext(s, dc.Thread())
 	cb := CommandBuilder{Thread: dc.Thread()}
 	dID := i.Derived()

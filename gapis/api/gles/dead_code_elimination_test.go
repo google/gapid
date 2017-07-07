@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -180,7 +179,7 @@ func TestDeadAtomRemoval(t *testing.T) {
 		expectedAtoms := []api.Cmd{}
 		for i, a := range inputAtoms {
 			if isLive[a] {
-				transform.Request(atom.ID(i))
+				transform.Request(api.CmdID(i))
 			}
 			if !isDead[a] {
 				expectedAtoms = append(expectedAtoms, a)

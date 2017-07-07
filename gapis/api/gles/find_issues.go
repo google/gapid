@@ -63,11 +63,11 @@ func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Insta
 // reportTo adds the chan c to the list of issue listeners.
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
-func (t *findIssues) onIssue(cmd api.Cmd, i atom.ID, s service.Severity, e error) {
+func (t *findIssues) onIssue(cmd api.Cmd, id api.CmdID, s service.Severity, e error) {
 	if s == service.Severity_FatalLevel && isIssueWhitelisted(cmd, e) {
 		s = service.Severity_ErrorLevel
 	}
-	t.issues = append(t.issues, replay.Issue{Atom: i, Severity: s, Error: e})
+	t.issues = append(t.issues, replay.Issue{Command: id, Severity: s, Error: e})
 }
 
 // The value 0 is used for many enums - prefer GL_NO_ERROR in this case.
@@ -88,7 +88,7 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 		e.DriverError.ErrorString(), e.ExpectedError.ErrorString())
 }
 
-func (t *findIssues) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	t.lastGlError = GLenum_GL_NO_ERROR
@@ -294,7 +294,7 @@ func (t *findIssues) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
-	out.MutateAndWrite(ctx, atom.NoID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, api.CmdNoID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last

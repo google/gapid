@@ -46,7 +46,7 @@ type issuesConfig struct{}
 // depthBufferRequests.
 type drawConfig struct {
 	wireframeMode      replay.WireframeMode
-	wireframeOverlayID atom.ID // used when wireframeMode == WireframeMode_Overlay
+	wireframeOverlayID api.CmdID // used when wireframeMode == WireframeMode_Overlay
 }
 
 // uniqueConfig returns a replay.Config that is guaranteed to be unique.
@@ -61,7 +61,7 @@ type issuesRequest struct{}
 
 // framebufferRequest requests a postback of a framebuffer's attachment.
 type framebufferRequest struct {
-	after            atom.ID
+	after            api.CmdID
 	width, height    uint32
 	attachment       api.FramebufferAttachment
 	wireframeOverlay bool
@@ -241,9 +241,9 @@ func (a API) QueryFramebufferAttachment(
 
 	c := drawConfig{wireframeMode: wireframeMode}
 	if wireframeMode == replay.WireframeMode_Overlay {
-		c.wireframeOverlayID = atom.ID(after[0])
+		c.wireframeOverlayID = api.CmdID(after[0])
 	}
-	r := framebufferRequest{after: atom.ID(after[0]), width: width, height: height, attachment: attachment}
+	r := framebufferRequest{after: api.CmdID(after[0]), width: width, height: height, attachment: attachment}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err
@@ -257,12 +257,12 @@ func (a API) QueryFramebufferAttachment(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
-	id := atom.NoID
+	id := api.CmdNoID
 	s := out.State()
 	for t, c := range GetState(s).Contexts {
 		if c == nil {
@@ -355,13 +355,13 @@ type bindRendererOnContextSwitch struct {
 	context *Context
 }
 
-func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	thread := cmd.Thread()
 	if context := GetContext(out.State(), thread); context != nil && t.context != context {
 		t.context = context
 		ctxID := uint32(context.Identifier)
 		cb := CommandBuilder{Thread: thread}
-		out.MutateAndWrite(ctx, atom.NoID, cb.ReplayBindRenderer(ctxID))
+		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayBindRenderer(ctxID))
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }

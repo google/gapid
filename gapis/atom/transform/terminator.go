@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 // Terminator is an interface that rewrites a set of atoms to only
@@ -26,8 +25,8 @@ import (
 type Terminator interface {
 	// Adds the given atom, and subcommand as the last atom that
 	// must be observed
-	Add(context.Context, atom.ID, []uint64) error
+	Add(context.Context, api.CmdID, []uint64) error
 	// The transformer interface
-	Transform(context.Context, atom.ID, api.Cmd, Writer)
+	Transform(context.Context, api.CmdID, api.Cmd, Writer)
 	Flush(context.Context, Writer)
 }

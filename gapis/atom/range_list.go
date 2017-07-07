@@ -14,7 +14,10 @@
 
 package atom
 
-import "github.com/google/gapid/core/math/interval"
+import (
+	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapis/api"
+)
 
 // RangeList is a list of atom ranges.
 type RangeList []Range
@@ -30,7 +33,7 @@ func (l RangeList) SetSpan(index int, span interval.U64Span) { l[index].SetSpan(
 
 // New creates a new element at the specifed index with the specified span
 func (l *RangeList) New(index int, span interval.U64Span) {
-	(*l)[index] = Range{ID(span.Start), ID(span.End)}
+	(*l)[index] = Range{api.CmdID(span.Start), api.CmdID(span.End)}
 }
 
 // Copy copies count ranges within the list.

@@ -27,13 +27,13 @@ import (
 type tweaker struct {
 	out  transform.Writer
 	cb   CommandBuilder
-	dID  atom.ID // Derived ID to use for generated atoms. Can be NoID.
+	dID  api.CmdID // Derived ID to use for generated atoms. Can be NoID.
 	s    *api.State
 	c    *Context
 	undo []func(context.Context)
 }
 
-func newTweaker(out transform.Writer, id atom.ID, cb CommandBuilder) *tweaker {
+func newTweaker(out transform.Writer, id api.CmdID, cb CommandBuilder) *tweaker {
 	s := out.State()
 	c := GetContext(s, cb.Thread)
 	dID := id.Derived()

@@ -33,7 +33,7 @@ import (
 )
 
 type AtomA struct {
-	ID    atom.ID
+	ID    api.CmdID
 	Flags api.CmdFlags
 }
 
@@ -48,7 +48,7 @@ func (a *AtomA) Mutate(context.Context, *api.State, *builder.Builder) error {
 }
 
 type AtomB struct {
-	ID   atom.ID
+	ID   api.CmdID
 	Bool bool
 }
 

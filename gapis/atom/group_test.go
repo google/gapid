@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 )
 
 func check(t *testing.T, name string, expected, got uint64) {
@@ -51,7 +52,7 @@ var tree = `Group 'root' [0..1099]
 
 func buildTestGroup(end uint64) Group {
 	return Group{
-		"root", Range{0, ID(end)}, Spans{
+		"root", Range{0, api.CmdID(end)}, Spans{
 			Range{0, 100},
 			Group{"Sub-group 0", Range{100, 200}, Spans{
 				Range{100, 200},
@@ -76,7 +77,7 @@ func buildTestGroup(end uint64) Group {
 			Group{"Sub-group 2", Range{500, 600}, Spans{
 				Range{500, 600},
 			}},
-			Range{600, ID(end - 100)},
+			Range{600, api.CmdID(end - 100)},
 		},
 	}
 }
@@ -104,24 +105,24 @@ func TestGroupIndex(t *testing.T) {
 		index    uint64
 		expected GroupOrID
 	}{
-		{0, ID(0)},
-		{1, ID(1)},
-		{50, ID(50)},
+		{0, api.CmdID(0)},
+		{1, api.CmdID(1)},
+		{50, api.CmdID(50)},
 		{100, root.Spans[1].(Group)},
-		{101, ID(200)},
-		{102, ID(201)},
-		{151, ID(250)},
-		{200, ID(299)},
+		{101, api.CmdID(200)},
+		{102, api.CmdID(201)},
+		{151, api.CmdID(250)},
+		{200, api.CmdID(299)},
 		{201, root.Spans[3].(Group)},
-		{202, ID(400)},
-		{203, ID(401)},
-		{252, ID(450)},
-		{301, ID(499)},
+		{202, api.CmdID(400)},
+		{203, api.CmdID(401)},
+		{252, api.CmdID(450)},
+		{301, api.CmdID(499)},
 		{302, root.Spans[5].(Group)},
-		{303, ID(600)},
-		{304, ID(601)},
-		{353, ID(650)},
-		{402, ID(699)},
+		{303, api.CmdID(600)},
+		{304, api.CmdID(601)},
+		{353, api.CmdID(650)},
+		{402, api.CmdID(699)},
 	} {
 		got := root.Index(test.index)
 		assert.For(ctx, "root.Index(%v)", test.index).That(got).DeepEquals(test.expected)
@@ -132,7 +133,7 @@ func TestGroupIndexOf(t *testing.T) {
 	ctx := log.Testing(t)
 	root := buildTestGroup(1100)
 	for _, test := range []struct {
-		id       ID
+		id       api.CmdID
 		expected uint64
 	}{
 		{0, 0},
@@ -370,7 +371,7 @@ func TestAddAtomsFill(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
 
-	got.AddAtoms(func(ID) bool { return true }, 0)
+	got.AddAtoms(func(api.CmdID) bool { return true }, 0)
 
 	expected := Group{
 		"root", Range{0, 1100}, Spans{
@@ -410,7 +411,7 @@ func TestAddAtomsSparse(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
 
-	got.AddAtoms(func(id ID) bool { return (id/50)&1 == 0 }, 0)
+	got.AddAtoms(func(id api.CmdID) bool { return (id/50)&1 == 0 }, 0)
 
 	expected := Group{
 		"root", Range{0, 1100}, Spans{
@@ -448,7 +449,7 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(700)
 
-	got.AddAtoms(func(ID) bool { return true }, 45)
+	got.AddAtoms(func(api.CmdID) bool { return true }, 45)
 
 	expected := Group{
 		"root", Range{0, 700}, Spans{
@@ -570,35 +571,35 @@ func TestIterateForwards(t *testing.T) {
 		expected []idxAndGroupOrID
 	}{
 		{0, 3, []idxAndGroupOrID{
-			{0, ID(0)},
-			{1, ID(1)},
-			{2, ID(2)},
+			{0, api.CmdID(0)},
+			{1, api.CmdID(1)},
+			{2, api.CmdID(2)},
 		}},
 		{98, 5, []idxAndGroupOrID{
-			{98, ID(98)},
-			{99, ID(99)},
+			{98, api.CmdID(98)},
+			{99, api.CmdID(99)},
 			{100, root.Spans[1].(Group)},
-			{101, ID(200)},
-			{102, ID(201)},
+			{101, api.CmdID(200)},
+			{102, api.CmdID(201)},
 		}},
 		{199, 5, []idxAndGroupOrID{
-			{199, ID(298)},
-			{200, ID(299)},
+			{199, api.CmdID(298)},
+			{200, api.CmdID(299)},
 			{201, root.Spans[3].(Group)},
-			{202, ID(400)},
-			{203, ID(401)},
+			{202, api.CmdID(400)},
+			{203, api.CmdID(401)},
 		}},
 		{300, 5, []idxAndGroupOrID{
-			{300, ID(498)},
-			{301, ID(499)},
+			{300, api.CmdID(498)},
+			{301, api.CmdID(499)},
 			{302, root.Spans[5].(Group)},
-			{303, ID(600)},
-			{304, ID(601)},
+			{303, api.CmdID(600)},
+			{304, api.CmdID(601)},
 		}},
 		{700, 3, []idxAndGroupOrID{
-			{700, ID(997)},
-			{701, ID(998)},
-			{702, ID(999)},
+			{700, api.CmdID(997)},
+			{701, api.CmdID(998)},
+			{702, api.CmdID(999)},
 			{0xdead, nil}, // Not reached
 		}},
 	} {
@@ -627,36 +628,36 @@ func TestIterateBackwards(t *testing.T) {
 		expected []idxAndGroupOrID
 	}{
 		{2, 3, []idxAndGroupOrID{
-			{2, ID(2)},
-			{1, ID(1)},
-			{0, ID(0)},
+			{2, api.CmdID(2)},
+			{1, api.CmdID(1)},
+			{0, api.CmdID(0)},
 			{0xdead, nil}, // Not reached
 		}},
 		{102, 5, []idxAndGroupOrID{
-			{102, ID(201)},
-			{101, ID(200)},
+			{102, api.CmdID(201)},
+			{101, api.CmdID(200)},
 			{100, root.Spans[1].(Group)},
-			{99, ID(99)},
-			{98, ID(98)},
+			{99, api.CmdID(99)},
+			{98, api.CmdID(98)},
 		}},
 		{203, 5, []idxAndGroupOrID{
-			{203, ID(401)},
-			{202, ID(400)},
+			{203, api.CmdID(401)},
+			{202, api.CmdID(400)},
 			{201, root.Spans[3].(Group)},
-			{200, ID(299)},
-			{199, ID(298)},
+			{200, api.CmdID(299)},
+			{199, api.CmdID(298)},
 		}},
 		{304, 5, []idxAndGroupOrID{
-			{304, ID(601)},
-			{303, ID(600)},
+			{304, api.CmdID(601)},
+			{303, api.CmdID(600)},
 			{302, root.Spans[5].(Group)},
-			{301, ID(499)},
-			{300, ID(498)},
+			{301, api.CmdID(499)},
+			{300, api.CmdID(498)},
 		}},
 		{702, 3, []idxAndGroupOrID{
-			{702, ID(999)},
-			{701, ID(998)},
-			{700, ID(997)},
+			{702, api.CmdID(999)},
+			{701, api.CmdID(998)},
+			{700, api.CmdID(997)},
 		}},
 	} {
 		i := 0
@@ -690,52 +691,52 @@ func TestTraverseForwards(t *testing.T) {
 		expected []indicesAndGroupOrID
 	}{
 		{I(), []indicesAndGroupOrID{
-			{I(0), ID(0)},
-			{I(1), ID(1)},
-			{I(2), ID(2)},
+			{I(0), api.CmdID(0)},
+			{I(1), api.CmdID(1)},
+			{I(2), api.CmdID(2)},
 		}},
 		{I(98), []indicesAndGroupOrID{
-			{I(98), ID(98)},
-			{I(99), ID(99)},
+			{I(98), api.CmdID(98)},
+			{I(99), api.CmdID(99)},
 			{I(100), root.Spans[1].(Group)},
-			{I(100, 0), ID(100)},
-			{I(100, 1), ID(101)},
-			{I(100, 2), ID(102)},
+			{I(100, 0), api.CmdID(100)},
+			{I(100, 1), api.CmdID(101)},
+			{I(100, 2), api.CmdID(102)},
 		}},
 		{I(199), []indicesAndGroupOrID{
-			{I(199), ID(298)},
-			{I(200), ID(299)},
+			{I(199), api.CmdID(298)},
+			{I(200), api.CmdID(299)},
 			{I(201), root.Spans[3].(Group)},
-			{I(201, 0), ID(310)},
-			{I(201, 1), ID(311)},
+			{I(201, 0), api.CmdID(310)},
+			{I(201, 1), api.CmdID(311)},
 		}},
 		{I(201, 8), []indicesAndGroupOrID{
-			{I(201, 8), ID(318)},
-			{I(201, 9), ID(319)},
+			{I(201, 8), api.CmdID(318)},
+			{I(201, 9), api.CmdID(319)},
 			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
-			{I(201, 10, 0), ID(350)},
+			{I(201, 10, 0), api.CmdID(350)},
 			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
 			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
-			{I(201, 11, 0, 0), ID(360)},
-			{I(201, 11, 0, 1), ID(361)},
+			{I(201, 11, 0, 0), api.CmdID(360)},
+			{I(201, 11, 0, 1), api.CmdID(361)},
 			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
-			{I(201, 11, 1, 0), ID(362)},
-			{I(201, 11, 1, 1), ID(363)},
-			{I(201, 11, 1, 2), ID(364)},
-			{I(201, 12), ID(370)},
+			{I(201, 11, 1, 0), api.CmdID(362)},
+			{I(201, 11, 1, 1), api.CmdID(363)},
+			{I(201, 11, 1, 2), api.CmdID(364)},
+			{I(201, 12), api.CmdID(370)},
 		}},
 		{I(300), []indicesAndGroupOrID{
-			{I(300), ID(498)},
-			{I(301), ID(499)},
+			{I(300), api.CmdID(498)},
+			{I(301), api.CmdID(499)},
 			{I(302), root.Spans[5].(Group)},
-			{I(302, 0), ID(500)},
-			{I(302, 1), ID(501)},
-			{I(302, 2), ID(502)},
+			{I(302, 0), api.CmdID(500)},
+			{I(302, 1), api.CmdID(501)},
+			{I(302, 2), api.CmdID(502)},
 		}},
 		{I(700), []indicesAndGroupOrID{
-			{I(700), ID(997)},
-			{I(701), ID(998)},
-			{I(702), ID(999)},
+			{I(700), api.CmdID(997)},
+			{I(701), api.CmdID(998)},
+			{I(702), api.CmdID(999)},
 		}},
 	} {
 		i := 0
@@ -787,88 +788,88 @@ func TestTraverseBackwards(t *testing.T) {
 		expected []indicesAndGroupOrID
 	}{
 		{root, I(), []indicesAndGroupOrID{
-			{I(702), ID(999)},
-			{I(701), ID(998)},
-			{I(700), ID(997)},
+			{I(702), api.CmdID(999)},
+			{I(701), api.CmdID(998)},
+			{I(700), api.CmdID(997)},
 		}},
 		{root, I(100, 2), []indicesAndGroupOrID{
-			{I(100, 2), ID(102)},
-			{I(100, 1), ID(101)},
-			{I(100, 0), ID(100)},
+			{I(100, 2), api.CmdID(102)},
+			{I(100, 1), api.CmdID(101)},
+			{I(100, 0), api.CmdID(100)},
 			{I(100), root.Spans[1].(Group)},
-			{I(99), ID(99)},
-			{I(98), ID(98)},
+			{I(99), api.CmdID(99)},
+			{I(98), api.CmdID(98)},
 		}},
 		{root, I(201, 1), []indicesAndGroupOrID{
-			{I(201, 1), ID(311)},
-			{I(201, 0), ID(310)},
+			{I(201, 1), api.CmdID(311)},
+			{I(201, 0), api.CmdID(310)},
 			{I(201), root.Spans[3].(Group)},
-			{I(200), ID(299)},
-			{I(199), ID(298)},
+			{I(200), api.CmdID(299)},
+			{I(199), api.CmdID(298)},
 		}},
 		{root, I(201, 13), []indicesAndGroupOrID{
-			{I(201, 13), ID(371)},
-			{I(201, 12), ID(370)},
-			{I(201, 11, 1, 2), ID(364)},
-			{I(201, 11, 1, 1), ID(363)},
-			{I(201, 11, 1, 0), ID(362)},
+			{I(201, 13), api.CmdID(371)},
+			{I(201, 12), api.CmdID(370)},
+			{I(201, 11, 1, 2), api.CmdID(364)},
+			{I(201, 11, 1, 1), api.CmdID(363)},
+			{I(201, 11, 1, 0), api.CmdID(362)},
 			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
-			{I(201, 11, 0, 1), ID(361)},
-			{I(201, 11, 0, 0), ID(360)},
+			{I(201, 11, 0, 1), api.CmdID(361)},
+			{I(201, 11, 0, 0), api.CmdID(360)},
 			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
 			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
-			{I(201, 10, 0), ID(350)},
+			{I(201, 10, 0), api.CmdID(350)},
 			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
-			{I(201, 9), ID(319)},
-			{I(201, 8), ID(318)},
+			{I(201, 9), api.CmdID(319)},
+			{I(201, 8), api.CmdID(318)},
 		}},
 		{root, I(201, 11, 1, 1), []indicesAndGroupOrID{
-			{I(201, 11, 1, 1), ID(363)},
-			{I(201, 11, 1, 0), ID(362)},
+			{I(201, 11, 1, 1), api.CmdID(363)},
+			{I(201, 11, 1, 0), api.CmdID(362)},
 			{I(201, 11, 1), root.Spans[3].(Group).Spans[2].(Group).Spans[1].(Group)},
-			{I(201, 11, 0, 1), ID(361)},
-			{I(201, 11, 0, 0), ID(360)},
+			{I(201, 11, 0, 1), api.CmdID(361)},
+			{I(201, 11, 0, 0), api.CmdID(360)},
 			{I(201, 11, 0), root.Spans[3].(Group).Spans[2].(Group).Spans[0].(Group)},
 			{I(201, 11), root.Spans[3].(Group).Spans[2].(Group)},
-			{I(201, 10, 0), ID(350)},
+			{I(201, 10, 0), api.CmdID(350)},
 			{I(201, 10), root.Spans[3].(Group).Spans[1].(Group)},
-			{I(201, 9), ID(319)},
+			{I(201, 9), api.CmdID(319)},
 		}},
 		{root, I(302, 2), []indicesAndGroupOrID{
-			{I(302, 2), ID(502)},
-			{I(302, 1), ID(501)},
-			{I(302, 0), ID(500)},
+			{I(302, 2), api.CmdID(502)},
+			{I(302, 1), api.CmdID(501)},
+			{I(302, 0), api.CmdID(500)},
 			{I(302), root.Spans[5].(Group)},
-			{I(301), ID(499)},
-			{I(300), ID(498)},
+			{I(301), api.CmdID(499)},
+			{I(300), api.CmdID(498)},
 		}},
 		{root, I(702), []indicesAndGroupOrID{
-			{I(702), ID(999)},
-			{I(701), ID(998)},
-			{I(700), ID(997)},
+			{I(702), api.CmdID(999)},
+			{I(701), api.CmdID(998)},
+			{I(700), api.CmdID(997)},
 		}},
 		{overflowTest, I(1, 1, 1), []indicesAndGroupOrID{
-			{I(1, 1, 1), ID(8)},
-			{I(1, 1, 0), ID(7)},
+			{I(1, 1, 1), api.CmdID(8)},
+			{I(1, 1, 0), api.CmdID(7)},
 			{I(1, 1), overflowTest.Spans[1].(Group).Spans[1].(Group)},
-			{I(1, 0, 1), ID(6)},
-			{I(1, 0, 0), ID(5)},
+			{I(1, 0, 1), api.CmdID(6)},
+			{I(1, 0, 0), api.CmdID(5)},
 			{I(1, 0), overflowTest.Spans[1].(Group).Spans[0].(Group)},
 			{I(1), overflowTest.Spans[1].(Group)},
-			{I(0, 2), ID(4)},
-			{I(0, 1, 1), ID(3)},
-			{I(0, 1, 0), ID(2)},
+			{I(0, 2), api.CmdID(4)},
+			{I(0, 1, 1), api.CmdID(3)},
+			{I(0, 1, 0), api.CmdID(2)},
 		}},
 		// This test should pass, given the previous test (it's a subrange), but
 		// it used to cause an unsinged int overflow and thus fail (see 3c90b4c).
 		{overflowTest, I(1, 0, 1), []indicesAndGroupOrID{
-			{I(1, 0, 1), ID(6)},
-			{I(1, 0, 0), ID(5)},
+			{I(1, 0, 1), api.CmdID(6)},
+			{I(1, 0, 0), api.CmdID(5)},
 			{I(1, 0), overflowTest.Spans[1].(Group).Spans[0].(Group)},
 			{I(1), overflowTest.Spans[1].(Group)},
-			{I(0, 2), ID(4)},
-			{I(0, 1, 1), ID(3)},
-			{I(0, 1, 0), ID(2)},
+			{I(0, 2), api.CmdID(4)},
+			{I(0, 1, 1), api.CmdID(3)},
+			{I(0, 1, 0), api.CmdID(2)},
 		}},
 	} {
 		i := 0

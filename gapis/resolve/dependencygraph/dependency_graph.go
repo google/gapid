@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 )
@@ -126,7 +125,7 @@ type DependencyGraphBehaviourProvider interface {
 }
 
 type BehaviourProvider interface {
-	GetBehaviourForAtom(context.Context, *api.State, atom.ID, api.Cmd, *DependencyGraph) AtomBehaviour
+	GetBehaviourForAtom(context.Context, *api.State, api.CmdID, api.Cmd, *DependencyGraph) AtomBehaviour
 }
 
 func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
@@ -158,11 +157,11 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 
 	s := c.NewState()
 	t0 := dependencyGraphBuildCounter.Start()
-	for i, c := range cmds {
-		api := c.API()
-		if _, ok := behaviourProviders[api]; !ok {
-			if bp, ok := api.(DependencyGraphBehaviourProvider); ok {
-				behaviourProviders[api] = bp.GetDependencyGraphBehaviourProvider(ctx)
+	for i, cmd := range cmds {
+		a := cmd.API()
+		if _, ok := behaviourProviders[a]; !ok {
+			if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
+				behaviourProviders[a] = bp.GetDependencyGraphBehaviourProvider(ctx)
 			} else {
 				// API does not provide dependency information, always keep atoms for
 				// such APIs.
@@ -171,14 +170,14 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 				// info, we still need to mutate it in the new state, because following
 				// atoms in other APIs may depends on the side effect of the current
 				// atom.
-				if err := c.Mutate(ctx, s, nil /* builder */); err != nil {
-					log.W(ctx, "Atom %v %v: %v", atom.ID(i), c, err)
+				if err := cmd.Mutate(ctx, s, nil /* builder */); err != nil {
+					log.W(ctx, "Command %v %v: %v", api.CmdID(i), cmd, err)
 					return AtomBehaviour{Aborted: true}, nil
 				}
 				continue
 			}
 		}
-		g.Behaviours[i] = behaviourProviders[api].GetBehaviourForAtom(ctx, s, atom.ID(i), c, g)
+		g.Behaviours[i] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, api.CmdID(i), cmd, g)
 	}
 	dependencyGraphBuildCounter.Stop(t0)
 	return g, nil

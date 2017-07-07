@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -185,7 +184,7 @@ func (w *adapter) State() *api.State {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx context.Context, id atom.ID, cmd api.Cmd) {
+func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	w.builder.BeginAtom(uint64(id))
 	if err := cmd.Mutate(ctx, w.state, w.builder); err == nil {
 		w.builder.CommitAtom()
