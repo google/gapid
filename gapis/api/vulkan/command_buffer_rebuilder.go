@@ -682,8 +682,8 @@ func rebuildCmdResetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *gfxapi.State,
-	d *RecreateCmdResetEventData) (func(), atom.Atom) {
+	s *api.State,
+	d *RecreateCmdResetEventData) (func(), api.Cmd) {
 	return func() {
 		}, cb.VkCmdResetEvent(commandBuffer,
 			d.Event,
