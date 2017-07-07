@@ -1,0 +1,1225 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "module" ""}}
+{{Include "go_common.tmpl"}}
+{{$ | Macro "api.go" | GoFmt | Write "api.go"}}
+{{$ | Macro "enum.go" | GoFmt | Write "enum.go"}}
+
+{{define "api.go"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+  import (
+    "context"
+    "fmt"
+
+    "github.com/google/gapid/core/data/binary"
+    "github.com/google/gapid/core/data/id"
+    "github.com/google/gapid/core/math/u64"
+    "github.com/google/gapid/gapis/api"
+    "github.com/google/gapid/gapis/atom"
+    "github.com/google/gapid/gapis/capture"
+    "github.com/google/gapid/gapis/replay/builder"
+    "github.com/google/gapid/gapis/replay/protocol"
+    "github.com/google/gapid/gapis/replay/value"
+    "github.com/google/gapid/gapis/resolve"
+    "github.com/google/gapid/gapis/service"
+    "github.com/google/gapid/gapis/service/path"
+
+    ϟmem "github.com/google/gapid/gapis/memory"
+)
+
+  {{range $p := $.Pseudonyms}}
+    {{template "Pseudonym" $p}}
+  {{end}}
+
+  {{range $p := $.Pointers}}
+    {{template "Pointer" $p}}
+  {{end}}
+
+  {{range $s := $.StaticArrays}}
+    {{template "Array" $s}}
+  {{end}}
+
+  {{range $s := $.Slices}}
+    {{template "Slice" $s}}
+  {{end}}
+
+  {{range $m := $.Maps}}
+    {{template "Map" $m}}
+  {{end}}
+
+  {{range $i, $c := AllCommands $}}
+    {{Template "CommandEntry" "Command" $c "Index" $i}}
+  {{end}}
+
+  {{range $c := $.Classes}}
+    {{template "Class" $c}}
+  {{end}}
+
+  {{template "State" $}}
+
+  {{template "CommandBuilder" $}}
+
+  {{template "API" $}}
+
+  func init() {
+    api.Register(API{})
+  }
+
+  func panicIfNotCtxCancel(err error) {
+    switch errors.Cause(err) {
+      case nil:
+      case context.Canceled:
+      default:
+        panic(err)
+    }
+  }
+{{end}}
+
+
+{{define "enum.go"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+  {{if $.Enums}}
+    import (
+      "fmt"
+
+      "github.com/google/gapid/core/log"
+      "github.com/google/gapid/gapis/api"
+      "github.com/google/gapid/gapis/atom"
+      "github.com/google/gapid/gapis/memory"
+      "github.com/google/gapid/gapis/replay/builder"
+      "github.com/google/gapid/gapis/service"
+
+      ϟmem "github.com/google/gapid/gapis/memory"
+    )
+    {{range $e := $.Enums}}
+      {{template "Enum" $e}}
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration for the specified pseudonym.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Pseudonym"}}
+  {{AssertType $ "Pseudonym"}}
+
+  {{$u := $ | Underlying}}
+  {{     if IsPointer  $u}}{{Template "Pointer" $}}
+  {{else if IsSlice    $u}}{{Template "Slice"   $}}
+  {{else if IsVoid     $u}}
+  {{else}}
+    {{$to := Macro "Go.Type" $.To}}
+    type {{$.Name}} {{$to}}
+    {{if IsSize $u}}
+      // Dummy function to make {{$.Name}} implement SizeTy interface
+      func ({{$.Name}}) IsMemorySize() {}
+    {{end}}
+    {{if IsChar $u}}
+      // Dummy function to make {{$.Name}} implement CharTy interface
+      func ({{$.Name}}) IsChar() {}
+    {{end}}
+    {{if IsInt $u}}
+      // Dummy function to make {{$.Name}} implement IntTy interface
+      func ({{$.Name}}) IsInt() {}
+    {{end}}
+    {{if IsUint $u}}
+      // Dummy function to make {{$.Name}} implement UintTy interface
+      func ({{$.Name}}) IsUint() {}
+    {{end}}
+    func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
+      return {{$.Name}}({{Template "Go.Decode" $u}})
+    }
+  {{end}}
+
+  {{template "LabelsForLabeledType" $}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration for the static-array type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Array"}}
+  {{AssertType $ "StaticArray"}}
+
+  {{$ty := Macro "Go.Type" $}}
+  type {{$ty}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
+
+  {{if IsNumericType $.ValueType}}
+    func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+      for _, v := range a {
+        ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
+      }
+      return ϟb.Buffer({{$.Size}})
+    }
+  {{end}}
+
+  func Decode{{$ty | Title}}(d *ϟmem.Decoder) {{$ty}} {
+    out := {{$ty}}{}
+    ϟmem.Read(d, &out)
+    return out
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the Pointer type or indirect
+  type (Pseudonym) to Pointer.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Pointer"}}
+  {{AssertType $ "Pointer" "Pseudonym"}}
+
+  {{$p          := $ | Underlying | Unpack                 }}
+  {{$slice_ty   := Macro "Go.Type"   $p.Slice              }}
+  {{$ptr_ty     := Macro "Go.Type"   $                     }}
+  {{$el_ty      := Macro "Go.Type"   $p.To                 }}
+  {{$el_is_void := IsVoid    ($p.To | Underlying | Unpack) }}
+  {{$el_is_char := IsChar    ($p.To | Underlying | Unpack) }}
+  {{$el_is_ptr  := IsPointer ($p.To | Underlying | Unpack) }}
+
+  var _ = ϟmem.Pointer({{$ptr_ty}}{})
+  var _ data.Assignable = &{{$ptr_ty}}{}
+
+  // {{$ptr_ty}} is a pointer to a {{$el_ty}} element.
+  {{if $el_is_ptr}}
+  // Note: Pointers are stored differently between the application pool and internal pools.
+  //  * The application pool stores pointers as an address of an architecture-dependant size.
+  //  * Internal pools store pointers as an 64-bit unsigned address and a 32-bit unsigned
+  //    pool identifier.
+  {{end}}
+  type {{$ptr_ty}} struct {
+    addr uint64
+    pool ϟmem.PoolID
+  }
+
+  // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
+  func New{{$ptr_ty}}(p ϟmem.Pointer) {{$ptr_ty}} {
+    if p == nil {
+      return {{$ptr_ty}}{  0, ϟmem.ApplicationPool }
+    }
+    return {{$ptr_ty}}{ p.Address(), p.Pool() }
+  }
+
+  func (p *{{$ptr_ty}}) Assign(o interface{}) bool {
+    if o, ok := o.(ϟmem.Pointer); ok {
+      *p = {{$ptr_ty}}{o.Address(), o.Pool()}
+      return true
+    }
+    return false
+  }
+
+  // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
+  func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
+
+  // Address returns the pointer's memory address.
+  func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
+
+  // Pool returns the memory pool.
+  func (p {{$ptr_ty}}) Pool() ϟmem.PoolID { return p.pool }
+
+  // Offset returns the pointer offset by n bytes.
+  func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
+
+  // ElementType returns the reflect.Type of the element that {{$ptr_ty}} points to.
+  func (p {{$ptr_ty}}) ElementType() reflect.Type {
+      var el {{if not $el_is_void}}{{$el_ty}}{{else}}byte{{end}}
+      return reflect.TypeOf(el)
+  }
+
+  // ElementSize returns the size in bytes of an element that {{$ptr_ty}} points to.
+  func (p {{$ptr_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
+    return {{Template "Go.SizeOf" $p.To}}
+  }
+
+  {{if not $el_is_void}}
+    // Read reads and returns the {{$el_ty}} element at the pointer.
+    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$el_ty}} {
+      return p.Slice(0, 1, ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, ϟb)[0]
+    }
+
+    // Write writes value to the {{$el_ty}} element at the pointer.
+    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {
+      p.Slice(0, 1, ϟs.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟa, ϟs, ϟb)
+    }
+  {{end}}
+
+  {{if $el_is_char}}
+    // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
+    func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *api.State) Charˢ {
+      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.pool].At(p.addr))
+      for {
+        i++
+        if b := d.U8(); b == 0 {
+          return Charˢ(p.Slice(0, i, ϟs.MemoryLayout))
+        }
+      }
+    }
+  {{end}}
+
+  // Slice returns a new {{$slice_ty}} from the pointer using start and end indices.
+  func (p {{$ptr_ty}}) Slice(start, end uint64, ϟl *device.MemoryLayout) {{$slice_ty}} {
+    if start > end {
+      panic(fmt.Errorf("Slice start (%d) is greater than the end (%d)", start, end))
+    }
+    return {{$slice_ty}}{root: p.addr, base: p.addr + start * p.ElementSize(ϟl), count: end-start, pool: p.pool}
+  }
+
+  // ISlice returns a new Slice from the pointer using start and end indices.
+  func (p {{$ptr_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice { return p.Slice(start, end, ϟl) }
+
+  // Check interface conformance
+  var _ path.Linker = {{$ptr_ty}}{}
+
+  // Link returns a path to the object that this is a link to, or error
+  // if you can not follow this path. Typically the incoming path ϟp
+  // is a path to the atom and resulting path is a path to an object
+  // identified by p. Once resolved the path will return a representation
+  // of the value of the instance after the atom has executed.
+  func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
+    if cmd := path.FindCommand(ϟp); cmd != nil {
+      return cmd.MemoryAfter(uint32(p.pool), p.addr, 0), nil
+    }
+    return nil, nil
+  }
+
+  {{if not (GetAnnotation $ "replay_custom_value")}}
+    func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+      if p.addr != 0 {
+        {{if $el_is_ptr}}
+          return value.PointerIndex(p.addr / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
+        {{else}}
+          return value.ObservedPointer(p.addr)
+        {{end}}
+      } else {
+        return value.AbsolutePointer(0)
+      }
+    }
+  {{end}}
+
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits code for reading a slice of structures and remapping all of their
+  elements.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ReadStructWithRemapping"}}
+  {{AssertType $ "Class"}}
+  {{if $.Fields}}
+    s.ReserveMemory(ϟctx, ϟa, ϟs, ϟb)
+    // Write out the entire structure, then over-write
+    // any pointer fields.
+    ϟb.Write(s.Range(ϟs.MemoryLayout), s.ResourceID(ϟctx, ϟs))
+    d := s.Decoder(ϟctx, ϟs)
+    for i := uint64(0); i < s.count; i++ {
+      {{Template "ReadStructFieldsWithRemapping" $}}
+    }
+    panicIfNotCtxCancel(d.Error())
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits remapping code for all of the elements in a structure.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ReadStructFieldsWithRemapping"}}
+  {{AssertType $ "Class"}}
+  {{range $f := $.Fields}}
+    {{if IsPointer ($f.Type | Underlying)}}
+      { // {{$.Name}}.{{$f.Name}}
+        d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+        addr := value.ObservedPointer(s.base + d.Offset())
+        ϟb.Push({{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs))
+        ϟb.Store(addr)
+      }
+    {{else if IsClass ($f.Type | Underlying)}}
+      d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+      {{Template "ReadStructFieldsWithRemapping" $f.Type}}
+    {{else}}
+      {{if GetAnnotation $f.Type "replay_remap"}}
+        {
+          d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+          addr := value.ObservedPointer(s.base + d.Offset())
+          v := {{Template "Go.Decode" $f.Type}}
+          if key, remap := v.remap(ϟa, ϟs); remap {
+            loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
+            ϟb.Store(addr)
+          }
+        }
+      {{else}}
+        {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$f.Name}}
+      {{end}}
+    {{end}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the Slice type or indirect
+  type (Pseudonym) to Slice.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Slice"}}
+  {{AssertType $ "Slice" "Pseudonym"}}
+
+  {{$s          := $ | Underlying | Unpack                 }}
+  {{$slice_ty   := Macro "Go.Type"   $                     }}
+  {{$ptr_ty     := Macro "Go.Type"   $s.Pointer            }}
+  {{$el_ty      := Macro "Go.Type"   $s.To                 }}
+  {{$el_size    := Macro "Go.SizeOf" $s.To                 }}
+  {{$el_is_char := IsChar    ($s.To | Underlying | Unpack) }}
+  {{$el_is_void := IsVoid    ($s.To | Underlying | Unpack) }}
+  {{$el_is_ptr  := IsPointer ($s.To | Underlying | Unpack) }}
+  {{$el_is_class := IsClass  ($s.To | Underlying | Unpack) }}
+
+  // {{$slice_ty}} is a slice of {{$el_ty}}.
+  type {{$slice_ty}} struct {
+    root  uint64        // Original pointer this slice derives from.
+    base  uint64        // Address of first element.
+    count uint64        // Number of elements in the slice.
+    pool  ϟmem.PoolID // The pool identifier.
+  }
+
+  {{if $el_is_char}}
+    // Make{{$slice_ty}}FromString returns a {{$slice_ty}} backed by a new
+    // memory pool containing a copy of str.
+    func Make{{$slice_ty}}FromString(str string, ϟs *api.State) {{$slice_ty}} {
+      pool := &ϟmem.Pool{}
+      pool.Write(0, ϟmem.Blob([]byte(str)))
+      id := ϟs.NextPoolID
+      ϟs.Memory[id] = pool
+      ϟs.NextPoolID++
+      return {{$slice_ty}}{ count: uint64(len(str)), pool: id }
+    }
+  {{end}}
+
+  // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
+  func Make{{$slice_ty}}(count uint64, ϟs *api.State) {{$slice_ty}} {
+    id := ϟs.NextPoolID
+    ϟs.Memory[id] = &ϟmem.Pool{}
+    ϟs.NextPoolID++
+    return {{$slice_ty}}{ count: count, pool: id }
+  }
+
+  // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
+  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+    s.OnRead(ϟctx, ϟa, ϟs, ϟb)
+    pool := &ϟmem.Pool{}
+    pool.Write(0, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+    id := ϟs.NextPoolID
+    ϟs.Memory[id] = pool
+    ϟs.NextPoolID++
+    dst := {{$slice_ty}}{ count: s.count, pool: id }
+    return dst
+  }
+
+  // Root returns the original pointer this slice derives from.
+  func (s {{$slice_ty}}) Root() uint64 { return s.root }
+
+  // Base returns the address of first element.
+  func (s {{$slice_ty}}) Base() uint64 { return s.base }
+
+  // Count returns the number of elements in the slice.
+  func (s {{$slice_ty}}) Count() uint64 { return s.count }
+
+  // Pool returns the the pool identifier.
+  func (s {{$slice_ty}}) Pool() ϟmem.PoolID { return s.pool }
+
+  // ElementType returns the reflect.Type of the elements in the slice.
+  func (s {{$slice_ty}}) ElementType() reflect.Type {
+      var el {{if not $el_is_void}}{{$el_ty}}{{else}}byte{{end}}
+      return reflect.TypeOf(el)
+  }
+
+  // ElementSize returns the size in bytes of an element that {{$slice_ty}} points to.
+  func (s {{$slice_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
+    return {{Template "Go.SizeOf" $s.To}}
+  }
+
+  // Range returns the memory range this slice represents in the underlying pool.
+  func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) ϟmem.Range {
+    return ϟmem.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
+  }
+
+  // ResourceID returns an identifier to a resource representing the data of
+  // this slice.
+  func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟs *api.State) id.ID {
+    id, err := ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
+    if err != nil {
+      panic(err)
+    }
+    return id
+  }
+
+  // Reader returns a binary reader for the slice.
+  func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟs *api.State) binary.Reader {
+    return ϟs.MemoryReader(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+  }
+
+  // Writer returns a binary writer for the slice.
+  func (s {{$slice_ty}}) Writer(ϟs *api.State) binary.Writer {
+    return ϟs.MemoryWriter(s.pool, s.Range(ϟs.MemoryLayout))
+  }
+
+  // Decoder returns a memory decoder for the slice.
+  func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *api.State) *ϟmem.Decoder {
+    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+  }
+
+  // Encoder returns a memory encoder for the slice.
+  func (s {{$slice_ty}}) Encoder(ϟs *api.State) *ϟmem.Encoder {
+    return ϟs.MemoryEncoder(s.pool, s.Range(ϟs.MemoryLayout))
+  }
+
+  {{if not $el_is_void}}
+    // As{{$slice_ty}} returns s cast to a {{$slice_ty}}.
+    // The returned slice length will be calculated so that the returned slice is
+    // no longer (in bytes) than s.
+    func As{{$slice_ty}}(s ϟmem.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
+      out := {{$slice_ty}}{
+        root: s.Root(),
+        base: s.Base(),
+        pool: s.Pool(),
+      }
+      out.count = (s.Count() * s.ElementSize(ϟl)) / out.ElementSize(ϟl)
+      return out
+    }
+
+    // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
+    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) []{{$el_ty}} {
+      s.OnRead(ϟctx, ϟa, ϟs, ϟb)
+      res := make([]{{$el_ty}}, s.count)
+      d := s.Decoder(ϟctx, ϟs)
+      ϟmem.Read(d, &res)
+      panicIfNotCtxCancel(d.Error())
+      return res
+    }
+
+    // Write copies elements from src to this slice. The number of elements copied is returned
+    // which is the minimum of s.count and len(src).
+    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) uint64 {
+      count := u64.Min(s.count, uint64(len(src)))
+      e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
+      ϟmem.Write(e, src[:count])
+      s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
+      panicIfNotCtxCancel(e.Error())
+      return count
+    }
+
+    // Copy copies elements from src to this slice.
+    // The number of elements copied is the minimum of dst.Count and src.Count.
+    // The slices of this and dst to the copied elements is returned.
+    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
+      count := u64.Min(dst.count, src.count)
+      dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
+    {{if $el_is_ptr}}
+      if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
+        dst.Write(ϟctx, src.Read(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
+      } else {
+    {{end}}
+      src.OnRead(ϟctx, ϟa, ϟs, ϟb)
+      ϟs.Memory[dst.pool].Write(dst.base, ϟs.Memory[src.pool].Slice(src.Range(ϟs.MemoryLayout)))
+      dst.OnWrite(ϟctx, ϟa, ϟs, ϟb)
+    {{if $el_is_ptr}} } {{end}}
+      return dst, src
+    }
+
+    // Contains returns true if the slice contains the specified value.
+    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) bool {
+      for _, e := range s.Read(ϟctx, ϟa, ϟs, ϟb) {
+        if e == val {
+          return true
+        }
+      }
+      return false
+    }
+
+  {{end}}
+
+  // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
+  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+    ϟl := ϟs.MemoryLayout
+    if f := ϟs.Memory[s.pool].OnRead; f != nil {
+      f(s.Range(ϟl))
+    }
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+      {{if IsPointer ($s.To | Underlying)}}
+        {{/* Pointers need remapping to replay addresses.
+             Pointer sizes may vary between capture and replay.
+             To handle this, we store pointers in a separate table and refer to
+             these using pointer indices.
+        */}}
+        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
+        for i := uint64(0); i < s.count; i++ {
+          {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
+          ptr := {{$el_ty}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
+          ϟb.StorePointer(dst, ptr)
+          dst++
+        }
+        panicIfNotCtxCancel(d.Error())
+      {{else if IsClass ($s.To | Underlying)}}
+        {{Template "ReadStructWithRemapping" $s.To}}
+      {{else}}
+        s.ReserveMemory(ϟctx, ϟa, ϟs, ϟb)
+        {{if (GetAnnotation $s.To "replay_remap")}}
+          {{/* Element type has explicitly stated it needs custom remapping */}}
+          ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
+          for i := uint64(0); i < s.count; i++ {
+            v := {{Template "Go.Decode" $s.To}}
+            if key, remap := v.remap(ϟa, ϟs); remap {
+              loadRemap(ϟb, key, {{Template "Go.Replay.Type" $s.To}}, {{Template "Go.Replay.Value" "Type" $s.To "Name" "v"}})
+            } else {
+              ϟb.Push({{Template "Go.Replay.Value" "Type" $s.To "Name" "v"}})
+            }
+            ϟb.Store(ptr)
+            ptr += step
+          }
+          panicIfNotCtxCancel(d.Error())
+        {{else}}
+          ϟb.Write(s.Range(ϟl), s.ResourceID(ϟctx, ϟs))
+        {{end}}
+      {{end}}
+    }
+    return s
+  }
+
+  // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
+  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+    ϟl := ϟs.MemoryLayout
+    if f := ϟs.Memory[s.pool].OnWrite; f != nil {
+      f(s.Range(ϟl))
+    }
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
+      {{if (GetAnnotation $s.To "replay_remap")}}
+        {{/* Element type has explicitly stated it needs custom remapping */}}
+        size := s.ElementSize(ϟl)
+        ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
+        for i := uint64(0); i < s.count; i++ {
+          v := {{Template "Go.Decode" $s.To}}
+          if key, remap := v.remap(ϟa, ϟs); remap {
+            dst, found := ϟb.Remappings[key]
+            if !found {
+              dst = ϟb.AllocateMemory(size)
+              ϟb.Remappings[key] = dst
+            }
+            ϟb.Load({{Template "Go.Replay.Type" $s.To}}, ptr)
+            ϟb.Store(dst)
+          }
+          ptr += step
+        }
+        panicIfNotCtxCancel(d.Error())
+      {{end}}
+    }
+    return s
+  }
+
+  func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+      rng := s.Range(ϟs.MemoryLayout)
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
+    }
+    return s
+  }
+
+  // Index returns a {{$ptr_ty}} to the i'th element in this {{$slice_ty}}.
+  func (s {{$slice_ty}}) Index(i uint64, ϟl *device.MemoryLayout) {{$ptr_ty}} {
+    return {{$ptr_ty}}{ s.base + i * s.ElementSize(ϟl), s.pool }
+  }
+
+  // IIndex returns a pointer to the i'th element in the slice.
+  func (s {{$slice_ty}}) IIndex(i uint64, ϟl *device.MemoryLayout) ϟmem.Pointer {
+    return s.Index(i, ϟl)
+  }
+
+  // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
+  func (s {{$slice_ty}}) Slice(start, end uint64, ϟl *device.MemoryLayout) {{$slice_ty}} {
+    if start > end {
+      panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", s, start, end))
+    }
+    if end > s.count {
+      panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
+    }
+    return {{$slice_ty}}{root: s.root, base: s.base + start * s.ElementSize(ϟl), count: end-start, pool: s.pool}
+  }
+
+  // ISlice returns a sub-slice from this slice using start and end indices.
+  func (s {{$slice_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice {
+    return s.Slice(start, end, ϟl)
+  }
+
+  // String returns a string description of the {{$slice_ty}} slice.
+  func (s {{$slice_ty}}) String() string {
+    return fmt.Sprintf("{{$el_ty}}(%v@%v)[%d]", s.base, s.pool, s.count)
+  }
+
+  // Check interface conformance
+  var _ path.Linker = {{$slice_ty}}{}
+
+  // Link returns a path which can be used to view memory which is referenced
+  // by the slice s.
+  // If nil, nil is returned then the path cannot be followed.
+  func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
+    if cmd := path.FindCommand(ϟp); cmd != nil {
+      c, err := capture.ResolveFromPath(ϟctx, cmd.Capture)
+      if err != nil {
+        return nil, err
+      }
+      ϟs := c.NewState()
+      return cmd.MemoryAfter(uint32(s.pool), s.base, s.count * s.ElementSize(ϟs.MemoryLayout)), nil
+    }
+    return nil, nil
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits non-empty if the specified item can be sorted in Go using '<'.
+-------------------------------------------------------------------------------
+*/}}
+
+{{define "IsSortable"}}
+  {{AssertType $ "Type"}}
+  {{     if IsPseudonym     $}}{{Macro "IsSortable" $.To}}
+  {{else if IsBool          $}}true
+  {{else if IsInt           $}}true
+  {{else if IsUint          $}}true
+  {{else if IsChar          $}}true
+  {{else if IsU8            $}}true
+  {{else if IsS8            $}}true
+  {{else if IsU16           $}}true
+  {{else if IsS16           $}}true
+  {{else if IsF32           $}}true
+  {{else if IsU32           $}}true
+  {{else if IsS32           $}}true
+  {{else if IsF64           $}}true
+  {{else if IsU64           $}}true
+  {{else if IsS64           $}}true
+  {{else if IsString        $}}true
+  {{else if IsEnum          $}}true
+  {{else}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Map"}}
+  {{AssertType $ "Map"}}
+  {{$name  := $.Name}}
+  {{$key   := Macro "Go.Type" $.KeyType}}
+  {{$value := Macro "Go.Type" $.ValueType}}
+
+  type {{$name}} map[{{$key}}]{{$value}}
+
+  func (m {{$name}}) Get(key {{$key}}) {{$value}} {
+    {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
+      v, ok := m[key]
+      if !ok {
+        v = {{$init}}
+      }
+      return v
+    {{else}}
+      return m[key]
+    {{end}}
+  }
+
+  func (m {{$name}}) Contains(key {{$key}}) bool {
+    _, ok := m[key]
+    return ok
+  }
+
+  func (m {{$name}}) Delete(key {{$key}}) {
+    delete(m, key)
+  }
+
+  func (m {{$name}}) Range() []{{$value}} {
+    values := make([]{{$value}}, 0, len(m))
+    for _, value := range m {
+      values = append(values, value)
+    }
+    return values
+  }
+
+  {{$sorted := (print $name "_SortKeys")}}
+  type {{$sorted}} []{{$key}}
+
+  func (s {{$sorted}}) Len() int           { return len(s) }
+  func (s {{$sorted}}) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+  {{if Macro "IsSortable" $.KeyType}}
+    func (s {{$sorted}}) Less(i, j int) bool { return s[i] < s[j] }
+  {{else}}
+    // Not naturally sorted {{$key}}, using fmt.Sprint
+    func (s {{$sorted}}) Less(i, j int) bool { return fmt.Sprint(s[i]) < fmt.Sprint(s[j]) }
+  {{end}}
+
+  func (m {{$name}}) KeysSorted() []{{$key}} {
+    s := make({{$sorted}}, len(m))
+    i := 0
+    for k, _ := range m {
+      s[i] = k
+      i++
+    }
+    sort.Sort(s)
+    return s
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a the tags for the given command parameter.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandParameterTags"}}
+  {{AssertType $ "Parameter"}}
+
+  {{$cs := ConstantSetIndex $}}
+
+  `§
+  {{if $.IsReturn}}
+    result:"true"§
+  {{else}}
+    param:"{{$.Name}}"§
+  {{end}}
+  {{if ge $cs 0}}§
+    •constset:"{{$cs}}"§
+  {{end}}§
+  `
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandEntry"}}
+  {{AssertType $.Command "Function"}}
+  {{$name       := $.Command | GoCommandName}}
+  {{$ret        := not (IsVoid $.Command.Return.Type)}}
+  {{$isDrawCall := GetAnnotation $.Command "DrawCall"}}
+  {{$isPFN      := GetAnnotation $.Command "pfn"}}
+  {{if not $isPFN}}
+    {{template "Go.CommentHeader" $name}}
+
+    type {{$name}} struct {
+      extras atom.Extras
+      thread uint64
+      {{range $p := $.Command.FullParameters}}
+        {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
+      {{end}}
+    }
+
+    func (ϟa *{{$name}}) Thread() uint64 { return ϟa.thread }
+
+    func (ϟa *{{$name}}) SetThread(v uint64) { ϟa.thread = v }
+
+    func (ϟa *{{$name}}) AtomName() string { return "{{$.Command | CommandName}}" }
+
+    func (ϟa *{{$name}}) String() string {
+      return fmt.Sprintf("{{$.Command | CommandName}}(§
+        {{range $i, $p := $.Command.CallParameters}}
+          {{if $i}}, §{{end}}
+          {{$p.Name}}: %v§
+        {{end}}
+        ){{if $ret}} → %v{{end}}",§
+        {{range $i, $p := $.Command.CallParameters}}
+          {{Template "Go.Parameter" $p}}, §
+        {{end}}
+        {{if $ret}}ϟa.Result§{{end}}
+      )
+    }
+
+    // AddRead appends a new read observation to the atom of the range rng with
+    // the data id.
+    // The {{$name}} pointer is returned so that calls can be chained.
+    func (ϟa *{{$name}}) AddRead(rng ϟmem.Range, id id.ID) *{{$name}} {
+      ϟa.extras.GetOrAppendObservations().AddRead(rng, id)
+      return ϟa
+    }
+
+    // AddWrite appends a new write observation to the atom of the range rng with
+    // the data id.
+    // The {{$name}} pointer is returned so that calls can be chained.
+    func (ϟa *{{$name}}) AddWrite(rng ϟmem.Range, id id.ID) *{{$name}} {
+      ϟa.extras.GetOrAppendObservations().AddWrite(rng, id)
+      return ϟa
+    }
+
+    func (ϟa *{{$name}}) API() api.API { return API{} }
+    func (ϟa *{{$name}}) AtomFlags() atom.Flags { return 0 §
+        {{if GetAnnotation $.Command "DrawCall"}} | atom.DrawCall §{{end}}
+        {{if GetAnnotation $.Command "Clear"}} | atom.Clear §{{end}}
+        {{if GetAnnotation $.Command "StartOfFrame"}} | atom.StartOfFrame §{{end}}
+        {{if GetAnnotation $.Command "EndOfFrame"}} | atom.EndOfFrame §{{end}}
+        {{if GetAnnotation $.Command "UserMarker"}} | atom.UserMarker §{{end}}
+        {{if GetAnnotation $.Command "PushUserMarker"}} | atom.PushUserMarker §{{end}}
+        {{if GetAnnotation $.Command "PopUserMarker"}} | atom.PopUserMarker §{{end}}
+    }
+    func (ϟa *{{$name}}) Extras() *atom.Extras { return &ϟa.extras }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Class"}}
+  {{AssertType $ "Class"}}
+  {{template "Go.CommentHeader" print "class " $.Name }}
+  {{if GetAnnotation $ "Interface"}}
+    type {{$.Name}} interface {
+      {{Template "ClassInterface" $}}
+    }
+  {{else}}
+    type {{$.Name}} struct {
+      {{Template "ClassFields" $}}
+      {{/* TODO: Remove this once closure support is in the API language */}}
+      {{if (eq $.Name "CommandBufferObject")}}
+        Commands CommandBufferCommands `nobox:"true"`
+      {{end}}
+      {{if (eq $.Name "QueueObject")}}
+        PendingCommands CommandBufferCommands `nobox:"true"`
+      {{end}}
+    }
+
+    {{if GetAnnotation $ "resource"}}
+      // OnCreate should be called immediately after the {{$.Name}} resource is created.
+      func (c *{{$.Name}}) OnCreate(ϟs *api.State) *{{$.Name}} {
+        if f := ϟs.OnResourceCreated; c.IsResource() && f != nil { f(c) }
+        return c
+      }
+
+      // OnAccess should be called each time the {{$.Name}} resource is used.
+      func (c *{{$.Name}}) OnAccess(ϟs *api.State) *{{$.Name}} {
+        if f := ϟs.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
+        return c
+      }
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits an interface declaration for the specified @interface class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassInterface"}}
+  {{AssertType $ "Class"}}
+  {{range $v := $.Fields}}
+    {{$type := TypeOf $v}}
+    Get{{Title $v.Name}}() {{Template "Go.Type" $type}}
+    Set{{Title $v.Name}}({{Template "Go.Type" $type}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a list of fields of the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassFields"}}
+  {{AssertType $ "Class"}}
+  {{range $v := $.Fields}}
+    {{$cs := ConstantSetIndex $v}}
+    {{Title $v.Name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}{{if GetAnnotation $v "hidden"}}`nobox:"true"`{{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the default value for the specified type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Default"}}
+  {{     if IsBoolValue    $}}{{$}}
+  {{else if IsNumericValue $}}{{$}}
+  {{else if IsStringValue  $}}{{$}}
+  {{else if IsEnumEntry    $}}{{$.Owner.Name}}_{{$.Name}}
+  {{else if IsCast         $}}{{Template "Default" $.Object}}
+  {{else}}{{Error "macro Default called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the implementation code for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassImpl"}}
+  {{AssertType $.Class "Class"}}
+  {{AssertType $.Impl "string"}}
+  {{range $v := $.Class.Fields}}
+    {{$type := TypeOf $v}}
+    {{$FType := Macro "Go.Type" $type}}
+    func (i *{{$.Impl}}) Get{{$v.Name}}() {{$FType}} { return i.{{$v.Name}} }
+    func (i *{{$.Impl}}) Set{{$v.Name}}(v {{$FType}}) { i.{{$v.Name}} = v }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified enum.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Enum"}}
+  {{AssertType $ "Enum"}}
+  {{template "Go.CommentHeader" print "enum " $.Name }}
+  type {{$.Name}} uint32
+
+  {{Template "EnumConstants" "Enum" $ "Name" $.Name}}
+
+  func (e {{$.Name}}) String() string {
+    switch e {
+      {{range $e := UniqueEnumKeys $}}
+        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
+      {{end}}
+    }
+    return fmt.Sprintf("{{$.Name}}(%d)", e)
+  }
+
+  func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
+    return {{$.Name}}(d.U32())
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a list of entries for the specified enum.
+-------------------------------------------------------------------------------
+*/}}
+{{define "EnumConstants"}}
+  {{AssertType $.Enum "Enum"}}
+  {{AssertType $.Name "string"}}
+   const (
+     {{range $e := $.Enum.Entries}}
+        {{$.Name}}_{{$e.Name}} = {{$.Name}}({{$e.Value}})
+     {{end}}
+   )
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified label group.
+-------------------------------------------------------------------------------
+*/}}
+{{define "LabelsForLabeledType"}}
+  {{if $.Labels}}
+    {{template "Go.CommentHeader" print "Labels (named constants) for " $.Name }}
+
+    {{Template "LabelConstants" "Labeled" $ "Name" $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a list of labels for the specified labeled type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "LabelConstants"}}
+  {{AssertType $.Name "string"}}
+  const (
+     {{range $e := $.Labeled.Labels}}
+        {{$.Name}}_{{$e.Name}} = {{$.Name}}({{Template "Go.ReadNoCast" $e.Value}})
+     {{end}}
+  )
+
+  func (e {{$.Name}}) String() string {
+    switch e {
+      {{range $e := $.Labeled.Labels}}
+        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
+      {{end}}
+    }
+    return fmt.Sprintf("{{$.Name}}(%d)", e)
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration for holding the state.
+-------------------------------------------------------------------------------
+*/}}
+{{define "State"}}
+  {{template "Go.CommentHeader" "State"}}
+  type State struct {
+    {{range $g := $.Globals}}
+      {{Title $g.Name}} {{Template "Go.Type" $g}}
+    {{end}}
+    CustomState `nobox:"true"`
+  }
+
+  func (g *State) Init() {
+    {{range $g := $.Globals}}
+      {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
+        g.{{$g.Name}} = {{$init}}
+      {{end}}
+    {{end}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a top-level type declaration for the specified API.
+-------------------------------------------------------------------------------
+*/}}
+{{define "API"}}
+
+  {{template "Go.CommentHeader" "API"}}
+  var apiID = api.ID(id.OfString("{{Global "API"}}"))
+
+  type API struct {}
+
+  // Name returns "{{Global "API"}}".
+  func (API) Name() string {
+    return "{{Global "API"}}"
+  }
+
+  // ID returns the unique identifier of the {{Global "API"}} API.
+  func (API) ID() api.ID {
+    return apiID
+  }
+
+  // Index returns the Index of the {{Global "API"}} API.
+  func (API) Index() uint8 {
+    return uint8({{$.Index}})
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the boolean expression testing for equality between LHS and RHS.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Equal"}}
+  {{AssertType $.Type "Type"}}
+
+  {{Template "BinaryOp" "Type" $.Type "LHS" $.LHS "RHS" $.RHS "Operator" "==" "Name" "Equal"}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the boolean expression that is true if LHS < RHS, otherwise false.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Less"}}
+  {{AssertType $.Type "Type"}}
+
+  {{if IsBool $.Type}}false
+  {{else            }}{{Template "BinaryOp" "Type" $.Type "LHS" $.LHS "RHS" $.RHS "Operator" "<" "Name" "Less"}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the binary expression for the given LHS and RHS types.
+-------------------------------------------------------------------------------
+*/}}
+{{define "BinaryOp"}}
+  {{AssertType $.Name     "string"}}
+  {{AssertType $.Operator "string"}}
+  {{AssertType $.Type     "Type"}}
+
+  {{     if IsS8          $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsU8          $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsU16         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsS16         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsF32         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsU32         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsS32         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsF64         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsU64         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsS64         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsInt         $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsUint        $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsString      $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsEnum        $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else if IsPointer     $.Type}}{{$.LHS}} {{$.Operator}} {{$.RHS}}
+  {{else                        }}{{$.LHS}}.{{$.Name}}({{$.RHS}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits an Atom constructor for each command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandBuilder"}}
+  {{AssertType $ "API"}}
+
+  // CommandBuilder is used to construct new {{$.Name}} commands.
+  type CommandBuilder struct {
+    Thread uint64
+  }
+  ¶
+  {{range $c := AllCommands $}}
+    {{if not (GetAnnotation $c "pfn")}}
+      {{$name := $c | GoCommandName}}
+      func (cb CommandBuilder) {{Title $name}}(§
+          {{range $p := $c.FullParameters}}
+            {{if $p | TypeOf | Underlying | IsPointer}}
+              {{Title $p.Name}} ϟmem.Pointer,§
+            {{else}}
+              {{Title $p.Name}} {{Template "Go.Type" $p}},§
+            {{end}}
+          {{end}}
+        ) *{{$name}} {
+        return &{{$name}} {§
+          thread: cb.Thread,
+          {{range $p := $c.FullParameters}}
+            {{if $p | TypeOf | Underlying | IsPointer}}
+              {{$p | GoPublicName}}: New{{Template "Go.Type" $p}}({{Title $p.Name}}),§
+            {{else}}
+              {{$p | GoPublicName}}: {{Title $p.Name}},§
+            {{end}}
+          {{end}}
+        }
+      }
+    {{end}}
+  {{end}}
+{{end}}

@@ -31,9 +31,9 @@
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
-#include "gapis/gfxapi/core/core_pb/api.pb.h"
-#include "gapis/gfxapi/gles/gles_pb/api.pb.h"
-#include "gapis/gfxapi/gles/gles_pb/extras.pb.h"
+#include "gapis/api/core/core_pb/api.pb.h"
+#include "gapis/api/gles/gles_pb/api.pb.h"
+#include "gapis/api/gles/gles_pb/extras.pb.h"
 
 #include <cstdlib>
 #include <vector>

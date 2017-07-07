@@ -19,8 +19,8 @@ import (
 
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api/core/core_pb"
 	"github.com/google/gapid/gapis/atom/atom_pb"
-	"github.com/google/gapid/gapis/gfxapi/core/core_pb"
 )
 
 // ProtoToAtom returns a function that converts all the storage atoms it is

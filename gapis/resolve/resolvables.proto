@@ -17,7 +17,7 @@ syntax = "proto3";
 package resolve;
 
 import "core/image/image.proto";
-import "gapis/gfxapi/gfxapi.proto";
+import "gapis/api/api.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/service.proto";
 
@@ -46,7 +46,7 @@ message FollowResolvable {
 message FramebufferAttachmentResolvable {
 	path.Device device = 1;
 	path.Command after = 2;
-	gfxapi.FramebufferAttachment attachment = 3;
+	api.FramebufferAttachment attachment = 3;
 	service.RenderSettings settings = 4;
 	service.UsageHints hints = 5;
 }
@@ -60,7 +60,7 @@ message FramebufferAttachmentBytesResolvable {
 	path.Command after = 2;
 	uint32 width = 3;
 	uint32 height = 4;
-	gfxapi.FramebufferAttachment attachment = 5;
+	api.FramebufferAttachment attachment = 5;
 	service.WireframeMode wireframe_mode = 6;
 	service.UsageHints hints = 7;
 	image.Format image_format = 8;

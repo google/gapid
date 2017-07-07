@@ -20,10 +20,10 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 )
 
 var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
@@ -126,7 +126,7 @@ type DependencyGraphBehaviourProvider interface {
 }
 
 type BehaviourProvider interface {
-	GetBehaviourForAtom(ctx context.Context, s *gfxapi.State, id atom.ID, g *DependencyGraph, a atom.Atom) AtomBehaviour
+	GetBehaviourForAtom(ctx context.Context, s *api.State, id atom.ID, g *DependencyGraph, a atom.Atom) AtomBehaviour
 }
 
 func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
@@ -143,7 +143,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 		return nil, err
 	}
 	atoms := c.Atoms
-	behaviourProviders := map[gfxapi.API]BehaviourProvider{}
+	behaviourProviders := map[api.API]BehaviourProvider{}
 
 	g := &DependencyGraph{
 		Atoms:      atoms,

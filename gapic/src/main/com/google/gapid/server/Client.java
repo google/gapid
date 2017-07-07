@@ -36,7 +36,7 @@ import com.google.gapid.proto.service.Service.LoadCaptureRequest;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
 import com.google.gapid.proto.service.Service.Value;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpc.RpcException;
@@ -147,7 +147,7 @@ public class Client {
   }
 
   public ListenableFuture<Path.ImageInfo> getFramebufferAttachment(Path.Device device,
-      Path.Command after, GfxAPI.FramebufferAttachment attachment,
+      Path.Command after, API.FramebufferAttachment attachment,
       Service.RenderSettings settings, Service.UsageHints hints) {
     LOG.log(FINE, "RPC->getFramebufferAttachment({0}, {1}, {2}, {3}, {4})",
         new Object[] { device, after, attachment, settings, hints });

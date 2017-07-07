@@ -18,22 +18,22 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/memory"
 )
 
 type builder struct {
 	gles.CommandBuilder
 	atom.List
-	state  *gfxapi.State
+	state  *api.State
 	lastID uint
 }
 
 func newBuilder(ctx context.Context) *builder {
 	return &builder{
-		state: gfxapi.NewStateWithEmptyAllocator(device.Little32),
+		state: api.NewStateWithEmptyAllocator(device.Little32),
 	}
 }
 

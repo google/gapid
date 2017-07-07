@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -60,10 +60,10 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 
 	out := &AttachmentFramebufferChanges{
 		// TODO: Remove hardcoded upper limit
-		attachments: make([]framebufferAttachmentChanges, gfxapi.FramebufferAttachment_Color3+1),
+		attachments: make([]framebufferAttachmentChanges, api.FramebufferAttachment_Color3+1),
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *gfxapi.State, subcommandIndex sync.SubcommandIndex, a atom.Atom) {
+	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *api.State, subcommandIndex sync.SubcommandIndex, a atom.Atom) {
 		api := a.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {

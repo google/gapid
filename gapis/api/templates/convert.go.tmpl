@@ -1,0 +1,303 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "module" ""}}
+{{Include "go_common.tmpl"}}
+{{$ | Macro "convert.go" | NewReflow "\t" | Write "convert.go"}}
+
+{{define "convert.go"}}
+  {{Global "Store" (printf "%s_pb" (Global "OutputDir"))}}
+  §{{Copyright "generated" "apic"}}§
+  package {{Global "OutputDir"}}¶
+  ¶
+  import (»¶
+    "context"¶
+¶
+    "github.com/google/gapid/core/data/protoconv"¶
+    "github.com/google/gapid/gapis/atom"¶
+    "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
+    "github.com/google/gapid/gapis/memory"¶
+    "github.com/google/gapid/gapis/memory/memory_pb"¶
+  «)¶
+  ¶
+  // Just in case it is not used¶
+  var _ memory.PoolID¶
+  var _ memory_pb.Pointer¶
+  ¶
+  func init() {»¶
+    {{range $c := AllCommands $}}
+      {{if not (GetAnnotation $c "pfn")}}
+        {{$proto := $c.Name | ProtoGoName}}
+        {{$p := print (Global "Store") "." $proto}}
+        {{$o := $c.Name | GoCommandName}}
+        protoconv.Register(¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
+        )¶
+        atom.Register(API{}, &{{$o}}{})¶
+      {{end}}
+    {{end}}
+    {{range $c := $.Classes}}
+      {{if (GetAnnotation $c "serialize")}}
+        {{$proto := $c.Name | ProtoGoName}}
+        {{$p := print (Global "Store") "." $proto}}
+        {{$o := $c.Name | GoCommandName}}
+        protoconv.Register(¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
+        )¶
+      {{end}}
+    {{end}}
+  «}¶
+
+  {{range $c := AllCommands $}}
+    {{if not (GetAnnotation $c "pfn")}}
+      {{Template "CommandEntry" $c}}
+    {{end}}
+  {{end}}
+
+  {{range $c := $.Classes}}
+    {{if (GetAnnotation $c "serialize")}}
+      {{Template "ClassEntry" $c}}
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandEntry"}}
+  {{AssertType $ "Function"}}
+  {{$name := $.Name | GoCommandName}}
+  {{$proto := $.Name | ProtoGoName}}
+  ¶
+  // ToProto returns the primary storage atom of the {{$name}} command.¶
+  func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
+    to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
+    {{range $v := $.FullParameters}}
+      {{Template "Convert.To" "Field" $v "Outer" $proto}}
+    {{end}}
+    return to¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) *{{$name}} {»¶
+    ϟa := &{{$name}}{}¶
+    {{range $v := $.FullParameters}}
+      {{Template "Convert.From" "Field" $v "Outer" $proto}}
+    {{end}}
+    return ϟa¶
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassEntry"}}
+  {{$name := $.Name | GoCommandName}}
+  {{$proto := $.Name | ProtoGoName}}
+  ¶
+  // ToProto returns the storage form of the {{$name}}.¶
+  func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
+    to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
+    {{range $v := $.Fields}}
+      {{Template "Convert.To" "Field" $v "Outer" $proto}}
+    {{end}}
+    return to¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) {{$name}} {»¶
+    ϟa := {{$name}}{}¶
+    {{range $v := $.Fields}}
+      {{Template "Convert.From" "Field" $v "Outer" $proto}}
+    {{end}}
+    return ϟa¶
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the conversion for a signle field from live type to storage proto.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.To"}}
+  {{$name := $.Field.Name | GoPublicName}}
+  {{$proto := $.Field.Name | ProtoGoName}}
+  {{$type := TypeOf $.Field}}
+  {{$truetype := $type | Underlying}}
+  {{if IsStaticArray $truetype}}
+    to.{{$proto}} = make([]{{Macro "Convert.StorageType" $truetype.ValueType}}, {{$truetype.Size}})¶
+    for ϟi := 0; ϟi < {{$type.Size}}; ϟi++ {»¶
+      ϟv := ϟa.{{$name}}[ϟi]¶
+      to.{{$proto}}[ϟi] = {{Template "Convert.ToProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
+    «}¶
+  {{else if IsMap $truetype}}
+    {{$entry := printf "%s_pb.%s_%sEntry" (Global "OutputDir") $.Outer $proto}}
+    to.{{$proto}} = make([]*{{$entry}}, 0, len(ϟa.{{$name}}))¶
+    for ϟk, ϟv := range ϟa.{{$name}} {»¶
+      to.{{$proto}} = append(to.{{$proto}}, &{{$entry}}{
+        Key:  {{Template "Convert.ToProto" "Type" $type.KeyType "Value" "ϟk"}},
+        Value: {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}}
+      })¶
+    «}¶
+  {{else}}
+    {{$value := printf "ϟa.%s" $name}}
+    to.{{$proto}} = {{Template "Convert.ToProto" "Type" $type "Value" $value}}¶
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the conversion for a signle field from storage proto to live type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.From"}}
+  {{$name := $.Field.Name | GoPublicName}}
+  {{$proto := $.Field.Name | ProtoGoName}}
+  {{$type := TypeOf $.Field}}
+  {{$truetype := Underlying $type}}
+  {{if IsStaticArray $truetype}}
+    for ϟi := 0; ϟi < {{$truetype.Size}}; ϟi++ {»¶
+      ϟv := from.{{$proto}}[ϟi]¶
+      ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
+    «}¶
+  {{else if IsMap $truetype}}
+    ϟa.{{$name}} = make({{$.Field.Type.Name}}, len(from.{{$proto}}))¶
+    for _, ϟe := range from.{{$proto}} {»¶
+      ϟk := {{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟe.Key"}}¶
+      ϟv := {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟe.Value"}}¶
+      ϟa.{{$name}}[ϟk] = ϟv¶
+    «}¶
+  {{else}}
+    {{$value := printf "from.%s" $proto}}
+    ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the proto type for the provided AST type or expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.LiveType"}}
+  {{if IsBool               $}}bool
+  {{else if IsInt           $}}memory.Int
+  {{else if IsUint          $}}memory.Uint
+  {{else if IsSize          $}}memory.Size
+  {{else if IsChar          $}}memory.Char
+  {{else if IsU8            $}}uint8
+  {{else if IsS8            $}}int8
+  {{else if IsU16           $}}uint16
+  {{else if IsS16           $}}int16
+  {{else if IsF32           $}}float32
+  {{else if IsU32           $}}uint32
+  {{else if IsS32           $}}int32
+  {{else if IsF64           $}}float64
+  {{else if IsU64           $}}uint64
+  {{else if IsS64           $}}int64
+  {{else if IsString        $}}string
+  {{else if IsPointer       $}}{{$.Name}}
+  {{else if IsSlice         $}}{{$.Name}}
+  {{else if IsEnum          $}}{{$.Name}}
+  {{else if IsPseudonym     $}}{{$.Name}}
+  {{else if IsClass         $}}*{{$.Name}}
+  {{else if IsMap           $}}map[{{Macro "Convert.LiveType" $.KeyType}}]{{Macro "Convert.LiveType" $.ValueType}}
+  {{else}}{{Error "macro Convert.LiveType called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the proto type for the provided AST type or expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.StorageType"}}
+  {{if IsBool               $}}bool
+  {{else if IsInt           $}}int64
+  {{else if IsUint          $}}uint64
+  {{else if IsSize          $}}uint64
+  {{else if IsChar          $}}int32
+  {{else if IsU8            $}}uint32
+  {{else if IsS8            $}}int32
+  {{else if IsU16           $}}uint32
+  {{else if IsS16           $}}int32
+  {{else if IsF32           $}}float32
+  {{else if IsU32           $}}uint32
+  {{else if IsS32           $}}int32
+  {{else if IsF64           $}}float64
+  {{else if IsU64           $}}uint64
+  {{else if IsS64           $}}int64
+  {{else if IsString        $}}string
+  {{else if IsEnum          $}}uint32
+  {{else if IsPointer       $}}memory_pb.Pointer
+  {{else if IsSlice         $}}memory_pb.Slice
+  {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
+  {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name}}
+  {{else}}{{Error "macro Convert.StorageType called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emit the code to assign to the lhs storage from a live value for the given type
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.ToProto"}}
+    {{$source := Macro "Convert.LiveType" $.Type}}
+    {{$target := Macro "Convert.StorageType" $.Type}}
+    {{$truetype := Underlying $.Type}}
+    {{if IsClass $truetype}}{{$.Value}}.ToProto()
+    {{else if IsPointer $truetype}}&{{$target}}{Address: {{$.Value}}.addr, Pool: uint32({{$.Value}}.pool)}
+    {{else if IsSlice $truetype}}&{{$target}}{»¶
+      Root: {{$.Value}}.root,¶
+      Base: {{$.Value}}.base,¶
+      Count: {{$.Value}}.count,¶
+      Pool: uint32({{$.Value}}.pool),¶
+    «}
+    {{else if eq $source $target}}{{$.Value}}
+    {{else}}({{$target}})({{$.Value}})
+    {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emit the code to assign to the lhs live from a storage value for the given type
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.FromProto"}}
+    {{$source := Macro "Convert.StorageType" $.Type}}
+    {{$target := Macro "Convert.LiveType" $.Type}}
+    {{$truetype := Underlying $.Type}}
+    {{if IsClass $truetype}}{{$.Type.Name}}From({{$.Value}})
+    {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
+    {{else if IsSlice $truetype}}{{$target}}{»¶
+      root:  {{$.Value}}.Root,¶
+      base:  {{$.Value}}.Base,¶
+      count: {{$.Value}}.Count,¶
+      pool:  memory.PoolID({{$.Value}}.Pool),¶
+    «}
+    {{else if eq $source $target}}{{$.Value}}
+    {{else}}({{$target}})({{$.Value}})
+    {{end}}
+{{end}}

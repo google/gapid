@@ -31,16 +31,16 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 
-	// Register all the gfxapis
-	_ "github.com/google/gapid/gapis/gfxapi/all"
+	// Register all the apis
+	_ "github.com/google/gapid/gapis/api/all"
 )
 
 // Config holds the server configuration settings.
@@ -167,7 +167,7 @@ func (s *server) GetFramebufferAttachment(
 	ctx context.Context,
 	device *path.Device,
 	after *path.Command,
-	attachment gfxapi.FramebufferAttachment,
+	attachment api.FramebufferAttachment,
 	settings *service.RenderSettings,
 	hints *service.UsageHints) (*path.ImageInfo, error) {
 

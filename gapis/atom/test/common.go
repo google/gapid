@@ -17,17 +17,17 @@ package test
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 )
 
 type MockAtomWriter struct {
-	S       *gfxapi.State
+	S       *api.State
 	Atoms   []atom.Atom
 	IdAtoms AtomAtomIDList
 }
 
-func (m *MockAtomWriter) State() *gfxapi.State {
+func (m *MockAtomWriter) State() *api.State {
 	return m.S
 }
 

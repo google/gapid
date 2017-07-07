@@ -14,12 +14,12 @@
 
 package atom
 
-import "github.com/google/gapid/gapis/gfxapi"
+import "github.com/google/gapid/gapis/api"
 import "reflect"
 import "sync"
 
 var (
-	registry      = map[gfxapi.API]*namespace{}
+	registry      = map[api.API]*namespace{}
 	registryMutex sync.RWMutex
 )
 
@@ -31,7 +31,7 @@ type (
 )
 
 // Register registers the atoms into the API namespace.
-func Register(api gfxapi.API, atoms ...Atom) {
+func Register(api api.API, atoms ...Atom) {
 	registryMutex.Lock()
 	defer registryMutex.Unlock()
 	n, ok := registry[api]
@@ -49,7 +49,7 @@ func Register(api gfxapi.API, atoms ...Atom) {
 
 // Create returns a newly created atom with the specified name that belongs to
 // api. If the api or atom was not registered then Create returns nil.
-func Create(api gfxapi.API, name string) Atom {
+func Create(api api.API, name string) Atom {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
 	if r, ok := registry[api]; ok {

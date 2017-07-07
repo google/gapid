@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package trace holds the code for taking a gfxapi trace in the robot system.
+// Package trace holds the code for taking a capture in the robot system.
 package trace
 
 // The following are the imports that generated source files pull in when present

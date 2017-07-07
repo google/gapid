@@ -24,9 +24,9 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test/test_pb"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service/box"
@@ -40,10 +40,10 @@ type AtomA struct {
 func (a *AtomA) Thread() uint64        { return 1 }
 func (a *AtomA) SetThread(uint64)      {}
 func (a *AtomA) AtomName() string      { return "AtomA" }
-func (a *AtomA) API() gfxapi.API       { return nil }
+func (a *AtomA) API() api.API          { return nil }
 func (a *AtomA) AtomFlags() atom.Flags { return a.Flags }
 func (a *AtomA) Extras() *atom.Extras  { return nil }
-func (a *AtomA) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomA) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -55,10 +55,10 @@ type AtomB struct {
 func (a *AtomB) Thread() uint64        { return 1 }
 func (a *AtomB) SetThread(uint64)      {}
 func (a *AtomB) AtomName() string      { return "AtomB" }
-func (a *AtomB) API() gfxapi.API       { return nil }
+func (a *AtomB) API() api.API          { return nil }
 func (a *AtomB) AtomFlags() atom.Flags { return 0 }
 func (a *AtomB) Extras() *atom.Extras  { return nil }
-func (a *AtomB) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomB) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -69,10 +69,10 @@ type AtomC struct {
 func (a *AtomC) Thread() uint64        { return 1 }
 func (a *AtomC) SetThread(uint64)      {}
 func (a *AtomC) AtomName() string      { return "AtomC" }
-func (a *AtomC) API() gfxapi.API       { return nil }
+func (a *AtomC) API() api.API          { return nil }
 func (a *AtomC) AtomFlags() atom.Flags { return 0 }
 func (a *AtomC) Extras() *atom.Extras  { return nil }
-func (a *AtomC) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
+func (a *AtomC) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -128,26 +128,26 @@ type AtomX struct {
 func (AtomX) Thread() uint64        { return 1 }
 func (AtomX) SetThread(uint64)      {}
 func (AtomX) AtomName() string      { return "AtomX" }
-func (AtomX) API() gfxapi.API       { return gfxapi.Find(APIID) }
+func (AtomX) API() api.API          { return api.Find(APIID) }
 func (AtomX) AtomFlags() atom.Flags { return 0 }
 func (AtomX) Extras() *atom.Extras  { return nil }
-func (AtomX) Mutate(context.Context, *gfxapi.State, *builder.Builder) error {
+func (AtomX) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
 type API struct{}
 
 func (API) Name() string                 { return "foo" }
-func (API) ID() gfxapi.ID                { return APIID }
+func (API) ID() api.ID                   { return APIID }
 func (API) Index() uint8                 { return 15 }
 func (API) ConstantSets() *constset.Pack { return nil }
-func (API) GetFramebufferAttachmentInfo(*gfxapi.State, uint64, gfxapi.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
 	return 0, 0, 0, nil, nil
 }
-func (API) Context(*gfxapi.State, uint64) gfxapi.Context { return nil }
+func (API) Context(*api.State, uint64) api.Context { return nil }
 
 var (
-	APIID = gfxapi.ID{1, 2, 3}
+	APIID = api.ID{1, 2, 3}
 
 	P = &AtomX{
 		Str:  "aaa",
@@ -170,7 +170,7 @@ var (
 )
 
 func init() {
-	gfxapi.Register(API{})
+	api.Register(API{})
 	atom.Register(API{}, &AtomX{})
 	protoconv.Register(func(ctx context.Context, a *AtomX) (*test_pb.AtomX, error) {
 		return &test_pb.AtomX{Data: box.NewValue(*a)}, nil

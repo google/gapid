@@ -21,10 +21,10 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -60,7 +60,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	seen := map[gfxapi.ContextID]int{}
+	seen := map[api.ContextID]int{}
 	contexts := []*path.Context{}
 
 	var currentAtomIndex int

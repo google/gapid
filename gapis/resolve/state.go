@@ -18,24 +18,24 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// GlobalState resolves the global *gfxapi.State at a requested point in a
+// GlobalState resolves the global *api.State at a requested point in a
 // capture.
-func GlobalState(ctx context.Context, p *path.State) (*gfxapi.State, error) {
+func GlobalState(ctx context.Context, p *path.State) (*api.State, error) {
 	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*gfxapi.State), nil
+	return obj.(*api.State), nil
 }
 
 // APIState resolves the specific API state at a requested point in a capture.

@@ -17,8 +17,8 @@ package replay
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -26,9 +26,9 @@ import (
 var _ = atom.Atom(Custom(nil))
 
 // Custom is an atom issuing custom replay operations to the replay builder b upon Replay().
-type Custom func(ctx context.Context, s *gfxapi.State, b *builder.Builder) error
+type Custom func(ctx context.Context, s *api.State, b *builder.Builder) error
 
-func (c Custom) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (c Custom) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	if b == nil {
 		return nil
 	}
@@ -39,6 +39,6 @@ func (c Custom) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder)
 func (Custom) Thread() uint64        { return 0 }
 func (Custom) SetThread(uint64)      {}
 func (Custom) AtomName() string      { return "<Custom>" }
-func (Custom) API() gfxapi.API       { return nil }
+func (Custom) API() api.API          { return nil }
 func (Custom) AtomFlags() atom.Flags { return 0 }
 func (Custom) Extras() *atom.Extras  { return nil }

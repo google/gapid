@@ -54,10 +54,10 @@ list(APPEND sources
     "${PROTO_CC_OUT}/gapis/memory/memory.pb.cc"
     "${PROTO_CC_OUT}/gapis/memory/memory_pb/memory.pb.cc"
     "${PROTO_CC_OUT}/gapis/capture/capture.pb.cc"
-    "${PROTO_CC_OUT}/gapis/gfxapi/core/core_pb/api.pb.cc"
-    "${PROTO_CC_OUT}/gapis/gfxapi/vulkan/vulkan_pb/api.pb.cc"
-    "${PROTO_CC_OUT}/gapis/gfxapi/gles/gles_pb/api.pb.cc"
-    "${PROTO_CC_OUT}/gapis/gfxapi/gles/gles_pb/extras.pb.cc"
+    "${PROTO_CC_OUT}/gapis/api/core/core_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/api/vulkan/vulkan_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/api.pb.cc"
+    "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/extras.pb.cc"
 )
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})

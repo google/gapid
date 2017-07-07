@@ -44,11 +44,11 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Program;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Shader;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Uniform;
+import com.google.gapid.proto.service.api.API;
+import com.google.gapid.proto.service.api.API.Program;
+import com.google.gapid.proto.service.api.API.ResourceType;
+import com.google.gapid.proto.service.api.API.Shader;
+import com.google.gapid.proto.service.api.API.Uniform;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -136,7 +136,7 @@ public class ShaderView extends Composite
       Shader shader = (data == null) ? null : (Shader)data.resource;
       if (shader != null) {
         Service.Value value = Service.Value.newBuilder()
-            .setResourceData(GfxAPI.ResourceData.newBuilder()
+            .setResourceData(API.ResourceData.newBuilder()
                 .setShader(shader.toBuilder()
                     .setSource(src)))
             .build();

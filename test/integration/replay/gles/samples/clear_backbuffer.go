@@ -17,8 +17,8 @@ package samples
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/memory"
 )
 

@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -78,7 +78,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	}
 
 	for _, types := range resources.GetTypes() {
-		if types.Type == gfxapi.ResourceType_ShaderResource {
+		if types.Type == api.ResourceType_ShaderResource {
 			for _, v := range types.GetResources() {
 				if !v.Id.IsValid() {
 					log.E(ctx, "Got resource with invalid ID!\n%+v", v)
@@ -91,7 +91,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 					continue
 				}
 
-				shaderSource := resourceData.(*gfxapi.ResourceData).GetShader().GetSource()
+				shaderSource := resourceData.(*api.ResourceData).GetShader().GetSource()
 
 				f, err := os.Create(v.GetHandle())
 				if err != nil {

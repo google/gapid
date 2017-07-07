@@ -19,17 +19,17 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // ResolvedResources contains all of the resolved resources for a
 // particular point in the trace.
 type ResolvedResources struct {
-	resourceMap  gfxapi.ResourceMap
-	resources    map[id.ID]gfxapi.Resource
+	resourceMap  api.ResourceMap
+	resources    map[id.ID]api.Resource
 	resourceData map[id.ID]interface{}
 }
 
@@ -61,11 +61,11 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	}
 	var currentAtomIndex uint64
 	var currentAtomResourceCount int
-	idMap := gfxapi.ResourceMap{}
+	idMap := api.ResourceMap{}
 
-	resources := make(map[id.ID]gfxapi.Resource)
+	resources := make(map[id.ID]api.Resource)
 
-	state.OnResourceCreated = func(r gfxapi.Resource) {
+	state.OnResourceCreated = func(r api.Resource) {
 		currentAtomResourceCount++
 		i := genResourceID(currentAtomIndex, currentAtomResourceCount)
 		idMap[r] = i

@@ -18,15 +18,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // ConstantSet resolves and returns the constant set from the path p.
 func ConstantSet(ctx context.Context, p *path.ConstantSet) (*service.ConstantSet, error) {
-	apiID := gfxapi.ID(p.Api.Id.ID())
-	api := gfxapi.Find(apiID)
+	apiID := api.ID(p.Api.Id.ID())
+	api := api.Find(apiID)
 	if api == nil {
 		return nil, fmt.Errorf("Unknown API: %v", apiID)
 	}

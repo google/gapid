@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
@@ -81,7 +81,7 @@ type Service interface {
 		ctx context.Context,
 		device *path.Device,
 		after *path.Command,
-		attachment gfxapi.FramebufferAttachment,
+		attachment api.FramebufferAttachment,
 		settings *RenderSettings,
 		hints *UsageHints) (*path.ImageInfo, error)
 
@@ -187,9 +187,9 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_StateTree{v}}
 	case *StateTreeNode:
 		return &Value{&Value_StateTreeNode{v}}
-	case *gfxapi.Mesh:
+	case *api.Mesh:
 		return &Value{&Value_Mesh{v}}
-	case *gfxapi.ResourceData:
+	case *api.ResourceData:
 		return &Value{&Value_ResourceData{v}}
 	case *image.Info:
 		return &Value{&Value_ImageInfo{v}}
@@ -233,7 +233,7 @@ func NewMemoryRanges(l memory.RangeList) []*MemoryRange {
 }
 
 // Find looks up a resource by type and identifier.
-func (r *Resources) Find(ty gfxapi.ResourceType, id id.ID) *Resource {
+func (r *Resources) Find(ty api.ResourceType, id id.ID) *Resource {
 	for _, t := range r.Types {
 		if t.Type == ty {
 			for _, r := range t.Resources {

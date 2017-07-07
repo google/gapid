@@ -17,7 +17,7 @@ syntax = "proto3";
 import "core/image/image.proto";
 import "core/log/log_pb/log.proto";
 import "core/os/device/device.proto";
-import "gapis/gfxapi/gfxapi.proto";
+import "gapis/api/api.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
 import "gapis/stringtable/stringtable.proto";
@@ -97,8 +97,8 @@ message Value {
 
     device.Instance device = 20;
 
-    gfxapi.ResourceData resource_data = 30;
-    gfxapi.Mesh mesh = 31;
+    api.ResourceData resource_data = 30;
+    api.Mesh mesh = 31;
 
     image.Info image_info = 40;
 
@@ -253,7 +253,7 @@ message GetDevicesForReplayResponse {
 message GetFramebufferAttachmentRequest {
   path.Device device = 1;
   path.Command after = 2;
-  gfxapi.FramebufferAttachment attachment = 3;
+  api.FramebufferAttachment attachment = 3;
   RenderSettings settings = 4;
   UsageHints hints = 5;
 }
@@ -562,7 +562,7 @@ message Resources {
 
 // ResourcesByType contains all resources of a specific type.
 message ResourcesByType {
-  gfxapi.ResourceType type = 1;
+  api.ResourceType type = 1;
   repeated Resource resources = 2;
 }
 

@@ -19,8 +19,8 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -57,7 +57,7 @@ type QueryFramebufferAttachment interface {
 		mgr *Manager,
 		after []uint64,
 		width, height uint32,
-		attachment gfxapi.FramebufferAttachment,
+		attachment api.FramebufferAttachment,
 		framebufferIndex uint32,
 		wireframeMode WireframeMode,
 		hints *service.UsageHints) (*image.Data, error)

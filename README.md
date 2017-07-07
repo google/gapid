@@ -45,7 +45,7 @@ We also plan to be able to trace OpenGL ES and Vulkan applications on hosts that
 
 Downloadable prebuilts will be available once the project reaches the beta milestone.
 
-Detailed current status for Vulkan can be found [here](gapis/gfxapi/vulkan/README.md).
+Detailed current status for Vulkan can be found [here](gapis/api/vulkan/README.md).
 
 ## Building
 See [Building GAPID](BUILDING.md).

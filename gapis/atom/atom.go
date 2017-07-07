@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -28,7 +28,7 @@ import (
 // observed memory or state at the time of capture.
 type Atom interface {
 	// All atoms belong to an API
-	gfxapi.APIObject
+	api.APIObject
 
 	// Thread returns the thread index this atom was executed on.
 	Thread() uint64
@@ -47,7 +47,7 @@ type Atom interface {
 
 	// Mutate mutates the State using the atom. If the builder argument is
 	// not nil then it will call the replay function on the builder.
-	Mutate(context.Context, *gfxapi.State, *builder.Builder) error
+	Mutate(context.Context, *api.State, *builder.Builder) error
 }
 
 // ID is the index of an atom in an atom stream.

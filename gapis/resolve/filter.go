@@ -18,12 +18,12 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type filter func(a atom.Atom, s *gfxapi.State) bool
+type filter func(a atom.Atom, s *api.State) bool
 
 func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (filter, error) {
 	filters := []filter{}
@@ -36,8 +36,8 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 		if err != nil {
 			return nil, err
 		}
-		ctxID := gfxapi.ContextID(id)
-		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
+		ctxID := api.ContextID(id)
+		filters = append(filters, func(a atom.Atom, s *api.State) bool {
 			if api := a.API(); api != nil {
 				if ctx := api.Context(s, a.Thread()); ctx != nil {
 					return ctx.ID() == ctxID
@@ -47,7 +47,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 		})
 	}
 	if len(f.GetThreads()) > 0 {
-		filters = append(filters, func(a atom.Atom, s *gfxapi.State) bool {
+		filters = append(filters, func(a atom.Atom, s *api.State) bool {
 			thread := a.Thread()
 			for _, t := range f.Threads {
 				if t == thread {
@@ -57,7 +57,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 			return false
 		})
 	}
-	return func(a atom.Atom, s *gfxapi.State) bool {
+	return func(a atom.Atom, s *api.State) bool {
 		for _, f := range filters {
 			if !f(a, s) {
 				return false

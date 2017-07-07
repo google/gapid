@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -46,7 +46,7 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path
 	imageInfoPath, err := FramebufferAttachment(ctx,
 		nil, // device
 		p,
-		gfxapi.FramebufferAttachment_Color0,
+		api.FramebufferAttachment_Color0,
 		&service.RenderSettings{
 			MaxWidth:      w,
 			MaxHeight:     h,

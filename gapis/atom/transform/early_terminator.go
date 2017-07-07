@@ -17,8 +17,8 @@ package transform
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // EarlyTerminator is an implementation of Transformer that will consume all
@@ -27,7 +27,7 @@ import (
 type EarlyTerminator struct {
 	lastIndex atom.ID
 	done      bool
-	APIIdx    gfxapi.ID
+	APIIdx    api.ID
 }
 
 // Interface check

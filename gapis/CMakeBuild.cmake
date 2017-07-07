@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(gfxapi)
+build_subdirectory(api)
 build_subdirectory(messages)
 build_subdirectory(shadertools)

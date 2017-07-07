@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -126,20 +126,20 @@ type group struct {
 }
 
 type grouper interface {
-	process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State)
+	process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State)
 	flush(count uint64)
 	groups() []group
 }
 
 type runGrouper struct {
-	f       func(a atom.Atom, s *gfxapi.State) (value interface{}, name string)
+	f       func(a atom.Atom, s *api.State) (value interface{}, name string)
 	start   atom.ID
 	current interface{}
 	name    string
 	out     []group
 }
 
-func (g *runGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
+func (g *runGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
 	val, name := g.f(a, s)
 	if val != g.current {
 		if g.current != nil {
@@ -165,7 +165,7 @@ type markerGrouper struct {
 	out   []group
 }
 
-func (g *markerGrouper) push(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
+func (g *markerGrouper) push(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
 	var name string
 	if l, ok := a.(atom.Labeled); ok {
 		name = l.Label(ctx, s)
@@ -185,7 +185,7 @@ func (g *markerGrouper) pop(id atom.ID) {
 	g.stack = g.stack[:len(g.stack)-1]
 }
 
-func (g *markerGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *gfxapi.State) {
+func (g *markerGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
 	if a.AtomFlags().IsPushUserMarker() {
 		g.push(ctx, id, a, s)
 	}
@@ -221,7 +221,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	groupers := []grouper{}
 
 	if p.GroupByApi {
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
 			if api := a.API(); api != nil {
 				return api.ID(), api.Name()
 			}
@@ -232,9 +232,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	if p.GroupByContext {
 		var noContextID interface{}
 		if p.IncludeNoContextGroups {
-			noContextID = gfxapi.ContextID{}
+			noContextID = api.ContextID{}
 		}
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
 			if api := a.API(); api != nil {
 				if context := api.Context(s, a.Thread()); context != nil {
 					return context.ID(), context.Name()
@@ -245,7 +245,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByThread {
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *gfxapi.State) (interface{}, string) {
+		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
 			thread := a.Thread()
 			return thread, fmt.Sprintf("Thread: 0x%x", thread)
 		}})

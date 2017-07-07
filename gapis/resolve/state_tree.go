@@ -24,9 +24,9 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/u64"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
@@ -45,7 +45,7 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 }
 
 type stateTree struct {
-	state      *gfxapi.State
+	state      *api.State
 	root       *stn
 	api        *path.API
 	groupLimit uint64

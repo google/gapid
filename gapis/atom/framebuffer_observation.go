@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom/atom_pb"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -43,10 +43,10 @@ func (a *FramebufferObservation) String() string {
 func (FramebufferObservation) Thread() uint64   { return 0 }
 func (FramebufferObservation) SetThread(uint64) {}
 func (FramebufferObservation) AtomName() string { return "<FramebufferObservation>" }
-func (FramebufferObservation) API() gfxapi.API  { return nil }
+func (FramebufferObservation) API() api.API     { return nil }
 func (FramebufferObservation) AtomFlags() Flags { return 0 }
 func (FramebufferObservation) Extras() *Extras  { return nil }
-func (FramebufferObservation) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (FramebufferObservation) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	return nil
 }
 
