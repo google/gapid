@@ -12,18 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package atom provides the fundamental types used to describe a capture stream.
+// Package atom is deprecated.
+//
+// Some types will be merged into gapis/api, others may be deleted.
 package atom
-
-// binary: cpp = atom
-// binary: java.source = service
-// binary: java.package = com.google.gapid.service.atom
-// binary: java.indent = "  "
-// binary: java.member_prefix = my
-// binary: java.disable.ID = true
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/google/gapid/core/data/pod"
-)

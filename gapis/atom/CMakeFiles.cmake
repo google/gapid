@@ -18,14 +18,12 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    atom.go
     data.go
     doc.go
     framebuffer_observation.go
     resource.go
     service.go
     service_test.go
-    writer.go
 )
 set(dirs
     atom_pb
