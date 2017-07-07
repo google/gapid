@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/gapis/api/gles/glsl"
 	"github.com/google/gapid/gapis/api/gles/glsl/ast"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
@@ -208,7 +207,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	case *GlCompileShader:
 		const buflen = 8192
-		tmp := atom.Must(atom.Alloc(ctx, t.state, buflen))
+		tmp := t.state.AllocOrPanic(ctx, buflen)
 
 		infoLog := make([]byte, buflen)
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader, buflen, memory.Nullptr, tmp.Ptr()))
@@ -261,7 +260,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	case *GlLinkProgram:
 		const buflen = 2048
-		tmp := atom.Must(atom.Alloc(ctx, t.state, 4+buflen))
+		tmp := t.state.AllocOrPanic(ctx, 4+buflen)
 		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(cmd.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program, buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {

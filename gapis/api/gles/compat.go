@@ -30,7 +30,6 @@ import (
 	"github.com/google/gapid/gapis/api/gles/glsl/ast"
 	"github.com/google/gapid/gapis/api/gles/glsl/preprocessor"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
@@ -165,7 +164,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	newBuffer := func(i api.CmdID, cb CommandBuilder, out transform.Writer) BufferId {
 		s := out.State()
 		id := nextBufferID
-		tmp := atom.Must(atom.AllocData(ctx, s, id))
+		tmp := s.AllocDataOrPanic(ctx, id)
 		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextBufferID--
 		return id
@@ -175,7 +174,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	newTexture := func(i api.CmdID, cb CommandBuilder, out transform.Writer) TextureId {
 		s := out.State()
 		id := nextTextureID
-		tmp := atom.Must(atom.AllocData(ctx, s, id))
+		tmp := s.AllocDataOrPanic(ctx, id)
 		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextTextureID--
 		return id
@@ -260,7 +259,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Replay device requires VAO, but capture did not enforce it.
 				// Satisfy the target by creating and binding a single VAO
 				// which we will use instead of the default VAO (id 0).
-				tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(DefaultVertexArrayId)))
+				tmp := s.AllocDataOrPanic(ctx, VertexArrayId(DefaultVertexArrayId))
 				out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
 				out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId))
 			}
@@ -278,7 +277,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlBindBuffer:
 			if cmd.Buffer != 0 && !c.Objects.Shared.GeneratedNames.Buffers[cmd.Buffer] {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
-				tmp := atom.Must(atom.AllocData(ctx, s, cmd.Buffer))
+				tmp := s.AllocDataOrPanic(ctx, cmd.Buffer)
 				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
 			}
 
@@ -287,7 +286,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				cmd := *cmd
 				if cmd.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures[cmd.Texture] {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
-					tmp := atom.Must(atom.AllocData(ctx, s, VertexArrayId(cmd.Texture)))
+					tmp := s.AllocDataOrPanic(ctx, VertexArrayId(cmd.Texture))
 					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
 				}
 
@@ -449,8 +448,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 			}
 
-			tmpSrc := atom.Must(atom.AllocData(ctx, s, src))
-			tmpPtrToSrc := atom.Must(atom.AllocData(ctx, s, tmpSrc.Ptr()))
+			tmpSrc := s.AllocDataOrPanic(ctx, src)
+			tmpPtrToSrc := s.AllocDataOrPanic(ctx, tmpSrc.Ptr())
 			cmd = cb.GlShaderSource(cmd.Shader, 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
 				AddRead(tmpSrc.Data()).
 				AddRead(tmpPtrToSrc.Data())

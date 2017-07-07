@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -157,7 +156,7 @@ func postColorData(ctx context.Context,
 	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
 
 	imageSize := imgFmt.Size(int(width), int(height), 1)
-	tmp := atom.Must(atom.Alloc(ctx, s, uint64(imageSize)))
+	tmp := s.AllocOrPanic(ctx, uint64(imageSize))
 	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 		// TODO: We use Call() directly here because we are calling glReadPixels
 		// with depth formats which are not legal for GLES. Once we're replaying

@@ -20,7 +20,6 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -56,8 +55,8 @@ func (b *builder) p() memory.Pointer {
 	return memory.BytePtr(base, memory.ApplicationPool)
 }
 
-func (b *builder) data(ctx context.Context, v ...interface{}) atom.AllocResult {
-	return atom.Must(atom.AllocData(ctx, b.state, v...))
+func (b *builder) data(ctx context.Context, v ...interface{}) api.AllocResult {
+	return b.state.AllocDataOrPanic(ctx, v...)
 }
 
 func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointer, preserveBuffersOnSwap bool) (eglContext, eglSurface, eglDisplay memory.Pointer) {

@@ -20,14 +20,13 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
 // unpackMap takes a dense map of u32 -> structure, flattens the map into
 // a slice, allocates the appropriate data and returns it as well as the
 // lenth of the map
-func unpackMap(ctx context.Context, s *api.State, m interface{}) (atom.AllocResult, uint32) {
+func unpackMap(ctx context.Context, s *api.State, m interface{}) (api.AllocResult, uint32) {
 	u32Type := reflect.TypeOf(uint32(0))
 	t := reflect.TypeOf(m)
 	if t.Kind() != reflect.Map || t.Key() != u32Type {
@@ -41,7 +40,7 @@ func unpackMap(ctx context.Context, s *api.State, m interface{}) (atom.AllocResu
 		v := mv.MapIndex(reflect.ValueOf(uint32(i)))
 		sl.Index(i).Set(v)
 	}
-	return atom.Must(atom.AllocData(ctx, s, sl.Interface())), uint32(mv.Len())
+	return s.AllocDataOrPanic(ctx, sl.Interface()), uint32(mv.Len())
 }
 
 func rebuildCmdBeginRenderPass(
@@ -56,7 +55,7 @@ func rebuildCmdBeginRenderPass(
 		clearValues[i] = d.ClearValues[uint32(i)]
 	}
 
-	clearValuesData := atom.Must(atom.AllocData(ctx, s, clearValues))
+	clearValuesData := s.AllocDataOrPanic(ctx, clearValues)
 
 	begin := VkRenderPassBeginInfo{
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -67,7 +66,7 @@ func rebuildCmdBeginRenderPass(
 		uint32(len(clearValues)),
 		NewVkClearValueᶜᵖ(clearValuesData.Ptr()),
 	}
-	beginData := atom.Must(atom.AllocData(ctx, s, begin))
+	beginData := s.AllocDataOrPanic(ctx, begin)
 
 	return func() {
 			clearValuesData.Free()
@@ -294,7 +293,7 @@ func rebuildCmdClearColorImage(
 	s *api.State,
 	d *RecreateCmdClearColorImageData) (func(), api.Cmd) {
 
-	colorData := atom.Must(atom.AllocData(ctx, s, d.Color))
+	colorData := s.AllocDataOrPanic(ctx, d.Color)
 
 	rangeData, rangeCount := unpackMap(ctx, s, d.Ranges)
 
@@ -317,7 +316,7 @@ func rebuildCmdClearDepthStencilImage(
 	s *api.State,
 	d *RecreateCmdClearDepthStencilImageData) (func(), api.Cmd) {
 
-	depthStencilData := atom.Must(atom.AllocData(ctx, s, d.DepthStencil))
+	depthStencilData := s.AllocDataOrPanic(ctx, d.DepthStencil)
 
 	rangeData, rangeCount := unpackMap(ctx, s, d.Ranges)
 
@@ -567,7 +566,7 @@ func rebuildCmdPushConstants(
 	s *api.State,
 	d *RecreateCmdPushConstantsDataExpanded) (func(), api.Cmd) {
 
-	data := atom.Must(atom.AllocData(ctx, s, d.Data))
+	data := s.AllocDataOrPanic(ctx, d.Data)
 
 	return func() {
 			data.Free()
@@ -776,7 +775,7 @@ func rebuildCmdUpdateBuffer(
 	s *api.State,
 	d *RecreateCmdUpdateBufferDataExpanded) (func(), api.Cmd) {
 
-	data := atom.Must(atom.AllocData(ctx, s, d.Data))
+	data := s.AllocDataOrPanic(ctx, d.Data)
 
 	return func() {
 			data.Free()

@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 // BuildProgram returns the atoms to create a shader program with compiled vertex
@@ -38,12 +37,12 @@ func CompileProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []api.Cmd {
 
-	tmpVertexSrcLen := atom.Must(atom.AllocData(ctx, s, GLint(len(vertexShaderSource))))
-	tmpVertexSrc := atom.Must(atom.AllocData(ctx, s, vertexShaderSource))
-	tmpPtrToVertexSrc := atom.Must(atom.AllocData(ctx, s, tmpVertexSrc.Ptr()))
-	tmpFragmentSrcLen := atom.Must(atom.AllocData(ctx, s, GLint(len(fragmentShaderSource))))
-	tmpFragmentSrc := atom.Must(atom.AllocData(ctx, s, fragmentShaderSource))
-	tmpPtrToFragmentSrc := atom.Must(atom.AllocData(ctx, s, tmpFragmentSrc.Ptr()))
+	tmpVertexSrcLen := s.AllocDataOrPanic(ctx, GLint(len(vertexShaderSource)))
+	tmpVertexSrc := s.AllocDataOrPanic(ctx, vertexShaderSource)
+	tmpPtrToVertexSrc := s.AllocDataOrPanic(ctx, tmpVertexSrc.Ptr())
+	tmpFragmentSrcLen := s.AllocDataOrPanic(ctx, GLint(len(fragmentShaderSource)))
+	tmpFragmentSrc := s.AllocDataOrPanic(ctx, fragmentShaderSource)
+	tmpPtrToFragmentSrc := s.AllocDataOrPanic(ctx, tmpFragmentSrc.Ptr())
 
 	cmds := []api.Cmd{
 		cb.GlCreateShader(GLenum_GL_VERTEX_SHADER, vertexShaderID),
