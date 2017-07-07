@@ -21,8 +21,8 @@ import (
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -84,7 +84,7 @@ func (r AllocResult) Address() uint64 {
 // memory range big enough to store it using the Allocator associated with
 // the given State, and returns a helper that can be used to access the
 // database ID, pointer, and range.
-func AllocData(ctx context.Context, s *gfxapi.State, v ...interface{}) (AllocResult, error) {
+func AllocData(ctx context.Context, s *api.State, v ...interface{}) (AllocResult, error) {
 	buf := &bytes.Buffer{}
 	e := memory.NewEncoder(endian.Writer(buf, s.MemoryLayout.GetEndian()), s.MemoryLayout)
 	memory.Write(e, v)
@@ -115,7 +115,7 @@ func Must(result AllocResult, err error) AllocResult {
 // Alloc allocates a memory range using the Allocator associated with
 // the given State, and returns a helper that can be used to access the
 // pointer, and range.
-func Alloc(ctx context.Context, s *gfxapi.State, count uint64) (AllocResult, error) {
+func Alloc(ctx context.Context, s *api.State, count uint64) (AllocResult, error) {
 	at, err := s.Allocator.Alloc(count, 8)
 	if err != nil {
 		return AllocResult{}, err

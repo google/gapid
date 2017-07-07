@@ -27,12 +27,12 @@ import (
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	gapis "github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/server"
 	"github.com/google/gapid/gapis/service"
@@ -197,7 +197,7 @@ func TestGetFramebufferAttachment(t *testing.T) {
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).ThatSlice(devices).IsNotEmpty()
 	after := capture.Command(swapAtomIndex)
-	attachment := gfxapi.FramebufferAttachment_Color0
+	attachment := api.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
 	got, err := server.GetFramebufferAttachment(ctx, devices[0], after, attachment, settings, nil)
 	assert.With(ctx).ThatError(err).Succeeded()
@@ -222,7 +222,7 @@ func TestGet(t *testing.T) {
 		{capture.Command(swapAtomIndex), T((*atom.Atom)(nil)).Elem()},
 		{capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
-		{capture.Command(drawAtomIndex).Mesh(false), T((*gfxapi.Mesh)(nil))},
+		{capture.Command(drawAtomIndex).Mesh(false), T((*api.Mesh)(nil))},
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil, nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},

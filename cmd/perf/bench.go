@@ -26,9 +26,9 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/client"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -384,7 +384,7 @@ func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 		ctx,
 		session.device,
 		cmd,
-		gfxapi.FramebufferAttachment_Color0,
+		api.FramebufferAttachment_Color0,
 		settings,
 		nil,
 	)

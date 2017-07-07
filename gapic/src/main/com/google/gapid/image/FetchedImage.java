@@ -29,10 +29,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image.Info;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Value;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.CubemapLevel;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Texture2D;
+import com.google.gapid.proto.service.api.API;
+import com.google.gapid.proto.service.api.API.Cubemap;
+import com.google.gapid.proto.service.api.API.CubemapLevel;
+import com.google.gapid.proto.service.api.API.Texture2D;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Values;
@@ -62,8 +62,8 @@ public class FetchedImage implements MultiLevelImage {
 
   public static ListenableFuture<FetchedImage> load(Client client, Path.ResourceData imagePath) {
     return Futures.transformAsync(client.get(resourceInfo(imagePath)), value -> {
-      GfxAPI.ResourceData data = value.getResourceData();
-      GfxAPI.Texture texture = data.getTexture();
+      API.ResourceData data = value.getResourceData();
+      API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
         case TEXTURE_2D: return load(client, imagePath, getFormat(texture.getTexture2D()));
         case CUBEMAP: return load(client, imagePath, getFormat(texture.getCubemap()));
@@ -76,8 +76,8 @@ public class FetchedImage implements MultiLevelImage {
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.ResourceData imagePath, Images.Format format) {
     return Futures.transform(client.get(imageData(imagePath, format.format)), value -> {
-      GfxAPI.ResourceData data = value.getResourceData();
-      GfxAPI.Texture texture = data.getTexture();
+      API.ResourceData data = value.getResourceData();
+      API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
         case TEXTURE_2D: return new FetchedImage(client, format, texture.getTexture2D());
         case CUBEMAP: return new FetchedImage(client, format, texture.getCubemap());

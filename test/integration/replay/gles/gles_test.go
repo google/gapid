@@ -35,11 +35,11 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/gles"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
@@ -155,7 +155,7 @@ type Fixture struct {
 	mgr          *replay.Manager
 	device       bind.Device
 	memoryLayout *device.MemoryLayout
-	s            *gfxapi.State
+	s            *api.State
 	nextID       uint32
 	cb           gles.CommandBuilder
 }
@@ -179,7 +179,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 
 	dev := r.DefaultDevice()
 	memoryLayout := dev.Instance().GetConfiguration().ABIs[0].MemoryLayout
-	s := gfxapi.NewStateWithEmptyAllocator(memoryLayout)
+	s := api.NewStateWithEmptyAllocator(memoryLayout)
 
 	return ctx, &Fixture{
 		mgr:          m,
@@ -220,7 +220,7 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	issues, err := gles.API().(replay.QueryIssues).QueryIssues(ctx, intent, mgr, nil)
+	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
 	if assert.With(ctx).ThatError(err).Succeeded() {
 		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
 	}
@@ -252,8 +252,8 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, gfxapi.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, nil)
+	img, err := gles.API{}.QueryFramebufferAttachment(
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}
@@ -267,8 +267,8 @@ func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	img, err := gles.API().(replay.QueryFramebufferAttachment).QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, gfxapi.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, nil)
+	img, err := gles.API{}.QueryFramebufferAttachment(
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
 		return
 	}
@@ -434,7 +434,7 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 	atoms, _, eglSurface := f.initContext(ctx, 128, 128, false)
 	texLoc := gles.UniformLocation(0)
 
-	s := gfxapi.NewStateWithEmptyAllocator(f.memoryLayout)
+	s := api.NewStateWithEmptyAllocator(f.memoryLayout)
 
 	textureNames := []gles.TextureId{1}
 	textureNamesR := atom.Must(atom.AllocData(ctx, f.s, textureNames))

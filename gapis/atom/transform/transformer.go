@@ -17,8 +17,8 @@ package transform
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // Transformer is the interface that wraps the basic Transform method.
@@ -43,7 +43,7 @@ type Transformer interface {
 // There is a configuration flag to switch between the shared/separate modes.
 type Writer interface {
 	// State returns the state object associated with this writer.
-	State() *gfxapi.State
+	State() *api.State
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the atom to further consumers.
 	MutateAndWrite(ctx context.Context, id atom.ID, atom atom.Atom)

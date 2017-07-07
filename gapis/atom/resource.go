@@ -20,8 +20,8 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom/atom_pb"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -40,10 +40,10 @@ func (a *Resource) String() string {
 func (Resource) Thread() uint64   { return 0 }
 func (Resource) SetThread(uint64) {}
 func (Resource) AtomName() string { return "<Resource>" }
-func (Resource) API() gfxapi.API  { return nil }
+func (Resource) API() api.API     { return nil }
 func (Resource) AtomFlags() Flags { return 0 }
 func (Resource) Extras() *Extras  { return nil }
-func (Resource) Mutate(ctx context.Context, s *gfxapi.State, b *builder.Builder) error {
+func (Resource) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	return nil
 }
 

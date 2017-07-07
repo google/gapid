@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
@@ -88,7 +88,7 @@ func ToService(a Atom) (*service.Command, error) {
 
 // ToAtom returns the service command representing atom a.
 func ToAtom(c *service.Command) (Atom, error) {
-	api := gfxapi.Find(gfxapi.ID(c.GetApi().GetId().ID()))
+	api := api.Find(api.ID(c.GetApi().GetId().ID()))
 	if api == nil {
 		return nil, fmt.Errorf("Unknown api '%v'", c.GetApi())
 	}

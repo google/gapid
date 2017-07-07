@@ -21,9 +21,9 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
-	"github.com/google/gapid/gapis/gfxapi/sync"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/service"
@@ -36,7 +36,7 @@ func FramebufferAttachment(
 	ctx context.Context,
 	device *path.Device,
 	after *path.Command,
-	attachment gfxapi.FramebufferAttachment,
+	attachment api.FramebufferAttachment,
 	settings *service.RenderSettings,
 	hints *service.UsageHints,
 ) (*path.ImageInfo, error) {
@@ -69,7 +69,7 @@ func FramebufferAttachment(
 // The first call to getFramebufferInfo for a given capture/context
 // will trigger a computation for all atoms of this capture, which will be
 // cached to the database for subsequent calls, regardless of the given atom.
-func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att gfxapi.FramebufferAttachment) (framebufferAttachmentInfo, error) {
+func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (framebufferAttachmentInfo, error) {
 	changes, err := FramebufferChanges(ctx, path.FindCapture(after))
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
@@ -172,11 +172,11 @@ func (c framebufferAttachmentChanges) last() framebufferAttachmentInfo {
 	return framebufferAttachmentInfo{}
 }
 
-var allFramebufferAttachments = []gfxapi.FramebufferAttachment{
-	gfxapi.FramebufferAttachment_Depth,
-	gfxapi.FramebufferAttachment_Stencil,
-	gfxapi.FramebufferAttachment_Color0,
-	gfxapi.FramebufferAttachment_Color1,
-	gfxapi.FramebufferAttachment_Color2,
-	gfxapi.FramebufferAttachment_Color3,
+var allFramebufferAttachments = []api.FramebufferAttachment{
+	api.FramebufferAttachment_Depth,
+	api.FramebufferAttachment_Stencil,
+	api.FramebufferAttachment_Color0,
+	api.FramebufferAttachment_Color1,
+	api.FramebufferAttachment_Color2,
+	api.FramebufferAttachment_Color3,
 }

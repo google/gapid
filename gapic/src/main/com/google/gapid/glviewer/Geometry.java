@@ -22,7 +22,7 @@ import com.google.gapid.glviewer.gl.IndexBuffer;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.VertexBuffer;
 import com.google.gapid.glviewer.vec.MatD;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.DrawPrimitive;
+import com.google.gapid.proto.service.api.API.DrawPrimitive;
 
 import org.lwjgl.opengl.GL11;
 

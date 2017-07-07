@@ -15,7 +15,7 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.gfxapi.GfxAPI.ResourceType.TextureResource;
+import static com.google.gapid.proto.service.api.API.ResourceType.TextureResource;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -42,7 +42,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
@@ -407,15 +407,15 @@ public class TextureView extends Composite
       }
 
       public static AdditionalInfo from(Service.Value value) {
-        GfxAPI.ResourceData data = value.getResourceData();
-        GfxAPI.Texture texture = data.getTexture();
+        API.ResourceData data = value.getResourceData();
+        API.Texture texture = data.getTexture();
         switch (texture.getTypeCase()) {
           case TEXTURE_2D:
-            GfxAPI.Texture2D t = texture.getTexture2D();
+            API.Texture2D t = texture.getTexture2D();
             return (t.getLevelsCount() == 0) ? NULL_2D :
                 new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
           case CUBEMAP:
-            GfxAPI.Cubemap c = texture.getCubemap();
+            API.Cubemap c = texture.getCubemap();
             return (c.getLevelsCount() == 0) ? NULL_CUBEMAP :
                 new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
           default:

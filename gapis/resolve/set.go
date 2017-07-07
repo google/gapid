@@ -20,10 +20,10 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -84,7 +84,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			list.Atoms[where] = with.(atom.Atom)
 		}
 
-		data, ok := val.(*gfxapi.ResourceData)
+		data, ok := val.(*api.ResourceData)
 		if !ok {
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}

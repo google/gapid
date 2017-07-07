@@ -24,8 +24,8 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -40,7 +40,7 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 
 	apis := make([]replay.Support, 0, len(c.APIs))
 	for _, i := range c.APIs {
-		api := gfxapi.Find(gfxapi.ID(i.ID()))
+		api := api.Find(api.ID(i.ID()))
 		if f, ok := api.(replay.Support); ok {
 			apis = append(apis, f)
 		}

@@ -15,7 +15,7 @@
  */
 package com.google.gapid.glviewer.geo;
 
-import com.google.gapid.proto.service.gfxapi.GfxAPI.DrawPrimitive;
+import com.google.gapid.proto.service.api.API.DrawPrimitive;
 
 /**
  * The geometry data of a model to be displayed.

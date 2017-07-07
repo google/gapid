@@ -41,7 +41,7 @@ import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Strings;
-import com.google.gapid.proto.service.gfxapi.GfxAPI;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.proto.stringtable.Stringtable;
@@ -292,7 +292,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     return Futures.transformAsync(client.get(path), value -> fetchModel(value.getMesh()));
   }
 
-  private static ListenableFuture<Model> fetchModel(GfxAPI.Mesh mesh) {
+  private static ListenableFuture<Model> fetchModel(API.Mesh mesh) {
     Vertex.Buffer vb = mesh.getVertexBuffer();
     float[] positions = null;
     float[] normals = null;
@@ -310,7 +310,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
       }
     }
 
-    GfxAPI.DrawPrimitive primitive = mesh.getDrawPrimitive();
+    API.DrawPrimitive primitive = mesh.getDrawPrimitive();
     if (positions == null || (normals == null && isPolygon(primitive))) {
       return Futures.immediateFailedFuture(new DataUnavailableException(NO_MESH_ERR));
     }

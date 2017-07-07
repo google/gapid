@@ -8,7 +8,7 @@ The client does not need to have any knowledge of any graphics APIs, making impl
 
 ## API deep-knowledge
 
-GAPIS uses the graphics API packages declared in [gapis/gfxapi](gfxapi) to have a deep understanding of each command in the API and how it interacts with the state.
+GAPIS uses the graphics API packages declared in [gapis/api](api) to have a deep understanding of each command in the API and how it interacts with the state.
 
 Most of the code in these graphics API packages is generated from a corresponding graphics API file, which describes the internal state of a graphics driver, each command exposed by the API, and how each command interacts with the internal driver state. When these API files are combined with the API compiler and template files, we produce Go code that:
 

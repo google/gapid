@@ -1,0 +1,657 @@
+{{/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "module" ""}}
+{{Include "go_common.tmpl"}}
+{{$ | Macro "mutate.go" | GoFmt | Write "mutate.go"}}
+
+{{define "mutate.go"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+  import (
+    "context"
+    "fmt"
+    "io"
+    "io/ioutil"
+    "strings"
+
+    "github.com/google/gapid/gapis/atom"
+    "github.com/google/gapid/gapis/database"
+    "github.com/google/gapid/gapis/api"
+    "github.com/google/gapid/gapis/messages"
+    "github.com/google/gapid/gapis/replay/builder"
+    "github.com/google/gapid/gapis/replay/protocol"
+    "github.com/google/gapid/gapis/replay/value"
+    "github.com/google/gapid/gapis/stringtable"
+
+    ϟmem "github.com/google/gapid/gapis/memory"
+  )
+
+  type callable interface {
+    Call(context.Context, *api.State, *builder.Builder)
+  }
+
+  // GetState returns the {{$.Name}} state from the api.State.
+  func GetState(s *api.State) *State {
+    api := API{}
+    if state, ok := s.APIs[api].(*State); ok {
+      return state
+    } else {
+      state = &State{}
+      state.Init()
+      s.APIs[api] = state
+      return state
+    }
+  }
+
+  func loadRemap(ϟb *builder.Builder, key interface{}, ty protocol.Type, val value.Value) {
+    if ptr, found := ϟb.Remappings[key]; found {
+      ϟb.Load(ty, ptr)
+    } else {
+      ptr = ϟb.AllocateMemory(uint64(ty.Size(ϟb.MemoryLayout().GetPointer().GetSize())))
+      ϟb.Push(val) // We have an input to an unknown id, use the unmapped value.
+      ϟb.Clone(0)
+      ϟb.Store(ptr)
+      ϟb.Remappings[key] = ptr
+    }
+  }
+
+  {{Template "DeclareBuilderFunctionInfos" $}}
+
+  {{ForEach $.Pseudonyms "DeclarePseudonymValue" | JoinWith "\n"}}
+
+  {{ForEach $.Subroutines "DeclareSubroutine" | JoinWith "\n"}}
+
+  {{ForEach (AllCommands $) "DeclareMutate" | JoinWith "\n"}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the subroutine function.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareSubroutine"}}
+  {{AssertType $ "Function"}}
+
+  func {{Template "Go.Subroutine" $}}(§
+      ϟctx context.Context, §
+      ϟa atom.Atom, §
+      ϟo *atom.Observations, §
+      ϟs *api.State, §
+      ϟc *State, §
+      ϟt uint64, §
+      ϟb *builder.Builder, §
+      {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
+    ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
+    ϟl := ϟs.MemoryLayout
+    _ = ϟl
+    {{Global "CurrentFunction" $}}
+    {{Template "Block" $.Block}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a parameter name followed by its type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "NameAndType"}}
+  {{AssertType $ "Parameter"}}
+
+  {{Macro "Go.Parameter" $}} {{Macro "Go.Type" $.Type}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the Mutate() and Call() functions for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareMutate"}}
+  {{if not (GetAnnotation $ "pfn")}}
+    {{AssertType $ "Function"}}
+
+    {{$name := $ | GoCommandName}}
+    {{$r    := not (GetAnnotation $ "no_replay")}}
+
+    var _ = atom.Atom(&{{$name}}{}) // interface compliance check
+
+    {{if GetAnnotation $ "custom"}}
+      func (ϟa *{{$name}}) mutate(§
+    {{else}}
+      // Mutate performs the necessary state-mutation and memory observations for {{$.Name}}.
+      // If ϟb is not nil, Mutate also emits the replay instructions to call {{$.Name}}().
+      {{if not (IsVoid $.Return.Type)}}
+        // Upon returning the {{$.Name}}() return value will be stored on the stack.
+      {{end}}
+      func (ϟa *{{$name}}) Mutate(§
+    {{end}}
+        ϟctx context.Context, ϟs *api.State, ϟb *builder.Builder) error {
+
+      {{if not $r}}ϟb = nil // @no_replay{{end}}
+
+      ϟc, ϟt := GetState(ϟs), ϟa.thread
+      ϟl := ϟs.MemoryLayout
+      ϟo := ϟa.Extras().Observations()
+      _, _, _ = ϟc, ϟl, ϟt
+
+      {{Global "CurrentFunction" $}}
+
+      {{/* simulate the call */}}
+      ϟo.ApplyReads(ϟs.Memory[ϟmem.ApplicationPool])
+      {{Template "Block" $.Block}}
+
+      return task.StopReason(ϟctx)
+    }
+
+    {{if $r}}
+      // Call builds the replay instructions to push the arguments to the stack and invoke {{$.Name}}().
+      // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟs.{{if not (IsVoid $.Return.Type)}}
+      // The {{$.Name}}() return value will be stored on the stack.{{end}}
+      func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *api.State, ϟb *builder.Builder) {
+        ϟl := ϟs.MemoryLayout
+        _ = ϟl
+
+        {{/* Push all the parameters on the stack */}}
+        {{range $p := $.CallParameters}}
+          {{$type := TypeOf $p}}
+          {{$name := Macro "Go.Parameter" $p}}
+          {{Template "PushInput" "Type" $type "Name" $name}}
+        {{end}}
+
+        {{/* Call the function */}}
+        ϟb.Call({{Template "BuilderFunctionInfo" $}})
+
+        {{/* Store the return value into a remapping table, if required */}}
+        {{$rty := TypeOf $.Return}}
+        {{if (GetAnnotation $rty "replay_remap")}}
+          if key, remap := ϟa.Result.remap(ϟa, ϟs); remap {
+          ptr, found := ϟb.Remappings[key]
+          if !found {
+            ptr = ϟb.AllocateMemory({{Template "Go.SizeOf" $rty}})
+            ϟb.Remappings[key] = ptr
+          }
+          ϟb.Clone(0)
+          ϟb.Store(ptr)
+          }
+        {{end}}
+      }
+    {{end}}
+    {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits logic to push the specified input variable to the VM's stack.
+-------------------------------------------------------------------------------
+*/}}
+{{define "PushInput"}}
+  {{AssertType $.Type "Type"}}
+  {{AssertType $.Name "string"}}
+
+  {{if (GetAnnotation $.Type "replay_remap")}}
+    if key, remap := {{$.Name}}.remap(ϟa, ϟs); remap {
+      loadRemap(ϟb, key, {{Template "Go.Replay.Type" $.Type}}, {{Template "Go.Replay.Value" "Type" $.Type "Name" $.Name}})
+    } else {
+      ϟb.Push({{Template "Go.Replay.Value" "Type" $.Type "Name" $.Name}})
+    }
+  {{else if IsSize $.Type}}
+    {
+      size_size := ϟs.MemoryLayout.GetSize().GetSize() * 8
+      if size_size == 32 {
+        ϟb.Push(value.U32({{$.Name}}))
+      } else if size_size == 64 {
+        ϟb.Push(value.U64({{$.Name}}))
+      } else {
+        panic(fmt.Errorf("Unsupported size type bitwidth: %v", size_size))
+      }
+    }
+  {{else}}
+    ϟb.Push({{Template "Go.Replay.Value" "Type" $.Type "Name" $.Name}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Declares the value method for a given pseudonym type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclarePseudonymValue"}}
+  {{AssertType $ "Pseudonym"}}
+
+  {{$u := $ | TypeOf | Underlying}}
+  {{if IsNumericType $u}}
+    {{if not (GetAnnotation $ "replay_custom_value")}}
+      func (c {{$.Name}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Value {
+        {{if IsSize $.To}}
+          if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
+            return value.U32(uint32(c))
+          } else {
+            return value.U64(uint64(c))
+          }
+        {{else}}
+          {{$v := print (Macro "Go.Type" $.To) "(c)"}}
+          return {{Template "Go.Replay.Value" "Type" $.To "Name" $v}}
+        {{end}}
+      }
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Declares the value method for the given static array type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareArrayValue"}}
+  {{AssertType $ "Array" "StaticArray"}}
+
+  {{if not (or (Macro "IsInternal" $.ValueType) (IsAny $.ValueType))}}
+    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+      if len(arr) > 0 {
+        for _, e := range arr {
+          {{Template "PushInput" "Type" $.ValueType "Name" "e"}}
+        }
+        return ϟb.Buffer(len(arr))
+      } else {
+        return value.AbsolutePointer(0)
+      }
+    }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a function info definition for each of the commands.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareBuilderFunctionInfos"}}
+  {{AssertType $ "API"}}
+
+  {{$functions  := $.Functions | WithoutAnnotation "synthetic"}}
+  {{$synthetics := $.Functions | WithAnnotation    "synthetic"}}
+
+  {{range $i, $f := $functions}}
+    var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
+      ApiIndex:   {{$.Index}},§
+      ID:         {{$i}},§
+      ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
+      Parameters: {{len $f.CallParameters}},§
+    }
+  {{end}}
+  {{range $i, $f := $synthetics}}
+    var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
+      ApiIndex:   {{$.Index}},§
+      {{/* 0xff81..0xffff reserved for synthetic functions */}}
+      ID:         0x10000 - {{len $synthetics}} + {{$i}},§
+      ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
+      Parameters: {{len $f.CallParameters}},§
+    }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the name of the variable holding the specified command's function id.
+-------------------------------------------------------------------------------
+*/}}
+{{define "BuilderFunctionInfo"}}{{AssertType $ "Function"}}funcInfo{{$ | GoCommandName}}{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits all the statements in the given block.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Block"}}
+  {{ForEach $.Statements "Statement" | JoinWith "\n"}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the Go logic to execute the given statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Statement"}}
+  {{     if IsDeclareLocal $}}{{Template "DeclareLocal" $}}
+  {{else if IsAbort        $}}{{Template "Abort" $}}
+  {{else if IsAssert       $}}{{Template "Assert" $}}
+  {{else if IsAssign       $}}{{Template "Assign" "LHS" $.LHS "Operator" $.Operator "RHS" $.RHS}}
+  {{else if IsArrayAssign  $}}{{Template "ArrayAssign" $}}
+  {{else if IsBlock        $}}{¶{{Template "Block" $}}¶}
+  {{else if IsMapAssign    $}}{{Template "MapAssign" $}}
+  {{else if IsSliceAssign  $}}{{Template "SliceAssign" $}}
+  {{else if IsMapRemove    $}}{{Template "MapRemove" $}}
+  {{else if IsCopy         $}}{{Template "Copy" $}}
+  {{else if IsReturn       $}}{{Template "Return" $}}
+  {{else if IsIteration    $}}{{Template "Iteration" $}}
+  {{else if IsMapIteration $}}{{Template "MapIteration" $}}
+  {{else if IsCall         $}}{{Template "Go.Call" $}}
+  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟa, ϟs, ϟb)
+  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟa, ϟs, ϟb)
+  {{else if IsFence        $}}{{Template "Fence" $}}
+  {{else if IsBranch       $}}{{Template "Branch" $}}
+  {{else if IsSwitch       $}}{{Template "Switch" $}}
+  {{else}}{{Error "unsupported statement %T: %v" $ $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute an abort statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Abort"}}
+  {{AssertType $ "Abort"}}
+
+  {{$f := Global "CurrentFunction"}}
+
+  {{if and $f.Subroutine (not (IsVoid $f.Return.Type))}}
+    return {{Template "Go.Null" $f.Return.Type}}, atom.ErrAborted("{{$f.Name}}")
+  {{else}}
+    return atom.ErrAborted("{{$f.Name}}")
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute an assert statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Assert"}}
+  {{AssertType $ "Assert"}}
+
+  {{$f := Global "CurrentFunction"}}
+
+  if !({{Template "Go.Read" $.Condition}}) {
+    {{if and $f.Subroutine (not (IsVoid $f.Return.Type))}}
+      return {{Template "Go.Null" $f.Return.Type}}, §
+    {{else}}
+      return §
+    {{end}}
+    fmt.Errorf("Assert: {{TokenOf $}}")
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute an iteration statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Iteration"}}
+  {{AssertType $ "Iteration"}}
+
+  {{$it := Macro "Go.Read" $.Iterator}}
+  for {{$it}} := {{Template "Go.Read" $.From}}; {{$it}} < {{Template "Go.Read" $.To}}; {{$it}}++ {
+    {{Template "Block" $.Block}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute an iteration over a map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapIteration"}}
+  {{AssertType $ "MapIteration"}}
+
+  {
+    {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}} {
+      {{Template "Block" $.Block}}
+      {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
+    }
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a copy statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Copy"}}
+  {{AssertType $ "Copy"}}
+
+  {{Template "Go.Read" $.Dst}}.Copy(ϟctx, {{Template "Go.Read" $.Src}}, ϟa, ϟs, ϟb)
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a branch statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Branch"}}
+  {{AssertType $ "Branch"}}
+
+  if {{Template "Go.Read" $.Condition}} {
+    {{Template "Block" $.True}}
+  {{if $.False}}
+  } else {
+    {{Template "Block" $.False}}
+  {{end}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a switch statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Switch"}}
+  {{AssertType $ "Switch"}}
+
+  switch {{Template "Go.Read" $.Value}} {
+    {{range $c := $.Cases}}
+      case {{range $i, $cond := $c.Conditions}}§
+        {{if $i}}, {{end}}{{Template "Go.Read" $cond}}§
+        {{end}}:
+          {{Template "Block" $c.Block}}
+    {{end}}
+    default:
+    {{if IsNil $.Default}}
+      v := {{Template "Go.Read" $.Value}}
+      return fmt.Errorf("Missing switch case handler for value %T %v", v, v)
+    {{else}}
+      {{Template "Block" $.Default}}
+    {{end}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to declare a local.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareLocal"}}
+  {{AssertType $ "DeclareLocal"}}
+
+  {{if IsCall $.Local.Value}}
+    {{$call := Unpack $.Local.Value}}
+    {{if $call.Target.Function.Subroutine}}
+      {{/* Transform: v := sub() -> v, err := sub() */}}
+      {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}})
+      if ϟerr != nil {
+        {{Template "Go.ReturnErr" "ϟerr"}}
+      }
+    {{else}}
+      {{$.Local.Name}} := {{Template "Go.Read" $.Local.Value}}
+    {{end}}
+  {{else}}
+    {{$.Local.Name}} := {{Template "Go.Read" $.Local.Value}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to assign the RHS to the LHS.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Assign"}}
+  {{if IsIgnore $.LHS}}
+    {{if ne $.Operator "="}}{{Error "Compound assignments to '_' are not supported (%s)" $.Operator}}{{end}}
+    _ = {{Template "Go.Read" $.RHS}}
+  {{else}}
+    {{Template "Go.Read" $.LHS}} {{$.Operator}} {{Template "Go.Read" $.RHS}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to assign a value to a static-array index.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ArrayAssign"}}
+  {{AssertType $ "ArrayAssign"}}
+
+  {{Template "Go.Read" $.To.Array}}[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to perform a map assign statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapAssign"}}
+  {{AssertType $ "MapAssign"}}
+
+  {{if eq $.Operator "="}}
+    {{Template "Go.Read" $.To.Map}}[{{Template "Go.Read" $.To.Index}}] = {{Template "Go.Read" $.Value}}
+  {{else}}
+    {{Error "Unsupported MapAssign operator %s" $.Operator}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to remove a map element.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapRemove"}}
+  {{AssertType $ "MapRemove"}}
+
+  delete({{Template "Go.Read" $.Map}}, {{Template "Go.Read" $.Key}})
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to assign a value to a slice index.
+-------------------------------------------------------------------------------
+*/}}
+{{define "SliceAssign"}}
+  {{AssertType $ "SliceAssign"}}
+
+  {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}, ϟl).Write(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a fence statement.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Fence"}}
+  {{AssertType $ "Fence"}}
+
+  {{$f := Global "CurrentFunction"}}
+
+  {{if not (GetAnnotation $f "no_replay")}}
+    {{/* Command supports replay */}}
+
+    if ϟb != nil {
+      {{/*
+        Special case for building replay commands for fences that wrap a copy statement.
+        In these situations we need to perform:
+         • The copy's read observations so that input buffers are primed.
+         • The function call.
+         • The copy's write observations so that output buffers are remapped.
+        This ensures that the buffers are correctly handled before and after calling the
+        graphics driver functions.
+      */}}
+      {{if IsCopy $.Statement}}
+        {{/* Apply the fenced-copy read */}}
+        {{/* TODO: Unlike Slice.Copy, this does not optimise for non-pointer copies. */}}
+        ϟdst, ϟsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
+        ϟcount := u64.Min(ϟdst.Count(), ϟsrc.Count())
+        ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount, ϟl), ϟsrc.Slice(0, ϟcount, ϟl)
+        ϟsrcElems := ϟsrc.Read(ϟctx, ϟa, ϟs, ϟb)
+      {{end}}
+
+      {{/* Perform the call */}}
+      ϟa{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟs, ϟb);
+
+      {{if IsCopy $.Statement}}
+        {{/* Apply the fenced-copy write */}}
+        ϟdst.Write(ϟctx, ϟsrcElems, ϟa, ϟs, ϟb)
+      {{end}}
+    }
+    {{if IsCopy $.Statement}}
+      § else {
+      {{/*
+        To keep flow symmetry with the block above, we need to handle the case
+        for a fenced-copy here.
+      */}}
+      {{Template "Statement" $.Statement}}
+      }
+    {{end}}
+  {{end}}
+
+  {{if and (not (IsNil $.Statement)) (not (IsCopy $.Statement))}}
+    {{/* Call the non-copy, fence-wrapped statement */}}
+    {{Template "Statement" $.Statement}}
+  {{end}}
+
+  {{/* Merge the observed writes into the application pool */}}
+  ϟo.ApplyWrites(ϟs.Memory[ϟmem.ApplicationPool])
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a return statement
+-------------------------------------------------------------------------------
+*/}}
+{{define "Return"}}
+  {{AssertType $ "Return"}}
+
+  {{if $.Function.Subroutine}}
+    return {{if $.Value}}{{Template "Go.Read" $.Value}}, {{end}}nil
+  {{else}}
+    _ = {{Template "Go.Read" $.Value}}
+  {{end}}
+{{end}}

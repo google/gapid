@@ -21,7 +21,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -241,7 +241,7 @@ func (c *client) GetFramebufferAttachment(
 	ctx context.Context,
 	dev *path.Device,
 	cmd *path.Command,
-	att gfxapi.FramebufferAttachment,
+	att api.FramebufferAttachment,
 	rs *service.RenderSettings,
 	hints *service.UsageHints) (*path.ImageInfo, error) {
 

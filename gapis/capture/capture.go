@@ -25,10 +25,10 @@ import (
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
@@ -47,7 +47,7 @@ type Capture struct {
 	Name     string
 	Header   *Header
 	Atoms    []atom.Atom
-	APIs     []gfxapi.API
+	APIs     []api.API
 	Observed interval.U64RangeList
 }
 
@@ -77,7 +77,7 @@ func New(ctx context.Context, name string, header *Header, atoms []atom.Atom) (*
 
 // NewState returns a new, default-initialized State object built for the
 // capture held by the context.
-func NewState(ctx context.Context) (*gfxapi.State, error) {
+func NewState(ctx context.Context) (*api.State, error) {
 	c, err := Resolve(ctx)
 	if err != nil {
 		return nil, err
@@ -87,10 +87,10 @@ func NewState(ctx context.Context) (*gfxapi.State, error) {
 
 // NewState returns a new, default-initialized State object built for the
 // capture.
-func (c *Capture) NewState() *gfxapi.State {
+func (c *Capture) NewState() *api.State {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
-	return gfxapi.NewStateWithAllocator(
+	return api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
 		c.Header.Abi.MemoryLayout,
 	)
@@ -280,11 +280,11 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 		Name:     name,
 		Header:   header,
 		Observed: interval.U64RangeList{},
-		APIs:     []gfxapi.API{},
+		APIs:     []api.API{},
 	}
 
 	idmap := map[id.ID]id.ID{}
-	apiSet := map[gfxapi.ID]gfxapi.API{}
+	apiSet := map[api.ID]api.API{}
 
 	for _, a := range atoms {
 		if api := a.API(); api != nil {

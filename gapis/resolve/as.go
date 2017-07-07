@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -39,7 +39,7 @@ func As(ctx context.Context, p *path.As) (interface{}, error) {
 	case *path.As_VertexBufferFormat:
 		f := to.VertexBufferFormat
 		switch o := o.(type) {
-		case *gfxapi.Mesh:
+		case *api.Mesh:
 			return o.ConvertTo(ctx, f)
 		}
 	}

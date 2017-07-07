@@ -18,18 +18,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // ResourceMeta returns the metadata for the specified resource.
-func ResourceMeta(ctx context.Context, id *path.ID, after *path.Command) (*gfxapi.ResourceMeta, error) {
+func ResourceMeta(ctx context.Context, id *path.ID, after *path.Command) (*api.ResourceMeta, error) {
 	obj, err := database.Build(ctx, &ResourceMetaResolvable{id, after})
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*gfxapi.ResourceMeta), nil
+	return obj.(*api.ResourceMeta), nil
 }
 
 // Resolve implements the database.Resolver interface.
@@ -47,7 +47,7 @@ func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, erro
 	if !ok {
 		return nil, fmt.Errorf("Could not find resource %v", id)
 	}
-	result := &gfxapi.ResourceMeta{
+	result := &api.ResourceMeta{
 		IDMap:    res.resourceMap,
 		Resource: val,
 	}

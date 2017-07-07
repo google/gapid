@@ -37,8 +37,8 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/core/video"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -340,7 +340,7 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 func getFrame(ctx context.Context, flags VideoFlags, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(flags.Max.Width), MaxHeight: uint32(flags.Max.Height)}
-	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, gfxapi.FramebufferAttachment_Color0, settings, nil)
+	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}

@@ -21,7 +21,7 @@ import com.google.gapid.glviewer.Geometry.DisplayMode;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.Cubemap;
+import com.google.gapid.proto.service.api.API.Cubemap;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.ScenePanel;
 

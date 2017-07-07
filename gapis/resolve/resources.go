@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -45,13 +45,13 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	resources := []trackedResource{}
-	seen := map[gfxapi.Resource]int{}
+	seen := map[api.Resource]int{}
 
 	var currentAtomIndex uint64
 	var currentAtomResourceCount int
 
 	state := c.NewState()
-	state.OnResourceCreated = func(r gfxapi.Resource) {
+	state.OnResourceCreated = func(r api.Resource) {
 		currentAtomResourceCount++
 		seen[r] = len(seen)
 		resources = append(resources, trackedResource{
@@ -60,7 +60,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			accesses: []uint64{currentAtomIndex},
 		})
 	}
-	state.OnResourceAccessed = func(r gfxapi.Resource) {
+	state.OnResourceAccessed = func(r api.Resource) {
 		if index, ok := seen[r]; ok { // Update the list of accesses
 			c := len(resources[index].accesses)
 			if c == 0 || resources[index].accesses[c-1] != currentAtomIndex {
@@ -74,7 +74,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		a.Mutate(ctx, state, nil /* no builder, just mutate */)
 	}
 
-	types := map[gfxapi.ResourceType]*service.ResourcesByType{}
+	types := map[api.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {
 		ty := tr.resource.ResourceType(ctx)
 		b := types[ty]
@@ -94,7 +94,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 }
 
 type trackedResource struct {
-	resource gfxapi.Resource
+	resource api.Resource
 	id       id.ID
 	name     string
 	accesses []uint64

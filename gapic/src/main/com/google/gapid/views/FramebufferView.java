@@ -34,7 +34,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.RenderSettings;
 import com.google.gapid.proto.service.Service.WireframeMode;
-import com.google.gapid.proto.service.gfxapi.GfxAPI.FramebufferAttachment;
+import com.google.gapid.proto.service.api.API.FramebufferAttachment;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.path.Path.ImageInfo;
 import com.google.gapid.rpc.Rpc;

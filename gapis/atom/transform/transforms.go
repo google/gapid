@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/gfxapi"
 )
 
 // Transforms is a list of Transformer objects.
@@ -41,7 +41,7 @@ func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) 
 	for i := len(l) - 1; i >= 0; i-- {
 		s := out.State()
 		if config.SeparateMutateStates {
-			s = gfxapi.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
+			s = api.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
@@ -92,12 +92,12 @@ func (t transform) Name() string { return t.N }
 // TransformWriter implements the Writer interface, transforming each atom that
 // is written with T, before writing the result to O.
 type TransformWriter struct {
-	S *gfxapi.State
+	S *api.State
 	T Transformer
 	O Writer
 }
 
-func (p TransformWriter) State() *gfxapi.State {
+func (p TransformWriter) State() *api.State {
 	return p.S
 }
 

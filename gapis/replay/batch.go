@@ -22,10 +22,10 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/gfxapi"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/scheduler"
@@ -177,11 +177,11 @@ func (m *Manager) execute(
 // adapter conforms to the the atom Writer interface, performing replay writes
 // on each atom.
 type adapter struct {
-	state   *gfxapi.State
+	state   *api.State
 	builder *builder.Builder
 }
 
-func (w *adapter) State() *gfxapi.State {
+func (w *adapter) State() *api.State {
 	return w.state
 }
 

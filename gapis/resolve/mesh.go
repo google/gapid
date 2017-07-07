@@ -17,14 +17,14 @@ package resolve
 import (
 	"context"
 
-	"github.com/google/gapid/gapis/gfxapi"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // Mesh resolves and returns the Mesh from the path p.
-func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
+func Mesh(ctx context.Context, p *path.Mesh) (*api.Mesh, error) {
 	obj, err := ResolveInternal(ctx, p.Parent())
 	if err != nil {
 		return nil, err
@@ -40,11 +40,11 @@ func Mesh(ctx context.Context, p *path.Mesh) (*gfxapi.Mesh, error) {
 	}
 }
 
-func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*gfxapi.Mesh, error) {
+func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error) {
 	switch o := o.(type) {
-	case gfxapi.APIObject:
-		if api := o.API(); api != nil {
-			if mp, ok := api.(gfxapi.MeshProvider); ok {
+	case api.APIObject:
+		if a := o.API(); a != nil {
+			if mp, ok := a.(api.MeshProvider); ok {
 				return mp.Mesh(ctx, o, p)
 			}
 		}

@@ -17,8 +17,8 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/gfxapi/sync"
 )
 
 // Resolve builds a SynchronizationResolvable object for the given capture
