@@ -24,10 +24,9 @@ set(files
     file_log.go
     injector.go
     injector_test.go
-    trace_log.go
     transformer.go
     transforms.go
 )
 set(dirs
-    
+
 )

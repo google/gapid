@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/atom/transform"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )

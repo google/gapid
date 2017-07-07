@@ -18,8 +18,8 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/atom/transform"
 	"github.com/google/gapid/gapis/memory"
 )
 

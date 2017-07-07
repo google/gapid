@@ -24,21 +24,22 @@ import (
 	"github.com/google/gapid/gapis/config"
 )
 
-// FileLog is an implementation of Transformer that will log all atoms to a text file.
-type FileLog struct {
+type fileLog struct {
 	file *os.File
 }
 
-func NewFileLog(ctx context.Context, name string) *FileLog {
-	f, err := os.Create(name)
+// NewFileLog returns a Transformer that will log all commands passed through it
+// to the text file at path.
+func NewFileLog(ctx context.Context, path string) Transformer {
+	f, err := os.Create(path)
 	if err != nil {
-		log.E(ctx, "Failed to create replay log file %v: %v", name, err)
+		log.E(ctx, "Failed to create replay log file %v: %v", path, err)
 		return nil
 	}
-	return &FileLog{file: f}
+	return &fileLog{file: f}
 }
 
-func (t *FileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	if cmd.API() != nil {
 		t.file.WriteString(fmt.Sprintf("%v: %v\n", id, cmd))
 	} else {
@@ -62,6 +63,6 @@ func (t *FileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out 
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *FileLog) Flush(ctx context.Context, out Writer) {
+func (t *fileLog) Flush(ctx context.Context, out Writer) {
 	t.file.Close()
 }

@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: This file is exactly the same as gles/dead_code_elimination.go. Find
-// a way to extract the dependency graph building logic and move this file,
-// also the gles one and also the definition of dependency graph to another
-// proper place so they can be shared from both GLES and Vulkan side.
-
 package transform
 
 import (
@@ -32,33 +27,39 @@ import (
 
 var (
 	deadCodeEliminationCounter         = benchmark.GlobalCounters.Duration("deadCodeElimination")
-	deadCodeEliminationAtomDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.atom.dead")
-	deadCodeEliminationAtomLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.atom.live")
+	deadCodeEliminationCmdDeadCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.dead")
+	deadCodeEliminationCmdLiveCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.live")
 	deadCodeEliminationDrawDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.dead")
 	deadCodeEliminationDrawLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.live")
 	deadCodeEliminationDataDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.dead")
 	deadCodeEliminationDataLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.live")
 )
 
-// DeadCodeElimination is an implementation of Transformer that outputs live atoms.
-// That is, all atoms which to not affect the requested output are omitted.
-// The transform generates atoms from the given AtomsID, it does not take inputs.
-// It is named after the standard compiler optimization.
-// (state is like memory and atoms are instructions which read/write it).
+// DeadCodeElimination is an implementation of Transformer that outputs live
+// commands. That is, all commands which do not affect the requested output are
+// omitted. It is named after the standard compiler optimization.
+// (state is like memory and commands are instructions which read/write it).
+// Construct with NewDeadCodeElimination, do not build directly.
 type DeadCodeElimination struct {
-	dependencyGraph *dependencygraph.DependencyGraph
-	requests        api.CmdIDSet
-	lastRequest     api.CmdID
+	depGraph    *dependencygraph.DependencyGraph
+	requests    api.CmdIDSet
+	lastRequest api.CmdID
 }
 
-func NewDeadCodeElimination(ctx context.Context, dependencyGraph *dependencygraph.DependencyGraph) *DeadCodeElimination {
+// NewDeadCodeElimination constructs and returns a new DeadCodeElimination
+// transform.
+//
+// The transform generates commands from the given depGraph, it does not take
+// inputs.
+func NewDeadCodeElimination(ctx context.Context, depGraph *dependencygraph.DependencyGraph) *DeadCodeElimination {
 	return &DeadCodeElimination{
-		dependencyGraph: dependencyGraph,
-		requests:        make(api.CmdIDSet),
+		depGraph: depGraph,
+		requests: make(api.CmdIDSet),
 	}
 }
 
-// Request ensures that we keep alive all atoms needed to render framebuffer at the given point.
+// Request ensures that we keep alive all commands needed to render framebuffer
+// at the given point.
 func (t *DeadCodeElimination) Request(id api.CmdID) {
 	t.requests.Add(id)
 	if id > t.lastRequest {
@@ -76,7 +77,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
-			out.MutateAndWrite(ctx, api.CmdID(i), t.dependencyGraph.Commands[i])
+			out.MutateAndWrite(ctx, api.CmdID(i), t.depGraph.Commands[i])
 		}
 	}
 }
@@ -84,9 +85,9 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
 func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 	isLive := make([]bool, t.lastRequest+1)
-	state := newLivenessTree(t.dependencyGraph.GetHierarchyStateMap())
+	state := newLivenessTree(t.depGraph.GetHierarchyStateMap())
 	for i := int(t.lastRequest); i >= 0; i-- {
-		b := t.dependencyGraph.Behaviours[i]
+		b := t.depGraph.Behaviours[i]
 		isLive[i] = b.KeepAlive
 		// Always ignore commands that abort.
 		if b.Aborted {
@@ -95,7 +96,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		// If this is requested ID, mark all root state as live.
 		if t.requests.Contains(api.CmdID(i)) {
 			isLive[i] = true
-			for root := range t.dependencyGraph.Roots {
+			for root := range t.depGraph.Roots {
 				state.MarkLive(root)
 			}
 		}
@@ -127,8 +128,8 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		}
 		// Debug output
 		if config.DebugDeadCodeElimination && t.requests.Contains(api.CmdID(i)) {
-			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.Commands[i])
-			t.dependencyGraph.Print(ctx, &b)
+			log.I(ctx, "DCE: Requested atom %v: %v", i, t.depGraph.Commands[i])
+			t.depGraph.Print(ctx, &b)
 		}
 	}
 
@@ -137,7 +138,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		num, numDead, numDeadDraws, numLive, numLiveDraws := len(isLive), 0, 0, 0, 0
 		deadMem, liveMem := uint64(0), uint64(0)
 		for i := 0; i < num; i++ {
-			cmd := t.dependencyGraph.Commands[i]
+			cmd := t.depGraph.Commands[i]
 			mem := uint64(0)
 			if e := cmd.Extras(); e != nil && e.Observations() != nil {
 				for _, r := range e.Observations().Reads {
@@ -158,8 +159,8 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 				liveMem += mem
 			}
 		}
-		deadCodeEliminationAtomDeadCounter.AddInt64(int64(numDead))
-		deadCodeEliminationAtomLiveCounter.AddInt64(int64(numLive))
+		deadCodeEliminationCmdDeadCounter.AddInt64(int64(numDead))
+		deadCodeEliminationCmdLiveCounter.AddInt64(int64(numLive))
 		deadCodeEliminationDrawDeadCounter.AddInt64(int64(numDeadDraws))
 		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
 		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
