@@ -22,7 +22,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -68,9 +68,9 @@ var (
 	}
 )
 
-func newPathTest(ctx context.Context, a *atom.List) *path.Capture {
+func newPathTest(ctx context.Context, cmds ...api.Cmd) *path.Capture {
 	h := &capture.Header{Abi: device.WindowsX86_64}
-	p, err := capture.New(ctx, "test", h, a.Atoms)
+	p, err := capture.New(ctx, "test", h, cmds)
 	if err != nil {
 		log.F(ctx, "Couldn't create capture: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestGet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	p := newPathTest(ctx, atom.NewList(test.P, test.Q))
+	p := newPathTest(ctx, test.P, test.Q)
 	ctx = capture.Put(ctx, p)
 
 	// Get tests
@@ -166,8 +166,7 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	a := atom.NewList(test.P, test.Q)
-	p := newPathTest(ctx, a)
+	p := newPathTest(ctx, test.P, test.Q)
 	ctx = capture.Put(ctx, p)
 
 	// Set tests

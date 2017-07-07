@@ -29,12 +29,12 @@ import (
 func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	ctx = capture.Put(ctx, path.FindCapture(p))
 
-	atomIdx := p.After.Indices[0]
+	cmdIdx := p.After.Indices[0]
 	if len(p.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for Memory") // TODO: Subcommands
 	}
 
-	list, err := NAtoms(ctx, p.After.Capture, atomIdx+1)
+	cmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range list.Atoms[:atomIdx] {
+	for _, a := range cmds[:cmdIdx] {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 			interval.Merge(&writes, rng.Window(r).Span(), false)
 		}
 	}
-	list.Atoms[atomIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
+	cmds[cmdIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
 
 	slice := pool.Slice(r)
 

@@ -111,23 +111,23 @@ var (
 	eglDisplay = p(1)
 )
 
-func storeAtoms(ctx context.Context, a *atom.List) id.ID {
-	id, err := database.Store(ctx, a)
+func storeCommands(ctx context.Context, cmds []api.Cmd) id.ID {
+	id, err := database.Store(ctx, cmds)
 	if err != nil {
 		log.F(ctx, "Failed to store atom stream: %v", err)
 	}
 	return id
 }
 
-// storeCapture encodes and writes the atom list to the database, returning an
-// identifier to the newly constructed and stored Capture.
-func (f *Fixture) storeCapture(ctx context.Context, a *atom.List) *path.Capture {
+// storeCapture encodes and writes the command list to the database, returning
+// an identifier to the newly constructed and stored Capture.
+func (f *Fixture) storeCapture(ctx context.Context, cmds []api.Cmd) *path.Capture {
 	dev := f.device.Instance()
 	h := &capture.Header{
 		Device: dev,
 		Abi:    dev.Configuration.ABIs[0],
 	}
-	out, err := capture.New(ctx, "test-capture", h, a.Atoms)
+	out, err := capture.New(ctx, "test-capture", h, cmds)
 	assert.With(ctx).ThatError(err).Succeeded()
 	return out
 }
@@ -226,7 +226,7 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	}
 }
 
-func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager, atoms *atom.List, expected []string, done *sync.WaitGroup) {
+func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
 	if done != nil {
 		defer done.Done()
 	}
@@ -237,7 +237,7 @@ func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	got := []string{}
 	for _, e := range report.Items {
 		if e.Command != nil {
-			got = append(got, fmt.Sprintf("%s@%d: %s: %v", e.Severity.String(), e.Command.Indices, atoms.Atoms[e.Command.Indices[0]], report.Msg(e.Message).Text(nil)))
+			got = append(got, fmt.Sprintf("%s@%d: %s: %v", e.Severity.String(), e.Command.Indices, cmds[e.Command.Indices[0]], report.Msg(e.Message).Text(nil)))
 		} else {
 			got = append(got, fmt.Sprintf("%s /%v", e.Severity.String(), report.Msg(e.Message).Text(nil)))
 		}
@@ -303,19 +303,19 @@ func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatc
 	}
 }
 
-func (f *Fixture) initContext(ctx context.Context, width, height int, preserveBuffersOnSwap bool) (cmds *atom.List, eglContext, eglSurface memory.Pointer) {
+func (f *Fixture) initContext(ctx context.Context, width, height int, preserveBuffersOnSwap bool) (cmds []api.Cmd, eglContext, eglSurface memory.Pointer) {
 	eglContext = f.p(ctx)
 	eglSurface = f.p(ctx)
 	eglConfig := f.p(ctx)
 
 	eglShareContext := memory.Nullptr
 	// TODO: We don't observe attribute lists properly. We should.
-	cmds = atom.NewList(
+	cmds = []api.Cmd{
 		f.cb.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
 		f.cb.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
 		f.cb.EglCreateContext(eglDisplay, eglConfig, eglShareContext, f.p(ctx), eglContext),
 		f.makeCurrent(eglSurface, eglContext, width, height, preserveBuffersOnSwap),
-	)
+	}
 	return cmds, eglContext, eglSurface
 }
 
@@ -393,7 +393,7 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 			modFourCounter = (modFourCounter + 1) % 4
 		}
 	}
-	return f.storeCapture(ctx, atom.NewList(merged...))
+	return f.storeCapture(ctx, merged)
 }
 
 func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
@@ -431,7 +431,7 @@ func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.
 func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, traceVerifier) {
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
 	missingProg := gles.ProgramId(f.newID())
-	atoms, _, eglSurface := f.initContext(ctx, 128, 128, false)
+	cmds, _, eglSurface := f.initContext(ctx, 128, 128, false)
 	texLoc := gles.UniformLocation(0)
 
 	s := api.NewStateWithEmptyAllocator(f.memoryLayout)
@@ -444,8 +444,11 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 
 	someString := atom.Must(atom.AllocData(ctx, f.s, "hello world"))
 
-	atoms.Add(gles.BuildProgram(ctx, s, f.cb, vs, fs, prog, textureVSSource, textureFSSource)...)
-	atoms.Add(
+	cmds = append(cmds,
+		gles.BuildProgram(ctx, s, f.cb, vs, fs, prog, textureVSSource, textureFSSource)...,
+	)
+
+	cmds = append(cmds,
 		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
 		f.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI),
@@ -490,14 +493,14 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		}
 		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
 
-		checkReport(ctx, intent, mgr, atoms, []string{
+		checkReport(ctx, intent, mgr, cmds, []string{
 			"ErrorLevel@15: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE [value: value, variable: variable]>",
 			"ErrorLevel@17: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: value, variable: variable]>",
 			"ErrorLevel@18: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {{} 4208 0}): <ERR_INVALID_OPERATION [operation: operation]>",
 		}, nil)
 	}
 
-	return f.storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, cmds), verifyTrace
 }
 
 func (f Fixture) generateDrawTriangleCapture(ctx context.Context) (*path.Capture, traceVerifier) {
@@ -509,18 +512,25 @@ func (f Fixture) generateDrawTriangleCapture(ctx context.Context) (*path.Capture
 func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, fr, fg, fb gles.GLfloat) (*path.Capture, traceVerifier) {
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
 	angleLoc := gles.UniformLocation(0)
-	atoms, _, eglSurface := f.initContext(ctx, 64, 64, false)
-	atoms.Add(f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST)) // Required for depth-writing
+	cmds, _, eglSurface := f.initContext(ctx, 64, 64, false)
 
-	clear := atoms.Add(
+	cmds = append(cmds,
+		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+	)
+
+	clear := api.CmdID(len(cmds))
+	cmds = append(cmds,
 		f.cb.GlClearColor(br, bg, bb, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
 	)
-	atoms.Add(gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...)
+	cmds = append(cmds,
+		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...,
+	)
 
 	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
 
-	triangle := atoms.Add(
+	triangle := api.CmdID(len(cmds))
+	cmds = append(cmds,
 		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
@@ -546,14 +556,14 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 	angle := 0.0
 	for i := 0; i < 30; i++ {
 		angle += math.Pi / 30.0
-		atoms.Add(
+		cmds = append(cmds,
 			f.cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 			f.cb.GlUniform1f(angleLoc, gles.GLfloat(angle)),
 			f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
 			f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 		)
 	}
-	rotatedTriangle := atoms.Add()
+	rotatedTriangle := api.CmdID(len(cmds))
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -573,7 +583,7 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 		done.Wait()
 	}
 
-	return f.storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, cmds), verifyTrace
 }
 
 func testTrace(t *testing.T, name string, tg traceGenerator) {
@@ -636,22 +646,25 @@ func TestResizeRenderer(t *testing.T) {
 	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
 
 	vs, fs, prog, pos := gles.ShaderId(f.newID()), gles.ShaderId(f.newID()), gles.ProgramId(f.newID()), gles.AttributeLocation(0)
-	atoms, eglContext, eglSurface := f.initContext(ctx, 8, 8, false) // start with a small backbuffer
-	atoms.Add(gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...)
-	atoms.Add(
+	cmds, eglContext, eglSurface := f.initContext(ctx, 8, 8, false) // start with a small backbuffer
+	cmds = append(cmds,
+		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...,
+	)
+	cmds = append(cmds,
 		f.cb.GlLinkProgram(prog),
 		f.cb.GlUseProgram(prog),
 		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
 		f.cb.GlEnableVertexAttribArray(pos),
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
 	)
-	triangle := atoms.Add(
+	triangle := api.CmdID(len(cmds))
+	cmds = append(cmds,
 		f.makeCurrent(eglSurface, eglContext, 64, 64, false),
 		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
-	capture := f.storeCapture(ctx, atoms)
+	capture := f.storeCapture(ctx, cmds)
 	intent := replay.Intent{
 		Capture: capture,
 		Device:  path.NewDevice(f.device.Instance().Id.ID()),
@@ -667,17 +680,21 @@ func TestResizeRenderer(t *testing.T) {
 func TestPreserveBuffersOnSwap(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	atoms, _, _ := f.initContext(ctx, 64, 64, true)
-	clear := atoms.Add(
+	cmds, _, _ := f.initContext(ctx, 64, 64, true)
+	clear := api.CmdID(len(cmds))
+	cmds = append(cmds,
 		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	swapA := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapB := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapC := atoms.Add(f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapA := api.CmdID(len(cmds))
+	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapB := api.CmdID(len(cmds))
+	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapC := api.CmdID(len(cmds))
+	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
 
 	intent := replay.Intent{
-		Capture: f.storeCapture(ctx, atoms),
+		Capture: f.storeCapture(ctx, cmds),
 		Device:  path.NewDevice(f.device.Instance().Id.ID()),
 	}
 
@@ -711,7 +728,7 @@ func TestIssues(t *testing.T) {
 		},
 	} {
 		cmds, _, _ := f.initContext(ctx, 64, 64, true)
-		cmds.Add(test.cmds...)
+		cmds = append(cmds, test.cmds...)
 		intent := replay.Intent{
 			Capture: f.storeCapture(ctx, cmds),
 			Device:  path.NewDevice(f.device.Instance().Id.ID()),

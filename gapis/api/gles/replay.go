@@ -94,7 +94,7 @@ func (a API) Replay(
 
 	ctx = PutUnusedIDMap(ctx)
 
-	cmds := atom.NewList(capture.Commands...)
+	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
 
@@ -152,7 +152,7 @@ func (a API) Replay(
 	}
 
 	if optimize && !config.DisableDeadCodeElimination {
-		cmds = atom.NewList() // DeadCommandRemoval generates commands.
+		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 		transforms.Prepend(deadCodeElimination)
 	}
 
@@ -184,7 +184,7 @@ func (a API) Replay(
 	transforms.Add(&bindRendererOnContextSwitch{})
 
 	if config.DebugReplay {
-		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds.Atoms))
+		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds))
 		for i, t := range transforms {
 			log.I(ctx, "(%d) %#v", i, t)
 		}
@@ -206,7 +206,7 @@ func (a API) Replay(
 		transforms = newTransforms
 	}
 
-	transforms.Transform(ctx, *cmds, out)
+	transforms.Transform(ctx, cmds, out)
 	return nil
 }
 

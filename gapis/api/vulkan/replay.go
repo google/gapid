@@ -473,7 +473,7 @@ func (a API) Replay(
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
-	cmds := atom.NewList(capture.Commands...)
+	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
@@ -540,7 +540,7 @@ func (a API) Replay(
 
 	// Use the dead code elimination pass
 	if !config.DisableDeadCodeElimination {
-		cmds = atom.NewList()
+		cmds = []api.Cmd{}
 		transforms.Prepend(dceInfo.deadCodeElimination)
 	}
 
@@ -555,7 +555,7 @@ func (a API) Replay(
 	transforms.Add(&destroyResourcesAtEOS{})
 
 	if config.DebugReplay {
-		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds.Atoms))
+		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds))
 		for i, t := range transforms {
 			log.I(ctx, "(%d) %#v", i, t)
 		}
@@ -578,7 +578,7 @@ func (a API) Replay(
 		transforms = newTransforms
 	}
 
-	transforms.Transform(ctx, *cmds, out)
+	transforms.Transform(ctx, cmds, out)
 	return nil
 }
 

@@ -50,11 +50,11 @@ func APIState(ctx context.Context, p *path.State) (interface{}, error) {
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
 	cmdIdx := r.Path.After.Indices[0]
-	atoms, err := Atoms(ctx, r.Path.After.Capture)
+	allCmds, err := Cmds(ctx, r.Path.After.Capture)
 	if err != nil {
 		return nil, err
 	}
-	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, api.CmdID(cmdIdx), r.Path.After.Indices[1:])
+	cmds, err := sync.MutationCmdsFor(ctx, r.Path.After.Capture, allCmds, api.CmdID(cmdIdx), r.Path.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +62,8 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range list.Atoms {
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+	for _, cmd := range cmds {
+		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
 	}
@@ -77,11 +77,11 @@ func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if len(r.Path.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
 	}
-	list, err := NAtoms(ctx, r.Path.After.Capture, cmdIdx+1)
+	cmds, err := NCmds(ctx, r.Path.After.Capture, cmdIdx+1)
 	if err != nil {
 		return nil, err
 	}
-	return apiState(ctx, list.Atoms, r.Path)
+	return apiState(ctx, cmds, r.Path)
 }
 
 func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (interface{}, error) {

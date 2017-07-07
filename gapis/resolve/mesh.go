@@ -50,14 +50,14 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error
 		}
 
 	case *service.CommandTreeNode:
-		all, err := Atoms(ctx, o.Commands.Capture)
+		cmds, err := Cmds(ctx, o.Commands.Capture)
 		if err != nil {
 			return nil, err
 		}
 		s, e := o.Commands.From[0], o.Commands.To[0] // TODO: Subcommands
 		for i := e; int64(i) >= int64(s); i-- {
 			p := o.Commands.Capture.Command(i).Mesh(p.Options.Faceted)
-			if mesh, err := meshFor(ctx, all.Atoms[i], p); mesh != nil || err != nil {
+			if mesh, err := meshFor(ctx, cmds[i], p); mesh != nil || err != nil {
 				return mesh, err
 			}
 		}

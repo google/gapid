@@ -19,30 +19,33 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
 // ClearBackbuffer returns the atom list needed to create a context then clear,
 // sequentially the backbuffer to red, green, blue and black.
-func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder) (atoms *atom.List, red, green, blue, black api.CmdID) {
+func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder) (cmds []api.Cmd, red, green, blue, black api.CmdID) {
 	b := newBuilder(ctx)
 	b.newEglContext(64, 64, memory.Nullptr, false)
-	red = b.Add(
+	red = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.GlClearColor(1.0, 0.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	green = b.Add(
+	green = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	blue = b.Add(
+	blue = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	black = b.Add(
+	black = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 0.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	return &b.List, red, green, blue, black
+	return b.cmds, red, green, blue, black
 }

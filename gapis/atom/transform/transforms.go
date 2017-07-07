@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 )
 
@@ -28,7 +27,7 @@ type Transforms []Transformer
 
 // Transform sequentially transforms the atoms by each of the transformers in
 // the list, before writing the final output to the output atom Writer.
-func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) {
+func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 	var currentIndex int
 	var currentCmd api.Cmd
 	defer func() {
@@ -45,9 +44,9 @@ func (l Transforms) Transform(ctx context.Context, atoms atom.List, out Writer) 
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
-	for i, a := range atoms.Atoms {
-		currentIndex, currentCmd = i, a
-		chain.MutateAndWrite(ctx, api.CmdID(i), a)
+	for i, cmd := range cmds {
+		currentIndex, currentCmd = i, cmd
+		chain.MutateAndWrite(ctx, api.CmdID(i), cmd)
 	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
 		chain = p.O

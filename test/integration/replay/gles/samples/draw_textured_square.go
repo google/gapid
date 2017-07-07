@@ -19,13 +19,12 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 )
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (atoms *atom.List, draw api.CmdID, swap api.CmdID) {
+func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (cmds []api.Cmd, draw api.CmdID, swap api.CmdID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -76,7 +75,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 
 	// Build the program resource
 	b.program(ctx, vs, fs, prog, textureVSSource, textureFSSource)
-	b.Add(
+	b.cmds = append(b.cmds,
 		api.WithExtras(
 			cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
@@ -94,7 +93,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	)
 
 	// Build the texture resource
-	b.Add(
+	b.cmds = append(b.cmds,
 		cb.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
 		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
 		cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
@@ -118,7 +117,8 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	}
 
 	// Render square using the build program and texture
-	draw = b.Add(
+	draw = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
 		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
@@ -133,9 +133,10 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
 	)
-	swap = b.Add(
+	swap = api.CmdID(len(b.cmds))
+	b.cmds = append(b.cmds,
 		cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
 
-	return &b.List, draw, swap
+	return b.cmds, draw, swap
 }

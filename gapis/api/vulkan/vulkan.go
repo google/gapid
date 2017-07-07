@@ -88,7 +88,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	if err != nil {
 		return err
 	}
-	a, err := resolve.Atoms(ctx, c)
+	cmds, err := resolve.Cmds(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -117,9 +117,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		}
 	}
 
-	for idx, a := range a.Atoms {
+	for idx, cmd := range cmds {
 		i = api.CmdID(idx)
-		if err := a.Mutate(ctx, st, nil); err != nil {
+		if err := cmd.Mutate(ctx, st, nil); err != nil {
 			return err
 		}
 	}
