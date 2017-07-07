@@ -549,9 +549,21 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			}
 		}
 
+	case *VkGetDeviceMemoryCommitment:
+		memory := a.Memory
+		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
+
 	case *VkGetImageMemoryRequirements:
 		image := a.Image
-		addModify(&b, g, vulkanStateKey(image))
+		addRead(&b, g, vulkanStateKey(image))
+
+	case *VkGetImageSparseMemoryRequirements:
+		image := a.Image
+		addRead(&b, g, vulkanStateKey(image))
+
+	case *VkGetImageSubresourceLayout:
+		image := a.Image
+		addRead(&b, g, vulkanStateKey(image))
 
 	case *VkGetBufferMemoryRequirements:
 		buffer := a.Buffer
@@ -574,7 +586,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			// not allowed, execept for the vkCmdBeginRenderPass, whose target is
 			// always an image as a whole.
 			// TODO(qining) Fix this
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.thread, nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
@@ -603,7 +615,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.thread, nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
 			if err != nil {
 				log.E(ctx, "Atom %v %v: %v", id, a, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
@@ -791,11 +803,22 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			addRead(&b, g, vulkanStateKey(attachedViews))
 		}
 
+	case *VkDestroyFramebuffer:
+		addModify(&b, g, vulkanStateKey(a.Framebuffer))
+		b.KeepAlive = true
+
 	case *VkCreateRenderPass:
 		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
 
 	case *RecreateRenderPass:
 		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
+
+	case *VkDestroyRenderPass:
+		addModify(&b, g, vulkanStateKey(a.RenderPass))
+		b.KeepAlive = true
+
+	case *VkGetRenderAreaGranularity:
+		addRead(&b, g, vulkanStateKey(a.RenderPass))
 
 	case *VkCreateGraphicsPipelines:
 		pipelineCount := uint64(a.CreateInfoCount)
@@ -855,6 +878,34 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	case *RecreateShaderModule:
 		addWrite(&b, g, vulkanStateKey(a.PShaderModule.Read(ctx, a, s, nil)))
 
+	case *VkDestroyShaderModule:
+		addModify(&b, g, vulkanStateKey(a.ShaderModule))
+		b.KeepAlive = true
+
+	case *VkAllocateCommandBuffers:
+		count := uint64(a.PAllocateInfo.Read(ctx, a, s, nil).CommandBufferCount)
+		cmdBufs := a.PCommandBuffers.Slice(0, count, l)
+		for i := uint64(0); i < count; i++ {
+			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, a, s, nil))
+			addWrite(&b, g, cmdBuf)
+		}
+
+	case *VkResetCommandBuffer:
+		cmdBuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
+		addRead(&b, g, cmdBuf.handle)
+		addWrite(&b, g, cmdBuf.records)
+		cmdBuf.records.Commands = []*recordedCommand{}
+
+	case *VkFreeCommandBuffers:
+		count := uint64(a.CommandBufferCount)
+		cmdBufs := a.PCommandBuffers.Slice(0, count, l)
+		for i := uint64(0); i < count; i++ {
+			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, a, s, nil))
+			addModify(&b, g, cmdBuf)
+		}
+		b.KeepAlive = true
+
+	// CommandBuffer Commands:
 	case *VkCmdCopyImage:
 		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
 		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
@@ -1378,6 +1429,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		addModify(&b, g, cmdbuf)
 
 	case *VkCmdPipelineBarrier:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		bufferBarrierCount := a.BufferMemoryBarrierCount
 		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
 		imageBarrierCount := a.ImageMemoryBarrierCount
@@ -1404,6 +1456,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateCmdPipelineBarrier:
+		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		bufferBarrierCount := a.BufferMemoryBarrierCount
 		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
 		imageBarrierCount := a.ImageMemoryBarrierCount
@@ -1562,6 +1615,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			recordSecondaryCommandBuffer(&b, a.CommandBuffer, scb)
 		}
 
+	// CommandBuffer commands execution triggering commands:
 	case *VkQueueSubmit:
 		// Queue submit atom should always be alive
 		b.KeepAlive = true
@@ -1594,16 +1648,121 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		debug("\tvkSetEvent Executed Commands: %v", executedCommands)
 		p.rollOutBehavioursForExecutedCommands(&b, executedCommands)
 
+	// Keep-alive commands:
 	case *VkQueuePresentKHR:
 		addRead(&b, g, vulkanStateKey(a.Queue))
 		g.SetRoot(vulkanStateKey(a.Queue))
 		b.KeepAlive = true
 
-	default:
-		// TODO: handle vkGetDeviceMemoryCommitment, VkSparseMemoryBind and other
-		// commands
+	case *VkCreateInstance,
+		*RecreateInstance,
+		*VkDestroyInstance,
+		*VkCreateDevice,
+		*VkDestroyDevice,
+		*RecreateDevice,
+		*VkEnumerateDeviceExtensionProperties,
+		*VkEnumerateDeviceLayerProperties,
+		*VkEnumerateInstanceExtensionProperties,
+		*VkEnumerateInstanceLayerProperties,
+		*VkEnumeratePhysicalDevices,
+		*VkGetDeviceProcAddr,
+		*VkGetInstanceProcAddr,
+		*VkGetDeviceQueue,
+		*RecreateQueue,
+		*VkGetPhysicalDeviceSparseImageFormatProperties,
+		*VkGetPhysicalDeviceFeatures,
+		*VkGetPhysicalDeviceFormatProperties,
+		*VkGetPhysicalDeviceImageFormatProperties,
+		*VkGetPhysicalDeviceMemoryProperties,
+		*VkGetPhysicalDeviceProperties,
+		*VkGetPhysicalDeviceQueueFamilyProperties,
+		*RecreatePhysicalDevices,
+		*RecreatePhysicalDeviceProperties,
+		*VkAcquireNextImageKHR,
+		*VkCreateCommandPool,
+		*RecreateCommandPool,
+		*VkDestroyCommandPool,
+		*VkResetCommandPool,
+		*VkCreateDescriptorPool,
+		*RecreateDescriptorPool,
+		*VkDestroyDescriptorPool,
+		*VkResetDescriptorPool,
+		*VkCreateDescriptorSetLayout,
+		*RecreateDescriptorSetLayout,
+		*VkDestroyDescriptorSetLayout,
+		*VkAllocateDescriptorSets,
+		*VkCreateSampler,
+		*RecreateSampler,
+		*VkDestroySampler,
+		*VkCreateSwapchainKHR,
+		*RecreateSwapchain,
+		*VkDestroySwapchainKHR,
+		*VkGetSwapchainImagesKHR,
+		*VkCreatePipelineLayout,
+		*RecreatePipelineLayout,
+		*VkDestroyPipelineLayout,
+		*VkCreatePipelineCache,
+		*RecreatePipelineCache,
+		*VkDestroyPipelineCache,
+		*VkGetPipelineCacheData,
+		*VkMergePipelineCaches,
+		*VkCreateQueryPool,
+		*RecreateQueryPool,
+		*VkDestroyQueryPool,
+		*VkGetQueryPoolResults,
+		*VkQueueBindSparse,
+		// Synchronizations
+		*VkCreateEvent,
+		*RecreateEvent,
+		*VkResetEvent,
+		*VkDestroyEvent,
+		*VkGetEventStatus,
+		*VkCreateSemaphore,
+		*RecreateSemaphore,
+		*VkDestroySemaphore,
+		*VkCreateFence,
+		*VkDestroyFence,
+		*RecreateFence,
+		*VkGetFenceStatus,
+		*VkResetFences,
+		*VkWaitForFences,
+		*VkDeviceWaitIdle,
+		*VkQueueWaitIdle,
+		// Surfaces creation
+		*VkCreateAndroidSurfaceKHR,
+		*RecreateAndroidSurfaceKHR,
+		*VkCreateWaylandSurfaceKHR,
+		*RecreateWaylandSurfaceKHR,
+		*VkCreateWin32SurfaceKHR,
+		*RecreateWin32SurfaceKHR,
+		*VkCreateXcbSurfaceKHR,
+		*RecreateXCBSurfaceKHR,
+		*VkCreateXlibSurfaceKHR,
+		*RecreateXlibSurfaceKHR,
+		*VkDestroySurfaceKHR,
+		// VK_KHR_display extension related
+		*VkCreateDisplayModeKHR,
+		*VkCreateDisplayPlaneSurfaceKHR,
+		*VkCreateSharedSwapchainsKHR,
+		*VkGetDisplayModePropertiesKHR,
+		*VkGetDisplayPlaneCapabilitiesKHR,
+		*VkGetDisplayPlaneSupportedDisplaysKHR,
+		*VkGetPhysicalDeviceDisplayPlanePropertiesKHR,
+		*VkGetPhysicalDeviceDisplayPropertiesKHR,
+		*VkGetPhysicalDeviceMirPresentationSupportKHR,
+		*VkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+		*VkGetPhysicalDeviceSurfaceFormatsKHR,
+		*VkGetPhysicalDeviceSurfacePresentModesKHR,
+		*VkGetPhysicalDeviceSurfaceSupportKHR,
+		*VkGetPhysicalDeviceWaylandPresentationSupportKHR,
+		*VkGetPhysicalDeviceWin32PresentationSupportKHR,
+		*VkGetPhysicalDeviceXcbPresentationSupportKHR,
+		*VkGetPhysicalDeviceXlibPresentationSupportKHR:
 		b.KeepAlive = true
-		debug("\tNot handled by DCE, kept alive")
+
+	default:
+		log.E(ctx, "Not handled atom: %v", a)
+		b.Aborted = true
 	}
 	return b
 }
