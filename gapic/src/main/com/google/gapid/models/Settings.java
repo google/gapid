@@ -59,6 +59,7 @@ public class Settings {
   public int[] reportSplitterWeights = new int[] { 75, 25 };
   public int[] shaderSplitterWeights = new int[] { 70, 30 };
   public int[] texturesSplitterWeights = new int[] { 20, 80 };
+  public String traceApi = "";
   public String traceDevice = "";
   public String tracePackage = "";
   public String traceOutDir = "";
@@ -150,6 +151,7 @@ public class Settings {
         getIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
     texturesSplitterWeights =
         getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
+    traceApi = properties.getProperty("trace.api", traceApi);
     traceDevice = properties.getProperty("trace.device", traceDevice);
     tracePackage = properties.getProperty("trace.package", tracePackage);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
@@ -177,6 +179,7 @@ public class Settings {
     setIntList(properties, "report.splitter.weights", reportSplitterWeights);
     setIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
     setIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
+    properties.setProperty("trace.api", traceApi);
     properties.setProperty("trace.device", traceDevice);
     properties.setProperty("trace.package", tracePackage);
     properties.setProperty("trace.dir", traceOutDir);
