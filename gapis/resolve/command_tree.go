@@ -40,14 +40,14 @@ func CommandTree(ctx context.Context, c *path.CommandTree) (*service.CommandTree
 
 type commandTree struct {
 	path *path.CommandTree
-	root atom.Group
+	root api.CmdIDGroup
 }
 
-func (t *commandTree) index(indices []uint64) atom.GroupOrID {
+func (t *commandTree) index(indices []uint64) api.CmdIDGroupOrID {
 	group := t.root
 	for _, idx := range indices {
 		switch item := group.Index(idx).(type) {
-		case atom.Group:
+		case api.CmdIDGroup:
 			group = item
 		default:
 			return item
@@ -63,7 +63,7 @@ func (t *commandTree) indices(id api.CmdID) []uint64 {
 		i := group.IndexOf(id)
 		out = append(out, i)
 		switch item := group.Index(i).(type) {
-		case atom.Group:
+		case api.CmdIDGroup:
 			group = item
 		default:
 			return out
@@ -86,12 +86,12 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			NumChildren: 0, // TODO: Subcommands
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item), uint64(item)),
 		}, nil
-	case atom.Group:
+	case api.CmdIDGroup:
 		return &service.CommandTreeNode{
 			NumChildren: item.Count(),
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
 			Group:       item.Name,
-			NumCommands: item.DeepCount(func(g atom.Group) bool { return true /* TODO: Subcommands */ }),
+			NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
 		}, nil
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
@@ -275,9 +275,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Build the command tree
 	out := &commandTree{
 		path: p,
-		root: atom.Group{
+		root: api.CmdIDGroup{
 			Name:  "root",
-			Range: atom.Range{End: api.CmdID(len(c.Commands))},
+			Range: api.CmdIDRange{End: api.CmdID(len(c.Commands))},
 		},
 	}
 	for _, g := range groupers {

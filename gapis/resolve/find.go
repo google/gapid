@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
@@ -77,9 +76,9 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			return err
 		}
 
-		nodePred := func(item atom.GroupOrID) bool {
+		nodePred := func(item api.CmdIDGroupOrID) bool {
 			switch item := item.(type) {
-			case atom.Group:
+			case api.CmdIDGroup:
 				return pred(item.Name)
 			case api.CmdID:
 				return pred(fmt.Sprint(c.Commands[item]))
@@ -119,12 +118,12 @@ type commandEmitter struct {
 	from     *path.CommandTreeNode
 	h        service.FindHandler
 	count    uint32
-	pred     func(item atom.GroupOrID) bool
+	pred     func(item api.CmdIDGroupOrID) bool
 	wrapping bool
 	first    bool
 }
 
-func (c *commandEmitter) process(indices []uint64, item atom.GroupOrID) error {
+func (c *commandEmitter) process(indices []uint64, item api.CmdIDGroupOrID) error {
 	// Skip the first item if we're not doing the wrapped search.
 	if !c.wrapping && c.first {
 		if reflect.DeepEqual(c.from.Indices, indices) {

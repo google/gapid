@@ -22,6 +22,9 @@ set(files
     cmd_convert.go
     cmd_extras.go
     cmd_flags.go
+    cmd_id_group_test.go
+    cmd_id_group.go
+    cmd_id_range.go
     cmd_id_set.go
     cmd_id.go
     cmd_observations.go

@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
@@ -83,7 +82,7 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 	cmdTree := boxedCmdTree.(*commandTree)
 
 	switch item := cmdTree.index(p.Indices).(type) {
-	case atom.Group:
+	case api.CmdIDGroup:
 		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Range.Last())))
 	case api.CmdID:
 		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item)))
