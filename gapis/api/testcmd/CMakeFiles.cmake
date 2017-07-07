@@ -18,9 +18,8 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    atoms.go
+    cmds.go
     common.go
-    doc.go
 )
 set(dirs
 

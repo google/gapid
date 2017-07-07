@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom/test"
+	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -40,31 +40,31 @@ import (
 
 var (
 	cmdA = &api.Command{
-		Name: "AtomX",
-		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
+		Name: "X",
+		Api:  &path.API{Id: path.NewID(id.ID(testcmd.APIID))},
 		Parameters: []*api.Parameter{
-			{Name: "Str", Value: box.NewValue(test.P.Str)},
-			{Name: "Sli", Value: box.NewValue(test.P.Sli)},
-			{Name: "Ref", Value: box.NewValue(test.P.Ref)},
-			{Name: "Ptr", Value: box.NewValue(test.P.Ptr)},
-			{Name: "Map", Value: box.NewValue(test.P.Map)},
-			{Name: "PMap", Value: box.NewValue(test.P.PMap)},
+			{Name: "Str", Value: box.NewValue(testcmd.P.Str)},
+			{Name: "Sli", Value: box.NewValue(testcmd.P.Sli)},
+			{Name: "Ref", Value: box.NewValue(testcmd.P.Ref)},
+			{Name: "Ptr", Value: box.NewValue(testcmd.P.Ptr)},
+			{Name: "Map", Value: box.NewValue(testcmd.P.Map)},
+			{Name: "PMap", Value: box.NewValue(testcmd.P.PMap)},
 		},
-		Thread: test.P.Thread(),
+		Thread: testcmd.P.Thread(),
 	}
 
 	cmdB = &api.Command{
-		Name: "AtomX",
-		Api:  &path.API{Id: path.NewID(id.ID(test.APIID))},
+		Name: "X",
+		Api:  &path.API{Id: path.NewID(id.ID(testcmd.APIID))},
 		Parameters: []*api.Parameter{
-			{Name: "Str", Value: box.NewValue(test.Q.Str)},
-			{Name: "Sli", Value: box.NewValue(test.Q.Sli)},
-			{Name: "Ref", Value: box.NewValue(test.Q.Ref)},
-			{Name: "Ptr", Value: box.NewValue(test.Q.Ptr)},
-			{Name: "Map", Value: box.NewValue(test.Q.Map)},
-			{Name: "PMap", Value: box.NewValue(test.Q.PMap)},
+			{Name: "Str", Value: box.NewValue(testcmd.Q.Str)},
+			{Name: "Sli", Value: box.NewValue(testcmd.Q.Sli)},
+			{Name: "Ref", Value: box.NewValue(testcmd.Q.Ref)},
+			{Name: "Ptr", Value: box.NewValue(testcmd.Q.Ptr)},
+			{Name: "Map", Value: box.NewValue(testcmd.Q.Map)},
+			{Name: "PMap", Value: box.NewValue(testcmd.Q.PMap)},
 		},
-		Thread: test.Q.Thread(),
+		Thread: testcmd.Q.Thread(),
 	}
 )
 
@@ -81,7 +81,7 @@ func TestGet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	p := newPathTest(ctx, test.P, test.Q)
+	p := newPathTest(ctx, testcmd.P, testcmd.Q)
 	ctx = capture.Put(ctx, p)
 
 	// Get tests
@@ -93,16 +93,16 @@ func TestGet(t *testing.T) {
 		{p.Command(1), cmdB, nil},
 		{p.Command(1).Parameter("Str"), "xyz", nil},
 		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
-		{p.Command(0).Parameter("Ref"), &test.Struct{Str: "ccc", Ref: &test.Struct{Str: "ddd"}}, nil},
-		{p.Command(0).Parameter("Ptr"), test.P.Ptr, nil},
-		{p.Command(1).Parameter("Ptr"), test.Q.Ptr, nil},
+		{p.Command(0).Parameter("Ref"), &testcmd.Struct{Str: "ccc", Ref: &testcmd.Struct{Str: "ddd"}}, nil},
+		{p.Command(0).Parameter("Ptr"), testcmd.P.Ptr, nil},
+		{p.Command(1).Parameter("Ptr"), testcmd.Q.Ptr, nil},
 		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
 		{p.Command(1).Parameter("Sli").Slice(1, 3), []bool{true, false}, nil},
 		{p.Command(1).Parameter("Str").ArrayIndex(1), byte('y'), nil},
 		{p.Command(1).Parameter("Str").Slice(1, 3), "yz", nil},
 		{p.Command(1).Parameter("Map").MapIndex("bird"), "tweet", nil},
 		{p.Command(1).Parameter("Map").MapIndex([]rune("bird")), "tweet", nil},
-		{p.Command(1).Parameter("PMap").MapIndex(100), &test.Struct{Str: "baldrick"}, nil},
+		{p.Command(1).Parameter("PMap").MapIndex(100), &testcmd.Struct{Str: "baldrick"}, nil},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
@@ -116,7 +116,7 @@ func TestGet(t *testing.T) {
 			Reason: messages.ErrStateUnavailable(),
 		}},
 		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("AtomX", "doesnotexist"),
+			Reason: messages.ErrParameterDoesNotExist("X", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
 		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
@@ -166,7 +166,7 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	p := newPathTest(ctx, test.P, test.Q)
+	p := newPathTest(ctx, testcmd.P, testcmd.Q)
 	ctx = capture.Put(ctx, p)
 
 	// Set tests
@@ -178,10 +178,10 @@ func TestSet(t *testing.T) {
 		{path: p.Command(0), val: cmdB},
 		{path: p.Command(0).Parameter("Str"), val: "bbb"},
 		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
-		{path: p.Command(0).Parameter("Ref"), val: &test.Struct{Str: "ddd"}},
+		{path: p.Command(0).Parameter("Ref"), val: &testcmd.Struct{Str: "ddd"}},
 		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
-		{path: p.Command(0).Parameter("Ptr"), val: test.Q.Ptr},
-		{path: p.Command(1).Parameter("Ptr"), val: test.P.Ptr},
+		{path: p.Command(0).Parameter("Ptr"), val: testcmd.Q.Ptr},
+		{path: p.Command(1).Parameter("Ptr"), val: testcmd.P.Ptr},
 		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
 		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
 		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
@@ -193,7 +193,7 @@ func TestSet(t *testing.T) {
 		}},
 		{p.Command(1).StateAfter(), nil, fmt.Errorf("State can not currently be mutated")},
 		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("AtomX", "doesnotexist"),
+			Reason: messages.ErrParameterDoesNotExist("X", "doesnotexist"),
 			Path:   p.Command(1).Parameter("doesnotexist").Path(),
 		}},
 		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
