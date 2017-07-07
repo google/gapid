@@ -228,6 +228,15 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
 
   std::string source = spirv2glsl(std::move(spirv_new));
 
+  // Add support for layout(location) as needed by separate shader objects
+  // TODO: Postprocessing source code like this is fairly hacky. Find a better way.
+  auto extensionPos = source.find("#ifdef GL_ARB_shading_language_420pack");
+  if (extensionPos != std::string::npos) {
+    source.insert(extensionPos, "#ifdef GL_ARB_separate_shader_objects\n"
+                                "#extension GL_ARB_separate_shader_objects: require\n"
+                                "#endif\n");
+  }
+
   result->source_code = new char[source.length() + 1];
   strcpy(result->source_code, source.c_str());
   result->source_code[source.length()] = '\0';
