@@ -37,12 +37,12 @@ func (a *Resource) String() string {
 	return fmt.Sprintf("ID: %s - 0x%x bytes", a.ID, len(a.Data))
 }
 
-func (Resource) Thread() uint64   { return 0 }
-func (Resource) SetThread(uint64) {}
-func (Resource) AtomName() string { return "<Resource>" }
-func (Resource) API() api.API     { return nil }
-func (Resource) AtomFlags() Flags { return 0 }
-func (Resource) Extras() *Extras  { return nil }
+func (Resource) Thread() uint64         { return 0 }
+func (Resource) SetThread(uint64)       {}
+func (Resource) CmdName() string        { return "<Resource>" }
+func (Resource) API() api.API           { return nil }
+func (Resource) CmdFlags() api.CmdFlags { return 0 }
+func (Resource) Extras() *api.CmdExtras { return nil }
 func (Resource) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	return nil
 }

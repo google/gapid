@@ -63,8 +63,8 @@ func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Insta
 // reportTo adds the chan c to the list of issue listeners.
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
-func (t *findIssues) onIssue(a atom.Atom, i atom.ID, s service.Severity, e error) {
-	if s == service.Severity_FatalLevel && isIssueWhitelisted(a, e) {
+func (t *findIssues) onIssue(cmd api.Cmd, i atom.ID, s service.Severity, e error) {
+	if s == service.Severity_FatalLevel && isIssueWhitelisted(cmd, e) {
 		s = service.Severity_ErrorLevel
 	}
 	t.issues = append(t.issues, replay.Issue{Atom: i, Severity: s, Error: e})
@@ -88,32 +88,32 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 		e.DriverError.ErrorString(), e.ExpectedError.ErrorString())
 }
 
-func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	t.lastGlError = GLenum_GL_NO_ERROR
-	mutateErr := a.Mutate(ctx, t.state, nil /* no builder */)
+	mutateErr := cmd.Mutate(ctx, t.state, nil /* no builder */)
 	if mutateErr != nil {
 		if atom.IsAbortedError(mutateErr) && t.lastGlError != GLenum_GL_NO_ERROR {
 			// GL errors have already been reported - so do not log it again.
 		} else {
-			t.onIssue(a, i, service.Severity_ErrorLevel, mutateErr)
+			t.onIssue(cmd, id, service.Severity_ErrorLevel, mutateErr)
 		}
 	}
 
 	mutatorsGlError := t.lastGlError
-	if e := FindErrorState(a.Extras()); e != nil {
+	if e := FindErrorState(cmd.Extras()); e != nil {
 		// Check that our API file agrees with the driver which we used for tracking.
 		if (e.TraceDriversGlError != GLenum_GL_NO_ERROR) != (mutatorsGlError != GLenum_GL_NO_ERROR) {
 			errorMsg := ErrUnexpectedDriverTraceError{
 				DriverError:   e.TraceDriversGlError,
 				ExpectedError: mutatorsGlError,
 			}
-			t.onIssue(a, i, service.Severity_FatalLevel, errorMsg)
+			t.onIssue(cmd, id, service.Severity_FatalLevel, errorMsg)
 		}
 		// Check that the C++ and Go versions of the generated code precisely agree.
 		if e.InterceptorsGlError != mutatorsGlError {
-			t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
+			t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("%s in interceptor, but we expected %s",
 				e.InterceptorsGlError.ErrorString(), mutatorsGlError.ErrorString()))
 		}
 	}
@@ -123,11 +123,11 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		return
 	}
 
-	out.MutateAndWrite(ctx, i, a)
+	out.MutateAndWrite(ctx, id, cmd)
 
-	dID := i.Derived()
+	dID := id.Derived()
 	s := GetState(t.state)
-	c := s.GetContext(a.Thread())
+	c := s.GetContext(cmd.Thread())
 	if c == nil {
 		return
 	}
@@ -144,11 +144,11 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			v := GLenum(r.Uint32())
 			err = r.Error()
 			if err != nil {
-				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
+				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
 				return err
 			}
 			if v != GLenum_GL_NO_ERROR {
-				t.onIssue(a, i, service.Severity_FatalLevel, fmt.Errorf("%v in replay driver", v))
+				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("%v in replay driver", v))
 			}
 			return nil
 		}))
@@ -166,10 +166,10 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		return strings.TrimSpace(s)
 	}
 
-	switch a := a.(type) {
+	switch cmd := cmd.(type) {
 	case *GlShaderSource:
 		if !config.UseGlslang { // TODO: Verify shader with glslang
-			shader := c.Objects.Shared.Shaders[a.Shader]
+			shader := c.Objects.Shared.Shaders[cmd.Shader]
 			var errs []error
 			var kind string
 			switch shader.Type {
@@ -180,14 +180,14 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				_, _, _, errs = glsl.Parse(shader.Source, ast.LangFragmentShader)
 				kind = "fragment"
 			default:
-				t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Unknown shader type %v", shader.Type))
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Unknown shader type %v", shader.Type))
 			}
 			if len(errs) > 0 {
 				msgs := make([]string, len(errs))
 				for i, err := range errs {
 					msgs[i] = err.Error()
 				}
-				t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
 					kind, strings.Join(msgs, "\n"), text.LineNumber(shader.Source)))
 			}
 		}
@@ -197,7 +197,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		tmp := atom.Must(atom.Alloc(ctx, t.state, buflen))
 
 		infoLog := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -211,7 +211,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 		}))
 
 		source := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(a.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(cmd.Shader, buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -224,7 +224,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 			return nil
 		}))
 
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(a.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(cmd.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) error {
@@ -233,11 +233,11 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
-					if shader := c.Objects.Shared.Shaders[a.Shader]; shader != nil {
+					if shader := c.Objects.Shared.Shaders[cmd.Shader]; shader != nil {
 						originalSource = shader.Source
 					}
-					t.onIssue(a, i, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n",
-						a.Shader, ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
+					t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n",
+						cmd.Shader, ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
 				}
 				return r.Error()
 			})
@@ -248,8 +248,8 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	case *GlLinkProgram:
 		const buflen = 2048
 		tmp := atom.Must(atom.Alloc(ctx, t.state, 4+buflen))
-		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(a.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(a.Program, buflen, memory.Nullptr, tmp.Offset(4)))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(cmd.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program, buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) error {
@@ -261,7 +261,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 				r.Data(msg)
 				if res != uint32(GLboolean_GL_TRUE) {
 					vss, fss := "<unknown>", "<unknown>"
-					if program := c.Objects.Shared.Programs[a.Program]; program != nil {
+					if program := c.Objects.Shared.Programs[cmd.Program]; program != nil {
 						if shader := program.Shaders[GLenum_GL_VERTEX_SHADER]; shader != nil {
 							vss = shader.Source
 						}
@@ -270,12 +270,12 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 						}
 					}
 					logLevel := service.Severity_ErrorLevel
-					if pi := FindProgramInfo(a.Extras()); pi != nil && pi.LinkStatus == GLboolean_GL_TRUE {
+					if pi := FindProgramInfo(cmd.Extras()); pi != nil && pi.LinkStatus == GLboolean_GL_TRUE {
 						// Increase severity if the program linked successfully during trace.
 						logLevel = service.Severity_FatalLevel
 					}
-					t.onIssue(a, i, logLevel, fmt.Errorf("Program %d failed to link. Error:\n%v\n"+
-						"Vertex shader source:\n%sFragment shader source:\n%s", a.Program, ntbs(msg),
+					t.onIssue(cmd, id, logLevel, fmt.Errorf("Program %d failed to link. Error:\n%v\n"+
+						"Vertex shader source:\n%sFragment shader source:\n%s", cmd.Program, ntbs(msg),
 						text.LineNumber(vss), text.LineNumber(fss)))
 				}
 				return r.Error()
@@ -287,7 +287,7 @@ func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out 
 	case *GlProgramBinary, *GlProgramBinaryOES, *GlShaderBinary:
 		glDev := t.device.Configuration.Drivers.OpenGL
 		if !canUsePrecompiledShader(c, glDev) {
-			t.onIssue(a, i, service.Severity_WarningLevel, fmt.Errorf("Pre-compiled binaries cannot be used across on different devices. Capture: %s-%s, Replay: %s-%s",
+			t.onIssue(cmd, id, service.Severity_WarningLevel, fmt.Errorf("Pre-compiled binaries cannot be used across on different devices. Capture: %s-%s, Replay: %s-%s",
 				c.Constants.Vendor, c.Constants.Version, glDev.Vendor, glDev.Version))
 		}
 	}

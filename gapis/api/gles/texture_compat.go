@@ -115,7 +115,7 @@ func (tc *textureCompat) convertFormat(
 	internalformat, format, componentType *GLenum,
 	out transform.Writer,
 	id atom.ID,
-	a atom.Atom) {
+	cmd api.Cmd) {
 
 	if tc.v.IsES {
 		return
@@ -138,7 +138,7 @@ func (tc *textureCompat) convertFormat(
 		}
 
 		// Luminance/Alpha is not supported on desktop so convert it to R/G.
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), a.Thread(), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, target); err == nil {
 			if laCompat, ok := luminanceAlphaCompat[*internalformat]; ok {
 				*internalformat = laCompat.rgFormat
 				tc.compatSwizzle[t] = laCompat.compatSwizzle
@@ -146,7 +146,7 @@ func (tc *textureCompat) convertFormat(
 				// Remove the compat mapping and reset swizzles to the original values below.
 				delete(tc.compatSwizzle, t)
 			}
-			cb := CommandBuilder{Thread: a.Thread()}
+			cb := CommandBuilder{Thread: cmd.Thread()}
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_R, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_G, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_B, out, id)
@@ -191,7 +191,7 @@ func (tc *textureCompat) convertFormat(
 	}
 }
 
-func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id atom.ID, a atom.Atom) {
+func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter GLenum, out transform.Writer, id atom.ID, cmd api.Cmd) {
 	if tc.v.IsES {
 		return
 	}
@@ -199,12 +199,12 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 	s := out.State()
 	switch parameter {
 	case GLenum_GL_TEXTURE_SWIZZLE_R, GLenum_GL_TEXTURE_SWIZZLE_G, GLenum_GL_TEXTURE_SWIZZLE_B, GLenum_GL_TEXTURE_SWIZZLE_A:
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), a.Thread(), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, target); err == nil {
 			_, curr := tc.getSwizzle(t, parameter)
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
 			// Combine the original and compat swizzles and write out the commands to set it.
-			cb := CommandBuilder{Thread: a.Thread()}
+			cb := CommandBuilder{Thread: cmd.Thread()}
 			tc.writeCompatSwizzle(ctx, cb, t, parameter, out, id)
 		}
 	case GLenum_GL_TEXTURE_SWIZZLE_RGBA:

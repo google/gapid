@@ -20,12 +20,11 @@ import (
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 // drawCall is the interface implemented by all GLES draw call atoms.
 type drawCall interface {
-	atom.Atom
+	api.Cmd
 	getIndices(
 		ctx context.Context,
 		c *Context,

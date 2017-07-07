@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 )
@@ -36,51 +35,51 @@ type objectKey struct {
 	mapKey interface{}
 }
 
-func (i BufferId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i BufferId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Buffers, i}, true
 	}
 	return
 }
 
-func (i FramebufferId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i FramebufferId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Framebuffers, i}, true
 	}
 	return
 }
 
-func (i RenderbufferId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i RenderbufferId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, i}, true
 	}
 	return
 }
 
-func (i ProgramId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i ProgramId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Programs, i}, true
 	}
 	return
 }
 
-func (i ShaderId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i ShaderId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Shaders, i}, true
 	}
 	return
 }
 
-func (i TextureId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i TextureId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		if tex := ctx.Objects.Shared.Textures[i]; tex != nil {
-			_, isDeleteCmd := a.(*GlDeleteTextures)
+			_, isDeleteCmd := cmd.(*GlDeleteTextures)
 			if eglImage := tex.EGLImage; eglImage != nil && !isDeleteCmd {
 				// Ignore this texture and use the data that EGLImage points to.
 				// (unless it is a delete command - we do not want kill the shared data)
@@ -101,18 +100,18 @@ func (i TextureId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool
 	return
 }
 
-func (i UniformBlockIndex) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i UniformBlockIndex) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	program := ctx.Bound.Program.GetID()
-	switch a := a.(type) {
+	switch cmd := cmd.(type) {
 	case *GlGetActiveUniformBlockName:
-		program = a.Program
+		program = cmd.Program
 	case *GlGetActiveUniformBlockiv:
-		program = a.Program
+		program = cmd.Program
 	case *GlGetUniformBlockIndex:
-		program = a.Program
+		program = cmd.Program
 	case *GlUniformBlockBinding:
-		program = a.Program
+		program = cmd.Program
 	}
 	return struct {
 		p *Program
@@ -120,66 +119,66 @@ func (i UniformBlockIndex) remap(a atom.Atom, s *api.State) (key interface{}, re
 	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
-func (i VertexArrayId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i VertexArrayId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.VertexArrays, i}, true
 	}
 	return
 }
 
-func (i QueryId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i QueryId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Queries, i}, true
 	}
 	return
 }
 
-func (i GLsync) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i GLsync) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && !i.IsNullptr() {
 		key, remap = objectKey{&ctx.Objects.Shared.SyncObjects, i}, true
 	}
 	return
 }
 
-func (i GLsync) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
+func (i GLsync) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
 	return value.AbsolutePointer(i.addr)
 }
 
-func (i SamplerId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i SamplerId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Shared.Samplers, i}, true
 	}
 	return
 }
 
-func (i PipelineId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i PipelineId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.Pipelines, i}, true
 	}
 	return
 }
 
-func (i TransformFeedbackId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i TransformFeedbackId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
 		key, remap = objectKey{&ctx.Objects.TransformFeedbacks, i}, true
 	}
 	return
 }
 
-func (i UniformLocation) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func (i UniformLocation) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	program := ctx.Bound.Program.GetID()
-	switch a := a.(type) {
+	switch cmd := cmd.(type) {
 	case *GlGetActiveUniform:
-		program = a.Program
+		program = cmd.Program
 	case *GlGetUniformLocation:
-		program = a.Program
+		program = cmd.Program
 	}
 	return struct {
 		p *Program
@@ -187,48 +186,46 @@ func (i UniformLocation) remap(a atom.Atom, s *api.State) (key interface{}, rema
 	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
-func (i SrcImageId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	switch a := a.(type) {
+func (i SrcImageId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	switch cmd := cmd.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
+		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
+		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(a, s, GLuint(a.SrcName), a.SrcTarget)
+		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	default:
-		panic(fmt.Errorf("Remap of SrcImageId for unhandeled atom: %v", a))
+		panic(fmt.Errorf("Remap of SrcImageId for unhandeled atom: %v", cmd))
 	}
-	return
 }
 
-func (i DstImageId) remap(a atom.Atom, s *api.State) (key interface{}, remap bool) {
-	switch a := a.(type) {
+func (i DstImageId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap bool) {
+	switch cmd := cmd.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
+		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
+		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(a, s, GLuint(a.DstName), a.DstTarget)
+		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	default:
-		panic(fmt.Errorf("Remap of DstImageId for unhandeled atom: %v", a))
+		panic(fmt.Errorf("Remap of DstImageId for unhandeled atom: %v", cmd))
 	}
-	return
 }
 
-func remapImageId(a atom.Atom, s *api.State, name GLuint, target GLenum) (key interface{}, remap bool) {
-	ctx := GetContext(s, a.Thread())
+func remapImageId(cmd api.Cmd, s *api.State, name GLuint, target GLenum) (key interface{}, remap bool) {
+	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && name != 0 {
 		if target == GLenum_GL_RENDERBUFFER {
-			return RenderbufferId(name).remap(a, s)
+			return RenderbufferId(name).remap(cmd, s)
 		} else {
-			return TextureId(name).remap(a, s)
+			return TextureId(name).remap(cmd, s)
 		}
 	}
 	return
 }
 
-func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
-	c := GetContext(s, a.Thread())
+func (i IndicesPointer) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
+	c := GetContext(s, cmd.Thread())
 	if c.Bound.VertexArray.ElementArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
@@ -236,8 +233,8 @@ func (i IndicesPointer) value(b *builder.Builder, a atom.Atom, s *api.State) val
 	}
 }
 
-func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
-	c := GetContext(s, a.Thread())
+func (i VertexPointer) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
+	c := GetContext(s, cmd.Thread())
 	if c.Bound.ArrayBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
@@ -245,15 +242,15 @@ func (i VertexPointer) value(b *builder.Builder, a atom.Atom, s *api.State) valu
 	}
 }
 
-func (i TexturePointer) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
-	if i.addr == 0 || GetContext(s, a.Thread()).Bound.PixelUnpackBuffer != nil {
+func (i TexturePointer) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
+	if i.addr == 0 || GetContext(s, cmd.Thread()).Bound.PixelUnpackBuffer != nil {
 		return value.AbsolutePointer(i.addr)
 	} else {
 		return value.ObservedPointer(i.addr)
 	}
 }
 
-func (i BufferDataPointer) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
+func (i BufferDataPointer) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
 	if i.addr == 0 {
 		return value.AbsolutePointer(i.addr)
 	} else {
@@ -261,7 +258,7 @@ func (i BufferDataPointer) value(b *builder.Builder, a atom.Atom, s *api.State) 
 	}
 }
 
-func (i GLeglImageOES) value(b *builder.Builder, a atom.Atom, s *api.State) value.Value {
+func (i GLeglImageOES) value(b *builder.Builder, cmd api.Cmd, s *api.State) value.Value {
 	return value.AbsolutePointer(i.addr)
 }
 
@@ -401,19 +398,19 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *api.State, b *bu
 }
 
 // Force all attributes to use the capture-observed locations during replay.
-func bindAttribLocations(ctx context.Context, a atom.Atom, s *api.State, b *builder.Builder, pid ProgramId) error {
-	pi := FindProgramInfo(a.Extras())
+func bindAttribLocations(ctx context.Context, cmd api.Cmd, s *api.State, b *builder.Builder, pid ProgramId) error {
+	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 		for _, attr := range pi.ActiveAttributes {
 			if int32(attr.Location) != -1 {
-				a := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
+				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
 				if strings.HasPrefix(attr.Name, "gl_") {
 					// Active built-in mush have location of -1
-					log.E(ctx, "Can not set location for built-in attribute: %v", a)
+					log.E(ctx, "Can not set location for built-in attribute: %v", cmd)
 					continue
 				}
-				if err := a.Mutate(ctx, s, b); err != nil {
+				if err := cmd.Mutate(ctx, s, b); err != nil {
 					return err
 				}
 			}
@@ -423,14 +420,14 @@ func bindAttribLocations(ctx context.Context, a atom.Atom, s *api.State, b *buil
 }
 
 // Remap uniform block indices
-func bindUniformBlocks(ctx context.Context, a atom.Atom, s *api.State, b *builder.Builder, pid ProgramId) error {
-	pi := FindProgramInfo(a.Extras())
+func bindUniformBlocks(ctx context.Context, cmd api.Cmd, s *api.State, b *builder.Builder, pid ProgramId) error {
+	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 		for i, ub := range pi.ActiveUniformBlocks {
 			// Query replay-time uniform block index so that the remapping is established
-			a := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
-			if err := a.Mutate(ctx, s, b); err != nil {
+			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
+			if err := cmd.Mutate(ctx, s, b); err != nil {
 				return err
 			}
 		}
@@ -438,40 +435,40 @@ func bindUniformBlocks(ctx context.Context, a atom.Atom, s *api.State, b *builde
 	return nil
 }
 
-func (a *GlProgramBinaryOES) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
+func (cmd *GlProgramBinaryOES) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
 		return err
 	}
-	if err := a.mutate(ctx, s, b); err != nil {
+	if err := cmd.mutate(ctx, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *GlLinkProgram) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
-		return err
-	}
-	if err := a.mutate(ctx, s, b); err != nil {
-		return err
-	}
-	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
+	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *GlProgramBinary) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, a, s, b, a.Program); err != nil {
+func (cmd *GlLinkProgram) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
 		return err
 	}
-	if err := a.mutate(ctx, s, b); err != nil {
+	if err := cmd.mutate(ctx, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, a, s, b, a.Program); err != nil {
+	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *GlProgramBinary) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
+		return err
+	}
+	if err := cmd.mutate(ctx, s, b); err != nil {
+		return err
+	}
+	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
 		return err
 	}
 	return nil

@@ -16,11 +16,11 @@
 
 package vulkan
 
-import "github.com/google/gapid/gapis/atom"
+import "github.com/google/gapid/gapis/api"
 
 type CommandBufferCommand struct {
 	function         func()
-	submit           *atom.Atom
+	submit           *api.Cmd
 	submissionIndex  []uint64
 	recreateData     interface{}
 	actualSubmission bool

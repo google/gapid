@@ -49,7 +49,7 @@ func rebuildCmdBeginRenderPass(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBeginRenderPassData) (func(), atom.Atom) {
+	d *RecreateCmdBeginRenderPassData) (func(), api.Cmd) {
 
 	clearValues := make([]VkClearValue, len(d.ClearValues))
 	for i := 0; i < len(d.ClearValues); i++ {
@@ -83,7 +83,7 @@ func rebuildCmdEndRenderPass(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdEndRenderPassData) (func(), atom.Atom) {
+	d *RecreateCmdEndRenderPassData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdEndRenderPass(commandBuffer)
 }
 
@@ -92,7 +92,7 @@ func rebuildCmdNextSubpass(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdNextSubpassData) (func(), atom.Atom) {
+	d *RecreateCmdNextSubpassData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdNextSubpass(commandBuffer, d.Contents)
 }
 
@@ -101,7 +101,7 @@ func rebuildCmdBindPipeline(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBindPipelineData) (func(), atom.Atom) {
+	d *RecreateCmdBindPipelineData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdBindPipeline(commandBuffer,
 		d.PipelineBindPoint, d.Pipeline)
@@ -112,7 +112,7 @@ func rebuildCmdBindIndexBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBindIndexBufferData) (func(), atom.Atom) {
+	d *RecreateCmdBindIndexBufferData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdBindIndexBuffer(commandBuffer,
 		d.Buffer, d.Offset, d.IndexType)
@@ -123,7 +123,7 @@ func rebuildCmdSetLineWidth(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetLineWidthData) (func(), atom.Atom) {
+	d *RecreateCmdSetLineWidthData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdSetLineWidth(commandBuffer, d.LineWidth)
 
 }
@@ -133,7 +133,7 @@ func rebuildCmdBindDescriptorSets(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBindDescriptorSetsData) (func(), atom.Atom) {
+	d *RecreateCmdBindDescriptorSetsData) (func(), api.Cmd) {
 
 	descriptorSetData, descriptorSetCount := unpackMap(ctx, s, d.DescriptorSets)
 	dynamicOffsetData, dynamicOffsetCount := unpackMap(ctx, s, d.DynamicOffsets)
@@ -159,7 +159,7 @@ func rebuildCmdBindVertexBuffers(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBindVertexBuffersData) (func(), atom.Atom) {
+	d *RecreateCmdBindVertexBuffersData) (func(), api.Cmd) {
 
 	bufferData, _ := unpackMap(ctx, s, d.Buffers)
 	offsetData, _ := unpackMap(ctx, s, d.Offsets)
@@ -180,7 +180,7 @@ func rebuildCmdWaitEvents(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdWaitEventsData) (func(), atom.Atom) {
+	d *RecreateCmdWaitEventsData) (func(), api.Cmd) {
 
 	eventData, eventCount := unpackMap(ctx, s, d.Events)
 	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers)
@@ -211,7 +211,7 @@ func rebuildCmdPipelineBarrier(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdPipelineBarrierData) (func(), atom.Atom) {
+	d *RecreateCmdPipelineBarrierData) (func(), api.Cmd) {
 
 	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers)
 	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackMap(ctx, s, d.BufferMemoryBarriers)
@@ -239,7 +239,7 @@ func rebuildCmdBeginQuery(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBeginQueryData) (func(), atom.Atom) {
+	d *RecreateCmdBeginQueryData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdBeginQuery(commandBuffer, d.QueryPool,
 		d.Query, d.Flags)
 }
@@ -249,7 +249,7 @@ func rebuildCmdBlitImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdBlitImageData) (func(), atom.Atom) {
+	d *RecreateCmdBlitImageData) (func(), api.Cmd) {
 
 	blitData, blitCount := unpackMap(ctx, s, d.Regions)
 
@@ -271,7 +271,7 @@ func rebuildCmdClearAttachments(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdClearAttachmentsData) (func(), atom.Atom) {
+	d *RecreateCmdClearAttachmentsData) (func(), api.Cmd) {
 
 	clearAttachmentData, clearCount := unpackMap(ctx, s, d.Attachments)
 	rectData, rectCount := unpackMap(ctx, s, d.Rects)
@@ -292,7 +292,7 @@ func rebuildCmdClearColorImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdClearColorImageData) (func(), atom.Atom) {
+	d *RecreateCmdClearColorImageData) (func(), api.Cmd) {
 
 	colorData := atom.Must(atom.AllocData(ctx, s, d.Color))
 
@@ -315,7 +315,7 @@ func rebuildCmdClearDepthStencilImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdClearDepthStencilImageData) (func(), atom.Atom) {
+	d *RecreateCmdClearDepthStencilImageData) (func(), api.Cmd) {
 
 	depthStencilData := atom.Must(atom.AllocData(ctx, s, d.DepthStencil))
 
@@ -338,7 +338,7 @@ func rebuildCmdCopyBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdCopyBufferData) (func(), atom.Atom) {
+	d *RecreateCmdCopyBufferData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.CopyRegions)
 
@@ -357,7 +357,7 @@ func rebuildCmdCopyBufferToImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCopyBufferToImageData) (func(), atom.Atom) {
+	d *RecreateCopyBufferToImageData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -377,7 +377,7 @@ func rebuildCmdCopyImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdCopyImageData) (func(), atom.Atom) {
+	d *RecreateCmdCopyImageData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -398,7 +398,7 @@ func rebuildCmdCopyImageToBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCopyImageToBufferData) (func(), atom.Atom) {
+	d *RecreateCopyImageToBufferData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -418,7 +418,7 @@ func rebuildCmdCopyQueryPoolResults(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdCopyQueryPoolResultsData) (func(), atom.Atom) {
+	d *RecreateCmdCopyQueryPoolResultsData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdCopyQueryPoolResults(commandBuffer,
 		d.QueryPool,
@@ -436,7 +436,7 @@ func rebuildCmdDispatch(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDispatchData) (func(), atom.Atom) {
+	d *RecreateCmdDispatchData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatch(commandBuffer,
 		d.GroupCountX,
@@ -450,7 +450,7 @@ func rebuildCmdDispatchIndirect(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDispatchIndirectData) (func(), atom.Atom) {
+	d *RecreateCmdDispatchIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatchIndirect(commandBuffer,
 		d.Buffer,
@@ -463,7 +463,7 @@ func rebuildCmdDraw(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDrawData) (func(), atom.Atom) {
+	d *RecreateCmdDrawData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDraw(commandBuffer,
 		d.VertexCount,
@@ -478,7 +478,7 @@ func rebuildCmdDrawIndexed(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDrawIndexedData) (func(), atom.Atom) {
+	d *RecreateCmdDrawIndexedData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexed(commandBuffer, d.IndexCount,
 		d.InstanceCount, d.FirstIndex, d.VertexOffset, d.FirstInstance)
@@ -489,7 +489,7 @@ func rebuildCmdDrawIndexedIndirect(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDrawIndexedIndirectData) (func(), atom.Atom) {
+	d *RecreateCmdDrawIndexedIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexedIndirect(commandBuffer,
 		d.Buffer,
@@ -504,7 +504,7 @@ func rebuildCmdDrawIndirect(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdDrawIndirectData) (func(), atom.Atom) {
+	d *RecreateCmdDrawIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndirect(commandBuffer,
 		d.Buffer,
@@ -519,7 +519,7 @@ func rebuildCmdEndQuery(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdEndQueryData) (func(), atom.Atom) {
+	d *RecreateCmdEndQueryData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdEndQuery(commandBuffer,
 		d.QueryPool,
@@ -532,7 +532,7 @@ func rebuildCmdExecuteCommands(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdExecuteCommandsData) (func(), atom.Atom) {
+	d *RecreateCmdExecuteCommandsData) (func(), api.Cmd) {
 
 	commandBufferData, commandBufferCount := unpackMap(ctx, s, d.CommandBuffers)
 
@@ -549,7 +549,7 @@ func rebuildCmdFillBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdFillBufferData) (func(), atom.Atom) {
+	d *RecreateCmdFillBufferData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdFillBuffer(commandBuffer,
@@ -565,7 +565,7 @@ func rebuildCmdPushConstants(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdPushConstantsDataExpanded) (func(), atom.Atom) {
+	d *RecreateCmdPushConstantsDataExpanded) (func(), api.Cmd) {
 
 	data := atom.Must(atom.AllocData(ctx, s, d.Data))
 
@@ -585,7 +585,7 @@ func rebuildCmdResetQueryPool(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdResetQueryPoolData) (func(), atom.Atom) {
+	d *RecreateCmdResetQueryPoolData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdResetQueryPool(commandBuffer,
@@ -600,7 +600,7 @@ func rebuildCmdResolveImage(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdResolveImageData) (func(), atom.Atom) {
+	d *RecreateCmdResolveImageData) (func(), api.Cmd) {
 
 	resolveData, resolveCount := unpackMap(ctx, s, d.ResolveRegions)
 
@@ -621,7 +621,7 @@ func rebuildCmdSetBlendConstants(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetBlendConstantsData) (func(), atom.Atom) {
+	d *RecreateCmdSetBlendConstantsData) (func(), api.Cmd) {
 
 	var constants F32ː4ᵃ
 	constants[0] = d.R
@@ -640,7 +640,7 @@ func rebuildCmdSetDepthBias(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetDepthBiasData) (func(), atom.Atom) {
+	d *RecreateCmdSetDepthBiasData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetDepthBias(commandBuffer,
@@ -655,7 +655,7 @@ func rebuildCmdSetDepthBounds(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetDepthBoundsData) (func(), atom.Atom) {
+	d *RecreateCmdSetDepthBoundsData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetDepthBounds(commandBuffer,
@@ -669,7 +669,7 @@ func rebuildCmdSetEvent(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetEventData) (func(), atom.Atom) {
+	d *RecreateCmdSetEventData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetEvent(commandBuffer,
@@ -683,7 +683,7 @@ func rebuildCmdSetScissor(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetScissorData) (func(), atom.Atom) {
+	d *RecreateCmdSetScissorData) (func(), api.Cmd) {
 
 	scissorData, scissorCount := unpackMap(ctx, s, d.Scissors)
 
@@ -701,7 +701,7 @@ func rebuildCmdSetStencilCompareMask(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetStencilCompareMaskData) (func(), atom.Atom) {
+	d *RecreateCmdSetStencilCompareMaskData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilCompareMask(commandBuffer,
@@ -715,7 +715,7 @@ func rebuildCmdSetStencilReference(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetStencilReferenceData) (func(), atom.Atom) {
+	d *RecreateCmdSetStencilReferenceData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilReference(commandBuffer,
@@ -729,7 +729,7 @@ func rebuildCmdSetStencilWriteMask(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetStencilWriteMaskData) (func(), atom.Atom) {
+	d *RecreateCmdSetStencilWriteMaskData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilWriteMask(commandBuffer,
@@ -743,7 +743,7 @@ func rebuildCmdSetViewport(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdSetViewportData) (func(), atom.Atom) {
+	d *RecreateCmdSetViewportData) (func(), api.Cmd) {
 
 	viewportData, viewportCount := unpackMap(ctx, s, d.Viewports)
 
@@ -761,7 +761,7 @@ func rebuildCmdUpdateBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdUpdateBufferDataExpanded) (func(), atom.Atom) {
+	d *RecreateCmdUpdateBufferDataExpanded) (func(), api.Cmd) {
 
 	data := atom.Must(atom.AllocData(ctx, s, d.Data))
 
@@ -780,7 +780,7 @@ func rebuildCmdWriteTimestamp(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdWriteTimestampData) (func(), atom.Atom) {
+	d *RecreateCmdWriteTimestampData) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdWriteTimestamp(commandBuffer,
@@ -798,7 +798,7 @@ func AddCommand(ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	rebuildInfo interface{}) (func(), atom.Atom) {
+	rebuildInfo interface{}) (func(), api.Cmd) {
 	switch t := rebuildInfo.(type) {
 	case *RecreateCmdBeginRenderPassData:
 		return rebuildCmdBeginRenderPass(ctx, cb, commandBuffer, s, t)

@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
@@ -28,7 +27,7 @@ import (
 
 type externs struct {
 	ctx context.Context // Allowed because the externs struct is only a parameter proxy for a single call
-	a   atom.Atom
+	cmd api.Cmd
 	s   *api.State
 	b   *rb.Builder
 }
@@ -39,8 +38,8 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 		return false
 	}
 	l := e.s.MemoryLayout
-	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(e.ctx, e.a, e.s, e.b)
-	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).Read(e.ctx, e.a, e.s, e.b)
+	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(e.ctx, e.cmd, e.s, e.b)
+	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).Read(e.ctx, e.cmd, e.s, e.b)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -52,12 +51,12 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 	ctx := e.ctx
 	if b := e.b; b != nil {
-		switch e.a.(type) {
+		switch e.cmd.(type) {
 		case *VkMapMemory:
-			b.Load(protocol.Type_AbsolutePointer, value.value(e.b, e.a, e.s))
+			b.Load(protocol.Type_AbsolutePointer, value.value(e.b, e.cmd, e.s))
 			b.MapMemory(slice.Range(e.s.MemoryLayout))
 		default:
-			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
+			log.E(ctx, "mapBuffer extern called for unsupported command: %v", e.cmd)
 		}
 	}
 }
@@ -65,11 +64,11 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}, data interface{}, functionToCall interface{}) {
 	args := []reflect.Value{
 		reflect.ValueOf(e.ctx),
-		reflect.ValueOf(e.a),
-		reflect.ValueOf(&atom.Observations{}),
+		reflect.ValueOf(e.cmd),
+		reflect.ValueOf(&api.CmdObservations{}),
 		reflect.ValueOf(e.s),
 		reflect.ValueOf(GetState(e.s)),
-		reflect.ValueOf(e.a.Thread()),
+		reflect.ValueOf(e.cmd.Thread()),
 		reflect.ValueOf(e.b),
 		reflect.ValueOf(data),
 	}
@@ -77,7 +76,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}
 
 	o.Commands = append(o.Commands, CommandBufferCommand{func() {
 		reflect.ValueOf(functionToCall).Call(args)
-	}, &e.a, []uint64(nil), recreate_data, true})
+	}, &e.cmd, []uint64(nil), recreate_data, true})
 }
 
 func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
@@ -88,8 +87,8 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 	s := GetState(e.s)
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
-	if _, ok := e.a.(*VkQueueSubmit); ok {
-		s.CurrentSubmission = &e.a
+	if _, ok := e.cmd.(*VkQueueSubmit); ok {
+		s.CurrentSubmission = &e.cmd
 	}
 	e.enterSubcontext()
 	defer e.leaveSubcontext()
@@ -217,7 +216,7 @@ type RecreateCmdUpdateBufferDataExpanded struct {
 }
 
 func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data Voidᶜᵖ) *RecreateCmdUpdateBufferDataExpanded {
-	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.a, e.s, e.b)
+	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.cmd, e.s, e.b)
 	return &RecreateCmdUpdateBufferDataExpanded{
 		buffer, offset, size, d,
 	}
@@ -232,7 +231,7 @@ type RecreateCmdPushConstantsDataExpanded struct {
 }
 
 func (e externs) createPushConstantsData(layout VkPipelineLayout, stageFlags VkShaderStageFlags, offset uint32, size uint32, data Voidᶜᵖ) *RecreateCmdPushConstantsDataExpanded {
-	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.a, e.s, e.b)
+	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.cmd, e.s, e.b)
 	return &RecreateCmdPushConstantsDataExpanded{
 		Layout:     layout,
 		StageFlags: stageFlags,
@@ -276,7 +275,7 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 			copySize = srcEnd - srcStart
 		}
 		memory.Data.Slice(dstStart, dstStart+copySize, l).Copy(
-			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, l), e.a, e.s, e.b)
+			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, l), e.cmd, e.s, e.b)
 		srcStart += copySize
 		dstStart += copySize
 	}
@@ -288,7 +287,7 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	counter := uint32(0)
 	for (pNext) != (Voidᶜᵖ{}) {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).Read(e.ctx, e.a, e.s, e.b)
+		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).Read(e.ctx, e.cmd, e.s, e.b)
 	}
 	return counter
 }

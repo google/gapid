@@ -621,22 +621,22 @@ func (shader *ShaderModuleObject) SetResourceData(
 	}
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j].Indices[0] // TODO: Subcommands
-		if a, ok := c.Atoms[i].(*VkCreateShaderModule); ok {
-			edits(uint64(i), a.Replace(ctx, c, data))
+		if cmd, ok := c.Commands[i].(*VkCreateShaderModule); ok {
+			edits(uint64(i), cmd.Replace(ctx, c, data))
 			return nil
-		} else if a, ok := c.Atoms[i].(*RecreateShaderModule); ok {
-			edits(uint64(i), a.Replace(ctx, c, data))
+		} else if cmd, ok := c.Commands[i].(*RecreateShaderModule); ok {
+			edits(uint64(i), cmd.Replace(ctx, c, data))
 			return nil
 		}
 	}
 	return fmt.Errorf("No atom to set data in")
 }
 
-func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
+func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: cmd.thread}
 	state := c.NewState()
-	a.Mutate(ctx, state, nil)
+	cmd.Mutate(ctx, state, nil)
 
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
@@ -645,11 +645,11 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	}
 
 	code := atom.Must(atom.AllocData(ctx, state, codeSlice))
-	device := a.Device
-	pAlloc := memory.Pointer(a.PAllocator)
-	pShaderModule := memory.Pointer(a.PShaderModule)
-	result := a.Result
-	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
+	device := cmd.Device
+	pAlloc := memory.Pointer(cmd.PAllocator)
+	pShaderModule := memory.Pointer(cmd.PShaderModule)
+	result := cmd.Result
+	createInfo := cmd.PCreateInfo.Read(ctx, cmd, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
@@ -667,8 +667,8 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
-	for _, e := range a.Extras().All() {
-		if _, ok := e.(*atom.Observations); !ok {
+	for _, e := range cmd.Extras().All() {
+		if _, ok := e.(*api.CmdObservations); !ok {
 			newAtom.Extras().Add(e)
 		}
 	}
@@ -676,17 +676,17 @@ func (a *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	// Add observations
 	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
-	for _, w := range a.Extras().Observations().Writes {
+	for _, w := range cmd.Extras().Observations().Writes {
 		newAtom.AddWrite(w.Range, w.ID)
 	}
 	return newAtom
 }
 
-func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
+func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: cmd.thread}
 	state := c.NewState()
-	a.Mutate(ctx, state, nil)
+	cmd.Mutate(ctx, state, nil)
 
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
@@ -695,9 +695,9 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	}
 
 	code := atom.Must(atom.AllocData(ctx, state, codeSlice))
-	device := a.Device
-	pShaderModule := memory.Pointer(a.PShaderModule)
-	createInfo := a.PCreateInfo.Read(ctx, a, state, nil)
+	device := cmd.Device
+	pShaderModule := memory.Pointer(cmd.PShaderModule)
+	createInfo := cmd.PCreateInfo.Read(ctx, cmd, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
@@ -715,8 +715,8 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
-	for _, e := range a.Extras().All() {
-		if _, ok := e.(*atom.Observations); !ok {
+	for _, e := range cmd.Extras().All() {
+		if _, ok := e.(*api.CmdObservations); !ok {
 			newAtom.Extras().Add(e)
 		}
 	}
@@ -724,7 +724,7 @@ func (a *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, 
 	// Add observations
 	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
-	for _, w := range a.Extras().Observations().Writes {
+	for _, w := range cmd.Extras().Observations().Writes {
 		newAtom.AddWrite(w.Range, w.ID)
 	}
 	return newAtom

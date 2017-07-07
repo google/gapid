@@ -89,8 +89,8 @@
 
   func {{Template "Go.Subroutine" $}}(§
       ϟctx context.Context, §
-      ϟa atom.Atom, §
-      ϟo *atom.Observations, §
+      ϟa api.Cmd, §
+      ϟo *api.CmdObservations, §
       ϟs *api.State, §
       ϟc *State, §
       ϟt uint64, §
@@ -129,7 +129,7 @@
     {{$name := $ | GoCommandName}}
     {{$r    := not (GetAnnotation $ "no_replay")}}
 
-    var _ = atom.Atom(&{{$name}}{}) // interface compliance check
+    var _ = api.Cmd(&{{$name}}{}) // interface compliance check
 
     {{if GetAnnotation $ "custom"}}
       func (ϟa *{{$name}}) mutate(§
@@ -239,7 +239,7 @@
   {{$u := $ | TypeOf | Underlying}}
   {{if IsNumericType $u}}
     {{if not (GetAnnotation $ "replay_custom_value")}}
-      func (c {{$.Name}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Value {
+      func (c {{$.Name}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Value {
         {{if IsSize $.To}}
           if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
@@ -265,7 +265,7 @@
   {{AssertType $ "Array" "StaticArray"}}
 
   {{if not (or (Macro "IsInternal" $.ValueType) (IsAny $.ValueType))}}
-    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Pointer {
       if len(arr) > 0 {
         for _, e := range arr {
           {{Template "PushInput" "Type" $.ValueType "Name" "e"}}

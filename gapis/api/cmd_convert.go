@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
 import (
 	"context"
@@ -23,13 +23,13 @@ import (
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
 
-// ProtoToAtom returns a function that converts all the storage atoms it is
+// ProtoToCmd returns a function that converts all the storage commands it is
 // handed, passing the generated live atoms to the handler.
 // You must call this with a nil to flush the final atom.
-func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error {
+func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 	var (
-		last         Atom
-		observations *Observations
+		last         Cmd
+		observations *CmdObservations
 		invoked      bool
 		count        int
 	)
@@ -54,7 +54,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			return err
 		}
 		switch out := out.(type) {
-		case Atom:
+		case Cmd:
 			if last != nil {
 				handler(last)
 			}
@@ -63,9 +63,9 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			observations = nil
 			out.SetThread(threadID)
 
-		case Observation:
+		case CmdObservation:
 			if observations == nil {
-				observations = &Observations{}
+				observations = &CmdObservations{}
 				e := last.Extras()
 				if e == nil {
 					return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
@@ -79,7 +79,7 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 			}
 		case *invokeMarker:
 			invoked = true
-		case Extra:
+		case CmdExtra:
 			e := last.Extras()
 			if e == nil {
 				return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
@@ -92,11 +92,11 @@ func ProtoToAtom(handler func(a Atom)) func(context.Context, atom_pb.Atom) error
 	}
 }
 
-// AtomToProto returns a function that converts all the atoms it is handed,
-// passing the generated proto atoms to the handler.
-func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error {
+// CmdToProto returns a function that converts all the commands it is handed,
+// passing the generated protos to the handler.
+func CmdToProto(handler func(a atom_pb.Atom)) func(context.Context, Cmd) error {
 	var threadID uint64
-	return func(ctx context.Context, in Atom) error {
+	return func(ctx context.Context, in Cmd) error {
 		if in.Thread() != threadID {
 			threadID = in.Thread()
 			handler(&core_pb.SwitchThread{ThreadID: threadID})
@@ -109,7 +109,7 @@ func AtomToProto(handler func(a atom_pb.Atom)) func(context.Context, Atom) error
 
 		for _, e := range in.Extras().All() {
 			switch e := e.(type) {
-			case *Observations:
+			case *CmdObservations:
 				for _, o := range e.Reads {
 					p, err := protoconv.ToProto(ctx, o)
 					if err != nil {

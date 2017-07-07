@@ -18,8 +18,8 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles/gles_pb"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
 
@@ -39,7 +39,7 @@ func (s *ErrorState) Convert(ctx context.Context, out atom_pb.Handler) error {
 
 // FindProgramInfo searches for the ProgramInfo in the extras, returning the
 // ProgramInfo if found, otherwise nil.
-func FindProgramInfo(extras *atom.Extras) *ProgramInfo {
+func FindProgramInfo(extras *api.CmdExtras) *ProgramInfo {
 	for _, e := range extras.All() {
 		if pi, ok := e.(*ProgramInfo); ok {
 			clone, err := deep.Clone(pi)
@@ -54,7 +54,7 @@ func FindProgramInfo(extras *atom.Extras) *ProgramInfo {
 
 // FindErrorState searches for the ErrorState in the extras, returning the
 // ErrorState if found, otherwise nil.
-func FindErrorState(extras *atom.Extras) *ErrorState {
+func FindErrorState(extras *api.CmdExtras) *ErrorState {
 	for _, e := range extras.All() {
 		if pi, ok := e.(*ErrorState); ok {
 			return pi
@@ -65,7 +65,7 @@ func FindErrorState(extras *atom.Extras) *ErrorState {
 
 // FindStaticContextState searches for the StaticContextState in the extras,
 // returning the StaticContextState if found, otherwise nil.
-func FindStaticContextState(extras *atom.Extras) *StaticContextState {
+func FindStaticContextState(extras *api.CmdExtras) *StaticContextState {
 	for _, e := range extras.All() {
 		if cs, ok := e.(*StaticContextState); ok {
 			clone, err := deep.Clone(cs)
@@ -80,7 +80,7 @@ func FindStaticContextState(extras *atom.Extras) *StaticContextState {
 
 // FindDynamicContextState searches for the DynamicContextState in the extras,
 // returning the DynamicContextState if found, otherwise nil.
-func FindDynamicContextState(extras *atom.Extras) *DynamicContextState {
+func FindDynamicContextState(extras *api.CmdExtras) *DynamicContextState {
 	for _, e := range extras.All() {
 		if cs, ok := e.(*DynamicContextState); ok {
 			clone, err := deep.Clone(cs)
@@ -95,7 +95,7 @@ func FindDynamicContextState(extras *atom.Extras) *DynamicContextState {
 
 // FindAndroidNativeBufferExtra searches for the AndroidNativeBufferExtra in the extras,
 // returning the AndroidNativeBufferExtra if found, otherwise nil.
-func FindAndroidNativeBufferExtra(extras *atom.Extras) *AndroidNativeBufferExtra {
+func FindAndroidNativeBufferExtra(extras *api.CmdExtras) *AndroidNativeBufferExtra {
 	for _, e := range extras.All() {
 		if di, ok := e.(*AndroidNativeBufferExtra); ok {
 			clone, err := deep.Clone(di)

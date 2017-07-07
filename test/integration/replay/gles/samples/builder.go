@@ -78,7 +78,7 @@ func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointe
 
 func (b *builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
 	eglTrue := gles.EGLBoolean(1)
-	b.Add(atom.WithExtras(
+	b.Add(api.WithExtras(
 		b.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextState(),
 		gles.NewDynamicContextState(width, height, preserveBuffersOnSwap),

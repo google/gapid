@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package atom provides the fundamental types used to describe a capture stream.
-package atom
+package api
 
 import (
 	"context"
@@ -22,14 +21,14 @@ import (
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
 
-// Extra is the interface implemented by atom 'extras' - additional information
-// that can be placed inside an atom instance.
-type Extra interface{}
+// CmdExtra is the interface implemented by command 'extras' - additional
+// information that can be placed inside a command.
+type CmdExtra interface{}
 
-// Extras is a list of Extra objects.
-type Extras []Extra
+// CmdExtras is a list of CmdExtra objects.
+type CmdExtras []CmdExtra
 
-// Aborted is an extra used to mark atoms which did not finish execution.
+// Aborted is an CmdExtra used to mark atoms which did not finish execution.
 // This can be expected (e.g. GL error), or unexpected (failed assertion).
 type Aborted struct {
 	IsAssert bool
@@ -47,22 +46,22 @@ func init() {
 	)
 }
 
-func (e *Extras) All() Extras {
+func (e *CmdExtras) All() CmdExtras {
 	if e == nil {
 		return nil
 	}
 	return *e
 }
 
-// Add appends one or more extras to the list of extras.
-func (e *Extras) Add(es ...Extra) {
+// Add appends one or more CmdExtras to the list of CmdExtras.
+func (e *CmdExtras) Add(es ...CmdExtra) {
 	if e != nil {
 		*e = append(*e, es...)
 	}
 }
 
-// Aborted returns a pointer to the Aborted structure in the extras, or nil if not found.
-func (e *Extras) Aborted() *Aborted {
+// Aborted returns a pointer to the Aborted structure in the CmdExtras, or nil if not found.
+func (e *CmdExtras) Aborted() *Aborted {
 	for _, e := range e.All() {
 		if e, ok := e.(*Aborted); ok {
 			return e
@@ -71,11 +70,11 @@ func (e *Extras) Aborted() *Aborted {
 	return nil
 }
 
-// Observations returns a pointer to the Observations structure in the extras,
-// or nil if there are no observations in the extras.
-func (e *Extras) Observations() *Observations {
+// Observations returns a pointer to the CmdObservations structure in the
+// CmdExtras, or nil if there are no observations in the CmdExtras.
+func (e *CmdExtras) Observations() *CmdObservations {
 	for _, o := range e.All() {
-		if o, ok := o.(*Observations); ok {
+		if o, ok := o.(*CmdObservations); ok {
 			return o
 		}
 	}
@@ -83,25 +82,25 @@ func (e *Extras) Observations() *Observations {
 }
 
 // GetOrAppendObservations returns a pointer to the existing Observations
-// structure in the extras, or appends and returns a pointer to a new
-// observations structure if the extras does not already contain one.
-func (e *Extras) GetOrAppendObservations() *Observations {
+// structure in the CmdExtras, or appends and returns a pointer to a new
+// observations structure if the CmdExtras does not already contain one.
+func (e *CmdExtras) GetOrAppendObservations() *CmdObservations {
 	if o := e.Observations(); o != nil {
 		return o
 	}
-	o := &Observations{}
+	o := &CmdObservations{}
 	e.Add(o)
 	return o
 }
 
-// WithExtras adds the given extras to an atom and returns it.
-func WithExtras(a Atom, extras ...Extra) Atom {
+// WithExtras adds the given extras to a command and returns it.
+func WithExtras(a Cmd, extras ...CmdExtra) Cmd {
 	a.Extras().Add(extras...)
 	return a
 }
 
 // Convert calls the Convert method on all the extras in the list.
-func (e *Extras) Convert(ctx context.Context, out atom_pb.Handler) error {
+func (e *CmdExtras) Convert(ctx context.Context, out atom_pb.Handler) error {
 	for _, o := range e.All() {
 		m, err := protoconv.ToProto(ctx, o)
 		if err != nil {

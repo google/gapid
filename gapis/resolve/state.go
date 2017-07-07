@@ -50,12 +50,12 @@ func APIState(ctx context.Context, p *path.State) (interface{}, error) {
 // Resolve implements the database.Resolver interface.
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
-	atomIdx := r.Path.After.Indices[0]
+	cmdIdx := r.Path.After.Indices[0]
 	atoms, err := Atoms(ctx, r.Path.After.Capture)
 	if err != nil {
 		return nil, err
 	}
-	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(atomIdx), r.Path.After.Indices[1:])
+	list, err := sync.MutationAtomsFor(ctx, r.Path.After.Capture, atoms, atom.ID(cmdIdx), r.Path.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -74,26 +74,26 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 // Resolve implements the database.Resolver interface.
 func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
-	atomIdx := r.Path.After.Indices[0]
+	cmdIdx := r.Path.After.Indices[0]
 	if len(r.Path.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
 	}
-	list, err := NAtoms(ctx, r.Path.After.Capture, atomIdx+1)
+	list, err := NAtoms(ctx, r.Path.After.Capture, cmdIdx+1)
 	if err != nil {
 		return nil, err
 	}
 	return apiState(ctx, list.Atoms, r.Path)
 }
 
-func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{}, error) {
-	atomIdx := p.After.Indices[0]
+func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (interface{}, error) {
+	cmdIdx := p.After.Indices[0]
 	if len(p.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
 	}
-	if count := uint64(len(atoms)); atomIdx >= count {
-		return nil, errPathOOB(atomIdx, "Index", 0, count-1, p)
+	if count := uint64(len(cmds)); cmdIdx >= count {
+		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, p)
 	}
-	api := atoms[atomIdx].API()
+	api := cmds[cmdIdx].API()
 	if api == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
@@ -101,7 +101,7 @@ func apiState(ctx context.Context, atoms []atom.Atom, p *path.State) (interface{
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range atoms[:atomIdx+1] {
+	for _, a := range cmds[:cmdIdx+1] {
 		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}

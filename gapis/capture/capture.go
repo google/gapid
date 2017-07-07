@@ -46,7 +46,7 @@ var (
 type Capture struct {
 	Name     string
 	Header   *Header
-	Atoms    []atom.Atom
+	Commands []api.Cmd
 	APIs     []api.API
 	Observed interval.U64RangeList
 }
@@ -55,10 +55,10 @@ func init() {
 	protoconv.Register(toProto, fromProto)
 }
 
-// New returns a path to a new capture with the given name, header and atoms.
+// New returns a path to a new capture with the given name, header and commands.
 // The new capture is stored in the database.
-func New(ctx context.Context, name string, header *Header, atoms []atom.Atom) (*path.Capture, error) {
-	c, err := build(ctx, name, header, atoms)
+func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*path.Capture, error) {
+	c, err := build(ctx, name, header, cmds)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture
 		Name:         c.Name,
 		Device:       c.Header.Device,
 		Abi:          c.Header.Abi,
-		NumCommands:  uint64(len(c.Atoms)),
+		NumCommands:  uint64(len(c.Commands)),
 		Apis:         apis,
 		Observations: observations,
 	}
@@ -184,12 +184,12 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		return err
 	}
 
-	writeAtom := atom.AtomToProto(func(a atom_pb.Atom) { writeMsg(ctx, a) })
+	writeAtom := api.CmdToProto(func(a atom_pb.Atom) { writeMsg(ctx, a) })
 
 	// IDs seen, so we can avoid encoding the same resource data multiple times.
 	seen := map[id.ID]bool{}
 
-	encodeObservation := func(o atom.Observation) error {
+	encodeObservation := func(o api.CmdObservation) error {
 		if seen[o.ID] {
 			return nil
 		}
@@ -202,7 +202,7 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		return err
 	}
 
-	for _, a := range c.Atoms {
+	for _, a := range c.Commands {
 		if observations := a.Extras().Observations(); observations != nil {
 			for _, r := range observations.Reads {
 				if err := encodeObservation(r); err != nil {
@@ -240,8 +240,8 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		return nil, err
 	}
 
-	atoms := []atom.Atom{}
-	convert := atom.ProtoToAtom(func(a atom.Atom) { atoms = append(atoms, a) })
+	cmds := []api.Cmd{}
+	convert := api.ProtoToCmd(func(a api.Cmd) { cmds = append(cmds, a) })
 	var header *Header
 	for {
 		msg, err := reader.Unmarshal()
@@ -269,13 +269,13 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		return nil, err
 	}
 
-	return build(ctx, r.Name, header, atoms)
+	return build(ctx, r.Name, header, cmds)
 }
 
-// build creates a capture from the name, header and atoms.
-// The atoms are inspected for APIs used and observed memory ranges.
+// build creates a capture from the name, header and cmds.
+// The cmds are inspected for APIs used and observed memory ranges.
 // All resources are extracted placed into the database.
-func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) (*Capture, error) {
+func build(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*Capture, error) {
 	out := &Capture{
 		Name:     name,
 		Header:   header,
@@ -286,8 +286,8 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 	idmap := map[id.ID]id.ID{}
 	apiSet := map[api.ID]api.API{}
 
-	for _, a := range atoms {
-		if api := a.API(); api != nil {
+	for _, c := range cmds {
+		if api := c.API(); api != nil {
 			apiID := api.ID()
 			if _, found := apiSet[apiID]; !found {
 				apiSet[apiID] = api
@@ -295,7 +295,7 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 			}
 		}
 
-		observations := a.Extras().Observations()
+		observations := c.Extras().Observations()
 
 		if observations != nil {
 			for _, rd := range observations.Reads {
@@ -306,16 +306,16 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 			}
 		}
 
-		switch a := a.(type) {
+		switch c := c.(type) {
 		case *atom.Resource:
-			id, err := database.Store(ctx, a.Data)
+			id, err := database.Store(ctx, c.Data)
 			if err != nil {
 				return nil, err
 			}
-			if _, dup := idmap[a.ID]; dup {
-				return nil, log.Errf(ctx, nil, "Duplicate resource with ID: %v", a.ID)
+			if _, dup := idmap[c.ID]; dup {
+				return nil, log.Errf(ctx, nil, "Duplicate resource with ID: %v", c.ID)
 			}
-			idmap[a.ID] = id
+			idmap[c.ID] = id
 
 		default:
 			// Replace resource IDs from identifiers generated at capture time to
@@ -332,7 +332,7 @@ func build(ctx context.Context, name string, header *Header, atoms []atom.Atom) 
 					}
 				}
 			}
-			out.Atoms = append(out.Atoms, a)
+			out.Commands = append(out.Commands, c)
 		}
 	}
 

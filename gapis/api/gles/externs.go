@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
@@ -31,7 +30,7 @@ import (
 
 type externs struct {
 	ctx context.Context // Allowed because the externs struct is only a parameter proxy for a single call
-	a   atom.Atom
+	cmd api.Cmd
 	s   *api.State
 	b   *rb.Builder
 }
@@ -39,13 +38,13 @@ type externs struct {
 func (e externs) mapMemory(slice memory.Slice) {
 	ctx := e.ctx
 	if b := e.b; b != nil {
-		switch e.a.(type) {
+		switch e.cmd.(type) {
 		case *GlMapBufferRange, *GlMapBufferRangeEXT, *GlMapBufferOES, *GlMapBuffer:
 			// Base address is on the stack.
 			b.MapMemory(slice.Range(e.s.MemoryLayout))
 
 		default:
-			log.E(ctx, "mapBuffer extern called for unsupported atom: %v", e.a)
+			log.E(ctx, "mapBuffer extern called for unsupported command: %v", e.cmd)
 		}
 	}
 }
@@ -57,15 +56,15 @@ func (e externs) unmapMemory(slice memory.Slice) {
 }
 
 func (e externs) GetEGLStaticContextState(EGLDisplay, EGLSurface, EGLContext) *StaticContextState {
-	return FindStaticContextState(e.a.Extras())
+	return FindStaticContextState(e.cmd.Extras())
 }
 
 func (e externs) GetEGLDynamicContextState(EGLDisplay, EGLSurface, EGLContext) *DynamicContextState {
-	return FindDynamicContextState(e.a.Extras())
+	return FindDynamicContextState(e.cmd.Extras())
 }
 
 func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra {
-	return FindAndroidNativeBufferExtra(e.a.Extras())
+	return FindAndroidNativeBufferExtra(e.cmd.Extras())
 }
 
 func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
@@ -94,7 +93,7 @@ func (e externs) substr(str string, start, end int32) string {
 }
 
 func (e externs) GetProgramInfoExtra(ctx *Context, pid ProgramId) *ProgramInfo {
-	return FindProgramInfo(e.a.Extras())
+	return FindProgramInfo(e.cmd.Extras())
 }
 
 func (e externs) onGlError(err GLenum) {

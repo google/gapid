@@ -29,7 +29,7 @@ import (
 var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
 
 type DependencyGraph struct {
-	Atoms      []atom.Atom           // Atom list which this graph was build for.
+	Commands   []api.Cmd             // Atom list which this graph was build for.
 	Behaviours []AtomBehaviour       // State reads/writes for each atom (graph edges).
 	Roots      map[StateAddress]bool // State to mark live at requested atoms.
 	addressMap addressMapping        // Remap state keys to integers for performance.
@@ -126,7 +126,7 @@ type DependencyGraphBehaviourProvider interface {
 }
 
 type BehaviourProvider interface {
-	GetBehaviourForAtom(ctx context.Context, s *api.State, id atom.ID, g *DependencyGraph, a atom.Atom) AtomBehaviour
+	GetBehaviourForAtom(context.Context, *api.State, atom.ID, api.Cmd, *DependencyGraph) AtomBehaviour
 }
 
 func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
@@ -142,12 +142,12 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
-	atoms := c.Atoms
+	cmds := c.Commands
 	behaviourProviders := map[api.API]BehaviourProvider{}
 
 	g := &DependencyGraph{
-		Atoms:      atoms,
-		Behaviours: make([]AtomBehaviour, len(atoms)),
+		Commands:   cmds,
+		Behaviours: make([]AtomBehaviour, len(cmds)),
 		Roots:      map[StateAddress]bool{},
 		addressMap: addressMapping{
 			address: map[StateKey]StateAddress{nil: NullStateAddress},
@@ -158,8 +158,8 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 
 	s := c.NewState()
 	t0 := dependencyGraphBuildCounter.Start()
-	for i, a := range g.Atoms {
-		api := a.API()
+	for i, c := range cmds {
+		api := c.API()
 		if _, ok := behaviourProviders[api]; !ok {
 			if bp, ok := api.(DependencyGraphBehaviourProvider); ok {
 				behaviourProviders[api] = bp.GetDependencyGraphBehaviourProvider(ctx)
@@ -171,14 +171,14 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 				// info, we still need to mutate it in the new state, because following
 				// atoms in other APIs may depends on the side effect of the current
 				// atom.
-				if err := a.Mutate(ctx, s, nil /* builder */); err != nil {
-					log.W(ctx, "Atom %v %v: %v", atom.ID(i), a, err)
+				if err := c.Mutate(ctx, s, nil /* builder */); err != nil {
+					log.W(ctx, "Atom %v %v: %v", atom.ID(i), c, err)
 					return AtomBehaviour{Aborted: true}, nil
 				}
 				continue
 			}
 		}
-		g.Behaviours[i] = behaviourProviders[api].GetBehaviourForAtom(ctx, s, atom.ID(i), g, a)
+		g.Behaviours[i] = behaviourProviders[api].GetBehaviourForAtom(ctx, s, atom.ID(i), c, g)
 	}
 	dependencyGraphBuildCounter.Stop(t0)
 	return g, nil

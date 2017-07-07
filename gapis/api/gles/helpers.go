@@ -25,8 +25,8 @@ import (
 // and fragment shaders. The returned program is not linked.
 func BuildProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
-	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
-	return append([]atom.Atom{cb.GlCreateProgram(programID)},
+	vertexShaderSource, fragmentShaderSource string) []api.Cmd {
+	return append([]api.Cmd{cb.GlCreateProgram(programID)},
 		CompileProgram(ctx, s, cb, vertexShaderID, fragmentShaderID, programID, vertexShaderSource, fragmentShaderSource)...,
 	)
 }
@@ -36,7 +36,7 @@ func BuildProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 // The returned program is not linked.
 func CompileProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
-	vertexShaderSource, fragmentShaderSource string) []atom.Atom {
+	vertexShaderSource, fragmentShaderSource string) []api.Cmd {
 
 	tmpVertexSrcLen := atom.Must(atom.AllocData(ctx, s, GLint(len(vertexShaderSource))))
 	tmpVertexSrc := atom.Must(atom.AllocData(ctx, s, vertexShaderSource))
@@ -45,7 +45,7 @@ func CompileProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 	tmpFragmentSrc := atom.Must(atom.AllocData(ctx, s, fragmentShaderSource))
 	tmpPtrToFragmentSrc := atom.Must(atom.AllocData(ctx, s, tmpFragmentSrc.Ptr()))
 
-	a := []atom.Atom{
+	cmds := []api.Cmd{
 		cb.GlCreateShader(GLenum_GL_VERTEX_SHADER, vertexShaderID),
 		cb.GlShaderSource(vertexShaderID, 1, tmpPtrToVertexSrc.Ptr(), tmpVertexSrcLen.Ptr()).
 			AddRead(tmpPtrToVertexSrc.Data()).
@@ -65,7 +65,7 @@ func CompileProgram(ctx context.Context, s *api.State, cb CommandBuilder,
 
 	tmpVertexSrc.Free()
 	tmpFragmentSrc.Free()
-	return a
+	return cmds
 }
 
 // DefaultConstants30 returns a Constants structure filled with default

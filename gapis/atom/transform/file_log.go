@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 )
@@ -38,16 +39,16 @@ func NewFileLog(ctx context.Context, name string) *FileLog {
 	return &FileLog{file: f}
 }
 
-func (t *FileLog) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
-	if a.API() != nil {
-		t.file.WriteString(fmt.Sprintf("%v: %v\n", id, a))
+func (t *FileLog) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+	if cmd.API() != nil {
+		t.file.WriteString(fmt.Sprintf("%v: %v\n", id, cmd))
 	} else {
-		t.file.WriteString(fmt.Sprintf("%T\n", a))
+		t.file.WriteString(fmt.Sprintf("%T\n", cmd))
 	}
 	if config.LogExtrasInTransforms {
-		if extras := a.Extras(); extras != nil {
+		if extras := cmd.Extras(); extras != nil {
 			for _, e := range extras.All() {
-				if o, ok := e.(*atom.Observations); ok {
+				if o, ok := e.(*api.CmdObservations); ok {
 					if config.LogMemoryInExtras {
 						t.file.WriteString(o.DataString(ctx))
 					} else {
@@ -59,7 +60,7 @@ func (t *FileLog) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Wr
 			}
 		}
 	}
-	out.MutateAndWrite(ctx, id, a)
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *FileLog) Flush(ctx context.Context, out Writer) {

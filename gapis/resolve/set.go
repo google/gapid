@@ -69,19 +69,19 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, err
 		}
 
-		atomIdx := p.After.Indices[0]
+		cmdIdx := p.After.Indices[0]
 		if len(p.After.Indices) > 1 {
 			return nil, fmt.Errorf("Subcommands currently not supported for changing") // TODO: Subcommands
 		}
 
-		oldList, err := NAtoms(ctx, p.After.Capture, atomIdx+1)
+		oldList, err := NAtoms(ctx, p.After.Capture, cmdIdx+1)
 		if err != nil {
 			return nil, err
 		}
 
 		list := oldList.Clone()
-		replaceAtoms := func(where uint64, with interface{}) {
-			list.Atoms[where] = with.(atom.Atom)
+		replaceCommands := func(where uint64, with interface{}) {
+			list.Atoms[where] = with.(api.Cmd)
 		}
 
 		data, ok := val.(*api.ResourceData)
@@ -89,12 +89,12 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		if err := meta.Resource.SetResourceData(ctx, p.After, data, meta.IDMap, replaceAtoms); err != nil {
+		if err := meta.Resource.SetResourceData(ctx, p.After, data, meta.IDMap, replaceCommands); err != nil {
 			return nil, err
 		}
 
 		// Store the new atom list
-		c, err := changeAtoms(ctx, p.After.Capture, list.Atoms)
+		c, err := changeCommands(ctx, p.After.Capture, list.Atoms)
 		if err != nil {
 			return nil, err
 		}
@@ -108,13 +108,13 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}, nil
 
 	case *path.Command:
-		atomIdx := p.Indices[0]
+		cmdIdx := p.Indices[0]
 		if len(p.Indices) > 1 {
 			return nil, fmt.Errorf("Subcommands currently not supported, for changing") // TODO: Subcommands
 		}
 
 		// Resolve the command list
-		oldList, err := NAtoms(ctx, p.Capture, atomIdx+1)
+		oldList, err := NAtoms(ctx, p.Capture, cmdIdx+1)
 		if err != nil {
 			return nil, err
 		}
@@ -123,23 +123,23 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		if val == nil {
 			return nil, fmt.Errorf("Command cannot be nil")
 		}
-		atom, ok := val.(atom.Atom)
+		cmd, ok := val.(api.Cmd)
 		if !ok {
-			return nil, fmt.Errorf("Expected Atom, got %T", val)
+			return nil, fmt.Errorf("Expected Cmd, got %T", val)
 		}
 
 		// Clone the atom list
 		list := oldList.Clone()
 
 		// Propagate extras if the new atom omitted them
-		oldAtom := oldList.Atoms[atomIdx]
-		if len(atom.Extras().All()) == 0 {
-			atom.Extras().Add(oldAtom.Extras().All()...)
+		oldCmd := oldList.Atoms[cmdIdx]
+		if len(cmd.Extras().All()) == 0 {
+			cmd.Extras().Add(oldCmd.Extras().All()...)
 		}
-		list.Atoms[atomIdx] = atom
+		list.Atoms[cmdIdx] = cmd
 
 		// Store the new atom list
-		c, err := changeAtoms(ctx, p.Capture, list.Atoms)
+		c, err := changeCommands(ctx, p.Capture, list.Atoms)
 		if err != nil {
 			return nil, err
 		}
@@ -169,13 +169,13 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		switch p := p.(type) {
 		case *path.Parameter:
 			// TODO: Deal with parameters belonging to sub-commands.
-			a := obj.Interface().(atom.Atom)
-			err := atom.SetParameter(ctx, a, p.Name, val)
+			cmd := obj.Interface().(api.Cmd)
+			err := atom.SetParameter(ctx, cmd, p.Name, val)
 			switch err {
 			case nil:
 			case atom.ErrParameterNotFound:
 				return nil, &service.ErrInvalidPath{
-					Reason: messages.ErrParameterDoesNotExist(a.AtomName(), p.Name),
+					Reason: messages.ErrParameterDoesNotExist(cmd.CmdName(), p.Name),
 					Path:   p.Path(),
 				}
 			default:
@@ -190,13 +190,13 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 
 		case *path.Result:
 			// TODO: Deal with parameters belonging to sub-commands.
-			a := obj.Interface().(atom.Atom)
-			err := atom.SetResult(ctx, a, val)
+			cmd := obj.Interface().(api.Cmd)
+			err := atom.SetResult(ctx, cmd, val)
 			switch err {
 			case nil:
 			case atom.ErrResultNotFound:
 				return nil, &service.ErrInvalidPath{
-					Reason: messages.ErrResultDoesNotExist(a.AtomName()),
+					Reason: messages.ErrResultDoesNotExist(cmd.CmdName()),
 					Path:   p.Path(),
 				}
 			default:
@@ -284,12 +284,12 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 	return nil, fmt.Errorf("Unknown path type %T", p)
 }
 
-func changeAtoms(ctx context.Context, p *path.Capture, newAtoms []atom.Atom) (*path.Capture, error) {
+func changeCommands(ctx context.Context, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
 	old, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.New(ctx, old.Name+"*", old.Header, newAtoms)
+	c, err := capture.New(ctx, old.Name+"*", old.Header, newCmds)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ package transform
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 )
 
@@ -27,6 +28,6 @@ type Terminator interface {
 	// must be observed
 	Add(context.Context, atom.ID, []uint64) error
 	// The transformer interface
-	Transform(context.Context, atom.ID, atom.Atom, Writer)
+	Transform(context.Context, atom.ID, api.Cmd, Writer)
 	Flush(context.Context, Writer)
 }

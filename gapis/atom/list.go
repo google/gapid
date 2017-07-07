@@ -14,14 +14,18 @@
 
 package atom
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/gapid/gapis/api"
+)
 
 // List is a list of atoms.
 type List struct {
-	Atoms []Atom
+	Atoms []api.Cmd
 }
 
-func NewList(atoms ...Atom) *List {
+func NewList(atoms ...api.Cmd) *List {
 	return &List{Atoms: atoms}
 }
 
@@ -35,21 +39,21 @@ func (l *List) WriteTo(ctx context.Context, w Writer) {
 
 // Clone makes and returns a shallow copy of the atom list.
 func (l *List) Clone() *List {
-	c := &List{Atoms: make([]Atom, len(l.Atoms))}
+	c := &List{Atoms: make([]api.Cmd, len(l.Atoms))}
 	copy(c.Atoms, l.Atoms)
 	return c
 }
 
 // Add appends a to the end of the atom list, returning the id of the last added
 // atom.
-func (l *List) Add(a ...Atom) ID {
-	l.Atoms = append(l.Atoms, a...)
+func (l *List) Add(c ...api.Cmd) ID {
+	l.Atoms = append(l.Atoms, c...)
 	return ID(len(l.Atoms) - 1)
 }
 
-// Add adds a to the list before the atom at id.
-func (l *List) AddAt(a Atom, id ID) {
+// AddAt adds c to the list before the atom at id.
+func (l *List) AddAt(c api.Cmd, id ID) {
 	l.Atoms = append(l.Atoms, nil)
 	copy(l.Atoms[id+1:], l.Atoms[id:])
-	l.Atoms[id] = a
+	l.Atoms[id] = c
 }

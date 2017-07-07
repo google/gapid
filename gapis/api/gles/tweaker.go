@@ -48,7 +48,7 @@ func (t *tweaker) revert(ctx context.Context) {
 	t.undo = nil
 }
 
-func (t *tweaker) doAndUndo(ctx context.Context, do atom.Atom, undo atom.Atom) {
+func (t *tweaker) doAndUndo(ctx context.Context, do, undo api.Cmd) {
 	t.out.MutateAndWrite(ctx, t.dID, do)
 	t.undo = append(t.undo, func(ctx context.Context) {
 		t.out.MutateAndWrite(ctx, t.dID, undo)

@@ -25,7 +25,7 @@ import (
 type Transformer interface {
 	// Transform takes a given atom and identifier and Writes out a new atom and
 	// identifier to the output. Transform must not modify the atom in any way.
-	Transform(ctx context.Context, id atom.ID, atom atom.Atom, output Writer)
+	Transform(ctx context.Context, id atom.ID, cmd api.Cmd, output Writer)
 	// Flush is called at the end of an atom stream to cause Transformers that
 	// cache atoms to send any they have stored into the output.
 	Flush(ctx context.Context, output Writer)
@@ -46,5 +46,5 @@ type Writer interface {
 	State() *api.State
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the atom to further consumers.
-	MutateAndWrite(ctx context.Context, id atom.ID, atom atom.Atom)
+	MutateAndWrite(ctx context.Context, id atom.ID, cmd api.Cmd)
 }

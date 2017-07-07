@@ -36,11 +36,11 @@ func TestClone(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	for _, a := range []atom.Atom{
+	for _, cmd := range []api.Cmd{
 		cb.CmdClone(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
 	} {
-		a.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, s, nil)
 	}
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)
@@ -63,12 +63,12 @@ func TestCopy(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	for _, a := range []atom.Atom{
+	for _, cmd := range []api.Cmd{
 		cb.CmdMake(10),
 		cb.CmdCopy(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
 	} {
-		a.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, s, nil)
 	}
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)

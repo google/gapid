@@ -39,8 +39,8 @@ type findIssues struct {
 // reportTo adds r to the list of issue listeners.
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
-func (t *findIssues) Transform(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
-	out.MutateAndWrite(ctx, i, a)
+func (t *findIssues) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {

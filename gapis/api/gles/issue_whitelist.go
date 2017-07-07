@@ -14,12 +14,10 @@
 
 package gles
 
-import (
-	"github.com/google/gapid/gapis/atom"
-)
+import "github.com/google/gapid/gapis/api"
 
-func isIssueWhitelisted(a atom.Atom, e error) bool {
-	switch a.(type) {
+func isIssueWhitelisted(cmd api.Cmd, e error) bool {
+	switch cmd.(type) {
 	case *GlActiveTexture:
 		// TODO: b/29446056 - Apps break replay by looping over all texture units.
 		// Just ignore the replay errors for now. We can do something better later.

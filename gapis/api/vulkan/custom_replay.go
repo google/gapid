@@ -23,210 +23,210 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-func (i VkInstance) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkInstance) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPhysicalDevice) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkPhysicalDevice) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDevice) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDevice) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkQueue) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkQueue) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkCommandBuffer) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkCommandBuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSemaphore) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkSemaphore) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkFence) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkFence) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDeviceMemory) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDeviceMemory) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkBuffer) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkBuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkImage) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkImage) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkEvent) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkEvent) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkQueryPool) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkQueryPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkBufferView) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkBufferView) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkImageView) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkImageView) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkShaderModule) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkShaderModule) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipelineCache) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkPipelineCache) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipelineLayout) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkPipelineLayout) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkRenderPass) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkRenderPass) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipeline) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkPipeline) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorSetLayout) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorSetLayout) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSampler) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkSampler) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorPool) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorSet) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorSet) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkFramebuffer) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkFramebuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkCommandPool) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkCommandPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSurfaceKHR) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkSurfaceKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSwapchainKHR) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkSwapchainKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDisplayKHR) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDisplayKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDisplayModeKHR) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDisplayModeKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDebugReportCallbackEXT) remap(_ atom.Atom, _ *api.State) (key interface{}, remap bool) {
+func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
@@ -1437,7 +1437,7 @@ func (a *RecreateBufferView) Mutate(ctx context.Context, s *api.State, b *builde
 	return hijack.Mutate(ctx, s, b)
 }
 
-func mapBufferMemory(ctx context.Context, cb CommandBuilder, s *api.State, b *builder.Builder, a atom.Atom, device VkDevice, size VkDeviceSize, mem VkDeviceMemory) (Voidᵖ, uint64, error) {
+func mapBufferMemory(ctx context.Context, cb CommandBuilder, s *api.State, b *builder.Builder, cmd api.Cmd, device VkDevice, size VkDeviceSize, mem VkDeviceMemory) (Voidᵖ, uint64, error) {
 	at, err := s.Allocator.Alloc(uint64(size), 8)
 	if err != nil {
 		return NewVoidᵖ(memory.Nullptr), at, err
@@ -1451,7 +1451,7 @@ func mapBufferMemory(ctx context.Context, cb CommandBuilder, s *api.State, b *bu
 		return NewVoidᵖ(memory.Nullptr), at, err
 	}
 
-	return NewVoidᵖᵖ(mappedPointer.Ptr()).Read(ctx, a, s, b), at, err
+	return NewVoidᵖᵖ(mappedPointer.Ptr()).Read(ctx, cmd, s, b), at, err
 }
 
 func flushBufferMemory(ctx context.Context, cb CommandBuilder, s *api.State, b *builder.Builder, device VkDevice, size VkDeviceSize, mem VkDeviceMemory, mapped U8ᵖ) error {

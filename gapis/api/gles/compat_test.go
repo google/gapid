@@ -59,7 +59,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
 	a := h.Abi.MemoryLayout
-	capturePath, err := capture.New(ctx, "test", h, []atom.Atom{})
+	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +90,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
-	for _, a := range []atom.Atom{
+	for _, a := range []api.Cmd{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlCreateShader(shaderType, 0x10),
@@ -148,7 +148,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
 	a := h.Abi.MemoryLayout
-	capturePath, err := capture.New(ctx, "test", h, []atom.Atom{})
+	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
 	if err != nil {
 		panic(err)
 	}
@@ -175,7 +175,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
-	for _, a := range []atom.Atom{
+	for _, a := range []api.Cmd{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),

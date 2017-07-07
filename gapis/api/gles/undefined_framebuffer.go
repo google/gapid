@@ -28,27 +28,27 @@ import (
 // color buffer at the end of each frame.
 func undefinedFramebuffer(ctx context.Context, device *device.Instance) transform.Transformer {
 	seenSurfaces := make(map[EGLSurface]bool)
-	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
-		out.MutateAndWrite(ctx, i, a)
+	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+		out.MutateAndWrite(ctx, id, cmd)
 		s := out.State()
-		c := GetContext(s, a.Thread())
+		c := GetContext(s, cmd.Thread())
 		if c == nil || !c.Info.Initialized {
 			return // We can't do anything without a context.
 		}
-		if eglMakeCurrent, ok := a.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw] {
+		if eglMakeCurrent, ok := cmd.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw] {
 			// Render the undefined pattern for new contexts.
-			drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
+			drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			seenSurfaces[eglMakeCurrent.Draw] = true
 		}
-		if a.AtomFlags().IsStartOfFrame() {
+		if cmd.CmdFlags().IsStartOfFrame() {
 			if c != nil && !c.Info.PreserveBuffersOnSwap {
-				drawUndefinedFramebuffer(ctx, i, a, device, s, c, out)
+				drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			}
 		}
 	})
 }
 
-func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, device *device.Instance, s *api.State, c *Context, out transform.Writer) error {
+func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, cmd api.Cmd, device *device.Instance, s *api.State, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 
@@ -77,7 +77,7 @@ func drawUndefinedFramebuffer(ctx context.Context, id atom.ID, a atom.Atom, devi
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	t := newTweaker(out, id, cb)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.

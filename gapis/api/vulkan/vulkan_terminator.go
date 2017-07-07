@@ -216,9 +216,9 @@ func rebuildCommandBuffer(ctx context.Context,
 	commandBuffer *CommandBufferObject,
 	s *api.State,
 	idx sync.SubcommandIndex,
-	additionalCommands []interface{}) (VkCommandBuffer, []atom.Atom, []func()) {
+	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 
-	x := make([]atom.Atom, 0)
+	x := make([]api.Cmd, 0)
 	cleanup := make([]func(), 0)
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
 	// command buffer. We have no way to handle WHEN this will be done
@@ -389,7 +389,7 @@ func cutCommandBuffer(ctx context.Context, id atom.ID,
 	newSubmitData.Free()
 }
 
-func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
 	if t.stopped {
 		return
 	}
@@ -422,9 +422,9 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id atom.ID, a atom.Ato
 
 	// We have to cut somewhere
 	if doCut {
-		cutCommandBuffer(ctx, id, a.(*VkQueueSubmit), cutIndex, out)
+		cutCommandBuffer(ctx, id, cmd.(*VkQueueSubmit), cutIndex, out)
 	} else {
-		out.MutateAndWrite(ctx, id, a)
+		out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	if id == t.lastRequest {

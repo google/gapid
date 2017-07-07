@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 var (
@@ -31,7 +30,7 @@ var (
 	VisibleForTestingStubShaderSource = stubShaderSource
 )
 
-func buildStubProgram(ctx context.Context, thread uint64, e *atom.Extras, s *api.State, programID ProgramId) []atom.Atom {
+func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.State, programID ProgramId) []api.Cmd {
 	vss, fss, err := stubShaderSource(FindProgramInfo(e))
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)

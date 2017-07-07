@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
@@ -30,7 +31,7 @@ func Atoms(ctx context.Context, p *path.Capture) (*atom.List, error) {
 	if err != nil {
 		return nil, err
 	}
-	return atom.NewList(c.Atoms...), nil
+	return atom.NewList(c.Commands...), nil
 }
 
 // NAtoms resolves and returns the atom list from the path p, ensuring
@@ -47,7 +48,7 @@ func NAtoms(ctx context.Context, p *path.Capture, n uint64) (*atom.List, error) 
 }
 
 // Atom resolves and returns the atom from the path p.
-func Atom(ctx context.Context, p *path.Command) (atom.Atom, error) {
+func Atom(ctx context.Context, p *path.Command) (api.Cmd, error) {
 	atomIdx := p.Indices[0]
 	list, err := NAtoms(ctx, p.Capture, atomIdx+1)
 	if err != nil {
@@ -62,14 +63,14 @@ func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := obj.(atom.Atom)
-	param, err := atom.Parameter(ctx, a, p.Name)
+	cmd := obj.(api.Cmd)
+	param, err := atom.Parameter(ctx, cmd, p.Name)
 	switch err {
 	case nil:
 		return param, nil
 	case atom.ErrParameterNotFound:
 		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist(a.AtomName(), p.Name),
+			Reason: messages.ErrParameterDoesNotExist(cmd.CmdName(), p.Name),
 			Path:   p.Path(),
 		}
 	default:
@@ -83,14 +84,14 @@ func Result(ctx context.Context, p *path.Result) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := obj.(atom.Atom)
-	param, err := atom.Result(ctx, a)
+	cmd := obj.(api.Cmd)
+	param, err := atom.Result(ctx, cmd)
 	switch err {
 	case nil:
 		return param, nil
 	case atom.ErrResultNotFound:
 		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrResultDoesNotExist(a.AtomName()),
+			Reason: messages.ErrResultDoesNotExist(cmd.CmdName()),
 			Path:   p.Path(),
 		}
 	default:

@@ -81,7 +81,7 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			case atom.Group:
 				return pred(item.Name)
 			case atom.ID:
-				return pred(fmt.Sprint(c.Atoms[item]))
+				return pred(fmt.Sprint(c.Commands[item]))
 			default:
 				return false
 			}

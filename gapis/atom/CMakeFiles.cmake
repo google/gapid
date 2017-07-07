@@ -20,11 +20,8 @@
 set(files
     abort.go
     atom.go
-    convert.go
     data.go
     doc.go
-    extras.go
-    flags.go
     framebuffer_observation.go
     group.go
     group_test.go
@@ -32,7 +29,6 @@ set(files
     labeled.go
     list.go
     list_test.go
-    observations.go
     range.go
     range_list.go
     registry.go

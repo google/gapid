@@ -185,12 +185,12 @@ func (w *adapter) State() *api.State {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx context.Context, i atom.ID, a atom.Atom) {
-	w.builder.BeginAtom(uint64(i))
-	if err := a.Mutate(ctx, w.state, w.builder); err == nil {
+func (w *adapter) MutateAndWrite(ctx context.Context, id atom.ID, cmd api.Cmd) {
+	w.builder.BeginAtom(uint64(id))
+	if err := cmd.Mutate(ctx, w.state, w.builder); err == nil {
 		w.builder.CommitAtom()
 	} else {
 		w.builder.RevertAtom(err)
-		log.W(ctx, "Failed to write atom %v (%T) for replay: %v", i, a, err)
+		log.W(ctx, "Failed to write command %v (%T) for replay: %v", id, cmd, err)
 	}
 }

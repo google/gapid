@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
@@ -66,7 +67,7 @@ func (t *DeadCodeElimination) Request(id atom.ID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id atom.ID, c api.Cmd, out Writer) {
 	panic(fmt.Errorf("This transform does not accept input atoms"))
 }
 
@@ -76,7 +77,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	deadCodeEliminationCounter.Stop(t0)
 	for i, live := range isLive {
 		if live {
-			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.Atoms[i])
+			out.MutateAndWrite(ctx, atom.ID(i), t.dependencyGraph.Commands[i])
 		}
 	}
 }
@@ -127,7 +128,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		}
 		// Debug output
 		if config.DebugDeadCodeElimination && t.requests.Contains(atom.ID(i)) {
-			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.Atoms[i])
+			log.I(ctx, "DCE: Requested atom %v: %v", i, t.dependencyGraph.Commands[i])
 			t.dependencyGraph.Print(ctx, &b)
 		}
 	}
@@ -137,22 +138,22 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		num, numDead, numDeadDraws, numLive, numLiveDraws := len(isLive), 0, 0, 0, 0
 		deadMem, liveMem := uint64(0), uint64(0)
 		for i := 0; i < num; i++ {
-			a := t.dependencyGraph.Atoms[i]
+			cmd := t.dependencyGraph.Commands[i]
 			mem := uint64(0)
-			if e := a.Extras(); e != nil && e.Observations() != nil {
+			if e := cmd.Extras(); e != nil && e.Observations() != nil {
 				for _, r := range e.Observations().Reads {
 					mem += r.Range.Size
 				}
 			}
 			if !isLive[i] {
 				numDead++
-				if a.AtomFlags().IsDrawCall() {
+				if cmd.CmdFlags().IsDrawCall() {
 					numDeadDraws++
 				}
 				deadMem += mem
 			} else {
 				numLive++
-				if a.AtomFlags().IsDrawCall() {
+				if cmd.CmdFlags().IsDrawCall() {
 					numLiveDraws++
 				}
 				liveMem += mem

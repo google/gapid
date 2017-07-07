@@ -23,7 +23,7 @@ import (
 
 type MockAtomWriter struct {
 	S       *api.State
-	Atoms   []atom.Atom
+	Atoms   []api.Cmd
 	IdAtoms AtomAtomIDList
 }
 
@@ -31,16 +31,16 @@ func (m *MockAtomWriter) State() *api.State {
 	return m.S
 }
 
-func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id atom.ID, a atom.Atom) {
+func (m *MockAtomWriter) MutateAndWrite(ctx context.Context, id atom.ID, c api.Cmd) {
 	if m.S != nil {
-		a.Mutate(ctx, m.S, nil)
+		c.Mutate(ctx, m.S, nil)
 	}
-	m.Atoms = append(m.Atoms, a)
-	m.IdAtoms = append(m.IdAtoms, AtomAtomID{a, id})
+	m.Atoms = append(m.Atoms, c)
+	m.IdAtoms = append(m.IdAtoms, AtomAtomID{c, id})
 }
 
 type AtomAtomID struct {
-	Atom atom.Atom
+	Atom api.Cmd
 	Id   atom.ID
 }
 
@@ -66,14 +66,6 @@ func List(atoms ...interface{}) AtomAtomIDList {
 	return l
 }
 
-func (l *AtomAtomIDList) Write(ctx context.Context, id atom.ID, a atom.Atom) {
-	*l = append(*l, AtomAtomID{a, id})
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
+func (l *AtomAtomIDList) Write(ctx context.Context, id atom.ID, c api.Cmd) {
+	*l = append(*l, AtomAtomID{c, id})
 }
