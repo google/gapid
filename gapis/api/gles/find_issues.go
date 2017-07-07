@@ -35,6 +35,7 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/shadertools"
 )
 
 // findIssues is an atom transform that detects issues when replaying the
@@ -168,8 +169,21 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	switch cmd := cmd.(type) {
 	case *GlShaderSource:
-		if !config.UseGlslang { // TODO: Verify shader with glslang
-			shader := c.Objects.Shared.Shaders[cmd.Shader]
+		shader := c.Objects.Shared.Shaders[cmd.Shader]
+		if config.UseGlslang {
+			opts := shadertools.Option{
+				IsFragmentShader:  shader.Type == GLenum_GL_FRAGMENT_SHADER,
+				IsVertexShader:    shader.Type == GLenum_GL_VERTEX_SHADER,
+				CheckAfterChanges: true,
+				Disassemble:       true,
+			}
+
+			res := shadertools.ConvertGlsl(shader.Source, &opts)
+			if !res.Ok {
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Failed to translate %v. Errors:\n%s\nOriginal source:\n%s",
+					shader.Type, res.Message, text.LineNumber(shader.Source)))
+			}
+		} else {
 			var errs []error
 			var kind string
 			switch shader.Type {
