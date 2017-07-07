@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -114,7 +115,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		}
 	}
 
-	process := func(i int, a atom.Atom) {
+	process := func(i int, cmd api.Cmd) {
 		items, lastError, currentAtom = items[:0], nil, uint64(i)
 
 		defer func() {
@@ -124,12 +125,12 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			}
 		}()
 
-		if as := a.Extras().Aborted(); as != nil && as.IsAssert {
+		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, r.newReportItem(log.Fatal, uint64(i),
 				messages.ErrTraceAssert(as.Reason)))
 		}
 
-		err := a.Mutate(ctx, state, nil /* no builder, just mutate */)
+		err := cmd.Mutate(ctx, state, nil /* no builder, just mutate */)
 
 		if len(items) == 0 {
 			if err != nil && !atom.IsAbortedError(err) {
@@ -144,18 +145,18 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
-	for i, a := range c.Atoms {
-		process(i, a)
-		if filter(a, state) {
+	for i, cmd := range c.Commands {
+		process(i, cmd)
+		if filter(cmd, state) {
 			for _, item := range items {
-				item.Tags = append(item.Tags, getAtomNameTag(a))
+				item.Tags = append(item.Tags, getAtomNameTag(cmd))
 				builder.Add(ctx, item)
 			}
 			for _, issue := range issues[atom.ID(i)] {
 				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Atom),
 					messages.ErrReplayDriver(issue.Error.Error()))
-				if int(issue.Atom) < len(c.Atoms) {
-					item.Tags = append(item.Tags, getAtomNameTag(c.Atoms[issue.Atom]))
+				if int(issue.Atom) < len(c.Commands) {
+					item.Tags = append(item.Tags, getAtomNameTag(c.Commands[issue.Atom]))
 				}
 				builder.Add(ctx, item)
 			}
@@ -165,6 +166,6 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	return builder.Build(), nil
 }
 
-func getAtomNameTag(a atom.Atom) *stringtable.Msg {
-	return messages.TagAtomName(a.AtomName())
+func getAtomNameTag(cmd api.Cmd) *stringtable.Msg {
+	return messages.TagAtomName(cmd.CmdName())
 }

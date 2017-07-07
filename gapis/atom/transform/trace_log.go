@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 )
 
@@ -26,9 +27,9 @@ import (
 // written to the output Writer unaltered.
 type Trace struct{}
 
-func (t Trace) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
-	log.I(ctx, "id: %v, atom: %v", id, a)
-	out.MutateAndWrite(ctx, id, a)
+func (t Trace) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+	log.I(ctx, "id: %v, atom: %v", id, cmd)
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t Trace) Flush(ctx context.Context, out Writer) {}

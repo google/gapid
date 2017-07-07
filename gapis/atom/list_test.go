@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/sint"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 )
@@ -31,21 +33,13 @@ var testList = atom.NewList(
 )
 
 type writeRecord struct {
-	id   atom.ID
-	atom atom.Atom
+	id  atom.ID
+	cmd api.Cmd
 }
 type writeRecordList []writeRecord
 
-func (t *writeRecordList) Write(ctx context.Context, id atom.ID, atom atom.Atom) {
-	*t = append(*t, writeRecord{id, atom})
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
+func (t *writeRecordList) Write(ctx context.Context, id atom.ID, cmd api.Cmd) {
+	*t = append(*t, writeRecord{id, cmd})
 }
 
 func TestAtomListWriteTo(t *testing.T) {
@@ -63,7 +57,7 @@ func TestAtomListWriteTo(t *testing.T) {
 	if matched {
 		for i := range expected {
 			e, g := expected[i], got[i]
-			if e.id != g.id || !reflect.DeepEqual(g.atom, e.atom) {
+			if e.id != g.id || !reflect.DeepEqual(g.cmd, e.cmd) {
 				matched = false
 				break
 			}
@@ -71,14 +65,14 @@ func TestAtomListWriteTo(t *testing.T) {
 	}
 
 	if !matched {
-		c := max(len(expected), len(got))
+		c := sint.Max(len(expected), len(got))
 		for i := 0; i < c; i++ {
 			if i > len(got) {
 				t.Errorf("(%d) Expected: %#v Got: <nothing>", i, expected[i])
 				continue
 			}
 			e, g := expected[i], got[i]
-			if e.id != g.id || !reflect.DeepEqual(g.atom, e.atom) {
+			if e.id != g.id || !reflect.DeepEqual(g.cmd, e.cmd) {
 				t.Errorf("(%d) Expected: %#v Got: %#v", i, e, g)
 				continue
 			}

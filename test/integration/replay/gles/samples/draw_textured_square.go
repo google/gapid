@@ -17,6 +17,7 @@ package samples
 import (
 	"context"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/memory"
@@ -76,7 +77,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	// Build the program resource
 	b.program(ctx, vs, fs, prog, textureVSSource, textureFSSource)
 	b.Add(
-		atom.WithExtras(
+		api.WithExtras(
 			cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,

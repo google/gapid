@@ -31,7 +31,7 @@ import (
 
 type CustomState struct {
 	SubcommandIndex   sync.SubcommandIndex
-	CurrentSubmission *atom.Atom
+	CurrentSubmission *api.Cmd
 	HandleSubcommand  func(interface{}) `nobox:"true"`
 }
 
@@ -95,7 +95,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 	s := GetState(st)
 	i := atom.ID(0)
-	submissionMap := make(map[*atom.Atom]atom.ID)
+	submissionMap := make(map[*api.Cmd]atom.ID)
 
 	s.HandleSubcommand = func(a interface{}) {
 		rootIdx := atom.ID(i)
@@ -139,12 +139,12 @@ func (API) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygr
 	return newVulkanDependencyGraphBehaviourProvider()
 }
 
-func (API) MutateSubcommands(ctx context.Context, a atom.Atom, id atom.ID, s *api.State, callback func(state *api.State, commandIndex sync.SubcommandIndex, a atom.Atom)) error {
+func (API) MutateSubcommands(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State, callback func(*api.State, sync.SubcommandIndex, api.Cmd)) error {
 	c := GetState(s)
 	c.HandleSubcommand = func(_ interface{}) {
-		callback(s, append(sync.SubcommandIndex{uint64(id)}, c.SubcommandIndex...), a)
+		callback(s, append(sync.SubcommandIndex{uint64(id)}, c.SubcommandIndex...), cmd)
 	}
-	if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+	if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 		return err
 	}
 	return nil

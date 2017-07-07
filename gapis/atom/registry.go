@@ -24,35 +24,35 @@ var (
 )
 
 type (
-	factory   func() Atom
+	factory   func() api.Cmd
 	namespace struct {
 		factories map[string]factory
 	}
 )
 
-// Register registers the atoms into the API namespace.
-func Register(api api.API, atoms ...Atom) {
+// Register registers the commands into the API namespace.
+func Register(a api.API, cmds ...api.Cmd) {
 	registryMutex.Lock()
 	defer registryMutex.Unlock()
-	n, ok := registry[api]
+	n, ok := registry[a]
 	if !ok {
 		n = &namespace{factories: map[string]factory{}}
-		registry[api] = n
+		registry[a] = n
 	}
-	for _, a := range atoms {
-		ty := reflect.TypeOf(a).Elem()
-		n.factories[a.AtomName()] = func() Atom {
-			return reflect.New(ty).Interface().(Atom)
+	for _, c := range cmds {
+		ty := reflect.TypeOf(c).Elem()
+		n.factories[c.CmdName()] = func() api.Cmd {
+			return reflect.New(ty).Interface().(api.Cmd)
 		}
 	}
 }
 
-// Create returns a newly created atom with the specified name that belongs to
-// api. If the api or atom was not registered then Create returns nil.
-func Create(api api.API, name string) Atom {
+// Create returns a newly created command with the specified name that belongs
+// to api. If the api or atom was not registered then Create returns nil.
+func Create(a api.API, name string) api.Cmd {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
-	if r, ok := registry[api]; ok {
+	if r, ok := registry[a]; ok {
 		if f, ok := r.factories[name]; ok {
 			return f()
 		}

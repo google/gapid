@@ -212,7 +212,7 @@ func (shader *Shader) SetResourceData(
 	}
 	for j := index; j >= 0; j-- {
 		i := resource.Accesses[j].Indices[0] // TODO: Subcommands
-		if a, ok := c.Atoms[i].(*GlShaderSource); ok {
+		if a, ok := c.Commands[i].(*GlShaderSource); ok {
 			edits(uint64(i), a.Replace(ctx, c, data))
 			return nil
 		}

@@ -42,17 +42,17 @@ const (
 )
 
 // ToService returns the service command representing atom a.
-func ToService(a Atom) (*service.Command, error) {
+func ToService(c api.Cmd) (*service.Command, error) {
 	out := &service.Command{
-		Name:   a.AtomName(),
-		Thread: a.Thread(),
+		Name:   c.CmdName(),
+		Thread: c.Thread(),
 	}
 
-	if api := a.API(); api != nil {
+	if api := c.API(); api != nil {
 		out.Api = &path.API{Id: path.NewID(id.ID(api.ID()))}
 	}
 
-	v := reflect.ValueOf(a)
+	v := reflect.ValueOf(c)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
 	}
@@ -87,7 +87,7 @@ func ToService(a Atom) (*service.Command, error) {
 }
 
 // ToAtom returns the service command representing atom a.
-func ToAtom(c *service.Command) (Atom, error) {
+func ToAtom(c *service.Command) (api.Cmd, error) {
 	api := api.Find(api.ID(c.GetApi().GetId().ID()))
 	if api == nil {
 		return nil, fmt.Errorf("Unknown api '%v'", c.GetApi())
@@ -128,8 +128,8 @@ func ToAtom(c *service.Command) (Atom, error) {
 }
 
 // Parameter returns the parameter value with the specified name.
-func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
-	v := reflect.ValueOf(a)
+func Parameter(ctx context.Context, c api.Cmd, name string) (interface{}, error) {
+	v := reflect.ValueOf(c)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
 	}
@@ -146,8 +146,8 @@ func Parameter(ctx context.Context, a Atom, name string) (interface{}, error) {
 }
 
 // SetParameter sets the parameter with the specified name with val.
-func SetParameter(ctx context.Context, a Atom, name string, val interface{}) error {
-	v := reflect.ValueOf(a)
+func SetParameter(ctx context.Context, c api.Cmd, name string, val interface{}) error {
+	v := reflect.ValueOf(c)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
 	}
@@ -164,8 +164,8 @@ func SetParameter(ctx context.Context, a Atom, name string, val interface{}) err
 }
 
 // Result returns the command's result value.
-func Result(ctx context.Context, a Atom) (interface{}, error) {
-	v := reflect.ValueOf(a)
+func Result(ctx context.Context, c api.Cmd) (interface{}, error) {
+	v := reflect.ValueOf(c)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
 	}
@@ -180,8 +180,8 @@ func Result(ctx context.Context, a Atom) (interface{}, error) {
 }
 
 // SetResult sets the commands result value to val.
-func SetResult(ctx context.Context, a Atom, val interface{}) error {
-	v := reflect.ValueOf(a)
+func SetResult(ctx context.Context, c api.Cmd, val interface{}) error {
+	v := reflect.ValueOf(c)
 	for v.Kind() != reflect.Struct {
 		v = v.Elem()
 	}

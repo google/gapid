@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package api
 
-// Flags is a bitfield describing characteristics of an atom.
-// TODO: Kill flags and just use the metadata instead.
-type Flags uint32
+// CmdFlags is a bitfield describing characteristics of a command.
+type CmdFlags uint32
 
 const (
-	DrawCall Flags = 1 << iota
+	DrawCall CmdFlags = 1 << iota
 	Clear
 	StartOfFrame
 	EndOfFrame
@@ -29,26 +28,26 @@ const (
 )
 
 // IsDrawCall returns true if the atom is a draw call.
-func (f Flags) IsDrawCall() bool { return (f & DrawCall) != 0 }
+func (f CmdFlags) IsDrawCall() bool { return (f & DrawCall) != 0 }
 
 // IsClear returns true if the atom is a clear call.
-func (f Flags) IsClear() bool { return (f & Clear) != 0 }
+func (f CmdFlags) IsClear() bool { return (f & Clear) != 0 }
 
 // IsStartOfFrame returns true if the atom represents the begin of a frame.
-func (f Flags) IsStartOfFrame() bool { return (f & StartOfFrame) != 0 }
+func (f CmdFlags) IsStartOfFrame() bool { return (f & StartOfFrame) != 0 }
 
 // IsEndOfFrame returns true if the atom represents the end of a frame.
-func (f Flags) IsEndOfFrame() bool { return (f & EndOfFrame) != 0 }
+func (f CmdFlags) IsEndOfFrame() bool { return (f & EndOfFrame) != 0 }
 
 // IsPushUserMarker returns true if the atom represents the start of a user
 // marker group. The atom may implement the Labeled interface to expose the
 // marker name.
-func (f Flags) IsPushUserMarker() bool { return (f & PushUserMarker) != 0 }
+func (f CmdFlags) IsPushUserMarker() bool { return (f & PushUserMarker) != 0 }
 
 // IsPopUserMarker returns true if the atom represents the end of the last
 // pushed user marker.
-func (f Flags) IsPopUserMarker() bool { return (f & PopUserMarker) != 0 }
+func (f CmdFlags) IsPopUserMarker() bool { return (f & PopUserMarker) != 0 }
 
 // IsUserMarker returns true if the atom represents a non-grouping user marker.
 // The atom may implement the Labeled interface to expose the marker name.
-func (f Flags) IsUserMarker() bool { return (f & UserMarker) != 0 }
+func (f CmdFlags) IsUserMarker() bool { return (f & UserMarker) != 0 }

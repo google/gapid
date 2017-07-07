@@ -47,31 +47,31 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	resources := []trackedResource{}
 	seen := map[api.Resource]int{}
 
-	var currentAtomIndex uint64
-	var currentAtomResourceCount int
+	var currentCmdIndex uint64
+	var currentCmdResourceCount int
 
 	state := c.NewState()
 	state.OnResourceCreated = func(r api.Resource) {
-		currentAtomResourceCount++
+		currentCmdResourceCount++
 		seen[r] = len(seen)
 		resources = append(resources, trackedResource{
 			resource: r,
-			id:       genResourceID(currentAtomIndex, currentAtomResourceCount),
-			accesses: []uint64{currentAtomIndex},
+			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
+			accesses: []uint64{currentCmdIndex},
 		})
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
 		if index, ok := seen[r]; ok { // Update the list of accesses
 			c := len(resources[index].accesses)
-			if c == 0 || resources[index].accesses[c-1] != currentAtomIndex {
-				resources[index].accesses = append(resources[index].accesses, currentAtomIndex)
+			if c == 0 || resources[index].accesses[c-1] != currentCmdIndex {
+				resources[index].accesses = append(resources[index].accesses, currentCmdIndex)
 			}
 		}
 	}
-	for i, a := range c.Atoms {
-		currentAtomResourceCount = 0
-		currentAtomIndex = uint64(i)
-		a.Mutate(ctx, state, nil /* no builder, just mutate */)
+	for i, cmd := range c.Commands {
+		currentCmdResourceCount = 0
+		currentCmdIndex = uint64(i)
+		cmd.Mutate(ctx, state, nil /* no builder, just mutate */)
 	}
 
 	types := map[api.ResourceType]*service.ResourcesByType{}

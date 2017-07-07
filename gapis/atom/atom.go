@@ -14,41 +14,7 @@
 
 package atom
 
-import (
-	"context"
-	"fmt"
-
-	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/replay/builder"
-)
-
-// Atom is the interface implemented by all objects that describe an single
-// event in a capture stream. Typical implementations of Atom describe an
-// application's call to a graphics API function or provide meta-data describing
-// observed memory or state at the time of capture.
-type Atom interface {
-	// All atoms belong to an API
-	api.APIObject
-
-	// Thread returns the thread index this atom was executed on.
-	Thread() uint64
-
-	// SetThread changes the thread index.
-	SetThread(uint64)
-
-	// AtomName returns the name of the atom.
-	AtomName() string
-
-	// AtomFlags returns the flags of the atom.
-	AtomFlags() Flags
-
-	// Extras returns all the Extras associated with the dynamic atom.
-	Extras() *Extras
-
-	// Mutate mutates the State using the atom. If the builder argument is
-	// not nil then it will call the replay function on the builder.
-	Mutate(context.Context, *api.State, *builder.Builder) error
-}
+import "fmt"
 
 // ID is the index of an atom in an atom stream.
 type ID uint64

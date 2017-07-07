@@ -303,25 +303,25 @@ func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatc
 	}
 }
 
-func (f *Fixture) initContext(ctx context.Context, width, height int, preserveBuffersOnSwap bool) (atoms *atom.List, eglContext memory.Pointer, eglSurface memory.Pointer) {
+func (f *Fixture) initContext(ctx context.Context, width, height int, preserveBuffersOnSwap bool) (cmds *atom.List, eglContext, eglSurface memory.Pointer) {
 	eglContext = f.p(ctx)
 	eglSurface = f.p(ctx)
 	eglConfig := f.p(ctx)
 
 	eglShareContext := memory.Nullptr
 	// TODO: We don't observe attribute lists properly. We should.
-	atoms = atom.NewList(
+	cmds = atom.NewList(
 		f.cb.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
 		f.cb.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
 		f.cb.EglCreateContext(eglDisplay, eglConfig, eglShareContext, f.p(ctx), eglContext),
 		f.makeCurrent(eglSurface, eglContext, width, height, preserveBuffersOnSwap),
 	)
-	return atoms, eglContext, eglSurface
+	return cmds, eglContext, eglSurface
 }
 
-func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) atom.Atom {
+func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) api.Cmd {
 	eglTrue := gles.EGLBoolean(1)
-	return atom.WithExtras(
+	return api.WithExtras(
 		f.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextState(),
 		gles.NewDynamicContextState(width, height, preserveBuffersOnSwap),
@@ -359,28 +359,28 @@ type traceGenerator func(Fixture, context.Context) (*path.Capture, traceVerifier
 // mergeCaptures creates a capture from the atoms of several existing captures, by interleaving them
 // arbitrarily, on different threads.
 func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture {
-	lists := [][]atom.Atom{}
+	lists := [][]api.Cmd{}
 	threads := []uint64{}
-	remainingAtoms := 0
+	remainingCmds := 0
 
 	for i, path := range captures {
 		c, err := capture.ResolveFromPath(ctx, path)
 		assert.With(ctx).ThatError(err).Succeeded()
-		lists = append(lists, c.Atoms)
-		remainingAtoms += len(c.Atoms)
+		lists = append(lists, c.Commands)
+		remainingCmds += len(c.Commands)
 		threads = append(threads, uint64(0x10000+i))
 	}
 
-	merged := []atom.Atom{}
+	merged := []api.Cmd{}
 	threadIndex := 0
 	cmdsUntilSwitchThread, modFourCounter := 4, 3
-	for remainingAtoms > 0 {
+	for remainingCmds > 0 {
 		if cmdsUntilSwitchThread > 0 && len(lists[threadIndex]) > 0 {
 			atom := lists[threadIndex][0]
 			atom.SetThread(threads[threadIndex])
 			merged = append(merged, atom)
 			lists[threadIndex] = lists[threadIndex][1:]
-			remainingAtoms--
+			remainingCmds--
 			cmdsUntilSwitchThread--
 		} else {
 			threadIndex = (threadIndex + 1) % len(lists)
@@ -450,7 +450,7 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		f.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI),
 
-		atom.WithExtras(
+		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
@@ -521,7 +521,7 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 	triangleVerticesR := atom.Must(atom.AllocData(ctx, f.s, triangleVertices))
 
 	triangle := atoms.Add(
-		atom.WithExtras(
+		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
@@ -698,22 +698,22 @@ func TestIssues(t *testing.T) {
 
 	for _, test := range []struct {
 		name     string
-		atoms    []atom.Atom
+		cmds     []api.Cmd
 		expected []replay.Issue
 	}{
 		{
 			"glClear - no errors",
-			[]atom.Atom{
+			[]api.Cmd{
 				f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 				f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 			},
 			[]replay.Issue{},
 		},
 	} {
-		atoms, _, _ := f.initContext(ctx, 64, 64, true)
-		atoms.Add(test.atoms...)
+		cmds, _, _ := f.initContext(ctx, 64, 64, true)
+		cmds.Add(test.cmds...)
 		intent := replay.Intent{
-			Capture: f.storeCapture(ctx, atoms),
+			Capture: f.storeCapture(ctx, cmds),
 			Device:  path.NewDevice(f.device.Instance().Id.ID()),
 		}
 		done.Add(1)

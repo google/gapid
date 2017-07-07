@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 	"github.com/google/gapid/gapis/atom/transform"
@@ -34,12 +35,12 @@ func TestDeadAtomRemoval(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	// Keep the given atom alive in the optimization.
-	isLive := map[atom.Atom]bool{}
-	live := func(a atom.Atom) atom.Atom { isLive[a] = true; return a }
+	isLive := map[api.Cmd]bool{}
+	live := func(cmd api.Cmd) api.Cmd { isLive[cmd] = true; return cmd }
 
 	// Expect the atom to be removed by the optimization.
-	isDead := map[atom.Atom]bool{}
-	dead := func(a atom.Atom) atom.Atom { isDead[a] = true; return a }
+	isDead := map[api.Cmd]bool{}
+	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 
 	programInfo := &ProgramInfo{
 		LinkStatus: GLboolean_GL_TRUE,
@@ -56,19 +57,19 @@ func TestDeadAtomRemoval(t *testing.T) {
 	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)
 	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
 	cb := CommandBuilder{Thread: 0}
-	prologue := []atom.Atom{
+	prologue := []api.Cmd{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1),
-		atom.WithExtras(
+		api.WithExtras(
 			cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1, 0),
 			NewStaticContextState(), NewDynamicContextState(64, 64, false)),
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
-		atom.WithExtras(cb.GlLinkProgram(1), programInfo),
-		atom.WithExtras(cb.GlLinkProgram(2), programInfo),
+		api.WithExtras(cb.GlLinkProgram(1), programInfo),
+		api.WithExtras(cb.GlLinkProgram(2), programInfo),
 		cb.GlUseProgram(1),
 	}
 	allBuffers := GLbitfield_GL_COLOR_BUFFER_BIT | GLbitfield_GL_DEPTH_BUFFER_BIT | GLbitfield_GL_STENCIL_BUFFER_BIT
-	tests := map[string][]atom.Atom{
+	tests := map[string][]api.Cmd{
 		"Draw calls up to the requested point are preserved": {
 			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
 			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 1, 0)),
@@ -141,11 +142,11 @@ func TestDeadAtomRemoval(t *testing.T) {
 			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
 			// Draw in context 2
 			cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
-			atom.WithExtras(
+			api.WithExtras(
 				cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2, 0),
 				NewStaticContextState(), NewDynamicContextState(64, 64, false)),
 			cb.GlCreateProgram(1),
-			atom.WithExtras(cb.GlLinkProgram(1), programInfo),
+			api.WithExtras(cb.GlLinkProgram(1), programInfo),
 			cb.GlUseProgram(1),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
 			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
@@ -176,7 +177,7 @@ func TestDeadAtomRemoval(t *testing.T) {
 		}
 		transform := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
-		expectedAtoms := []atom.Atom{}
+		expectedAtoms := []api.Cmd{}
 		for i, a := range inputAtoms {
 			if isLive[a] {
 				transform.Request(atom.ID(i))

@@ -30,7 +30,6 @@
     "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/gapis/api"
-    "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/gapis/capture"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
@@ -100,7 +99,6 @@
 
       "github.com/google/gapid/core/log"
       "github.com/google/gapid/gapis/api"
-      "github.com/google/gapid/gapis/atom"
       "github.com/google/gapid/gapis/memory"
       "github.com/google/gapid/gapis/replay/builder"
       "github.com/google/gapid/gapis/service"
@@ -166,7 +164,7 @@
   type {{$ty}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
 
   {{if IsNumericType $.ValueType}}
-    func (a {{$ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+    func (a {{$ty}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Pointer {
       for _, v := range a {
         ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
       }
@@ -255,12 +253,12 @@
 
   {{if not $el_is_void}}
     // Read reads and returns the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$el_ty}} {
+    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$el_ty}} {
       return p.Slice(0, 1, ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, ϟb)[0]
     }
 
     // Write writes value to the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {
+    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {
       p.Slice(0, 1, ϟs.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟa, ϟs, ϟb)
     }
   {{end}}
@@ -294,9 +292,9 @@
 
   // Link returns a path to the object that this is a link to, or error
   // if you can not follow this path. Typically the incoming path ϟp
-  // is a path to the atom and resulting path is a path to an object
-  // identified by p. Once resolved the path will return a representation
-  // of the value of the instance after the atom has executed.
+  // is a path to the command and resulting path is a path to an object
+  // identified by p. Once resolved the command will return a representation
+  // of the value of the instance after the command has executed.
   func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
       return cmd.MemoryAfter(uint32(p.pool), p.addr, 0), nil
@@ -305,7 +303,7 @@
   }
 
   {{if not (GetAnnotation $ "replay_custom_value")}}
-    func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa atom.Atom, ϟs *api.State) value.Pointer {
+    func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Pointer {
       if p.addr != 0 {
         {{if $el_is_ptr}}
           return value.PointerIndex(p.addr / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
@@ -427,7 +425,7 @@
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
-  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
     pool := &ϟmem.Pool{}
     pool.Write(0, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
@@ -511,7 +509,7 @@
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
-    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) []{{$el_ty}} {
+    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) []{{$el_ty}} {
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       res := make([]{{$el_ty}}, s.count)
       d := s.Decoder(ϟctx, ϟs)
@@ -522,7 +520,7 @@
 
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
-    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) uint64 {
+    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) uint64 {
       count := u64.Min(s.count, uint64(len(src)))
       e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
       ϟmem.Write(e, src[:count])
@@ -534,7 +532,7 @@
     // Copy copies elements from src to this slice.
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
-    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
+    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
       count := u64.Min(dst.count, src.count)
       dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
     {{if $el_is_ptr}}
@@ -550,7 +548,7 @@
     }
 
     // Contains returns true if the slice contains the specified value.
-    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) bool {
+    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) bool {
       for _, e := range s.Read(ϟctx, ϟa, ϟs, ϟb) {
         if e == val {
           return true
@@ -562,7 +560,7 @@
   {{end}}
 
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
     if f := ϟs.Memory[s.pool].OnRead; f != nil {
       f(s.Range(ϟl))
@@ -609,7 +607,7 @@
   }
 
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
     if f := ϟs.Memory[s.pool].OnWrite; f != nil {
       f(s.Range(ϟl))
@@ -639,7 +637,7 @@
     return s
   }
 
-  func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa atom.Atom, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
       rng := s.Range(ϟs.MemoryLayout)
       ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
@@ -833,7 +831,7 @@
     {{template "Go.CommentHeader" $name}}
 
     type {{$name}} struct {
-      extras atom.Extras
+      extras api.CmdExtras
       thread uint64
       {{range $p := $.Command.FullParameters}}
         {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
@@ -844,7 +842,7 @@
 
     func (ϟa *{{$name}}) SetThread(v uint64) { ϟa.thread = v }
 
-    func (ϟa *{{$name}}) AtomName() string { return "{{$.Command | CommandName}}" }
+    func (ϟa *{{$name}}) CmdName() string { return "{{$.Command | CommandName}}" }
 
     func (ϟa *{{$name}}) String() string {
       return fmt.Sprintf("{{$.Command | CommandName}}(§
@@ -860,16 +858,16 @@
       )
     }
 
-    // AddRead appends a new read observation to the atom of the range rng with
-    // the data id.
+    // AddRead appends a new read observation to the command of the range rng
+    // with the data id.
     // The {{$name}} pointer is returned so that calls can be chained.
     func (ϟa *{{$name}}) AddRead(rng ϟmem.Range, id id.ID) *{{$name}} {
       ϟa.extras.GetOrAppendObservations().AddRead(rng, id)
       return ϟa
     }
 
-    // AddWrite appends a new write observation to the atom of the range rng with
-    // the data id.
+    // AddWrite appends a new write observation to the command of the range rng
+    // with the data id.
     // The {{$name}} pointer is returned so that calls can be chained.
     func (ϟa *{{$name}}) AddWrite(rng ϟmem.Range, id id.ID) *{{$name}} {
       ϟa.extras.GetOrAppendObservations().AddWrite(rng, id)
@@ -877,16 +875,16 @@
     }
 
     func (ϟa *{{$name}}) API() api.API { return API{} }
-    func (ϟa *{{$name}}) AtomFlags() atom.Flags { return 0 §
-        {{if GetAnnotation $.Command "DrawCall"}} | atom.DrawCall §{{end}}
-        {{if GetAnnotation $.Command "Clear"}} | atom.Clear §{{end}}
-        {{if GetAnnotation $.Command "StartOfFrame"}} | atom.StartOfFrame §{{end}}
-        {{if GetAnnotation $.Command "EndOfFrame"}} | atom.EndOfFrame §{{end}}
-        {{if GetAnnotation $.Command "UserMarker"}} | atom.UserMarker §{{end}}
-        {{if GetAnnotation $.Command "PushUserMarker"}} | atom.PushUserMarker §{{end}}
-        {{if GetAnnotation $.Command "PopUserMarker"}} | atom.PopUserMarker §{{end}}
+    func (ϟa *{{$name}}) CmdFlags() api.CmdFlags { return 0 §
+        {{if GetAnnotation $.Command "DrawCall"}} | api.DrawCall §{{end}}
+        {{if GetAnnotation $.Command "Clear"}} | api.Clear §{{end}}
+        {{if GetAnnotation $.Command "StartOfFrame"}} | api.StartOfFrame §{{end}}
+        {{if GetAnnotation $.Command "EndOfFrame"}} | api.EndOfFrame §{{end}}
+        {{if GetAnnotation $.Command "UserMarker"}} | api.UserMarker §{{end}}
+        {{if GetAnnotation $.Command "PushUserMarker"}} | api.PushUserMarker §{{end}}
+        {{if GetAnnotation $.Command "PopUserMarker"}} | api.PopUserMarker §{{end}}
     }
-    func (ϟa *{{$name}}) Extras() *atom.Extras { return &ϟa.extras }
+    func (ϟa *{{$name}}) Extras() *api.CmdExtras { return &ϟa.extras }
   {{end}}
 {{end}}
 
@@ -1186,7 +1184,7 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits an Atom constructor for each command.
+  Emits an Command constructor for each command.
 -------------------------------------------------------------------------------
 */}}
 {{define "CommandBuilder"}}

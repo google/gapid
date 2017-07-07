@@ -45,12 +45,12 @@ func (t *EarlyTerminator) Add(ctx context.Context, id atom.ID, idx []uint64) err
 	return nil
 }
 
-func (t *EarlyTerminator) Transform(ctx context.Context, id atom.ID, a atom.Atom, out Writer) {
-	if t.done && (a.API() == nil || a.API().ID() == t.APIIdx) {
+func (t *EarlyTerminator) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out Writer) {
+	if t.done && (cmd.API() == nil || cmd.API().ID() == t.APIIdx) {
 		return
 	}
 
-	out.MutateAndWrite(ctx, id, a)
+	out.MutateAndWrite(ctx, id, cmd)
 	// Keep a.API() == nil so that we can test without an API
 	if t.lastIndex == id {
 		t.done = true

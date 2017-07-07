@@ -39,13 +39,13 @@ func (a *FramebufferObservation) String() string {
 	return fmt.Sprintf("FramebufferObservation %dx%d", a.OriginalWidth, a.OriginalHeight)
 }
 
-// Atom compliance
-func (FramebufferObservation) Thread() uint64   { return 0 }
-func (FramebufferObservation) SetThread(uint64) {}
-func (FramebufferObservation) AtomName() string { return "<FramebufferObservation>" }
-func (FramebufferObservation) API() api.API     { return nil }
-func (FramebufferObservation) AtomFlags() Flags { return 0 }
-func (FramebufferObservation) Extras() *Extras  { return nil }
+// api.Cmd compliance
+func (FramebufferObservation) Thread() uint64         { return 0 }
+func (FramebufferObservation) SetThread(uint64)       {}
+func (FramebufferObservation) CmdName() string        { return "<FramebufferObservation>" }
+func (FramebufferObservation) API() api.API           { return nil }
+func (FramebufferObservation) CmdFlags() api.CmdFlags { return 0 }
+func (FramebufferObservation) Extras() *api.CmdExtras { return nil }
 func (FramebufferObservation) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	return nil
 }

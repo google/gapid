@@ -126,21 +126,21 @@ type group struct {
 }
 
 type grouper interface {
-	process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State)
+	process(context.Context, atom.ID, api.Cmd, *api.State)
 	flush(count uint64)
 	groups() []group
 }
 
 type runGrouper struct {
-	f       func(a atom.Atom, s *api.State) (value interface{}, name string)
+	f       func(cmd api.Cmd, s *api.State) (value interface{}, name string)
 	start   atom.ID
 	current interface{}
 	name    string
 	out     []group
 }
 
-func (g *runGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
-	val, name := g.f(a, s)
+func (g *runGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
+	val, name := g.f(cmd, s)
 	if val != g.current {
 		if g.current != nil {
 			g.out = append(g.out, group{g.start, id, g.name})
@@ -165,9 +165,9 @@ type markerGrouper struct {
 	out   []group
 }
 
-func (g *markerGrouper) push(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
+func (g *markerGrouper) push(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
 	var name string
-	if l, ok := a.(atom.Labeled); ok {
+	if l, ok := cmd.(atom.Labeled); ok {
 		name = l.Label(ctx, s)
 	}
 	if len(name) > 0 {
@@ -185,11 +185,11 @@ func (g *markerGrouper) pop(id atom.ID) {
 	g.stack = g.stack[:len(g.stack)-1]
 }
 
-func (g *markerGrouper) process(ctx context.Context, id atom.ID, a atom.Atom, s *api.State) {
-	if a.AtomFlags().IsPushUserMarker() {
-		g.push(ctx, id, a, s)
+func (g *markerGrouper) process(ctx context.Context, id atom.ID, cmd api.Cmd, s *api.State) {
+	if cmd.CmdFlags().IsPushUserMarker() {
+		g.push(ctx, id, cmd, s)
 	}
-	if a.AtomFlags().IsPopUserMarker() && len(g.stack) > 0 {
+	if cmd.CmdFlags().IsPopUserMarker() && len(g.stack) > 0 {
 		g.pop(id)
 	}
 }
@@ -221,8 +221,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	groupers := []grouper{}
 
 	if p.GroupByApi {
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
-			if api := a.API(); api != nil {
+		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			if api := cmd.API(); api != nil {
 				return api.ID(), api.Name()
 			}
 			return nil, "No context"
@@ -234,9 +234,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if p.IncludeNoContextGroups {
 			noContextID = api.ContextID{}
 		}
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
-			if api := a.API(); api != nil {
-				if context := api.Context(s, a.Thread()); context != nil {
+		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			if api := cmd.API(); api != nil {
+				if context := api.Context(s, cmd.Thread()); context != nil {
 					return context.ID(), context.Name()
 				}
 			}
@@ -245,8 +245,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByThread {
-		groupers = append(groupers, &runGrouper{f: func(a atom.Atom, s *api.State) (interface{}, string) {
-			thread := a.Thread()
+		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			thread := cmd.Thread()
 			return thread, fmt.Sprintf("Thread: 0x%x", thread)
 		}})
 	}
@@ -257,18 +257,19 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
-	for i, a := range c.Atoms {
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+	for i, cmd := range c.Commands {
+		id := atom.ID(i)
+		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
-		if filter(a, s) {
+		if filter(cmd, s) {
 			for _, g := range groupers {
-				g.process(ctx, atom.ID(i), a, s)
+				g.process(ctx, id, cmd, s)
 			}
 		}
 	}
 	for _, g := range groupers {
-		g.flush(uint64(len(c.Atoms)))
+		g.flush(uint64(len(c.Commands)))
 	}
 
 	// Build the command tree
@@ -276,7 +277,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		path: p,
 		root: atom.Group{
 			Name:  "root",
-			Range: atom.Range{End: atom.ID(len(c.Atoms))},
+			Range: atom.Range{End: atom.ID(len(c.Commands))},
 		},
 	}
 	for _, g := range groupers {
@@ -286,16 +287,16 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByDrawCall || p.GroupByFrame {
-		addDrawAndFrameEvents(ctx, p, out, atom.ID(len(c.Atoms)))
+		addDrawAndFrameEvents(ctx, p, out, atom.ID(len(c.Commands)))
 	}
 
 	// Now we have all the groups, we finally need to add the filtered atoms.
 
 	s = c.NewState()
 	out.root.AddAtoms(func(i atom.ID) bool {
-		a := c.Atoms[i]
-		a.Mutate(ctx, s, nil)
-		return filter(a, s)
+		cmd := c.Commands[i]
+		cmd.Mutate(ctx, s, nil)
+		return filter(cmd, s)
 	}, uint64(p.MaxChildren))
 
 	return out, nil

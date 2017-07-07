@@ -18,14 +18,15 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/atom/test"
 )
 
 func TestToServiceToAtom(t *testing.T) {
 	ctx := log.Testing(t)
-	for n, a := range map[string]atom.Atom{"P": test.P, "Q": test.Q} {
-		s, err := atom.ToService(a)
+	for n, cmd := range map[string]api.Cmd{"P": test.P, "Q": test.Q} {
+		s, err := atom.ToService(cmd)
 		if !assert.For(ctx, "ToService(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
@@ -33,6 +34,6 @@ func TestToServiceToAtom(t *testing.T) {
 		if !assert.For(ctx, "ToAtom(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
-		assert.For(ctx, "ToService(%v) -> ToAtom", n).That(g).DeepEquals(a)
+		assert.For(ctx, "ToService(%v) -> ToAtom", n).That(g).DeepEquals(cmd)
 	}
 }

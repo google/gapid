@@ -17,7 +17,6 @@ package test
 import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 )
 
 type CustomState struct{}
@@ -28,6 +27,6 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 
 func (API) Context(*api.State, uint64) api.Context { return nil }
 
-func (i remapped) remap(a atom.Atom, s *api.State) (interface{}, bool) {
+func (i remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
 	return i, true
 }

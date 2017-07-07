@@ -33,21 +33,21 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)
+	injections map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)),
+		injections: make(map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)),
 	}
 }
 
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
-func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
-	isEof := a.AtomFlags().IsEndOfFrame()
+func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	isEof := cmd.CmdFlags().IsEndOfFrame()
 	doMutate := func() {
-		out.MutateAndWrite(ctx, id, a)
+		out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	if !isEof {
@@ -55,12 +55,12 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 	} else {
 		// This is a VkQueuePresent, we need to extract the information out of this,
 		// so that we can correctly display the image.
-		a.Mutate(ctx, out.State(), nil)
+		cmd.Mutate(ctx, out.State(), nil)
 	}
 
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
-			injection(ctx, a, out)
+			injection(ctx, cmd, out)
 		}
 		delete(t.injections, id)
 	}
@@ -73,7 +73,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, idx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 
 		c := GetState(s)
@@ -92,17 +92,17 @@ func (t *readFramebuffer) Depth(id atom.ID, idx uint32, res replay.Result) {
 
 		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[idx]
 		depthImageObject := imageViewDepth.Image
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Format, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 		c := GetState(s)
 
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
@@ -134,9 +134,9 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 	})
 }
 
-func writeEach(ctx context.Context, out transform.Writer, atoms ...atom.Atom) {
-	for _, a := range atoms {
-		out.MutateAndWrite(ctx, atom.NoID, a)
+func writeEach(ctx context.Context, out transform.Writer, cmds ...api.Cmd) {
+	for _, cmd := range cmds {
+		out.MutateAndWrite(ctx, atom.NoID, cmd)
 	}
 }
 

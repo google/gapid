@@ -63,13 +63,13 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, api.FramebufferAttachment_Color3+1),
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Atoms}, func(s *api.State, subcommandIndex sync.SubcommandIndex, a atom.Atom) {
-		api := a.API()
+	sync.MutateWithSubcommands(ctx, r.Capture, atom.List{c.Commands}, func(s *api.State, subcommandIndex sync.SubcommandIndex, cmd api.Cmd) {
+		api := cmd.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {
 			info := framebufferAttachmentInfo{after: idx}
 			if api != nil {
-				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(s, a.Thread(), att); err == nil && f != nil {
+				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(s, cmd.Thread(), att); err == nil && f != nil {
 					info.width, info.height, info.index, info.format, info.valid = w, h, i, f, true
 				}
 			}

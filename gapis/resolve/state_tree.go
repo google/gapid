@@ -389,9 +389,9 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	atomIdx := r.Path.After.Indices[0]
+	cmdIdx := r.Path.After.Indices[0]
 
-	api := c.Atoms[atomIdx].API()
+	api := c.Commands[cmdIdx].API()
 	if api == nil {
 		return nil, fmt.Errorf("Command has no API")
 	}

@@ -48,7 +48,7 @@ type session struct {
 	capture *path.Capture
 	device  *path.Device
 
-	atoms []atom.Atom
+	commands []api.Cmd
 
 	features        []string
 	stringTables    []*stringtable.StringTable
@@ -292,12 +292,12 @@ func (s *session) getAtoms(ctx context.Context) error {
 	if err := s.get(ctx, "Commands", s.capture.Commands(), &result); err != nil {
 		return err
 	}
-	s.atoms = result.(*atom.List).Atoms
+	s.commands = result.(*atom.List).Atoms
 	return nil
 }
 
 func getAtomIndicesAndSampleGrabber(bench *Benchmark, session *session) (err error, arr indices, grab sampleGrabber) {
-	arr = newConsecutiveIndices(len(session.atoms))
+	arr = newConsecutiveIndices(len(session.commands))
 
 	switch bench.Input.SampleOrder {
 	case "ordered":
@@ -312,7 +312,7 @@ func getAtomIndicesAndSampleGrabber(bench *Benchmark, session *session) (err err
 	switch bench.Input.BenchmarkType {
 	case "frames":
 		arr, grab = arr.filter(func(idx int) bool {
-			return session.atoms[idx].AtomFlags().IsEndOfFrame()
+			return session.commands[idx].CmdFlags().IsEndOfFrame()
 		}), getFrame
 	case "state":
 		grab = getStateAfter
@@ -344,8 +344,8 @@ func (s *session) grabSamples(ctx context.Context) error {
 		interesting[index] = true
 	}
 	currentFrame := 0
-	for index, atom := range s.atoms {
-		if atom.AtomFlags().IsEndOfFrame() {
+	for index, cmd := range s.commands {
+		if cmd.CmdFlags().IsEndOfFrame() {
 			currentFrame++
 		}
 		if interesting[index] {

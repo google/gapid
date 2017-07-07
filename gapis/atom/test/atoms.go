@@ -34,15 +34,15 @@ import (
 
 type AtomA struct {
 	ID    atom.ID
-	Flags atom.Flags
+	Flags api.CmdFlags
 }
 
-func (a *AtomA) Thread() uint64        { return 1 }
-func (a *AtomA) SetThread(uint64)      {}
-func (a *AtomA) AtomName() string      { return "AtomA" }
-func (a *AtomA) API() api.API          { return nil }
-func (a *AtomA) AtomFlags() atom.Flags { return a.Flags }
-func (a *AtomA) Extras() *atom.Extras  { return nil }
+func (a *AtomA) Thread() uint64         { return 1 }
+func (a *AtomA) SetThread(uint64)       {}
+func (a *AtomA) CmdName() string        { return "AtomA" }
+func (a *AtomA) API() api.API           { return nil }
+func (a *AtomA) CmdFlags() api.CmdFlags { return a.Flags }
+func (a *AtomA) Extras() *api.CmdExtras { return nil }
 func (a *AtomA) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
@@ -52,12 +52,12 @@ type AtomB struct {
 	Bool bool
 }
 
-func (a *AtomB) Thread() uint64        { return 1 }
-func (a *AtomB) SetThread(uint64)      {}
-func (a *AtomB) AtomName() string      { return "AtomB" }
-func (a *AtomB) API() api.API          { return nil }
-func (a *AtomB) AtomFlags() atom.Flags { return 0 }
-func (a *AtomB) Extras() *atom.Extras  { return nil }
+func (a *AtomB) Thread() uint64         { return 1 }
+func (a *AtomB) SetThread(uint64)       {}
+func (a *AtomB) CmdName() string        { return "AtomB" }
+func (a *AtomB) API() api.API           { return nil }
+func (a *AtomB) CmdFlags() api.CmdFlags { return 0 }
+func (a *AtomB) Extras() *api.CmdExtras { return nil }
 func (a *AtomB) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
@@ -66,12 +66,12 @@ type AtomC struct {
 	String string
 }
 
-func (a *AtomC) Thread() uint64        { return 1 }
-func (a *AtomC) SetThread(uint64)      {}
-func (a *AtomC) AtomName() string      { return "AtomC" }
-func (a *AtomC) API() api.API          { return nil }
-func (a *AtomC) AtomFlags() atom.Flags { return 0 }
-func (a *AtomC) Extras() *atom.Extras  { return nil }
+func (a *AtomC) Thread() uint64         { return 1 }
+func (a *AtomC) SetThread(uint64)       {}
+func (a *AtomC) CmdName() string        { return "AtomC" }
+func (a *AtomC) API() api.API           { return nil }
+func (a *AtomC) CmdFlags() api.CmdFlags { return 0 }
+func (a *AtomC) Extras() *api.CmdExtras { return nil }
 func (a *AtomC) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
@@ -125,12 +125,12 @@ type AtomX struct {
 	PMap IntːStructPtr `param:"PMap"`
 }
 
-func (AtomX) Thread() uint64        { return 1 }
-func (AtomX) SetThread(uint64)      {}
-func (AtomX) AtomName() string      { return "AtomX" }
-func (AtomX) API() api.API          { return api.Find(APIID) }
-func (AtomX) AtomFlags() atom.Flags { return 0 }
-func (AtomX) Extras() *atom.Extras  { return nil }
+func (AtomX) Thread() uint64         { return 1 }
+func (AtomX) SetThread(uint64)       {}
+func (AtomX) CmdName() string        { return "AtomX" }
+func (AtomX) API() api.API           { return api.Find(APIID) }
+func (AtomX) CmdFlags() api.CmdFlags { return 0 }
+func (AtomX) Extras() *api.CmdExtras { return nil }
 func (AtomX) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }

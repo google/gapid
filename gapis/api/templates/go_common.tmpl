@@ -731,7 +731,7 @@
         return {{Template "Go.Read" $.Default}}
       {{else}}
         // TODO: better unmatched handling
-        panic(fmt.Errorf("Unmatched switch(%v) in atom %T", {{Template "Go.Read" $.Value}}, ϟa))
+        panic(fmt.Errorf("Unmatched switch(%v) in command %T", {{Template "Go.Read" $.Value}}, ϟa))
         return result
       {{end}}
     }

@@ -46,7 +46,7 @@ type expected struct {
 
 type test struct {
 	writes   []write
-	atoms    []atom.Atom
+	cmds     []api.Cmd
 	expected expected
 }
 
@@ -59,18 +59,18 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 		s.Memory[memory.ApplicationPool].Write(w.at.Address(), w.src)
 	}
 
-	for i, a := range test.atoms {
+	for i, cmd := range test.cmds {
 		func() {
 			defer func() {
 				err := recover()
-				ctx := log.V{"atom": i, "type": fmt.Sprintf("%T", a)}.Bind(ctx)
+				ctx := log.V{"cmd": i, "type": fmt.Sprintf("%T", cmd)}.Bind(ctx)
 				if !assert.For(ctx, "Panic in replay").That(err).IsNil() {
 					panic(err)
 				}
 			}()
 			id := atom.ID(i)
 			b.BeginAtom(uint64(id))
-			a.Mutate(ctx, s, b)
+			cmd.Mutate(ctx, s, b)
 			b.CommitAtom()
 		}()
 	}
@@ -121,7 +121,7 @@ func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoid(),
 		},
 		expected: expected{
@@ -141,7 +141,7 @@ func TestOperationsOpCall_Clone(t *testing.T) {
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdClone(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
@@ -164,7 +164,7 @@ func TestOperationsOpCall_Make(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdMake(5),
 		},
 		expected: expected{
@@ -185,7 +185,7 @@ func TestOperationsOpCall_Copy(t *testing.T) {
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdCopy(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
@@ -210,7 +210,7 @@ func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 	rng, rID := atom.Data(ctx, a, p(0x100000), []uint8{5, 6, 0, 8, 9})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdCharsliceToString(p(0x100000), 5).AddRead(rng, rID),
 		},
 		expected: expected{
@@ -235,7 +235,7 @@ func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 	_, rID := atom.Data(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdCharptrToString(p(0x100000)).
 				AddRead(atom.Data(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0, 'd', 'a', 'y'})),
 		},
@@ -272,7 +272,7 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 	}
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdUnknownRet(10),
 			cb.CmdUnknownWritePtr(p(0x200000)).
 				AddRead(atom.Data(ctx, a, p(0x200000), int(100))).
@@ -304,7 +304,7 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidU8(20),
 			cb.CmdVoidS8(-20),
 			cb.CmdVoidU16(200),
@@ -379,7 +379,7 @@ func TestOperationsOpCall_3_Strings(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoid3Strings("hello", "world", "hello"),
 		},
 		expected: expected{
@@ -415,7 +415,7 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoid3InArrays(p(0x40000), p(0x50000), p(0x60000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
@@ -464,7 +464,7 @@ func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 	})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			// 0x100000: "array"
 			// 0x200000: "of"
 			// 0x300000: "strings"
@@ -544,7 +544,7 @@ func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 	})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			// 0x100000: "array"
 			// 0x200000: "of"
 			// 0x300000: "strings"
@@ -627,7 +627,7 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 		0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 	})
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadBool(p).AddRead(rng1, id1),
 			cb.CmdVoidReadU8(p).AddRead(rng1, id1),
 			cb.CmdVoidReadS8(p).AddRead(rng1, id1),
@@ -751,7 +751,7 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	bRng, bID := atom.Data(ctx, a, p(0x200000), uint16(20))
 	cRng, cID := atom.Data(ctx, a, p(0x300000), false)
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadPtrs(p(0x100000), p(0x200000), p(0x300000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID).
@@ -782,7 +782,7 @@ func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidWriteU8(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), uint8(1))),
 			cb.CmdVoidWriteS8(p(0x200000)).
@@ -865,7 +865,7 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	}
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidWritePtrs(p(0x100000), p(0x200000), p(0x300000)),
 		},
 		expected: expected{
@@ -886,7 +886,7 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdU8(20),
 			cb.CmdS8(-20),
 			cb.CmdU16(200),
@@ -940,7 +940,7 @@ func TestOperationsOpCall_3Remapped(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoid3Remapped(0x10, 0x20, 0x10),
 		},
 		expected: expected{
@@ -975,7 +975,7 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 	tbase := uint32(0)     // remap table base address
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidInArrayOfRemapped(p(0x100000)).
 				AddRead(rng, id),
 		},
@@ -1025,7 +1025,7 @@ func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 	tbase := uint32(0)     // remap table base address
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfRemapped(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
 		},
@@ -1069,7 +1069,7 @@ func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 	tbase := uint32(0)     // remap table base address
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfUnknownRemapped(p(0x100000)).
 				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
 		},
@@ -1110,7 +1110,7 @@ func TestOperationsOpCall_Remapped(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdRemapped(200),
 			cb.CmdVoid3Remapped(100, 200, 300),
 		},
@@ -1147,7 +1147,7 @@ func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 	bRng, bID := atom.Data(ctx, a, p(0x200000), RemappedStruct{F1: 40, Handle: 20, F3: 50})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadRemappedStruct(p(0x100000)).
 				AddRead(aRng, aID),
 			cb.CmdVoidReadRemappedStruct(p(0x100000)).
@@ -1225,7 +1225,7 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 		PointerStruct{F2: 0x89, F1: 0x67, Pointer: U32ᵖ{0x200000, 0}})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadPointerStruct(p(0x100000)).
 				AddRead(aRng, aID).
 				AddRead(bRng, bID),
@@ -1313,7 +1313,7 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	pRng, pID := atom.Data(ctx, a, p(0x400000), uint32(0xab))
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadNestedStruct(p(0x100000)).
 				AddRead(nestedRng, nestedID).
 				AddRead(rsRng, rsID).
@@ -1429,7 +1429,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 		StringStruct{Count: 5, Strings: Charᵖᵖ{0x400000, 0}})
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			cb.CmdVoidReadStringStruct(p(0x500000)).
 				AddRead(ssRng, ssID).
 				AddRead(pRng, pID).
@@ -1511,7 +1511,7 @@ func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	cwhRng, cwhID := atom.Data(ctx, a, p(0x300000), []remapped{40})         // write to handles for Case 3
 
 	test{
-		atoms: []atom.Atom{
+		cmds: []api.Cmd{
 			// Case 1: only update the count. So we pass null to pHandles.
 			cb.CmdVoidReadAndConditionalWrite(p(0x100000), p(0x0)).
 				AddRead(rRng, rID).

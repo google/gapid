@@ -38,15 +38,15 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	events := []*service.Event{}
 
 	s := c.NewState()
-	for i, a := range c.Atoms {
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+	for i, cmd := range c.Commands {
+		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
 		// TODO: Add event generation to the API files.
-		if !filter(a, s) {
+		if !filter(cmd, s) {
 			continue
 		}
-		f := a.AtomFlags()
+		f := cmd.CmdFlags()
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_Clear,
@@ -83,7 +83,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(i)),
 			})
 		}
-		if p.FirstInFrame && (f.IsEndOfFrame() && len(c.Atoms) > i+1) {
+		if p.FirstInFrame && (f.IsEndOfFrame() && len(c.Commands) > i+1) {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_FirstInFrame,
 				Command: p.Capture.Command(uint64(i) + 1),
@@ -103,7 +103,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		}
 
 		if p.FramebufferObservations {
-			if _, ok := a.(*atom.FramebufferObservation); ok {
+			if _, ok := cmd.(*atom.FramebufferObservation); ok {
 				events = append(events, &service.Event{
 					Kind:    service.EventKind_FramebufferObservation,
 					Command: p.Capture.Command(uint64(i)),

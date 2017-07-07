@@ -94,7 +94,7 @@ func (a API) Replay(
 
 	ctx = PutUnusedIDMap(ctx)
 
-	atoms := atom.NewList(capture.Atoms...)
+	cmds := atom.NewList(capture.Commands...)
 
 	transforms := transform.Transforms{}
 
@@ -107,7 +107,7 @@ func (a API) Replay(
 		return err
 	}
 
-	// Skip unnecessary atoms.
+	// Skip unnecessary commands.
 	deadCodeElimination := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
 	// Transform for all framebuffer reads.
@@ -152,7 +152,7 @@ func (a API) Replay(
 	}
 
 	if optimize && !config.DisableDeadCodeElimination {
-		atoms = atom.NewList() // DeadAtomRemoval generates atoms.
+		cmds = atom.NewList() // DeadCommandRemoval generates commands.
 		transforms.Prepend(deadCodeElimination)
 	}
 
@@ -184,7 +184,7 @@ func (a API) Replay(
 	transforms.Add(&bindRendererOnContextSwitch{})
 
 	if config.DebugReplay {
-		log.I(ctx, "Replaying %d atoms using transform chain:", len(atoms.Atoms))
+		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds.Atoms))
 		for i, t := range transforms {
 			log.I(ctx, "(%d) %#v", i, t)
 		}
@@ -206,7 +206,7 @@ func (a API) Replay(
 		transforms = newTransforms
 	}
 
-	transforms.Transform(ctx, *atoms, out)
+	transforms.Transform(ctx, *cmds, out)
 	return nil
 }
 
@@ -257,8 +257,8 @@ func (a API) QueryFramebufferAttachment(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, a)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
@@ -355,15 +355,15 @@ type bindRendererOnContextSwitch struct {
 	context *Context
 }
 
-func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
-	thread := a.Thread()
+func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	thread := cmd.Thread()
 	if context := GetContext(out.State(), thread); context != nil && t.context != context {
 		t.context = context
 		ctxID := uint32(context.Identifier)
 		cb := CommandBuilder{Thread: thread}
 		out.MutateAndWrite(ctx, atom.NoID, cb.ReplayBindRenderer(ctxID))
 	}
-	out.MutateAndWrite(ctx, id, a)
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *bindRendererOnContextSwitch) Flush(ctx context.Context, out transform.Writer) {}

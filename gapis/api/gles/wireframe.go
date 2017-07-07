@@ -32,38 +32,38 @@ import (
 // primitives with draw calls of a wireframe equivalent.
 func wireframe(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "Wireframe")
-	return transform.Transform("Wireframe", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
-		if dc, ok := a.(drawCall); ok {
+	return transform.Transform("Wireframe", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+		if dc, ok := cmd.(drawCall); ok {
 			s := out.State()
-			dID := i.Derived()
-			cb := CommandBuilder{Thread: a.Thread()}
+			dID := id.Derived()
+			cb := CommandBuilder{Thread: cmd.Thread()}
 			t := newTweaker(out, dID, cb)
 			t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
 			t.glEnable(ctx, GLenum_GL_BLEND)
 			t.glBlendFunc(ctx, GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
-			if err := drawWireframe(ctx, i, dc, s, out); err != nil {
+			if err := drawWireframe(ctx, id, dc, s, out); err != nil {
 				log.E(ctx, "%v", err)
 			}
 
 			t.revert(ctx)
 		} else {
-			out.MutateAndWrite(ctx, i, a)
+			out.MutateAndWrite(ctx, id, cmd)
 		}
 	})
 }
 
 // wireframeOverlay returns an atom transform that renders the wireframe of the
 // mesh over of the specified draw call.
-func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
+func wireframeOverlay(ctx context.Context, i atom.ID) transform.Transformer {
 	ctx = log.Enter(ctx, "WireframeMode_Overlay")
-	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, i atom.ID, a atom.Atom, out transform.Writer) {
+	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
 		if i == id {
-			if dc, ok := a.(drawCall); ok {
+			if dc, ok := cmd.(drawCall); ok {
 				s := out.State()
-				out.MutateAndWrite(ctx, i, dc)
+				out.MutateAndWrite(ctx, id, dc)
 
 				dID := id.Derived()
-				cb := CommandBuilder{Thread: a.Thread()}
+				cb := CommandBuilder{Thread: cmd.Thread()}
 				t := newTweaker(out, dID, cb)
 				t.glEnable(ctx, GLenum_GL_POLYGON_OFFSET_LINE)
 				t.glPolygonOffset(ctx, -1, -1)
@@ -82,7 +82,7 @@ func wireframeOverlay(ctx context.Context, id atom.ID) transform.Transformer {
 			}
 		}
 
-		out.MutateAndWrite(ctx, i, a)
+		out.MutateAndWrite(ctx, id, cmd)
 	})
 }
 

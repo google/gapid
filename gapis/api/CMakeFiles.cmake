@@ -19,6 +19,10 @@
 
 set(files
     api.go
+    cmd_extras.go
+    cmd_flags.go
+    cmd_observations.go
+    cmd.go
     context.go
     doc.go
     api.pb.go

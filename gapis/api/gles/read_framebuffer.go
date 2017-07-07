@@ -33,20 +33,20 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)
+	injections map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{
-		injections: make(map[atom.ID][]func(context.Context, atom.Atom, transform.Writer)),
+		injections: make(map[atom.ID][]func(context.Context, api.Cmd, transform.Writer)),
 	}
 }
 
-func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, a)
+func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	out.MutateAndWrite(ctx, id, cmd)
 	if r, ok := t.injections[id]; ok {
 		for _, injection := range r {
-			injection(ctx, a, out)
+			injection(ctx, cmd, out)
 		}
 		delete(t.injections, id)
 	}
@@ -55,25 +55,25 @@ func (t *readFramebuffer) Transform(ctx context.Context, id atom.ID, a atom.Atom
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
 
 func (t *readFramebuffer) Depth(id atom.ID, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
-		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(a.Thread(), api.FramebufferAttachment_Depth)
+		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), api.FramebufferAttachment_Depth)
 		if err != nil {
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 
-		postColorData(ctx, s, int32(width), int32(height), format, out, a, id, res)
+		postColorData(ctx, s, int32(width), int32(height), format, out, id, cmd, res)
 	})
 }
 
 func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, a atom.Atom, out transform.Writer) {
+	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
-		c := GetContext(s, a.Thread())
+		c := GetContext(s, cmd.Thread())
 
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
-		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(a.Thread(), attachment)
+		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), attachment)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after atom %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
@@ -93,7 +93,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		)
 
 		dID := id.Derived()
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 		t := newTweaker(out, dID, cb)
 		t.glBindFramebuffer_Read(ctx, c.Bound.DrawFramebuffer.GetID())
 
@@ -113,7 +113,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 		}
 
 		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, a, id, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, cmd, res)
 		} else {
 			t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
 			framebufferID := t.glGenFramebuffer(ctx)
@@ -128,7 +128,7 @@ func (t *readFramebuffer) Color(id atom.ID, width, height, bufferIdx uint32, res
 			)
 			t.glBindFramebuffer_Read(ctx, framebufferID)
 
-			postColorData(ctx, s, outW, outH, fmt, out, a, id, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, cmd, res)
 		}
 
 		t.revert(ctx)
@@ -140,8 +140,8 @@ func postColorData(ctx context.Context,
 	width, height int32,
 	sizedFormat GLenum,
 	out transform.Writer,
-	a atom.Atom,
 	id atom.ID,
+	cmd api.Cmd,
 	res replay.Result) {
 
 	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
@@ -152,7 +152,7 @@ func postColorData(ctx context.Context,
 	}
 
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	t := newTweaker(out, dID, cb)
 	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
 
@@ -198,9 +198,9 @@ func postColorData(ctx context.Context,
 	t.revert(ctx)
 }
 
-func mutateAndWriteEach(ctx context.Context, out transform.Writer, id atom.ID, atoms ...atom.Atom) {
-	for _, a := range atoms {
-		out.MutateAndWrite(ctx, id, a)
+func mutateAndWriteEach(ctx context.Context, out transform.Writer, id atom.ID, cmds ...api.Cmd) {
+	for _, cmd := range cmds {
+		out.MutateAndWrite(ctx, id, cmd)
 	}
 }
 

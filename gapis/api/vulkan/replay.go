@@ -102,12 +102,12 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	return usage, false
 }
 
-func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
+func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	l := s.MemoryLayout
-	cb := CommandBuilder{Thread: a.Thread()}
-	a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
-	if image, ok := a.(*VkCreateImage); ok {
+	cb := CommandBuilder{Thread: cmd.Thread()}
+	cmd.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
+	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
 		info := pinfo.Read(ctx, image, s, nil)
 
@@ -122,7 +122,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			newAtom := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
 			// Carry all non-observation extras through.
 			for _, e := range image.Extras().All() {
-				if _, ok := e.(*atom.Observations); !ok {
+				if _, ok := e.(*api.CmdObservations); !ok {
 					newAtom.Extras().Add(e)
 				}
 			}
@@ -143,7 +143,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			out.MutateAndWrite(ctx, id, newAtom)
 			return
 		}
-	} else if recreateImage, ok := a.(*RecreateImage); ok {
+	} else if recreateImage, ok := cmd.(*RecreateImage); ok {
 		pinfo := recreateImage.PCreateInfo
 		info := pinfo.Read(ctx, image, s, nil)
 
@@ -156,7 +156,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			newAtom := cb.RecreateImage(device, newInfo.Ptr(), pimage)
 			// Carry all non-observation extras through.
 			for _, e := range recreateImage.Extras().All() {
-				if _, ok := e.(*atom.Observations); !ok {
+				if _, ok := e.(*api.CmdObservations); !ok {
 					newAtom.Extras().Add(e)
 				}
 			}
@@ -177,7 +177,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			out.MutateAndWrite(ctx, id, newAtom)
 			return
 		}
-	} else if swapchain, ok := a.(*VkCreateSwapchainKHR); ok {
+	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo
 		info := pinfo.Read(ctx, swapchain, s, nil)
 
@@ -191,7 +191,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			newInfo := atom.Must(atom.AllocData(ctx, s, info))
 			newAtom := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
 			for _, e := range swapchain.Extras().All() {
-				if _, ok := e.(*atom.Observations); !ok {
+				if _, ok := e.(*api.CmdObservations); !ok {
 					newAtom.Extras().Add(e)
 				}
 			}
@@ -208,7 +208,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			out.MutateAndWrite(ctx, id, newAtom)
 			return
 		}
-	} else if recreateSwapchain, ok := a.(*RecreateSwapchain); ok {
+	} else if recreateSwapchain, ok := cmd.(*RecreateSwapchain); ok {
 		pinfo := recreateSwapchain.PCreateInfo
 		info := pinfo.Read(ctx, recreateSwapchain, s, nil)
 
@@ -223,7 +223,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			newInfo := atom.Must(atom.AllocData(ctx, s, info))
 			newAtom := cb.RecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
 			for _, e := range recreateSwapchain.Extras().All() {
-				if _, ok := e.(*atom.Observations); !ok {
+				if _, ok := e.(*api.CmdObservations); !ok {
 					newAtom.Extras().Add(e)
 				}
 			}
@@ -240,7 +240,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			out.MutateAndWrite(ctx, id, newAtom)
 			return
 		}
-	} else if createRenderPass, ok := a.(*VkCreateRenderPass); ok {
+	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
 		pInfo := createRenderPass.PCreateInfo
 		info := pInfo.Read(ctx, createRenderPass, s, nil)
 		pAttachments := info.PAttachments
@@ -254,7 +254,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		// Returns if no attachment description needs to be changed
 		if !changed {
-			out.MutateAndWrite(ctx, id, a)
+			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
 		// Build new attachments data, new create info and new atom
@@ -268,7 +268,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			createRenderPass.Result)
 		// Add back the extras and read/write observations
 		for _, e := range createRenderPass.Extras().All() {
-			if _, ok := e.(*atom.Observations); !ok {
+			if _, ok := e.(*api.CmdObservations); !ok {
 				newAtom.Extras().Add(e)
 			}
 		}
@@ -281,7 +281,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		out.MutateAndWrite(ctx, id, newAtom)
 		return
-	} else if recreateRenderPass, ok := a.(*RecreateRenderPass); ok {
+	} else if recreateRenderPass, ok := cmd.(*RecreateRenderPass); ok {
 		pInfo := recreateRenderPass.PCreateInfo
 		info := pInfo.Read(ctx, recreateRenderPass, s, nil)
 		pAttachments := info.PAttachments
@@ -295,7 +295,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		}
 		// Returns if no attachment description needs to be changed
 		if !changed {
-			out.MutateAndWrite(ctx, id, a)
+			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
 		// Build new attachments data, new create info and new atom
@@ -307,7 +307,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 			memory.Pointer(recreateRenderPass.PRenderPass))
 		// Add back the extras and read/write observations
 		for _, e := range recreateRenderPass.Extras().All() {
-			if _, ok := e.(*atom.Observations); !ok {
+			if _, ok := e.(*api.CmdObservations); !ok {
 				newAtom.Extras().Add(e)
 			}
 		}
@@ -321,7 +321,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id atom.ID, a a
 		out.MutateAndWrite(ctx, id, newAtom)
 		return
 	}
-	out.MutateAndWrite(ctx, id, a)
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) {}
@@ -331,8 +331,8 @@ func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Write
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, a atom.Atom, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, a)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id atom.ID, cmd api.Cmd, out transform.Writer) {
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
@@ -473,7 +473,7 @@ func (a API) Replay(
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
-	atoms := atom.NewList(capture.Atoms...)
+	cmds := atom.NewList(capture.Commands...)
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
@@ -540,7 +540,7 @@ func (a API) Replay(
 
 	// Use the dead code elimination pass
 	if !config.DisableDeadCodeElimination {
-		atoms = atom.NewList()
+		cmds = atom.NewList()
 		transforms.Prepend(dceInfo.deadCodeElimination)
 	}
 
@@ -555,7 +555,7 @@ func (a API) Replay(
 	transforms.Add(&destroyResourcesAtEOS{})
 
 	if config.DebugReplay {
-		log.I(ctx, "Replaying %d atoms using transform chain:", len(atoms.Atoms))
+		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds.Atoms))
 		for i, t := range transforms {
 			log.I(ctx, "(%d) %#v", i, t)
 		}
@@ -563,7 +563,7 @@ func (a API) Replay(
 
 	if config.LogTransformsToFile {
 		newTransforms := transform.Transforms{}
-		newTransforms.Add(transform.NewFileLog(ctx, "0_original_atoms"))
+		newTransforms.Add(transform.NewFileLog(ctx, "0_original_cmds"))
 		for i, t := range transforms {
 			var name string
 			if n, ok := t.(interface {
@@ -573,12 +573,12 @@ func (a API) Replay(
 			} else {
 				name = strings.Replace(fmt.Sprintf("%T", t), "*", "", -1)
 			}
-			newTransforms.Add(t, transform.NewFileLog(ctx, fmt.Sprintf("%v_atoms_after_%v", i+1, name)))
+			newTransforms.Add(t, transform.NewFileLog(ctx, fmt.Sprintf("%v_cmds_after_%v", i+1, name)))
 		}
 		transforms = newTransforms
 	}
 
-	transforms.Transform(ctx, *atoms, out)
+	transforms.Transform(ctx, *cmds, out)
 	return nil
 }
 

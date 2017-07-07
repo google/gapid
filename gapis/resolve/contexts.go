@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -63,8 +62,8 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	seen := map[api.ContextID]int{}
 	contexts := []*path.Context{}
 
-	var currentAtomIndex int
-	var currentAtom atom.Atom
+	var currentCmdIndex int
+	var currentCmd api.Cmd
 	defer func() {
 		if r := recover(); r != nil {
 			// Add context information to the panic.
@@ -72,23 +71,23 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			if !ok {
 				err = fault.Const(fmt.Sprint(r))
 			}
-			panic(log.Errf(ctx, err, "panic at atomID: %v, type: %T", currentAtomIndex, currentAtom))
+			panic(log.Errf(ctx, err, "panic at atomID: %v, type: %T", currentCmdIndex, currentCmd))
 		}
 	}()
 
 	s := c.NewState()
-	for i, a := range c.Atoms {
-		currentAtomIndex, currentAtom = i, a
+	for i, cmd := range c.Commands {
+		currentCmdIndex, currentCmd = i, cmd
 
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
+		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 			return nil, err
 		}
 
-		api := a.API()
+		api := cmd.API()
 		if api == nil {
 			continue
 		}
-		if context := api.Context(s, a.Thread()); context != nil {
+		if context := api.Context(s, cmd.Thread()); context != nil {
 			ctxID := context.ID()
 			idx, ok := seen[ctxID]
 			if !ok {

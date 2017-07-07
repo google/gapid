@@ -15,6 +15,7 @@
 package resolve
 
 import (
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
@@ -22,7 +23,7 @@ import (
 
 func internalToService(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
-	case atom.Atom:
+	case api.Cmd:
 		return atom.ToService(v)
 	case *InternalContext:
 		return &service.Context{Name: v.Name, Api: v.Api}, nil

@@ -219,7 +219,7 @@ func TestGet(t *testing.T) {
 		{capture, T((*service.Capture)(nil))},
 		{capture.Contexts(), T([]*service.Context{})},
 		{capture.Commands(), T((*atom.List)(nil))},
-		{capture.Command(swapAtomIndex), T((*atom.Atom)(nil)).Elem()},
+		{capture.Command(swapAtomIndex), T((*api.Cmd)(nil)).Elem()},
 		{capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
 		{capture.Command(drawAtomIndex).Mesh(false), T((*api.Mesh)(nil))},

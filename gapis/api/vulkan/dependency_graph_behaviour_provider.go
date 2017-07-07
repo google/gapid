@@ -17,7 +17,6 @@ package vulkan
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -218,7 +217,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateCommandBuffer(
 }
 
 func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
-	ctx context.Context, s *api.State, id atom.ID, g *dependencygraph.DependencyGraph, a atom.Atom) dependencygraph.AtomBehaviour {
+	ctx context.Context, s *api.State, id atom.ID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	// The behaviour going to be populated and returned.
 	b := dependencygraph.AtomBehaviour{}
 	// The recordedCommand going to be filled with behaviours which will be
@@ -284,7 +283,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		} else if imageObj.BoundMemory != nil {
 			boundMemory := imageObj.BoundMemory.VulkanHandle
 			offset := uint64(imageObj.BoundMemoryOffset)
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, imageObj)
+			infer_size, err := subInferImageSize(ctx, cmd, nil, s, nil, cmd.Thread(), nil, imageObj)
 			if err != nil {
 				log.E(ctx, "Error Image: %v: Cannot infer the size of the image", image)
 			}
@@ -450,12 +449,12 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	}
 
 	// Mutate the state with the atom.
-	if err := a.Mutate(ctx, s, nil); err != nil {
-		log.E(ctx, "Atom %v %v: %v", id, a, err)
+	if err := cmd.Mutate(ctx, s, nil); err != nil {
+		log.E(ctx, "Command %v %v: %v", id, cmd, err)
 		return dependencygraph.AtomBehaviour{Aborted: true}
 	}
 
-	debug("DCE::DependencyGraph::getBehaviour: %v, %v", id, reflect.TypeOf(a))
+	debug("DCE::DependencyGraph::getBehaviour: %v, %T", id, cmd)
 
 	// Add behaviors for the atom according to its type.
 	// Note that there are a few cases in which the behaviour is NOT added to the
@@ -480,36 +479,36 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	// bound one after VkQueueSubmit's Mutate() is called. So we records the
 	// behaviours in VkCmdBindDescriptorSets and RecreateCmdBindDescriptorSets,
 	// instead of the draw calls.
-	switch a := a.(type) {
+	switch cmd := cmd.(type) {
 	case *VkCreateImage:
-		image := a.PImage.Read(ctx, a, s, nil)
+		image := cmd.PImage.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, vulkanStateKey(image))
 
 	case *VkCreateBuffer:
-		buffer := a.PBuffer.Read(ctx, a, s, nil)
+		buffer := cmd.PBuffer.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, vulkanStateKey(buffer))
 
 	case *RecreateImage:
-		image := a.PImage.Read(ctx, a, s, nil)
+		image := cmd.PImage.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, vulkanStateKey(image))
 
 	case *RecreateBuffer:
-		buffer := a.PBuffer.Read(ctx, a, s, nil)
+		buffer := cmd.PBuffer.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, vulkanStateKey(buffer))
 
 	case *VkAllocateMemory:
-		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
-		memory := a.PMemory.Read(ctx, a, s, nil)
+		allocateInfo := cmd.PAllocateInfo.Read(ctx, cmd, s, nil)
+		memory := cmd.PMemory.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, p.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
 		if allocateInfo.PNext != (Voidᶜᵖ{}) {
 			pNext := Voidᵖ(allocateInfo.PNext)
 			for pNext != (Voidᵖ{}) {
-				sType := (VkStructureTypeᶜᵖ(pNext)).Read(ctx, a, s, nil)
+				sType := (VkStructureTypeᶜᵖ(pNext)).Read(ctx, cmd, s, nil)
 				switch sType {
 				case VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
-					ext := VkDedicatedAllocationMemoryAllocateInfoNVᵖ(pNext).Read(ctx, a, s, nil)
+					ext := VkDedicatedAllocationMemoryAllocateInfoNVᵖ(pNext).Read(ctx, cmd, s, nil)
 					image := ext.Image
 					buffer := ext.Buffer
 					if uint64(image) != 0 {
@@ -519,23 +518,23 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 						addRead(&b, g, vulkanStateKey(buffer))
 					}
 				}
-				pNext = (VulkanStructHeaderᵖ(pNext)).Read(ctx, a, s, nil).PNext
+				pNext = (VulkanStructHeaderᵖ(pNext)).Read(ctx, cmd, s, nil).PNext
 			}
 		}
 
 	case *RecreateDeviceMemory:
-		allocateInfo := a.PAllocateInfo.Read(ctx, a, s, nil)
-		memory := a.PMemory.Read(ctx, a, s, nil)
+		allocateInfo := cmd.PAllocateInfo.Read(ctx, cmd, s, nil)
+		memory := cmd.PMemory.Read(ctx, cmd, s, nil)
 		addWrite(&b, g, p.getOrCreateDeviceMemory(memory))
 
 		// handle dedicated memory allocation
 		if allocateInfo.PNext != (Voidᶜᵖ{}) {
 			pNext := Voidᵖ(allocateInfo.PNext)
 			for pNext != (Voidᵖ{}) {
-				sType := (VkStructureTypeᶜᵖ(pNext)).Read(ctx, a, s, nil)
+				sType := (VkStructureTypeᶜᵖ(pNext)).Read(ctx, cmd, s, nil)
 				switch sType {
 				case VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
-					ext := VkDedicatedAllocationMemoryAllocateInfoNVᵖ(pNext).Read(ctx, a, s, nil)
+					ext := VkDedicatedAllocationMemoryAllocateInfoNVᵖ(pNext).Read(ctx, cmd, s, nil)
 					image := ext.Image
 					buffer := ext.Buffer
 					if uint64(image) != 0 {
@@ -545,34 +544,34 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 						addRead(&b, g, vulkanStateKey(buffer))
 					}
 				}
-				pNext = (VulkanStructHeaderᵖ(pNext)).Read(ctx, a, s, nil).PNext
+				pNext = (VulkanStructHeaderᵖ(pNext)).Read(ctx, cmd, s, nil).PNext
 			}
 		}
 
 	case *VkGetDeviceMemoryCommitment:
-		memory := a.Memory
+		memory := cmd.Memory
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 
 	case *VkGetImageMemoryRequirements:
-		image := a.Image
+		image := cmd.Image
 		addRead(&b, g, vulkanStateKey(image))
 
 	case *VkGetImageSparseMemoryRequirements:
-		image := a.Image
+		image := cmd.Image
 		addRead(&b, g, vulkanStateKey(image))
 
 	case *VkGetImageSubresourceLayout:
-		image := a.Image
+		image := cmd.Image
 		addRead(&b, g, vulkanStateKey(image))
 
 	case *VkGetBufferMemoryRequirements:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		addModify(&b, g, vulkanStateKey(buffer))
 
 	case *VkBindImageMemory:
-		image := a.Image
-		memory := a.Memory
-		offset := a.MemoryOffset
+		image := cmd.Image
+		memory := cmd.Memory
+		offset := cmd.MemoryOffset
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
@@ -586,9 +585,9 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			// not allowed, execept for the vkCmdBeginRenderPass, whose target is
 			// always an image as a whole.
 			// TODO(qining) Fix this
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, cmd, nil, s, nil, cmd.thread, nil, GetState(s).Images.Get(image))
 			if err != nil {
-				log.E(ctx, "Atom %v %v: %v", id, a, err)
+				log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
@@ -597,9 +596,9 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkBindBufferMemory:
-		buffer := a.Buffer
-		memory := a.Memory
-		offset := a.MemoryOffset
+		buffer := cmd.Buffer
+		memory := cmd.Memory
+		offset := cmd.MemoryOffset
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
@@ -609,15 +608,15 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateBindImageMemory:
-		image := a.Image
-		memory := a.Memory
-		offset := a.Offset
+		image := cmd.Image
+		memory := cmd.Memory
+		offset := cmd.Offset
 		addModify(&b, g, vulkanStateKey(image))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Images.Contains(image) {
-			infer_size, err := subInferImageSize(ctx, a, nil, s, nil, a.Thread(), nil, GetState(s).Images.Get(image))
+			infer_size, err := subInferImageSize(ctx, cmd, nil, s, nil, cmd.thread, nil, GetState(s).Images.Get(image))
 			if err != nil {
-				log.E(ctx, "Atom %v %v: %v", id, a, err)
+				log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 			size := uint64(infer_size)
@@ -626,9 +625,9 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateBindBufferMemory:
-		buffer := a.Buffer
-		memory := a.Memory
-		offset := a.Offset
+		buffer := cmd.Buffer
+		memory := cmd.Memory
+		offset := cmd.Offset
 		addModify(&b, g, vulkanStateKey(buffer))
 		addRead(&b, g, p.getOrCreateDeviceMemory(memory).handle)
 		if GetState(s).Buffers.Contains(buffer) {
@@ -638,29 +637,29 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateImageData:
-		image := a.Image
+		image := cmd.Image
 		addModify(&b, g, vulkanStateKey(image))
 		overlappingBindings := getOverlappedBindingsForImage(image)
 		writeMemoryBindingsData(&b, overlappingBindings)
 
 	case *RecreateBufferData:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		addModify(&b, g, vulkanStateKey(buffer))
 		overlappingBindings := getOverlappedBindingsForBuffer(buffer)
 		writeMemoryBindingsData(&b, overlappingBindings)
 
 	case *VkDestroyImage:
-		image := a.Image
+		image := cmd.Image
 		addModify(&b, g, vulkanStateKey(image))
 		b.KeepAlive = true
 
 	case *VkDestroyBuffer:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		addModify(&b, g, vulkanStateKey(buffer))
 		b.KeepAlive = true
 
 	case *VkFreeMemory:
-		memory := a.Memory
+		memory := cmd.Memory
 		// Free/deletion atoms are kept alive so the creation atom of the
 		// corresponding handle will also be kept alive, even though the handle
 		// may not be used anywhere else.
@@ -668,19 +667,19 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		b.KeepAlive = true
 
 	case *VkMapMemory:
-		memory := a.Memory
+		memory := cmd.Memory
 		addModify(&b, g, p.getOrCreateDeviceMemory(memory))
 
 	case *VkUnmapMemory:
-		memory := a.Memory
+		memory := cmd.Memory
 		addModify(&b, g, p.getOrCreateDeviceMemory(memory))
 
 	case *VkFlushMappedMemoryRanges:
-		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), l)
+		ranges := cmd.PMemoryRanges.Slice(0, uint64(cmd.MemoryRangeCount), l)
 		// TODO: Link the contiguous ranges into one so that we don't miss
 		// potential overwrites
-		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
-			mappedRange := ranges.Index(i, l).Read(ctx, a, s, nil)
+		for i := uint64(0); i < uint64(cmd.MemoryRangeCount); i++ {
+			mappedRange := ranges.Index(i, l).Read(ctx, cmd, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
 			size := uint64(mappedRange.Size)
@@ -706,10 +705,10 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkInvalidateMappedMemoryRanges:
-		ranges := a.PMemoryRanges.Slice(0, uint64(a.MemoryRangeCount), l)
+		ranges := cmd.PMemoryRanges.Slice(0, uint64(cmd.MemoryRangeCount), l)
 		// TODO: Link the contiguous ranges
-		for i := uint64(0); i < uint64(a.MemoryRangeCount); i++ {
-			mappedRange := ranges.Index(i, l).Read(ctx, a, s, nil)
+		for i := uint64(0); i < uint64(cmd.MemoryRangeCount); i++ {
+			mappedRange := ranges.Index(i, l).Read(ctx, cmd, s, nil)
 			memory := mappedRange.Memory
 			offset := uint64(mappedRange.Offset)
 			size := uint64(mappedRange.Size)
@@ -718,49 +717,49 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkCreateImageView:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		image := createInfo.Image
-		view := a.PView.Read(ctx, a, s, nil)
+		view := cmd.PView.Read(ctx, cmd, s, nil)
 		addRead(&b, g, vulkanStateKey(image))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *RecreateImageView:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		image := createInfo.Image
-		view := a.PImageView.Read(ctx, a, s, nil)
+		view := cmd.PImageView.Read(ctx, cmd, s, nil)
 		addRead(&b, g, vulkanStateKey(image))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *VkCreateBufferView:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		buffer := createInfo.Buffer
-		view := a.PView.Read(ctx, a, s, nil)
+		view := cmd.PView.Read(ctx, cmd, s, nil)
 		addRead(&b, g, vulkanStateKey(buffer))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *RecreateBufferView:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		buffer := createInfo.Buffer
-		view := a.PBufferView.Read(ctx, a, s, nil)
+		view := cmd.PBufferView.Read(ctx, cmd, s, nil)
 		addRead(&b, g, vulkanStateKey(buffer))
 		addWrite(&b, g, vulkanStateKey(view))
 
 	case *VkUpdateDescriptorSets:
 		// handle descriptor writes
-		writeCount := a.DescriptorWriteCount
+		writeCount := cmd.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
-			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
-				log.E(ctx, "Atom %v %v: %v", id, a, err)
+			writes := cmd.PDescriptorWrites.Slice(0, uint64(writeCount), l)
+			if err := processDescriptorWrites(writes, &b, g, ctx, cmd, s); err != nil {
+				log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 		}
 		// handle descriptor copies
-		copyCount := a.DescriptorCopyCount
+		copyCount := cmd.DescriptorCopyCount
 		if copyCount > 0 {
-			copies := a.PDescriptorCopies.Slice(0, uint64(copyCount), l)
+			copies := cmd.PDescriptorCopies.Slice(0, uint64(copyCount), l)
 			for i := uint32(0); i < copyCount; i++ {
-				copy := copies.Index(uint64(i), l).Read(ctx, a, s, nil)
+				copy := copies.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 				srcDescriptor := copy.SrcSet
 				dstDescriptor := copy.DstSet
 				addRead(&b, g, vulkanStateKey(srcDescriptor))
@@ -770,329 +769,329 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 
 	case *RecreateDescriptorSet:
 		// handle descriptor writes
-		writeCount := a.DescriptorWriteCount
+		writeCount := cmd.DescriptorWriteCount
 		if writeCount > 0 {
-			writes := a.PDescriptorWrites.Slice(0, uint64(writeCount), l)
-			if err := processDescriptorWrites(writes, &b, g, ctx, a, s); err != nil {
-				log.E(ctx, "Atom %v %v: %v", id, a, err)
+			writes := cmd.PDescriptorWrites.Slice(0, uint64(writeCount), l)
+			if err := processDescriptorWrites(writes, &b, g, ctx, cmd, s); err != nil {
+				log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				return dependencygraph.AtomBehaviour{Aborted: true}
 			}
 		}
 
 	case *VkCreateFramebuffer:
-		addWrite(&b, g, vulkanStateKey(a.PFramebuffer.Read(ctx, a, s, nil)))
-		addRead(&b, g, vulkanStateKey(a.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
+		addWrite(&b, g, vulkanStateKey(cmd.PFramebuffer.Read(ctx, cmd, s, nil)))
+		addRead(&b, g, vulkanStateKey(cmd.PCreateInfo.Read(ctx, cmd, s, nil).RenderPass))
 		// process the attachments
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		attachmentCount := createInfo.AttachmentCount
 		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), l)
 		for i := uint32(0); i < attachmentCount; i++ {
-			attachedViews := attachments.Index(uint64(i), l).Read(ctx, a, s, nil)
+			attachedViews := attachments.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			addRead(&b, g, vulkanStateKey(attachedViews))
 		}
 
 	case *RecreateFramebuffer:
-		addWrite(&b, g, vulkanStateKey(a.PFramebuffer.Read(ctx, a, s, nil)))
-		addRead(&b, g, vulkanStateKey(a.PCreateInfo.Read(ctx, a, s, nil).RenderPass))
+		addWrite(&b, g, vulkanStateKey(cmd.PFramebuffer.Read(ctx, cmd, s, nil)))
+		addRead(&b, g, vulkanStateKey(cmd.PCreateInfo.Read(ctx, cmd, s, nil).RenderPass))
 		// process the attachments
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		attachmentCount := createInfo.AttachmentCount
 		attachments := createInfo.PAttachments.Slice(0, uint64(attachmentCount), l)
 		for i := uint32(0); i < attachmentCount; i++ {
-			attachedViews := attachments.Index(uint64(i), l).Read(ctx, a, s, nil)
+			attachedViews := attachments.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			addRead(&b, g, vulkanStateKey(attachedViews))
 		}
 
 	case *VkDestroyFramebuffer:
-		addModify(&b, g, vulkanStateKey(a.Framebuffer))
+		addModify(&b, g, vulkanStateKey(cmd.Framebuffer))
 		b.KeepAlive = true
 
 	case *VkCreateRenderPass:
-		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PRenderPass.Read(ctx, cmd, s, nil)))
 
 	case *RecreateRenderPass:
-		addWrite(&b, g, vulkanStateKey(a.PRenderPass.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PRenderPass.Read(ctx, cmd, s, nil)))
 
 	case *VkDestroyRenderPass:
-		addModify(&b, g, vulkanStateKey(a.RenderPass))
+		addModify(&b, g, vulkanStateKey(cmd.RenderPass))
 		b.KeepAlive = true
 
 	case *VkGetRenderAreaGranularity:
-		addRead(&b, g, vulkanStateKey(a.RenderPass))
+		addRead(&b, g, vulkanStateKey(cmd.RenderPass))
 
 	case *VkCreateGraphicsPipelines:
-		pipelineCount := uint64(a.CreateInfoCount)
-		createInfos := a.PCreateInfos.Slice(0, pipelineCount, l)
-		pipelines := a.PPipelines.Slice(0, pipelineCount, l)
+		pipelineCount := uint64(cmd.CreateInfoCount)
+		createInfos := cmd.PCreateInfos.Slice(0, pipelineCount, l)
+		pipelines := cmd.PPipelines.Slice(0, pipelineCount, l)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shaders
-			stageCount := uint64(createInfos.Index(i, l).Read(ctx, a, s, nil).StageCount)
-			shaderStages := createInfos.Index(i, l).Read(ctx, a, s, nil).PStages.Slice(0, stageCount, l)
+			stageCount := uint64(createInfos.Index(i, l).Read(ctx, cmd, s, nil).StageCount)
+			shaderStages := createInfos.Index(i, l).Read(ctx, cmd, s, nil).PStages.Slice(0, stageCount, l)
 			for j := uint64(0); j < stageCount; j++ {
-				shaderStage := shaderStages.Index(j, l).Read(ctx, a, s, nil)
+				shaderStage := shaderStages.Index(j, l).Read(ctx, cmd, s, nil)
 				module := shaderStage.Module
 				addRead(&b, g, vulkanStateKey(module))
 			}
 			// read renderpass
-			renderPass := createInfos.Index(i, l).Read(ctx, a, s, nil).RenderPass
+			renderPass := createInfos.Index(i, l).Read(ctx, cmd, s, nil).RenderPass
 			addRead(&b, g, vulkanStateKey(renderPass))
 			// Create pipeline
-			pipeline := pipelines.Index(i, l).Read(ctx, a, s, nil)
+			pipeline := pipelines.Index(i, l).Read(ctx, cmd, s, nil)
 			addWrite(&b, g, vulkanStateKey(pipeline))
 		}
 
 	case *RecreateGraphicsPipeline:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		stageCount := uint64(createInfo.StageCount)
 		shaderStages := createInfo.PStages.Slice(0, stageCount, l)
 		for i := uint64(0); i < stageCount; i++ {
-			shaderStage := shaderStages.Index(i, l).Read(ctx, a, s, nil)
+			shaderStage := shaderStages.Index(i, l).Read(ctx, cmd, s, nil)
 			addRead(&b, g, vulkanStateKey(shaderStage.Module))
 		}
 		addRead(&b, g, vulkanStateKey(createInfo.RenderPass))
-		addWrite(&b, g, vulkanStateKey(a.PPipeline.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PPipeline.Read(ctx, cmd, s, nil)))
 
 	case *VkCreateComputePipelines:
-		pipelineCount := uint64(a.CreateInfoCount)
-		createInfos := a.PCreateInfos.Slice(0, pipelineCount, l)
-		pipelines := a.PPipelines.Slice(0, pipelineCount, l)
+		pipelineCount := uint64(cmd.CreateInfoCount)
+		createInfos := cmd.PCreateInfos.Slice(0, pipelineCount, l)
+		pipelines := cmd.PPipelines.Slice(0, pipelineCount, l)
 		for i := uint64(0); i < pipelineCount; i++ {
 			// read shader
-			shaderStage := createInfos.Index(i, l).Read(ctx, a, s, nil).Stage
+			shaderStage := createInfos.Index(i, l).Read(ctx, cmd, s, nil).Stage
 			module := shaderStage.Module
 			addRead(&b, g, vulkanStateKey(module))
 			// Create pipeline
-			pipeline := pipelines.Index(i, l).Read(ctx, a, s, nil)
+			pipeline := pipelines.Index(i, l).Read(ctx, cmd, s, nil)
 			addWrite(&b, g, vulkanStateKey(pipeline))
 		}
 
 	case *RecreateComputePipeline:
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
 		module := createInfo.Stage.Module
 		addRead(&b, g, vulkanStateKey(module))
-		addWrite(&b, g, vulkanStateKey(a.PPipeline.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PPipeline.Read(ctx, cmd, s, nil)))
 
 	case *VkCreateShaderModule:
-		addWrite(&b, g, vulkanStateKey(a.PShaderModule.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PShaderModule.Read(ctx, cmd, s, nil)))
 
 	case *RecreateShaderModule:
-		addWrite(&b, g, vulkanStateKey(a.PShaderModule.Read(ctx, a, s, nil)))
+		addWrite(&b, g, vulkanStateKey(cmd.PShaderModule.Read(ctx, cmd, s, nil)))
 
 	case *VkDestroyShaderModule:
-		addModify(&b, g, vulkanStateKey(a.ShaderModule))
+		addModify(&b, g, vulkanStateKey(cmd.ShaderModule))
 		b.KeepAlive = true
 
 	case *VkAllocateCommandBuffers:
-		count := uint64(a.PAllocateInfo.Read(ctx, a, s, nil).CommandBufferCount)
-		cmdBufs := a.PCommandBuffers.Slice(0, count, l)
+		count := uint64(cmd.PAllocateInfo.Read(ctx, cmd, s, nil).CommandBufferCount)
+		cmdBufs := cmd.PCommandBuffers.Slice(0, count, l)
 		for i := uint64(0); i < count; i++ {
-			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, a, s, nil))
+			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, cmd, s, nil))
 			addWrite(&b, g, cmdBuf)
 		}
 
 	case *VkResetCommandBuffer:
-		cmdBuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdBuf := p.getOrCreateCommandBuffer(cmd.CommandBuffer)
 		addRead(&b, g, cmdBuf.handle)
 		addWrite(&b, g, cmdBuf.records)
 		cmdBuf.records.Commands = []*recordedCommand{}
 
 	case *VkFreeCommandBuffers:
-		count := uint64(a.CommandBufferCount)
-		cmdBufs := a.PCommandBuffers.Slice(0, count, l)
+		count := uint64(cmd.CommandBufferCount)
+		cmdBufs := cmd.PCommandBuffers.Slice(0, count, l)
 		for i := uint64(0); i < count; i++ {
-			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, a, s, nil))
+			cmdBuf := p.getOrCreateCommandBuffer(cmdBufs.Index(i, l).Read(ctx, cmd, s, nil))
 			addModify(&b, g, cmdBuf)
 		}
 		b.KeepAlive = true
 
 	// CommandBuffer Commands:
 	case *VkCmdCopyImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyImageToBuffer:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyImageToBuffer:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyBufferToImage:
-		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readBufferHandleAndGetBindings(&b, cmd.SrcBuffer)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyBufferToImage:
-		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readBufferHandleAndGetBindings(&b, cmd.SrcBuffer)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyBuffer:
-		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		srcBindings := readBufferHandleAndGetBindings(&b, cmd.SrcBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyBuffer:
-		srcBindings := readBufferHandleAndGetBindings(&b, a.SrcBuffer)
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		srcBindings := readBufferHandleAndGetBindings(&b, cmd.SrcBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			srcBindings, dstBindings, emptyMemoryBindings)
 
 	case *VkCmdBlitImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdBlitImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdResolveImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdResolveImage:
-		srcBindings := readImageHandleAndGetBindings(&b, a.SrcImage)
-		dstBindings := readImageHandleAndGetBindings(&b, a.DstImage)
+		srcBindings := readImageHandleAndGetBindings(&b, cmd.SrcImage)
+		dstBindings := readImageHandleAndGetBindings(&b, cmd.DstImage)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
 		// TODO(qining): Track all the memory ranges
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, srcBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, srcBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdFillBuffer:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdFillBuffer:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdUpdateBuffer:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdUpdateBuffer:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdCopyQueryPoolResults:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *RecreateCmdCopyQueryPoolResults:
-		dstBindings := readBufferHandleAndGetBindings(&b, a.DstBuffer)
+		dstBindings := readBufferHandleAndGetBindings(&b, cmd.DstBuffer)
 		// Be conservative here. Without tracking all the memory ranges and
 		// calculating the memory according to the copy region, we cannot assume
 		// this command overwrites the data. So it is labelled as 'modify' to
 		// kept the previous writes
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 			dstBindings, emptyMemoryBindings)
 
 	case *VkCmdBindVertexBuffers:
-		count := a.BindingCount
-		buffers := a.PBuffers.Slice(0, uint64(count), l)
+		count := cmd.BindingCount
+		buffers := cmd.PBuffers.Slice(0, uint64(count), l)
 		for i := uint64(0); i < uint64(count); i++ {
-			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
+			buffer := buffers.Index(i, l).Read(ctx, cmd, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+			recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
@@ -1102,12 +1101,12 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateCmdBindVertexBuffers:
-		count := a.BindingCount
-		buffers := a.PBuffers.Slice(0, uint64(count), l)
+		count := cmd.BindingCount
+		buffers := cmd.PBuffers.Slice(0, uint64(count), l)
 		for i := uint64(0); i < uint64(count); i++ {
-			buffer := buffers.Index(i, l).Read(ctx, a, s, nil)
+			buffer := buffers.Index(i, l).Read(ctx, cmd, s, nil)
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+			recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 				// As the LastBoundQueue of the buffer object has will change, so it is
 				// a 'modify' instead of a 'read'
 				addModify(b, g, vulkanStateKey(buffer))
@@ -1117,9 +1116,9 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkCmdBindIndexBuffer:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
@@ -1128,9 +1127,9 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		})
 
 	case *RecreateCmdBindIndexBuffer:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 			// As the LastBoundQueue of the buffer object has will change, so it is
 			// a 'modify' instead of a 'read'
 			addModify(b, g, vulkanStateKey(buffer))
@@ -1139,61 +1138,61 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		})
 
 	case *VkCmdDraw:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDraw:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDrawIndexed:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDrawIndexed:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDrawIndirect:
-		indirectBuf := a.Buffer
+		indirectBuf := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDrawIndirect:
-		indirectBuf := a.Buffer
+		indirectBuf := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdDrawIndexedIndirect:
-		indirectBuf := a.Buffer
+		indirectBuf := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDrawIndexedIndirect:
-		indirectBuf := a.Buffer
+		indirectBuf := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, indirectBuf)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdDispatch:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdDispatch:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdDispatchIndirect:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *RecreateCmdDispatchIndirect:
-		buffer := a.Buffer
+		buffer := cmd.Buffer
 		bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-		recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+		recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 			bufferBindings, emptyMemoryBindings, emptyMemoryBindings)
 
 	case *VkCmdBeginRenderPass:
-		beginInfo := a.PRenderPassBegin.Read(ctx, a, s, nil)
+		beginInfo := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil)
 		framebuffer := beginInfo.Framebuffer
 		addRead(&b, g, vulkanStateKey(framebuffer))
 		renderpass := beginInfo.RenderPass
@@ -1218,19 +1217,19 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 						(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the loadOp is not LOAD, and the storeOp is not DONT_CARE, the
 						// render target attachment's data should be overwritten later.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 							emptyMemoryBindings, emptyMemoryBindings, imgBindings)
 					} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
 						(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the loadOp is LOAD, and the storeOp is not DONT_CARE, the
 						// render target attachment should be 'modified'.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 							emptyMemoryBindings, imgBindings, emptyMemoryBindings)
 					} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
 						(storeOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the storeOp is DONT_CARE, and the loadOp is LOAD, the render target
 						// attachment should be 'read'.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer, imgBindings,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, imgBindings,
 							emptyMemoryBindings, emptyMemoryBindings)
 					}
 					// If the LoadOp is not LOAD and the storeOp is DONT_CARE, no operation
@@ -1243,7 +1242,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 
 	case *RecreateCmdBeginRenderPass:
 
-		beginInfo := a.PRenderPassBegin.Read(ctx, a, s, nil)
+		beginInfo := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil)
 		framebuffer := beginInfo.Framebuffer
 		addRead(&b, g, vulkanStateKey(framebuffer))
 		renderpass := beginInfo.RenderPass
@@ -1268,19 +1267,19 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 						(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the loadOp is not LOAD, and the storeOp is not DONT_CARE, the
 						// render target attachment's data should be overwritten later.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 							emptyMemoryBindings, emptyMemoryBindings, imgBindings)
 					} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
 						(storeOp != VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the loadOp is LOAD, and the storeOp is not DONT_CARE, the
 						// render target attachment should be 'modified'.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer,
 							emptyMemoryBindings, imgBindings, emptyMemoryBindings)
 					} else if (loadOp == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD) &&
 						(storeOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE) {
 						// If the storeOp is DONT_CARE, and the loadOp is LOAD, the render target
 						// attachment should be 'read'.
-						recordTouchingMemoryBindingsData(&b, a.CommandBuffer, imgBindings,
+						recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, imgBindings,
 							emptyMemoryBindings, emptyMemoryBindings)
 					}
 					// If the LoadOp is not LOAD and the storeOp is DONT_CARE, no operation
@@ -1292,53 +1291,53 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkCmdEndRenderPass:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdEndRenderPass:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdNextSubpass:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdNextSubpass:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdPushConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdPushConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetLineWidth:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetLineWidth:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetScissor:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetScissor:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetViewport:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetViewport:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdBindDescriptorSets:
-		descriptorSetCount := a.DescriptorSetCount
-		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
+		descriptorSetCount := cmd.DescriptorSetCount
+		descriptorSets := cmd.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
 		for i := uint32(0); i < descriptorSetCount; i++ {
-			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, a, s, nil)
+			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			if GetState(s).DescriptorSets.Contains(descriptorSet) {
 				for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
 					for _, bufferInfo := range descBinding.BufferBinding {
 						buf := bufferInfo.Buffer
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							// Descriptors might be modified
 							addModify(b, g, vulkanStateKey(buf))
 							// Advance the read/modify behavior of the descriptors from
@@ -1350,7 +1349,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					for _, imageInfo := range descBinding.ImageBinding {
 						view := imageInfo.ImageView
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(view))
 							if GetState(s).ImageViews.Contains(view) {
 								img := GetState(s).ImageViews.Get(view).Image.VulkanHandle
@@ -1363,7 +1362,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					}
 					for _, bufferView := range descBinding.BufferViewBindings {
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(bufferView))
 							if GetState(s).BufferViews.Contains(bufferView) {
 								buf := GetState(s).BufferViews.Get(bufferView).Buffer.VulkanHandle
@@ -1379,17 +1378,17 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *RecreateCmdBindDescriptorSets:
-		descriptorSetCount := a.DescriptorSetCount
-		descriptorSets := a.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
+		descriptorSetCount := cmd.DescriptorSetCount
+		descriptorSets := cmd.PDescriptorSets.Slice(0, uint64(descriptorSetCount), l)
 		for i := uint32(0); i < descriptorSetCount; i++ {
-			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, a, s, nil)
+			descriptorSet := descriptorSets.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			addRead(&b, g, vulkanStateKey(descriptorSet))
 			if GetState(s).DescriptorSets.Contains(descriptorSet) {
 				for _, descBinding := range GetState(s).DescriptorSets.Get(descriptorSet).Bindings {
 					for _, bufferInfo := range descBinding.BufferBinding {
 						buf := bufferInfo.Buffer
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							// Descriptors might be modified
 							addModify(b, g, vulkanStateKey(buf))
 						})
@@ -1397,13 +1396,13 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					for _, imageInfo := range descBinding.ImageBinding {
 						view := imageInfo.ImageView
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(view))
 						})
 					}
 					for _, bufferView := range descBinding.BufferViewBindings {
 
-						recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+						recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
 							addRead(b, g, vulkanStateKey(bufferView))
 						})
 					}
@@ -1412,207 +1411,207 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		}
 
 	case *VkBeginCommandBuffer:
-		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(cmd.CommandBuffer)
 		addRead(&b, g, cmdbuf.handle)
 		addWrite(&b, g, cmdbuf.records)
 
 	case *VkEndCommandBuffer:
-		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(cmd.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *RecreateAndBeginCommandBuffer:
-		cmdbuf := p.getOrCreateCommandBuffer(a.PCommandBuffer.Read(ctx, a, s, nil))
+		cmdbuf := p.getOrCreateCommandBuffer(cmd.PCommandBuffer.Read(ctx, cmd, s, nil))
 		addWrite(&b, g, cmdbuf)
 
 	case *RecreateEndCommandBuffer:
-		cmdbuf := p.getOrCreateCommandBuffer(a.CommandBuffer)
+		cmdbuf := p.getOrCreateCommandBuffer(cmd.CommandBuffer)
 		addModify(&b, g, cmdbuf)
 
 	case *VkCmdPipelineBarrier:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
-		bufferBarrierCount := a.BufferMemoryBarrierCount
-		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
-		imageBarrierCount := a.ImageMemoryBarrierCount
-		imageBarriers := a.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		bufferBarrierCount := cmd.BufferMemoryBarrierCount
+		bufferBarriers := cmd.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
+		imageBarrierCount := cmd.ImageMemoryBarrierCount
+		imageBarriers := cmd.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
 		for i := uint64(0); i < uint64(bufferBarrierCount); i++ {
-			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, a, s, nil)
+			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, cmd, s, nil)
 			buffer := bufferBarrier.Buffer
 			// Getting the bindings for the whole buffer is conservative, as the
 			// barrier may only affect a region of the buffer specified by offset
 			// and size.
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 				bufferBindings, emptyMemoryBindings)
 		}
 		for i := uint64(0); i < uint64(imageBarrierCount); i++ {
-			imageBarrier := imageBarriers.Index(i, l).Read(ctx, a, s, nil)
+			imageBarrier := imageBarriers.Index(i, l).Read(ctx, cmd, s, nil)
 			image := imageBarrier.Image
 			// Getting the bindings for the whole image is conservative, as the
 			// barrier may only affect a region of the image specified by
 			// subresourceRange.
 			imageBindings := readImageHandleAndGetBindings(&b, image)
-			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 				imageBindings, emptyMemoryBindings)
 		}
 
 	case *RecreateCmdPipelineBarrier:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
-		bufferBarrierCount := a.BufferMemoryBarrierCount
-		bufferBarriers := a.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
-		imageBarrierCount := a.ImageMemoryBarrierCount
-		imageBarriers := a.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		bufferBarrierCount := cmd.BufferMemoryBarrierCount
+		bufferBarriers := cmd.PBufferMemoryBarriers.Slice(0, uint64(bufferBarrierCount), l)
+		imageBarrierCount := cmd.ImageMemoryBarrierCount
+		imageBarriers := cmd.PImageMemoryBarriers.Slice(0, uint64(imageBarrierCount), l)
 		for i := uint64(0); i < uint64(bufferBarrierCount); i++ {
-			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, a, s, nil)
+			bufferBarrier := bufferBarriers.Index(i, l).Read(ctx, cmd, s, nil)
 			buffer := bufferBarrier.Buffer
 			// Getting the bindings for the whole buffer is conservative, as the
 			// barrier may only affect a region of the buffer specified by offset
 			// and size.
 			bufferBindings := readBufferHandleAndGetBindings(&b, buffer)
-			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 				bufferBindings, emptyMemoryBindings)
 		}
 		for i := uint64(0); i < uint64(imageBarrierCount); i++ {
-			imageBarrier := imageBarriers.Index(i, l).Read(ctx, a, s, nil)
+			imageBarrier := imageBarriers.Index(i, l).Read(ctx, cmd, s, nil)
 			image := imageBarrier.Image
 			// Getting the bindings for the whole image is conservative, as the
 			// barrier may only affect a region of the image specified by
 			// subresourceRange.
 			imageBindings := readImageHandleAndGetBindings(&b, image)
-			recordTouchingMemoryBindingsData(&b, a.CommandBuffer, emptyMemoryBindings,
+			recordTouchingMemoryBindingsData(&b, cmd.CommandBuffer, emptyMemoryBindings,
 				imageBindings, emptyMemoryBindings)
 		}
 
 	case *VkCmdBindPipeline:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
-			addRead(b, g, vulkanStateKey(a.Pipeline))
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+			addRead(b, g, vulkanStateKey(cmd.Pipeline))
 		})
-		addRead(&b, g, vulkanStateKey(a.Pipeline))
+		addRead(&b, g, vulkanStateKey(cmd.Pipeline))
 
 	case *RecreateCmdBindPipeline:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
-			addRead(b, g, vulkanStateKey(a.Pipeline))
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {
+			addRead(b, g, vulkanStateKey(cmd.Pipeline))
 		})
-		addRead(&b, g, vulkanStateKey(a.Pipeline))
+		addRead(&b, g, vulkanStateKey(cmd.Pipeline))
 
 	case *VkCmdBeginQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdBeginQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdEndQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdEndQuery:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdResetQueryPool:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdResetQueryPool:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdWriteTimestamp:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdWriteTimestamp:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdClearAttachments:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdClearAttachments:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the case that the attachment is fully cleared.
 
 	case *VkCmdClearColorImage:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *RecreateCmdClearColorImage:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the color image
 
 	case *VkCmdClearDepthStencilImage:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *RecreateCmdClearDepthStencilImage:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the depth/stencil image
 
 	case *VkCmdSetDepthBias:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetDepthBias:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetDepthBounds:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetDepthBounds:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetBlendConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetBlendConstants:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdResetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdResetEvent:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdWaitEvents:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *RecreateCmdWaitEvents:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 		//TODO: handle the image and buffer memory barriers?
 
 	case *VkCmdSetStencilCompareMask:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilCompareMask:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetStencilWriteMask:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilWriteMask:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdSetStencilReference:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *RecreateCmdSetStencilReference:
-		recordCommand(&b, a.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
+		recordCommand(&b, cmd.CommandBuffer, func(b *dependencygraph.AtomBehaviour) {})
 
 	case *VkCmdExecuteCommands:
-		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
-		for i := uint32(0); i < a.CommandBufferCount; i++ {
-			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
+		secondaryCmdBufs := cmd.PCommandBuffers.Slice(0, uint64(cmd.CommandBufferCount), l)
+		for i := uint32(0); i < cmd.CommandBufferCount; i++ {
+			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordSecondaryCommandBuffer(&b, a.CommandBuffer, scb)
+			recordSecondaryCommandBuffer(&b, cmd.CommandBuffer, scb)
 		}
 
 	case *RecreateCmdExecuteCommands:
-		secondaryCmdBufs := a.PCommandBuffers.Slice(0, uint64(a.CommandBufferCount), l)
-		for i := uint32(0); i < a.CommandBufferCount; i++ {
-			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, a, s, nil)
+		secondaryCmdBufs := cmd.PCommandBuffers.Slice(0, uint64(cmd.CommandBufferCount), l)
+		for i := uint32(0); i < cmd.CommandBufferCount; i++ {
+			secondaryCmdBuf := secondaryCmdBufs.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			scb := p.getOrCreateCommandBuffer(secondaryCmdBuf)
 			addRead(&b, g, scb)
-			recordSecondaryCommandBuffer(&b, a.CommandBuffer, scb)
+			recordSecondaryCommandBuffer(&b, cmd.CommandBuffer, scb)
 		}
 
 	// CommandBuffer commands execution triggering commands:
@@ -1621,21 +1620,21 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		b.KeepAlive = true
 
 		// handle queue
-		addModify(&b, g, vulkanStateKey(a.Queue))
+		addModify(&b, g, vulkanStateKey(cmd.Queue))
 
 		// handle command buffers
-		submitCount := a.SubmitCount
-		submits := a.PSubmits.Slice(0, uint64(submitCount), l)
-		p.submissions[a] = []submitInfo{}
+		submitCount := cmd.SubmitCount
+		submits := cmd.PSubmits.Slice(0, uint64(submitCount), l)
+		p.submissions[cmd] = []submitInfo{}
 		for i := uint32(0); i < submitCount; i++ {
-			p.submissions[a] = append(p.submissions[a], submitInfo{})
-			submit := submits.Index(uint64(i), l).Read(ctx, a, s, nil)
+			p.submissions[cmd] = append(p.submissions[cmd], submitInfo{})
+			submit := submits.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 			commandBufferCount := submit.CommandBufferCount
 			commandBuffers := submit.PCommandBuffers.Slice(0, uint64(commandBufferCount), l)
 			for j := uint32(0); j < submit.CommandBufferCount; j++ {
-				vkCmdBuf := commandBuffers.Index(uint64(j), l).Read(ctx, a, s, nil)
+				vkCmdBuf := commandBuffers.Index(uint64(j), l).Read(ctx, cmd, s, nil)
 				cb := p.getOrCreateCommandBuffer(vkCmdBuf)
-				p.submissions[a][i].commandBuffers = append(p.submissions[a][i].commandBuffers, cb)
+				p.submissions[cmd][i].commandBuffers = append(p.submissions[cmd][i].commandBuffers, cb)
 				// All the commands that are submitted will not be dropped.
 				addRead(&b, g, cb)
 			}
@@ -1650,8 +1649,8 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 
 	// Keep-alive commands:
 	case *VkQueuePresentKHR:
-		addRead(&b, g, vulkanStateKey(a.Queue))
-		g.SetRoot(vulkanStateKey(a.Queue))
+		addRead(&b, g, vulkanStateKey(cmd.Queue))
+		g.SetRoot(vulkanStateKey(cmd.Queue))
 		b.KeepAlive = true
 
 	case *VkCreateInstance,
@@ -1761,7 +1760,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		b.KeepAlive = true
 
 	default:
-		log.E(ctx, "Not handled atom: %v", a)
+		log.E(ctx, "Command not handled: %v", cmd)
 		b.Aborted = true
 	}
 	return b
@@ -1790,11 +1789,11 @@ func (p *VulkanDependencyGraphBehaviourProvider) rollOutBehavioursForExecutedCom
 
 // Traverse through the given VkWriteDescriptorSet slice, add behaviors to
 // |b| according to the descriptor type.
-func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, ctx context.Context, a atom.Atom, s *api.State) error {
+func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.AtomBehaviour, g *dependencygraph.DependencyGraph, ctx context.Context, cmd api.Cmd, s *api.State) error {
 	l := s.MemoryLayout
 	writeCount := writes.count
 	for i := uint64(0); i < writeCount; i++ {
-		write := writes.Index(uint64(i), l).Read(ctx, a, s, nil)
+		write := writes.Index(uint64(i), l).Read(ctx, cmd, s, nil)
 		if write.DescriptorCount > 0 {
 			// handle the target descriptor set
 			b.Modify(g, vulkanStateKey(write.DstSet))
@@ -1806,7 +1805,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.A
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 				imageInfos := write.PImageInfo.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < imageInfos.count; j++ {
-					imageInfo := imageInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
+					imageInfo := imageInfos.Index(uint64(j), l).Read(ctx, cmd, s, nil)
 					sampler := imageInfo.Sampler
 					imageView := imageInfo.ImageView
 					b.Read(g, vulkanStateKey(sampler))
@@ -1818,7 +1817,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.A
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 				bufferInfos := write.PBufferInfo.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < bufferInfos.count; j++ {
-					bufferInfo := bufferInfos.Index(uint64(j), l).Read(ctx, a, s, nil)
+					bufferInfo := bufferInfos.Index(uint64(j), l).Read(ctx, cmd, s, nil)
 					buffer := bufferInfo.Buffer
 					b.Read(g, vulkanStateKey(buffer))
 				}
@@ -1826,7 +1825,7 @@ func processDescriptorWrites(writes VkWriteDescriptorSetˢ, b *dependencygraph.A
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 				bufferViews := write.PTexelBufferView.Slice(0, uint64(write.DescriptorCount), l)
 				for j := uint64(0); j < bufferViews.count; j++ {
-					bufferView := bufferViews.Index(uint64(j), l).Read(ctx, a, s, nil)
+					bufferView := bufferViews.Index(uint64(j), l).Read(ctx, cmd, s, nil)
 					b.Read(g, vulkanStateKey(bufferView))
 				}
 			default:
