@@ -4607,6 +4607,19 @@ cmd VkResult vkResetDescriptorPool(
     VkDevice                   device,
     VkDescriptorPool           descriptorPool,
     VkDescriptorPoolResetFlags flags) {
+  // We need to iterate through all the descriptor sets in the descriptor pool
+  // and remove them from the pool. The following line will makes a copy of
+  // the map in the generated C++ code, to prevent us from deleting an item
+  // while iterating the map. However, in the generated Go code, this does not
+  // make a copy of the map but a reference. But according to the examples in
+  // Effective Go (https://golang.org/doc/effective_go.html#for), deleting
+  // while iterating is safe for Go. So the code here should behave as we
+  // expect.
+  sets := DescriptorPools[descriptorPool].DescriptorSets
+  for _, s, _ in sets {
+    delete(DescriptorSets, s)
+    delete(DescriptorPools[descriptorPool].DescriptorSets, s)
+  }
   return ?
 }
 
@@ -4663,7 +4676,9 @@ cmd VkResult vkAllocateDescriptorSets(
     handle := ?
     sets[i] = handle
     object := new!DescriptorSetObject(device, handle,
-      DescriptorPools[info.descriptorPool])
+      info.descriptorPool)
+    pool := DescriptorPools[info.descriptorPool]
+    pool.DescriptorSets[handle] = object
     object.Layout = DescriptorSetLayouts[layouts[i]]
     for j in (0 .. object.Layout.MaximumBinding + 1) {
       if j in object.Layout.Bindings {
@@ -4711,6 +4726,8 @@ cmd VkResult vkFreeDescriptorSets(
     const VkDescriptorSet* pDescriptorSets) {
   sets := pDescriptorSets[0:descriptorSetCount]
   for i in (0 .. descriptorSetCount) {
+    pool := DescriptorPools[DescriptorSets[sets[i]].DescriptorPool]
+    delete(pool.DescriptorSets, sets[i])
     delete(DescriptorSets, sets[i])
   }
 
@@ -9105,7 +9122,7 @@ enum RecordingState {
 @internal class DescriptorSetObject {
   @unused VkDevice                 Device
   @unused VkDescriptorSet          VulkanHandle
-  @unused ref!DescriptorPoolObject DescriptorPool
+  @unused VkDescriptorPool         DescriptorPool
   // Map from a binding number to its bound array of buffers.
   map!(u32, DescriptorBinding)  Bindings
   ref!DescriptorSetLayoutObject Layout
@@ -9132,6 +9149,7 @@ enum RecordingState {
   @unused VkDescriptorPoolCreateFlags     Flags
   @unused u32                             MaxSets
   @unused map!(u32, VkDescriptorPoolSize) Sizes
+  @unused map!(VkDescriptorSet, ref!DescriptorSetObject) DescriptorSets
 }
 
 @internal class FenceObject {

@@ -1561,7 +1561,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         allocate_info.msType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocate_info.mdescriptorSetCount = 1;
         for (auto& descriptorSet: DescriptorSets) {
-            allocate_info.mdescriptorPool = descriptorSet.second->mDescriptorPool->mVulkanHandle;
+            allocate_info.mdescriptorPool = descriptorSet.second->mDescriptorPool;
             allocate_info.mpSetLayouts = &descriptorSet.second->mLayout->mVulkanHandle;
 
             std::deque<VkDescriptorImageInfo> image_infos;
