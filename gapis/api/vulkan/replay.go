@@ -89,6 +89,11 @@ type deadCodeEliminationInfo struct {
 	deadCodeElimination *transform.DeadCodeElimination
 }
 
+type DCEInfo struct {
+	ft  *dependencygraph.Footprint
+	dce *transform.DCE
+}
+
 // color/depth/stencil attachment bit.
 func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	hasBit := func(flag VkImageUsageFlags, bit VkImageUsageFlagBits) bool {
@@ -489,14 +494,14 @@ func (a API) Replay(
 	}
 
 	// Prepare data for dead-code-elimination
-	dceInfo := deadCodeEliminationInfo{}
+	dceInfo := DCEInfo{}
 	if !config.DisableDeadCodeElimination {
-		dg, err := dependencygraph.GetDependencyGraph(ctx)
+		ft, err := dependencygraph.GetFootprint(ctx)
 		if err != nil {
 			return err
 		}
-		dceInfo.dependencyGraph = dg
-		dceInfo.deadCodeElimination = transform.NewDeadCodeElimination(ctx, dceInfo.dependencyGraph)
+		dceInfo.ft = ft
+		dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
 	}
 
 	wire := false
@@ -525,8 +530,7 @@ func (a API) Replay(
 			}
 
 			if !config.DisableDeadCodeElimination {
-				dceInfo.deadCodeElimination.Request(after)
-
+				dceInfo.dce.Request(ctx, api.SubCmdIdx{req.after[0]})
 			}
 
 			cfg := cfg.(drawConfig)
@@ -551,7 +555,7 @@ func (a API) Replay(
 	// Use the dead code elimination pass
 	if !config.DisableDeadCodeElimination {
 		cmds = []api.Cmd{}
-		transforms.Prepend(dceInfo.deadCodeElimination)
+		transforms.Prepend(dceInfo.dce)
 	}
 
 	if wire {

@@ -195,11 +195,6 @@ func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Termin
 	return NewVulkanTerminator(ctx, c)
 }
 
-// GetDependencyGraphBehaviourProvider implements dependencygraph.DependencyGraphBehaviourProvider interface
-func (API) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygraph.BehaviourProvider {
-	return newVulkanDependencyGraphBehaviourProvider()
-}
-
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 	s *api.State, preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
 	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
@@ -218,4 +213,9 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 		return err
 	}
 	return nil
+}
+
+// FootprintBuilder implements dependencygraph.FootprintBuilderAPI interface
+func (API) FootprintBuilder(ctx context.Context) dependencygraph.FootprintBuilder {
+	return newVulkanFootprintBuilder()
 }

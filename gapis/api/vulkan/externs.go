@@ -283,6 +283,46 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 		mem.Data.Slice(dstStart+r.Base, dstStart+r.Base+r.Size, l).Copy(
 			e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)
 	}
+
+	// if e.cmd.Extras() == nil || e.cmd.Extras().Observations() == nil {
+	// return
+	// }
+	// found := false
+	// for _, r := range e.cmd.Extras().Observations().Reads {
+	// if r.Range.Overlaps(absSrcMemRng) {
+	// readBase := U8ᵖ{r.Range.Base, mem.MappedLocation.Pool()}
+	// readBase.Slice(0, r.Range.Size, l).OnRead(e.ctx, e.cmd, e.s, e.b)
+	// intersect := r.Range.Intersect(absSrcMemRng)
+	// offset := intersect.Base - absSrcStart
+	// mem.Data.Slice(dstStart+offset, dstStart+offset+intersect.Size, l).Copy(
+	// e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+offset, srcStart+offset+intersect.Size, l), e.cmd, e.s, e.b)
+	// found = true
+	// }
+	// }
+	// if found == false {
+	// log.W(e.ctx, "Observation not found! cmd: %v, memory: %v, offset_in_mapped: %v, read_size: %v",
+	// e.cmd, memory_handle, offset_in_mapped, read_size)
+	// }
+	// return
+
+	// srcEnd := offset_in_mapped + uint64(read_size)
+	// //TODO: Add the PageSize to the architecture header of trace.		 +	absSrcStart := mem.MappedLocation.Address() + offset_in_mapped
+	// // Here we relay on the underlying optimization to avoid creating duplicated slice.		 +	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(read_size)}
+	// // A larger copy size makes a fewer number of call to read() and results into a faster replay.
+	// // But a large copy size generates more data to be stored in the server and uses too much memory.
+	// // A smaller copy size saves memory, but slow down the replay speed.
+	// // By far, spliting the data into PageSize chunks seems like the best option.
+	// copySize := uint64(4196)
+	// for srcStart < srcEnd {
+	// if srcStart+copySize > srcEnd {
+	// copySize = srcEnd - srcStart
+	// }
+	// _ = l
+	// mem.Data.Slice(dstStart, dstStart+copySize, l).Copy(
+	// e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart, srcStart+copySize, l), e.cmd, e.s, e.b)
+	// srcStart += copySize
+	// dstStart += copySize
+	// }
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 
