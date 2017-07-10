@@ -27,6 +27,7 @@ if(NOT EXISTS ${web_content})
     file(WRITE ${web_content} "
 #The set of auto generated embed rules
 embed(
+  WEB
 ")
     foreach(entry ${all_content})
         file(APPEND ${web_content} "  \"${entry}\"

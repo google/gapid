@@ -34,7 +34,7 @@ func (s static) Open(name string) (http.File, error) {
 	fullname := string(s) + name
 	body, found := embedded[fullname]
 	f := &staticFile{name: filepath.Base(name)}
-	if strings.HasSuffix(f.name, "/") {
+	if strings.HasSuffix(f.name, string(filepath.Separator)) {
 		return f, nil
 	}
 	if !found {

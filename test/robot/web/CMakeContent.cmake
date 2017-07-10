@@ -15,6 +15,7 @@
 
 #The set of auto generated embed rules
 embed(
+  WEB
   "www/components/components.js"
   "www/components/gapid-artifacts.html"
   "www/components/gapid-artifacts.js"
