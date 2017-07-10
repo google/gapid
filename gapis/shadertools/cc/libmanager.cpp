@@ -238,8 +238,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   }
 
   if (!err_msg.empty()) {
-    set_error_msg(result, "Failed to parse modified source code:\n" + err_msg +
-                          "\nModified source code:\n" + result->source_code);
+    set_error_msg(result, "Failed to parse modified source code:\n" + err_msg);
     return result;
   }
 

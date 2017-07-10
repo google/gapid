@@ -418,11 +418,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					IsVertexShader:   shader.Type == GLenum_GL_VERTEX_SHADER,
 				}
 
-				res := shadertools.ConvertGlsl(shader.Source, &opts)
-				if !res.Ok {
-					log.E(ctx, "Failed to translate GLSL:\n%s\nSource:%s\n", res.Message, shader.Source)
+				res, err := shadertools.ConvertGlsl(shader.Source, &opts)
+				if err != nil {
+					log.E(ctx, "glShaderSource() compat: %v", err)
 					return
 				}
+
 				src = res.SourceCode
 			} else {
 				lang := ast.LangVertexShader
