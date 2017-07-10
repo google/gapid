@@ -17,6 +17,7 @@ package record
 import (
 	"context"
 	"net/url"
+	"runtime"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
@@ -44,10 +45,17 @@ func NewShelf(ctx context.Context, shelfURL string) (Shelf, error) {
 	switch location.Scheme {
 	case "", "file":
 		if location.Host != "" {
-			return nil, log.Err(ctx, nil, "Host not supported for file shelves")
+			return nil, log.Errf(ctx, nil, "Host not supported for file shelves")
 		}
 		if location.Path == "" {
 			return nil, log.Err(ctx, nil, "Path must be specified for file shelves")
+		}
+		if runtime.GOOS == "windows" {
+			if l := len(location.Path); l > 2 && location.Path[0] == '/' && location.Path[2] == ':' {
+				// windows file urls have an extra slash before the volume label that needs to be removed
+				// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
+				location.Path = location.Path[1:]
+			}
 		}
 		log.I(ctx, "Build a file record shelf on %s", location.Path)
 		return NewFileShelf(ctx, file.Abs(location.Path))

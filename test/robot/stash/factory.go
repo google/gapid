@@ -17,6 +17,7 @@ package stash
 import (
 	"context"
 	"net/url"
+	"runtime"
 
 	"github.com/google/gapid/core/log"
 )
@@ -47,6 +48,16 @@ func Dial(ctx context.Context, address string) (*Client, error) {
 			location.Scheme = "memory"
 		default:
 			location.Scheme = "file"
+		}
+	}
+	if location.Scheme == "file" {
+		if runtime.GOOS == "windows" {
+			if l := len(location.Path); l > 2 && location.Path[0] == '/' && location.Path[2] == ':' {
+				// windows file urls have an extra slash before the volume label that needs to be remove
+				// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416d
+				location.Path = location.Path[1:]
+				log.I(ctx, "location of new file stash is %v", location.Path)
+			}
 		}
 	}
 	builder, found := schemeMap[location.Scheme]
