@@ -91,6 +91,8 @@
 ¶
   #include "core/cc/log.h"
 ¶
+  #include "gapis/api/gfxtrace.pb.h"
+¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
 ¶
@@ -184,10 +186,15 @@
           §) {
           GAPID_ERROR("Application called unsupported function {{$name}}");
           return{{if not (IsVoid $.Return.Type)}} {{Template "C++.Null" (TypeOf $.Return)}}{{end}};
-        }
-¶
+        }¶
       {{end}}
 
+      observer->encode(cmd::{{.Name}}{§
+      {{range $i, $p := $.CallParameters}}
+        {{if $i}}, {{end}}{{$p.Name}}§
+      {{end}}
+      });
+¶
       {{if not (IsVoid $.Return.Type)}}
         {{Template "C++.ReturnType" $}} result = {{Template "C++.Null" (TypeOf $.Return)}};
       {{end}}
@@ -202,7 +209,7 @@
           onPreEndOfFrame(observer, {{Global "ApiIndex"}});
         {{end}}
 
-        observer->invoke();
+        observer->observePending();
 
         {{if (GetAnnotation $ "blocking")}}
           unlock();
@@ -221,6 +228,13 @@
         {{if (GetAnnotation $ "blocking")}}
           lock(observer, "Tracing blocking command: {{$name}} locks again.");
         {{end}}
+¶
+        {{if IsVoid $.Return.Type}}
+          observer->encodeAndDelete(new api::CmdCall);
+        {{else}}
+          observer->encode(cmd::{{.Name}}Call{result});
+        {{end}}
+¶
         onPostFence(observer);
       };
 ¶
@@ -243,22 +257,17 @@
         auto counter = new atom_pb::CommandCounter();
         counter->set_counteratbegin(counter_at_begin);
         counter->set_counteratend(counter_at_end);
-        observer->addExtra(counter);
+        observer->encodeAndDelete(counter);
       }
       mExpectedNextCommandStartCounterValue = counter_at_end + 1;
-¶
-      auto c = cmd::{{.Name}}{§
-      {{range $i, $p := $.FullParameters}}
-        {{if $i}}, {{end}}{{$p.Name}}§
-      {{end}}
-      };
-      observer->encodeAndDeleteCommand(c.toProto());
 
       {{if GetAnnotation $ "DrawCall"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
       {{if GetAnnotation $ "StartOfFrame"}}onPostStartOfFrame(observer);{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
-¶
-      {{if not (IsVoid $.Return.Type)}}
+
+      observer->observePending();
+
+      {{if not (IsVoid $.Return.Type)}}¶
         return result;
       {{end}}
     }

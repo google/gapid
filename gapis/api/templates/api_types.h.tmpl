@@ -286,12 +286,18 @@
     struct {{$name}} {
       ::google::protobuf::Message* toProto() const;
       ¶
-      {{range $p := $.FullParameters}}
+      {{range $p := $.CallParameters}}
         {{$ty := TypeOf $p | Underlying}}
         {{if IsString $ty}}const char* {{$p.Name}};
         {{else           }}{{Template "C++.Type" $p}} {{$p.Name}};
         {{end            }}
       {{end}}
     };
+    {{if not (IsVoid $.Return.Type)}}¶
+      struct {{$name}}Call {
+        ::google::protobuf::Message* toProto() const;
+        {{Template "C++.Type" $.Return.Type}} result;
+      };
+    {{end}}
   {{end}}
 {{end}}

@@ -45,12 +45,19 @@
   {{Global "ProtoID" 0}}
   {{if not (GetAnnotation $ "pfn")}}
     ¶
-    // {{$name}} is the structure for serializing the api call {{$.Name}}¶
+    // {{$name}} is the structure for serializing the parameters to the api command {{$.Name}}¶
     message {{$name}} {»¶
-      {{range $p := $.FullParameters}}
+      {{range $p := $.CallParameters}}
         {{Template "Proto.Entry" "Param" $p "Type" (TypeOf $p)}}
       {{end}}
     «}¶
+¶
+    {{if not (IsVoid $.Return.Type)}}
+      // {{$name}}Call is the structure for serializing the call of the api command {{$.Name}}¶
+      message {{$name}}Call {»¶
+        {{Template "Proto.Entry" "Param" $.Return "Type" (TypeOf $.Return)}}
+      «}¶
+    {{end}}
   {{end}}
 {{end}}
 

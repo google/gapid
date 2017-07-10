@@ -334,8 +334,7 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
 
     std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
 
-    // Store the StaticContextState as an extra.
-    observer->addExtra(out->toProto());
+    observer->encodeAndDelete(out->toProto());
 
     return out;
 }
@@ -402,7 +401,7 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     ));
 
     // Store the DynamicContextState as an extra.
-    observer->addExtra(out->toProto());
+    observer->encodeAndDelete(out->toProto());
 
     return out;
 }
@@ -595,7 +594,7 @@ void Spy::onPostFence(CallObserver* observer) {
         auto es = new gles_pb::ErrorState();
         es->set_tracedriversglerror(traceErr);
         es->set_interceptorsglerror(observer->getError());
-        observer->addExtra(es);
+        observer->encodeAndDelete(es);
     }
 }
 
@@ -614,7 +613,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
-            observer->encodeAndDeleteCommand(new gles_pb::glGetError());
+            observer->encodeAndDelete(new gles_pb::glGetError());
             GLenum_Error err = fakeGlError;
             fakeGlError = 0;
             return err;
@@ -626,7 +625,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
 void Spy::onThreadSwitched(CallObserver* observer, uint64_t threadID) {
     auto st = new core_pb::switchThread();
     st->set_threadid(threadID);
-    observer->encodeAndDeleteCommand(st);
+    observer->encodeAndDelete(st);
 }
 
 #if 0 // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED

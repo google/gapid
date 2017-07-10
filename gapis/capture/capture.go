@@ -184,7 +184,7 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		return err
 	}
 
-	writeAtom := api.CmdToProto(func(m proto.Message) { writeMsg(ctx, m) })
+	writeAtom := api.CmdToProto(func(m proto.Message) error { return writeMsg(ctx, m) })
 
 	// IDs seen, so we can avoid encoding the same resource data multiple times.
 	seen := map[id.ID]bool{}
@@ -301,7 +301,7 @@ func newBuilder() *builder {
 	}
 }
 
-func (b *builder) addCmd(cmd api.Cmd) {
+func (b *builder) addCmd(cmd api.Cmd) error {
 	if api := cmd.API(); api != nil {
 		apiID := api.ID()
 		if _, found := b.seenAPIs[apiID]; !found {
@@ -324,6 +324,7 @@ func (b *builder) addCmd(cmd api.Cmd) {
 		}
 	}
 	b.cmds = append(b.cmds, cmd)
+	return nil
 }
 
 func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {

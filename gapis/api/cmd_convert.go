@@ -16,33 +16,58 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api/core/core_pb"
-	"github.com/google/gapid/gapis/atom/atom_pb"
 )
+
+// CmdWithResult is the optional interface implemented by commands that have
+// a result value.
+type CmdWithResult interface {
+	Cmd
+
+	// GetResult returns the result value for this command.
+	GetResult() proto.Message
+
+	// SetResult changes the result value.
+	SetResult(proto.Message) error
+}
+
+func cmdCallFor(cmd Cmd) proto.Message {
+	if cmd, ok := cmd.(CmdWithResult); ok {
+		return cmd.GetResult()
+	}
+	return &CmdCall{}
+}
 
 // ProtoToCmd returns a function that converts all the storage commands it is
 // handed, passing the generated live commands to the handler.
 // You must call this with a nil to flush the final command.
-func ProtoToCmd(handler func(Cmd)) func(context.Context, proto.Message) error {
+func ProtoToCmd(handler func(Cmd) error) func(context.Context, proto.Message) error {
 	var (
-		last         Cmd
-		observations *CmdObservations
-		invoked      bool
-		count        int
+		last    Cmd
+		invoked bool
 	)
 	var threadID uint64
 	return func(ctx context.Context, in proto.Message) error {
-		count++
 		if in == nil {
 			if last != nil {
-				handler(last)
+				if err := handler(last); err != nil {
+					return err
+				}
 			}
 			last = nil
 			return nil
+		}
+
+		if cwr, ok := last.(CmdWithResult); ok {
+			if cwr.SetResult(in) == nil {
+				invoked = true
+				return nil
+			}
 		}
 
 		if in, ok := in.(*core_pb.SwitchThread); ok {
@@ -60,29 +85,28 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, proto.Message) error {
 		switch out := out.(type) {
 		case Cmd:
 			if last != nil {
-				handler(last)
+				if err := handler(last); err != nil {
+					return err
+				}
 			}
 			last = out
 			invoked = false
-			observations = nil
 			out.SetThread(threadID)
 
+		case *CmdCall:
+			invoked = true
+			return nil
+
 		case CmdObservation:
-			if observations == nil {
-				observations = &CmdObservations{}
-				e := last.Extras()
-				if e == nil {
-					return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
-				}
-				*e = append(*e, observations)
+			if last == nil {
+				return fmt.Errorf("Got observation without a command")
 			}
+			observations := last.Extras().GetOrAppendObservations()
 			if !invoked {
 				observations.Reads = append(observations.Reads, out)
 			} else {
 				observations.Writes = append(observations.Writes, out)
 			}
-		case *invokeMarker:
-			invoked = true
 		case CmdExtra:
 			if last == nil {
 				log.W(ctx, "Got %T before first command. Ignoring", out)
@@ -102,18 +126,24 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, proto.Message) error {
 
 // CmdToProto returns a function that converts all the commands it is handed,
 // passing the generated protos to the handler.
-func CmdToProto(handler func(a proto.Message)) func(context.Context, Cmd) error {
+func CmdToProto(handler func(a proto.Message) error) func(context.Context, Cmd) error {
 	var threadID uint64
 	return func(ctx context.Context, in Cmd) error {
 		if in.Thread() != threadID {
 			threadID = in.Thread()
-			handler(&core_pb.SwitchThread{ThreadID: threadID})
+			if err := handler(&core_pb.SwitchThread{ThreadID: threadID}); err != nil {
+				return err
+			}
 		}
 		out, err := protoconv.ToProto(ctx, in)
 		if err != nil {
 			return err
 		}
-		handler(out)
+		if err := handler(out); err != nil {
+			return err
+		}
+
+		handledCall := false
 
 		for _, e := range in.Extras().All() {
 			switch e := e.(type) {
@@ -123,38 +153,40 @@ func CmdToProto(handler func(a proto.Message)) func(context.Context, Cmd) error 
 					if err != nil {
 						return err
 					}
-					handler(p)
+					if err := handler(p); err != nil {
+						return err
+					}
 				}
-				handler(atom_pb.InvokeMarker)
+				if err := handler(cmdCallFor(in)); err != nil {
+					return err
+				}
+				handledCall = true
 				for _, o := range e.Writes {
 					p, err := protoconv.ToProto(ctx, o)
 					if err != nil {
 						return err
 					}
-					handler(p)
+					if err := handler(p); err != nil {
+						return err
+					}
 				}
 			default:
 				p, err := protoconv.ToProto(ctx, e)
 				if err != nil {
 					return err
 				}
-				handler(p)
+				if err := handler(p); err != nil {
+					return err
+				}
+			}
+		}
+
+		if !handledCall {
+			if err := handler(cmdCallFor(in)); err != nil {
+				return err
 			}
 		}
 
 		return nil
 	}
-}
-
-type invokeMarker struct{}
-
-func init() {
-	protoconv.Register(
-		func(ctx context.Context, a *invokeMarker) (*atom_pb.Invoke, error) {
-			return &atom_pb.Invoke{}, nil
-		},
-		func(ctx context.Context, a *atom_pb.Invoke) (*invokeMarker, error) {
-			return &invokeMarker{}, nil
-		},
-	)
 }

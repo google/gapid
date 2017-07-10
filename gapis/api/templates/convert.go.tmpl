@@ -25,9 +25,13 @@
   ¶
   import (»¶
     "context"¶
+    "fmt"¶
+¶
+    "github.com/golang/protobuf/proto"¶
 ¶
     "github.com/google/gapid/core/data/protoconv"¶
     "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
+    "github.com/google/gapid/gapis/api"¶
     "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
   «)¶
@@ -42,10 +46,10 @@
         {{$proto := $c.Name | ProtoGoName}}
         {{$p := print (Global "Store") "." $proto}}
         {{$o := $c.Name | GoCommandName}}
-        protoconv.Register(¶
+        protoconv.Register(»¶
           func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
           func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
-        )¶
+        «)¶
       {{end}}
     {{end}}
     {{range $c := $.Classes}}
@@ -56,7 +60,7 @@
         protoconv.Register(¶
           func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
           func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
-        )¶
+        «)¶
       {{end}}
     {{end}}
   «}¶
@@ -84,24 +88,46 @@
   {{AssertType $ "Function"}}
   {{$name := $.Name | GoCommandName}}
   {{$proto := $.Name | ProtoGoName}}
+  {{$p := print (Global "Store") "." $proto}}
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
-  func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
-    to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
-    {{range $v := $.FullParameters}}
+  func (ϟa *{{$name}}) ToProto() *{{$p}} {»¶
+    to := &{{$p}}{}¶
+    {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
     {{end}}
     return to¶
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) *{{$name}} {»¶
+  func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
     ϟa := &{{$name}}{}¶
-    {{range $v := $.FullParameters}}
+    {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}
     return ϟa¶
   «}¶
+¶
+  {{if not (IsVoid $.Return.Type)}}
+    var _ api.CmdWithResult = (*{{$name}})(nil)¶
+¶
+    // GetResult returns the result value for this command.¶
+    func (ϟa *{{$name}}) GetResult() proto.Message {»¶
+      to := &{{Global "OutputDir"}}_pb.{{$proto}}Call{}¶
+      {{Template "Convert.To" "Field" $.Return "Outer" $proto}}
+      return to¶
+    «}¶
+¶
+    // SetResult changes the result value.¶
+    func (ϟa *{{$name}}) SetResult(v proto.Message) error {»¶
+      from, ok := v.(*{{Global "OutputDir"}}_pb.{{$proto}}Call)¶
+      if !ok {»¶
+        return fmt.Errorf("Expected result type *{{$proto}}Call, got %T", v)¶
+      «}¶
+      {{Template "Convert.From" "Field" $.Return "Outer" $proto}}
+      return nil¶
+    «}¶
+  {{end}}
 {{end}}
 
 
@@ -165,9 +191,10 @@
   {{end}}
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
-  Emits the conversion for a signle field from storage proto to live type.
+  Emits the conversion for a single field from storage proto to live type.
 -------------------------------------------------------------------------------
 */}}
 {{define "Convert.From"}}
@@ -192,6 +219,7 @@
     ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -225,6 +253,7 @@
   {{end}}
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits the proto type for the provided AST type or expression.
@@ -256,6 +285,7 @@
   {{end}}
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emit the code to assign to the lhs storage from a live value for the given type
@@ -277,6 +307,7 @@
     {{else}}({{$target}})({{$.Value}})
     {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------

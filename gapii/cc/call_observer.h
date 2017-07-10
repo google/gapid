@@ -77,12 +77,6 @@ public:
     // actual copying of the data is deferred until the data is to be sent.
     void write(const void* base, uint64_t size);
 
-    // invoke should be called when the imported function is called (at the
-    // fence). It observes all the pending read memory observations and inserts
-    // a atom_pb::Invoke to mExtras to separate read observations from write
-    // observations.
-    void invoke();
-
     // read records the memory range for the given slice as a read operation.
     // The actual copying of the data is deferred until the data is to be sent.
     template <typename T>
@@ -124,20 +118,19 @@ public:
     // slice is observed as a read operation.
     inline std::string string(const Slice<char>& slice);
 
-    // encodeAndDeleteCommand encodes the command to the PackEncoder along with
-    // all extras, and then deletes the message.
-    void encodeAndDeleteCommand(::google::protobuf::Message* cmd);
+    // encode calls toProto() on obj, then passes the proto to encodeAndDelete.
+    template <typename T>
+    inline void encode(const T& obj);
 
-    void addExtra(::google::protobuf::Message* extra) {
-        mExtras.append(extra);
-    }
+    // encodeAndDelete encodes the proto message to the PackEncoder and then
+    // deletes the message.
+    void encodeAndDelete(::google::protobuf::Message* cmd);
 
-private:
-    // observe observes all the pending memory observations, populating the
-    // mObservations vector.
+    // observePending observes and encodes all the pending memory observations.
     // The list of pending memory observations is cleared on returning.
     void observePending();
 
+private:
     // shouldObserve returns true if the given slice is located in application
     // pool and we are supposed to observe application pool.
     template <class T>
@@ -168,9 +161,6 @@ private:
 
     // The list of pending reads or writes observations that are yet to be made.
     core::IntervalList<uintptr_t> mPendingObservations;
-
-    // The list of pending extras to be appended to the atom.
-    core::Vector<::google::protobuf::Message*> mExtras;
 
     // Record GL error which was raised during this call.
     GLenum_Error mError;
@@ -251,6 +241,13 @@ inline std::string CallObserver::string(const Slice<char>& slice) {
     read(slice);
     return std::string(slice.begin(), slice.end());
 }
+
+template <typename T>
+inline void CallObserver::encode(const T& obj) {
+    encodeAndDelete(obj.toProto());
+}
+
+
 }  // namespace gapii
 
 #endif  // GAPII_CALL_OBSERVER_H

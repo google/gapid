@@ -1,4 +1,5 @@
-api.pb.go
+gfxtrace.pb.go
+service.pb.go
 
 /*/api.go
 /*/constant_sets.go

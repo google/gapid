@@ -25,5 +25,5 @@ set(files
     extras.proto
 )
 set(dirs
-    
+
 )

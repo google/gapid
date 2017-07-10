@@ -22,15 +22,6 @@ import "gapis/vertex/vertex.proto";
 package api;
 option java_package = "com.google.gapid.proto.service.api";
 option java_outer_classname = "API";
-// cc_package
-
-// ErrCmdAborted is an extra / error used to mark commands which did not finish
-// execution. This can be expected (e.g. GL error), or unexpected (failed
-// assertion).
-message ErrCmdAborted {
-	bool IsAssert = 1;
-	string Reason = 2;
-}
 
 // Command describes the service representation for a single intercepted command
 // or sub-command.
