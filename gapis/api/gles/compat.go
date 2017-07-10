@@ -562,6 +562,13 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				log.E(ctx, "Error decompressing texture: %v", err)
 			}
 
+		case *GlTexBufferEXT:
+			if version.AtLeastGL(3, 1) { // Strip suffix on desktop.
+				cmd := cb.GlTexBuffer(cmd.Target, cmd.Internalformat, cmd.Buffer)
+				out.MutateAndWrite(ctx, id, cmd)
+				return
+			}
+
 		// TODO: glTexStorage functions are not guaranteed to be supported. Consider replacing with glTexImage calls.
 		// TODO: Handle glTextureStorage family of functions - those use direct state access, not the bound texture.
 		case *GlTexStorage1DEXT:
