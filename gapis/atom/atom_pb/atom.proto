@@ -28,14 +28,6 @@ message Aborted {
     string Reason = 2;
 }
 
-// Resource is the storage type for a resource command.
-message Resource {
-    // Id is the resource id of the data blob.
-    string id = 1;
-    // Data is the actual data payload.
-    bytes data = 2;
-}
-
 // CommandCounter holds the counter value of the begining and end of an API
 // command. It should only be sent for the first completed graphics command, or
 // for any graphics command which overlaps the startup or termination of

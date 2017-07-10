@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
@@ -58,10 +57,11 @@ func init() {
 // New returns a path to a new capture with the given name, header and commands.
 // The new capture is stored in the database.
 func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*path.Capture, error) {
-	c, err := build(ctx, name, header, cmds)
-	if err != nil {
-		return nil, err
+	b := newBuilder()
+	for _, cmd := range cmds {
+		b.addCmd(cmd)
 	}
+	c := b.build(name, header)
 
 	id, err := database.Store(ctx, c)
 	if err != nil {
@@ -197,7 +197,7 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		err = writeAtom(ctx, &atom.Resource{ID: o.ID, Data: data.([]uint8)})
+		err = writeMsg(ctx, &Resource{Id: o.ID[:], Data: data.([]uint8)})
 		seen[o.ID] = true
 		return err
 	}
@@ -240,8 +240,9 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		return nil, err
 	}
 
-	cmds := []api.Cmd{}
-	convert := api.ProtoToCmd(func(a api.Cmd) { cmds = append(cmds, a) })
+	b := newBuilder()
+	convert := api.ProtoToCmd(b.addCmd)
+
 	var header *Header
 	for {
 		msg, err := reader.Unmarshal()
@@ -252,17 +253,22 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 			}
 			return nil, log.Err(ctx, err, "Failed to unmarshal")
 		}
-		if h, ok := msg.(*Header); ok {
-			header = h
-			continue
-		}
-		if err := convert(ctx, msg); err != nil {
-			return nil, err
-		}
-	}
+		switch msg := msg.(type) {
+		case *Header:
+			header = msg
 
-	if header == nil {
-		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
+		case *Resource:
+			var rID id.ID
+			copy(rID[:], msg.Id)
+			if err := b.addRes(ctx, rID, msg.Data); err != nil {
+				return nil, err
+			}
+
+		default:
+			if err := convert(ctx, msg); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// must invoke the converter with nil to flush the last command
@@ -270,72 +276,74 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		return nil, err
 	}
 
-	return build(ctx, r.Name, header, cmds)
+	if header == nil {
+		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
+	}
+
+	return b.build(r.Name, header), nil
 }
 
-// build creates a capture from the name, header and cmds.
-// The cmds are inspected for APIs used and observed memory ranges.
-// All resources are extracted placed into the database.
-func build(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*Capture, error) {
-	out := &Capture{
+type builder struct {
+	idmap    map[id.ID]id.ID
+	apis     []api.API
+	seenAPIs map[api.ID]struct{}
+	observed interval.U64RangeList
+	cmds     []api.Cmd
+}
+
+func newBuilder() *builder {
+	return &builder{
+		idmap:    map[id.ID]id.ID{},
+		apis:     []api.API{},
+		seenAPIs: map[api.ID]struct{}{},
+		observed: interval.U64RangeList{},
+		cmds:     []api.Cmd{},
+	}
+}
+
+func (b *builder) addCmd(cmd api.Cmd) {
+	if api := cmd.API(); api != nil {
+		apiID := api.ID()
+		if _, found := b.seenAPIs[apiID]; !found {
+			b.seenAPIs[apiID] = struct{}{}
+			b.apis = append(b.apis, api)
+		}
+	}
+	if observations := cmd.Extras().Observations(); observations != nil {
+		for i, r := range observations.Reads {
+			interval.Merge(&b.observed, r.Range.Span(), true)
+			if id, found := b.idmap[r.ID]; found {
+				observations.Reads[i].ID = id
+			}
+		}
+		for i, w := range observations.Writes {
+			interval.Merge(&b.observed, w.Range.Span(), true)
+			if id, found := b.idmap[w.ID]; found {
+				observations.Writes[i].ID = id
+			}
+		}
+	}
+	b.cmds = append(b.cmds, cmd)
+}
+
+func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {
+	dID, err := database.Store(ctx, data)
+	if err != nil {
+		return err
+	}
+	if _, dup := b.idmap[id]; dup {
+		return log.Errf(ctx, nil, "Duplicate resource with ID: %v", id)
+	}
+	b.idmap[id] = dID
+	return nil
+}
+
+func (b *builder) build(name string, header *Header) *Capture {
+	return &Capture{
 		Name:     name,
 		Header:   header,
-		Observed: interval.U64RangeList{},
-		APIs:     []api.API{},
+		Commands: b.cmds,
+		Observed: b.observed,
+		APIs:     b.apis,
 	}
-
-	idmap := map[id.ID]id.ID{}
-	apiSet := map[api.ID]api.API{}
-
-	for _, c := range cmds {
-		if api := c.API(); api != nil {
-			apiID := api.ID()
-			if _, found := apiSet[apiID]; !found {
-				apiSet[apiID] = api
-				out.APIs = append(out.APIs, api)
-			}
-		}
-
-		observations := c.Extras().Observations()
-
-		if observations != nil {
-			for _, rd := range observations.Reads {
-				interval.Merge(&out.Observed, rd.Range.Span(), true)
-			}
-			for _, wr := range observations.Writes {
-				interval.Merge(&out.Observed, wr.Range.Span(), true)
-			}
-		}
-
-		switch c := c.(type) {
-		case *atom.Resource:
-			id, err := database.Store(ctx, c.Data)
-			if err != nil {
-				return nil, err
-			}
-			if _, dup := idmap[c.ID]; dup {
-				return nil, log.Errf(ctx, nil, "Duplicate resource with ID: %v", c.ID)
-			}
-			idmap[c.ID] = id
-
-		default:
-			// Replace resource IDs from identifiers generated at capture time to
-			// direct database identifiers. This avoids a database link indirection.
-			if observations != nil {
-				for i, r := range observations.Reads {
-					if id, found := idmap[r.ID]; found {
-						observations.Reads[i].ID = id
-					}
-				}
-				for i, w := range observations.Writes {
-					if id, found := idmap[w.ID]; found {
-						observations.Writes[i].ID = id
-					}
-				}
-			}
-			out.Commands = append(out.Commands, c)
-		}
-	}
-
-	return out, nil
 }

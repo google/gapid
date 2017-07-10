@@ -19,7 +19,6 @@
 
 set(files
     doc.go
-    resource.go
 )
 set(dirs
     atom_pb

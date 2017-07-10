@@ -91,7 +91,7 @@ void CallObserver::observePending() {
                                     p.end() - p.start());
         core::Id id = core::Id::Hash(data.data(), data.count());
         if (mSpyPtr->getResources().count(id) == 0) {
-            atom_pb::Resource resource;
+            capture::Resource resource;
             resource.set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
             resource.set_data(data.data(), data.count());
             mSpyPtr->getEncoder(mApi)->message(&resource);
