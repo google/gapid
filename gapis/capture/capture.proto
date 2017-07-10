@@ -34,6 +34,14 @@ message Header {
 	device.ABI abi = 2;
 }
 
+// Resource is the storage type for some data keyed by an identifer.
+message Resource {
+	// Id is the resource id of the data blob.
+	bytes id = 1;
+	// Data is the actual data payload.
+	bytes data = 2;
+}
+
 // FramebufferObservation is a message that holds a snapshot of the color-buffer
 // of the bound framebuffer at the time of capture. These observations can be
 // used to verify that replay gave the same results as what was traced.

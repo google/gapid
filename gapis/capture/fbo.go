@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/replay/builder"
+	rb "github.com/google/gapid/gapis/replay/builder"
 )
 
 // FBOName is the special name given to FBO commands.
@@ -46,7 +46,7 @@ func (FBO) CmdName() string        { return FBOName }
 func (FBO) API() api.API           { return nil }
 func (FBO) CmdFlags() api.CmdFlags { return 0 }
 func (FBO) Extras() *api.CmdExtras { return nil }
-func (FBO) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+func (FBO) Mutate(ctx context.Context, s *api.State, b *rb.Builder) error {
 	return nil
 }
 
