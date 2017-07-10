@@ -31,7 +31,13 @@ import (
 type reportVerb struct{ ReportFlags }
 
 func init() {
-	verb := &reportVerb{}
+	verb := &reportVerb{
+		ReportFlags: ReportFlags{
+			CommandFilterFlags: CommandFilterFlags{
+				Context: -1,
+			},
+		},
+	}
 	app.AddVerb(&app.Verb{
 		Name:      "report",
 		ShortHelp: "Check a capture replays without issues",
