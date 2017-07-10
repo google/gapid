@@ -80,6 +80,10 @@ func (p Path) IsDir() bool {
 // System returns the full absolute path using the system separator.
 func (p Path) System() string { return p.value }
 
+// URL returns the full absolute path using the / separator prefixed by the URL
+// file scheme.
+func (p Path) URL() string { return "file:///" + filepath.ToSlash(p.value) }
+
 // Slash returns the full absolute path using the / separator.
 func (p Path) Slash() string { return filepath.ToSlash(p.value) }
 

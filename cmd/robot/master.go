@@ -92,10 +92,10 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		managers := monitor.Managers{}
 		err := error(nil)
 		if v.StashAddr == "" {
-			v.StashAddr = v.BaseAddr.Join("stash").System()
+			v.StashAddr = v.BaseAddr.Join("stash").URL()
 		}
 		if v.ShelfAddr == "" {
-			v.ShelfAddr = v.BaseAddr.Join("shelf").System()
+			v.ShelfAddr = v.BaseAddr.Join("shelf").URL()
 		}
 		library := record.NewLibrary(ctx)
 		shelf, err := record.NewShelf(ctx, v.ShelfAddr)
