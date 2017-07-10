@@ -25,8 +25,12 @@ import "C"
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"sync"
 	"unsafe"
+
+	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/text"
 )
 
 var mutex sync.Mutex
@@ -41,8 +45,6 @@ type Instruction struct {
 
 // CodeWithDebugInfo is the result returned by ConvertGlsl.
 type CodeWithDebugInfo struct {
-	Ok                bool          // Whether the call succeeds.
-	Message           string        // Error message if failed.
 	SourceCode        string        // Modified GLSL.
 	DisassemblyString string        // Diassembly of modified GLSL.
 	Info              []Instruction // A set of SPIR-V debug instructions.
@@ -96,7 +98,7 @@ type Option struct {
 // option and returns the modification status and result. Possible
 // modifications includes creating output variables for input variables,
 // prefixing all non-builtin symbols with a given prefix, etc.
-func ConvertGlsl(source string, option *Option) CodeWithDebugInfo {
+func ConvertGlsl(source string, option *Option) (CodeWithDebugInfo, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -118,13 +120,13 @@ func ConvertGlsl(source string, option *Option) CodeWithDebugInfo {
 	C.free(unsafe.Pointer(np))
 	C.free(unsafe.Pointer(op))
 	C.free(unsafe.Pointer(csource))
+	defer C.deleteGlslCodeWithDebug(result)
 
 	ret := CodeWithDebugInfo{
-		Ok:                bool(result.ok),
-		Message:           C.GoString(result.message),
 		SourceCode:        C.GoString(result.source_code),
 		DisassemblyString: C.GoString(result.disassembly_string),
 	}
+
 	if result.info != nil {
 		c_insts := (*[1 << 30]C.struct_instruction_t)(unsafe.Pointer(result.info.insts))
 		for i := 0; i < int(result.info.insts_num); i++ {
@@ -142,8 +144,26 @@ func ConvertGlsl(source string, option *Option) CodeWithDebugInfo {
 			ret.Info = append(ret.Info, inst)
 		}
 	}
-	C.deleteGlslCodeWithDebug(result)
-	return ret
+
+	if !result.ok {
+		msg := []string{}
+		switch {
+		case option.IsFragmentShader:
+			msg = append(msg, "Failed to convert fragment shader.")
+		case option.IsVertexShader:
+			msg = append(msg, "Failed to convert vertex shader.")
+		default:
+			msg = append(msg, "Failed to convert shader.")
+		}
+		if m := C.GoString(result.message); len(m) > 0 {
+			msg = append(msg, m)
+		}
+		msg = append(msg, "Translated source:", text.LineNumber(C.GoString(result.source_code)))
+		msg = append(msg, "Original source:", text.LineNumber(source))
+		return ret, fault.Const(strings.Join(msg, "\n"))
+	}
+
+	return ret, nil
 }
 
 // DisassembleSpirvBinary disassembles the given SPIR-V binary words by calling

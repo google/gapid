@@ -177,10 +177,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				Disassemble:       true,
 			}
 
-			res := shadertools.ConvertGlsl(shader.Source, &opts)
-			if !res.Ok {
-				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Failed to translate %v. Errors:\n%s\nOriginal source:\n%s",
-					shader.Type, res.Message, text.LineNumber(shader.Source)))
+			if _, err := shadertools.ConvertGlsl(shader.Source, &opts); err != nil {
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 			}
 		} else {
 			var errs []error
