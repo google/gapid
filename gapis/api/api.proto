@@ -24,28 +24,37 @@ option java_package = "com.google.gapid.proto.service.api";
 option java_outer_classname = "API";
 // cc_package
 
-// Command describes a single intercepted command or sub-command.
-message Command {
-  // The function name.
-  string name = 1;
-  // The function's API.
-  path.API api = 2;
-  // The list of function parameters.
-  repeated Parameter parameters = 3;
-  // The function return value 'parameter'.
-  Parameter result = 4;
-  // The identifier of the thread that issued this command.
-  uint64 thread = 5;
+// ErrCmdAborted is an extra / error used to mark commands which did not finish
+// execution. This can be expected (e.g. GL error), or unexpected (failed
+// assertion).
+message ErrCmdAborted {
+	bool IsAssert = 1;
+	string Reason = 2;
 }
 
-// Parameter is a parameter of a command.
+// Command describes the service representation for a single intercepted command
+// or sub-command.
+message Command {
+	// The function name.
+	string name = 1;
+	// The function's API.
+	path.API api = 2;
+	// The list of function parameters.
+	repeated Parameter parameters = 3;
+	// The function return value 'parameter'.
+	Parameter result = 4;
+	// The identifier of the thread that issued this command.
+	uint64 thread = 5;
+}
+
+// Parameter is the service representation of a parameter of a command.
 message Parameter {
-  // The name of the parameter.
-  string name = 1;
-  // The value of the parameter.
-  box.Value value = 2;
-  // The possible alternative named values for the parameter.
-  path.ConstantSet constants = 3;
+	// The name of the parameter.
+	string name = 1;
+	// The value of the parameter.
+	box.Value value = 2;
+	// The possible alternative named values for the parameter.
+	path.ConstantSet constants = 3;
 }
 
 // DrawPrimitive is an enumerator of primitive draw modes

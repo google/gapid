@@ -29,24 +29,6 @@ type CmdExtra interface{}
 // CmdExtras is a list of CmdExtra objects.
 type CmdExtras []CmdExtra
 
-// Aborted is an CmdExtra used to mark atoms which did not finish execution.
-// This can be expected (e.g. GL error), or unexpected (failed assertion).
-type Aborted struct {
-	IsAssert bool
-	Reason   string
-}
-
-func init() {
-	protoconv.Register(
-		func(ctx context.Context, a *Aborted) (*atom_pb.Aborted, error) {
-			return &atom_pb.Aborted{IsAssert: a.IsAssert, Reason: a.Reason}, nil
-		},
-		func(ctx context.Context, a *atom_pb.Aborted) (*Aborted, error) {
-			return &Aborted{IsAssert: a.IsAssert, Reason: a.Reason}, nil
-		},
-	)
-}
-
 func (e *CmdExtras) All() CmdExtras {
 	if e == nil {
 		return nil
@@ -75,10 +57,11 @@ func (e *CmdExtras) MustClone(es ...CmdExtra) {
 	}
 }
 
-// Aborted returns a pointer to the Aborted structure in the CmdExtras, or nil if not found.
-func (e *CmdExtras) Aborted() *Aborted {
+// Aborted returns a pointer to the ErrCmdAborted structure in the CmdExtras, or
+// nil if not found.
+func (e *CmdExtras) Aborted() *ErrCmdAborted {
 	for _, e := range e.All() {
-		if e, ok := e.(*Aborted); ok {
+		if e, ok := e.(*ErrCmdAborted); ok {
 			return e
 		}
 	}

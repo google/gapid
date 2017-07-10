@@ -377,9 +377,9 @@
   {{$f := Global "CurrentFunction"}}
 
   {{if and $f.Subroutine (not (IsVoid $f.Return.Type))}}
-    return {{Template "Go.Null" $f.Return.Type}}, api.ErrCmdAborted("{{$f.Name}}")
+    return {{Template "Go.Null" $f.Return.Type}}, api.Abort("{{$f.Name}}")
   {{else}}
-    return api.ErrCmdAborted("{{$f.Name}}")
+    return api.Abort("{{$f.Name}}")
   {{end}}
 {{end}}
 
