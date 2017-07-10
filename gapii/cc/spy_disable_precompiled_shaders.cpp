@@ -17,6 +17,8 @@
 #include "gapii/cc/spy.h"
 #include "gapii/cc/call_observer.h"
 
+#include "gapis/api/gfxtrace.pb.h"
+
 // This file contains a number of GLES method 'overrides' to optionally lie to the
 // application about the driver not supporting precompiled shaders or programs.
 
@@ -38,11 +40,12 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t bin
         // GL_SHADER_BINARY_FORMATS.
         setFakeGlError(GL_INVALID_ENUM);
 
-        observer->read(binary, binary_size);
-        observer->invoke();
+        observer->encode(cmd::glProgramBinary{program, binary_format, binary, binary_size});
 
-        auto c = cmd::glProgramBinary{program, binary_format, binary, binary_size};
-        observer->encodeAndDeleteCommand(c.toProto());
+        observer->read(binary, binary_size);
+        observer->observePending();
+
+        observer->encodeAndDelete(new api::CmdCall);
     } else {
         GlesSpy::glProgramBinary(observer, program, binary_format, binary, binary_size);
     }
@@ -55,11 +58,12 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t 
         // GL_SHADER_BINARY_FORMATS.
         setFakeGlError(GL_INVALID_ENUM);
 
-        observer->read(binary, binary_size);
-        observer->invoke();
+        observer->encode(cmd::glProgramBinaryOES{program, binary_format, binary, binary_size});
 
-        auto c = cmd::glProgramBinaryOES{program, binary_format, binary, binary_size};
-        observer->encodeAndDeleteCommand(c.toProto());
+        observer->read(binary, binary_size);
+        observer->observePending();
+
+        observer->encodeAndDelete(new api::CmdCall);
     } else {
         GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary, binary_size);
     }
@@ -71,13 +75,13 @@ void Spy::glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shader
         // GL_INVALID_ENUM is generated if binaryFormat is not a value recognized by the implementation.
         setFakeGlError(GL_INVALID_ENUM);
 
+        observer->encode(cmd::glShaderBinary{count, shaders, binary_format, binary, binary_size});
+
         observer->read(slice(shaders, (uint64_t)((GLsizei)(0)), (uint64_t)(count)));
         observer->read(slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
+        observer->observePending();
 
-        observer->invoke();
-
-        auto c = cmd::glShaderBinary{count, shaders, binary_format, binary, binary_size};
-        observer->encodeAndDeleteCommand(c.toProto());
+        observer->encodeAndDelete(new api::CmdCall);
     } else {
         GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary, binary_size);
     }
@@ -88,11 +92,12 @@ void Spy::glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* value
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->invoke();
-        observer->write(slice(values, 0, 1));
+        observer->encode(cmd::glGetInteger64v{param, values});
 
-        auto c = cmd::glGetInteger64v{param, values};
-        observer->encodeAndDeleteCommand(c.toProto());
+        observer->encodeAndDelete(new api::CmdCall);
+
+        observer->write(slice(values, 0, 1));
+        observer->observePending();
     } else {
         GlesSpy::glGetInteger64v(observer, param, values);
     }
@@ -103,11 +108,12 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->invoke();
-        observer->write(slice(values, 0, 1));
+        observer->encode(cmd::glGetIntegerv{param, values});
 
-        auto c = cmd::glGetIntegerv{param, values};
-        observer->encodeAndDeleteCommand(c.toProto());
+        observer->encodeAndDelete(new api::CmdCall);
+
+        observer->write(slice(values, 0, 1));
+        observer->observePending();
     } else {
         GlesSpy::glGetIntegerv(observer, param, values);
     }

@@ -44,7 +44,7 @@ func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error 
 		if f := s.NewMessage; f != nil {
 			f(log.Error, messages.ErrNoContextBound(cmd.Thread()))
 		}
-		return api.ErrCmdAborted("NoContext")
+		return api.ErrCmdAborted{Reason: "No context bound"}
 	}
 	return nil
 }

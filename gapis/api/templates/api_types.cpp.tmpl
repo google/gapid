@@ -130,10 +130,17 @@
   {{if not (GetAnnotation $ "pfn")}}
     ::google::protobuf::Message* {{$name}}::toProto() const {
       auto out = new {{Global "API"}}_pb::{{$name}}();
-      {{range $f := $.FullParameters}}
+      {{range $f := $.CallParameters}}
         {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "" "Name" $f.Name "Type" $f}}
       {{end}}
       return out;
     }
+    {{if not (IsVoid $.Return.Type)}}
+      ::google::protobuf::Message* {{$name}}Call::toProto() const {
+        auto out = new {{Global "API"}}_pb::{{$name}}Call();
+        {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "" "Name" "result" "Type" $.Return.Type}}
+        return out;
+      };
+    {{end}}
   {{end}}
 {{end}}

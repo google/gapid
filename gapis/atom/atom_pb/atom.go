@@ -22,6 +22,3 @@ import (
 
 // Handler is a function to which a stream of atoms can be handed.
 type Handler func(context.Context, proto.Message) error
-
-// InvokeMarker is the singleton instance of Invoke that can be used to avoid allocations.
-var InvokeMarker proto.Message = &Invoke{}

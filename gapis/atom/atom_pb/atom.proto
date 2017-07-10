@@ -17,10 +17,6 @@ syntax = "proto3";
 package atom_pb;
 // cc_package
 
-// Invoke is the command that marks the invocation point in the set of protos
-// for a command.
-message Invoke {}
-
 // CommandCounter holds the counter value of the begining and end of an API
 // command. It should only be sent for the first completed graphics command, or
 // for any graphics command which overlaps the startup or termination of

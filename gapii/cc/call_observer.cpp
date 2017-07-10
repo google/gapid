@@ -31,9 +31,6 @@ const size_t MEMORY_MERGE_THRESHOLD = 256;
 // filled.
 const size_t SCRATCH_BUFFER_SIZE = 512*1024;
 
-// Maximum size of the CallObserver's extras list.
-const size_t MAX_EXTRAS = 64;
-
 // Buffer creating function for scratch allocator.
 std::tuple<uint8_t*, size_t> createBuffer(size_t request_size,
                                                  size_t min_buffer_size) {
@@ -60,7 +57,6 @@ CallObserver::CallObserver(SpyBase* spy_p, uint8_t api)
       mError(GLenum::GL_NO_ERROR),
       mApi(api) {
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
-    mExtras = mScratch.vector<google::protobuf::Message*>(MAX_EXTRAS);
 }
 
 // Releases the observation data memory at the end.
@@ -85,7 +81,9 @@ void CallObserver::write(const void* base, uint64_t size) {
 }
 
 void CallObserver::observePending() {
-    if (!mSpyPtr->should_trace(mApi)) return;
+    if (!mSpyPtr->should_trace(mApi)) {
+        return;
+    }
     for (auto p : mPendingObservations) {
         core::Vector<uint8_t> data(reinterpret_cast<uint8_t*>(p.start()),
                                     p.end() - p.start());
@@ -101,26 +99,15 @@ void CallObserver::observePending() {
         observation->set_base(p.start());
         observation->set_size(data.count());
         observation->set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
-        addExtra(observation);
+        encodeAndDelete(observation);
     }
     mPendingObservations.clear();
 }
 
-void CallObserver::invoke() {
-    observePending();
-    addExtra(new atom_pb::Invoke());
-}
-
-void CallObserver::encodeAndDeleteCommand(::google::protobuf::Message* cmd) {
-    observePending();
+void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
     auto encoder = mSpyPtr->getEncoder(mApi);
     encoder->message(cmd);
     delete cmd;
-    for (auto extra : mExtras) {
-        encoder->message(extra);
-        delete extra;
-    }
-    mExtras.clear();
 }
 
 bool CallObserver::isActive() const {

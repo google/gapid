@@ -140,7 +140,7 @@ std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer
       GAPID_DEBUG("Created ProgramInfo: LinkStatus=GL_FALSE InfoLog=\"%s\"", pi->mInfoLog.data());
     }
 
-    observer->addExtra(pi->toProto());
+    observer->encodeAndDelete(pi->toProto());
     return pi;
 }
 
@@ -181,7 +181,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         buffer->usage
     ));
     GAPID_DEBUG("Created AndroidNativeBufferExtra: width=%i, height=%i", buffer->width, buffer->height);
-    observer->addExtra(extra->toProto());
+    observer->encodeAndDelete(extra->toProto());
     return extra;
 #else
     return nullptr;

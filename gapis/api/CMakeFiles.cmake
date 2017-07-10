@@ -19,9 +19,6 @@
 
 set(files
     api.go
-    api.pb.go
-    api.proto
-    cmd.go
     cmd_convert.go
     cmd_errors.go
     cmd_extras.go
@@ -37,10 +34,14 @@ set(files
     cmd_service_test.go
     context.go
     doc.go
+    gfxtrace.proto
+    gfxtrace.pb.go
     labeled.go
     mesh.go
     resource.go
     state.go
+    service.proto
+    service.pb.go
     subcmd_idx.go
     subcmd_idx_test.go
     subcmd_idx_trie.go

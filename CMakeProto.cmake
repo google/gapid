@@ -39,9 +39,9 @@ protoc_go("github.com/google/gapid/gapis/capture" "gapis/capture" "capture.proto
 protoc_cc("gapis/capture" "gapis/capture" "capture.proto")
 protoc_go("github.com/google/gapid/gapis/api/core/core_pb" "gapis/api/core/core_pb" "api.proto")
 protoc_cc("gapis/api/core/core_pb" "gapis/api/core/core_pb" "api.proto")
-protoc_go("github.com/google/gapid/gapis/api" "gapis/api" "api.proto")
-protoc_java("gapis/api" "api.proto" "com/google/gapid/proto/service/api/API")
-protoc_cc("gapis/api" "gapis/api" "api.proto")
+protoc_go("github.com/google/gapid/gapis/api" "gapis/api" "gfxtrace.proto;service.proto")
+protoc_java("gapis/api" "service.proto" "com/google/gapid/proto/service/api/API")
+protoc_cc("gapis/api" "gapis/api" "gfxtrace.proto")
 
 protoc_go("github.com/google/gapid/gapis/api/gles/gles_pb" "gapis/api/gles/gles_pb" "api.proto;extras.proto")
 protoc_cc("gapis/api/gles/gles_pb" "gapis/api/gles/gles_pb" "api.proto;extras.proto")
