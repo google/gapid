@@ -35,6 +35,7 @@ var (
 	pkg    string
 	output string
 	root   string
+	web    bool
 )
 
 const header = `
@@ -51,6 +52,7 @@ func main() {
 	flag.StringVar(&pkg, "package", "", "the package to use, defaults to the dir name")
 	flag.StringVar(&output, "out", "embed.go", "the file to generate")
 	flag.StringVar(&root, "root", "", "The root path for embedding")
+	flag.BoolVar(&web, "web", false, "If true, replace back slash separators in filepaths with forward slashes")
 	app.ShortHelp = "embed: A tool to embed files into go source."
 	app.Run(run)
 }
@@ -124,6 +126,9 @@ func run(ctx context.Context) error {
 			entry.filename = filename
 		}
 		entry.name = nameReplacer.Replace(filename)
+		if web {
+			entry.filename = strings.Replace(entry.filename, "\\", "/", -1)
+		}
 		entry.contents, err = ioutil.ReadFile(entry.path)
 		if err != nil {
 			return err

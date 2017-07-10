@@ -20,7 +20,12 @@ function(embed)
     endif()
 
     get_filename_component(name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-    cmake_parse_arguments(EMBED "" "OUTPUT;PACKAGE" "" ${ARGN})
+    cmake_parse_arguments(EMBED "WEB" "OUTPUT;PACKAGE" "" ${ARGN})
+    if(EMBED_WEB)
+        set(EMBED_WEB "--web")
+    else()
+        set(EMBED_WEB "")
+    endif()
     default(EMBED_OUTPUT "${name}_embed.go")
     default(EMBED_PACKAGE ${name})
     required(EMBED_UNPARSED_ARGUMENTS "for embed")
@@ -28,7 +33,7 @@ function(embed)
     abs_list(EMBED_UNPARSED_ARGUMENTS ${CMAKE_CURRENT_SOURCE_DIR})
     add_custom_command(
         OUTPUT ${EMBED_OUTPUT}
-        COMMAND embed --root ${CMAKE_CURRENT_SOURCE_DIR} --out ${EMBED_OUTPUT} --package ${EMBED_PACKAGE} ${EMBED_UNPARSED_ARGUMENTS}
+        COMMAND embed --root ${CMAKE_CURRENT_SOURCE_DIR} --out ${EMBED_OUTPUT} --package ${EMBED_PACKAGE} ${EMBED_WEB} ${EMBED_UNPARSED_ARGUMENTS}
         DEPENDS embed ${EMBED_UNPARSED_ARGUMENTS}
         COMMENT "Embed generating ${EMBED_OUTPUT}"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
