@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -103,7 +102,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		}
 
 		if p.FramebufferObservations {
-			if _, ok := cmd.(*atom.FramebufferObservation); ok {
+			if _, ok := cmd.(*capture.FBO); ok {
 				events = append(events, &service.Event{
 					Kind:    service.EventKind_FramebufferObservation,
 					Command: p.Capture.Command(uint64(id)),

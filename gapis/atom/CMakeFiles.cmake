@@ -19,7 +19,6 @@
 
 set(files
     doc.go
-    framebuffer_observation.go
     resource.go
 )
 set(dirs

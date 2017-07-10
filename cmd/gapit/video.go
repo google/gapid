@@ -38,7 +38,7 @@ import (
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/core/video"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -180,15 +180,15 @@ func (verb *videoVerb) regularVideoSource(
 	}, nil
 }
 
-// asFbo returns the atom as an *atom.FramebufferObservation if it represents one.
-func asFbo(a *api.Command) *atom.FramebufferObservation {
-	if a.Name == "<FramebufferObservation>" {
+// asFbo returns the atom as an *capture.FBO if it represents one.
+func asFbo(a *api.Command) *capture.FBO {
+	if a.Name == "<FBO>" {
 		data := a.FindParameter("Data")
 		originalWidth := a.FindParameter("OriginalWidth")
 		originalHeight := a.FindParameter("OriginalHeight")
 		dataWidth := a.FindParameter("DataWidth")
 		dataHeight := a.FindParameter("DataHeight")
-		fbo := &atom.FramebufferObservation{
+		fbo := &capture.FBO{
 			Data:           data.Value.GetPod().GetUint8Array(),
 			OriginalWidth:  originalWidth.Value.GetPod().GetUint32(),
 			OriginalHeight: originalHeight.Value.GetPod().GetUint32(),

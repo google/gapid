@@ -566,13 +566,13 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api, bool pendMessa
     if (downsamplePixels(data, w, h,
                          &downsampledData, &downsampledW, &downsampledH,
                          kMaxFramebufferObservationWidth, kMaxFramebufferObservationHeight)) {
-        // atom_pb::FramebufferObservation observation;
-        auto observation = std::unique_ptr<atom_pb::FramebufferObservation>(
-            new atom_pb::FramebufferObservation());
-        observation->set_originalwidth(w);
-        observation->set_originalheight(h);
-        observation->set_datawidth(downsampledW);
-        observation->set_dataheight(downsampledH);
+        // capture::FramebufferObservation observation;
+        auto observation = std::unique_ptr<capture::FramebufferObservation>(
+            new capture::FramebufferObservation());
+        observation->set_original_width(w);
+        observation->set_original_height(h);
+        observation->set_data_width(downsampledW);
+        observation->set_data_height(downsampledH);
         observation->set_data(downsampledData.data(), downsampledData.size());
         if (pendMessaging) {
           mPendingFramebufferObservation = std::move(observation);

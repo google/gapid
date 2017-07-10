@@ -23,6 +23,7 @@ set(files
     capture.proto
     context.go
     doc.go
+    framebuffer_observation.go
 )
 set(dirs
 
