@@ -20,12 +20,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ErrCmdAborted is the error returned by Cmd.Mutate() when the execution was
-// terminated by the abort() intrinsic.
-type ErrCmdAborted string
-
 func (e ErrCmdAborted) Error() string {
-	return fmt.Sprintf("aborted(%s)", string(e))
+	return fmt.Sprintf("aborted(%s)", e.Reason)
+}
+
+// Abort retuns a new ErrCmdAborted with the given error message.
+func Abort(msg string) *ErrCmdAborted {
+	return &ErrCmdAborted{Reason: msg}
 }
 
 // IsErrCmdAborted returns true if the cause of the error err was due to an
