@@ -33,3 +33,19 @@ message Header {
 	// The ABI used by the traced process.
 	device.ABI abi = 2;
 }
+
+// FramebufferObservation is a message that holds a snapshot of the color-buffer
+// of the bound framebuffer at the time of capture. These observations can be
+// used to verify that replay gave the same results as what was traced.
+message FramebufferObservation {
+	// Framebuffer width in pixels.
+	uint32 original_width = 1;
+	// Framebuffer width in pixels.
+	uint32 original_height = 2;
+	// Width of downsampled data.
+	uint32 data_width = 3;
+	// height of downsampled data.
+	uint32 data_height = 4;
+	// The RGBA color-buffer data.
+	bytes data = 5;
+}

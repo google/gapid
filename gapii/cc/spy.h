@@ -123,7 +123,7 @@ class Spy : public GlesSpy, public VulkanSpy {
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
   std::unique_ptr<core::AsyncJob> mDeferStartJob;
   // The Framebuffer observation pending to be encoded and messaged.
-  std::unique_ptr<atom_pb::FramebufferObservation>
+  std::unique_ptr<capture::FramebufferObservation>
       mPendingFramebufferObservation;
 };
 

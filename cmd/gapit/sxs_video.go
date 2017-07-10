@@ -32,13 +32,13 @@ import (
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 type videoFrame struct {
-	fbo           *atom.FramebufferObservation
+	fbo           *capture.FBO
 	command       *path.Command
 	fboIndex      int
 	frameIndex    int

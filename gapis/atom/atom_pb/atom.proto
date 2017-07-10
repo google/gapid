@@ -36,22 +36,6 @@ message Resource {
     bytes data = 2;
 }
 
-// FramebufferObservation is an Cmd that holds a snapshot of the color-buffer
-// of the bound framebuffer at the time of capture. These commands can be used
-// to verify that replay gave the same results as what was captured.
-message FramebufferObservation {
-    // Framebuffer width in pixels
-    uint32 OriginalWidth = 1;
-    // Framebuffer width in pixels
-    uint32 OriginalHeight = 2;
-    // Width of downsampled data.
-    uint32 DataWidth = 3;
-    // height of downsampled data.
-    uint32 DataHeight = 4;
-    // The RGBA color-buffer data
-    bytes Data = 5;
-}
-
 // CommandCounter holds the counter value of the begining and end of an API
 // command. It should only be sent for the first completed graphics command, or
 // for any graphics command which overlaps the startup or termination of
