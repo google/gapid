@@ -20,13 +20,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Atom is the interface implemented by all atom storage objects.
-type Atom interface {
-	proto.Message
-}
-
 // Handler is a function to which a stream of atoms can be handed.
-type Handler func(context.Context, Atom) error
+type Handler func(context.Context, proto.Message) error
 
 // InvokeMarker is the singleton instance of Invoke that can be used to avoid allocations.
-var InvokeMarker Atom = &Invoke{}
+var InvokeMarker proto.Message = &Invoke{}

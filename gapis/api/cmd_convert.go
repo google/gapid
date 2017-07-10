@@ -17,6 +17,7 @@ package api
 import (
 	"context"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api/core/core_pb"
@@ -26,7 +27,7 @@ import (
 // ProtoToCmd returns a function that converts all the storage commands it is
 // handed, passing the generated live commands to the handler.
 // You must call this with a nil to flush the final command.
-func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
+func ProtoToCmd(handler func(Cmd)) func(context.Context, proto.Message) error {
 	var (
 		last         Cmd
 		observations *CmdObservations
@@ -34,7 +35,7 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 		count        int
 	)
 	var threadID uint64
-	return func(ctx context.Context, in atom_pb.Atom) error {
+	return func(ctx context.Context, in proto.Message) error {
 		count++
 		if in == nil {
 			if last != nil {
@@ -101,7 +102,7 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 
 // CmdToProto returns a function that converts all the commands it is handed,
 // passing the generated protos to the handler.
-func CmdToProto(handler func(a atom_pb.Atom)) func(context.Context, Cmd) error {
+func CmdToProto(handler func(a proto.Message)) func(context.Context, Cmd) error {
 	var threadID uint64
 	return func(ctx context.Context, in Cmd) error {
 		if in.Thread() != threadID {

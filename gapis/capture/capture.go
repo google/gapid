@@ -20,6 +20,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/atom"
-	"github.com/google/gapid/gapis/atom/atom_pb"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
@@ -178,13 +178,13 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		return err
 	}
 
-	writeMsg := func(ctx context.Context, a atom_pb.Atom) error { return write.Marshal(a) }
+	writeMsg := func(ctx context.Context, m proto.Message) error { return write.Marshal(m) }
 
 	if err := writeMsg(ctx, c.Header); err != nil {
 		return err
 	}
 
-	writeAtom := api.CmdToProto(func(a atom_pb.Atom) { writeMsg(ctx, a) })
+	writeAtom := api.CmdToProto(func(m proto.Message) { writeMsg(ctx, m) })
 
 	// IDs seen, so we can avoid encoding the same resource data multiple times.
 	seen := map[id.ID]bool{}
