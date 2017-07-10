@@ -32,7 +32,13 @@ import (
 type commandsVerb struct{ CommandsFlags }
 
 func init() {
-	verb := &commandsVerb{}
+	verb := &commandsVerb{
+		CommandsFlags: CommandsFlags{
+			CommandFilterFlags: CommandFilterFlags{
+				Context: -1,
+			},
+		},
+	}
 	verb.Context = -1
 	app.AddVerb(&app.Verb{
 		Name:      "commands",
