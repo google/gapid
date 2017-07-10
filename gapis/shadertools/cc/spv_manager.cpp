@@ -112,6 +112,18 @@ void SpvManager::renameViewIndex() {
   }
 }
 
+// Remove all layout(location = ...) qualifiers.
+// For most use cases we should be binding/remapping locations regardless whether they
+// are assigned explicit location or compiler generated one.
+// TODO: Handle separate shader objects - we just hope the game uses consistent block names for now.
+void SpvManager::removeLayoutLocations() {
+  for (auto& it : module->annotations()) {
+    if (it.opcode() == SpvOpDecorate && it.GetSingleWordOperand(1) == SpvDecorationLocation) {
+      it.ToNop();
+    }
+  }
+}
+
 /**
  * Return binary currently handled by module
  **/
