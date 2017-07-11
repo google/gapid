@@ -18,6 +18,7 @@
 #include "gapir/cc/gles_renderer.h"
 
 #include "core/cc/gl/formats.h"
+#include "core/cc/gl/versions.h"
 #include "core/cc/log.h"
 
 #include <windows.h>
@@ -149,9 +150,9 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 
     reset();
 
-    static bool inited = false;
-    if (!inited) {
-        inited = true;
+    static bool initedWindowClass = false;
+    if (!initedWindowClass) {
+        initedWindowClass = true;
         registerWindowClass(); // Only needs to be done once per app life-time.
     }
 
@@ -188,13 +189,59 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     int pixelFormat = ChoosePixelFormat(mDeviceContext, &pfd);
     SetPixelFormat(mDeviceContext, pixelFormat, &pfd);
 
-    mRenderingContext = wglCreateContext(mDeviceContext);
-    if (mRenderingContext == nullptr) {
-        GAPID_FATAL("Failed to create GL context. Error: %d", GetLastError());
+    typedef HGLRC(*PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
+    const int WGL_CONTEXT_RELEASE_BEHAVIOR_ARB = 0x2097;
+    const int WGL_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
+    const int WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
+    const int WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB = 0x0000;
+    const int WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB = 0x2098;
+
+    static bool firstContextCreation = true;
+    static PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
+    if (firstContextCreation) {
+        firstContextCreation = false;
+        // We want to obtain the wglCreateContextAttribsARB function, but you 
+        // can only get at this with an existing context bound. As we have to
+        // bind a context, we should only do this if we're the very first call
+        // as this can make a safe assumption that no other context will be
+        // unbound.
+        if (auto temp_context = wglCreateContext(mDeviceContext)) {
+            wglMakeCurrent(mDeviceContext, temp_context);
+            wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>(
+                wglGetProcAddress("wglCreateContextAttribsARB"));
+            wglMakeCurrent(mDeviceContext, nullptr);
+            wglDeleteContext(temp_context);
+        }
     }
 
-    if (mSharedContext != nullptr) {
-        wglShareLists(mSharedContext, mRenderingContext);
+    if (wglCreateContextAttribsARB != nullptr) {
+        for (auto gl_version : core::gl::sVersionSearchOrder) {
+            std::vector<int> attribs;
+            attribs.push_back(WGL_CONTEXT_MAJOR_VERSION_ARB);
+            attribs.push_back(gl_version.major);
+            attribs.push_back(WGL_CONTEXT_MINOR_VERSION_ARB);
+            attribs.push_back(gl_version.minor);
+            // https://www.khronos.org/registry/OpenGL/extensions/KHR/KHR_context_flush_control.txt
+            // These are disabled as they don't seem to improve performance.
+            // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
+            // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
+            attribs.push_back(0);
+            mRenderingContext = wglCreateContextAttribsARB(mDeviceContext, mSharedContext, attribs.data());
+            if (mRenderingContext != nullptr) {
+                break;
+            }
+        }
+        if (mRenderingContext == nullptr) {
+            GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: %d", GetLastError());
+        }
+    } else {
+        mRenderingContext = wglCreateContext(mDeviceContext);
+        if (mRenderingContext == nullptr) {
+            GAPID_FATAL("Failed to create GL context using wglCreateContext. Error: %d", GetLastError());
+        }
+        if (mSharedContext != nullptr) {
+            wglShareLists(mSharedContext, mRenderingContext);
+        }
     }
 
     mBackbuffer = backbuffer;
