@@ -1017,6 +1017,22 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits a printf-style string and arguments for logging a call to command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.PrintfCommandCallWithLabel"}}
+  {{AssertType $ "Function"}}
+
+  {{$name := Macro "CmdName" $}}
+  {{$args := Macro "C++.PrintfArguments" $}}
+
+  "[%u]{{$name}}({{ForEach $.CallParameters "C++.PrintfFormatCode" | JoinWith ", "}})"
+  , cmdLabel{{if $args}}§, {{$args}}{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the comma-separated list of arguments for the given function ready for printf.
 -------------------------------------------------------------------------------
 */}}

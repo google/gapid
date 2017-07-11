@@ -49,7 +49,7 @@ Interpreter::Interpreter(const MemoryManager* memoryManager, uint32_t stackDepth
         apiRequestCallback(std::move(callback)),
         mStack(stackDepth, mMemoryManager),
         mLabel(0) {
-    registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID, [](Stack* stack, bool) {
+    registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID, [](uint32_t, Stack* stack, bool) {
         stack->printStack();
         return true;
     });
@@ -111,7 +111,7 @@ bool Interpreter::call(uint32_t opcode) {
         GAPID_WARNING("Invalid function id(%u), in api(%d)", id, api);
         return false;
     }
-    if (!(*func)(&mStack, (opcode & PUSH_RETURN_MASK) != 0)) {
+    if (!(*func)(getLabel(), &mStack, (opcode & PUSH_RETURN_MASK) != 0)) {
         GAPID_WARNING("Error raised when calling function with id: %u", id);
         return false;
     }

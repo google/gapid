@@ -32,7 +32,7 @@ const uint32_t STACK_SIZE = 128;
 template <typename T>
 struct CheckTopOfStack {
     T expected_;
-    bool operator()(Stack* stack, bool) {
+    bool operator()(uint32_t, Stack* stack, bool) {
         EXPECT_EQ(expected_, stack->pop<T>());
         return true;
     }
@@ -338,7 +338,7 @@ TEST_F(InterpreterTest, StrcpyShortBuffer) {
 
 TEST_F(InterpreterTest, Post) {
     uint32_t callCount = 0;
-    auto post = [&callCount](Stack*, bool) {
+    auto post = [&callCount](uint32_t, Stack*, bool) {
         ++callCount;
         return true;
     };
@@ -353,7 +353,7 @@ TEST_F(InterpreterTest, Post) {
 
 TEST_F(InterpreterTest, Resource) {
     uint32_t callCount = 0;
-    auto resource = [&callCount](Stack* stack, bool) {
+    auto resource = [&callCount](uint32_t, Stack* stack, bool) {
         ++callCount;
         return true;
     };

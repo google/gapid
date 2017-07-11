@@ -35,7 +35,7 @@ public:
     // second argument is true if the caller expect the return value of the function to be pushed
     // to the stack. The function should return true if the function call was successful, false
     // otherwise.
-    typedef std::function<bool(Stack*, bool)> Function;
+    typedef std::function<bool(uint32_t, Stack*, bool)> Function;
 
     // The function identifier. These are part of the protocol between the server and the replay
     // system, and so must remain consistent.

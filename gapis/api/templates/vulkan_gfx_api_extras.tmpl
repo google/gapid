@@ -117,7 +117,7 @@
     stack->push(pAllocator);
     stack->push(pInstance);
 
-    return callVkCreateInstance(stack, pushReturn);
+    return callVkCreateInstance(~0, stack, pushReturn);
   }
 ¶
   bool Vulkan::replayCreateVkDevice(Stack* stack, bool pushReturn) {
@@ -136,7 +136,7 @@
     stack->push(pAllocator);
     stack->push(pDevice);
 
-    return callVkCreateDevice(stack, pushReturn);
+    return callVkCreateDevice(~0, stack, pushReturn);
   }
 ¶
   bool Vulkan::replayRegisterVkInstance(Stack* stack) {
