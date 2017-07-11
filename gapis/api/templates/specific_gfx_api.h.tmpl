@@ -105,7 +105,7 @@ class {{Title (Global "API")}} : public Api {
   {{range $c := AllCommands $}}
     {{if and (not (GetAnnotation $c "synthetic")) (not (GetAnnotation $c "pfn"))}}
       {{$name := Macro "CmdName" $c}}
-      bool call{{Template "C++.Public" $name}}(Stack* stack, bool pushReturn);
+      bool call{{Template "C++.Public" $name}}(uint32_t label, Stack* stack, bool pushReturn);
     {{end}}
   {{end}}
 };

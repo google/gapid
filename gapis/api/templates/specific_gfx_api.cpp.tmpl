@@ -54,7 +54,7 @@
     {{range $i, $c := $non_synthetics}}
       {{if (not (GetAnnotation $c "pfn"))}}
         {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
-        mFunctions.insert({{$i}}, std::bind(&{{$api}}::call{{$name}}, this, _1, _2));
+        mFunctions.insert({{$i}}, std::bind(&{{$api}}::call{{$name}}, this, _1, _2, _3));
       {{end}}
     {{end}}
   }
@@ -101,7 +101,7 @@
   {{$api  := Title (Global "API")}}
   {{$name := Macro "CmdName" $}}
 
-  bool {{$api}}::call{{Template "C++.Public" $name}}(Stack* stack, bool pushReturn) {
+  bool {{$api}}::call{{Template "C++.Public" $name}}(uint32_t cmdLabel, Stack* stack, bool pushReturn) {
     {{range $p := (Reverse $.CallParameters)}}
       auto {{$p.Name}} = §
 
@@ -116,7 +116,7 @@
     {{end}}
 
     if (stack->isValid()) {
-      GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
+      GAPID_DEBUG({{Template "C++.PrintfCommandCallWithLabel" $}});
 
       {{if GetAnnotation $ "indirect"}}
         {{$args := (GetAnnotation $ "indirect").Arguments}}
@@ -128,7 +128,7 @@
       {{end}}
         {{if not (IsVoid $.Return.Type)}}
           {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
-          GAPID_DEBUG("Returned: {{Template "C++.PrintfFormatCode" $.Return.Type}}", return_value);
+          GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
           {{if eq $name "glGetError"}}
             if (return_value != Gles::GLenum::GL_NO_ERROR) {
               GAPID_ERROR("glGetError() returned: 0x%x", return_value);
