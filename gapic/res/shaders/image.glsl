@@ -19,7 +19,6 @@ varying vec2 vPos;
 in vec2 aVertexPosition;
 
 uniform mat4 uTransform;
-uniform vec2 uPixelSize;
 uniform vec2 uTextureSize;
 uniform vec2 uTextureOffset;
 uniform bool uFlipped;
