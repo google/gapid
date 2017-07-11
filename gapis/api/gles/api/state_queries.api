@@ -1478,6 +1478,10 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     case GL_GPU_DISJOINT_EXT: {
       write(v[0:1])
     }
+    @if(Extension.GL_EXT_clip_cull_distance)
+    case GL_MAX_CLIP_DISTANCES_EXT, GL_MAX_CULL_DISTANCES_EXT, GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES_EXT: {
+      write(v[0:1])
+    }
     default: {
       glErrorInvalidEnum(name)
     }
