@@ -84,7 +84,7 @@ public:
   void NotifySubmitted(size_t i) {
     {
       std::lock_guard<threading::mutex> lock(pending_images_lock_);
-      pending_images_.push_back(i);
+      pending_images_.push_back(static_cast<uint32_t>(i));
     }
     pending_images_condition_.notify_one();
   }

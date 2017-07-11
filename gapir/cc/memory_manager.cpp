@@ -58,7 +58,7 @@ MemoryManager::MemoryRange::MemoryRange(uint8_t* base, uint32_t size) : base(bas
 MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList) : mConstantMemory(nullptr, 0) {
     for (auto size : sizeList) {
         // Try over-allocating to leave at least (size * kDriverOverheadFactor) free bytes.
-        mSize = size * (1 + kDriverOverheadFactor);
+        mSize = static_cast<uint32_t>(size * (1 + kDriverOverheadFactor));
         mMemory.reset(new(std::nothrow) uint8_t[mSize]);
         if (mMemory) {
             // Free the over-allocation first, then attempt allocating the (smaller) original size.

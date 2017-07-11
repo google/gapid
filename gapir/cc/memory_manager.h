@@ -109,7 +109,7 @@ private:
 
         uint32_t toOffset(const void* address) const {
             const uint8_t* addr = static_cast<const uint8_t*>(address);
-            return addr - base;
+            return static_cast<uint32_t>(addr - base);
         }
 
         uint8_t* base;
