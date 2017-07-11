@@ -132,6 +132,7 @@ class Extensions {
   bool GL_EXT_blend_func_extended                      = true
   bool GL_EXT_buffer_storage                           = true
   bool GL_EXT_clear_texture                            = true
+  bool GL_EXT_clip_cull_distance                       = true
   bool GL_EXT_copy_image                               = true
   bool GL_EXT_debug_label                              = true
   bool GL_EXT_debug_marker                             = true
@@ -275,6 +276,7 @@ sub void InitExtensions(ref!Context ctx) {
     GL_EXT_blend_func_extended:                       set.Strings["GL_EXT_blend_func_extended"],
     GL_EXT_buffer_storage:                            set.Strings["GL_EXT_buffer_storage"],
     GL_EXT_clear_texture:                             set.Strings["GL_EXT_clear_texture"],
+    GL_EXT_clip_cull_distance:                        set.Strings["GL_EXT_clip_cull_distance"],
     GL_EXT_copy_image:                                set.Strings["GL_EXT_copy_image"],
     GL_EXT_debug_label:                               set.Strings["GL_EXT_debug_label"],
     GL_EXT_debug_marker:                              set.Strings["GL_EXT_debug_marker"],

@@ -90,6 +90,13 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
     case GL_FRAMEBUFFER_SRGB_EXT: {
       ctx.Pixel.FramebufferSrgb = enabled
     }
+    @if(Extension.GL_EXT_clip_cull_distance)
+    case GL_CLIP_DISTANCE0_EXT, GL_CLIP_DISTANCE1_EXT,
+         GL_CLIP_DISTANCE2_EXT, GL_CLIP_DISTANCE3_EXT,
+         GL_CLIP_DISTANCE4_EXT, GL_CLIP_DISTANCE5_EXT,
+         GL_CLIP_DISTANCE6_EXT, GL_CLIP_DISTANCE7_EXT: {
+      // TODO
+    }
     default: {
       glErrorInvalidEnum(capability)
     }
