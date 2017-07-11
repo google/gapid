@@ -357,12 +357,14 @@ type bindRendererOnContextSwitch struct {
 func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	thread := cmd.Thread()
 	if context := GetContext(out.State(), thread); context != nil && t.context != context {
-		t.context = context
 		ctxID := uint32(context.Identifier)
 		cb := CommandBuilder{Thread: thread}
 		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayBindRenderer(ctxID))
 	}
 	out.MutateAndWrite(ctx, id, cmd)
+	// The mutate may have switched context, in which case it's the responsibilty
+	// of that command to create / bind the renderer. See custom_replay.go.
+	t.context = GetContext(out.State(), thread)
 }
 
 func (t *bindRendererOnContextSwitch) Flush(ctx context.Context, out transform.Writer) {}
