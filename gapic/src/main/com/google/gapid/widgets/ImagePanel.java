@@ -721,7 +721,6 @@ public class ImagePanel extends Composite {
 
     private void drawImage(Renderer renderer) {
       texture.setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
-      shader.setUniform("uPixelSize", VecD.ONE.safeDivide(renderer.getViewSize()));
       shader.setUniform("uTextureSize", new float[] { 1, 1 });
       shader.setUniform("uTextureOffset", new float[] { 0, 0 });
       shader.setUniform("uChannels", uChannels);
