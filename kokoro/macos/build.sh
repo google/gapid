@@ -66,6 +66,9 @@ cp gapid-config $SRC/.gapid-config
 cd $SRC
 git submodule update --init
 
+# Disable ccache as it seems to be flaky on mac build server
+export CCACHE_DISABLE=1
+
 # Invoke the build. At this point, only ensure that the tests build, but don't
 # execute the tests.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
