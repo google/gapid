@@ -1209,6 +1209,10 @@
     Thread uint64
   }
   ¶
+  func (cb CommandBuilder) Custom(f func(context.Context, *api.State, *builder.Builder) error) *replay.Custom {
+    return &replay.Custom{T: cb.Thread, F: f}
+  }
+  ¶
   {{range $c := AllCommands $}}
     {{if not (GetAnnotation $c "pfn")}}
       {{$name := $c | GoCommandName}}

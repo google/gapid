@@ -100,7 +100,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
 		if c.Bound.DrawFramebuffer == c.Objects.Default.Framebuffer {
-			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
@@ -157,7 +157,7 @@ func postColorData(ctx context.Context,
 
 	imageSize := imgFmt.Size(int(width), int(height), 1)
 	tmp := s.AllocOrPanic(ctx, uint64(imageSize))
-	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 		// TODO: We use Call() directly here because we are calling glReadPixels
 		// with depth formats which are not legal for GLES. Once we're replaying
 		// on-device again, we need to take a look at methods for reading the

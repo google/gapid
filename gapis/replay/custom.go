@@ -22,22 +22,25 @@ import (
 )
 
 // Custom must conform to the api.Cmd interface.
-var _ = api.Cmd(Custom(nil))
+var _ = api.Cmd(Custom{})
 
 // Custom is a command issuing custom replay operations to the replay builder b
 // upon Replay().
-type Custom func(ctx context.Context, s *api.State, b *builder.Builder) error
+type Custom struct {
+	T uint64 // The thread ID
+	F func(ctx context.Context, s *api.State, b *builder.Builder) error
+}
 
 func (c Custom) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	if b == nil {
 		return nil
 	}
-	return c(ctx, s, b)
+	return c.F(ctx, s, b)
 }
 
 // api.Cmd compliance
-func (Custom) Thread() uint64         { return 0 }
-func (Custom) SetThread(uint64)       {}
+func (cmd Custom) Thread() uint64     { return cmd.T }
+func (cmd Custom) SetThread(t uint64) { cmd.T = t }
 func (Custom) CmdName() string        { return "<Custom>" }
 func (Custom) API() api.API           { return nil }
 func (Custom) CmdFlags() api.CmdFlags { return 0 }
