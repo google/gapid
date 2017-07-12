@@ -979,7 +979,7 @@ func postImageData(ctx context.Context,
 
 	// Add post atom
 	writeEach(ctx, out,
-		replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+		cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {
 				var bytes []byte
 				if err == nil {

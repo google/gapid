@@ -32,7 +32,6 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
-	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/shadertools"
 )
@@ -982,7 +981,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *EglCreateImageKHR:
 			{
-				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 					return cmd.Mutate(ctx, s, nil) // do not call, just mutate
 				}))
 
@@ -1003,7 +1002,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
-						out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 							GetState(s).EGLImages[cmd.Result].TargetContext = c.Identifier
 							GetState(s).EGLImages[cmd.Result].TargetTexture = texId
 							return nil
@@ -1017,7 +1016,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				cmd := *cmd
 				convertTexTarget(&cmd.Target)
-				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 					return cmd.Mutate(ctx, s, nil) // do not call, just mutate
 				}))
 
@@ -1110,7 +1109,7 @@ func MultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform
 		for viewID := GLuint(0); viewID < GLuint(numViews); viewID++ {
 			// Set the magic uniform which shaders use to fetch view-dependent attributes.
 			// It is missing from the observed extras, so normal mutation would fail.
-			out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 				if c.Bound.Program != nil {
 					viewIDLocation := UniformLocation(0x7FFF0000)
 					cb.GlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
@@ -1122,7 +1121,7 @@ func MultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform
 			// For each attachment, bind the layer corresponding to this ViewID.
 			// Do not modify the state so that we do not revert to single-view for next draw call.
 			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
-				out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 					if a.Texture != nil {
 						cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
 					}
@@ -1219,7 +1218,7 @@ func moveClientVBsToVAs(
 	// Apply the memory observations that were made by the draw call now.
 	// We need to do this as the glBufferData calls below will require the data.
 	dID := id.Derived()
-	out.MutateAndWrite(ctx, dID, replay.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 		cmd.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
 		return nil
 	}))
