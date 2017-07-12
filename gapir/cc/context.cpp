@@ -53,7 +53,7 @@ std::unique_ptr<Context> Context::create(const ServerConnection& gazer,
 Context::Context(const ServerConnection& gazer, ResourceProvider* resourceProvider,
                  MemoryManager* memoryManager) :
         mServer(gazer), mResourceProvider(resourceProvider), mMemoryManager(memoryManager),
-        mBoundGlesRenderer(nullptr), mBoundVulkanRenderer(nullptr),
+        mVulkanRenderer(nullptr),
         mPostBuffer(new PostBuffer(POST_BUFFER_SIZE, [this](const void* address, uint32_t count) {
             return this->mServer.post(address, count);
         })) {
@@ -63,7 +63,7 @@ Context::~Context() {
     for (auto it = mGlesRenderers.begin(); it != mGlesRenderers.end(); it++) {
         delete it->second;
     }
-    delete mBoundVulkanRenderer;
+    delete mVulkanRenderer;
 }
 
 bool Context::initialize() {
@@ -104,9 +104,9 @@ bool Context::interpret() {
         [this](Interpreter* interpreter, uint8_t api_index) -> bool {
             if (api_index == gapir::Vulkan::INDEX) {
                 // There is only one vulkan "renderer" so we create it when requested.
-                mBoundVulkanRenderer = VulkanRenderer::create();
-                if (mBoundVulkanRenderer->isValid()) {
-                    Api* api = mBoundVulkanRenderer->api();
+                mVulkanRenderer = VulkanRenderer::create();
+                if (mVulkanRenderer->isValid()) {
+                    Api* api = mVulkanRenderer->api();
                     interpreter->setRendererFunctions(api->index(), &api->mFunctions);
                     GAPID_INFO("Bound Vulkan renderer");
                     return true;
@@ -117,7 +117,9 @@ bool Context::interpret() {
 
     mInterpreter.reset(new Interpreter(mMemoryManager, mReplayRequest->getStackSize(), std::move(callback)));
     registerCallbacks(mInterpreter.get());
-    auto res = mInterpreter->run(mReplayRequest->getInstructionList()) && mPostBuffer->flush();
+    auto instAndCount = mReplayRequest->getInstructionList();
+    auto res = mInterpreter->run(instAndCount.first, instAndCount.second) &&
+               mPostBuffer->flush();
     mInterpreter.reset(nullptr);
     return res;
 }
@@ -167,11 +169,9 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
             GAPID_INFO("replayCreateRenderer(%u)", id);
-            if (Renderer* prev = mGlesRenderers[id]) {
-                if (mBoundGlesRenderer == prev) {
-                    mBoundGlesRenderer = nullptr;
-                }
-                delete prev;
+            auto existing = mGlesRenderers.find(id);
+            if (existing != mGlesRenderers.end()) {
+                delete existing->second;
             }
             // Share objects with the root GLES context.
             // This will essentially make all objects shared between all contexts.
@@ -184,7 +184,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             mGlesRenderers[id] = renderer;
             return true;
         } else {
-            GAPID_WARNING("Error during calling function replayCreateRenderer");
+            GAPID_WARNING("[%u]Error during calling function replayCreateRenderer", label);
             return false;
         }
     });
@@ -192,19 +192,32 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayBindRenderer, [this, interpreter](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-            GAPID_DEBUG("replayBindRenderer(%u)", id);
-            if (mBoundGlesRenderer != nullptr) {
-                mBoundGlesRenderer->unbind();
-                mBoundGlesRenderer = nullptr;
-            }
-            mBoundGlesRenderer = mGlesRenderers[id];
-            mBoundGlesRenderer->bind();
-            Api* api = mBoundGlesRenderer->api();
+            GAPID_DEBUG("[%u]replayBindRenderer(%u)", label, id);
+            auto renderer = mGlesRenderers[id];
+            renderer->bind();
+            Api* api = renderer->api();
             interpreter->setRendererFunctions(api->index(), &api->mFunctions);
-            GAPID_DEBUG("Bound renderer %u: %s - %s", id, mBoundGlesRenderer->name(), mBoundGlesRenderer->version());
+            GAPID_DEBUG("[%u]Bound renderer %u: %s - %s", label, id, renderer->name(), renderer->version());
             return true;
         } else {
-            GAPID_WARNING("Error during calling function replayBindRenderer");
+            GAPID_WARNING("[%u]Error during calling function replayBindRenderer", label);
+            return false;
+        }
+    });
+
+    interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayUnbindRenderer, [this, interpreter](uint32_t label, Stack* stack, bool) {
+        uint32_t id = stack->pop<uint32_t>();
+        if (stack->isValid()) {
+            GAPID_DEBUG("[%u]replayUnbindRenderer(%u)", label, id);
+            auto renderer = mGlesRenderers[id];
+            renderer->unbind();
+            Api* api = renderer->api();
+            // interpreter->setRendererFunctions(api->index(), nullptr);
+            GAPID_DEBUG("[%u]Unbound renderer %u", label);
+            return true;
+        }
+        else {
+            GAPID_WARNING("[%u]Error during calling function replayUnbindRenderer", label);
             return false;
         }
     });
@@ -218,26 +231,29 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         backbuffer.format.color = stack->pop<uint32_t>();
         backbuffer.height = stack->pop<int32_t>();
         backbuffer.width = stack->pop<int32_t>();
+        uint32_t id = stack->pop<uint32_t>();
 
         if (!stack->isValid()) {
-            GAPID_WARNING("Error during calling function replayCreateRenderer");
+            GAPID_WARNING("[%u]Error during calling function replayCreateRenderer", label);
             return false;
         }
 
         if (stack->isValid()) {
-            GAPID_INFO("contextInfo(%d, %d, 0x%x, 0x%x, 0x%x)",
+            GAPID_INFO("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
+                    label,
                     backbuffer.width,
                     backbuffer.height,
                     backbuffer.format.color,
                     backbuffer.format.depth,
                     backbuffer.format.stencil,
                     resetViewportScissor ? "true" : "false");
-            if (mBoundGlesRenderer == nullptr) {
-                GAPID_INFO("contextInfo called without a bound renderer");
+            auto renderer = mGlesRenderers[id];
+            if (renderer == nullptr) {
+                GAPID_INFO("[%u]replayChangeBackbuffer called with unknown renderer %d", label, renderer);
                 return false;
             }
-            mBoundGlesRenderer->setBackbuffer(backbuffer);
-            auto gles = mBoundGlesRenderer->getApi<Gles>();
+            renderer->setBackbuffer(backbuffer);
+            auto gles = renderer->getApi<Gles>();
             // TODO: This needs to change when we support other APIs.
             GAPID_ASSERT(gles != nullptr);
             if (resetViewportScissor) {
@@ -246,116 +262,116 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             }
             return true;
         } else {
-            GAPID_WARNING("Error during calling function replayCreateRenderer");
+            GAPID_WARNING("[%u]Error during calling function replayChangeBackbuffer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkInstance,
                                  [this, interpreter](uint32_t label, Stack* stack, bool pushReturn) {
-        GAPID_DEBUG("replayCreateVkInstance()");
+        GAPID_DEBUG("[%u]replayCreateVkInstance()", label);
 
-        if (mBoundVulkanRenderer != nullptr || interpreter->registerApi(Vulkan::INDEX)) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        if (mVulkanRenderer != nullptr || interpreter->registerApi(Vulkan::INDEX)) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayCreateVkInstance(stack, pushReturn);
         } else {
-            GAPID_WARNING("replayCreateVkInstance called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayCreateVkInstance called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkDevice,
                                  [this, interpreter](uint32_t label, Stack* stack, bool pushReturn) {
-        GAPID_DEBUG("replayCreateVkDevice()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayCreateVkDevice()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayCreateVkDevice(stack, pushReturn);
         } else {
-            GAPID_WARNING("replayCreateVkDevice called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayCreateVkDevice called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkInstance,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayRegisterVkInstance()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayRegisterVkInstance()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkInstance(stack);
         } else {
-            GAPID_WARNING("replayRegisterVkInstance called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayRegisterVkInstance called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkInstance,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayUnregisterVkInstance()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayUnregisterVkInstance()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkInstance(stack);
         } else {
-            GAPID_WARNING("replayUnregisterVkInstance called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayUnregisterVkInstance called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkDevice,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayRegisterVkDevice()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayRegisterVkDevice()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkDevice(stack);
         } else {
-            GAPID_WARNING("replayRegisterVkDevice called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayRegisterVkDevice called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkDevice,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayUnregisterVkDevice()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayUnregisterVkDevice()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkDevice(stack);
         } else {
-            GAPID_WARNING("replayUnregisterVkDevice called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayUnregisterVkDevice called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkCommandBuffers,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayRegisterVkCommandBuffers()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayRegisterVkCommandBuffers()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkCommandBuffers(stack);
         } else {
-            GAPID_WARNING("replayRegisterVkCommandBuffers called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayRegisterVkCommandBuffers called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkCommandBuffers,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("replayUnregisterVkCommandBuffers()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]replayUnregisterVkCommandBuffers()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkCommandBuffers(stack);
         } else {
-            GAPID_WARNING("replayUnregisterVkCommandBuffers called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]replayUnregisterVkCommandBuffers called without a bound Vulkan renderer", label);
             return false;
         }
     });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ToggleVirtualSwapchainReturnAcquiredImage,
                                  [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("ToggleVirtualSwapchainReturnAcquiredImage()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]ToggleVirtualSwapchainReturnAcquiredImage()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->toggleVirtualSwapchainReturnAcquiredImage(stack);
         } else {
-            GAPID_WARNING("toggleVirtualSwapchainReturnAcquiredImage called without a bound Vulkan renderer");
+            GAPID_WARNING("[%u]toggleVirtualSwapchainReturnAcquiredImage called without a bound Vulkan renderer", label);
             return false;
         }
     });
@@ -364,22 +380,22 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         Vulkan::INDEX,
         Builtins::ReplayAllocateImageMemory,
         [this, interpreter](uint32_t label, Stack* stack, bool push_return) {
-            GAPID_DEBUG("replayAllocateImageMemory()");
-            if (mBoundVulkanRenderer != nullptr) {
-                auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+            GAPID_DEBUG("[%u]replayAllocateImageMemory()", label);
+            if (mVulkanRenderer != nullptr) {
+                auto* api = mVulkanRenderer->getApi<Vulkan>();
                 return api->replayAllocateImageMemory(stack, push_return);
             } else {
-                GAPID_WARNING("replayAllocateImageMemory called without a "
-                              "bound Vulkan renderer");
+                GAPID_WARNING("[%u]replayAllocateImageMemory called without a "
+                              "bound Vulkan renderer", label);
                 return false;
             }
         });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetFenceStatus,
                                  [this, interpreter](uint32_t label, Stack* stack, bool push_return) {
-        GAPID_DEBUG("ReplayGetFenceStatus()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]ReplayGetFenceStatus()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayGetFenceStatus(stack, push_return);
         } else {
             GAPID_WARNING("ReplayGetFenceStatus called without a bound Vulkan renderer");
@@ -389,9 +405,9 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetEventStatus,
                                  [this, interpreter](uint32_t label, Stack* stack, bool push_return) {
-        GAPID_DEBUG("ReplayGetEventStatus()");
-        if (mBoundVulkanRenderer != nullptr) {
-            auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
+        GAPID_DEBUG("[%u]ReplayGetEventStatus()", label);
+        if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
             return api->replayGetEventStatus(stack, push_return);
         } else {
             GAPID_WARNING("ReplayGetEventStatus called without a bound Vulkan renderer");

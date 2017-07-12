@@ -69,9 +69,9 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 				}
 			}()
 			id := api.CmdID(i)
-			b.BeginAtom(uint64(id))
+			b.BeginCommand(uint64(id), 0)
 			cmd.Mutate(ctx, s, b)
-			b.CommitAtom()
+			b.CommitCommand()
 		}()
 	}
 

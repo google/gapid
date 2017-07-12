@@ -48,6 +48,10 @@ Interpreter::Interpreter(const MemoryManager* memoryManager, uint32_t stackDepth
         mMemoryManager(memoryManager),
         apiRequestCallback(std::move(callback)),
         mStack(stackDepth, mMemoryManager),
+        mInstructions(nullptr),
+        mInstructionCount(0),
+        mCurrentInstruction(0),
+        mNextThread(0),
         mLabel(0) {
     registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID, [](uint32_t, Stack* stack, bool) {
         stack->printStack();
@@ -60,20 +64,44 @@ void Interpreter::registerBuiltin(uint8_t api, FunctionTable::Id id, FunctionTab
 }
 
 void Interpreter::setRendererFunctions(uint8_t api, FunctionTable* functionTable) {
-    mRendererFunctions[api] = functionTable;
+    if (functionTable != nullptr) {
+        mRendererFunctions[api] = functionTable;
+    } else {
+        mRendererFunctions.erase(api);
+    }
 }
 
-bool Interpreter::run(const std::pair<const uint32_t*, uint32_t>& instructions) {
-    for (uint32_t i = 0; i < instructions.second; ++i) {
-        if (!interpret(instructions.first[i])) {
-            GAPID_WARNING(
+bool Interpreter::run(const uint32_t* instructions, uint32_t count) {
+    GAPID_ASSERT(mInstructions == nullptr);
+    GAPID_ASSERT(mInstructionCount == 0);
+    GAPID_ASSERT(mCurrentInstruction == 0);
+    mInstructions = instructions;
+    mInstructionCount = count;
+    exec();
+    return mExecResult.get_future().get() == SUCCESS;
+}
+
+void Interpreter::exec() {
+    for (; mCurrentInstruction < mInstructionCount; mCurrentInstruction++) {
+        switch (interpret(mInstructions[mCurrentInstruction])) {
+            case SUCCESS:
+                break;
+            case ERROR:
+                GAPID_WARNING(
                     "Interpreter stopped because of an interpretation error at opcode %u (%u). "
                     "Last reached label: %d",
-                    i, instructions.first[i], mLabel);
-            return false;
+                    mCurrentInstruction, mInstructions[mCurrentInstruction], mLabel);
+                mExecResult.set_value(ERROR);
+                return;
+            case CHANGE_THREAD: {
+                auto next_thread = mNextThread;
+                mCurrentInstruction++;
+                mThreadPool.enqueue(next_thread, [this] { this->exec(); });
+                return;
+            }
         }
     }
-    return true;
+    mExecResult.set_value(SUCCESS);
 }
 
 BaseType Interpreter::extractType(uint32_t opcode) const {
@@ -92,10 +120,11 @@ bool Interpreter::registerApi(uint8_t api) {
     return apiRequestCallback(this, api);
 }
 
-bool Interpreter::call(uint32_t opcode) {
+Interpreter::Result Interpreter::call(uint32_t opcode) {
     auto id = opcode & FUNCTION_ID_MASK;
     auto api = (opcode & API_INDEX_MASK) >> API_BIT_SHIFT;
     auto func = mBuiltins[api].lookup(id);
+    auto label = getLabel();
     if (func == nullptr) {
         if (mRendererFunctions.count(api) > 0) {
             func = mRendererFunctions[api]->lookup(id);
@@ -103,26 +132,26 @@ bool Interpreter::call(uint32_t opcode) {
             if (apiRequestCallback(this, api)) {
                 func = mRendererFunctions[api]->lookup(id);
             } else {
-                GAPID_WARNING("Error setting up renderer functions for api: %u", api);
+                GAPID_WARNING("[%u]Error setting up renderer functions for api: %u", label, api);
             }
         }
     }
     if (func == nullptr) {
-        GAPID_WARNING("Invalid function id(%u), in api(%d)", id, api);
-        return false;
+        GAPID_WARNING("[%u]Invalid function id(%u), in api(%d)", label, id, api);
+        return ERROR;
     }
     if (!(*func)(getLabel(), &mStack, (opcode & PUSH_RETURN_MASK) != 0)) {
-        GAPID_WARNING("Error raised when calling function with id: %u", id);
-        return false;
+        GAPID_WARNING("[%u]Error raised when calling function with id: %u", label, id);
+        return ERROR;
     }
-    return true;
+    return SUCCESS;
 }
 
-bool Interpreter::pushI(uint32_t opcode) {
+Interpreter::Result Interpreter::pushI(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
         GAPID_WARNING("Error: pushI basic type invalid %u", type);
-        return false;
+        return ERROR;
     }
     Stack::BaseValue data = extract20bitData(opcode);
     switch (type) {
@@ -144,138 +173,138 @@ bool Interpreter::pushI(uint32_t opcode) {
             break;
     }
     mStack.pushValue(type, data);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::loadC(uint32_t opcode) {
+Interpreter::Result Interpreter::loadC(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
       GAPID_WARNING("Error: loadC basic type invalid %u", type);
-      return false;
+      return ERROR;
     }
     const void* address = mMemoryManager->constantToAbsolute(extract20bitData(opcode));
     if (!isConstantAddressForType(address, type)) {
       GAPID_WARNING("Error: loadC not constant address %p", address);
-      return false;
+      return ERROR;
     }
     mStack.pushFrom(type, address);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::loadV(uint32_t opcode) {
+Interpreter::Result Interpreter::loadV(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
       GAPID_WARNING("Error: loadV basic type invalid %u", type);
-      return false;
+      return ERROR;
     }
     const void* address = mMemoryManager->volatileToAbsolute(extract20bitData(opcode));
     if (!isVolatileAddressForType(address, type)) {
       GAPID_WARNING("Error: loadV not volatile address %p", address);
-      return false;
+      return ERROR;
     }
     mStack.pushFrom(type, address);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::load(uint32_t opcode) {
+Interpreter::Result Interpreter::load(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
       GAPID_WARNING("Error: load basic type invalid %u", type);
-      return false;
+      return ERROR;
     }
     const void* address = mStack.pop<const void*>();
     if (!isReadAddress(address)) {
       GAPID_WARNING("Error: load not readable address %p", address);
-      return false;
+      return ERROR;
     }
     mStack.pushFrom(type, address);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::pop(uint32_t opcode) {
+Interpreter::Result Interpreter::pop(uint32_t opcode) {
     mStack.discard(extract26bitData(opcode));
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::storeV(uint32_t opcode) {
+Interpreter::Result Interpreter::storeV(uint32_t opcode) {
     void* address = mMemoryManager->volatileToAbsolute(extract26bitData(opcode));
     if (!isVolatileAddressForType(address, mStack.getTopType())) {
       GAPID_WARNING("Error: storeV not volatile address %p", address);
-      return false;
+      return ERROR;
     }
 
     mStack.popTo(address);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::store() {
+Interpreter::Result Interpreter::store() {
     void* address = mStack.pop<void*>();
     if (!isWriteAddress(address)) {
       GAPID_WARNING("Error: store not write address %p", address);
-      return false;
+      return ERROR;
     }
     mStack.popTo(address);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::resource(uint32_t opcode) {
+Interpreter::Result Interpreter::resource(uint32_t opcode) {
     mStack.push<uint32_t>(extract26bitData(opcode));
     return this->call(Interpreter::RESOURCE_FUNCTION_ID);
 }
 
-bool Interpreter::post() {
+Interpreter::Result Interpreter::post() {
     return this->call(Interpreter::POST_FUNCTION_ID);
 }
 
-bool Interpreter::copy(uint32_t opcode) {
+Interpreter::Result Interpreter::copy(uint32_t opcode) {
     uint32_t count = extract26bitData(opcode);
     void* target = mStack.pop<void*>();
     const void* source = mStack.pop<const void*>();
     if (!isWriteAddress(target)) {
         GAPID_WARNING("Error: copy target is invalid %p %d", target, count);
-        return false;
+        return ERROR;
     }
     if (!isReadAddress(source)) {
         GAPID_WARNING("Error: copy source is invalid %p %d", target, count);
-        return false;
+        return ERROR;
     }
     if (source == nullptr) {
         GAPID_WARNING("Error: copy source address is null");
-        return false;
+        return ERROR;
     }
     if (target == nullptr) {
         GAPID_WARNING("Error: copy destination address is null");
-        return false;
+        return ERROR;
     }
     memcpy(target, source, count);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::clone(uint32_t opcode) {
+Interpreter::Result Interpreter::clone(uint32_t opcode) {
     mStack.clone(extract26bitData(opcode));
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::strcpy(uint32_t opcode) {
+Interpreter::Result Interpreter::strcpy(uint32_t opcode) {
     uint32_t count = extract26bitData(opcode);
     char* target = mStack.pop<char*>();
     const char* source = mStack.pop<const char*>();
     // Requires that the whole count is available, even if source is shorter.
     if (!isWriteAddress(target)) {
         GAPID_WARNING("Error: copy target is invalid %p %d", target, count);
-        return false;
+        return ERROR;
     }
     if (!isReadAddress(source)) {
         GAPID_WARNING("Error: copy source is invalid %p %d", target, count);
-        return false;
+        return ERROR;
     }
     if (source == nullptr) {
         GAPID_WARNING("Error: strcpy source address is null");
-        return false;
+        return ERROR;
     }
     if (target == nullptr) {
         GAPID_WARNING("Error: strcpy destination address is null");
-        return false;
+        return ERROR;
     }
     uint32_t i;
     for (i = 0; i < count - 1; i++) {
@@ -288,10 +317,10 @@ bool Interpreter::strcpy(uint32_t opcode) {
     for (; i < count; i++) {
         target[i] = 0;
     }
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::extend(uint32_t opcode) {
+Interpreter::Result Interpreter::extend(uint32_t opcode) {
     uint32_t data = extract26bitData(opcode);
     auto type = mStack.getTopType();
     auto value = mStack.popBaseValue();
@@ -316,44 +345,53 @@ bool Interpreter::extend(uint32_t opcode) {
         }
     }
     mStack.pushValue(type, value);
-    return mStack.isValid();
+    return mStack.isValid() ? SUCCESS : ERROR;
 }
 
-bool Interpreter::add(uint32_t opcode) {
-  uint32_t count = extract26bitData(opcode);
-  if (count < 2) {
-    return mStack.isValid();
-  }
-  auto type = mStack.getTopType();
-  switch (type) {
-      case BaseType::Int8:             return sum<int8_t>(mStack, count);
-      case BaseType::Int16:            return sum<int16_t>(mStack, count);
-      case BaseType::Int32:            return sum<int32_t>(mStack, count);
-      case BaseType::Int64:            return sum<int64_t>(mStack, count);
-      case BaseType::Uint8:            return sum<uint8_t>(mStack, count);
-      case BaseType::Uint16:           return sum<uint16_t>(mStack, count);
-      case BaseType::Uint32:           return sum<uint32_t>(mStack, count);
-      case BaseType::Uint64:           return sum<uint64_t>(mStack, count);
-      case BaseType::Float:            return sum<float>(mStack, count);
-      case BaseType::Double:           return sum<double>(mStack, count);
-      case BaseType::AbsolutePointer:  return sum<void*>(mStack, count);
-      case BaseType::ConstantPointer:  return sum<void*>(mStack, count);
-      default:
-        GAPID_WARNING("Cannot add values of type %s", baseTypeName(type));
-        return false;
-  }
+Interpreter::Result Interpreter::add(uint32_t opcode) {
+    uint32_t count = extract26bitData(opcode);
+    if (count < 2) {
+        return mStack.isValid() ? SUCCESS : ERROR;
+    }
+    auto type = mStack.getTopType();
+    bool ok = false;
+    switch (type) {
+        case BaseType::Int8:             { ok = sum<int8_t>(mStack, count); break; }
+        case BaseType::Int16:            { ok = sum<int16_t>(mStack, count); break; }
+        case BaseType::Int32:            { ok = sum<int32_t>(mStack, count); break; }
+        case BaseType::Int64:            { ok = sum<int64_t>(mStack, count); break; }
+        case BaseType::Uint8:            { ok = sum<uint8_t>(mStack, count); break; }
+        case BaseType::Uint16:           { ok = sum<uint16_t>(mStack, count); break; }
+        case BaseType::Uint32:           { ok = sum<uint32_t>(mStack, count); break; }
+        case BaseType::Uint64:           { ok = sum<uint64_t>(mStack, count); break; }
+        case BaseType::Float:            { ok = sum<float>(mStack, count); break; }
+        case BaseType::Double:           { ok = sum<double>(mStack, count); break; }
+        case BaseType::AbsolutePointer:  { ok = sum<void*>(mStack, count); break; }
+        case BaseType::ConstantPointer:  { ok = sum<void*>(mStack, count); break; }
+        default:
+            GAPID_WARNING("Cannot add values of type %s", baseTypeName(type));
+            return ERROR;
+    }
+    return ok ? SUCCESS : ERROR;
 }
 
-bool Interpreter::label(uint32_t opcode) {
+Interpreter::Result Interpreter::label(uint32_t opcode) {
     mLabel = extract26bitData(opcode);
-    return mStack.isValid();
+    return SUCCESS;
+}
+
+Interpreter::Result Interpreter::switchThread(uint32_t opcode) {
+    auto thread = extract26bitData(opcode);
+    GAPID_DEBUG("Switch thread %d -> %d", mNextThread, thread);
+    mNextThread = thread;
+    return CHANGE_THREAD;
 }
 
 #define DEBUG_OPCODE(name, value) GAPID_VERBOSE(name)
 #define DEBUG_OPCODE_26(name, value) GAPID_VERBOSE(name "(%#010x)", value & DATA_MASK26)
 #define DEBUG_OPCODE_TY_20(name, value) GAPID_VERBOSE(name "(%#010x, %s)", value & DATA_MASK20, baseTypeName(extractType(value)))
 
-bool Interpreter::interpret(uint32_t opcode) {
+Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     InstructionCode code = static_cast<InstructionCode>(opcode >> OPCODE_BIT_SHIFT);
     switch (code) {
         case InstructionCode::CALL:
@@ -404,9 +442,12 @@ bool Interpreter::interpret(uint32_t opcode) {
         case InstructionCode::LABEL:
             DEBUG_OPCODE_26("LABEL", opcode);
             return this->label(opcode);
+        case InstructionCode::SWITCH_THREAD:
+            DEBUG_OPCODE_26("SWITCH_THREAD", opcode);
+            return this->switchThread(opcode);
         default:
             GAPID_WARNING("Unknown opcode! %#010x", opcode);
-            return false;
+            return ERROR;
     }
 }
 

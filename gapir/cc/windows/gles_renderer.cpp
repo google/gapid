@@ -17,6 +17,7 @@
 #include "gapir/cc/gles_gfx_api.h"
 #include "gapir/cc/gles_renderer.h"
 
+#include "core/cc/thread.h"
 #include "core/cc/gl/formats.h"
 #include "core/cc/gl/versions.h"
 #include "core/cc/log.h"
@@ -55,28 +56,6 @@ const int WGL_DEPTH_BITS_ARB = 0x2022;
 const int WGL_STENCIL_BITS_ARB = 0x2023;
 
 const TCHAR* wndClassName = TEXT("gapir");
-
-void registerWindowClass() {
-    WNDCLASS wc;
-    memset(&wc, 0, sizeof(wc));
-
-    auto hInstance = GetModuleHandle(nullptr);
-    if (hInstance == nullptr) {
-        GAPID_FATAL("Failed to get module handle. Error: %d", GetLastError());
-    }
-
-    wc.style         = 0;
-    wc.lpfnWndProc   = DefWindowProc;
-    wc.hInstance     = hInstance;
-    wc.hCursor       = LoadCursor(0, IDC_ARROW); // TODO: Needed?
-    wc.hbrBackground = HBRUSH(COLOR_WINDOW + 1);
-    wc.lpszMenuName  = TEXT("");
-    wc.lpszClassName = wndClassName;
-
-    if (RegisterClass(&wc) == 0) {
-        GAPID_FATAL("Failed to register window class. Error: %d", GetLastError());
-    }
-}
 
 class WGL {
 public:
@@ -120,34 +99,59 @@ WGL::PBuffer::PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc) : mPBuf(pbuf), mCtx(
 WGL::PBuffer::~PBuffer() {
     auto wgl = WGL::get();
     if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
-        GAPID_FATAL("Failed to release HDC. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to release HDC. Error: 0x%x", GetLastError());
     }
     if (!wgl.DestroyPbufferARB(mPBuf)) {
-        GAPID_FATAL("Failed to destroy pbuffer. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to destroy pbuffer. Error: 0x%x", GetLastError());
     }
     if (!wglDeleteContext(mCtx)) {
-        GAPID_FATAL("Failed to delete GL context. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to delete GL context. Error: 0x%x", GetLastError());
     }
 }
 
 void WGL::PBuffer::bind() {
     if (!wglMakeCurrent(mHDC, mCtx)) {
-        GAPID_FATAL("Failed to bind GL context. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to bind GL context. Error: 0x%x", GetLastError());
     }
 }
 
 void WGL::PBuffer::unbind() {
     if (!wglMakeCurrent(mHDC, nullptr)) {
-        GAPID_FATAL("Failed to unbind GL context. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to unbind GL context. Error: 0x%x", GetLastError());
     }
 }
 
 WGL::WGL() {
-    registerWindowClass();
+    class registerWindowClass {
+    public:
+        registerWindowClass() {
+            WNDCLASS wc;
+            memset(&wc, 0, sizeof(wc));
+
+            auto hInstance = GetModuleHandle(nullptr);
+            if (hInstance == nullptr) {
+                GAPID_FATAL("Failed to get module handle. Error: 0x%x", GetLastError());
+            }
+
+            wc.style = 0;
+            wc.lpfnWndProc = DefWindowProc;
+            wc.hInstance = hInstance;
+            wc.hCursor = LoadCursor(0, IDC_ARROW); // TODO: Needed?
+            wc.hbrBackground = HBRUSH(COLOR_WINDOW + 1);
+            wc.lpszMenuName = TEXT("");
+            wc.lpszClassName = wndClassName;
+
+            if (RegisterClass(&wc) == 0) {
+                GAPID_FATAL("Failed to register window class. Error: 0x%x", GetLastError());
+            }
+        }
+    };
+
+    static registerWindowClass rwc;
 
     mWindow = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
     if (mWindow == 0) {
-        GAPID_FATAL("Failed to create window. Error: %d", GetLastError());
+        GAPID_FATAL("Failed to create window. Error: 0x%x", GetLastError());
     }
 
     mHDC = GetDC(mWindow);
@@ -173,7 +177,7 @@ WGL::WGL() {
     CreateContextAttribsARB = nullptr;
     auto temp_context = wglCreateContext(mHDC);
     if (temp_context == nullptr) {
-        GAPID_FATAL("Couldn't create temporary WGL context. Error: %d", GetLastError());
+        GAPID_FATAL("Couldn't create temporary WGL context. Error: 0x%x", GetLastError());
     }
 
     wglMakeCurrent(mHDC, temp_context);
@@ -198,7 +202,9 @@ WGL::WGL() {
 }
 
 const WGL& WGL::get() {
-    static WGL instance;
+    // This is thread-local as anything touching a HDC is pretty much
+    // non-thread safe.
+    static thread_local WGL instance;
     return instance;
 }
 
@@ -224,7 +230,7 @@ std::shared_ptr<WGL::PBuffer> WGL::create_pbuffer(GlesRenderer::Backbuffer backb
         0, // terminator
     };
     if (!ChoosePixelFormatARB(mHDC, fmt_attribs, nullptr, MAX_FORMATS, formats, &num_formats)) {
-        GAPID_FATAL("wglChoosePixelFormatARB failed. Error: %d", GetLastError());
+        GAPID_FATAL("wglChoosePixelFormatARB failed. Error: 0x%x", GetLastError());
     }
     if (num_formats == 0) {
         GAPID_FATAL("wglChoosePixelFormatARB returned no compatibile formats");
@@ -233,11 +239,11 @@ std::shared_ptr<WGL::PBuffer> WGL::create_pbuffer(GlesRenderer::Backbuffer backb
     const int create_attribs[] = { 0 };
     auto pbuffer = CreatePbufferARB(mHDC, format, backbuffer.width, backbuffer.height, create_attribs);
     if (pbuffer == nullptr) {
-        GAPID_FATAL("wglCreatePbufferARB failed. Error: %d", GetLastError());
+        GAPID_FATAL("wglCreatePbufferARB failed. Error: 0x%x", GetLastError());
     }
     auto hdc = GetPbufferDCARB(pbuffer);
     if (hdc == nullptr) {
-        GAPID_FATAL("wglGetPbufferDCARB failed. Error: %d", GetLastError());
+        GAPID_FATAL("wglGetPbufferDCARB failed. Error: 0x%x", GetLastError());
     }
     for (auto gl_version : core::gl::sVersionSearchOrder) {
         std::vector<int> attribs;
@@ -255,7 +261,7 @@ std::shared_ptr<WGL::PBuffer> WGL::create_pbuffer(GlesRenderer::Backbuffer backb
             return std::shared_ptr<PBuffer>(new PBuffer(pbuffer, ctx, hdc));
         }
     }
-    GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: %d", GetLastError());
+    GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: 0x%x", GetLastError());
     return nullptr;
 }
 
@@ -280,17 +286,19 @@ private:
     Gles mApi;
     Backbuffer mBackbuffer;
 
-    bool mBound;
     bool mNeedsResolve;
     bool mQueriedExtensions;
     std::string mExtensions;
     std::shared_ptr<WGL::PBuffer> mContext;
     std::shared_ptr<WGL::PBuffer> mSharedContext;
+
+    static thread_local GlesRendererImpl* tlsBound;
 };
 
+thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
+
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
-        : mBound(false)
-        , mNeedsResolve(true)
+        : mNeedsResolve(true)
         , mQueriedExtensions(false)
         , mSharedContext(shared_context != nullptr ? shared_context->mContext : nullptr) {
     // Initialize with a default target.
@@ -320,7 +328,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         return; // No change
     }
 
-    const bool wasBound = mBound;
+    auto wasBound = tlsBound == this;
 
     reset();
 
@@ -334,21 +342,28 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 }
 
 void GlesRendererImpl::bind() {
-    if (!mBound) {
-        mContext->bind();
-        mBound = true;
+    auto bound = tlsBound;
+    if (bound == this) {
+        return;
+    }
 
-        if (mNeedsResolve) {
-            mNeedsResolve = false;
-            mApi.resolve();
-        }
+    if (bound != nullptr) {
+        bound->unbind();
+    }
+
+    mContext->bind();
+    tlsBound = this;
+
+    if (mNeedsResolve) {
+        mNeedsResolve = false;
+        mApi.resolve();
     }
 }
 
 void GlesRendererImpl::unbind() {
-    if (mBound) {
+    if (tlsBound == this) {
         mContext->unbind();
-        mBound = false;
+        tlsBound = nullptr;
     }
 }
 

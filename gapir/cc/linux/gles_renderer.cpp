@@ -100,7 +100,6 @@ private:
     void createPbuffer(int width, int height);
 
     Backbuffer mBackbuffer;
-    bool mBound;
     bool mNeedsResolve;
     Gles mApi;
     std::string mExtensions;
@@ -112,15 +111,18 @@ private:
     GLXContext mSharedContext;
     GLXPbuffer mPbuffer;
     GLXFBConfig mFBConfig;
+
+    static thread_local GlesRendererImpl* tlsBound;
 };
+
+thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
 
 // NB: We keep a reference the shared GL context, so "parent" context
 //     must stay alive at least for the duration of this context.
 //     We create "root" context for this purpose so it is satisfied.
 //     TODO: Add assert/refcounting to enforce this.
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
-        : mBound(false)
-        , mNeedsResolve(false)
+        : mNeedsResolve(false)
         , mDisplay(nullptr)
         , mContext(nullptr)
         , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0)
@@ -230,7 +232,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         return;
     }
 
-    const bool wasBound = mBound;
+    auto wasBound = tlsBound == this;
 
     reset();
 
@@ -301,31 +303,37 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 }
 
 void GlesRendererImpl::bind() {
-    if (!mBound) {
-        if (!glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
-            GAPID_FATAL("Unable to make GLX context current");
-        }
+    auto bound = tlsBound;
+    if (bound == this) {
+        return;
+    }
 
-        mBound = true;
+    if (bound != nullptr) {
+        bound->unbind();
+    }
 
-        if (mNeedsResolve) {
-            mNeedsResolve = false;
-            mApi.resolve();
-        }
+    if (!glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
+        GAPID_FATAL("Unable to make GLX context current");
+    }
+    tlsBound = this;
 
-        if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
-            mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), this);
-            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
-            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            GAPID_DEBUG("Enabled KHR_debug extension");
-        }
+    if (mNeedsResolve) {
+        mNeedsResolve = false;
+        mApi.resolve();
+    }
+
+    if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+        mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), this);
+        mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+        mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        GAPID_DEBUG("Enabled KHR_debug extension");
     }
 }
 
 void GlesRendererImpl::unbind() {
-    if (mBound) {
-        // TODO: glXMakeContextCurrent(...)
-        mBound = false;
+    if (tlsBound == this) {
+        glXMakeContextCurrent(mDisplay, None, None, nullptr);
+        tlsBound = nullptr;
     }
 }
 

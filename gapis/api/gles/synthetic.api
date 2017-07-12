@@ -31,15 +31,20 @@ cmd void contextInfo(u32     constant_count,
 
 // replayCreateRenderer constructs a GLES renderer for replay without making it active.
 @synthetic
-cmd void replayCreateRenderer(u32 id) { }
+cmd void replayCreateRenderer(u32 rendererID) { }
 
 // replayBindRenderer makes the renderer constructed with replayCreateRenderer active.
 @synthetic
-cmd void replayBindRenderer(u32 id) { }
+cmd void replayBindRenderer(u32 rendererID) { }
+
+// replayUnbindRenderer makes the renderer constructed with replayCreateRenderer inactive.
+@synthetic
+cmd void replayUnbindRenderer(u32 rendererID) { }
 
 // replayChangeBackbuffer alters the backbuffer dimensions and format.
 @synthetic
-cmd void replayChangeBackbuffer(GLsizei backbuffer_width,
+cmd void replayChangeBackbuffer(u32     rendererID,
+                                GLsizei backbuffer_width,
                                 GLsizei backbuffer_height,
                                 GLenum  backbuffer_color_fmt,
                                 GLenum  backbuffer_depth_fmt,

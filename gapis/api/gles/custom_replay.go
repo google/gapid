@@ -273,17 +273,22 @@ func (ω *EglCreateContext) Mutate(ctx context.Context, s *api.State, b *builder
 }
 
 func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	_, wasCreated := GetState(s).EGLContexts[ω.Context]
+	prevContext := GetState(s).Contexts[ω.Thread()]
+	_, existed := GetState(s).EGLContexts[ω.Context]
 	err := ω.mutate(ctx, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
+	cb := CommandBuilder{Thread: ω.Thread()}
 	if ω.Context.addr == 0 {
-		return nil
+		if prevContext == nil {
+			return nil
+		}
+		ctxID := uint32(prevContext.Identifier)
+		return cb.ReplayUnbindRenderer(ctxID).Mutate(ctx, s, b)
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
-	cb := CommandBuilder{Thread: ω.Thread()}
-	if !wasCreated {
+	if !existed {
 		// The eglCreateContext call was missing, so fake it (can happen on Samsung).
 		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b); err != nil {
 			return err
@@ -294,6 +299,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.B
 	}
 	if cs := FindDynamicContextState(ω.Extras()); cs != nil {
 		cmd := cb.ReplayChangeBackbuffer(
+			ctxID,
 			cs.BackbufferWidth,
 			cs.BackbufferHeight,
 			cs.BackbufferColorFmt,

@@ -20,22 +20,23 @@ import "fmt"
 type Opcode int
 
 const (
-	OpCall     = 0
-	OpPushI    = 1
-	OpLoadC    = 2
-	OpLoadV    = 3
-	OpLoad     = 4
-	OpPop      = 5
-	OpStoreV   = 6
-	OpStore    = 7
-	OpResource = 8
-	OpPost     = 9
-	OpCopy     = 10
-	OpClone    = 11
-	OpStrcpy   = 12
-	OpExtend   = 13
-	OpAdd      = 14
-	OpLabel    = 15
+	OpCall         = 0
+	OpPushI        = 1
+	OpLoadC        = 2
+	OpLoadV        = 3
+	OpLoad         = 4
+	OpPop          = 5
+	OpStoreV       = 6
+	OpStore        = 7
+	OpResource     = 8
+	OpPost         = 9
+	OpCopy         = 10
+	OpClone        = 11
+	OpStrcpy       = 12
+	OpExtend       = 13
+	OpAdd          = 14
+	OpLabel        = 15
+	OpSwitchThread = 16
 )
 
 // String returns the human-readable name of the opcode.
@@ -73,6 +74,8 @@ func (t Opcode) String() string {
 		return "Add"
 	case OpLabel:
 		return "Label"
+	case OpSwitchThread:
+		return "SwitchThread"
 	default:
 		panic(fmt.Errorf("Unknown ValueType %d", uint32(t)))
 	}

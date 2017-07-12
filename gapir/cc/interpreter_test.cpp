@@ -58,7 +58,7 @@ TEST_F(InterpreterTest, PushIUint8) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint8, 210),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -68,7 +68,7 @@ TEST_F(InterpreterTest, PushIInt16Minus1) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int16, 0xffff),  // -1
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -78,7 +78,7 @@ TEST_F(InterpreterTest, PushIInt32Minus1) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int32, 0xfffff),  // -1
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -88,7 +88,7 @@ TEST_F(InterpreterTest, PushIFloat1) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x7f),  // 1.0 exp
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -98,7 +98,7 @@ TEST_F(InterpreterTest, PushIDouble1) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Double, 0x3ff),  // 1.0 exp
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -114,7 +114,7 @@ TEST_F(InterpreterTest, LoadC) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::LOAD_C, BaseType::Uint16, 4),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -125,7 +125,7 @@ TEST_F(InterpreterTest, LoadV) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::LOAD_V, BaseType::Int32, 784),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -142,7 +142,7 @@ TEST_F(InterpreterTest, LoadConstantAddress) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 4),
             instruction(Interpreter::InstructionCode::LOAD, BaseType::Uint16, 0),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -154,7 +154,7 @@ TEST_F(InterpreterTest, LoadVolatileAddress) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 784),
             instruction(Interpreter::InstructionCode::LOAD, BaseType::Int32, 0),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -167,7 +167,7 @@ TEST_F(InterpreterTest, Pop) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int8, -123),
             instruction(Interpreter::InstructionCode::POP, 2),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -175,7 +175,7 @@ TEST_F(InterpreterTest, StoreV) {
     std::vector<uint32_t> instructions{
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 987654),
             instruction(Interpreter::InstructionCode::STORE_V, 124)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 
     EXPECT_EQ(987654, *static_cast<uint32_t*>(mMemoryManager->volatileToAbsolute(124)));
@@ -186,7 +186,7 @@ TEST_F(InterpreterTest, Store) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 987654),
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 260),
             instruction(Interpreter::InstructionCode::STORE, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 
     EXPECT_EQ(987654, *static_cast<uint32_t*>(mMemoryManager->volatileToAbsolute(260)));
@@ -203,7 +203,7 @@ TEST_F(InterpreterTest, Copy) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 5),
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 987),
             instruction(Interpreter::InstructionCode::COPY, 3)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 
     EXPECT_EQ(5, *static_cast<uint8_t*>(mMemoryManager->volatileToAbsolute(987)));
@@ -222,7 +222,7 @@ TEST_F(InterpreterTest, Clone) {
             instruction(Interpreter::InstructionCode::CALL, 0),
             instruction(Interpreter::InstructionCode::POP, 2),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -233,7 +233,7 @@ TEST_F(InterpreterTest, ExtendInt32) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Int32, 0x1d),
             instruction(Interpreter::InstructionCode::EXTEND, 0x2543210),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -244,7 +244,7 @@ TEST_F(InterpreterTest, ExtendFloat) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x7f),
             instruction(Interpreter::InstructionCode::EXTEND, 0x8ccccd),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -256,7 +256,7 @@ TEST_F(InterpreterTest, ExtendDouble) {
             instruction(Interpreter::InstructionCode::EXTEND, 0x1999999),
             instruction(Interpreter::InstructionCode::EXTEND, 0x2666666),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -268,7 +268,7 @@ TEST_F(InterpreterTest, Add2xUint32) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 10),
             instruction(Interpreter::InstructionCode::ADD, 2),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -281,7 +281,7 @@ TEST_F(InterpreterTest, Add3xFloat) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Float, 0x80),  // 2.0 exp
             instruction(Interpreter::InstructionCode::ADD, 3),
             instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 }
 
@@ -300,7 +300,7 @@ TEST_F(InterpreterTest, Strcpy) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 0),
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 100),
             instruction(Interpreter::InstructionCode::STRCPY, 10)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 
     EXPECT_EQ('a', volatileMemory[0]);
@@ -325,7 +325,7 @@ TEST_F(InterpreterTest, StrcpyShortBuffer) {
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 0),
             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::VolatilePointer, 100),
             instruction(Interpreter::InstructionCode::STRCPY, 5)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
 
     EXPECT_EQ('a', volatileMemory[0]);
@@ -346,7 +346,7 @@ TEST_F(InterpreterTest, Post) {
     mInterpreter->registerBuiltin(0, Interpreter::POST_FUNCTION_ID, post);
 
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::POST)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
     EXPECT_EQ(1, callCount);
 }
@@ -363,26 +363,26 @@ TEST_F(InterpreterTest, Resource) {
 
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::RESOURCE, 123),
                                        instruction(Interpreter::InstructionCode::CALL, 0)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_TRUE(res);
     EXPECT_EQ(1, callCount);
 }
 
 TEST_F(InterpreterTest, InvalidOpcode) {
     std::vector<uint32_t> instructions{63U << 26};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_FALSE(res);
 }
 
 TEST_F(InterpreterTest, InvalidFunctionId) {
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::CALL, 0xffff)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_FALSE(res);
 }
 
 TEST_F(InterpreterTest, UnknownApi) {
     std::vector<uint32_t> instructions{instruction(Interpreter::InstructionCode::CALL, 1 << 16)};
-    bool res = mInterpreter->run({&instructions.front(), instructions.size()});
+    bool res = mInterpreter->run(instructions.data(), instructions.size());
     EXPECT_FALSE(res);
 }
 

@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
@@ -179,9 +180,6 @@ func (a API) Replay(
 	// Cleanup
 	transforms.Add(&destroyResourcesAtEOS{})
 
-	// Replay
-	transforms.Add(&bindRendererOnContextSwitch{})
-
 	if config.DebugReplay {
 		log.I(ctx, "Replaying %d commands using transform chain:", len(cmds))
 		for i, t := range transforms {
@@ -263,16 +261,20 @@ func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
 	id := api.CmdNoID
 	s := out.State()
+
+	// Start by unbinding all the contexts from all the threads.
 	for t, c := range GetState(s).Contexts {
 		if c == nil {
 			continue
 		}
-
 		cb := CommandBuilder{Thread: t}
+		out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
+	}
 
-		// TODO: This is just looping over the threads - we need to loop over
-		// all contexts and destroy everything there. That requires a structural
-		// change to the gles.api file.
+	// Now using a single thread, bind each context and delete all objects.
+	cb := CommandBuilder{Thread: 0}
+	for i, c := range GetState(s).EGLContexts {
+		out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
 
 		// Delete all Renderbuffers.
 		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
@@ -347,24 +349,5 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 	}
+	out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
 }
-
-// bindRendererOnContextSwitch is a transform that
-type bindRendererOnContextSwitch struct {
-	context *Context
-}
-
-func (t *bindRendererOnContextSwitch) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	thread := cmd.Thread()
-	if context := GetContext(out.State(), thread); context != nil && t.context != context {
-		ctxID := uint32(context.Identifier)
-		cb := CommandBuilder{Thread: thread}
-		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayBindRenderer(ctxID))
-	}
-	out.MutateAndWrite(ctx, id, cmd)
-	// The mutate may have switched context, in which case it's the responsibilty
-	// of that command to create / bind the renderer. See custom_replay.go.
-	t.context = GetContext(out.State(), thread)
-}
-
-func (t *bindRendererOnContextSwitch) Flush(ctx context.Context, out transform.Writer) {}
