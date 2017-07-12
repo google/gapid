@@ -493,9 +493,9 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
 
 		checkReport(ctx, intent, mgr, cmds, []string{
-			"ErrorLevel@15: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE [value: value, variable: variable]>",
-			"ErrorLevel@17: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: value, variable: variable]>",
-			"ErrorLevel@18: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {{} 4208 0}): <ERR_INVALID_OPERATION [operation: operation]>",
+			"ErrorLevel@[15]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE [value: value, variable: variable]>",
+			"ErrorLevel@[17]: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: value, variable: variable]>",
+			"ErrorLevel@[18]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {4208 0}): <ERR_INVALID_OPERATION [operation: operation]>",
 		}, nil)
 	}
 
