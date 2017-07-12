@@ -18,9 +18,9 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles/gles_pb"
-	"github.com/google/gapid/gapis/atom/atom_pb"
 )
 
 // ErrorState is an atom extra used to describe the GLES error state after
@@ -30,11 +30,20 @@ type ErrorState struct {
 	InterceptorsGlError GLenum
 }
 
-func (s *ErrorState) Convert(ctx context.Context, out atom_pb.Handler) error {
-	return out(ctx, &gles_pb.ErrorState{
-		TraceDriversGlError: uint32(s.TraceDriversGlError),
-		InterceptorsGlError: uint32(s.InterceptorsGlError),
-	})
+func init() {
+	protoconv.Register(
+		func(ctx context.Context, o *ErrorState) (*gles_pb.ErrorState, error) {
+			return &gles_pb.ErrorState{
+				TraceDriversGlError: uint32(o.TraceDriversGlError),
+				InterceptorsGlError: uint32(o.InterceptorsGlError),
+			}, nil
+		}, func(ctx context.Context, p *gles_pb.ErrorState) (*ErrorState, error) {
+			return &ErrorState{
+				TraceDriversGlError: GLenum(p.TraceDriversGlError),
+				InterceptorsGlError: GLenum(p.InterceptorsGlError),
+			}, nil
+		},
+	)
 }
 
 // FindProgramInfo searches for the ProgramInfo in the extras, returning the

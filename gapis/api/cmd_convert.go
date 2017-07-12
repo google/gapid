@@ -80,6 +80,10 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 		case *invokeMarker:
 			invoked = true
 		case CmdExtra:
+			if last == nil {
+				log.W(ctx, "Got %T before first command. Ignoring", out)
+				return nil
+			}
 			e := last.Extras()
 			if e == nil {
 				return log.Errf(ctx, nil, "Not allowed extras %T:%v", last, last)
