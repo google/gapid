@@ -19,10 +19,12 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -164,7 +166,7 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 	}
 	toolSet := ToolSet{Abi: hostABIs[0], Host: new(HostToolSet)}
 	// TODO(baldwinn): move these paths to layout
-	toolSetIdByZipEntry := map[string]*string{
+	toolSetIDByZipEntry := map[string]*string{
 		"gapid/gapir":                          &toolSet.Host.Gapir,
 		"gapid/gapis":                          &toolSet.Host.Gapis,
 		"gapid/gapit":                          &toolSet.Host.Gapit,
@@ -172,11 +174,14 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 		"gapid/VirtualSwapchainLayer.json":     &toolSet.Host.VirtualSwapChainJson,
 	}
 	for _, f := range zipFile.File {
+		f.Name = filepath.ToSlash(f.Name)
 		z := &zipEntry{file: f}
-		if dirs := strings.Split(f.Name, "/"); dirs[1] == "android" {
-			toolSet.Android = append(toolSet.Android, &AndroidToolSet{Abi: device.ABIByName(dirs[2]), GapidApk: z.GetID(ctx, a)})
-		} else if id, ok := toolSetIdByZipEntry[f.Name]; ok {
-			*id = z.GetID(ctx, a)
+
+		if dirs := strings.Split(f.Name, "/"); strings.HasPrefix(dirs[1], "android") {
+			androidTool := &AndroidToolSet{Abi: device.ABIByName(layout.DirToBinABI[dirs[1]]), GapidApk: z.GetID(ctx, a)}
+			toolSet.Android = append(toolSet.Android, androidTool)
+		} else if toolID, ok := toolSetIDByZipEntry[f.Name]; ok {
+			*toolID = z.GetID(ctx, a)
 		}
 	}
 	entry := &Artifact{Id: id, Tool: &toolSet}

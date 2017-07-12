@@ -31,7 +31,7 @@ func (s schedule) doReport(ctx context.Context, t *monitor.Trace) error {
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
 	hostTools := s.getHostTools(ctx)
 	if hostTools == nil {
-		return nil
+		return log.Err(ctx, nil, "Failed to find tools for report!")
 	}
 	input := &report.Input{
 		Trace: t.Action.Output.Trace,

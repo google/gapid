@@ -38,11 +38,12 @@ type schedule struct {
 // Blocking will prevent updates of the data store, so the function will try to schedule
 // tasks to idle workers only returning quickly on the assumption it will be ticked again
 // as soon as the data changes.
-func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) error {
+func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) []error {
 	s := schedule{
 		managers: managers,
 		data:     data,
 	}
+	var errs []error
 	// TODO: a real scheduler, not just try to do everything in any order
 	for _, pkg := range data.Packages.All() {
 		s.pkg = pkg
@@ -50,7 +51,7 @@ func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) e
 			s.worker = w
 			for _, subj := range data.Subjects.All() {
 				if err := s.doTrace(ctx, subj); err != nil {
-					return err
+					errs = append(errs, err)
 				}
 			}
 			for _, t := range data.Traces.All() {
@@ -61,15 +62,15 @@ func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) e
 					continue
 				}
 				if err := s.doReport(ctx, t); err != nil {
-					return err
+					errs = append(errs, err)
 				}
 				if err := s.doReplay(ctx, t); err != nil {
-					return err
+					errs = append(errs, err)
 				}
 			}
 		}
 	}
-	return nil
+	return errs
 }
 
 func (s schedule) getHostTools(ctx context.Context) *build.ToolSet {

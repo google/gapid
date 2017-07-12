@@ -56,9 +56,16 @@ type FileLayout interface {
 	Json(ctx context.Context, lib LibraryType) (file.Path, error)
 }
 
+func withExecutablePlatformSuffix(exe string) string {
+	if runtime.GOOS == "windows" {
+		return exe + ".exe"
+	}
+	return exe
+}
+
 var libTypeToName = map[LibraryType]string{
-	LibGraphicsSpy:      withPlatformSuffix("libgapii"),
-	LibVirtualSwapChain: withPlatformSuffix("libVkLayer_VirtualSwapchain"),
+	LibGraphicsSpy:      withLibraryPlatformSuffix("libgapii"),
+	LibVirtualSwapChain: withLibraryPlatformSuffix("libVkLayer_VirtualSwapchain"),
 }
 
 var libTypeToJson = map[LibraryType]string{
@@ -66,7 +73,7 @@ var libTypeToJson = map[LibraryType]string{
 	LibVirtualSwapChain: "VirtualSwapchainLayer.json",
 }
 
-func withPlatformSuffix(lib string) string {
+func withLibraryPlatformSuffix(lib string) string {
 	switch runtime.GOOS {
 	case "windows":
 		return lib + ".dll"
@@ -94,15 +101,15 @@ func (l pkgLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapit"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapit")), nil
 }
 
 func (l pkgLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapir"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapir")), nil
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapis"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapis")), nil
 }
 
 func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
@@ -123,6 +130,14 @@ var binABIToDir = map[string]string{
 	"arm64-v8a":   "android-armv8a",
 	"x86":         "android-x86",
 }
+
+var DirToBinABI = func() map[string]string {
+	result := make(map[string]string)
+	for abi, dir := range binABIToDir {
+		result[dir] = abi
+	}
+	return result
+}()
 
 // binLayout is the file layout used when running executables from the build's
 // bin directory.
@@ -154,15 +169,15 @@ func (l binLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l binLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapit"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapit")), nil
 }
 
 func (l binLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapir"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapir")), nil
 }
 
 func (l binLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.root.Join("gapis"), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapis")), nil
 }
 
 func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
