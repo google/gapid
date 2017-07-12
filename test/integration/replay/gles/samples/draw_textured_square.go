@@ -50,7 +50,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 		uniform sampler2D tex;
 		varying vec2 texcoord;
 		void main() {
-			gl_FragColor = texture(tex, texcoord);
+			gl_FragColor = texture2D(tex, texcoord);
 		}`
 
 	b := newBuilder(ctx)
