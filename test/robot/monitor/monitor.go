@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/master"
@@ -95,7 +96,7 @@ func (data *Data) Wait() {
 // with all the results it receives.
 // Each time it receives a batch of updates it will invoke the update function passing in the manager set being
 // monitored and the updated set of data.
-func Run(ctx context.Context, managers Managers, owner DataOwner, update func(ctx context.Context, managers *Managers, data *Data) error) error {
+func Run(ctx context.Context, managers Managers, owner DataOwner, update func(ctx context.Context, managers *Managers, data *Data) []error) error {
 	// start all the data monitors we have managers for
 	if err := monitor(ctx, &managers, owner); err != nil {
 		return err
@@ -107,7 +108,9 @@ func Run(ctx context.Context, managers Managers, owner DataOwner, update func(ct
 			data.Gen.Update()
 			// Run the update
 			if update != nil {
-				update(ctx, &managers, data)
+				if err := update(ctx, &managers, data); len(err) != 0 {
+					log.E(ctx, "Error(s) during update: %v", err)
+				}
 			}
 			// Wait for new data
 			data.Wait()

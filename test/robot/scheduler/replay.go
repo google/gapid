@@ -45,7 +45,7 @@ func (s schedule) doReplay(ctx context.Context, t *monitor.Trace) error {
 	hostTools := s.getHostTools(ctx)
 	targetTools := s.getReplayTargetTools(ctx)
 	if hostTools == nil || targetTools == nil {
-		return nil
+		return log.Err(ctx, nil, "Failed to find tools for report!")
 	}
 	input := &replay.Input{
 		Trace:                t.Action.Output.Trace,

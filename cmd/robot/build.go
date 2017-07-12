@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -205,15 +206,14 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 	artifacts := zip.NewWriter(outputZipFile)
 	defer artifacts.Close()
 
-	basePath := "gapid/"
 	toolSetPathFunc := map[string]func(context.Context) (file.Path, error){
-		"gapis": layout.Gapis,
-		"gapit": layout.Gapit,
-		"gapir": layout.Gapir,
-		"libVkLayer_VirtualSwapchain.so": func(ctx context.Context) (file.Path, error) {
+		"gapid/gapis": layout.Gapis,
+		"gapid/gapit": layout.Gapit,
+		"gapid/gapir": layout.Gapir,
+		"gapid/libVkLayer_VirtualSwapchain.so": func(ctx context.Context) (file.Path, error) {
 			return layout.Library(ctx, layout.LibVirtualSwapChain)
 		},
-		"VirtualSwapchainLayer.json": func(ctx context.Context) (file.Path, error) {
+		"gapid/VirtualSwapchainLayer.json": func(ctx context.Context) (file.Path, error) {
 			return layout.Json(ctx, layout.LibVirtualSwapChain)
 		},
 	}
@@ -222,12 +222,11 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 		if err != nil {
 			return log.Errf(ctx, err, "Couldn't get layout path for tool %s", toolName)
 		}
-		if err := zipFile(artifacts, basePath+toolName, path); err != nil {
+		if err := zipFile(artifacts, toolName, path); err != nil {
 			return log.Errf(ctx, err, "Failed to Zip the tool %s at path %s", toolName, path)
 		}
 	}
 
-	androidBasePath := "gapid/android/"
 	// TODO(baldwinn): these hardcoded architectures come from core/app/layout/layout.go, move this to a better place
 	androidAbiList := []*device.ABI{
 		device.AndroidARMv7a,
@@ -236,10 +235,12 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 	}
 	for _, abi := range androidAbiList {
 		gapidApkPath, err := layout.GapidApk(ctx, abi)
+		zipApkPath, err := layout.BinLayout(file.Abs("/gapid/")).GapidApk(ctx, abi)
+		zipApkVirtualPath, err := zipApkPath.RelativeTo(file.Abs("/"))
 		if err != nil || !gapidApkPath.Exists() {
 			continue
 		}
-		if err := zipFile(artifacts, androidBasePath+abi.Name+"/gapid.apk", gapidApkPath); err != nil {
+		if err := zipFile(artifacts, filepath.ToSlash(zipApkVirtualPath), gapidApkPath); err != nil {
 			return log.Errf(ctx, err, "Failed to Zip the gapid.apk for abi %s at path %s", abi.Name, gapidApkPath)
 		}
 	}

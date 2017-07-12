@@ -46,7 +46,7 @@ func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject) error {
 	hostTools := s.getHostTools(ctx)
 	targetTools := s.getTraceTargetTools(ctx, subj)
 	if hostTools == nil || targetTools == nil {
-		return nil
+		return log.Err(ctx, nil, "Failed to find tools for trace!")
 	}
 	input := &trace.Input{
 		Subject:  subj.Id,
