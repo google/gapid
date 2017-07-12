@@ -55,8 +55,12 @@ func (r *record) resolve(ctx context.Context) error {
 	// Deserialize the object from the proto if we don't have the object already.
 	if r.object == nil {
 		obj, err := protoconv.ToObject(ctx, r.proto)
-		switch err.(type) {
+		switch err := err.(type) {
 		case protoconv.ErrNoConverterRegistered:
+			if err.Object != r.proto {
+				// We got a ErrNoConverterRegistered error, but it wasn't for the outermost object!
+				return err
+			}
 			r.object = r.proto
 		case nil:
 			r.object = obj

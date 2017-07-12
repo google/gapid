@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -37,13 +38,13 @@ var (
 )
 
 // ErrNoConverterRegistered is the error returned from ToProto or ToObject when
-// the type is not registered for conversion.
+// the object's type is not registered for conversion.
 type ErrNoConverterRegistered struct {
-	Type interface{}
+	Object interface{}
 }
 
 func (e ErrNoConverterRegistered) Error() string {
-	return fmt.Sprintf("No converter registered for type %T", e.Type)
+	return fmt.Sprintf("No converter registered for type %T", e.Object)
 }
 
 // Register registers the converters toProto and toObject.
@@ -103,7 +104,8 @@ func ToProto(ctx context.Context, obj interface{}) (proto.Message, error) {
 	}
 	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(obj)})
 	if err := out[1].Interface(); err != nil {
-		return nil, err.(error)
+		return nil, log.Errf(ctx, err.(error), "Failed to convert from %T to proto %v",
+			obj, f.Type().Out(0))
 	}
 	return out[0].Interface().(proto.Message), nil
 }
@@ -119,7 +121,8 @@ func ToObject(ctx context.Context, msg proto.Message) (interface{}, error) {
 	}
 	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(msg)})
 	if err := out[1].Interface(); err != nil {
-		return nil, err.(error)
+		return nil, log.Errf(ctx, err.(error), "Failed to convert proto from %T to %v",
+			msg, f.Type().Out(0))
 	}
 	return out[0].Interface(), nil
 }
