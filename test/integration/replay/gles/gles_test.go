@@ -517,18 +517,17 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
 	)
 
-	clear := api.CmdID(len(cmds))
 	cmds = append(cmds,
 		f.cb.GlClearColor(br, bg, bb, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
 	)
+	clear := api.CmdID(len(cmds) - 1)
 	cmds = append(cmds,
 		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(fr, fg, fb))...,
 	)
 
 	triangleVerticesR := f.s.AllocDataOrPanic(ctx, triangleVertices)
 
-	triangle := api.CmdID(len(cmds))
 	cmds = append(cmds,
 		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
@@ -551,6 +550,7 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
 		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
+	triangle := api.CmdID(len(cmds) - 1)
 
 	angle := 0.0
 	for i := 0; i < 30; i++ {
@@ -562,7 +562,7 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 			f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 		)
 	}
-	rotatedTriangle := api.CmdID(len(cmds))
+	rotatedTriangle := api.CmdID(len(cmds) - 1)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -656,13 +656,13 @@ func TestResizeRenderer(t *testing.T) {
 		f.cb.GlEnableVertexAttribArray(pos),
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
 	)
-	triangle := api.CmdID(len(cmds))
 	cmds = append(cmds,
 		f.makeCurrent(eglSurface, eglContext, 64, 64, false),
 		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
 	)
+	triangle := api.CmdID(len(cmds) - 1)
 	capture := f.storeCapture(ctx, cmds)
 	intent := replay.Intent{
 		Capture: capture,
@@ -680,17 +680,17 @@ func TestPreserveBuffersOnSwap(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
 	cmds, _, _ := f.initContext(ctx, 64, 64, true)
-	clear := api.CmdID(len(cmds))
 	cmds = append(cmds,
 		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	swapA := api.CmdID(len(cmds))
+	clear := api.CmdID(len(cmds) - 1)
 	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapB := api.CmdID(len(cmds))
+	swapA := api.CmdID(len(cmds) - 1)
 	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
-	swapC := api.CmdID(len(cmds))
+	swapB := api.CmdID(len(cmds) - 1)
 	cmds = append(cmds, f.cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, 1))
+	swapC := api.CmdID(len(cmds) - 1)
 
 	intent := replay.Intent{
 		Capture: f.storeCapture(ctx, cmds),
