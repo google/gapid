@@ -27,25 +27,25 @@ import (
 func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder) (cmds []api.Cmd, red, green, blue, black api.CmdID) {
 	b := newBuilder(ctx)
 	b.newEglContext(64, 64, memory.Nullptr, false)
-	red = api.CmdID(len(b.cmds))
 	b.cmds = append(b.cmds,
 		cb.GlClearColor(1.0, 0.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	green = api.CmdID(len(b.cmds))
+	red = api.CmdID(len(b.cmds) - 1)
 	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	blue = api.CmdID(len(b.cmds))
+	green = api.CmdID(len(b.cmds) - 1)
 	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
-	black = api.CmdID(len(b.cmds))
+	blue = api.CmdID(len(b.cmds) - 1)
 	b.cmds = append(b.cmds,
 		cb.GlClearColor(0.0, 0.0, 0.0, 1.0),
 		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
+	black = api.CmdID(len(b.cmds) - 1)
 	return b.cmds, red, green, blue, black
 }

@@ -117,7 +117,6 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	}
 
 	// Render square using the build program and texture
-	draw = api.CmdID(len(b.cmds))
 	b.cmds = append(b.cmds,
 		cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
 		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
@@ -133,10 +132,11 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
 	)
-	swap = api.CmdID(len(b.cmds))
+	draw = api.CmdID(len(b.cmds) - 1)
 	b.cmds = append(b.cmds,
 		cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
 	)
+	swap = api.CmdID(len(b.cmds) - 1)
 
 	return b.cmds, draw, swap
 }
