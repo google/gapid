@@ -120,20 +120,20 @@ func ExampleEnum() {
 	//     Bad Parse  UNKNOWN
 	// Error:
 	//     For enum                FailedParse
-	//     Unexpected parse error  ⦕badparse not in testEnum⦖
+	//     Unexpected parse error  `badparse not in testEnum`
 	// Error:
 	//     For enum  BadJsonMarshal
 	//     Bad JSON  "badjson"
 	//     Expect    "BadJsonMarshal"
 	// Error:
 	//     For enum            FailedJsonMarshal
-	//     JSON marshal error  ⦕json: error calling MarshalJSON for type *assert_test.testEnum: FailedJsonMarshal⦖
+	//     JSON marshal error  `json: error calling MarshalJSON for type *assert_test.testEnum: FailedJsonMarshal`
 	// Error:
 	//     For enum            BadJsonUnmarshal
 	//     Bad JSON Unmarshal  UNKNOWN
 	// Error:
 	//     For enum              FailedJsonUnmarshal
-	//     JSON unmarshal error  ⦕FailedJsonUnmarshal⦖
+	//     JSON unmarshal error  `FailedJsonUnmarshal`
 	// Error:
 	//     For enum       A
 	//     Expected name  `B`

@@ -39,14 +39,14 @@ func ExampleErrors() {
 	// Error:nil failed
 	//     Expect  failure
 	// Error:err succeeded
-	//     Got     ⦕failure⦖
+	//     Got     `failure`
 	//     Expect  success
 	// Error:err not equals
-	//     Got       ⦕failure⦖
-	//     Expect == ⦕other failure⦖
+	//     Got       `failure`
+	//     Expect == `other failure`
 	// Error:err deep not equals
-	//     Got            ⦕failure⦖
-	//     Expect deep == ⦕other failure⦖
+	//     Got            `failure`
+	//     Expect deep == `other failure`
 	// Error:wrong message
 	//     Got                `failure`
 	//     Expect has message `other failure`

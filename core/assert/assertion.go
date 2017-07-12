@@ -91,9 +91,9 @@ func (a *Assertion) Fatal(args ...interface{}) {
 func (a Assertion) PrintPretty(value interface{}) {
 	switch value := value.(type) {
 	case error:
-		a.out.WriteRune('⦕')
+		a.out.WriteRune('`')
 		fmt.Fprint(a.out, value)
-		a.out.WriteRune('⦖')
+		a.out.WriteRune('`')
 	case string:
 		a.out.WriteRune('`')
 		a.out.WriteString(value)
