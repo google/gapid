@@ -173,8 +173,8 @@ func (m *Manager) execute(
 	return err
 }
 
-// adapter conforms to the the atom Writer interface, performing replay writes
-// on each atom.
+// adapter conforms to the the transformer.Writer interface, performing replay
+// writes on each command.
 type adapter struct {
 	state   *api.State
 	builder *builder.Builder
@@ -185,11 +185,11 @@ func (w *adapter) State() *api.State {
 }
 
 func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	w.builder.BeginAtom(uint64(id))
+	w.builder.BeginCommand(uint64(id), cmd.Thread())
 	if err := cmd.Mutate(ctx, w.state, w.builder); err == nil {
-		w.builder.CommitAtom()
+		w.builder.CommitCommand()
 	} else {
-		w.builder.RevertAtom(err)
+		w.builder.RevertCommand(err)
 		log.W(ctx, "Failed to write command %v (%T) for replay: %v", id, cmd, err)
 	}
 }

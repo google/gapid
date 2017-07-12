@@ -52,7 +52,6 @@ private:
     void reset();
 
     Backbuffer mBackbuffer;
-    bool mBound;
     std::string mExtensions;
     bool mQueriedExtensions;
     NSWindow* mWindow;
@@ -60,11 +59,14 @@ private:
     NSOpenGLContext* mSharedContext;
     bool mNeedsResolve;
     Gles mApi;
+
+    static thread_local GlesRendererImpl* tlsBound;
 };
 
+thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
+
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
-        : mBound(false)
-        , mQueriedExtensions(false)
+        : mQueriedExtensions(false)
         , mWindow(nullptr)
         , mContext(nullptr)
         , mNeedsResolve(true)
@@ -118,7 +120,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         return;
     }
 
-    const bool wasBound = mBound;
+    auto wasBound = tlsBound == this;
 
     [NSApplication sharedApplication];
 
@@ -175,26 +177,33 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 }
 
 void GlesRendererImpl::bind() {
-    if (!mBound) {
-        [mContext makeCurrentContext];
-        mBound = true;
-
-        if (mNeedsResolve) {
-            mNeedsResolve = false;
-            mApi.resolve();
-        }
-
-        int major = 0;
-        int minor = 0;
-        mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MAJOR_VERSION, &major);
-        mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MINOR_VERSION, &minor);
+    auto bound = tlsBound;
+    if (bound == this) {
+        return;
     }
+
+    if (bound != nullptr) {
+        bound->unbind();
+    }
+
+    [mContext makeCurrentContext];
+    tlsBound = this;
+
+    if (mNeedsResolve) {
+        mNeedsResolve = false;
+        mApi.resolve();
+    }
+
+    int major = 0;
+    int minor = 0;
+    mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MAJOR_VERSION, &major);
+    mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MINOR_VERSION, &minor);
 }
 
 void GlesRendererImpl::unbind() {
-    if (mBound) {
+    if (tlsBound == this) {
         [NSOpenGLContext clearCurrentContext];
-        mBound = false;
+        tlsBound = nullptr;
     }
 }
 

@@ -43,7 +43,7 @@ type stackItem struct {
 
 type marker struct {
 	instruction int    // first instruction index for this marker
-	atom        uint64 // the atom identifier
+	cmd         uint64 // the command identifier
 }
 
 // ResponseDecoder decodes all postback responses from the replay virtual machine.
@@ -51,7 +51,7 @@ type marker struct {
 // then the postback data was absent or corrupted and err holds the error.
 type ResponseDecoder func(r io.Reader, err error)
 
-// Postback decodes a single atom's postback, returning and carrying over errors.
+// Postback decodes a single commands's postback, returning and carrying over errors.
 // The Postback must decode all the data that was issued in the Post call before
 // returning. If err is nil, then d is the Decoder to the postback data. If d is nil,
 // then a previous postback failed to decode before decoding could begin for this
@@ -65,6 +65,8 @@ type Builder struct {
 	constantMemory  *constantEncoder
 	heap, temp      allocator
 	resourceIDToIdx map[id.ID]uint32
+	threadIDToIdx   map[uint64]uint32
+	currentThreadID uint64
 	resources       []protocol.ResourceInfo
 	reservedMemory  memory.RangeList // Reserved memory ranges for regular data.
 	pointerMemory   memory.RangeList // Reserved memory ranges for the pointer table.
@@ -73,8 +75,8 @@ type Builder struct {
 	decoders        []Postback
 	stack           []stackItem
 	memoryLayout    *device.MemoryLayout
-	inAtom          bool // true if between BeginAtom and CommitAtom/RevertAtom
-	atomStart       int  // index of current atom's first instruction
+	inCmd           bool // true if between BeginCmd and CommitCommand/RevertCommand
+	cmdStart        int  // index of current commands's first instruction
 
 	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
 	// used as a map of observed values to values that are only known at replay
@@ -93,6 +95,7 @@ func New(memoryLayout *device.MemoryLayout) *Builder {
 		heap:            allocator{alignment: ptrAlignment},
 		temp:            allocator{alignment: ptrAlignment},
 		resourceIDToIdx: map[id.ID]uint32{},
+		threadIDToIdx:   map[uint64]uint32{},
 		resources:       []protocol.ResourceInfo{},
 		reservedMemory:  memory.RangeList{},
 		pointerMemory:   memory.RangeList{},
@@ -174,8 +177,9 @@ func (b *Builder) AllocateMemory(size uint64) value.Pointer {
 
 // AllocateTemporaryMemory allocates and returns a pointer to a block of memory
 // in the temporary volatile address-space big enough to hold size bytes. The
-// memory block will be freed on the next call to EndAtom, upon which reading or
-// writing to this memory will result in undefined behavior.
+// memory block will be freed on the next call to CommitCommand/AbortCommand,
+// upon which reading or writing to this memory will result in undefined
+// behavior.
 // TODO: REMOVE
 func (b *Builder) AllocateTemporaryMemory(size uint64) value.Pointer {
 	return value.TemporaryPointer(b.temp.alloc(size))
@@ -185,8 +189,9 @@ func (b *Builder) AllocateTemporaryMemory(size uint64) value.Pointer {
 // temporary volatile address-space big enough to hold all the specified chunks
 // sizes, in sequential order. AllocateTemporaryMemoryChunks returns a pointer
 // to each of the allocated chunks and the size of the entire allocation. The
-// allocation block will be freed on the next call to EndAtom, upon which
-// reading or writing to this memory will result in undefined behavior.
+// allocation block will be freed on the next call to CommitCommand/AbortCommand
+// upon which reading or writing to this memory will result in undefined
+// behavior.
 // TODO: REMOVE
 func (b *Builder) AllocateTemporaryMemoryChunks(sizes []uint64) (ptrs []value.Pointer, size uint64) {
 	alignment := uint64(b.memoryLayout.GetPointer().GetAlignment())
@@ -204,27 +209,37 @@ func (b *Builder) AllocateTemporaryMemoryChunks(sizes []uint64) (ptrs []value.Po
 	return ptrs, size
 }
 
-// BeginAtom should be called before building any replay instructions.
-func (b *Builder) BeginAtom(id uint64) {
-	if b.inAtom {
-		panic("BeginAtom called while already building an atom")
+// BeginCommand should be called before building any replay instructions.
+func (b *Builder) BeginCommand(cmdID, threadID uint64) {
+	if b.inCmd {
+		panic("BeginCommand called while already building a command")
 	}
-	b.inAtom = true
-	b.atomStart = len(b.instructions)
-	if id <= 0x3ffffff { // Labels have 26 bit values.
-		b.instructions = append(b.instructions, asm.Label{
-			Value: uint32(id),
-		})
+	b.inCmd = true
+	b.cmdStart = len(b.instructions)
+
+	if cmdID <= 0x3ffffff { // Labels have 26 bit values.
+		b.instructions = append(b.instructions, asm.Label{Value: uint32(cmdID)})
+	}
+
+	if b.currentThreadID != threadID {
+		b.currentThreadID = threadID
+		index, ok := b.threadIDToIdx[threadID]
+		if !ok {
+			index = uint32(len(b.threadIDToIdx)) + 1
+			b.threadIDToIdx[threadID] = index
+		}
+		b.instructions = append(b.instructions, asm.SwitchThread{Index: index})
 	}
 }
 
-// CommitAtom should be called after emitting the commands to replay a single atom.
-// CommitAtom frees all temporary allocated memory and clears the stack.
-func (b *Builder) CommitAtom() {
-	if !b.inAtom {
-		panic("CommitAtom called without a call to BeginAtom")
+// CommitCommand should be called after emitting the commands to replay a single
+// command.
+// CommitCommand frees all temporary allocated memory and clears the stack.
+func (b *Builder) CommitCommand() {
+	if !b.inCmd {
+		panic("CommitCommand called without a call to BeginCommand")
 	}
-	b.inAtom = false
+	b.inCmd = false
 	b.temp.reset()
 	pop := uint32(len(b.stack))
 	// Optimise the instructions.
@@ -257,19 +272,19 @@ func (b *Builder) CommitAtom() {
 	b.stack = b.stack[:0]
 }
 
-// RevertAtom reverts all the instructions since the last call to BeginAtom.
-// Any postbacks issued since the last call to BeginAtom will be called with
-// the error err and a nil decoder.
-func (b *Builder) RevertAtom(err error) {
-	if !b.inAtom {
-		panic("RevertAtom called without a call to BeginAtom")
+// RevertCommand reverts all the instructions since the last call to
+// BeginCommand. Any postbacks issued since the last call to BeginCommand will
+// be called with the error err and a nil decoder.
+func (b *Builder) RevertCommand(err error) {
+	if !b.inCmd {
+		panic("RevertCommand called without a call to BeginCommand")
 	}
-	b.inAtom = false
+	b.inCmd = false
 	// TODO: Revert calls to: AllocateMemory, Buffer, String, ReserveMemory, MapMemory, UnmapMemory, Write.
 	b.temp.reset()
 	b.stack = b.stack[:0]
 	if len(b.instructions) > 0 {
-		for i := len(b.instructions) - 1; i >= b.atomStart; i-- {
+		for i := len(b.instructions) - 1; i >= b.cmdStart; i-- {
 			switch b.instructions[i].(type) {
 			case asm.Post:
 				idx := len(b.decoders) - 1
@@ -277,7 +292,7 @@ func (b *Builder) RevertAtom(err error) {
 				b.decoders = b.decoders[:idx]
 			}
 		}
-		b.instructions = b.instructions[:b.atomStart]
+		b.instructions = b.instructions[:b.cmdStart]
 	}
 }
 
@@ -557,7 +572,7 @@ func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder,
 			id = label.Value
 		}
 		if err := i.Encode(vml, w); err != nil {
-			err = fmt.Errorf("Encode %T failed for atom with id %v: %v", i, id, err)
+			err = fmt.Errorf("Encode %T failed for command with id %v: %v", i, id, err)
 			return protocol.Payload{}, nil, err
 		}
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
-func TestCommitAtom(t *testing.T) {
+func TestCommitCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []struct {
 		name     string
@@ -38,11 +38,11 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Call with used return value",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -54,10 +54,10 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Call with unused return value",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -68,9 +68,9 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Remove unused push",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U32(12))
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -79,11 +79,11 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Unused pushes",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U32(12))
 				b.Push(value.U32(34))
 				b.Push(value.U32(56))
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -92,10 +92,10 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Unused clone",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -106,11 +106,11 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Unused clone",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -122,10 +122,10 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Unused clone of return value",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -137,13 +137,13 @@ func TestCommitAtom(t *testing.T) {
 		{
 			"Use one of three return values",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(1)
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -161,7 +161,7 @@ func TestCommitAtom(t *testing.T) {
 	}
 }
 
-func TestRevertAtom(t *testing.T) {
+func TestRevertCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []struct {
 		name     string
@@ -169,29 +169,29 @@ func TestRevertAtom(t *testing.T) {
 		expected []asm.Instruction
 	}{
 		{
-			"Revert atom",
+			"Revert command",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.RevertAtom(nil)
+				b.RevertCommand(nil)
 			},
 			[]asm.Instruction{},
 		},
 		{
-			"Commit atom, revert atom",
+			"Commit command, revert command",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitAtom()
-				b.BeginAtom(20)
+				b.CommitCommand()
+				b.BeginCommand(20, 0)
 				b.Push(value.U8(2))
 				b.Call(FunctionInfo{1, 234, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.RevertAtom(nil)
+				b.RevertCommand(nil)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -208,7 +208,7 @@ func TestRevertAtom(t *testing.T) {
 	}
 }
 
-func TestRevertPostbackAtom(t *testing.T) {
+func TestRevertPostbackCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	const expectedErr = fault.Const("Oh noes!")
 	postbackErr := error(nil)
@@ -224,11 +224,11 @@ func TestRevertPostbackAtom(t *testing.T) {
 		expected []asm.Instruction
 	}{
 		{
-			"Revert postback atom",
+			"Revert postback command",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Post(value.AbsolutePointer(0x10000), 100, postback)
-				b.RevertAtom(expectedErr)
+				b.RevertCommand(expectedErr)
 			},
 			[]asm.Instruction{},
 		},
@@ -238,7 +238,7 @@ func TestRevertPostbackAtom(t *testing.T) {
 		test.f(b)
 		assert.With(ctx).ThatSlice(b.instructions).Equals(test.expected)
 	}
-	assert.For(ctx, "Postback was not informed of RevertAtom").ThatError(postbackErr).Equals(expectedErr)
+	assert.For(ctx, "Postback was not informed of RevertCommand").ThatError(postbackErr).Equals(expectedErr)
 }
 
 func TestMapMemory(t *testing.T) {
@@ -251,10 +251,10 @@ func TestMapMemory(t *testing.T) {
 		{
 			"No mapping",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_VolatilePointer, 1})
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -265,15 +265,15 @@ func TestMapMemory(t *testing.T) {
 		{
 			"MapMemory",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitAtom()
+				b.CommitCommand()
 
-				b.BeginAtom(20)
+				b.BeginCommand(20, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Void, 1})
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -290,19 +290,19 @@ func TestMapMemory(t *testing.T) {
 		{
 			"UnmapMemory",
 			func(b *Builder) {
-				b.BeginAtom(10)
+				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitAtom()
+				b.CommitCommand()
 
-				b.BeginAtom(20)
+				b.BeginCommand(20, 0)
 				b.UnmapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitAtom()
+				b.CommitCommand()
 
-				b.BeginAtom(30)
+				b.BeginCommand(30, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Void, 1})
-				b.CommitAtom()
+				b.CommitCommand()
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},

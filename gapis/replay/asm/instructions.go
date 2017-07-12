@@ -342,3 +342,12 @@ type Label struct {
 func (a Label) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.Label{Value: a.Value}.Encode(w)
 }
+
+// SwitchThread is an Instruction that changes execution to a different thread.
+type SwitchThread struct {
+	Index uint32
+}
+
+func (a SwitchThread) Encode(r value.PointerResolver, w binary.Writer) error {
+	return opcode.SwitchThread{Index: a.Index}.Encode(w)
+}

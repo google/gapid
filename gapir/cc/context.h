@@ -117,11 +117,8 @@ private:
     // The constructed GLES renderers.
     std::unordered_map<uint32_t, GlesRenderer*> mGlesRenderers;
 
-    // The currently bound GLES renderer.
-    GlesRenderer* mBoundGlesRenderer;
-
-    // The currently bound Vulkan renderer.
-    VulkanRenderer* mBoundVulkanRenderer;
+    // The lazily-built Vulkan renderer.
+    VulkanRenderer* mVulkanRenderer;
 
     // A buffer for data to be sent back to the server.
     std::unique_ptr<PostBuffer> mPostBuffer;

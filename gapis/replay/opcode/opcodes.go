@@ -243,13 +243,23 @@ func (c Add) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
-// Extend represents the LABEL virtual machine opcode.
+// Label represents the LABEL virtual machine opcode.
 type Label struct {
 	Value uint32 // 26 bit label name.
 }
 
 func (c Label) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpLabel, c.Value))
+	return w.Error()
+}
+
+// SwitchThread represents the SwitchThread virtual machine opcode.
+type SwitchThread struct {
+	Index uint32 // 26 bit thread index.
+}
+
+func (c SwitchThread) Encode(w binary.Writer) error {
+	w.Uint32(packCX(protocol.OpSwitchThread, c.Index))
 	return w.Error()
 }
 
@@ -293,6 +303,8 @@ func Decode(r binary.Reader) (interface{}, error) {
 		return Add{Count: unpackX(i)}, nil
 	case protocol.OpLabel:
 		return Label{Value: unpackX(i)}, nil
+	case protocol.OpSwitchThread:
+		return SwitchThread{Index: unpackX(i)}, nil
 	default:
 		return nil, fmt.Errorf("Unknown opcode with code %v", code)
 	}

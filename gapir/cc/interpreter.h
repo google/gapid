@@ -19,10 +19,12 @@
 
 #include "function_table.h"
 #include "stack.h"
+#include "thread_pool.h"
 
 #include <stdint.h>
 
 #include <functional>
+#include <future>
 #include <unordered_map>
 #include <utility>
 
@@ -42,7 +44,7 @@ public:
 
     enum : uint32_t {
         // The API index to use for global builtin functions.
-        GLOBAL_INDEX     = 0,
+        GLOBAL_INDEX = 0,
     };
 
     // Function ids for implementation specific functions and special debugging functions. These
@@ -59,22 +61,23 @@ public:
     // Instruction codes for the different instructions. The codes have to be consistent with the
     // codes on the server side.
     enum class InstructionCode : uint8_t {
-        CALL        = 0,
-        PUSH_I      = 1,
-        LOAD_C      = 2,
-        LOAD_V      = 3,
-        LOAD        = 4,
-        POP         = 5,
-        STORE_V     = 6,
-        STORE       = 7,
-        RESOURCE    = 8,
-        POST        = 9,
-        COPY        = 10,
-        CLONE       = 11,
-        STRCPY      = 12,
-        EXTEND      = 13,
-        ADD         = 14,
-        LABEL       = 15,
+        CALL          = 0,
+        PUSH_I        = 1,
+        LOAD_C        = 2,
+        LOAD_V        = 3,
+        LOAD          = 4,
+        POP           = 5,
+        STORE_V       = 6,
+        STORE         = 7,
+        RESOURCE      = 8,
+        POST          = 9,
+        COPY          = 10,
+        CLONE         = 11,
+        STRCPY        = 12,
+        EXTEND        = 13,
+        ADD           = 14,
+        LABEL         = 15,
+        SWITCH_THREAD = 16,
     };
 
     // Creates a new interpreter with the specified memory manager (for resolving memory addresses)
@@ -89,7 +92,7 @@ public:
     void setRendererFunctions(uint8_t api, FunctionTable* functionTable);
 
     // Runs the interpreter on the instruction list specified by the pointer and by its size.
-    bool run(const std::pair<const uint32_t*, uint32_t>& instructions);
+    bool run(const uint32_t* instructions, uint32_t count);
 
     // Registers an API instance if it has not already been done.
     bool registerApi(uint8_t api);
@@ -98,6 +101,8 @@ public:
     inline uint32_t getLabel() const;
 
 private:
+    void exec();
+
     enum : uint32_t {
         TYPE_MASK        = 0x03f00000U,
         FUNCTION_ID_MASK = 0x0000ffffU,
@@ -110,6 +115,12 @@ private:
         OPCODE_BIT_SHIFT = 26,
     };
 
+    enum Result {
+        SUCCESS,
+        ERROR,
+        CHANGE_THREAD,
+    };
+
     // Get type information out from an opcode. The type is always stored in the 7th to 13th MSB
     // (both inclusive) of the opcode
     BaseType extractType(uint32_t opcode) const;
@@ -120,24 +131,24 @@ private:
     // Get 26 bit data out from an opcode located in the 26 LSB of the opcode.
     uint32_t extract26bitData(uint32_t opcode) const;
 
-    // Implementation of the opcodes supported by the interpreter. Each function returns true if the
-    // operation was successful, false otherwise
-    bool call(uint32_t opcode);
-    bool pushI(uint32_t opcode);
-    bool loadC(uint32_t opcode);
-    bool loadV(uint32_t opcode);
-    bool load(uint32_t opcode);
-    bool pop(uint32_t opcode);
-    bool storeV(uint32_t opcode);
-    bool store();
-    bool resource(uint32_t);
-    bool post();
-    bool copy(uint32_t opcode);
-    bool clone(uint32_t opcode);
-    bool strcpy(uint32_t opcode);
-    bool extend(uint32_t opcode);
-    bool add(uint32_t opcode);
-    bool label(uint32_t opcode);
+    // Implementation of the opcodes supported by the interpreter.
+    Result call(uint32_t opcode);
+    Result pushI(uint32_t opcode);
+    Result loadC(uint32_t opcode);
+    Result loadV(uint32_t opcode);
+    Result load(uint32_t opcode);
+    Result pop(uint32_t opcode);
+    Result storeV(uint32_t opcode);
+    Result store();
+    Result resource(uint32_t);
+    Result post();
+    Result copy(uint32_t opcode);
+    Result clone(uint32_t opcode);
+    Result strcpy(uint32_t opcode);
+    Result extend(uint32_t opcode);
+    Result add(uint32_t opcode);
+    Result label(uint32_t opcode);
+    Result switchThread(uint32_t opcode);
 
     // Returns true, if address..address+size(type) is "constant" memory.
     bool isConstantAddressForType(const void *address, BaseType type) const;
@@ -151,8 +162,8 @@ private:
     // Returns false, if address is known not safe to write to.
     bool isWriteAddress(void* address) const;
 
-    // Interpret one specific opcode. Returns true if it was successful false otherwise
-    bool interpret(uint32_t opcode);
+    // Interpret one specific opcode.
+    Result interpret(uint32_t opcode);
 
     // Memory manager which managing the memory used during the interpretation
     const MemoryManager* mMemoryManager;
@@ -166,11 +177,29 @@ private:
     // Callback function for requesting renderer functions for an unknown api.
     ApiRequestCallback apiRequestCallback;
 
-    // The stack of the Virtual Machine
+    // The stack of the Virtual Machine.
     Stack mStack;
+
+    // The list of instructions.
+    const uint32_t* mInstructions;
+
+    // The total number of instructions.
+    uint32_t mInstructionCount;
+
+    // The index of the current instruction.
+    uint32_t mCurrentInstruction;
+
+    // The next thread execution should continue on.
+    uint32_t mNextThread;
 
     // The last reached label value.
     uint32_t mLabel;
+
+    // The result of the thread-chained exec() calls.
+    std::promise<Result> mExecResult;
+
+    // The thread pool used to interpret on different threads.
+    ThreadPool mThreadPool;
 };
 
 inline bool Interpreter::isConstantAddressForType(const void *address, BaseType type) const {
