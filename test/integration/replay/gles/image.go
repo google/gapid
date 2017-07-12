@@ -110,7 +110,7 @@ func toGoImage(in *gpuimg.Data) (goimg.Image, error) {
 
 func toGPUImage(in goimg.Image) (*gpuimg.Data, error) {
 	w, h := in.Bounds().Dx(), in.Bounds().Dy()
-	out := &gpuimg.Data{Width: uint32(w), Height: uint32(h)}
+	out := &gpuimg.Data{Width: uint32(w), Height: uint32(h), Depth: 1}
 	buf := &bytes.Buffer{}
 	e := endian.Writer(buf, device.BigEndian)
 
