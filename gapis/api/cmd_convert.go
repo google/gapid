@@ -50,6 +50,9 @@ func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 		}
 
 		out, err := protoconv.ToObject(ctx, in)
+		if e, ok := err.(protoconv.ErrNoConverterRegistered); ok && e.Object == in {
+			out, err = in, nil // No registered converter. Treat proto as the object.
+		}
 		if err != nil {
 			return err
 		}
