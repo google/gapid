@@ -28,7 +28,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -56,13 +55,13 @@ func (f *Flavor) Set(v string) bool {
 type Config struct {
 	Flavor         Flavor    `desc:"Build flavor"`
 	OutRoot        file.Path `desc:"Build output directory"`
-	JavaHome       file.Path `desc:"Path to JDK root"`
-	AndroidSDKRoot file.Path `desc:"Path to Android SDK"`
-	AndroidNDKRoot file.Path `desc:"Path to Android NDK"`
-	CMakePath      file.Path `desc:"Path to CMake executable"`
-	NinjaPath      file.Path `desc:"Path to ninja executable"`
-	PythonPath     file.Path `desc:"Path to python executable"`
-	MSYS2Path      file.Path `desc:"Path to msys2 root" os:"windows"`
+	JavaHome       file.Path `desc:"Path to JDK root" type:"dir"`
+	AndroidSDKRoot file.Path `desc:"Path to Android SDK" type:"dir"`
+	AndroidNDKRoot file.Path `desc:"Path to Android NDK" type:"dir"`
+	CMakePath      file.Path `desc:"Path to CMake executable" type:"file"`
+	NinjaPath      file.Path `desc:"Path to ninja executable" type:"file"`
+	PythonPath     file.Path `desc:"Path to python executable" type:"file"`
+	MSYS2Path      file.Path `desc:"Path to msys2 root" type:"dir" os:"windows"`
 	ArmLinuxGapii  bool      `desc:"Build additional gapii for armlinux"`
 }
 
@@ -129,100 +128,96 @@ func fetchValidConfig(ctx context.Context, options ConfigOptions) Config {
 	if options.Reset {
 		cfg = defaults()
 	}
-	if !found || options.Interactive {
-		cfg = interactiveConfig(ctx, cfg, options)
-	}
-	for {
-		err := validateConfig(ctx, cfg)
-		if err == nil {
-			return cfg
-		}
-		fmt.Printf("Configuration is not valid: %v\n", err)
-		cfg = interactiveConfig(ctx, cfg, options)
-	}
-}
 
-func validateConfig(ctx context.Context, cfg Config) error {
-	for _, test := range []struct {
-		name string
-		path file.Path
-	}{
-		{"cmake", cfg.CMakePath},
-		{"ninja", cfg.NinjaPath},
-		{"python", cfg.PythonPath},
-	} {
-		if !test.path.Exists() {
-			return fault.Const("Could not find " + test.name)
-		}
-		if test.path.IsDir() {
-			return fault.Const("The provided " + test.name + " is a directory,\nplease provide the path to the " + test.name + " executable")
-		}
-	}
-	return nil
-}
+	askForAll := !found || options.Interactive
 
-func interactiveStructConfig(ctx context.Context, v reflect.Value, options ConfigOptions) {
+	v := reflect.ValueOf(&cfg).Elem()
 	t := v.Type()
 	for i, c := 0, t.NumField(); i < c; i++ {
 		f, t := v.Field(i), t.Field(i)
-		desc := t.Tag.Get("desc")
-		if desc == "" {
-			desc = t.Name
-		}
 		os := t.Tag.Get("os")
 		if os != "" && os != runtime.GOOS {
 			continue
 		}
 		v := f.Addr().Interface()
-		switch v := v.(type) {
-		case enum:
-			options := v.Options()
-			fmt.Printf(" • %s. One of: %v [Default: %v]\n", desc, strings.Join(options, ", "), v)
-			if in := readLine(); in != "" {
-				if !v.Set(in) {
-					fmt.Printf("Must be one of: %v\n", strings.Join(options, ", "))
-					i--
+		if askForAll || vaildateField(v, t) != nil {
+			for {
+				if err := inputField(v, t); err != nil {
+					fmt.Println(err)
 					continue
 				}
-			}
-		case *string:
-			fmt.Printf(" • %s [Default: %q]\n", desc, *v)
-			if in := readLine(); in != "" {
-				*v = in
-			}
-		case *bool:
-			fmt.Printf(" • %s [Default: %v]\n", desc, *v)
-			if in := readLine(); in != "" {
-				if val, ok := parseBool(in); !ok {
-					fmt.Printf("Must be yes/true or no/false\n")
-					i--
+				if err := vaildateField(v, t); err != nil {
+					fmt.Println(err)
 					continue
-				} else {
-					*v = val
 				}
+				break
 			}
-		case *file.Path:
-			fmt.Printf(" • %s [Default: %v]\n", desc, v.System())
-			if in := readLine(); in != "" {
-				*v = file.Abs(in)
-			}
-		default:
-			if t.Type.Kind() == reflect.Interface {
-				if !f.IsNil() {
-					interactiveStructConfig(ctx, f.Elem(), options)
-				}
-				continue
-			}
-			panic(fmt.Sprintf("Unknown type %T in config struct", v))
 		}
 	}
-}
-
-func interactiveConfig(ctx context.Context, cfg Config, options ConfigOptions) Config {
-	v := reflect.ValueOf(&cfg).Elem()
-	interactiveStructConfig(ctx, v, options)
 	writeConfig(cfg)
 	return cfg
+}
+
+func inputField(v interface{}, t reflect.StructField) error {
+	desc := t.Tag.Get("desc")
+	if desc == "" {
+		desc = t.Name
+	}
+	switch v := v.(type) {
+	case enum:
+		options := v.Options()
+		fmt.Printf(" • %s. One of: %v [Default: %v]\n", desc, strings.Join(options, ", "), v)
+		if in := readLine(); in != "" {
+			if !v.Set(in) {
+				return fmt.Errorf("Must be one of: %v", strings.Join(options, ", "))
+			}
+		}
+	case *string:
+		fmt.Printf(" • %s [Default: %q]\n", desc, *v)
+		if in := readLine(); in != "" {
+			*v = in
+		}
+	case *bool:
+		fmt.Printf(" • %s [Default: %v]\n", desc, *v)
+		if in := readLine(); in != "" {
+			val, ok := parseBool(in)
+			if !ok {
+				return fmt.Errorf("Must be yes/true or no/false")
+			}
+			*v = val
+		}
+	case *file.Path:
+		fmt.Printf(" • %s [Default: %v]\n", desc, v.System())
+		if in := readLine(); in != "" {
+			*v = file.Abs(in)
+		}
+	default:
+		panic(fmt.Sprintf("Unknown type %T in config struct", v))
+	}
+	return nil
+}
+
+func vaildateField(v interface{}, t reflect.StructField) error {
+	switch v := v.(type) {
+	case *file.Path:
+		switch t.Tag.Get("type") {
+		case "file":
+			if !v.Exists() {
+				return fmt.Errorf("Path does not exist")
+			}
+			if v.IsDir() {
+				return fmt.Errorf("The provided path is a directory, please provide the path to the executable")
+			}
+		case "dir":
+			if !v.Exists() {
+				return fmt.Errorf("Path does not exist")
+			}
+			if !v.IsDir() {
+				return fmt.Errorf("The provided path is not a directory")
+			}
+		}
+	}
+	return nil
 }
 
 func readLine() string {
