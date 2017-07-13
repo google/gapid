@@ -103,6 +103,22 @@ void abiByName(const std::string name, device::ABI* abi) {
         memory_layout->set_endian(device::LittleEndian);
         abi->set_allocated_memorylayout(memory_layout);
         abi->set_architecture(device::X86);
+    } else if (name == "x86_64") {
+        auto memory_layout = new device::MemoryLayout();
+        memory_layout->set_allocated_pointer(new_dt_layout(8, 8));
+        memory_layout->set_allocated_integer(new_dt_layout(4, 4));
+        memory_layout->set_allocated_size(new_dt_layout(8, 8));
+        memory_layout->set_allocated_char_(new_dt_layout(1, 1));
+        memory_layout->set_allocated_i64(new_dt_layout(8, 4));
+        memory_layout->set_allocated_i32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_i16(new_dt_layout(2, 2));
+        memory_layout->set_allocated_i8(new_dt_layout(1, 1));
+        memory_layout->set_allocated_f64(new_dt_layout(8, 4));
+        memory_layout->set_allocated_f32(new_dt_layout(4, 4));
+        memory_layout->set_allocated_f16(new_dt_layout(2, 2));
+        memory_layout->set_endian(device::LittleEndian);
+        abi->set_allocated_memorylayout(memory_layout);
+        abi->set_architecture(device::X86_64);
     } else {
         LOG_WARN("Unrecognised ABI: %s", name.c_str());
     }
@@ -272,6 +288,8 @@ bool createContext(void* platform_data) {
             gContext.mCpuArchitecture = device::ARMv8a;
         } else if (primaryABI == "x86") {
             gContext.mCpuArchitecture = device::X86;
+        } else if (primaryABI == "x86_64") {
+            gContext.mCpuArchitecture = device::X86_64;
         } else {
             LOG_WARN("Unrecognised ABI: %s", primaryABI.c_str());
         }
@@ -384,6 +402,8 @@ device::ABI* currentABI() {
     abiByName("arm64-v8a", out);
 #elif defined(__i686__)
     abiByName("x86", out);
+#elif defined(__x86_64__)
+    abiByName("x86_64", out);
 #else
 #   error "Unknown ABI"
 #endif

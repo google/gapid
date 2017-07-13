@@ -33,12 +33,6 @@ endforeach()
 if(NOT DISABLED_CXX)
   add_library(cc-memory-tracker ${sources})
 
-  if(ANDROID)
-    find_package(NDK REQUIRED)
-    find_package(STL REQUIRED)
-    target_link_libraries(cc-memory-tracker NDK::Lib STL::Lib)
-  endif()
-
   # TODO(qining): Add Windows support
 
   if(NOT ANDROID AND NOT WIN32 AND NOT GAPII_TARGET)

@@ -28,16 +28,16 @@ set(LLVM_LINK_COMPONENTS
   MCParser
   Object
   Support)
- 
+
  llvm_map_components_to_libnames(
    interceptor_libs ${LLVM_LINK_COMPONENTS}
  )
- 
+
  add_library(interceptor SHARED
   code_generator.cc
   constant_pool_data_expr.cc
   disassembler.cc
-  error.cc 
+  error.cc
   interceptor.cc
   linker.cc
   memory_manager.cc

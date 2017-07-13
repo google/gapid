@@ -39,11 +39,6 @@ if(NOT DISABLED_CXX)
         target_link_libraries(VkLayerGraphicsSpy DLOpen::Lib)
     endif()
 
-    if(ANDROID)
-        find_package(NDK REQUIRED)
-        target_link_libraries(VkLayerGraphicsSpy NDK::Lib)
-    endif()
-
     if(NOT ANDROID)
         add_custom_command(TARGET VkLayerGraphicsSpy POST_BUILD
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different

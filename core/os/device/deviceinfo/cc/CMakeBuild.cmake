@@ -51,11 +51,7 @@ if(NOT DISABLED_CXX)
     target_link_libraries(deviceinfo-static cc-core protobuf cityhash GL::Lib)
 
     if(ANDROID)
-        find_package(NDK REQUIRED)
-        find_package(Log REQUIRED)
-        find_package(STL REQUIRED)
-
-        target_link_libraries(deviceinfo-static NDK::Lib Log::Lib STL::Lib)
+        target_link_libraries(deviceinfo-static -llog)
 
         add_library(deviceinfo SHARED ${sources})
         target_include_directories(deviceinfo PUBLIC "${PROTO_CC_OUT}")
