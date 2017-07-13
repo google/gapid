@@ -107,12 +107,17 @@ private:
     bool mQueriedExtensions;
 
     Display *mDisplay;
+    bool mOwnsDisplay; // True if we created mDisplay
     GLXContext mContext;
     GLXContext mSharedContext;
     GLXPbuffer mPbuffer;
     GLXFBConfig mFBConfig;
 };
 
+// NB: We keep a reference the shared GL context, so "parent" context
+//     must stay alive at least for the duration of this context.
+//     We create "root" context for this purpose so it is satisfied.
+//     TODO: Add assert/refcounting to enforce this.
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mBound(false)
         , mNeedsResolve(false)
@@ -121,9 +126,18 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0)
         , mPbuffer(0) {
 
-    mDisplay = XOpenDisplay(nullptr);
-    if (mDisplay == nullptr) {
-        GAPID_FATAL("Unable to to open X display");
+    if (shared_context != nullptr) {
+        // Ensure that shared contexts also share X-display.
+        // Drivers are know to misbehave/crash without this.
+        // NB: This relies on the shared_context to stay alive.
+        mDisplay = shared_context->mDisplay;
+        mOwnsDisplay = false;
+    } else {
+        mDisplay = XOpenDisplay(nullptr);
+        mOwnsDisplay = true;
+        if (mDisplay == nullptr) {
+            GAPID_FATAL("Unable to to open X display");
+        }
     }
 
     int major;
@@ -143,7 +157,7 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
 GlesRendererImpl::~GlesRendererImpl() {
     reset();
 
-    if (mDisplay != nullptr) {
+    if (mOwnsDisplay && mDisplay != nullptr) {
         XCloseDisplay(mDisplay);
     }
 }
