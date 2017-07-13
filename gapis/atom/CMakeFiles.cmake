@@ -25,6 +25,4 @@ set(files
 )
 set(dirs
     atom_pb
-    test
-    transform
 )

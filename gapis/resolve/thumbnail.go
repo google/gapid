@@ -84,8 +84,10 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 	switch item := cmdTree.index(p.Indices).(type) {
 	case api.CmdIDGroup:
 		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Range.Last())))
-	case api.CmdID:
-		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item)))
+	case api.SubCmdIdx:
+		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item[0]), item[1:]...))
+	case api.SubCmdRoot:
+		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Id[0]), item.Id[1:]...))
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
 	}

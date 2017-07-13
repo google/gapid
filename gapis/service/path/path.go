@@ -367,6 +367,15 @@ func (n *Capture) CommandRange(from, to uint64) *Commands {
 	}
 }
 
+// SubCommandRange returns the path node to a range of the capture's subcommands
+func (n *Capture) SubCommandRange(from, to []uint64) *Commands {
+	return &Commands{
+		Capture: n,
+		From:    append([]uint64{}, from...),
+		To:      append([]uint64{}, to...),
+	}
+}
+
 // CommandTree returns the path to the root node of a capture's command tree
 // optionally filtered by f.
 func (n *Capture) CommandTree(f *CommandFilter) *CommandTree {

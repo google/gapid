@@ -76,7 +76,10 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}
 
 	o.Commands = append(o.Commands, CommandBufferCommand{func() {
 		reflect.ValueOf(functionToCall).Call(args)
-	}, &e.cmd, []uint64(nil), recreate_data, true})
+	}, &e.cmd, nil, []uint64(nil), recreate_data, true})
+	if GetState(e.s).AddCommand != nil {
+		GetState(e.s).AddCommand(o.Commands[len(o.Commands)-1])
+	}
 }
 
 func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
@@ -98,7 +101,7 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 			c := command
 			c.actualSubmission = true
 			c.submit = s.CurrentSubmission
-			c.submissionIndex = append([]uint64(nil), s.SubcommandIndex...)
+			c.submissionIndex = append([]uint64(nil), s.SubCmdIdx...)
 			lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
 				c)
 		} else {
@@ -116,7 +119,7 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 				c := command
 				c.actualSubmission = false
 				c.submit = s.CurrentSubmission
-				c.submissionIndex = append([]uint64(nil), s.SubcommandIndex...)
+				c.submissionIndex = append([]uint64(nil), s.SubCmdIdx...)
 				// The vkCmdWaitEvents carries memory barriers, those should take
 				// effect when the event is signaled.
 				lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
@@ -129,17 +132,17 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 
 func (e externs) enterSubcontext() {
 	o := GetState(e.s)
-	o.SubcommandIndex = append(o.SubcommandIndex, 0)
+	o.SubCmdIdx = append(o.SubCmdIdx, 0)
 }
 
 func (e externs) leaveSubcontext() {
 	o := GetState(e.s)
-	o.SubcommandIndex = o.SubcommandIndex[:len(o.SubcommandIndex)-1]
+	o.SubCmdIdx = o.SubCmdIdx[:len(o.SubCmdIdx)-1]
 }
 
 func (e externs) nextSubcontext() {
 	o := GetState(e.s)
-	o.SubcommandIndex[len(o.SubcommandIndex)-1] += 1
+	o.SubCmdIdx[len(o.SubCmdIdx)-1] += 1
 }
 
 func (e externs) execPendingCommands(queue VkQueue) {
@@ -163,11 +166,11 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			c := command
 			c.actualSubmission = true
 			c.submit = o.CurrentSubmission
-			c.submissionIndex = append([]uint64(nil), o.SubcommandIndex...)
+			c.submissionIndex = append([]uint64(nil), o.SubCmdIdx...)
 			newPendingCommands = append(newPendingCommands, c)
 		} else {
 			o.CurrentSubmission = command.submit
-			o.SubcommandIndex = append([]uint64(nil), command.submissionIndex...)
+			o.SubCmdIdx = append([]uint64(nil), command.submissionIndex...)
 			command.function()
 			if command.actualSubmission && o.HandleSubcommand != nil {
 				o.HandleSubcommand(command)
@@ -183,10 +186,10 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			}
 		}
 		if command.actualSubmission {
-			o.SubcommandIndex[len(o.SubcommandIndex)-1] += 1
+			o.SubCmdIdx[len(o.SubCmdIdx)-1] += 1
 		}
 	}
-	o.SubcommandIndex = []uint64(nil)
+	o.SubCmdIdx = []uint64(nil)
 	// Reset state.IdxList
 	// Refresh or clear the pending commands in LastBoundQueue
 	lastBoundQueue.PendingCommands = newPendingCommands

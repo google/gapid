@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
@@ -35,6 +36,23 @@ import (
 const (
 	stop = fault.Const("stop")
 )
+
+func translateId(idx api.SubCmdIdx, data *sync.Data) (api.CmdID, bool) {
+	atomIdx := api.CmdID(0)
+	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
+	if !ok {
+		return 0, false
+	}
+	found := false
+	for _, v := range sg {
+		if v.Index.Equals(idx) {
+			found = true
+			atomIdx = v.GeneratingCmd
+			break
+		}
+	}
+	return atomIdx, found
+}
 
 // Find performs a search using req and calling handler for each result.
 func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) error {
@@ -76,12 +94,35 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			return err
 		}
 
-		nodePred := func(item api.CmdIDGroupOrID) bool {
+		syncData, err := database.Build(ctx, &SynchronizationResolvable{cmdTree.path.Capture})
+		if err != nil {
+			return err
+		}
+		snc, ok := syncData.(*sync.Data)
+		if !ok {
+			return log.Errf(ctx, nil, "Could not find valid Synchronization Data")
+		}
+
+		nodePred := func(item api.SpanItem) bool {
 			switch item := item.(type) {
 			case api.CmdIDGroup:
 				return pred(item.Name)
-			case api.CmdID:
-				return pred(fmt.Sprint(c.Commands[item]))
+			case api.SubCmdIdx:
+				if len(item) > 1 {
+					if idx, found := translateId(item, snc); found {
+						return pred(fmt.Sprint(c.Commands[idx]))
+					}
+					return false
+				}
+				return pred(fmt.Sprint(c.Commands[item[0]]))
+			case api.SubCmdRoot:
+				if len(item.Id) > 1 {
+					if idx, found := translateId(item.Id, snc); found {
+						return pred(fmt.Sprint(c.Commands[idx]))
+					}
+					return false
+				}
+				return pred(fmt.Sprint(c.Commands[item.Id[0]]))
 			default:
 				return false
 			}
@@ -118,12 +159,12 @@ type commandEmitter struct {
 	from     *path.CommandTreeNode
 	h        service.FindHandler
 	count    uint32
-	pred     func(item api.CmdIDGroupOrID) bool
+	pred     func(item api.SpanItem) bool
 	wrapping bool
 	first    bool
 }
 
-func (c *commandEmitter) process(indices []uint64, item api.CmdIDGroupOrID) error {
+func (c *commandEmitter) process(indices []uint64, item api.SpanItem) error {
 	// Skip the first item if we're not doing the wrapped search.
 	if !c.wrapping && c.first {
 		if reflect.DeepEqual(c.from.Indices, indices) {

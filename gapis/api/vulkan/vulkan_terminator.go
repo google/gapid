@@ -79,7 +79,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []u
 	}
 
 	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
-	sc := sync.SubcommandIndex(t.requestSubIndex[1:])
+	sc := api.SubCmdIdx(t.requestSubIndex[1:])
 	handled := false
 	if rng, ok := t.syncData.CommandRanges[id]; ok {
 		for _, k := range rng.SortedKeys() {
@@ -94,7 +94,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []u
 	}
 
 	if !handled {
-		return log.Errf(ctx, nil, "Can not find the given subindex")
+		return log.Errf(ctx, nil, "Can not find the given subindex %+v, %+v", id, subcommand)
 	}
 
 	return nil
@@ -114,14 +114,14 @@ func walkCommands(s *State,
 	}
 }
 
-func getExtra(idx sync.SubcommandIndex, loopLevel int) int {
+func getExtra(idx api.SubCmdIdx, loopLevel int) int {
 	if len(idx) == loopLevel+1 {
 		return 1
 	}
 	return 0
 }
 
-func incrementLoopLevel(idx sync.SubcommandIndex, loopLevel *int) bool {
+func incrementLoopLevel(idx api.SubCmdIdx, loopLevel *int) bool {
 	if len(idx) == *loopLevel+1 {
 		return false
 	}
@@ -132,7 +132,7 @@ func incrementLoopLevel(idx sync.SubcommandIndex, loopLevel *int) bool {
 // resolveCurrentRenderPass walks all of the current and pending commands
 // to determine what renderpass we are in after the idx'th subcommand
 func resolveCurrentRenderPass(ctx context.Context, s *api.State, submit *VkQueueSubmit,
-	idx sync.SubcommandIndex, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
+	idx api.SubCmdIdx, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
 	if len(idx) == 0 {
 		return lrp, subpass
 	}
@@ -214,7 +214,7 @@ func rebuildCommandBuffer(ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer *CommandBufferObject,
 	s *api.State,
-	idx sync.SubcommandIndex,
+	idx api.SubCmdIdx,
 	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 
 	x := make([]api.Cmd, 0)
@@ -294,7 +294,7 @@ func rebuildCommandBuffer(ctx context.Context,
 // index it would remain valid. This means closing any open
 // RenderPasses.
 func cutCommandBuffer(ctx context.Context, id api.CmdID,
-	a *VkQueueSubmit, idx sync.SubcommandIndex, out transform.Writer) {
+	a *VkQueueSubmit, idx api.SubCmdIdx, out transform.Writer) {
 	cb := CommandBuilder{Thread: a.Thread()}
 	s := out.State()
 	c := GetState(s)
@@ -359,7 +359,7 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	}
 
 	cmdBuffer := c.CommandBuffers[newCommandBuffers[lastCommandBuffer]]
-	subIdx := make(sync.SubcommandIndex, 0)
+	subIdx := make(api.SubCmdIdx, 0)
 	if !skipAll {
 		subIdx = idx[2:]
 	}
@@ -394,14 +394,15 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.
 	}
 
 	doCut := false
-	cutIndex := sync.SubcommandIndex(nil)
+	cutIndex := api.SubCmdIdx(nil)
 	if rng, ok := t.syncData.CommandRanges[id]; ok {
 		for k, v := range rng.Ranges {
 			if api.CmdID(k) > t.lastRequest {
 				doCut = true
 			} else {
 				if len(cutIndex) == 0 || cutIndex.LessThan(v) {
-					cutIndex = v
+					// Make a copy of v, we do not want to modify the original.
+					cutIndex = append(api.SubCmdIdx(nil), v...)
 					cutIndex.Decrement()
 				}
 			}

@@ -24,83 +24,41 @@ import (
 // synchronization dependency.
 type SynchronizationIndices []api.CmdID
 
-// The index of a subcommand within a command
-type SubcommandIndex []uint64
-
 // ExecutionRanges contains the information about a blocked command.
 // LastIndex is the final subcommand that exists within this command.
 // Ranges defines which future command will unblock the command in question, and
 // which subcommandis the last that will be run at that point.
 type ExecutionRanges struct {
-	LastIndex SubcommandIndex
-	Ranges    map[api.CmdID]SubcommandIndex
+	LastIndex api.SubCmdIdx
+	Ranges    map[api.CmdID]api.SubCmdIdx
+}
+
+// SubcommandReference contains a subcommand index as well as an atom.ID that
+// references the command that generated this subcommand.
+type SubcommandReference struct {
+	Index         api.SubCmdIdx
+	GeneratingCmd api.CmdID
 }
 
 // Data contains a map of synchronization pairs.
 // The api.CmdID is the command that will be blocked from
 // completion, and what subcommands will be made available by future commands.
+// SubcommandReferences contains the information about every subcommand
+// run by a particular command
+// SubcommandGroup represents the last Subcommand in every command buffer
 type Data struct {
-	CommandRanges map[api.CmdID]ExecutionRanges
+	CommandRanges        map[api.CmdID]ExecutionRanges
+	SubcommandReferences map[api.CmdID][]SubcommandReference
+	SubcommandGroups     map[api.CmdID][]api.SubCmdIdx
 }
 
 // NewData creates a new clean Data object
 func NewData() *Data {
 	s := new(Data)
 	s.CommandRanges = make(map[api.CmdID]ExecutionRanges)
+	s.SubcommandReferences = make(map[api.CmdID][]SubcommandReference)
+	s.SubcommandGroups = make(map[api.CmdID][]api.SubCmdIdx)
 	return s
-}
-
-// LessThan returns true if s comes before s2.
-func (s SubcommandIndex) LessThan(s2 SubcommandIndex) bool {
-	for i := range s {
-		if i > len(s2)-1 {
-			// This case is a bit weird, but
-			// {0} > {0, 1}, since {0} represents
-			// the ALL commands under 0.
-			return true
-		}
-		if s[i] < s2[i] {
-			return true
-		}
-		if s[i] > s2[i] {
-			return false
-		}
-	}
-	return false
-}
-
-// LEQ returns true if s comes before s2.
-func (s SubcommandIndex) LEQ(s2 SubcommandIndex) bool {
-	for i := range s {
-		if i > len(s2)-1 {
-			// This case is a bit weird, but
-			// {0} > {0, 1}, since {0} represents
-			// the ALL commands under 0.
-			return true
-		}
-		if s[i] < s2[i] {
-			return true
-		}
-		if s[i] > s2[i] {
-			return false
-		}
-	}
-	return true
-}
-
-// Decrement returns the subcommand that preceded this subcommand.
-// Decrement will decrement its way UP subcommand chains.
-// Eg: {0, 1}.Decrement() == {0, 0}
-//     {1, 0}.Decrement() == {0}
-//     {0}.Decrement() == {}
-func (s *SubcommandIndex) Decrement() {
-	for len(*s) > 0 {
-		if (*s)[len(*s)-1] > 0 {
-			(*s)[len(*s)-1]--
-			return
-		}
-		*s = (*s)[:len(*s)-1]
-	}
 }
 
 // Len returns the length of subcommand indices

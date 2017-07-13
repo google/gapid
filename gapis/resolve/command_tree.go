@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service"
@@ -42,11 +43,13 @@ type commandTree struct {
 	root api.CmdIDGroup
 }
 
-func (t *commandTree) index(indices []uint64) api.CmdIDGroupOrID {
-	group := t.root
+func (t *commandTree) index(indices []uint64) api.SpanItem {
+	group := api.CmdGroupOrRoot(t.root)
 	for _, idx := range indices {
 		switch item := group.Index(idx).(type) {
 		case api.CmdIDGroup:
+			group = item
+		case api.SubCmdRoot:
 			group = item
 		default:
 			return item
@@ -80,10 +83,10 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 	cmdTree := boxed.(*commandTree)
 
 	switch item := cmdTree.index(c.Indices).(type) {
-	case api.CmdID:
+	case api.SubCmdIdx:
 		return &service.CommandTreeNode{
 			NumChildren: 0, // TODO: Subcommands
-			Commands:    cmdTree.path.Capture.CommandRange(uint64(item), uint64(item)),
+			Commands:    cmdTree.path.Capture.SubCommandRange(item, item),
 		}, nil
 	case api.CmdIDGroup:
 		return &service.CommandTreeNode{
@@ -91,6 +94,23 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
 			Group:       item.Name,
 			NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
+		}, nil
+	case api.SubCmdRoot:
+		count := uint64(1)
+		g := ""
+		commandStart := append([]uint64{}, item.Id...)
+		commandEnd := append([]uint64{}, item.Id...)
+		if len(item.Id) > 1 {
+			g = fmt.Sprintf("%v", item.Id)
+			commandStart = append(commandStart, uint64(0))
+			commandEnd = append(commandEnd, uint64(item.SubGroup.Count()-1))
+			count = uint64(item.SubGroup.Count())
+		}
+		return &service.CommandTreeNode{
+			NumChildren: item.SubGroup.Bounds().Length(),
+			Commands:    cmdTree.path.Capture.SubCommandRange(commandStart, commandEnd),
+			Group:       g,
+			NumCommands: count,
 		}, nil
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
@@ -212,6 +232,15 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
+	syncData, err := database.Build(ctx, &SynchronizationResolvable{p.Capture})
+	if err != nil {
+		return nil, err
+	}
+	snc, ok := syncData.(*sync.Data)
+	if !ok {
+		return nil, log.Errf(ctx, nil, "Could not find valid Synchronization Data")
+	}
+
 	filter, err := buildFilter(ctx, p.Capture, p.Filter)
 	if err != nil {
 		return nil, err
@@ -289,8 +318,14 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		addDrawAndFrameEvents(ctx, p, out, api.CmdID(len(c.Commands)))
 	}
 
-	// Now we have all the groups, we finally need to add the filtered atoms.
+	for k, v := range snc.SubcommandGroups {
+		r := out.root.AddRoot([]uint64{uint64(k)})
+		for _, x := range v {
+			r.Insert([]uint64{uint64(k)}, append([]uint64{}, x...))
+		}
+	}
 
+	// Now we have all the groups, we finally need to add the filtered atoms.
 	s = c.NewState()
 	out.root.AddAtoms(func(i api.CmdID) bool {
 		cmd := c.Commands[i]

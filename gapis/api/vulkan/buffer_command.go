@@ -20,6 +20,7 @@ import "github.com/google/gapid/gapis/api"
 
 type CommandBufferCommand struct {
 	function         func()
+	initialCall      *api.Cmd
 	submit           *api.Cmd
 	submissionIndex  []uint64
 	recreateData     interface{}

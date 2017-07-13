@@ -106,6 +106,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				return err
 			}
 			n := boxedNode.(*service.CommandTreeNode)
+
 			if n.Group != "" {
 				fmt.Fprintln(os.Stdout, n.Group)
 				return nil

@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/devices"
@@ -75,7 +74,7 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api
 		return framebufferAttachmentInfo{}, err
 	}
 
-	info, err := changes.attachments[att].after(ctx, sync.SubcommandIndex(after.Indices))
+	info, err := changes.attachments[att].after(ctx, api.SubCmdIdx(after.Indices))
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
@@ -139,7 +138,7 @@ type framebufferAttachmentChanges struct {
 // framebufferAttachmentInfo describes the dimensions and format of a
 // framebuffer attachment.
 type framebufferAttachmentInfo struct {
-	after  sync.SubcommandIndex // index of the last atom to change the attachment.
+	after  api.SubCmdIdx // index of the last atom to change the attachment.
 	width  uint32
 	height uint32
 	index  uint32 // The api-specific attachment index
@@ -154,7 +153,7 @@ func (f framebufferAttachmentInfo) equal(o framebufferAttachmentInfo) bool {
 		f.valid == o.valid
 }
 
-func (c framebufferAttachmentChanges) after(ctx context.Context, i sync.SubcommandIndex) (framebufferAttachmentInfo, error) {
+func (c framebufferAttachmentChanges) after(ctx context.Context, i api.SubCmdIdx) (framebufferAttachmentInfo, error) {
 	idx := sort.Search(len(c.changes), func(x int) bool { return i.LessThan(c.changes[x].after) }) - 1
 
 	if idx < 0 {
