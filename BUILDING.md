@@ -31,7 +31,7 @@ Please see the following for detailed steps on each platform.
   * Android SDK Build-tools 21.1.2
 
 ### Install the Android NDK
-* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-windows-x86_64.zip) to a directory of your choosing.
+* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip) to a directory of your choosing.
 
 ### Install [CMake](https://cmake.org/files/v3.7/cmake-3.7.1-win32-x86.msi).
 
@@ -86,7 +86,7 @@ The build output will be in the directory you specified with `do config`.
   * Android SDK Build-tools 21.1.2
 
 ### Install Android NDK
-* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-darwin-x86_64.zip) to a directory of your choosing.
+* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-darwin-x86_64.zip) to a directory of your choosing.
   * Instead, if you have Homebrew, you can install via `brew install android-ndk` and the default installation location would be
     `$HOMEBREW_PREFIX/opt/android-ndk`, where `$HOMEBREW_PREFIX` can be found using `brew config`.
 
@@ -145,7 +145,7 @@ The build output will be in the directory you specified with `do config`.
   * Android SDK Build-tools 21.1.2
 
 ### Install Android NDK
-* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip) to a directory of your choosing.
+* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.
 
 ### Install [CMake](https://cmake.org/files/v3.7/cmake-3.7.1-Linux-x86_64.sh).
 

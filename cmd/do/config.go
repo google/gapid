@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/user"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -57,7 +58,7 @@ type Config struct {
 	OutRoot        file.Path `desc:"Build output directory"`
 	JavaHome       file.Path `desc:"Path to JDK root" type:"dir"`
 	AndroidSDKRoot file.Path `desc:"Path to Android SDK" type:"dir"`
-	AndroidNDKRoot file.Path `desc:"Path to Android NDK" type:"dir"`
+	AndroidNDKRoot file.Path `desc:"Path to Android NDK r15" type:"dir"`
 	CMakePath      file.Path `desc:"Path to CMake executable" type:"file"`
 	NinjaPath      file.Path `desc:"Path to ninja executable" type:"file"`
 	PythonPath     file.Path `desc:"Path to python executable" type:"file"`
@@ -135,23 +136,34 @@ func fetchValidConfig(ctx context.Context, options ConfigOptions) Config {
 	t := v.Type()
 	for i, c := 0, t.NumField(); i < c; i++ {
 		f, t := v.Field(i), t.Field(i)
-		os := t.Tag.Get("os")
-		if os != "" && os != runtime.GOOS {
+		if os := t.Tag.Get("os"); os != "" && os != runtime.GOOS {
 			continue
 		}
 		v := f.Addr().Interface()
-		if askForAll || vaildateField(v, t) != nil {
-			for {
-				if err := inputField(v, t); err != nil {
-					fmt.Println(err)
-					continue
-				}
-				if err := vaildateField(v, t); err != nil {
-					fmt.Println(err)
-					continue
-				}
-				break
+		if !askForAll {
+			err := vaildateField(v, t)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				continue
 			}
+		}
+		retrys := 0
+		for {
+			if retrys == 10 {
+				fmt.Println("Aborting after 10 failed attempts")
+				os.Exit(1)
+			}
+			retrys++
+			if err := inputField(v, t); err != nil {
+				fmt.Println(err)
+				continue
+			}
+			if err := vaildateField(v, t); err != nil {
+				fmt.Println(err)
+				continue
+			}
+			break
 		}
 	}
 	writeConfig(cfg)
@@ -197,7 +209,40 @@ func inputField(v interface{}, t reflect.StructField) error {
 	return nil
 }
 
+type validator struct{}
+
+// ValidateAndroidNDKRoot checks the AndroidNDKRoot field.
+func (validator) ValidateAndroidNDKRoot(path file.Path) error {
+	text, err := ioutil.ReadFile(path.Join("source.properties").System())
+	if err == nil {
+		re := regexp.MustCompile(`Pkg\.Revision = ([0-9]+).([0-9]+).([0-9]+)`)
+		for _, line := range strings.Split(string(text), "\n") {
+			groups := re.FindStringSubmatch(line)
+			if len(groups) < 4 {
+				continue
+			}
+			major, minor := groups[1], groups[2]
+			if major != "15" {
+				return fmt.Errorf("Found NDK %v.%v. Must be r15", major, minor)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("Couldn't determine version of the NDK. Must be r15")
+}
+
 func vaildateField(v interface{}, t reflect.StructField) error {
+	m, ok := reflect.TypeOf(validator{}).MethodByName("Validate" + t.Name)
+	if ok {
+		err := m.Func.Call([]reflect.Value{
+			reflect.ValueOf(validator{}),
+			reflect.ValueOf(v).Elem()},
+		)[0].Interface()
+		if err != nil {
+			return err.(error)
+		}
+	}
+
 	switch v := v.(type) {
 	case *file.Path:
 		switch t.Tag.Get("type") {
