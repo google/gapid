@@ -330,7 +330,7 @@ func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, heig
 func TestClear(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx, f.cb)
+	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx, f.cb, f.memoryLayout)
 
 	capture := f.storeCapture(ctx, atoms)
 
@@ -396,7 +396,7 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 }
 
 func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, false)
+	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -412,7 +412,7 @@ func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.C
 }
 
 func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, true)
+	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{

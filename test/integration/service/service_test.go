@@ -126,8 +126,8 @@ func init() {
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := gles.CommandBuilder{Thread: 0}
-	cmds, draw, swap := samples.DrawTexturedSquare(ctx, cb, false)
 	h := &capture.Header{Abi: device.WindowsX86_64}
+	cmds, draw, swap := samples.DrawTexturedSquare(ctx, cb, false, h.Abi.MemoryLayout)
 	p, err := capture.New(ctx, "sample", h, cmds)
 	check(err)
 	buf := bytes.Buffer{}
