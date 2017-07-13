@@ -23,6 +23,12 @@ import (
 	"github.com/google/gapid/core/os/file"
 )
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func doInit(ctx context.Context, options InitOptions) Config {
 	cfg := fetchValidConfig(ctx, ConfigOptions{})
 	// We do the build version first in case we need to delete the output

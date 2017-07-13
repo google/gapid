@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -216,12 +217,25 @@ var testModeNames = map[TestMode]string{
 func (t *TestMode) Choose(c interface{}) { *t = c.(TestMode) }
 func (t TestMode) String() string        { return testModeNames[t] }
 
+func closeOnInterrupt(ctx context.Context) {
+	go func() {
+		// Ensure that ctrl-c interrupts actually stop the application.
+		// This is caught by the application framework and simply cancels the
+		// context so it can shutdown cleanly. For do, we just want to stop
+		// immediately.
+		<-task.ShouldStop(ctx)
+		os.Exit(0)
+	}()
+}
+
 func (verb *initVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	doInit(ctx, verb.InitOptions)
 	return nil
 }
 
 func (verb *configVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	if flags.NArg() != 0 {
 		app.Usage(ctx, "config does not take arguments")
 		return nil
@@ -231,12 +245,14 @@ func (verb *configVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (verb *buildVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doBuild(ctx, cfg, verb.BuildOptions, flags.Args()...)
 	return nil
 }
 
 func (verb *globVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	if flags.NArg() != 0 {
 		app.Usage(ctx, "glob does not take arguments")
 		return nil
@@ -247,6 +263,7 @@ func (verb *globVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (verb *cleanVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	if flags.NArg() != 0 {
 		app.Usage(ctx, "clean does not take arguments")
 		return nil
@@ -257,6 +274,7 @@ func (verb *cleanVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (verb *runVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	args := flags.Args()
 	if len(args) < 1 {
@@ -268,33 +286,31 @@ func (verb *runVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (verb *gapitVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doGapit(ctx, cfg, verb.GapitOptions, flags.Args()...)
 	return nil
 }
 
 func (verb *robotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doRobot(ctx, cfg, verb.RobotOptions, flags.Args()...)
 	return nil
 }
 
 func (verb *uploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doUpload(ctx, cfg, verb.UploadOptions, flags.Args()...)
 	return nil
 }
 
 func (verb *goVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doGo(ctx, cfg, verb.RunOptions, flags.Args()...)
 	return nil
-}
-
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 func run(ctx context.Context, cwd file.Path, exe file.Path, env *shell.Env, args ...string) {
