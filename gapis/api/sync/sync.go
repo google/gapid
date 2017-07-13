@@ -42,7 +42,7 @@ type SynchronizedAPI interface {
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 
 	// MutateSubcommands mutates the given Atom calling callback after each subcommand is executed.
-	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, SubcommandIndex, api.Cmd)) error
+	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error
 }
 
 type writer struct {
@@ -97,7 +97,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 // MutateWithSubcommands returns a list of commands that represent the correct
 // mutations to have the state for all commands before and including the given
 // index.
-func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd, callback func(*api.State, SubcommandIndex, api.Cmd)) error {
+func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -117,7 +117,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 				return err
 			}
 		}
-		callback(s, SubcommandIndex{uint64(i)}, cmd)
+		callback(s, api.SubCmdIdx{uint64(i)}, cmd)
 	}
 
 	return nil

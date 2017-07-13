@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
@@ -198,7 +197,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) getOrCreateDeviceMemory(
 
 type executedCommandIndex struct {
 	submit  *VkQueueSubmit
-	Indices sync.SubcommandIndex
+	Indices api.SubCmdIdx
 }
 
 // For a given Vulkan handle of command buffer, returns the corresponding
@@ -234,7 +233,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	// processing vkQueueSubmit or vkSetEvent atoms.
 	executedCommands := []executedCommandIndex{}
 	GetState(s).HandleSubcommand = func(a interface{}) {
-		subcommandIndex := append(sync.SubcommandIndex(nil), GetState(s).SubcommandIndex...)
+		subcommandIndex := append(api.SubCmdIdx(nil), GetState(s).SubCmdIdx...)
 		submitAtom, ok := (*GetState(s).CurrentSubmission).(*VkQueueSubmit)
 		if !ok {
 			return

@@ -80,10 +80,10 @@ func (i *CmdIDRange) SetSpan(span interval.U64Span) {
 
 // Split splits this range into two subranges where the first range will have
 // a length no larger than the given value.
-func (r CmdIDRange) Split(i uint64) (CmdIDRange, CmdIDRange) {
+func (r CmdIDRange) Split(i uint64) (*CmdIDRange, *CmdIDRange) {
 	if i >= r.Length() {
-		return r, CmdIDRange{0, 0}
+		return &r, &CmdIDRange{0, 0}
 	}
 	x := r.Start + CmdID(i)
-	return CmdIDRange{r.Start, x}, CmdIDRange{x, r.End}
+	return &CmdIDRange{r.Start, x}, &CmdIDRange{x, r.End}
 }

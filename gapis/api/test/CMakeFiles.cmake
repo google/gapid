@@ -26,7 +26,6 @@ set(files
     mutate.go
     mutate_test.go
     subroutines_test.go
-    synchronization_data_test.go
     test.go
 )
 set(dirs

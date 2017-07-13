@@ -29,9 +29,11 @@ import (
 )
 
 type CustomState struct {
-	SubcommandIndex   sync.SubcommandIndex
+	SubCmdIdx         api.SubCmdIdx
 	CurrentSubmission *api.Cmd
-	HandleSubcommand  func(interface{}) `nobox:"true"`
+	HandleSubcommand  func(interface{})
+	AddCommand        func(interface{})
+	IsRebuilding      bool
 }
 
 func getStateObject(s *api.State) *State {
@@ -93,34 +95,90 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return err
 	}
 	s := GetState(st)
+
 	i := api.CmdID(0)
 	submissionMap := make(map[*api.Cmd]api.CmdID)
+	commandMap := make(map[*api.Cmd]api.CmdID)
+	lastSubcommand := api.SubCmdIdx{}
+	lastCmdIndex := api.CmdID(0)
 
 	s.HandleSubcommand = func(a interface{}) {
+		// We do not record/handle any subcommands inside any of our
+		// rebuild commands
+		if s.IsRebuilding {
+			return
+		}
+
+		data := a.(CommandBufferCommand)
 		rootIdx := api.CmdID(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
 			rootIdx = api.CmdID(k)
 		} else {
 			submissionMap[s.CurrentSubmission] = i
 		}
+		// No way for this to not exist, we put it in up there
+		k := submissionMap[s.CurrentSubmission]
+		if v, ok := d.SubcommandReferences[k]; ok {
+			v = append(v,
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall]})
+			d.SubcommandReferences[k] = v
+		} else {
+			d.SubcommandReferences[k] = []sync.SubcommandReference{
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall]}}
+		}
+
+		previousIndex := append(api.SubCmdIdx(nil), s.SubCmdIdx...)
+		previousIndex.Decrement()
+		if !previousIndex.Equals(lastSubcommand) && lastCmdIndex != api.CmdID(0) {
+			if v, ok := d.SubcommandGroups[lastCmdIndex]; ok {
+				v = append(v, append(api.SubCmdIdx(nil), lastSubcommand...))
+				d.SubcommandGroups[lastCmdIndex] = v
+			} else {
+				d.SubcommandGroups[lastCmdIndex] = []api.SubCmdIdx{append(api.SubCmdIdx(nil), lastSubcommand...)}
+			}
+			lastSubcommand = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
+			lastCmdIndex = k
+		} else {
+			lastSubcommand = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
+			lastCmdIndex = k
+		}
 
 		if rng, ok := d.CommandRanges[rootIdx]; ok {
-			rng.LastIndex = append(sync.SubcommandIndex(nil), s.SubcommandIndex...)
+			rng.LastIndex = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
 			rng.Ranges[i] = rng.LastIndex
+			d.CommandRanges[rootIdx] = rng
 		} else {
 			er := sync.ExecutionRanges{
-				LastIndex: append(sync.SubcommandIndex(nil), s.SubcommandIndex...),
-				Ranges:    make(map[api.CmdID]sync.SubcommandIndex),
+				LastIndex: append(api.SubCmdIdx(nil), s.SubCmdIdx...),
+				Ranges:    make(map[api.CmdID]api.SubCmdIdx),
 			}
-			er.Ranges[i] = append(sync.SubcommandIndex(nil), s.SubcommandIndex...)
+			er.Ranges[i] = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
 			d.CommandRanges[rootIdx] = er
 		}
+	}
+
+	s.AddCommand = func(a interface{}) {
+		if s.IsRebuilding {
+			return
+		}
+		data := a.(CommandBufferCommand)
+		commandMap[data.initialCall] = i
 	}
 
 	for idx, cmd := range cmds {
 		i = api.CmdID(idx)
 		if err := cmd.Mutate(ctx, st, nil); err != nil {
 			return err
+		}
+	}
+
+	if lastCmdIndex != api.CmdID(0) {
+		if v, ok := d.SubcommandGroups[lastCmdIndex]; ok {
+			v = append(v, append(api.SubCmdIdx(nil), lastSubcommand...))
+			d.SubcommandGroups[lastCmdIndex] = v
+		} else {
+			d.SubcommandGroups[lastCmdIndex] = []api.SubCmdIdx{
+				append(api.SubCmdIdx(nil), lastSubcommand...)}
 		}
 	}
 	return nil
@@ -138,10 +196,10 @@ func (API) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygr
 	return newVulkanDependencyGraphBehaviourProvider()
 }
 
-func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, sync.SubcommandIndex, api.Cmd)) error {
+func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error {
 	c := GetState(s)
 	c.HandleSubcommand = func(_ interface{}) {
-		callback(s, append(sync.SubcommandIndex{uint64(id)}, c.SubcommandIndex...), cmd)
+		callback(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
 	}
 	if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 		return err

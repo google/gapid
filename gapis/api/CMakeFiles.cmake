@@ -40,6 +40,8 @@ set(files
     mesh.go
     resource.go
     state.go
+    subcmd_idx.go
+    subcmd_idx_test.go
     texture.go
 )
 set(dirs
