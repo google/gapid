@@ -17,6 +17,7 @@ package samples
 import (
 	"context"
 
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/memory"
@@ -24,7 +25,7 @@ import (
 
 // DrawTexturedSquare returns the atom list needed to create a context then
 // draw a textured square.
-func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool) (cmds []api.Cmd, draw api.CmdID, swap api.CmdID) {
+func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool, ml *device.MemoryLayout) (cmds []api.Cmd, draw api.CmdID, swap api.CmdID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -53,7 +54,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 			gl_FragColor = texture2D(tex, texcoord);
 		}`
 
-	b := newBuilder(ctx)
+	b := newBuilder(ctx, ml)
 	vs, fs, prog, pos := b.newShaderID(), b.newShaderID(), b.newProgramID(), gles.AttributeLocation(0)
 	eglContext, eglSurface, eglDisplay := b.newEglContext(128, 128, memory.Nullptr, false)
 	texLoc := gles.UniformLocation(0)
