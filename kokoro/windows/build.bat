@@ -22,8 +22,8 @@ SET SRC=%cd%\github\src\github.com\google\gapid
 REM Install the Android SDK components and NDK.
 set ANDROID_SDK_HOME=%LOCALAPPDATA%\Android\Sdk
 echo y | %ANDROID_SDK_HOME%\tools\android.bat update sdk -u -a --filter build-tools-21.1.2,android-21
-wget -q https://dl.google.com/android/repository/android-ndk-r13b-windows-x86_64.zip
-unzip -q android-ndk-r13b-windows-x86_64.zip
+wget -q https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip
+unzip -q android-ndk-r15b-windows-x86_64.zip
 
 REM Get GO 1.8 - Works around the build not allowing 1.8.1.
 wget -q https://storage.googleapis.com/golang/go1.8.windows-amd64.zip
@@ -47,7 +47,7 @@ REM Setup the build config file.
   echo  "OutRoot": "%cd%\out",
   echo  "JavaHome": "%JAVA_HOME%",
   echo  "AndroidSDKRoot": "%ANDROID_SDK_HOME%",
-  echo  "AndroidNDKRoot": "%cd%\android-ndk-r13b",
+  echo  "AndroidNDKRoot": "%cd%\android-ndk-r15b",
   echo  "CMakePath": "c:\Program Files\Cmake\bin\cmake.exe",
   echo  "NinjaPath": "c:\ProgramData\chocolatey\bin\ninja.exe",
   echo  "PythonPath": "c:\Python35\python.exe",

@@ -40,7 +40,7 @@ cat <<EOF>gapid-config
     "OutRoot": "$BUILD_ROOT/out",
     "JavaHome": "$JAVA_HOME",
     "AndroidSDKRoot": "$ANDROID_HOME",
-    "AndroidNDKRoot": "/opt/android-ndk-r13b",
+    "AndroidNDKRoot": "$ANDROID_HOME/ndk-bundle",
     "CMakePath": "/usr/bin/cmake",
     "NinjaPath": "$BUILD_ROOT/ninja",
     "PythonPath": "/usr/bin/python",
