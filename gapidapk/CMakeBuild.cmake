@@ -109,7 +109,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     )
     list(APPEND TARGET_SOURCES ${virtual_swapchain_dest})
 
-    set(GAPID_APK_ABI ${abi})
+    set(GAPID_APK_ABI "${ANDROID_APK_NAME_${abi}}")
 
     foreach (source ${android_sources})
         file(RELATIVE_PATH rooted_source ${CMAKE_CURRENT_SOURCE_DIR}/android ${source})
@@ -138,7 +138,7 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
             filehash
     )
 
-    set(abi_gapid_apk "${abi_bin}/gapid-${abi}.apk")
+    set(abi_gapid_apk "${abi_bin}/gapid-${GAPID_APK_ABI}.apk")
     add_custom_command(
         OUTPUT "${abi_gapid_apk}"
         COMMAND "${CMAKE_COMMAND}" -E copy

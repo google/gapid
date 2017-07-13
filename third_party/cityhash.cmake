@@ -28,7 +28,6 @@ if(NOT DISABLED_CXX)
     target_include_directories(cityhash PUBLIC "third_party/cityhash/src")
 
     if(ANDROID)
-        find_package(STL REQUIRED)
-        target_link_libraries(cityhash STL::Lib)
+        target_link_libraries(cityhash)
     endif()
 endif()

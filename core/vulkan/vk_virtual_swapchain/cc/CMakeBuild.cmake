@@ -49,9 +49,6 @@ if(NOT DISABLED_CXX)
 
     if(ANDROID)
         target_compile_definitions(VkLayer_VirtualSwapchain PRIVATE "-DVK_USE_PLATFORM_ANDROID_KHR")
-        find_package(NDK REQUIRED)
-        find_package(STL REQUIRED)
-        target_link_libraries(VkLayer_VirtualSwapchain STL::Lib NDK::Lib)
     endif()
 
     if(NOT ANDROID AND NOT GAPII_TARGET)

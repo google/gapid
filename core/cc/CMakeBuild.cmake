@@ -48,10 +48,7 @@ if(NOT DISABLED_CXX)
     target_link_libraries(cc-core cityhash)
 
     if(ANDROID)
-        find_package(NDK REQUIRED)
-        find_package(Log REQUIRED)
-        find_package(STL REQUIRED)
-        target_link_libraries(cc-core NDK::Lib Log::Lib STL::Lib)
+        target_link_libraries(cc-core log android)
     endif()
 
     if(LINUX)

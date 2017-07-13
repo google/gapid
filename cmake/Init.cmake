@@ -53,7 +53,8 @@ if(NOT DEFINED PROTOBUF_DIR)
     get_filename_component(PROTOBUF_DIR "${GPU_DIR}/third_party/protobuf" ABSOLUTE)
 endif()
 
-# Toolchain host detection
+# Toolchain host detection - We can't use CMAKE_HOST_SYSTEM_NAME at this point
+# because that's only assigned when calling project() which comes later.
 if(CMAKE_HOST_APPLE)
     set(ToolchainHost "Darwin")
 elseif(CMAKE_HOST_WIN32)
