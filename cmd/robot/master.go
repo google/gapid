@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"strings"
 
 	"github.com/google/gapid/core/app"
@@ -91,20 +92,30 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	err = grpcutil.Serve(ctx, serverAddress, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		managers := monitor.Managers{}
 		err := error(nil)
+		var stashURL *url.URL
+		var shelfURL *url.URL
 		if v.StashAddr == "" {
-			v.StashAddr = v.BaseAddr.Join("stash").URL()
+			if stashURL, err = v.BaseAddr.Join("stash").URL(); err != nil {
+				return log.Errf(ctx, err, "Invalid server location", v.BaseAddr.Join("stash").System())
+			}
+		} else if shelfURL, err = url.Parse(v.StashAddr); err != nil {
+			return log.Errf(ctx, err, "Invalid server location", v.StashAddr)
 		}
 		if v.ShelfAddr == "" {
-			v.ShelfAddr = v.BaseAddr.Join("shelf").URL()
+			if shelfURL, err = v.BaseAddr.Join("shelf").URL(); err != nil {
+				return log.Errf(ctx, err, "Invalid record shelf address, %s", v.BaseAddr.Join("shelf").System())
+			}
+		} else if stashURL, err = url.Parse(v.ShelfAddr); err != nil {
+			return log.Errf(ctx, err, "Invalid record shelf location", v.ShelfAddr)
 		}
 		library := record.NewLibrary(ctx)
-		shelf, err := record.NewShelf(ctx, v.ShelfAddr)
+		shelf, err := record.NewShelf(ctx, shelfURL)
 		if err != nil {
-			return log.Errf(ctx, err, "Could not open shelf: %v", v.ShelfAddr)
+			return log.Errf(ctx, err, "Could not open shelf: %v", shelfURL)
 		}
 		library.Add(ctx, shelf)
-		if managers.Stash, err = stash.Dial(ctx, v.StashAddr); err != nil {
-			return log.Errf(ctx, err, "Could not open stash: %v", v.StashAddr)
+		if managers.Stash, err = stash.Dial(ctx, stashURL); err != nil {
+			return log.Errf(ctx, err, "Could not open stash: %v", stashURL)
 		}
 		managers.Master = master.NewLocal(ctx)
 		if managers.Subject, err = subject.NewLocal(ctx, library, managers.Stash); err != nil {

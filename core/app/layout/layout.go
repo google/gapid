@@ -131,13 +131,19 @@ var binABIToDir = map[string]string{
 	"x86":         "android-x86",
 }
 
-var DirToBinABI = func() map[string]string {
-	result := make(map[string]string)
+var dirToBinABI map[string]string
+
+func init() {
+	dirToBinABI = make(map[string]string)
 	for abi, dir := range binABIToDir {
-		result[dir] = abi
+		dirToBinABI[dir] = abi
 	}
-	return result
-}()
+}
+
+// DirToBinABI returns the ABI name that corresponds to the binLayoutDir given
+func DirToBinABI(dir string) string {
+	return dirToBinABI[dir]
+}
 
 // binLayout is the file layout used when running executables from the build's
 // bin directory.

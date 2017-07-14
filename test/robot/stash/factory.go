@@ -19,6 +19,8 @@ import (
 	"net/url"
 	"runtime"
 
+	"strings"
+
 	"github.com/google/gapid/core/log"
 )
 
@@ -34,12 +36,8 @@ func RegisterHandler(scheme string, builder Builder) {
 }
 
 // Dial returns a new client for the given url.
-func Dial(ctx context.Context, address string) (*Client, error) {
-	ctx = log.V{"Store": address}.Bind(ctx)
-	location, err := url.Parse(address)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Invalid server location")
-	}
+func Dial(ctx context.Context, location *url.URL) (*Client, error) {
+	ctx = log.V{"Store": location.Path}.Bind(ctx)
 	if location.Scheme == "" {
 		switch {
 		case location.Host != "":
@@ -51,13 +49,10 @@ func Dial(ctx context.Context, address string) (*Client, error) {
 		}
 	}
 	if location.Scheme == "file" {
-		if runtime.GOOS == "windows" {
-			if l := len(location.Path); l > 2 && location.Path[0] == '/' && location.Path[2] == ':' {
-				// windows file urls have an extra slash before the volume label that needs to be remove
-				// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416d
-				location.Path = location.Path[1:]
-				log.I(ctx, "location of new file stash is %v", location.Path)
-			}
+		if runtime.GOOS == "windows" && strings.IndexByte(location.Path, ':') == 2 {
+			// windows file urls have an extra slash before the volume label that needs to be removed
+			// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
+			location.Path = strings.TrimPrefix(location.Path, "/")
 		}
 	}
 	builder, found := schemeMap[location.Scheme]

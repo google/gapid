@@ -17,6 +17,7 @@ package file
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -82,7 +83,7 @@ func (p Path) System() string { return p.value }
 
 // URL returns the full absolute path using the / separator prefixed by the URL
 // file scheme.
-func (p Path) URL() string { return "file:///" + filepath.ToSlash(p.value) }
+func (p Path) URL() (*url.URL, error) { return url.Parse("file:///" + filepath.ToSlash(p.value)) }
 
 // Slash returns the full absolute path using the / separator.
 func (p Path) Slash() string { return filepath.ToSlash(p.value) }

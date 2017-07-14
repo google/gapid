@@ -108,8 +108,8 @@ func Run(ctx context.Context, managers Managers, owner DataOwner, update func(ct
 			data.Gen.Update()
 			// Run the update
 			if update != nil {
-				if err := update(ctx, &managers, data); len(err) != 0 {
-					log.E(ctx, "Error(s) during update: %v", err)
+				if errs := update(ctx, &managers, data); len(errs) != 0 {
+					log.E(ctx, "Error(s) during update: %v", errs)
 				}
 			}
 			// Wait for new data
