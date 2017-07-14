@@ -17,6 +17,9 @@ include(ExternalProject)
 set(CMAKE_RUN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/RunCMakeWithLock.cmake")
 
 function (add_cmake proj src)
+    if(NOT TARGET generate)
+        add_custom_target(generate)
+    endif()
     ExternalProject_Add(${proj}
         PREFIX ${proj}
         SOURCE_DIR ${src}
@@ -41,6 +44,7 @@ function (add_cmake proj src)
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
         TEST_COMMAND ""
+        DEPENDS generate # Ensure sub-cmake instances are only run after codegen
     )
 endfunction(add_cmake)
 

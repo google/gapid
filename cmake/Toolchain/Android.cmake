@@ -18,6 +18,9 @@ if(NOT ANDROID_NDK_ROOT)
     message(FATAL ERROR "ANDROID_NDK_ROOT not set")
 endif()
 
+# Sub-cmake builds must not attempt to generate code.
+set(DISABLED_CODE_GENERATION 1)
+
 # The settings common to all android builds
 set(ANDROID ON CACHE INTERNAL "Target system was of type android")
 set(TARGET_OS ANDROID)
