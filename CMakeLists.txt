@@ -38,7 +38,6 @@ endif()
 file(LOCK ${CMAKE_BINARY_DIR} DIRECTORY GUARD PROCESS RESULT_VARIABLE locked)
 
 # Basic selection controls
-option(BUILDBOT "Running in buildbot mode")
 option(DISABLE_CXX "Disable all c++ building steps")
 option(DISABLE_GO "Disable all go building steps")
 option(DISABLE_PROTOC "Disable all proto building steps")

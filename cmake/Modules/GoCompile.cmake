@@ -26,9 +26,7 @@ if(parent STREQUAL "test")
     set(command "test")
     list(APPEND args "-c")
 endif()
-if(NOT BUILDBOT)
-    list(APPEND args "-tags" "integration")
-endif()
+list(APPEND args "-tags" "integration")
 execute_process(
     COMMAND "${CMAKE_Go_COMPILER}" ${command} ${args} ${GO_EXTRA_ARGS} ${GO_PACKAGE}
     RESULT_VARIABLE result
