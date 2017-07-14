@@ -19,6 +19,8 @@ import (
 	"net/url"
 	"runtime"
 
+	"strings"
+
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -36,29 +38,23 @@ type Shelf interface {
 
 // NewShelf returns a new record shelf from the supplied url.
 // The type of shelf will depend on the url given.
-func NewShelf(ctx context.Context, shelfURL string) (Shelf, error) {
-	ctx = log.V{"ShelfURL": shelfURL}.Bind(ctx)
-	location, err := url.Parse(shelfURL)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Invalid record shelf location")
-	}
-	switch location.Scheme {
+func NewShelf(ctx context.Context, shelfURL *url.URL) (Shelf, error) {
+	ctx = log.V{"ShelfURL": shelfURL.Path}.Bind(ctx)
+	switch shelfURL.Scheme {
 	case "", "file":
-		if location.Host != "" {
-			return nil, log.Errf(ctx, nil, "Host not supported for file shelves")
+		if shelfURL.Host != "" {
+			return nil, log.Err(ctx, nil, "Host not supported for file shelves")
 		}
-		if location.Path == "" {
+		if shelfURL.Path == "" {
 			return nil, log.Err(ctx, nil, "Path must be specified for file shelves")
 		}
-		if runtime.GOOS == "windows" {
-			if l := len(location.Path); l > 2 && location.Path[0] == '/' && location.Path[2] == ':' {
-				// windows file urls have an extra slash before the volume label that needs to be removed
-				// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
-				location.Path = location.Path[1:]
-			}
+		if runtime.GOOS == "windows" && strings.IndexByte(shelfURL.Path, ':') == 2 {
+			// windows file urls have an extra slash before the volume label that needs to be removed
+			// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
+			shelfURL.Path = strings.TrimPrefix(shelfURL.Path, "/")
 		}
-		log.I(ctx, "Build a file record shelf on %s", location.Path)
-		return NewFileShelf(ctx, file.Abs(location.Path))
+		log.I(ctx, "Build a file record shelf on %s", shelfURL.Path)
+		return NewFileShelf(ctx, file.Abs(shelfURL.Path))
 	case "memory":
 		log.I(ctx, "Start an in memory record shelf")
 		return NewNullShelf(ctx)

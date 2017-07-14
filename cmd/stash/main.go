@@ -17,8 +17,10 @@ package main
 import (
 	"context"
 	"flag"
+	"net/url"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/stash"
 	_ "github.com/google/gapid/test/robot/stash/grpc"
 	_ "github.com/google/gapid/test/robot/stash/local"
@@ -49,7 +51,11 @@ func withStore(ctx context.Context, isServer bool, task storeTask) error {
 			stashAddr = defaultStashServer
 		}
 	}
-	client, err := stash.Dial(ctx, stashAddr)
+	stashURL, err := url.Parse(stashAddr)
+	if err != nil {
+		return log.Errf(ctx, err, "Invalid shash address %s", stashAddr)
+	}
+	client, err := stash.Dial(ctx, stashURL)
 	if err != nil {
 		return err
 	}

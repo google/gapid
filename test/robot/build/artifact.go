@@ -178,7 +178,7 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 		z := &zipEntry{file: f}
 
 		if dirs := strings.Split(f.Name, "/"); strings.HasPrefix(dirs[1], "android") {
-			androidTool := &AndroidToolSet{Abi: device.ABIByName(layout.DirToBinABI[dirs[1]]), GapidApk: z.GetID(ctx, a)}
+			androidTool := &AndroidToolSet{Abi: device.ABIByName(layout.DirToBinABI(dirs[1])), GapidApk: z.GetID(ctx, a)}
 			toolSet.Android = append(toolSet.Android, androidTool)
 		} else if toolID, ok := toolSetIDByZipEntry[f.Name]; ok {
 			*toolID = z.GetID(ctx, a)
