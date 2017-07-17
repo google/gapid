@@ -67,7 +67,7 @@ gapid_vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *p
 VK_LAYER_EXPORT VKAPI_ATTR uint32_t VKAPI_CALL
 gapid_vkEnumerateDeviceLayerProperties(gapii::VkPhysicalDevice device, uint32_t *pCount,
 gapii::VkLayerProperties *pProperties) {
-    return gapii::vkEnumerateInstanceLayerProperties(pCount, pProperties);
+    return gapii::vkEnumerateDeviceLayerProperties(device, pCount, pProperties);
 }
 
 // On android this must also be defined, even if we have 0
@@ -75,7 +75,7 @@ gapii::VkLayerProperties *pProperties) {
 VK_LAYER_EXPORT VKAPI_ATTR uint32_t VKAPI_CALL
 gapid_vkEnumerateDeviceExtensionProperties(gapii::VkPhysicalDevice device, const char *pLayerName, uint32_t *pCount,
 gapii::VkExtensionProperties *pProperties) {
-    return gapii::vkEnumerateInstanceExtensionProperties(pLayerName, pCount, pProperties);
+    return gapii::vkEnumerateDeviceExtensionProperties(device, pLayerName, pCount, pProperties);
 }
 }
 
