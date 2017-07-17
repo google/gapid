@@ -21,12 +21,38 @@
 #include "core/cc/gl/versions.h"
 #include "core/cc/log.h"
 
+#include <memory>
 #include <windows.h>
 #include <winuser.h>
 #include <string>
 
 namespace gapir {
 namespace {
+
+DECLARE_HANDLE(HPBUFFERARB);
+
+typedef BOOL(*PFNWGLCHOOSEPIXELFORMATARB)(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
+typedef HGLRC(*PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
+typedef HPBUFFERARB(*PFNWGLCREATEPBUFFERARB)(HDC hDC, int iPixelFormat, int iWidth, int iHeight, const int *piAttribList);
+typedef HDC(*PFNWGLGETPBUFFERDCARB)(HPBUFFERARB hPbuffer);
+typedef int(*PFNWGLRELEASEPBUFFERDCARB)(HPBUFFERARB hPbuffer, HDC hDC);
+typedef BOOL(*PFNWGLDESTROYPBUFFERARB)(HPBUFFERARB hPbuffer);
+typedef BOOL(*PFNWGLQUERYPBUFFERARB)(HPBUFFERARB hPbuffer, int iAttribute, int *piValue);
+
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_ARB = 0x2097;
+const int WGL_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
+const int WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB = 0x0000;
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB = 0x2098;
+
+const int WGL_DRAW_TO_PBUFFER_ARB = 0x202D;
+const int WGL_SUPPORT_OPENGL_ARB = 0x2010;
+const int WGL_RED_BITS_ARB = 0x2015;
+const int WGL_GREEN_BITS_ARB = 0x2017;
+const int WGL_BLUE_BITS_ARB = 0x2019;
+const int WGL_ALPHA_BITS_ARB = 0x201B;
+const int WGL_DEPTH_BITS_ARB = 0x2022;
+const int WGL_STENCIL_BITS_ARB = 0x2023;
 
 const TCHAR* wndClassName = TEXT("gapir");
 
@@ -52,6 +78,188 @@ void registerWindowClass() {
     }
 }
 
+class WGL {
+public:
+    class PBuffer {
+    public:
+        PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc);
+        ~PBuffer();
+
+        void bind();
+        void unbind();
+
+    private:
+        friend class WGL;
+        HPBUFFERARB mPBuf;
+        HGLRC mCtx;
+        HDC  mHDC;
+    };
+
+    WGL();
+
+    static const WGL& get();
+
+    std::shared_ptr<PBuffer> create_pbuffer(GlesRenderer::Backbuffer backbuffer, PBuffer* shared_ctx) const;
+
+private:
+    HWND mWindow;
+    HDC mHDC;
+
+    PFNWGLCHOOSEPIXELFORMATARB ChoosePixelFormatARB;
+    PFNWGLCREATECONTEXTATTRIBSARBPROC CreateContextAttribsARB;
+    PFNWGLCREATEPBUFFERARB CreatePbufferARB;
+    PFNWGLGETPBUFFERDCARB GetPbufferDCARB;
+    PFNWGLRELEASEPBUFFERDCARB ReleasePbufferDCARB;
+    PFNWGLDESTROYPBUFFERARB DestroyPbufferARB;
+    PFNWGLQUERYPBUFFERARB QueryPbufferARB;
+};
+
+
+WGL::PBuffer::PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc) : mPBuf(pbuf), mCtx(ctx), mHDC(hdc) {}
+
+WGL::PBuffer::~PBuffer() {
+    auto wgl = WGL::get();
+    if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
+        GAPID_FATAL("Failed to release HDC. Error: %d", GetLastError());
+    }
+    if (!wgl.DestroyPbufferARB(mPBuf)) {
+        GAPID_FATAL("Failed to destroy pbuffer. Error: %d", GetLastError());
+    }
+    if (!wglDeleteContext(mCtx)) {
+        GAPID_FATAL("Failed to delete GL context. Error: %d", GetLastError());
+    }
+}
+
+void WGL::PBuffer::bind() {
+    if (!wglMakeCurrent(mHDC, mCtx)) {
+        GAPID_FATAL("Failed to bind GL context. Error: %d", GetLastError());
+    }
+}
+
+void WGL::PBuffer::unbind() {
+    if (!wglMakeCurrent(mHDC, nullptr)) {
+        GAPID_FATAL("Failed to unbind GL context. Error: %d", GetLastError());
+    }
+}
+
+WGL::WGL() {
+    registerWindowClass();
+
+    mWindow = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
+    if (mWindow == 0) {
+        GAPID_FATAL("Failed to create window. Error: %d", GetLastError());
+    }
+
+    mHDC = GetDC(mWindow);
+
+    PIXELFORMATDESCRIPTOR pfd;
+    memset(&pfd, 0, sizeof(pfd));
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cRedBits = 8;
+    pfd.cGreenBits = 8;
+    pfd.cBlueBits = 8;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
+    pfd.cColorBits = 32;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+    int pixel_fmt = ChoosePixelFormat(mHDC, &pfd);
+    SetPixelFormat(mHDC, pixel_fmt, &pfd);
+
+    // Resolve extension functions.
+    CreateContextAttribsARB = nullptr;
+    auto temp_context = wglCreateContext(mHDC);
+    if (temp_context == nullptr) {
+        GAPID_FATAL("Couldn't create temporary WGL context. Error: %d", GetLastError());
+    }
+
+    wglMakeCurrent(mHDC, temp_context);
+
+#define RESOLVE(name) \
+    name = reinterpret_cast< decltype(name) >(wglGetProcAddress("wgl"#name)); \
+    if (name == nullptr) { GAPID_FATAL("Couldn't resolve function 'wgl" #name "'"); }
+
+    RESOLVE(CreateContextAttribsARB);
+    RESOLVE(ChoosePixelFormatARB);
+    RESOLVE(CreateContextAttribsARB);
+    RESOLVE(CreatePbufferARB);
+    RESOLVE(GetPbufferDCARB);
+    RESOLVE(ReleasePbufferDCARB);
+    RESOLVE(DestroyPbufferARB);
+    RESOLVE(QueryPbufferARB);
+
+#undef RESOLVE
+
+    wglMakeCurrent(mHDC, nullptr);
+    wglDeleteContext(temp_context);
+}
+
+const WGL& WGL::get() {
+    static WGL instance;
+    return instance;
+}
+
+std::shared_ptr<WGL::PBuffer> WGL::create_pbuffer(GlesRenderer::Backbuffer backbuffer, PBuffer* shared_ctx) const {
+    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+    core::gl::getDepthBits(backbuffer.format.depth, d);
+    core::gl::getStencilBits(backbuffer.format.stencil, s);
+
+    const unsigned int MAX_FORMATS = 32;
+
+    int formats[MAX_FORMATS];
+    unsigned int num_formats;
+    const int fmt_attribs[] = {
+        WGL_DRAW_TO_PBUFFER_ARB, 1,
+        WGL_SUPPORT_OPENGL_ARB, 1,
+        WGL_DEPTH_BITS_ARB, d,
+        WGL_STENCIL_BITS_ARB, s,
+        WGL_RED_BITS_ARB, r,
+        WGL_GREEN_BITS_ARB, g,
+        WGL_BLUE_BITS_ARB, b,
+        WGL_ALPHA_BITS_ARB, a,
+        0, // terminator
+    };
+    if (!ChoosePixelFormatARB(mHDC, fmt_attribs, nullptr, MAX_FORMATS, formats, &num_formats)) {
+        GAPID_FATAL("wglChoosePixelFormatARB failed. Error: %d", GetLastError());
+    }
+    if (num_formats == 0) {
+        GAPID_FATAL("wglChoosePixelFormatARB returned no compatibile formats");
+    }
+    auto format = formats[0]; // TODO: Examine returned formats?
+    const int create_attribs[] = { 0 };
+    auto pbuffer = CreatePbufferARB(mHDC, format, backbuffer.width, backbuffer.height, create_attribs);
+    if (pbuffer == nullptr) {
+        GAPID_FATAL("wglCreatePbufferARB failed. Error: %d", GetLastError());
+    }
+    auto hdc = GetPbufferDCARB(pbuffer);
+    if (hdc == nullptr) {
+        GAPID_FATAL("wglGetPbufferDCARB failed. Error: %d", GetLastError());
+    }
+    for (auto gl_version : core::gl::sVersionSearchOrder) {
+        std::vector<int> attribs;
+        attribs.push_back(WGL_CONTEXT_MAJOR_VERSION_ARB);
+        attribs.push_back(gl_version.major);
+        attribs.push_back(WGL_CONTEXT_MINOR_VERSION_ARB);
+        attribs.push_back(gl_version.minor);
+        // https://www.khronos.org/registry/OpenGL/extensions/KHR/KHR_context_flush_control.txt
+        // These are disabled as they don't seem to improve performance.
+        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
+        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
+        attribs.push_back(0);
+        auto ctx = CreateContextAttribsARB(hdc, (shared_ctx != nullptr) ? shared_ctx->mCtx : nullptr, attribs.data());
+        if (ctx != nullptr) {
+            return std::shared_ptr<PBuffer>(new PBuffer(pbuffer, ctx, hdc));
+        }
+    }
+    GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: %d", GetLastError());
+    return nullptr;
+}
+
+
 class GlesRendererImpl : public GlesRenderer {
 public:
     GlesRendererImpl(GlesRendererImpl* shared_context);
@@ -76,21 +284,15 @@ private:
     bool mNeedsResolve;
     bool mQueriedExtensions;
     std::string mExtensions;
-    HGLRC mRenderingContext;
-    HDC mDeviceContext;
-    HWND mWindow;
-    HGLRC mSharedContext;
+    std::shared_ptr<WGL::PBuffer> mContext;
+    std::shared_ptr<WGL::PBuffer> mSharedContext;
 };
 
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mBound(false)
         , mNeedsResolve(true)
         , mQueriedExtensions(false)
-        , mRenderingContext(nullptr)
-        , mDeviceContext(0)
-        , mWindow(0) 
-        , mSharedContext(shared_context != nullptr ? shared_context->mRenderingContext : 0) {
-
+        , mSharedContext(shared_context != nullptr ? shared_context->mContext : nullptr) {
     // Initialize with a default target.
     setBackbuffer(Backbuffer(
           8, 8,
@@ -109,26 +311,7 @@ Api* GlesRendererImpl::api() {
 
 void GlesRendererImpl::reset() {
     unbind();
-
-    if (mRenderingContext != nullptr) {
-        if (!wglDeleteContext(mRenderingContext)) {
-            GAPID_FATAL("Failed to delete GL context. Error: %d", GetLastError());
-        }
-        mRenderingContext = nullptr;
-    }
-
-    if (mDeviceContext != nullptr) {
-        // TODO: Does this need to be released?
-        mDeviceContext = nullptr;
-    }
-
-    if (mWindow != nullptr) {
-        if (!DestroyWindow(mWindow)) {
-            GAPID_FATAL("Failed to destroy window. Error: %d", GetLastError());
-        }
-        mWindow = nullptr;
-    }
-
+    mContext = nullptr;
     mBackbuffer = Backbuffer();
 }
 
@@ -137,113 +320,11 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         return; // No change
     }
 
-    if (mBackbuffer.format == backbuffer.format) {
-        // Only a resize is necessary
-        GAPID_INFO("Resizing renderer: %dx%d -> %dx%d",
-                mBackbuffer.width, mBackbuffer.height, backbuffer.width, backbuffer.height);
-        SetWindowPos(mWindow, nullptr, 0, 0, backbuffer.width, backbuffer.height, SWP_NOMOVE);
-        mBackbuffer = backbuffer;
-        return;
-    }
-
     const bool wasBound = mBound;
 
     reset();
 
-    static bool initedWindowClass = false;
-    if (!initedWindowClass) {
-        initedWindowClass = true;
-        registerWindowClass(); // Only needs to be done once per app life-time.
-    }
-
-    mWindow = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0,
-            backbuffer.width, backbuffer.height, 0, 0, GetModuleHandle(0), 0);
-    if (mWindow == 0) {
-        GAPID_FATAL("Failed to create window. Error: %d", GetLastError());
-    }
-
-
-    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-    core::gl::getDepthBits(backbuffer.format.depth, d);
-    core::gl::getStencilBits(backbuffer.format.stencil, s);
-
-    PIXELFORMATDESCRIPTOR pfd;
-    memset(&pfd, 0, sizeof(pfd));
-
-    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-    pfd.nVersion = 1;
-    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-    pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cRedBits = r;
-    pfd.cGreenBits = g;
-    pfd.cBlueBits = b;
-    pfd.cAlphaBits = a;
-    pfd.cDepthBits = d;
-    pfd.cStencilBits = s;
-    pfd.cColorBits = r+g+b+a;
-    pfd.iLayerType = PFD_MAIN_PLANE;
-
-    mDeviceContext = GetDC(mWindow);
-
-    int pixelFormat = ChoosePixelFormat(mDeviceContext, &pfd);
-    SetPixelFormat(mDeviceContext, pixelFormat, &pfd);
-
-    typedef HGLRC(*PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
-    const int WGL_CONTEXT_RELEASE_BEHAVIOR_ARB = 0x2097;
-    const int WGL_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
-    const int WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
-    const int WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB = 0x0000;
-    const int WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB = 0x2098;
-
-    static bool firstContextCreation = true;
-    static PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
-    if (firstContextCreation) {
-        firstContextCreation = false;
-        // We want to obtain the wglCreateContextAttribsARB function, but you 
-        // can only get at this with an existing context bound. As we have to
-        // bind a context, we should only do this if we're the very first call
-        // as this can make a safe assumption that no other context will be
-        // unbound.
-        if (auto temp_context = wglCreateContext(mDeviceContext)) {
-            wglMakeCurrent(mDeviceContext, temp_context);
-            wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>(
-                wglGetProcAddress("wglCreateContextAttribsARB"));
-            wglMakeCurrent(mDeviceContext, nullptr);
-            wglDeleteContext(temp_context);
-        }
-    }
-
-    if (wglCreateContextAttribsARB != nullptr) {
-        for (auto gl_version : core::gl::sVersionSearchOrder) {
-            std::vector<int> attribs;
-            attribs.push_back(WGL_CONTEXT_MAJOR_VERSION_ARB);
-            attribs.push_back(gl_version.major);
-            attribs.push_back(WGL_CONTEXT_MINOR_VERSION_ARB);
-            attribs.push_back(gl_version.minor);
-            // https://www.khronos.org/registry/OpenGL/extensions/KHR/KHR_context_flush_control.txt
-            // These are disabled as they don't seem to improve performance.
-            // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
-            // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
-            attribs.push_back(0);
-            mRenderingContext = wglCreateContextAttribsARB(mDeviceContext, mSharedContext, attribs.data());
-            if (mRenderingContext != nullptr) {
-                break;
-            }
-        }
-        if (mRenderingContext == nullptr) {
-            GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: %d", GetLastError());
-        }
-    } else {
-        mRenderingContext = wglCreateContext(mDeviceContext);
-        if (mRenderingContext == nullptr) {
-            GAPID_FATAL("Failed to create GL context using wglCreateContext. Error: %d", GetLastError());
-        }
-        if (mSharedContext != nullptr) {
-            wglShareLists(mSharedContext, mRenderingContext);
-        }
-    }
-
+    mContext = WGL::get().create_pbuffer(backbuffer, mSharedContext.get());
     mBackbuffer = backbuffer;
     mNeedsResolve = true;
 
@@ -254,10 +335,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 
 void GlesRendererImpl::bind() {
     if (!mBound) {
-        if (!wglMakeCurrent(mDeviceContext, mRenderingContext)) {
-            GAPID_FATAL("Failed to attach GL context. Error: %d", GetLastError());
-        }
-
+        mContext->bind();
         mBound = true;
 
         if (mNeedsResolve) {
@@ -269,10 +347,7 @@ void GlesRendererImpl::bind() {
 
 void GlesRendererImpl::unbind() {
     if (mBound) {
-        if (!wglMakeCurrent(mDeviceContext, nullptr)) {
-            GAPID_FATAL("Failed to detach GL context. Error: %d", GetLastError());
-        }
-
+        mContext->unbind();
         mBound = false;
     }
 }
