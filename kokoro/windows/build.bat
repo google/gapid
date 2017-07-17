@@ -98,3 +98,10 @@ copy %SRC%\kokoro\windows\gapid.wxs .
 %WIX%\heat.exe dir gapid -ag -cg gapid -dr gapid -template fragment -sreg -sfrag -srd -o component.wxs
 %WIX%\candle.exe gapid.wxs component.wxs
 %WIX%\light.exe gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%.msi
+
+REM Clean up - this prevents kokoro from rsyncing many unneeded files
+cd %BUILD_ROOT%
+rmdir /s /q github\src\github.com\google\gapid\third_party
+rmdir /s /q out\release
+for /d %%f in (*) do if not "%%f"=="github" if not "%%f"=="out" rmdir /s /q %%f
+del /q *.zip

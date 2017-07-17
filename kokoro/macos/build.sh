@@ -124,3 +124,10 @@ cp $SRC/kokoro/macos/background\@2x.png .
 sips -z 480 640 background\@2x.png --out background.png
 cp $SRC/kokoro/macos/dmg-settings.py .
 ~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION.dmg
+
+# Clean up - this prevents kokoro from rsyncing many unneeded files
+shopt -s extglob
+cd $BUILD_ROOT
+rm -rf github/src/github.com/google/gapid/third_party
+rm -rf out/release
+rm -rf -- !(github|out)

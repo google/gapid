@@ -110,3 +110,10 @@ echo "$(date): Building package."
 dpkg-deb -v --build  gapid
 mv gapid.deb gapid-$VERSION.deb
 echo "$(date): Done."
+
+# Clean up - this prevents kokoro from rsyncing many unneeded files
+shopt -s extglob
+cd $BUILD_ROOT
+rm -rf github/src/github.com/google/gapid/third_party
+rm -rf out/release
+rm -rf -- !(github|out)
