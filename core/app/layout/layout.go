@@ -140,7 +140,7 @@ func init() {
 	}
 }
 
-// DirToBinABI returns the ABI name that corresponds to the binLayoutDir given
+// DirToBinABI returns the ABI name that corresponds to the given binLayout Directory
 func DirToBinABI(dir string) string {
 	return dirToBinABI[dir]
 }
