@@ -18,7 +18,6 @@ import (
 	"context"
 	"net/url"
 	"runtime"
-
 	"strings"
 
 	"github.com/google/gapid/core/log"
@@ -50,7 +49,7 @@ func NewShelf(ctx context.Context, shelfURL *url.URL) (Shelf, error) {
 		}
 		if runtime.GOOS == "windows" && strings.IndexByte(shelfURL.Path, ':') == 2 {
 			// windows file urls have an extra slash before the volume label that needs to be removed
-			// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
+			// see https://github.com/golang/go/issues/6027#issuecomment-66083310
 			shelfURL.Path = strings.TrimPrefix(shelfURL.Path, "/")
 		}
 		log.I(ctx, "Build a file record shelf on %s", shelfURL.Path)

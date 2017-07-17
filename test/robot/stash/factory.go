@@ -18,7 +18,6 @@ import (
 	"context"
 	"net/url"
 	"runtime"
-
 	"strings"
 
 	"github.com/google/gapid/core/log"
@@ -51,7 +50,7 @@ func Dial(ctx context.Context, location *url.URL) (*Client, error) {
 	if location.Scheme == "file" {
 		if runtime.GOOS == "windows" && strings.IndexByte(location.Path, ':') == 2 {
 			// windows file urls have an extra slash before the volume label that needs to be removed
-			// see https://github.com/golang/go/commit/844b625ebcc7101e09fb87828a0e71db942a2416
+			// see https://github.com/golang/go/issues/6027#issuecomment-66083310
 			location.Path = strings.TrimPrefix(location.Path, "/")
 		}
 	}

@@ -95,16 +95,12 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		var stashURL *url.URL
 		var shelfURL *url.URL
 		if v.StashAddr == "" {
-			if stashURL, err = v.BaseAddr.Join("stash").URL(); err != nil {
-				return log.Errf(ctx, err, "Invalid server location", v.BaseAddr.Join("stash").System())
-			}
+			stashURL = v.BaseAddr.Join("stash").URL()
 		} else if shelfURL, err = url.Parse(v.StashAddr); err != nil {
 			return log.Errf(ctx, err, "Invalid server location", v.StashAddr)
 		}
 		if v.ShelfAddr == "" {
-			if shelfURL, err = v.BaseAddr.Join("shelf").URL(); err != nil {
-				return log.Errf(ctx, err, "Invalid record shelf address, %s", v.BaseAddr.Join("shelf").System())
-			}
+			shelfURL = v.BaseAddr.Join("shelf").URL()
 		} else if stashURL, err = url.Parse(v.ShelfAddr); err != nil {
 			return log.Errf(ctx, err, "Invalid record shelf location", v.ShelfAddr)
 		}

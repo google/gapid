@@ -83,7 +83,13 @@ func (p Path) System() string { return p.value }
 
 // URL returns the full absolute path using the / separator prefixed by the URL
 // file scheme.
-func (p Path) URL() (*url.URL, error) { return url.Parse("file:///" + filepath.ToSlash(p.value)) }
+func (p Path) URL() *url.URL {
+	result, err := url.Parse("file:///" + filepath.ToSlash(p.value))
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
 
 // Slash returns the full absolute path using the / separator.
 func (p Path) Slash() string { return filepath.ToSlash(p.value) }
