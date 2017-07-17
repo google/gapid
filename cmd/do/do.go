@@ -23,6 +23,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -41,6 +42,8 @@ const (
 )
 
 var (
+	timeDo = flag.Bool("time", false, "Time the action")
+
 	// Root of the GAPID source tree.
 	srcRoot file.Path
 
@@ -204,8 +207,12 @@ func main() {
 		}
 	}
 
+	start := time.Now()
 	app.ShortHelp = "Do is the build front end for the graphics api debugger system."
 	app.Run(app.VerbMain)
+	if *timeDo {
+		fmt.Printf("Time taken: %v\n", time.Since(start))
+	}
 }
 
 var testModeNames = map[TestMode]string{
@@ -224,6 +231,7 @@ func closeOnInterrupt(ctx context.Context) {
 		// context so it can shutdown cleanly. For do, we just want to stop
 		// immediately.
 		<-task.ShouldStop(ctx)
+		time.Sleep(time.Second) // Wait a little to let messages get printed.
 		os.Exit(0)
 	}()
 }
