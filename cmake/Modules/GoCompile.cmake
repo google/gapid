@@ -14,17 +14,17 @@
 
 include(${GO_ENV})
 
-get_filename_component(path ${GO_BUILD} DIRECTORY)
-get_filename_component(parent ${path} NAME)
-set(command "build")
-set(args
-    "-pkgdir" "${GO_PKG}"
-    "-o" "${GO_BUILD}"
-    "-i"
-)
-if(parent STREQUAL "test")
-    set(command "test")
-    list(APPEND args "-c")
+set(command "install")
+set(args "-pkgdir" "${GO_PKG}")
+if(GO_BUILD)
+  get_filename_component(path ${GO_BUILD} DIRECTORY)
+  get_filename_component(parent ${path} NAME)
+  set(command "build")
+  list(APPEND args "-o" "${GO_BUILD}")
+  if(parent STREQUAL "test")
+      set(command "test")
+      list(APPEND args "-c")
+  endif()
 endif()
 list(APPEND args "-tags" "integration")
 execute_process(
