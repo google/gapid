@@ -69,6 +69,9 @@ git submodule update --init
 # Disable ccache as it seems to be flaky on mac build server
 export CCACHE_DISABLE=1
 
+# Specify the version of XCode
+export DEVELOPER_DIR=/Applications/Xcode_8.2.app/Contents/Developer
+
 # Invoke the build. At this point, only ensure that the tests build, but don't
 # execute the tests.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
