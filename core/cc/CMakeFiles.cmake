@@ -53,6 +53,7 @@ set(files
     null_writer.h
     scratch_allocator.h
     scratch_allocator_test.cpp
+    semaphore.h
     socket_connection.cpp
     socket_connection.h
     static_array.h
