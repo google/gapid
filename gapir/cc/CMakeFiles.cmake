@@ -63,6 +63,8 @@ set(files
     stack.cpp
     stack.h
     stack_test.cpp
+    thread_pool.h
+    thread_pool.cpp
     test_utilities.h
     test_utilities_test.cpp
     vulkan_gfx_api.cpp
