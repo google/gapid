@@ -20,6 +20,12 @@
 #include <wingdi.h>
 #include <GL/gl.h>
 
+#ifndef __GNUC__
+// MSVC will fail to compile if we are using 
+// GetVersionEx, this silences that warning
+#pragma warning(disable : 4996)
+#endif
+
 namespace {
 
 static const char* wndClassName = TEXT("opengl-dummy-window");

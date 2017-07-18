@@ -18,9 +18,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/os/shell"
@@ -29,10 +32,48 @@ import (
 var portPattern = regexp.MustCompile(`^Bound on port '(\d+)'$`)
 
 type portWatcher struct {
-	portChan chan<- string
-	stdout   io.Writer
-	fragment string
-	done     bool
+	portChan   chan<- string
+	stdout     io.Writer
+	fragment   string
+	done       bool
+	backupFile string
+}
+
+func (w *portWatcher) SetUpFile() {
+	os.Remove(w.backupFile)
+}
+
+func (w *portWatcher) GetPortFromFile() (string, bool) {
+	if contents, err := ioutil.ReadFile(w.backupFile); err == nil {
+		s := string(contents)
+		match := portPattern.FindStringSubmatch(s)
+		if match != nil {
+			return match[1], true
+		}
+	}
+	return "", false
+}
+
+func (w *portWatcher) WaitForFile(ctx context.Context) {
+	if w.backupFile == "" {
+		return
+	}
+
+	w.SetUpFile()
+	hb := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-hb.C:
+			if port, ok := w.GetPortFromFile(); ok {
+				w.portChan <- port
+				close(w.portChan)
+				w.done = true
+				return
+			}
+		}
+	}
 }
 
 func (w *portWatcher) Write(b []byte) (n int, err error) {
@@ -77,6 +118,10 @@ type StartOptions struct {
 
 	// Should all stderr and and stdout also be logged to the logger?
 	Verbose bool
+
+	// BackupFile, if not "", is a file that can be search if we can
+	// not find the output on stdout
+	BackupFile string
 }
 
 // Start runs the application with the given path and options, waits for
@@ -87,10 +132,12 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
 	stdout := &portWatcher{
-		portChan: portChan,
-		stdout:   opts.Stdout,
+		portChan:   portChan,
+		stdout:     opts.Stdout,
+		backupFile: opts.BackupFile,
 	}
 
+	go stdout.WaitForFile(ctx)
 	go func() {
 		cmd := shell.
 			Command(name, opts.Args...).

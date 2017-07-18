@@ -253,7 +253,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkInstance,
                                  [this, interpreter](Stack* stack, bool pushReturn) {
-        GAPID_INFO("replayCreateVkInstance()");
+        GAPID_DEBUG("replayCreateVkInstance()");
 
         if (mBoundVulkanRenderer != nullptr || interpreter->registerApi(Vulkan::INDEX)) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
@@ -266,7 +266,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateVkDevice,
                                  [this, interpreter](Stack* stack, bool pushReturn) {
-        GAPID_INFO("replayCreateVkDevice()");
+        GAPID_DEBUG("replayCreateVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayCreateVkDevice(stack, pushReturn);
@@ -278,7 +278,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkInstance,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayRegisterVkInstance()");
+        GAPID_DEBUG("replayRegisterVkInstance()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkInstance(stack);
@@ -290,7 +290,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkInstance,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayUnregisterVkInstance()");
+        GAPID_DEBUG("replayUnregisterVkInstance()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkInstance(stack);
@@ -302,7 +302,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkDevice,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayRegisterVkDevice()");
+        GAPID_DEBUG("replayRegisterVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkDevice(stack);
@@ -314,7 +314,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkDevice,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayUnregisterVkDevice()");
+        GAPID_DEBUG("replayUnregisterVkDevice()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkDevice(stack);
@@ -326,7 +326,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayRegisterVkCommandBuffers,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayRegisterVkCommandBuffers()");
+        GAPID_DEBUG("replayRegisterVkCommandBuffers()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayRegisterVkCommandBuffers(stack);
@@ -338,7 +338,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayUnregisterVkCommandBuffers,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("replayUnregisterVkCommandBuffers()");
+        GAPID_DEBUG("replayUnregisterVkCommandBuffers()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayUnregisterVkCommandBuffers(stack);
@@ -350,7 +350,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ToggleVirtualSwapchainReturnAcquiredImage,
                                  [this, interpreter](Stack* stack, bool) {
-        GAPID_INFO("ToggleVirtualSwapchainReturnAcquiredImage()");
+        GAPID_DEBUG("ToggleVirtualSwapchainReturnAcquiredImage()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->toggleVirtualSwapchainReturnAcquiredImage(stack);
@@ -364,7 +364,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         Vulkan::INDEX,
         Builtins::ReplayAllocateImageMemory,
         [this, interpreter](Stack* stack, bool push_return) {
-            GAPID_INFO("replayAllocateImageMemory()");
+            GAPID_DEBUG("replayAllocateImageMemory()");
             if (mBoundVulkanRenderer != nullptr) {
                 auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
                 return api->replayAllocateImageMemory(stack, push_return);
@@ -377,7 +377,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetFenceStatus,
                                  [this, interpreter](Stack* stack, bool push_return) {
-        GAPID_INFO("ReplayGetFenceStatus()");
+        GAPID_DEBUG("ReplayGetFenceStatus()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayGetFenceStatus(stack, push_return);
@@ -389,7 +389,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetEventStatus,
                                  [this, interpreter](Stack* stack, bool push_return) {
-        GAPID_INFO("ReplayGetEventStatus()");
+        GAPID_DEBUG("ReplayGetEventStatus()");
         if (mBoundVulkanRenderer != nullptr) {
             auto* api = mBoundVulkanRenderer->getApi<Vulkan>();
             return api->replayGetEventStatus(stack, push_return);

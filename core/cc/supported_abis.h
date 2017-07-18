@@ -23,9 +23,9 @@ namespace core {
 // host machine, starting with the preferred ABI.
 // Must match the definitions in core/os/device/abi.go.
 inline const char* supportedABIs() {
-#ifdef __x86_64
+#if defined __x86_64 || defined _WIN64
     return "x86-64";
-#elif defined __i386
+#elif defined __i386 || defined _WIN32
     return "x86";
 #elif defined __ARM_ARCH_7A__
     return "armeabi-v7a";

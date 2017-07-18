@@ -74,54 +74,6 @@ cmd VkResult vkCreateAndroidSurfaceKHR(
 }
 
 // ----------------------------------------------------------------------------
-// VK_ANDROID_native_buffer
-// ----------------------------------------------------------------------------
-
-@extension("VK_ANDROID_native_buffer")
-@unused
-class VkNativeBufferANDROID {
-    VkStructureType                             sType
-    const void*                                 pNext
-    buffer_handle_t                             handle
-    int                                         stride
-    int                                         format
-    int                                         usage
-}
-
-
-@extension("VK_ANDROID_native_buffer")
-@indirect("VkDevice")
-cmd VkResult vkGetSwapchainGrallocUsageANDROID(
-        VkDevice                                device,
-        VkFormat                                format,
-        VkImageUsageFlags                       imageUsage,
-        int*                                    grallocUsage) {
-    return ?
-}
-
-@extension("VK_ANDROID_native_buffer")
-@indirect("VkDevice")
-cmd VkResult vkAcquireImageANDROID(
-        VkDevice                                device,
-        VkImage                                 image,
-        int                                     nativeFenceFd,
-        VkSemaphore                             semaphore,
-        VkFence                                 fence) {
-    return ?
-}
-
-@extension("VK_ANDROID_native_buffer")
-@indirect("VkQueue", "VkDevice")
-cmd VkResult vkQueueSignalReleaseImageANDROID(
-        VkQueue                                 queue,
-        u32                                     waitSemaphoreCount,
-        const VkSemaphore*                      pWaitSemaphores,
-        VkImage                                 image,
-        int*                                    pNativeFenceFd) {
-    return ?
-}
-
-// ----------------------------------------------------------------------------
 // Struct subroutines
 // ----------------------------------------------------------------------------
 

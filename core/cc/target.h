@@ -67,7 +67,11 @@
 
 #ifdef _MSC_VER // MSVC
 #   define ftruncate _chsize
+#ifdef __GNUC__
+// MSYS needs this, MSVC will complain
+// if we #define snprintf
 #   define snprintf _snprintf
+#endif
 #   define alignof __alignof
 #   define _ALLOW_KEYWORD_MACROS 1
 #   define LIKELY(expr) expr

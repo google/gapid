@@ -20,6 +20,7 @@
 #include "core/cc/target.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
@@ -27,6 +28,12 @@
 #define _WSPIAPI_EMIT_LEGACY
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+#if !defined(__GNUC__)
+// If we are building outside of MSYS
+// we need to link to Ws2_32.lib for networking.
+#pragma comment(lib, "Ws2_32.lib")
+#endif
 
 #else  // TARGET_OS == GAPID_OS_WINDOWS
 
@@ -256,6 +263,15 @@ std::unique_ptr<Connection> SocketConnection::createSocket(
     // The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
     printf("Bound on port '%d'\n", ntohs(sin.sin_port));
     fflush(stdout); // Force the message for piped readers
+
+    const char* backupPath = getenv("GAPII_BACKUP_FILE");
+    if (backupPath != nullptr) {
+        FILE* f = fopen(backupPath, "w");
+        if (f != nullptr) {
+            fprintf(f, "Bound on port '%d'", ntohs(sin.sin_port));
+            fclose(f);
+        }
+    }
 
     sockScopeGuard.release();
     return std::unique_ptr<Connection>(new SocketConnection(sock));

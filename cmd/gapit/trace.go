@@ -111,7 +111,7 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
 	env := shell.CloneEnv()
-	cleanup, err := loader.SetupTrace(ctx, env)
+	cleanup, tempfile, err := loader.SetupTrace(ctx, env)
 	if err != nil {
 		return cleanup, err
 	}
@@ -120,8 +120,9 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	args := r.FindAllString(verb.Local.Args, -1)
 	ctx, cancel := context.WithCancel(ctx)
 	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
-		Env:  env,
-		Args: args,
+		Env:        env,
+		Args:       args,
+		BackupFile: tempfile,
 	})
 
 	if err != nil {

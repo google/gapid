@@ -21,6 +21,12 @@
 #include <algorithm>
 #include <vector>
 
+#if defined(_MSC_VER) and !defined(__GNUC__)
+// MSVC itself does not have ssize_t, although
+// msys mingw does. 
+typedef long long ssize_t;
+#endif
+
 namespace core {
 
 // Interval represents a single interval range of type T.
@@ -196,8 +202,9 @@ inline void CustomIntervalList<T>::merge(const T& i) {
         auto to = mIntervals.begin() + last;
         auto low = std::min(from->start(), i.start());
         auto high = std::max(to->end(), i.end());
+		T* f = &(*from);
         mIntervals.erase(from, to);
-        from->adjust(low, high);
+        f->adjust(low, high);
     } else {
         mIntervals.insert(from, i);
     }
@@ -231,7 +238,7 @@ template<typename T>
 inline const T* CustomIntervalList<T>::end() const {
     size_t c = mIntervals.size();
     if (c > 0) {
-        return &mIntervals[c];
+        return &mIntervals[c-1] + 1;
     } else {
         return nullptr;
     }

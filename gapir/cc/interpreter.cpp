@@ -19,7 +19,12 @@
 
 #include "core/cc/log.h"
 
+#if !defined(_MSC_VER) || defined(__GNUC__) 
+// If compiling wiht MSVC, (rather than MSYS)
+// unistd does not exist.
 #include <unistd.h>
+#endif // !defined(_MSC_VER) || defined(__GNUC__)
+
 #include <utility>
 #include <vector>
 
