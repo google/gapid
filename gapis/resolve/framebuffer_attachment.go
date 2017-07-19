@@ -79,7 +79,8 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
-	if !info.valid {
+	if info.err != nil {
+		log.W(ctx, "Framebuffer error: %v", info.err)
 		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 	return info, nil
@@ -144,14 +145,18 @@ type framebufferAttachmentInfo struct {
 	height uint32
 	index  uint32 // The api-specific attachment index
 	format *image.Format
-	valid  bool
+	err    error
 }
 
 func (f framebufferAttachmentInfo) equal(o framebufferAttachmentInfo) bool {
 	fe := (f.format == nil && o.format == nil) || (f.format != nil && o.format != nil && f.format.Name == o.format.Name)
-
-	return fe && f.width == o.width && f.height == o.height && f.index == o.index &&
-		f.valid == o.valid
+	if (f.err == nil) != (o.err == nil) {
+		return false
+	}
+	if f.err == nil {
+		return fe && f.width == o.width && f.height == o.height && f.index == o.index
+	}
+	return f.err.Error() == o.err.Error()
 }
 
 func (c framebufferAttachmentChanges) after(ctx context.Context, i sync.SubcommandIndex) (framebufferAttachmentInfo, error) {

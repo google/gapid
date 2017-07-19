@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -40,6 +41,8 @@ func FramebufferChanges(ctx context.Context, c *path.Capture) (*AttachmentFrameb
 type AttachmentFramebufferChanges struct {
 	attachments []framebufferAttachmentChanges
 }
+
+const errNoAPI = fault.Const("Command has no API")
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
@@ -69,8 +72,12 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 			info := framebufferAttachmentInfo{after: idx}
 			if api != nil {
 				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(s, cmd.Thread(), att); err == nil && f != nil {
-					info.width, info.height, info.index, info.format, info.valid = w, h, i, f, true
+					info.width, info.height, info.index, info.format = w, h, i, f
+				} else {
+					info.err = err
 				}
+			} else {
+				info.err = errNoAPI
 			}
 			if last := out.attachments[att].last(); !last.equal(info) {
 				attachment := out.attachments[att]

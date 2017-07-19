@@ -275,7 +275,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		// change to the gles.api file.
 
 		// Delete all Renderbuffers.
-		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers)-3)
+		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers))
 		for renderbufferId := range c.Objects.Shared.Renderbuffers {
 			// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
 			if renderbufferId < 0xf0000000 {
