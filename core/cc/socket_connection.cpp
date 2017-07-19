@@ -20,6 +20,7 @@
 #include "core/cc/target.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
@@ -256,6 +257,15 @@ std::unique_ptr<Connection> SocketConnection::createSocket(
     // The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
     printf("Bound on port '%d'\n", ntohs(sin.sin_port));
     fflush(stdout); // Force the message for piped readers
+
+    const char* portFile = getenv("GAPII_PORT_FILE");
+    if (portFile != nullptr) {
+        FILE* f = fopen(portFile, "w");
+        if (f != nullptr) {
+            fprintf(f, "Bound on port '%d'", ntohs(sin.sin_port));
+            fclose(f);
+        }
+    }
 
     sockScopeGuard.release();
     return std::unique_ptr<Connection>(new SocketConnection(sock));
