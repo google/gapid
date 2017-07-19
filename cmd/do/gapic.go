@@ -33,6 +33,7 @@ type gapicEnv struct {
 	javaExe  file.Path // java executable path
 	javacExe file.Path // javac executable path
 	jarExe   file.Path // jar executable path
+	jdocExe  file.Path // javadoc executable path
 	out      file.Path // build output
 	platform string    // windows,linux,osx
 }
@@ -73,6 +74,7 @@ func gapic(ctx context.Context, cfg Config) *gapicEnv {
 		javaExe:  findOrExit(cfg.JavaHome.Join("bin", "java"+hostExeExt)),
 		javacExe: findOrExit(cfg.JavaHome.Join("bin", "javac"+hostExeExt)),
 		jarExe:   findOrExit(cfg.JavaHome.Join("bin", "jar"+hostExeExt)),
+		jdocExe:  findOrExit(cfg.JavaHome.Join("bin", "javadoc"+hostExeExt)),
 		out:      mkdirOrExit(cfg.OutRoot.Join(string(cfg.Flavor), "java")),
 		platform: platform,
 	}
@@ -96,11 +98,7 @@ func (e *gapicEnv) build(ctx context.Context, options BuildOptions) {
 			e.findAllJavaFiles(javaSrc.Join("generated"), nlWriter)
 			e.findAllJavaFiles(javaSrc.Join("platform", e.platform), nlWriter)
 		})
-
-		jarTxt := e.writeFile(e.out.Join("classpath-"+e.platform+".txt"), func(f *os.File) {
-			listWriter := func(p file.Path) { f.WriteString(p.System() + string(os.PathListSeparator)) }
-			e.findAllJars(e.src.Join("third_party"), listWriter)
-		})
+		jarTxt := e.createClasspathFile()
 
 		run(ctx, e.out, e.javacExe, nil,
 			"-d", e.mkdirCleanOrExit(javaOut).System(),
@@ -159,6 +157,35 @@ func (e *gapicEnv) run(ctx context.Context, options RunOptions, args ...string) 
 		options.WD = file.Abs("")
 	}
 	run(ctx, options.WD, e.javaExe, env, append(jargs, args...)...)
+}
+
+func (e *gapicEnv) jdoc(ctx context.Context, options BuildOptions) {
+	if options.DryRun {
+		return
+	}
+	javaSrc := e.src.Join("src")
+	jdocOut := e.out.Join("jdoc")
+
+	sep := string(os.PathListSeparator)
+	srcPath := javaSrc.Join("main").System()+
+			sep+javaSrc.Join("generated").System()+
+			sep+javaSrc.Join("platform", e.platform).System()
+	jarTxt := e.createClasspathFile()
+
+	run(ctx, e.out, e.jdocExe, nil,
+			"-private",
+			"-cp", "@"+jarTxt.System(),
+			"-subpackages", "com.google.gapid",
+			"-sourcepath", srcPath,
+			"-d", e.mkdirCleanOrExit(jdocOut).System(),
+			"-linksource")
+}
+
+func (e *gapicEnv) createClasspathFile() file.Path {
+	return e.writeFile(e.out.Join("classpath-"+e.platform+".txt"), func(f *os.File) {
+		listWriter := func(p file.Path) { f.WriteString(p.System() + string(os.PathListSeparator)) }
+		e.findAllJars(e.src.Join("third_party"), listWriter)
+	})
 }
 
 func (e *gapicEnv) findAllJavaFiles(path file.Path, cb func(file.Path)) {

@@ -109,6 +109,7 @@ type (
 	robotVerb  struct{ RobotOptions }
 	uploadVerb struct{ UploadOptions }
 	goVerb     struct{ RunOptions }
+	jdocVerb   struct{ BuildOptions }
 )
 
 func findRootSourcePath() file.Path {
@@ -194,6 +195,11 @@ func init() {
 		Name:      "go",
 		ShortHelp: "run the go tool with the correct environment",
 		Action:    &goVerb{},
+	})
+	app.AddVerb(&app.Verb{
+		Name:      "jdoc",
+		ShortHelp: "generte the gapic javadoc",
+		Action:    &jdocVerb{},
 	})
 }
 
@@ -318,6 +324,12 @@ func (verb *goVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	closeOnInterrupt(ctx)
 	cfg := doInit(ctx, InitOptions{})
 	doGo(ctx, cfg, verb.RunOptions, flags.Args()...)
+	return nil
+}
+
+func (verb *jdocVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	cfg := doInit(ctx, InitOptions{})
+	gapic(ctx, cfg).jdoc(ctx, verb.BuildOptions)
 	return nil
 }
 
