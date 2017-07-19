@@ -28,27 +28,43 @@ import (
 )
 
 // SetupTrace sets up the environment for tracing a local app. Returns a
-// clean-up function to be called after the trace completes, or an error.
-func SetupTrace(ctx context.Context, env *shell.Env) (func(), error) {
+// clean-up function to be called after the trace completes, and a temporary
+// filename that can be used to find the port if stdout fails, or an error.
+func SetupTrace(ctx context.Context, env *shell.Env) (func(), string, error) {
 	lib, json, err := findLibraryAndJSON(ctx, layout.LibGraphicsSpy)
+	var f string
 	if err != nil {
-		return func() {}, err
+		return func() {}, f, err
 	}
 	cleanup, err := setupJSON(lib, json, env)
 	if err == nil {
-		env.Set("LD_PRELOAD", lib.System()).
-			AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
-			AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy")
-		if runtime.GOOS == "windows" {
-			// Adds the extra MSYS DLL dependencies onto the path.
-			// TODO: remove this hacky work-around.
-			gapit, err := layout.Gapit(ctx)
-			if err == nil {
-				env.AddPathStart("PATH", gapit.Parent().System())
+		if fl, e := ioutil.TempFile("", "gapii_port"); e == nil {
+			err = e
+			f = fl.Name()
+			fl.Close()
+			o := cleanup
+			cleanup = func() {
+				o()
+				os.Remove(f)
+			}
+		}
+		if err == nil {
+			env.Set("LD_PRELOAD", lib.System()).
+				AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
+				AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
+				Set("GAPII_PORT_FILE", f)
+			if runtime.GOOS == "windows" {
+				// Adds the extra MSYS DLL dependencies onto the path.
+				// TODO: remove this hacky work-around.
+				// https://github.com/google/gapid/issues/17
+				gapit, err := layout.Gapit(ctx)
+				if err == nil {
+					env.AddPathStart("PATH", gapit.Parent().System())
+				}
 			}
 		}
 	}
-	return cleanup, err
+	return cleanup, f, err
 }
 
 // SetupReplay sets up the environment for local replay. Returns a clean-up
