@@ -844,18 +844,26 @@
   {{AssertType $ "Select"}}
 
   /* switch({{Template "C++.Read" $.Value}}) */»
-  {{range $c := $.Choices}}
-    /* case {{range $i, $cond := $c.Conditions}}{{if $i}}, {{end}}{{Template "C++.Read" $cond}}{{end}}: */§
-    ({{range $i, $cond := $c.Conditions}}§
-        {{if $i}} || {{end}}(({{Template "C++.Read" $.Value}}) == ({{Template "C++.Read" $cond}}))§
-    {{end}}) ? ({{Template "C++.Read" $c.Expression}}) :
-  {{end}}
-  /* default: */ §
-  {{if $.Default}}
-    {{Template "C++.Read" $.Default}}«
-  {{else}}
-    {{Template "C++.Null" $.Type}}«
-  {{end}}
+    [&]() -> {{Template "C++.Type" $.Type}} {
+      switch({{Template "C++.Read" $.Value}}) {
+        {{range $c := $.Choices}}
+          /* case {{range $i, $cond := $c.Conditions}}{{if $i}}, {{end}}{{Template "C++.Read" $cond}}{{end}}: */
+          {{range $i, $cond := $c.Conditions}}
+          case {{Template "C++.Read" $cond}}:
+          {{end}} {
+            return ({{Template "C++.Read" $c.Expression}}); 
+          }
+        {{end}}
+        default:
+        {{if $.Default}} {
+          return {{Template "C++.Read" $.Default}};«
+        }
+        {{else}} {
+          return {{Template "C++.Null" $.Type}};«
+        }
+        {{end}}
+      }
+    }()
 {{end}}
 
 

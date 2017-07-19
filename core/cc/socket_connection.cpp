@@ -20,6 +20,7 @@
 #include "core/cc/target.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
