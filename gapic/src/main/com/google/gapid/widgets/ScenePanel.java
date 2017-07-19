@@ -16,13 +16,9 @@
 package com.google.gapid.widgets;
 
 import com.google.gapid.glcanvas.GlCanvas;
-
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.internal.DPIUtil;
@@ -33,6 +29,10 @@ import org.eclipse.swt.widgets.Listener;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ScenePanel<T> extends GlCanvas {
   private final GLCapabilities caps;
   private final Renderer renderer;
-  private final Scene scene;
+  private final Scene<T> scene;
   private final AtomicReference<T> sceneData = new AtomicReference<>();
   private Map<Integer, List<Listener>> eventListeners;
   private int numSuspendedUpdates;

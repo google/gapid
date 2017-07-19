@@ -61,7 +61,7 @@ public class BoundingBox {
     VecD minV = VecD.fromArray(min), maxV = VecD.fromArray(max);
     double diagonal = maxV.distance(minV);
 
-    VecD translation = maxV.subtract(minV).scale(0.5f).add(minV).scale(-1);
+    VecD translation = maxV.subtract(minV).multiply(0.5f).add(minV).multiply(-1);
     double scale = (diagonal == 0) ? 1 : diagonalSize / diagonal;
 
     return zUp ? makeScaleTranslationZupToYup(scale, translation) :

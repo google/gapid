@@ -342,6 +342,9 @@ public class ImagePanel extends Composite {
     public Color cursorLight;
     public Color cursorDark;
 
+    public SceneData() {
+    }
+
     public SceneData copy() {
       SceneData out = new SceneData();
       out.image = image;
@@ -374,7 +377,7 @@ public class ImagePanel extends Composite {
     private final boolean naturallyFlipped;
 
     private final ScrollBar scrollbars[];
-    private final ScenePanel canvas;
+    private final ScenePanel<SceneData> canvas;
     private final SceneData settings;
     private Image image;
 
@@ -411,7 +414,7 @@ public class ImagePanel extends Composite {
       settings.cursorLight = theme.imageCursorLight();
       settings.cursorDark = theme.imageCursorDark();
 
-      canvas = new ScenePanel(this, new ImageScene());
+      canvas = new ScenePanel<SceneData>(this, new ImageScene());
       canvas.setSceneData(settings.copy());
 
       getHorizontalBar().addListener(SWT.Selection, e -> onScroll());
@@ -478,7 +481,7 @@ public class ImagePanel extends Composite {
 
     public Pixel getPixel(Point point) {
       VecD imageNormalized = calcInvTransform().multiply(pointToNDC(point));
-      VecD imageTexel = imageNormalized.scale(0.5).add(0.5, 0.5, 0.0).multiply(imageSize);
+      VecD imageTexel = imageNormalized.multiply(0.5).add(0.5, 0.5, 0.0).multiply(imageSize);
       int x = (int)imageTexel.x;
       int y = (int)imageTexel.y;
       if (x < 0 || y < 0 || x >= image.getWidth() || y >= image.getHeight()) {
@@ -515,7 +518,7 @@ public class ImagePanel extends Composite {
         VecD imageNormPostScale = calcInvTransform().multiply(ndc);
         VecD imageNormDelta = imageNormPostScale.subtract(imageNormPreScale);
         imageOffset = imageOffset
-            .add(imageNormDelta.multiply(imageSize).scale(0.5))
+            .add(imageNormDelta.multiply(imageSize).multiply(0.5))
             .clamp(imageOffsetMin, imageOffsetMax);
       } else {
         setScale(scale);
@@ -541,7 +544,7 @@ public class ImagePanel extends Composite {
       return new VecD(point.x, point.y, 0)
           .divide(viewSize.x, viewSize.y, 1)
           .subtract(0.5, 0.5, 0)
-          .scale(2.0);
+          .multiply(2.0);
     }
 
     /**
@@ -552,7 +555,7 @@ public class ImagePanel extends Composite {
       return MatD.makeScale(new VecD(2, 2, 0).safeDivide(viewSize))
               .scale(scaleImageToView)
               .translate(imageOffset)
-              .scale(imageSize.scale(0.5));
+              .scale(imageSize.multiply(0.5));
     }
 
     /**
@@ -562,10 +565,10 @@ public class ImagePanel extends Composite {
       return MatD.makeScale(new VecD(2, 2, 0).safeDivide(imageSize))
           .translate(imageOffset.negate())
           .scale(1.0 / scaleImageToView)
-          .scale(viewSize.scale(0.5));
+          .scale(viewSize.multiply(0.5));
     }
 
-    private double clamp(double x, double min, double max) {
+    private static double clamp(double x, double min, double max) {
       return Math.max(Math.min(x, max), min);
     }
 
@@ -576,7 +579,7 @@ public class ImagePanel extends Composite {
 
       imageOffsetMax = imageSize
           .subtract(viewSizeSubBorder.divide(scaleImageToView))
-          .scale(0.5)
+          .multiply(0.5)
           .max(VecD.ZERO);
       imageOffsetMin = imageOffsetMax.negate();
       imageOffset = imageOffset.clamp(imageOffsetMin, imageOffsetMax);
@@ -652,6 +655,9 @@ public class ImagePanel extends Composite {
     private final float[] uRange = new float[] { 0, 1 };
     private final float[] uChannels = new float[] { 1, 1, 1, 1 };
 
+    public ImageScene() {
+    }
+
     @Override
     public void init(Renderer renderer) {
       GL30.glBindVertexArray(GL30.glGenVertexArrays());
@@ -664,9 +670,9 @@ public class ImagePanel extends Composite {
     }
 
     @Override
-    public void update(Renderer renderer, SceneData data) {
+    public void update(Renderer renderer, SceneData newData) {
       Image oldImage = (this.data != null) ? this.data.image : null;
-      if (oldImage != data.image) {
+      if (oldImage != newData.image) {
         // Release old texture, create new.
         if (texture != null) {
           texture.delete();
@@ -674,20 +680,20 @@ public class ImagePanel extends Composite {
         texture = renderer
             .newTexture(GL11.GL_TEXTURE_2D)
             .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
-            .setBorderColor(data.borderColor);
-        data.image.getData().uploadToTexture(texture);
+            .setBorderColor(newData.borderColor);
+        newData.image.getData().uploadToTexture(texture);
         shader.setUniform("uTexture", texture);
 
         // Get range limits, update uniforms.
-        PixelInfo info = data.image.getData().getInfo();
+        PixelInfo info = newData.image.getData().getInfo();
         uRange[0] = info.getMin();
         uRange[1] = info.getMax() - info.getMin();
         shader.setUniform("uRange", uRange);
       }
       for (int i = 0; i < 4; i++) {
-        uChannels[i] = data.channels[i] ? 1.0f : 0.0f;
+        uChannels[i] = newData.channels[i] ? 1.0f : 0.0f;
       }
-      this.data = data;
+      data = newData;
     }
 
     @Override
@@ -695,7 +701,7 @@ public class ImagePanel extends Composite {
       if (data == null) {
         return;
       }
-      renderer.clear(data.panelColor);
+      Renderer.clear(data.panelColor);
       drawBackground(renderer);
       if (texture != null) {
         drawImage(renderer);
@@ -704,7 +710,9 @@ public class ImagePanel extends Composite {
     }
 
     @Override
-    public void resize(Renderer renderer, int width, int height) {}
+    public void resize(Renderer renderer, int width, int height) {
+      // Ignore.
+    }
 
     private void drawBackground(Renderer renderer) {
       switch (data.backgroundMode) {

@@ -91,9 +91,9 @@ public class Geometry {
           state.shader.setAttribute(Constants.NORMAL_ATTRIBUTE, 1, 0, 0);
         }
         if (indexBuffer != null) {
-          renderer.draw(state.shader, modelPrimitive, indexBuffer);
+          Renderer.draw(state.shader, modelPrimitive, indexBuffer);
         } else {
-          renderer.draw(state.shader, GL11.GL_POINTS, positions.length / 3);
+          Renderer.draw(state.shader, GL11.GL_POINTS, positions.length / 3);
         }
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
 

@@ -20,7 +20,7 @@ import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Composite;
 
 // On linux, simply use the SWT GLCanvas as it works fine out of the box.
-public class GlCanvas extends GLCanvas {
+public abstract class GlCanvas extends GLCanvas {
   public GlCanvas(Composite parent, int style) {
     super(parent, style, getGlData());
     // TODO: hook in the the terminate - currently the dispose event would always be *after* the
@@ -41,5 +41,5 @@ public class GlCanvas extends GLCanvas {
   /**
    * Override to perform GL cleanup handling.
    */
-  protected void terminate() {}
+  protected abstract void terminate();
 }

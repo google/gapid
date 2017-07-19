@@ -44,7 +44,7 @@ import org.lwjgl.system.windows.User32;
 
 import java.nio.IntBuffer;
 
-public class GlCanvas extends Canvas {
+public abstract class GlCanvas extends Canvas {
   private static final String USE_OWNDC_KEY = "org.eclipse.swt.internal.win32.useOwnDC";
 
   private final long context;
@@ -101,7 +101,7 @@ public class GlCanvas extends Canvas {
   }
 
   /** Override to perform GL cleanup handling. */
-  protected void terminate() {}
+  protected abstract void terminate();
 
   private static class Context {
     public final long handle;

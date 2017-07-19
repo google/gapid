@@ -93,16 +93,35 @@ public class Tracer {
     public void stop();
   }
 
+  public static enum Api {
+    GLES("OpenGL ES"), Vulkan("Vulkan");
+
+    public final String displayName;
+
+    private Api(String displayName) {
+      this.displayName = displayName;
+    }
+
+    public static Api parse(String name) {
+      try {
+        return Api.valueOf(name);
+      } catch (IllegalArgumentException e) {
+        return null;
+      }
+    }
+  }
+
+
   /**
    * Contains information about how and what application to trace.
    */
   public static abstract class TraceRequest {
-    public final String api;
+    public final Api api;
     public final File output;
     public final int frameCount;
     public final boolean midExecution;
 
-    public TraceRequest(String api, File output, int frameCount, boolean midExecution) {
+    public TraceRequest(Api api, File output, int frameCount, boolean midExecution) {
       this.api = api;
       this.output = output;
       this.frameCount = frameCount;
@@ -112,7 +131,7 @@ public class Tracer {
     public List<String> appendCommandLine(List<String> cmd) {
       if (api != null) {
         cmd.add("-api");
-        cmd.add(api);
+        cmd.add(api.name().toLowerCase());
       }
 
       cmd.add("-out");
@@ -149,13 +168,13 @@ public class Tracer {
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public AndroidTraceRequest(String api, Device.Instance device, String action, File output,
+    public AndroidTraceRequest(Api api, Device.Instance device, String action, File output,
         int frameCount, boolean midExecution, boolean clearCache, boolean disablePcs) {
       this(api, device, null, null, action, output, frameCount, midExecution, clearCache,
           disablePcs);
     }
 
-    public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity,
+    public AndroidTraceRequest(Api api, Device.Instance device, String pkg, String activity,
         String action, File output, int frameCount, boolean midExecution, boolean clearCache,
         boolean disablePcs) {
       super(api, output, frameCount, midExecution);
@@ -212,7 +231,7 @@ public class Tracer {
 
     public DesktopTraceRequest(File executable, String args, File cwd, File output,
         int frameCount, boolean midExecution) {
-      super("vulkan", output, frameCount, midExecution);
+      super(Api.Vulkan, output, frameCount, midExecution);
       this.executable = executable;
       this.args = args;
       this.cwd = cwd;

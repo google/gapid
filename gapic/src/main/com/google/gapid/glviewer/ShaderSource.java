@@ -20,7 +20,6 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.base.Charsets;
 import com.google.common.io.LineProcessor;
 import com.google.common.io.Resources;
-import com.google.gapid.glviewer.gl.Shader;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -47,7 +46,7 @@ public class ShaderSource {
 
   public final String vertex, fragment;
 
-  private ShaderSource(String vertex, String fragment) {
+  public ShaderSource(String vertex, String fragment) {
     this.vertex = vertex;
     this.fragment = fragment;
   }

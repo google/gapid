@@ -300,23 +300,23 @@ public class Shader extends GlObject {
         case GL20.GL_SAMPLER_CUBE:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniform1fv(location, values);
+            public void bind(float[] vals) {
+              GL20.glUniform1fv(location, vals);
             }
 
             @Override
-            public void bind(float value) {
-              GL20.glUniform1f(location, value);
+            public void bind(float val) {
+              GL20.glUniform1f(location, val);
             }
 
             @Override
-            public void bind(int[] values) {
-              GL20.glUniform1iv(location, values);
+            public void bind(int[] vals) {
+              GL20.glUniform1iv(location, vals);
             }
 
             @Override
-            public void bind(int value) {
-              GL20.glUniform1i(location, value);
+            public void bind(int val) {
+              GL20.glUniform1i(location, val);
             }
           };
         case GL20.GL_INT_VEC2:
@@ -324,23 +324,23 @@ public class Shader extends GlObject {
         case GL20.GL_FLOAT_VEC2:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniform2fv(location, values);
+            public void bind(float[] vals) {
+              GL20.glUniform2fv(location, vals);
             }
 
             @Override
-            public void bind(float value) {
-              GL20.glUniform2f(location, value, 0);
+            public void bind(float val) {
+              GL20.glUniform2f(location, val, 0);
             }
 
             @Override
-            public void bind(int[] values) {
-              GL20.glUniform2iv(location, values);
+            public void bind(int[] vals) {
+              GL20.glUniform2iv(location, vals);
             }
 
             @Override
-            public void bind(int value) {
-              GL20.glUniform2i(location, value, 0);
+            public void bind(int val) {
+              GL20.glUniform2i(location, val, 0);
             }
           };
         case GL20.GL_INT_VEC3:
@@ -348,23 +348,23 @@ public class Shader extends GlObject {
         case GL20.GL_FLOAT_VEC3:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniform3fv(location, values);
+            public void bind(float[] vals) {
+              GL20.glUniform3fv(location, vals);
             }
 
             @Override
-            public void bind(float value) {
-              GL20.glUniform3f(location, value, 0, 0);
+            public void bind(float val) {
+              GL20.glUniform3f(location, val, 0, 0);
             }
 
             @Override
-            public void bind(int[] values) {
-              GL20.glUniform3iv(location, values);
+            public void bind(int[] vals) {
+              GL20.glUniform3iv(location, vals);
             }
 
             @Override
-            public void bind(int value) {
-              GL20.glUniform3i(location, value, 0, 0);
+            public void bind(int val) {
+              GL20.glUniform3i(location, val, 0, 0);
             }
           };
         case GL20.GL_INT_VEC4:
@@ -372,92 +372,92 @@ public class Shader extends GlObject {
         case GL20.GL_FLOAT_VEC4:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniform4fv(location, values);
+            public void bind(float[] vals) {
+              GL20.glUniform4fv(location, vals);
             }
 
             @Override
-            public void bind(float value) {
-              GL20.glUniform4f(location, value, 0, 0, 1);
+            public void bind(float val) {
+              GL20.glUniform4f(location, val, 0, 0, 1);
             }
 
             @Override
-            public void bind(int[] values) {
-              GL20.glUniform4iv(location, values);
+            public void bind(int[] vals) {
+              GL20.glUniform4iv(location, vals);
             }
 
             @Override
-            public void bind(int value) {
-              GL20.glUniform4i(location, value, 0, 0, 1);
+            public void bind(int val) {
+              GL20.glUniform4i(location, val, 0, 0, 1);
             }
           };
         case GL20.GL_FLOAT_MAT2:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniformMatrix2fv(location, false, values);
+            public void bind(float[] vals) {
+              GL20.glUniformMatrix2fv(location, false, vals);
             }
 
             @Override
-            public void bind(float value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + value);
+            public void bind(float val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + val);
             }
 
             @Override
-            public void bind(int[] values) {
+            public void bind(int[] vals) {
               LOG.log(WARNING,
-                  "Unexpected shader uniform value (expected mat2): " + Arrays.toString(values));
+                  "Unexpected shader uniform value (expected mat2): " + Arrays.toString(vals));
             }
 
             @Override
-            public void bind(int value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + value);
+            public void bind(int val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat2): " + val);
             }
           };
         case GL20.GL_FLOAT_MAT3:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniformMatrix3fv(location, false, values);
+            public void bind(float[] vals) {
+              GL20.glUniformMatrix3fv(location, false, vals);
             }
 
             @Override
-            public void bind(float value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + value);
+            public void bind(float val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + val);
             }
 
             @Override
-            public void bind(int[] values) {
+            public void bind(int[] vals) {
               LOG.log(WARNING,
-                  "Unexpected shader uniform value (expected mat3): " + Arrays.toString(values));
+                  "Unexpected shader uniform value (expected mat3): " + Arrays.toString(vals));
             }
 
             @Override
-            public void bind(int value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + value);
+            public void bind(int val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat3): " + val);
             }
           };
         case GL20.GL_FLOAT_MAT4:
           return new Binder() {
             @Override
-            public void bind(float[] values) {
-              GL20.glUniformMatrix4fv(location, false, values);
+            public void bind(float[] vals) {
+              GL20.glUniformMatrix4fv(location, false, vals);
             }
 
             @Override
-            public void bind(float value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + value);
+            public void bind(float val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + val);
             }
 
             @Override
-            public void bind(int[] values) {
+            public void bind(int[] vals) {
               LOG.log(WARNING,
-                  "Unexpected shader uniform value (expected mat4): " + Arrays.toString(values));
+                  "Unexpected shader uniform value (expected mat4): " + Arrays.toString(vals));
             }
 
             @Override
-            public void bind(int value) {
-              LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + value);
+            public void bind(int val) {
+              LOG.log(WARNING, "Unexpected shader uniform value (expected mat4): " + val);
             }
           };
         default:

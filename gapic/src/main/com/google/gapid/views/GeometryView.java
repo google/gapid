@@ -108,8 +108,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   private final Client client;
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
-  protected final LoadablePanel<ScenePanel> loading;
-  protected final ScenePanel canvas;
+  protected final LoadablePanel<ScenePanel<GeometryScene.Data>> loading;
+  protected final ScenePanel<GeometryScene.Data> canvas;
   protected GeometryScene.Data data = Data.DEFAULTS;
   private final IsoSurfaceCameraModel camera =
       new IsoSurfaceCameraModel(new CylindricalCameraModel());
@@ -130,7 +130,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     GeometryScene scene = new GeometryScene(camera);
 
     ToolBar toolbar = createToolbar(widgets.theme);
-    loading = LoadablePanel.create(this, widgets, panel -> new ScenePanel(panel, scene));
+    loading = LoadablePanel.create(this, widgets,
+        panel -> new ScenePanel<GeometryScene.Data>(panel, scene));
     canvas = loading.getContents();
     scene.bindCamera(canvas);
 

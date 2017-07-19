@@ -70,7 +70,6 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
-import java.util.HashMap;
 import org.eclipse.jface.viewers.ILazyTreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
@@ -95,6 +94,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -695,7 +695,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
           Math.sin(angle + Math.PI * 4.0 / 3.0))
           .add(1.0)
           .normalize()
-          .scale(255);
+          .multiply(255);
     }
 
     @Override
