@@ -1048,6 +1048,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlFramebufferTextureMultiviewOVR:
 			{
 				cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+				// Translate it to the non-multiview version, but do not modify state,
+				// otherwise we would loose the knowledge about view count.
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+					cb.GlFramebufferTextureLayer(cmd.Target, cmd.Attachment, cmd.Texture, cmd.Level, cmd.BaseViewIndex).Call(ctx, s, b)
+					return nil
+				}))
 				return
 			}
 
