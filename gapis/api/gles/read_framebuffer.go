@@ -58,6 +58,7 @@ func (t *readFramebuffer) Depth(id api.CmdID, res replay.Result) {
 		s := out.State()
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), api.FramebufferAttachment_Depth)
 		if err != nil {
+			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
@@ -74,12 +75,12 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
 		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), attachment)
 		if err != nil {
-			log.W(ctx, "Failed to read framebuffer after atom %v: %v", id, err)
+			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 		if fmt == 0 {
-			log.W(ctx, "Failed to read framebuffer after atom %v: no image format", id)
+			log.W(ctx, "Failed to read framebuffer after cmd %v: no image format", id)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}

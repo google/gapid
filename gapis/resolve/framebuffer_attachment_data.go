@@ -38,6 +38,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 
 	api := after.API()
 	if api == nil {
+		log.W(ctx, "No API!")
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
