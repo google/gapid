@@ -950,6 +950,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlBindFramebuffer:
+			if cmd.Framebuffer != 0 && !c.Objects.GeneratedNames.Framebuffers[cmd.Framebuffer] {
+				// glGenFramebuffers() was not used to generate the buffer. Legal in GLES.
+				tmp := s.AllocDataOrPanic(ctx, cmd.Framebuffer)
+				out.MutateAndWrite(ctx, dID, cb.GlGenFramebuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
+			}
+
 			if target.framebufferSrgb == required && contexts[c].framebufferSrgb != required &&
 				c.Pixel.FramebufferSrgb != 0 {
 				// Replay device defaults FRAMEBUFFER_SRGB to disabled and allows

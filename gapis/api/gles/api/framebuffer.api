@@ -457,6 +457,10 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
   for i in (0 .. count) {
     id := f[i]
     if id != 0 {
+      // TODO: This is not really an error according to the spec.
+      //       However, we need to ensure the command is removed,
+      //       or else the invalid ID breaks remapping in replay.
+      if !(id in ctx.Objects.Framebuffers) { glErrorInvalidValue() }
       delete(ctx.Objects.Framebuffers, id)
       delete(ctx.Objects.GeneratedNames.Framebuffers, id)
       if id == ctx.Bound.ReadFramebuffer.ID {
