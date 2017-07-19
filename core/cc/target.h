@@ -71,7 +71,12 @@
 #   define _ALLOW_KEYWORD_MACROS 1
 #   define LIKELY(expr) expr
 #   define UNLIKELY(expr) expr
-#else
+#if !defined(__GNUC__)
+    // MSVC itself does not have ssize_t, although
+    // msys mingw does.
+    typedef long long ssize_t;
+#endif //!defined(__GNUC__)
+#else // _MSC_VER
 #   define LIKELY(expr) __builtin_expect(expr, true)
 #   define UNLIKELY(expr) __builtin_expect(expr, false)
 #endif // _MSC_VER

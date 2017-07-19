@@ -19,7 +19,7 @@
 #include "core/cc/target.h"
 
 #if (defined(__x86_64) || defined(__i386)) && (TARGET_OS != GAPID_OS_ANDROID)
-
+#if !defined(_MSC_VER) || defined(__GNUC__)
 #include <cpuid.h>
 
 namespace query {
@@ -55,5 +55,25 @@ device::Architecture cpuArchitecture() {
 }
 
 }  // namespace query
+#else // !defined(_MSC_VER) || defined(__GNUC__)
+// If we are using MSVC (rather than MSYS) we cannot use __get_cpuid
+namespace query {
 
-#endif  // (defined(__x86_64) || defined(__i386)) && (TARGET_OS != GAPID_OS_ANDROID)
+const char* cpuName() {
+    return "<unknown>";
+}
+
+const char* cpuVendor() {
+    return "<unknown>";
+}
+
+device::Architecture cpuArchitecture() {
+#ifdef _WIN64
+    return device::X86_64;
+#elif defined _WIN32
+    return device::X86;
+#endif
+}
+}
+#endif
+#endif

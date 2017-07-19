@@ -20,6 +20,10 @@
 
 #ifdef _MSC_VER // MSVC
 #   include <io.h>
+#ifndef __GNUC__
+// MSYS GCC allows fileno, MSVC itself does not.
+#define fileno _fileno
+#endif
 #else // not MSVC
 #   include <unistd.h>
 #endif
