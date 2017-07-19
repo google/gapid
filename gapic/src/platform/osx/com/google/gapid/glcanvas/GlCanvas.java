@@ -35,7 +35,7 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Listener;
 
-public class GlCanvas extends Canvas {
+public abstract class GlCanvas extends Canvas {
   private static final String GLCONTEXT_KEY = "org.eclipse.swt.internal.cocoa.glcontext";
 
   private static final int NSOpenGLPFAOpenGLProfile = 99;
@@ -113,6 +113,5 @@ public class GlCanvas extends Canvas {
     context.flushBuffer();
   }
 
-  /** Override to perform GL cleanup handling. */
-  protected void terminate() {}
+  protected abstract void terminate();
 }

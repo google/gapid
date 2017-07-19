@@ -20,6 +20,7 @@ import com.google.gapid.glviewer.Constants;
 import com.google.gapid.glviewer.ShaderSource;
 import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.glviewer.vec.VecD;
+
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.internal.DPIUtil;
 import org.lwjgl.opengl.GL11;
@@ -99,7 +100,7 @@ public final class Renderer {
   }
 
   /**
-   * Constructs and returns a new {@link VertexBuffer} filled with {@param data}.
+   * Constructs and returns a new {@link VertexBuffer} filled with the given data.
    * The returned {@link VertexBuffer} must only be used with this {@link Renderer}.
    *
    * @param data the vertex data.
@@ -110,7 +111,7 @@ public final class Renderer {
   }
 
   /**
-   * Constructs and returns a new {@link IndexBuffer} filled with {@param data}.
+   * Constructs and returns a new {@link IndexBuffer} filled with the given data.
    * The returned {@link IndexBuffer} must only be used with this {@link Renderer}.
    *
    * @param data the index data.
@@ -128,7 +129,7 @@ public final class Renderer {
   }
 
   /**
-   * Loads a new {@link Shader} with the shader source file {@param name}.
+   * Loads a new {@link Shader} from the shader resource of the given name.
    * The returned {@link Shader} must only be used with this {@link Renderer}.
    */
   public Shader loadShader(String name) {
@@ -140,27 +141,30 @@ public final class Renderer {
     return shader;
   }
 
-  /** Clears the viewport with the solid color {@param c} */
-  public void clear(Color c) {
+  /** Clears the viewport with the given solid color */
+  public static void clear(Color c) {
     GL11.glClearColor(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, 1f);
     GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
   }
 
-  /** draws primitives using the vertex data bound to {@param shader}. */
-  public void draw(Shader shader, int primitive, int vertexCount) {
+  /** Draws primitives using the vertex data bound to the given shader. */
+  public static void draw(Shader shader, int primitive, int vertexCount) {
     shader.bind();
     GL11.glDrawArrays(primitive, 0, vertexCount);
   }
 
-  /** draws primitives using the vertex data bound to {@param shader} indexed from {@param indices}. */
-  public void draw(Shader shader, int primitive, IndexBuffer indices) {
+  /**
+   * Draws primitives using the vertex data bound to the given shader, indexed from the
+   * given index buffer.
+   */
+  public static void draw(Shader shader, int primitive, IndexBuffer indices) {
     shader.bind();
     indices.bind();
     GL11.glDrawElements(primitive, indices.count, indices.type, 0);
   }
 
   /**
-   * draws a normalized (-1 to 1) 2D quad transformed by {@param transform} with {@param shader}.
+   * Draws a normalized (-1 to 1) 2D quad transformed by the given transform with the given shader.
    * The shader is expected to use a {@code uniform mat4 uTransform} for transforming the positions
    * passed in the {@link Constants#POSITION_ATTRIBUTE}.
    */
@@ -172,7 +176,7 @@ public final class Renderer {
   }
 
   /**
-   * draws a 2D quad using the device-independent coordinates with {@param shader}.
+   * Draws a 2D quad using the device-independent coordinates with the given shader.
    * The shader is expected to use a {@code uniform mat4 uTransform} for transforming the positions
    * passed in the {@link Constants#POSITION_ATTRIBUTE}.
    */
@@ -205,8 +209,8 @@ public final class Renderer {
   }
 
   /**
-   * draws a normalized (-1 to 1) 2D border transformed by {@param transform} with {@param shader}.
-   * The border is extruded by {@param width} pixels outward.
+   * draws a normalized (-1 to 1) 2D border transformed by the given transform and shader.
+   * The border is extruded by the given width in pixels outward.
    * The shader is expected to use a {@code uniform mat4 uTransform} for transforming the positions
    * passed in the {@link Constants#POSITION_ATTRIBUTE}.
    */

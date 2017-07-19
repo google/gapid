@@ -61,7 +61,7 @@ public class RayCaster {
 
   private VecD binarySearch(VecD start, VecD end) {
     for (int i = 0; i < MAX_BINARY_STEPS; i++) {
-      VecD mid = start.add(end).scale(0.5);
+      VecD mid = start.add(end).multiply(0.5);
       double potential = emitter.getPotentialAt(mid);
       if (Math.abs(potential) < PRECISION) {
         return mid;

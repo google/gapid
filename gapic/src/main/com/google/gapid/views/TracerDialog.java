@@ -304,18 +304,18 @@ public class TracerDialog {
       }
 
       protected abstract void buildTargetSelection(Settings settings, Widgets widgets);
-      protected abstract Api getDefaultApi(Settings settings);
+      protected abstract Tracer.Api getDefaultApi(Settings settings);
 
-      private static ComboViewer createApiDropDown(Composite parent, Api selection) {
+      private static ComboViewer createApiDropDown(Composite parent, Tracer.Api selection) {
         ComboViewer combo = createDropDownViewer(parent);
         combo.setContentProvider(ArrayContentProvider.getInstance());
         combo.setLabelProvider(new LabelProvider() {
           @Override
           public String getText(Object element) {
-            return ((Api)element).displayName;
+            return ((Tracer.Api)element).displayName;
           }
         });
-        for (Api api : Api.values()) {
+        for (Tracer.Api api : Tracer.Api.values()) {
           combo.add(api);
         }
         combo.setSelection(new StructuredSelection(selection));
@@ -333,21 +333,21 @@ public class TracerDialog {
       }
 
       public TraceRequest getTraceRequest(Settings settings) {
-        settings.traceApi = getSelectedApi().getName();
+        settings.traceApi = getSelectedApi().name();
         settings.traceOutDir = directory.getText();
         settings.traceOutFile = file.getText();
         settings.traceFrameCount = frameCount.getSelection();
         settings.traceMidExecution = !fromBeginning.getSelection();
 
-        return getTraceRequest(settings, getSelectedApi().getName(), getOutputFile(),
+        return getTraceRequest(settings, getSelectedApi(), getOutputFile(),
             frameCount.getSelection(), !fromBeginning.getSelection());
       }
 
       protected abstract TraceRequest getTraceRequest(
-          Settings settings, String traceApi, File output, int frames, boolean midExecution);
+          Settings settings, Tracer.Api traceApi, File output, int frames, boolean midExecution);
 
-      protected Api getSelectedApi() {
-        return (Api)api.getStructuredSelection().getFirstElement();
+      protected Tracer.Api getSelectedApi() {
+        return (Tracer.Api)api.getStructuredSelection().getFirstElement();
       }
 
       private File getOutputFile() {
@@ -426,7 +426,7 @@ public class TracerDialog {
         });
 
         Listener apiListener = e -> {
-          if (getSelectedApi() == Api.Vulkan) {
+          if (getSelectedApi() == Tracer.Api.Vulkan) {
             fromBeginning.setEnabled(true);
           } else {
             fromBeginning.setEnabled(false);
@@ -468,9 +468,9 @@ public class TracerDialog {
       }
 
       @Override
-      protected Api getDefaultApi(Settings settings) {
-        Api result = Api.parse(settings.traceApi);
-        return (result == null) ? Api.GLES : result;
+      protected Tracer.Api getDefaultApi(Settings settings) {
+        Tracer.Api result = Tracer.Api.parse(settings.traceApi);
+        return (result == null) ? Tracer.Api.GLES : result;
       }
 
       private static ComboViewer createDeviceDropDown(Composite parent) {
@@ -533,7 +533,7 @@ public class TracerDialog {
       }
 
       @Override
-      protected TraceRequest getTraceRequest(Settings settings, String traceApi, File output,
+      protected TraceRequest getTraceRequest(Settings settings, Tracer.Api traceApi, File output,
           int frames, boolean midExecution) {
         String target = traceTarget.getText();
         int actionSep = target.indexOf(":");
@@ -636,8 +636,8 @@ public class TracerDialog {
       }
 
       @Override
-      protected Api getDefaultApi(Settings settings) {
-        return Api.Vulkan;
+      protected Tracer.Api getDefaultApi(Settings settings) {
+        return Tracer.Api.Vulkan;
       }
 
       @Override
@@ -653,7 +653,7 @@ public class TracerDialog {
       }
 
       @Override
-      protected TraceRequest getTraceRequest(Settings settings, String traceApi, File output,
+      protected TraceRequest getTraceRequest(Settings settings, Tracer.Api traceApi, File output,
           int frames, boolean midExecution) {
         settings.traceExecutable = executable.getText();
         settings.traceArgs = arguments.getText();
@@ -664,30 +664,6 @@ public class TracerDialog {
             cwd.getText().isEmpty() ? null : new File(cwd.getText()), output, frames,
             midExecution);
       }
-    }
-  }
-
-  private enum Api {
-    GLES("OpenGL ES"),
-    Vulkan("Vulkan");
-
-    private final String displayName;
-
-    Api(String displayName) {
-      this.displayName = displayName;
-    }
-
-    static Api parse(String name) {
-      for (Api api : Api.values()) {
-        if (api.getName().equals(name)) {
-          return api;
-        }
-      }
-      return null;
-    }
-
-    String getName() {
-      return toString().toLowerCase();
     }
   }
 

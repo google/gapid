@@ -103,8 +103,8 @@ public class IsoSurfaceCameraModel implements CameraModel {
       return false;
     }
 
-    VecD right = direction.cross(up).normalize().scale(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
-    up = up.scale(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
+    VecD right = direction.cross(up).normalize().multiply(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
+    up = up.multiply(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
 
     // Generate the samples to compute the normal.
     VecD[] grid = new VecD[SMOOTHNESS_GRID_SIZE * SMOOTHNESS_GRID_SIZE];
@@ -112,7 +112,7 @@ public class IsoSurfaceCameraModel implements CameraModel {
     for (int y = -size, index = 0; y <= size; y++) {
       for (int x = -size; x <= size; x++, index++) {
         grid[index] = pos.addScaled(up, y).addScaled(right, x);
-        VecD dir = grid[index].scale(-1).normalize();
+        VecD dir = grid[index].multiply(-1).normalize();
         if ((grid[index] = rayCaster.getIntersection(grid[index], dir)) == null) {
           return false;
         }
@@ -139,8 +139,8 @@ public class IsoSurfaceCameraModel implements CameraModel {
 
     // Interpolate the isosurface position & direction with the base's based on the zoom amount.
     double zoom = getZoom();
-    normal = normal.scale(-1).lerp(direction, zoom);
-    pos = pos.lerp(direction.scale(-MAX_DISTANCE), zoom);
+    normal = normal.multiply(-1).lerp(direction, zoom);
+    pos = pos.lerp(direction.multiply(-MAX_DISTANCE), zoom);
     viewTransform = MatD.lookAt(pos, pos.add(normal), up);
     return true;
   }
@@ -151,7 +151,7 @@ public class IsoSurfaceCameraModel implements CameraModel {
    * smooth for smooth camera movement).
    */
   private VecD getFirstIntersectionWithHint(VecD direction) {
-    VecD pos = direction.scale(-lastDistance);
+    VecD pos = direction.multiply(-lastDistance);
     VecD result = rayCaster.getIntersection(pos, direction);
     if (result != null) {
       lastDistance = result.magnitude();

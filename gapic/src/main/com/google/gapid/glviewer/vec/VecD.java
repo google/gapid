@@ -95,8 +95,8 @@ public class VecD {
     return new VecD(x + v, y + v, z + v);
   }
 
-  public VecD add(double x, double y, double z) {
-    return new VecD(this.x + x, this.y + y, this.z + z);
+  public VecD add(double dx, double dy, double dz) {
+    return new VecD(x + dx, y + dy, z + dz);
   }
 
   public VecD addScaled(VecD v, double s) {
@@ -111,20 +111,20 @@ public class VecD {
     return new VecD(x - v, y - v, z - v);
   }
 
-  public VecD subtract(double x, double y, double z) {
-    return new VecD(this.x - x, this.y - y, this.z - z);
+  public VecD subtract(double dx, double dy, double dz) {
+    return new VecD(x - dx, y - dy, z - dz);
   }
 
   public VecD multiply(VecD v) {
     return new VecD(x * v.x, y * v.y, z * v.z);
   }
 
-  public VecD multiply(double x, double y, double z) {
-    return new VecD(this.x * x, this.y * y, this.z * z);
+  public VecD multiply(double v) {
+    return new VecD(x * v, y * v, z * v);
   }
 
-  public VecD scale(double v) {
-    return new VecD(x * v, y * v, z * v);
+  public VecD multiply(double sx, double sy, double sz) {
+    return new VecD(x * sx, y * sy, z * sz);
   }
 
   public VecD divide(VecD v) {
@@ -135,8 +135,8 @@ public class VecD {
     return new VecD(x / v, y / v, z / v);
   }
 
-  public VecD divide(double x, double y, double z) {
-    return new VecD(this.x / x, this.y / y, this.z / z);
+  public VecD divide(double sx, double sy, double sz) {
+    return new VecD(x / sx, y / sy, z / sz);
   }
 
   /**

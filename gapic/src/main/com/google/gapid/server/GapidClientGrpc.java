@@ -21,8 +21,8 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
-
 import com.google.gapid.proto.service.Service.PingRequest;
+
 import java.util.function.Consumer;
 
 import io.grpc.stub.StreamObserver;

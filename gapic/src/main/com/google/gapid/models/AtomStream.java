@@ -277,7 +277,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     }
 
     /**
-     * Same as {@link forCommand}, except that group selection is to be preferred when
+     * Same as {@link #forCommand}, except that group selection is to be preferred when
      * resolving to a tree node.
      */
     public static AtomIndex forGroup(Path.Command command) {

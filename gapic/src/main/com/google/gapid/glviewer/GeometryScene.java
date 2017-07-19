@@ -21,7 +21,6 @@ import com.google.gapid.glviewer.Geometry.DisplayMode;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
-import com.google.gapid.proto.service.api.API.Cubemap;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.ScenePanel;
 
@@ -72,12 +71,12 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
       return new Data(geometry, displayMode, shading, winding, culling.toggle());
     }
 
-    public Data withShading(Shading shading) {
-      return new Data(geometry, displayMode, shading, winding, culling);
+    public Data withShading(Shading newShading) {
+      return new Data(geometry, displayMode, newShading, winding, culling);
     }
 
-    public Data withGeometry(Geometry geometry, DisplayMode displayMode) {
-      return new Data(geometry, displayMode, shading, winding, culling);
+    public Data withGeometry(Geometry newGeometry, DisplayMode newDisplayMode) {
+      return new Data(newGeometry, newDisplayMode, shading, winding, culling);
     }
   }
 
@@ -93,7 +92,7 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
   }
 
   // TODO: This is wrong - the camera state is mutated outside of the renderer / scene systems.
-  public void bindCamera(ScenePanel canvas) {
+  public void bindCamera(ScenePanel<?> canvas) {
     MouseHandler handler = new MouseHandler(camera, canvas);
     canvas.addMouseListener(handler);
     canvas.addMouseMoveListener(handler);
@@ -124,12 +123,12 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
   }
 
   @Override
-  public void update(Renderer renderer, Data data) {
-    this.data = data;
+  public void update(Renderer renderer, Data newData) {
+    data = newData;
     if (renderable != null) {
       renderable.dispose(renderer);
     }
-    renderable = data.geometry.asRenderable(data.displayMode);
+    renderable = newData.geometry.asRenderable(newData.displayMode);
     renderable.init(renderer);
   }
 
@@ -259,10 +258,10 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
 
   private static class MouseHandler extends MouseAdapter {
     private final CameraModel camera;
-    private final ScenePanel canvas;
+    private final ScenePanel<?> canvas;
     private int lastX, lastY;
 
-    public MouseHandler(CameraModel camera, ScenePanel canvas) {
+    public MouseHandler(CameraModel camera, ScenePanel<?> canvas) {
       this.camera = camera;
       this.canvas = canvas;
     }

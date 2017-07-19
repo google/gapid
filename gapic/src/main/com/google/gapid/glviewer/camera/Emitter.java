@@ -57,7 +57,7 @@ public interface Emitter {
     private final double offset;
 
     public BoxEmitter(VecD min, VecD max, double radiusSquared, double offset) {
-      this.size = max.subtract(min).scale(0.5);
+      this.size = max.subtract(min).multiply(0.5);
       this.center = min.add(size);
       this.radiusSquared = radiusSquared;
       this.offset = offset;
@@ -67,7 +67,7 @@ public interface Emitter {
       VecD min = VecD.fromArray(bbox.min), max = VecD.fromArray(bbox.max);
 
       VecD size = max.subtract(min);
-      VecD delta = size.subtract(size.subtract(2 * RADIUS).max(MIN_SIZE)).scale(0.5);
+      VecD delta = size.subtract(size.subtract(2 * RADIUS).max(MIN_SIZE)).multiply(0.5);
       min = min.add(delta);
       max = max.subtract(delta);
       return new BoxEmitter(min, max, RADIUS * RADIUS, Math.max(size.x, Math.max(size.y, size.z)));
