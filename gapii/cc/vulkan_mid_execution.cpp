@@ -1502,8 +1502,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           dynamic_state.mpDynamicStates = dynamic_states.data();
           create_info.mpDynamicState = &dynamic_state;
         }
+        // The pipeline cache is allowed to be VK_NULL_HANDLE.
         RecreateGraphicsPipeline(observer, pipeline.mDevice,
-                                 pipeline.mPipelineCache->mVulkanHandle,
+                                 pipeline.mPipelineCache? pipeline.mPipelineCache->mVulkanHandle: 0,
                                  &create_info, &pipeline.mVulkanHandle);
       }
     }
@@ -1577,14 +1578,6 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 write_template.mdstBinding = i;
                 write_template.mdescriptorCount = 1;
                 write_template.mdescriptorType = binding.mBindingType;
-
-                writes.push_back({});
-                writes.back().msType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes.back().mdstSet = descriptorSet.second->mVulkanHandle;
-                writes.back().mdstBinding = i;
-                writes.back().mdstArrayElement = 0;
-                writes.back().mdescriptorCount = 0;
-                writes.back().mdescriptorType = binding.mBindingType;
 
                 switch(binding.mBindingType) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER:

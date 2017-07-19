@@ -32,7 +32,7 @@ const size_t MEMORY_MERGE_THRESHOLD = 256;
 const size_t SCRATCH_BUFFER_SIZE = 512*1024;
 
 // Maximum size of the CallObserver's extras list.
-const size_t MAX_EXTRAS = 16;
+const size_t MAX_EXTRAS = 64;
 
 // Buffer creating function for scratch allocator.
 std::tuple<uint8_t*, size_t> createBuffer(size_t request_size,

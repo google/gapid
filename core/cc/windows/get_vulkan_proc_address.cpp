@@ -50,13 +50,13 @@ void* getVulkanInstanceProcAddress(size_t instance, const char *name, bool bypas
 
     if (VPAPROC vpa = reinterpret_cast<VPAPROC>(dylib.lookup("vkGetInstanceProcAddr"))) {
         if (void* proc = vpa(instance, name)) {
-            GAPID_INFO("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetInstanceProcAddr)",
+            GAPID_DEBUG("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetInstanceProcAddr)",
                 instance, name, bypassLocal, proc, (bypassLocal ? "system" : "local"));
             return proc;
         }
     }
 
-    GAPID_INFO("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> not found", instance, name, bypassLocal);
+    GAPID_DEBUG("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> not found", instance, name, bypassLocal);
     return nullptr;
 }
 
@@ -66,13 +66,13 @@ void* getVulkanDeviceProcAddress(size_t instance, size_t device, const char *nam
     if (auto vpa = reinterpret_cast<VPAPROC>(
         getVulkanInstanceProcAddress(instance, "vkGetDeviceProcAddr", bypassLocal))) {
         if (void* proc = vpa(device, name)) {
-            GAPID_INFO("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetDeviceProcAddr)",
+            GAPID_DEBUG("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetDeviceProcAddr)",
                 instance, device, name, bypassLocal, proc, (bypassLocal ? "system" : "local"));
             return proc;
         }
     }
 
-    GAPID_INFO("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> not found", instance, device, name, bypassLocal);
+    GAPID_DEBUG("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> not found", instance, device, name, bypassLocal);
     return nullptr;
 }
 
