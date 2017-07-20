@@ -49,35 +49,21 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
         return false;
     }
 
-    const int kMinSupportedVersion = 2;
-    const int kMaxSupportedVersion = 5;
+    const int kMinSupportedVersion = 1;
+    const int kMaxSupportedVersion = 1;
 
     if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
         GAPID_WARNING("Unsupported ConnectionHeader version %d. Only understand [%d to %d].",
                 mVersion, kMinSupportedVersion, kMaxSupportedVersion);
         return false;
     }
-    if (mVersion >= 2) {
-        if (!reader->read(mObserveFrameFrequency) ||
-            !reader->read(mObserveDrawFrequency)) {
-            return false;
-        }
-    }
-    if (mVersion >= 4) {
-        if (!reader->read(mStartFrame) ||
-            !reader->read(mNumFrames)) {
-            return false;
-        }
-    }
-    if (mVersion >= 5) {
-        if (!reader->read(mAPIs)) {
-            return false;
-        }
-    }
-    if (mVersion >= 3) {
-        if (!reader->read(mFlags)) {
-            return false;
-        }
+    if (!reader->read(mObserveFrameFrequency) ||
+        !reader->read(mObserveDrawFrequency) ||
+        !reader->read(mStartFrame) ||
+        !reader->read(mNumFrames) ||
+        !reader->read(mAPIs) ||
+        !reader->read(mFlags)) {
+        return false;
     }
 
     // Insert new version handling here. Don't forget to bump kMaxSupportedVersion!

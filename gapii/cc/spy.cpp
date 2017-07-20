@@ -51,6 +51,7 @@ extern "C"
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
     gJavaVM = vm;
+    gapii::Spy::get(); // Construct the spy.
     return JNI_VERSION_1_6;
 }
 void* queryPlatformData() {
