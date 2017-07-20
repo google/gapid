@@ -72,6 +72,7 @@ func (Functions) GoPublicName(obj interface{}) string {
 	return nameOptions{
 		TitleFirst:        true,
 		UnderscoreToTitle: true,
+		PreserveSpecial:   true,
 		Remap:             goKeywords,
 	}.convert(nameOf(obj))
 }
@@ -81,6 +82,7 @@ func (Functions) GoPrivateName(obj interface{}) string {
 	return nameOptions{
 		UntitleFirst:      true,
 		UnderscoreToTitle: true,
+		PreserveSpecial:   true,
 		Remap:             goKeywords,
 	}.convert(nameOf(obj))
 }

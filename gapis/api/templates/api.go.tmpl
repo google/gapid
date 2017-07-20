@@ -122,26 +122,27 @@
   {{else if IsSlice    $u}}{{Template "Slice"   $}}
   {{else if IsVoid     $u}}
   {{else}}
+    {{$name := Macro "Go.Type" $}}
     {{$to := Macro "Go.Type" $.To}}
-    type {{$.Name}} {{$to}}
+    type {{$name}} {{$to}}
     {{if IsSize $u}}
-      // Dummy function to make {{$.Name}} implement SizeTy interface
-      func ({{$.Name}}) IsMemorySize() {}
+      // Dummy function to make {{$name}} implement SizeTy interface
+      func ({{$name}}) IsMemorySize() {}
     {{end}}
     {{if IsChar $u}}
-      // Dummy function to make {{$.Name}} implement CharTy interface
-      func ({{$.Name}}) IsChar() {}
+      // Dummy function to make {{$name}} implement CharTy interface
+      func ({{$name}}) IsChar() {}
     {{end}}
     {{if IsInt $u}}
-      // Dummy function to make {{$.Name}} implement IntTy interface
-      func ({{$.Name}}) IsInt() {}
+      // Dummy function to make {{$name}} implement IntTy interface
+      func ({{$name}}) IsInt() {}
     {{end}}
     {{if IsUint $u}}
-      // Dummy function to make {{$.Name}} implement UintTy interface
-      func ({{$.Name}}) IsUint() {}
+      // Dummy function to make {{$name}} implement UintTy interface
+      func ({{$name}}) IsUint() {}
     {{end}}
-    func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
-      return {{$.Name}}({{Template "Go.Decode" $u}})
+    func Decode{{$name}}(d *ϟmem.Decoder) {{$name}} {
+      return {{$name}}({{Template "Go.Decode" $u}})
     }
   {{end}}
 
@@ -345,8 +346,9 @@
 {{define "ReadStructFieldsWithRemapping"}}
   {{AssertType $ "Class"}}
   {{range $f := $.Fields}}
+    {{$name := $f.Name | GoPublicName}}
     {{if IsPointer ($f.Type | Underlying)}}
-      { // {{$.Name}}.{{$f.Name}}
+      { // {{$.Name}}.{{$name}}
         d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
         addr := value.ObservedPointer(s.base + d.Offset())
         ϟb.Push({{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs))
@@ -367,7 +369,7 @@
           }
         }
       {{else}}
-        {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$f.Name}}
+        {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$name}}
       {{end}}
     {{end}}
   {{end}}
@@ -893,54 +895,35 @@
 */}}
 {{define "Class"}}
   {{AssertType $ "Class"}}
-  {{template "Go.CommentHeader" print "class " $.Name }}
-  {{if GetAnnotation $ "Interface"}}
-    type {{$.Name}} interface {
-      {{Template "ClassInterface" $}}
-    }
-  {{else}}
-    type {{$.Name}} struct {
-      {{Template "ClassFields" $}}
-      {{/* TODO: Remove this once closure support is in the API language */}}
-      {{if (eq $.Name "CommandBufferObject")}}
-        Commands CommandBufferCommands `nobox:"true"`
-      {{end}}
-      {{if (eq $.Name "QueueObject")}}
-        PendingCommands CommandBufferCommands `nobox:"true"`
-      {{end}}
-      {{if (eq $.Name "RecreateCmdUpdateBufferData")}}
-        Data      []uint8 `nobox:"true"`
-      {{end}}
-    }
+  {{$name := $.Name | GoPublicName}}
+  {{template "Go.CommentHeader" print "class " $name}}
 
-    {{if GetAnnotation $ "resource"}}
-      // OnCreate should be called immediately after the {{$.Name}} resource is created.
-      func (c *{{$.Name}}) OnCreate(ϟs *api.State) *{{$.Name}} {
-        if f := ϟs.OnResourceCreated; c.IsResource() && f != nil { f(c) }
-        return c
-      }
-
-      // OnAccess should be called each time the {{$.Name}} resource is used.
-      func (c *{{$.Name}}) OnAccess(ϟs *api.State) *{{$.Name}} {
-        if f := ϟs.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
-        return c
-      }
+  type {{$name}} struct {
+    {{Template "ClassFields" $}}
+    {{/* TODO: Remove this once closure support is in the API language */}}
+    {{if (eq $.Name "CommandBufferObject")}}
+      Commands CommandBufferCommands `nobox:"true"`
     {{end}}
-  {{end}}
-{{end}}
+    {{if (eq $.Name "QueueObject")}}
+      PendingCommands CommandBufferCommands `nobox:"true"`
+    {{end}}
+    {{if (eq $.Name "RecreateCmdUpdateBufferData")}}
+      Data []uint8 `nobox:"true"`
+    {{end}}
+  }
 
+  {{if GetAnnotation $ "resource"}}
+    // OnCreate should be called immediately after the {{$name}} resource is created.
+    func (c *{{$name}}) OnCreate(ϟs *api.State) *{{$name}} {
+      if f := ϟs.OnResourceCreated; c.IsResource() && f != nil { f(c) }
+      return c
+    }
 
-{{/*
--------------------------------------------------------------------------------
-  Emits an interface declaration for the specified @interface class.
--------------------------------------------------------------------------------
-*/}}
-{{define "ClassInterface"}}
-  {{AssertType $ "Class"}}
-  {{range $v := $.Fields}}
-    {{$type := TypeOf $v}}
-    Get{{Title $v.Name}}() {{Template "Go.Type" $type}}
-    Set{{Title $v.Name}}({{Template "Go.Type" $type}})
+    // OnAccess should be called each time the {{$name}} resource is used.
+    func (c *{{$name}}) OnAccess(ϟs *api.State) *{{$name}} {
+      if f := ϟs.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
+      return c
+    }
   {{end}}
 {{end}}
 
@@ -953,8 +936,9 @@
 {{define "ClassFields"}}
   {{AssertType $ "Class"}}
   {{range $v := $.Fields}}
+    {{$name := $v.Name | GoPublicName}}
     {{$cs := ConstantSetIndex $v}}
-    {{Title $v.Name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}{{if GetAnnotation $v "hidden"}}`nobox:"true"`{{end}}
+    {{$name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}{{if GetAnnotation $v "hidden"}}`nobox:"true"`{{end}}
   {{end}}
 {{end}}
 
@@ -971,23 +955,6 @@
   {{else if IsEnumEntry    $}}{{$.Owner.Name}}_{{$.Name}}
   {{else if IsCast         $}}{{Template "Default" $.Object}}
   {{else}}{{Error "macro Default called with unsupported type: %T" $}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the implementation code for the specified class.
--------------------------------------------------------------------------------
-*/}}
-{{define "ClassImpl"}}
-  {{AssertType $.Class "Class"}}
-  {{AssertType $.Impl "string"}}
-  {{range $v := $.Class.Fields}}
-    {{$type := TypeOf $v}}
-    {{$FType := Macro "Go.Type" $type}}
-    func (i *{{$.Impl}}) Get{{$v.Name}}() {{$FType}} { return i.{{$v.Name}} }
-    func (i *{{$.Impl}}) Set{{$v.Name}}(v {{$FType}}) { i.{{$v.Name}} = v }
   {{end}}
 {{end}}
 
@@ -1090,7 +1057,7 @@
   func (g *State) Init() {
     {{range $g := $.Globals}}
       {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
-        g.{{$g.Name}} = {{$init}}
+        g.{{$g.Name | GoPublicName}} = {{$init}}
       {{end}}
     {{end}}
   }

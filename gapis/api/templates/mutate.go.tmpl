@@ -239,7 +239,7 @@
   {{$u := $ | TypeOf | Underlying}}
   {{if IsNumericType $u}}
     {{if not (GetAnnotation $ "replay_custom_value")}}
-      func (c {{$.Name}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Value {
+      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Value {
         {{if IsSize $.To}}
           if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
@@ -291,21 +291,25 @@
   {{$synthetics := $.Functions | WithAnnotation    "synthetic"}}
 
   {{range $i, $f := $functions}}
-    var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
-      ApiIndex:   {{$.Index}},§
-      ID:         {{$i}},§
-      ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
-      Parameters: {{len $f.CallParameters}},§
-    }
+    {{if not (GetAnnotation $f "no_replay")}}
+      var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
+        ApiIndex:   {{$.Index}},§
+        ID:         {{$i}},§
+        ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
+        Parameters: {{len $f.CallParameters}},§
+      }
+    {{end}}
   {{end}}
   {{range $i, $f := $synthetics}}
-    var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
-      ApiIndex:   {{$.Index}},§
-      {{/* 0xff81..0xffff reserved for synthetic functions */}}
-      ID:         0x10000 - {{len $synthetics}} + {{$i}},§
-      ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
-      Parameters: {{len $f.CallParameters}},§
-    }
+    {{if not (GetAnnotation $f "no_replay")}}
+      var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
+        ApiIndex:   {{$.Index}},§
+        {{/* 0xff81..0xffff reserved for synthetic functions */}}
+        ID:         0x10000 - {{len $synthetics}} + {{$i}},§
+        ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
+        Parameters: {{len $f.CallParameters}},§
+      }
+    {{end}}
   {{end}}
 {{end}}
 
