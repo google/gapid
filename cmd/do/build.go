@@ -62,8 +62,8 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 		"-DCMAKE_MAKE_PROGRAM=" + cfg.NinjaPath.Slash(),
 		"-DCMAKE_BUILD_TYPE=" + strings.Title(cfg.Flavor.String()),
 		"-DINSTALL_PREFIX=" + cfg.pkg().Slash(),
+		"-DCMAKE_Go_COMPILER=" + goExePath.Slash(),
 	}
-	args = append(args, "-DCMAKE_Go_COMPILER="+goExePath.Slash())
 	if !cfg.AndroidNDKRoot.IsEmpty() {
 		args = append(args, "-DANDROID_NDK_ROOT="+cfg.AndroidNDKRoot.Slash())
 	}
