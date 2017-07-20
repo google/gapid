@@ -19,15 +19,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the fully qualified name (prefixed with the package) of the specified
-  type or variable.
--------------------------------------------------------------------------------
-*/}}
-{{define "Go.QualifiedName"}}{{Global "module"}}{{$.Name}}{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the go type for the provided AST type or expression.
 -------------------------------------------------------------------------------
 */}}
@@ -35,13 +26,13 @@
 
   {{if not (IsType $)}}{{Template "Go.Type" (TypeOf $)}}
   {{else if IsAny           $}}interface{}
-  {{else if IsPseudonym     $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsStaticArray   $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsMap           $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsClass         $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsEnum          $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsPointer       $}}{{Template "Go.QualifiedName" $}}
-  {{else if IsSlice         $}}{{Template "Go.QualifiedName" $}}
+  {{else if IsPseudonym     $}}{{$.Name | GoPublicName}}
+  {{else if IsStaticArray   $}}{{$.Name | GoPublicName}}
+  {{else if IsMap           $}}{{$.Name | GoPublicName}}
+  {{else if IsClass         $}}{{$.Name | GoPublicName}}
+  {{else if IsEnum          $}}{{$.Name | GoPublicName}}
+  {{else if IsPointer       $}}{{$.Name | GoPublicName}}
+  {{else if IsSlice         $}}{{$.Name | GoPublicName}}
   {{else if IsReference     $}}(*{{Template "Go.Type" $.To}})
   {{else if IsBool          $}}bool
   {{else if IsInt           $}}ϟmem.Int
@@ -188,7 +179,7 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
-  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{$.Name}}{}), ϟl)
+  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{Template "Go.Type" $}}{}), ϟl)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
@@ -437,12 +428,13 @@
   {{AssertType $ "Class"}}
 
   {{range $f := $.Fields}}
+    {{$name := $f | GoPublicName}}
     {{if IsNil $f.Default}}
       {{if $init := Macro "Go.DefaultInitialValue" $f.Type}}
-        {{$f.Name}}: {{$init}}, §
+        {{$name}}: {{$init}}, §
       {{end}}
     {{else}}
-      {{$f.Name}}: {{Macro "Go.Read" $f.Default}}, §
+      {{$name}}: {{Macro "Go.Read" $f.Default}}, §
     {{end}}
   {{end}}
 {{end}}
@@ -634,12 +626,13 @@
   {{Template "Go.Type" $}}{ §
     {{range $i, $v := $.InitialValues}}
       {{$f := index $.Class.Fields $i}}
+      {{$name := $f.Name | GoPublicName}}
       {{if IsNil $v}}
         {{if $init := Macro "Go.DefaultInitialValue" $f.Type}}
-          {{$f.Name}}: {{$init}}, §
+          {{$name}}: {{$init}}, §
         {{end}}
       {{else}}
-        {{$f.Name}}: {{Template "Go.Read" $v}}, §
+        {{$name}}: {{Template "Go.Read" $v}}, §
       {{end}}
     {{end}}
   }

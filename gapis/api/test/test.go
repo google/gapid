@@ -27,6 +27,6 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 
 func (API) Context(*api.State, uint64) api.Context { return nil }
 
-func (i remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
+func (i Remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
 	return i, true
 }

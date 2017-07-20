@@ -969,7 +969,7 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
 	a := device.Little32
-	rng, id := atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})
+	rng, id := atom.Data(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})
 
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
@@ -1027,7 +1027,7 @@ func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfRemapped(p(0x100000)).
-				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
+				AddWrite(atom.Data(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -1071,7 +1071,7 @@ func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfUnknownRemapped(p(0x100000)).
-				AddWrite(atom.Data(ctx, a, p(0x100000), []remapped{10, 20, 10, 30, 20})),
+				AddWrite(atom.Data(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -1506,9 +1506,9 @@ func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	rRng, rID := atom.Data(ctx, a, p(0x100000), uint32(3))                  // read for all cases
 	awcRng, awcID := atom.Data(ctx, a, p(0x100000), uint32(2))              // write to count for Case 1
 	bwcRng, bwcID := atom.Data(ctx, a, p(0x100000), uint32(3))              // write to count for Case 2
-	bwhRng, bwhID := atom.Data(ctx, a, p(0x200000), []remapped{10, 20, 30}) // write to handles for Case 2
+	bwhRng, bwhID := atom.Data(ctx, a, p(0x200000), []Remapped{10, 20, 30}) // write to handles for Case 2
 	cwcRng, cwcID := atom.Data(ctx, a, p(0x100000), uint32(1))              // write to count for Case 3
-	cwhRng, cwhID := atom.Data(ctx, a, p(0x300000), []remapped{40})         // write to handles for Case 3
+	cwhRng, cwhID := atom.Data(ctx, a, p(0x300000), []Remapped{40})         // write to handles for Case 3
 
 	test{
 		cmds: []api.Cmd{

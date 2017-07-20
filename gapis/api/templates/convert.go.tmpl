@@ -52,7 +52,7 @@
       {{if (GetAnnotation $c "serialize")}}
         {{$proto := $c.Name | ProtoGoName}}
         {{$p := print (Global "Store") "." $proto}}
-        {{$o := $c.Name | GoCommandName}}
+        {{$o := Macro "Go.Type" $c}}
         protoconv.Register(¶
           func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
           func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
@@ -111,7 +111,7 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "ClassEntry"}}
-  {{$name := $.Name | GoCommandName}}
+  {{$name := Macro "Go.Type" $}}
   {{$proto := $.Name | ProtoGoName}}
   ¶
   // ToProto returns the storage form of the {{$name}}.¶
@@ -215,11 +215,11 @@
   {{else if IsU64           $}}uint64
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
-  {{else if IsPointer       $}}{{$.Name}}
-  {{else if IsSlice         $}}{{$.Name}}
-  {{else if IsEnum          $}}{{$.Name}}
-  {{else if IsPseudonym     $}}{{$.Name}}
-  {{else if IsClass         $}}*{{$.Name}}
+  {{else if IsPointer       $}}{{Template "Go.Type" $}}
+  {{else if IsSlice         $}}{{Template "Go.Type" $}}
+  {{else if IsEnum          $}}{{Template "Go.Type" $}}
+  {{else if IsPseudonym     $}}{{Template "Go.Type" $}}
+  {{else if IsClass         $}}*{{Template "Go.Type" $}}
   {{else if IsMap           $}}map[{{Macro "Convert.LiveType" $.KeyType}}]{{Macro "Convert.LiveType" $.ValueType}}
   {{else}}{{Error "macro Convert.LiveType called with unsupported type: %T" $}}
   {{end}}
@@ -251,7 +251,7 @@
   {{else if IsPointer       $}}memory_pb.Pointer
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
-  {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name}}
+  {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
   {{else}}{{Error "macro Convert.StorageType called with unsupported type: %T" $}}
   {{end}}
 {{end}}
@@ -287,7 +287,7 @@
     {{$source := Macro "Convert.StorageType" $.Type}}
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
-    {{if IsClass $truetype}}{{$.Type.Name}}From({{$.Value}})
+    {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}})
     {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶

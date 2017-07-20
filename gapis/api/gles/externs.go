@@ -83,9 +83,9 @@ func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
 	return *limits
 }
 
-func (e externs) IndexLimits(data U8ˢ, indexSize int32) u32Limits {
+func (e externs) IndexLimits(data U8ˢ, indexSize int32) U32Limits {
 	limits := e.calcIndexLimits(data, int(indexSize))
-	return u32Limits{First: limits.First, Count: limits.Count}
+	return U32Limits{First: limits.First, Count: limits.Count}
 }
 
 func (e externs) substr(str string, start, end int32) string {
