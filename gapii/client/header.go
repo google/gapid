@@ -23,19 +23,19 @@ import (
 
 var magic = [4]byte{'s', 'p', 'y', '0'}
 
-const version = 5
+const version = 1
 
 // The GAPII header is defined as:
 //
 // struct ConnectionHeader {
-//   uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
-//   uint32_t mVersion;                      // 2+
-//   uint32_t mObserveFrameFrequency;        // non-zero == enabled. Version: 2+
-//   uint32_t mObserveDrawFrequency;         // non-zero == enabled. Version: 2+
-//   uint32_t mStartFrame;                   // non-zero == Frame to start at. version 4+
-//   uint32_t mNumFrames;                    // non-zero == Number of frames to capture. version 4+
-//   uint32_t mAPIs;                         // Bitset of APIS to enable. version 5+
-//   uint32_t mFlags;                        // Combination of FLAG_XX bits. Version: 3+
+//     uint8_t  mMagic[4];                    // 's', 'p', 'y', '0'
+//     uint32_t mVersion;                     // 1
+//     uint32_t mObserveFrameFrequency;       // non-zero == enabled.
+//     uint32_t mObserveDrawFrequency;        // non-zero == enabled.
+//     uint32_t mStartFrame;                  // non-zero == Frame to start at.
+//     uint32_t mNumFrames;                   // non-zero == Number of frames to capture.
+//     uint32_t mAPIs;                        // Bitset of APIS to enable.
+//     uint32_t mFlags;                       // Combination of FLAG_XX bits.
 // };
 //
 // All fields are encoded little-endian with no compression, regardless of
@@ -54,5 +54,6 @@ func sendHeader(out io.Writer, options Options) error {
 	w.Uint32(options.FramesToCapture)
 	w.Uint32(options.APIs)
 	w.Uint32(uint32(options.Flags))
+
 	return w.Error()
 }

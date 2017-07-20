@@ -101,11 +101,34 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 	}
 
+	ctx, start := verb.inputHandler(ctx, options.Flags&client.DeferStart != 0)
+
 	if verb.Local.Port != 0 {
-		return verb.captureLocal(ctx, flags, verb.Local.Port, options)
+		return verb.captureLocal(ctx, flags, verb.Local.Port, start, options)
 	}
 
-	return verb.captureADB(ctx, flags, options)
+	return verb.captureADB(ctx, flags, start, options)
+}
+
+func (verb *traceVerb) inputHandler(ctx context.Context, deferStart bool) (context.Context, task.Signal) {
+	if verb.For > 0 {
+		return ctx, task.FiredSignal
+	}
+	startSignal, start := task.NewSignal()
+	var cancel task.CancelFunc
+	ctx, cancel = task.WithCancel(ctx)
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		if deferStart {
+			println("Press enter to start capturing...")
+			_, _ = reader.ReadString('\n')
+			start(ctx)
+		}
+		println("Press enter to stop capturing...")
+		_, _ = reader.ReadString('\n')
+		cancel()
+	}()
+	return ctx, startSignal
 }
 
 func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
@@ -138,15 +161,16 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	return func() { cancel(); cleanup() }, nil
 }
 
-func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, options client.Options) error {
+func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options client.Options) error {
 	output := verb.Out
 	if output == "" {
 		output = "capture.gfxtrace"
 	}
-	return doCapture(ctx, options, port, output, verb.For)
+	process := &client.Process{Port: port, Options: options}
+	return doCapture(ctx, process, output, start, verb.For)
 }
 
-func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, options client.Options) error {
+func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start task.Signal, options client.Options) error {
 	d, err := getADBDevice(ctx, verb.Gapii.Device)
 	if err != nil {
 		return err
@@ -265,11 +289,10 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 		defer d.TurnScreenOff(ctx) // Think green!
 	}
 
-	port, cleanup, err := client.StartOrAttach(ctx, pkg, a)
+	process, err := client.StartOrAttach(ctx, pkg, a, options)
 	if err != nil {
 		return err
 	}
-	defer cleanup(ctx)
 
 	ctx, stop := task.WithCancel(ctx)
 	if verb.Record.Inputs {
@@ -286,10 +309,10 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, optio
 		}
 	}
 
-	return doCapture(ctx, options, int(port), output, verb.For)
+	return doCapture(ctx, process, output, start, verb.For)
 }
 
-func doCapture(ctx context.Context, options client.Options, port int, out string, duration time.Duration) error {
+func doCapture(ctx context.Context, process *client.Process, out string, start task.Signal, duration time.Duration) error {
 	log.I(ctx, "Creating file '%v'", out)
 	os.MkdirAll(filepath.Dir(out), 0755)
 	file, err := os.Create(out)
@@ -298,25 +321,11 @@ func doCapture(ctx context.Context, options client.Options, port int, out string
 	}
 	defer file.Close()
 
-	signal, fireSignal := task.NewSignal()
-	if duration == 0 {
-		var cancel task.CancelFunc
-		ctx, cancel = task.WithCancel(ctx)
-		go func() {
-			reader := bufio.NewReader(os.Stdin)
-			if (options.Flags & client.DeferStart) != 0 {
-				println("Press enter to start capturing...")
-				_, _ = reader.ReadString('\n')
-				fireSignal(ctx)
-			}
-			println("Press enter to stop capturing...")
-			_, _ = reader.ReadString('\n')
-			cancel()
-		}()
-	} else {
+	if duration > 0 {
 		ctx, _ = task.WithTimeout(ctx, duration)
 	}
-	_, err = client.Capture(ctx, port, signal, file, options)
+
+	_, err = process.Capture(ctx, start, file)
 	if err != nil {
 		return err
 	}
