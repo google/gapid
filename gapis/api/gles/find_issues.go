@@ -167,7 +167,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 
 	switch cmd := cmd.(type) {
-	case *GlShaderSource:
+	case *GlCompileShader:
 		shader := c.Objects.Shared.Shaders[cmd.Shader]
 		if config.UseGlslang {
 			opts := shadertools.Option{
@@ -203,7 +203,6 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			}
 		}
 
-	case *GlCompileShader:
 		const buflen = 8192
 		tmp := t.state.AllocOrPanic(ctx, buflen)
 
