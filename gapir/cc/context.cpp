@@ -126,6 +126,7 @@ bool Context::interpret() {
 
 void Context::onDebugMessage(int severity, const char* msg) {
     auto label = mInterpreter->getLabel();
+    // Remove tailing new-line from the message (if any)
     std::string tmp;
     if (msg != nullptr) {
       auto len = strlen(msg);
@@ -136,13 +137,13 @@ void Context::onDebugMessage(int severity, const char* msg) {
     }
     switch (severity) {
     case LOG_LEVEL_ERROR:
-        GAPID_ERROR("Renderer (%d): %s", label, msg);
+        GAPID_ERROR("[%d]renderer: %s", label, msg);
         break;
     case LOG_LEVEL_WARNING:
-        GAPID_WARNING("Renderer (%d): %s", label, msg);
+        GAPID_WARNING("[%d]renderer: %s", label, msg);
         break;
     default:
-        GAPID_DEBUG("Renderer (%d): %s", label, msg);
+        GAPID_DEBUG("[%d]renderer: %s", label, msg);
         break;
     }
 }

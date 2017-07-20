@@ -203,16 +203,10 @@ static void DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint i
     auto renderer = reinterpret_cast<const GlesRendererImpl*>(user_param);
     auto listener = renderer->getListener();
     if (listener != nullptr) {
-        switch (severity) {
-            case Gles::GLenum::GL_DEBUG_SEVERITY_HIGH:
-                listener->onDebugMessage(LOG_LEVEL_ERROR, message);
-                break;
-            case Gles::GLenum::GL_DEBUG_SEVERITY_MEDIUM:
-                listener->onDebugMessage(LOG_LEVEL_WARNING, message);
-                break;
-            default:
-                listener->onDebugMessage(LOG_LEVEL_DEBUG, message);
-                break;
+        if (type == Gles::GLenum::GL_DEBUG_TYPE_ERROR || severity == Gles::GLenum::GL_DEBUG_SEVERITY_HIGH) {
+            listener->onDebugMessage(LOG_LEVEL_ERROR, message);
+        } else {
+            listener->onDebugMessage(LOG_LEVEL_DEBUG, message);
         }
     }
 }
