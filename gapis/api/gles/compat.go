@@ -405,9 +405,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlShaderSource:
 			// Apply the state mutation of the unmodified glShaderSource atom.
 			// This is so we can grab the source string from the Shader object.
-			if err := cmd.Mutate(ctx, s, nil /* no builder, just mutate */); err != nil {
-				return
-			}
+			// We will actually provide the source to driver at compile time.
+			cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+			return
+
+		case *GlCompileShader:
 			shader := c.Objects.Shared.Shaders.Get(cmd.Shader)
 			src := ""
 
@@ -419,7 +421,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 				res, err := shadertools.ConvertGlsl(shader.Source, &opts)
 				if err != nil {
-					log.E(ctx, "glShaderSource() compat: %v", err)
+					log.E(ctx, "%v compat: %v", cmd, err)
 					return
 				}
 
@@ -450,13 +452,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 			tmpSrc := s.AllocDataOrPanic(ctx, src)
 			tmpPtrToSrc := s.AllocDataOrPanic(ctx, tmpSrc.Ptr())
-			cmd = cb.GlShaderSource(cmd.Shader, 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
+			srcCmd := cb.GlShaderSource(cmd.Shader, 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
 				AddRead(tmpSrc.Data()).
 				AddRead(tmpPtrToSrc.Data())
-			out.MutateAndWrite(ctx, id, cmd)
+			out.MutateAndWrite(ctx, id, srcCmd)
 			tmpPtrToSrc.Free()
 			tmpSrc.Free()
-			return
 
 		// TODO: glVertexAttribIPointer
 		case *GlVertexAttribPointer:
