@@ -111,6 +111,10 @@ function(_go_package VAR package)
     go_glob(${path})
     add_library(${tag_name} ${gofiles})
     _go_deps()
+    if(Imports)
+      list(SORT Imports)
+      list(REMOVE_DUPLICATES Imports)
+    endif()
     target_link_libraries(${tag_name} ${Imports})
     set_target_properties(${tag_name} PROPERTIES
         SUFFIX ".tag"
