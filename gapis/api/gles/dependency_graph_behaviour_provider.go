@@ -135,37 +135,45 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			for _, stateKey := range getAllUsedTextureData(ctx, cmd, s, c) {
 				b.Read(g, stateKey)
 			}
-			fb := c.Bound.DrawFramebuffer
-			for _, att := range fb.ColorAttachments {
-				b.Modify(g, getAttachmentData(g, c, att))
-			}
-			b.Modify(g, getAttachmentData(g, c, fb.DepthAttachment))
-			b.Modify(g, getAttachmentData(g, c, fb.StencilAttachment))
+			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
+				data, size := att.dataAndSize(g, c)
+				b.Read(g, size)
+				b.Modify(g, data)
+			})
 			// TODO: Write transform feedback buffers.
-		} else {
+		} else if cmd.CmdFlags().IsClear() {
 			switch cmd := cmd.(type) {
+			case *GlClearBufferfi:
+				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+			case *GlClearBufferfv:
+				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+			case *GlClearBufferiv:
+				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+			case *GlClearBufferuiv:
+				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
 			case *GlClear:
-				fb := c.Bound.DrawFramebuffer
 				if (cmd.Mask & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
-					for _, att := range fb.ColorAttachments {
-						b.Read(g, getAttachmentSize(g, c, att))
-						b.Write(g, getAttachmentData(g, c, att))
+					for i, _ := range c.Bound.DrawFramebuffer.ColorAttachments {
+						clearBuffer(g, &b, GLenum_GL_COLOR, i, c)
 					}
 				}
 				if (cmd.Mask & GLbitfield_GL_DEPTH_BUFFER_BIT) != 0 {
-					b.Read(g, getAttachmentSize(g, c, fb.DepthAttachment))
-					b.Write(g, getAttachmentData(g, c, fb.DepthAttachment))
+					clearBuffer(g, &b, GLenum_GL_DEPTH, 0, c)
 				}
 				if (cmd.Mask & GLbitfield_GL_STENCIL_BUFFER_BIT) != 0 {
-					b.Read(g, getAttachmentSize(g, c, fb.StencilAttachment))
-					b.Write(g, getAttachmentData(g, c, fb.StencilAttachment))
+					clearBuffer(g, &b, GLenum_GL_STENCIL, 0, c)
 				}
+			default:
+				log.E(ctx, "Unknown clear command: %v", cmd)
+			}
+		} else {
+			switch cmd := cmd.(type) {
 			case *GlCopyImageSubData:
 				// TODO: This assumes whole-image copy.  Handle sub-range copies.
 				if cmd.SrcTarget == GLenum_GL_RENDERBUFFER {
 					b.Read(g, renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(cmd.SrcName)]})
 				} else {
-					data, size := c.Objects.Shared.Textures[TextureId(cmd.SrcName)].getTextureDataAndSize()
+					data, size := c.Objects.Shared.Textures[TextureId(cmd.SrcName)].dataAndSize()
 					b.Read(g, data)
 					b.Read(g, size)
 				}
@@ -173,7 +181,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					b.Write(g,
 						renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(cmd.DstName)]})
 				} else {
-					data, size := c.Objects.Shared.Textures[TextureId(cmd.DstName)].getTextureDataAndSize()
+					data, size := c.Objects.Shared.Textures[TextureId(cmd.DstName)].dataAndSize()
 					b.Write(g, data)
 					b.Write(g, size)
 				}
@@ -221,6 +229,20 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	return b
 }
 
+func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBehaviour, buffer GLenum, index GLint, c *Context) {
+	var data, size dependencygraph.StateKey
+	switch buffer {
+	case GLenum_GL_COLOR:
+		data, size = c.Bound.DrawFramebuffer.ColorAttachments[index].dataAndSize(g, c)
+	case GLenum_GL_DEPTH:
+		data, size = c.Bound.DrawFramebuffer.DepthAttachment.dataAndSize(g, c)
+	case GLenum_GL_STENCIL:
+		data, size = c.Bound.DrawFramebuffer.StencilAttachment.dataAndSize(g, c)
+	}
+	b.Read(g, size)
+	b.Write(g, data)
+}
+
 func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, s *api.State, c *Context) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
 	if prog := c.Bound.Program; prog != nil {
@@ -256,10 +278,10 @@ func getTextureDataAndSize(ctx context.Context, cmd api.Cmd, s *api.State, unit 
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
-	return tex.getTextureDataAndSize()
+	return tex.dataAndSize()
 }
 
-func (tex *Texture) getTextureDataAndSize() (dependencygraph.StateKey, dependencygraph.StateKey) {
+func (tex *Texture) dataAndSize() (dependencygraph.StateKey, dependencygraph.StateKey) {
 	if tex.EGLImage != nil {
 		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
 	} else {
@@ -267,16 +289,16 @@ func (tex *Texture) getTextureDataAndSize() (dependencygraph.StateKey, dependenc
 	}
 }
 
-func getAttachmentData(g *dependencygraph.DependencyGraph, c *Context, att FramebufferAttachment) (key dependencygraph.StateKey) {
+func (att FramebufferAttachment) dataAndSize(g *dependencygraph.DependencyGraph, c *Context) (dataKey dependencygraph.StateKey, sizeKey dependencygraph.StateKey) {
 	if att.Type == GLenum_GL_RENDERBUFFER {
 		rb := att.Renderbuffer
 		if rb != nil && rb.InternalFormat != GLenum_GL_NONE {
 			scissor := c.Pixel.Scissor
 			fullBox := Rect{Width: rb.Width, Height: rb.Height}
 			if scissor.Test == GLboolean_GL_TRUE && scissor.Box != fullBox {
-				key = renderbufferSubDataKey{rb, scissor.Box}
+				dataKey, sizeKey = renderbufferSubDataKey{rb, scissor.Box}, nil
 			} else {
-				key = renderbufferDataKey{rb}
+				dataKey, sizeKey = renderbufferDataKey{rb}, nil
 			}
 		}
 	}
@@ -284,32 +306,11 @@ func getAttachmentData(g *dependencygraph.DependencyGraph, c *Context, att Frame
 		tex := att.Texture
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
-			if tex.EGLImage != nil {
-				key = eglImageDataKey{tex.EGLImage}
-			} else {
-				key = textureDataKey{tex, tex.ID}
-			}
+			dataKey, sizeKey = tex.dataAndSize()
 		}
 	}
-	if key != nil {
-		g.SetRoot(key)
-	}
-	return
-}
-
-func getAttachmentSize(g *dependencygraph.DependencyGraph, c *Context, att FramebufferAttachment) (key dependencygraph.StateKey) {
-	if att.Type == GLenum_GL_TEXTURE {
-		tex := att.Texture
-		if tex != nil {
-			if tex.EGLImage != nil {
-				key = eglImageSizeKey{tex.EGLImage}
-			} else {
-				key = textureSizeKey{tex, tex.ID}
-			}
-		}
-	}
-	if key != nil {
-		g.SetRoot(key)
+	if dataKey != nil {
+		g.SetRoot(dataKey)
 	}
 	return
 }
