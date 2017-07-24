@@ -16,10 +16,15 @@
 
 package vulkan
 
-import "github.com/google/gapid/gapis/api"
+import (
+	"context"
+
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/replay/builder"
+)
 
 type CommandBufferCommand struct {
-	function         func()
+	function         func(context.Context, api.Cmd, *api.State, *builder.Builder)
 	initialCall      *api.Cmd
 	submit           *api.Cmd
 	submissionIndex  []uint64

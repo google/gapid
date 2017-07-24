@@ -62,19 +62,20 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 }
 
 func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}, data interface{}, functionToCall interface{}) {
-	args := []reflect.Value{
-		reflect.ValueOf(e.ctx),
-		reflect.ValueOf(e.cmd),
-		reflect.ValueOf(&api.CmdObservations{}),
-		reflect.ValueOf(e.s),
-		reflect.ValueOf(GetState(e.s)),
-		reflect.ValueOf(e.cmd.Thread()),
-		reflect.ValueOf(e.b),
-		reflect.ValueOf(data),
-	}
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
 
-	o.Commands = append(o.Commands, CommandBufferCommand{func() {
+	o.Commands = append(o.Commands, CommandBufferCommand{func(ctx context.Context,
+		cmd api.Cmd, s *api.State, b *rb.Builder) {
+		args := []reflect.Value{
+			reflect.ValueOf(ctx),
+			reflect.ValueOf(cmd),
+			reflect.ValueOf(&api.CmdObservations{}),
+			reflect.ValueOf(s),
+			reflect.ValueOf(GetState(s)),
+			reflect.ValueOf(cmd.Thread()),
+			reflect.ValueOf(b),
+			reflect.ValueOf(data),
+		}
 		reflect.ValueOf(functionToCall).Call(args)
 	}, &e.cmd, nil, []uint64(nil), recreate_data, true})
 	if GetState(e.s).AddCommand != nil {
@@ -105,7 +106,7 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 			lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
 				c)
 		} else {
-			command.function()
+			command.function(e.ctx, e.cmd, e.s, e.b)
 			if command.actualSubmission && s.HandleSubcommand != nil {
 				s.HandleSubcommand(command)
 			}
@@ -171,7 +172,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 		} else {
 			o.CurrentSubmission = command.submit
 			o.SubCmdIdx = append([]uint64(nil), command.submissionIndex...)
-			command.function()
+			command.function(e.ctx, e.cmd, e.s, e.b)
 			if command.actualSubmission && o.HandleSubcommand != nil {
 				o.HandleSubcommand(command)
 			}
@@ -197,8 +198,8 @@ func (e externs) execPendingCommands(queue VkQueue) {
 
 func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled bool) {
 	signal_semaphore := CommandBufferCommand{
-		function: func() {
-			GetState(e.s).Semaphores[semaphore].Signaled = Signaled
+		function: func(ctx context.Context, cmd api.Cmd, s *api.State, b *rb.Builder) {
+			GetState(s).Semaphores[semaphore].Signaled = Signaled
 		},
 		actualSubmission: false,
 	}
@@ -207,7 +208,7 @@ func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled boo
 		lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
 			signal_semaphore)
 	} else {
-		signal_semaphore.function()
+		signal_semaphore.function(e.ctx, e.cmd, e.s, e.b)
 	}
 }
 
@@ -259,29 +260,26 @@ func (e externs) unmapMemory(slice memory.Slice) {
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
 func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size memory.Size) {
 	l := e.s.MemoryLayout
-	memory := GetState(e.s).DeviceMemories.Get(memory_handle)
-	mapped_offset := uint64(memory.MappedOffset)
+	mem := GetState(e.s).DeviceMemories.Get(memory_handle)
+	mapped_offset := uint64(mem.MappedOffset)
 	dstStart := mapped_offset + offset_in_mapped
 	srcStart := offset_in_mapped
-	srcEnd := offset_in_mapped + uint64(read_size)
 
-	//TODO: Add the PageSize to the architecture header of trace.
-	// Here we relay on the underlying optimization to avoid creating duplicated slice.
-	// A larger copy size makes a fewer number of call to read() and results into a faster replay.
-	// But a large copy size generates more data to be stored in the server and uses too much memory.
-	// A smaller copy size saves memory, but slow down the replay speed.
-	// By far, spliting the data into PageSize chunks seems like the best option.
-	copySize := uint64(4196)
+	absSrcStart := mem.MappedLocation.Address() + offset_in_mapped
+	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(read_size)}
 
-	for srcStart < srcEnd {
-		if srcStart+copySize > srcEnd {
-			copySize = srcEnd - srcStart
-		}
-		memory.Data.Slice(dstStart, dstStart+copySize, l).Copy(
-			e.ctx, U8ᵖ(memory.MappedLocation).Slice(srcStart, srcStart+copySize, l), e.cmd, e.s, e.b)
-		srcStart += copySize
-		dstStart += copySize
+	if e.cmd.Extras() == nil || e.cmd.Extras().Observations() == nil {
+		return
 	}
+	for _, r := range e.cmd.Extras().Observations().Reads {
+		if r.Range.Overlaps(absSrcMemRng) {
+			intersect := r.Range.Intersect(absSrcMemRng)
+			offset := intersect.Base - absSrcStart
+			mem.Data.Slice(dstStart+offset, dstStart+offset+intersect.Size, l).Copy(
+				e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+offset, srcStart+offset+intersect.Size, l), e.cmd, e.s, e.b)
+		}
+	}
+	return
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 
