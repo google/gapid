@@ -25,6 +25,7 @@ set(files
     cmd_errors.go
     cmd_extras.go
     cmd_flags.go
+    cmd_foreach.go
     cmd_id_group_test.go
     cmd_id_group.go
     cmd_id_range.go

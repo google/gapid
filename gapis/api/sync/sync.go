@@ -107,18 +107,13 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	}
 	s := rc.NewState()
 
-	for i, cmd := range cmds {
+	return api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			if err := sync.MutateSubcommands(ctx, api.CmdID(i), cmd, s, callback); err != nil && err == context.Canceled {
-				return err
-			}
+			sync.MutateSubcommands(ctx, id, cmd, s, callback)
 		} else {
-			if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-				return err
-			}
+			cmd.Mutate(ctx, s, nil)
 		}
-		callback(s, api.SubCmdIdx{uint64(i)}, cmd)
-	}
-
-	return nil
+		callback(s, api.SubCmdIdx{uint64(id)}, cmd)
+		return nil
+	})
 }

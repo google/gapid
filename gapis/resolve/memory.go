@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
@@ -43,10 +44,13 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range cmds[:cmdIdx] {
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-			return nil, err
-		}
+
+	err = api.ForeachCmd(ctx, cmds[:cmdIdx], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, s, nil)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	pool, ok := s.Memory[memory.PoolID(p.Pool)]

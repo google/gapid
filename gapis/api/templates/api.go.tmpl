@@ -79,12 +79,9 @@
     api.Register(API{})
   }
 
-  func panicIfNotCtxCancel(err error) {
-    switch errors.Cause(err) {
-      case nil:
-      case context.Canceled:
-      default:
-        panic(err)
+  func panicOnError(err error) {
+    if err != nil {
+      panic(err)
     }
   }
 {{end}}
@@ -336,7 +333,7 @@
     for i := uint64(0); i < s.count; i++ {
       {{Template "ReadStructFieldsWithRemapping" $}}
     }
-    panicIfNotCtxCancel(d.Error())
+    panicOnError(d.Error())
   {{end}}
 {{end}}
 
@@ -514,7 +511,7 @@
       res := make([]{{$el_ty}}, s.count)
       d := s.Decoder(ϟctx, ϟs)
       ϟmem.Read(d, &res)
-      panicIfNotCtxCancel(d.Error())
+      panicOnError(d.Error())
       return res
     }
 
@@ -525,7 +522,7 @@
       e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
-      panicIfNotCtxCancel(e.Error())
+      panicOnError(e.Error())
       return count
     }
 
@@ -579,7 +576,7 @@
           ϟb.StorePointer(dst, ptr)
           dst++
         }
-        panicIfNotCtxCancel(d.Error())
+        panicOnError(d.Error())
       {{else if IsClass ($s.To | Underlying)}}
         {{Template "ReadStructWithRemapping" $s.To}}
       {{else}}
@@ -597,7 +594,7 @@
             ϟb.Store(ptr)
             ptr += step
           }
-          panicIfNotCtxCancel(d.Error())
+          panicOnError(d.Error())
         {{else}}
           ϟb.Write(s.Range(ϟl), s.ResourceID(ϟctx, ϟs))
         {{end}}
@@ -631,7 +628,7 @@
           }
           ptr += step
         }
-        panicIfNotCtxCancel(d.Error())
+        panicOnError(d.Error())
       {{end}}
     }
     return s
