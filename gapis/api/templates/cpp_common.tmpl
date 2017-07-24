@@ -851,7 +851,7 @@
           {{range $i, $cond := $c.Conditions}}
           case {{Template "C++.Read" $cond}}:
           {{end}} {
-            return ({{Template "C++.Read" $c.Expression}}); 
+            return ({{Template "C++.Read" $c.Expression}});
           }
         {{end}}
         default:
@@ -985,7 +985,7 @@
   {{else if IsPseudonym     $}}{{Template "C++.PrintfFormatCode" $.To}}
   {{else if IsPointer       $}}%p
   {{else if IsStaticArray   $}}%s {{/* TODO */}}
-  {{else if IsClass         $}}%p
+  {{else if IsClass         $}}%s
   {{else if IsString        $}}%s
   {{else if IsBool          $}}%d
   {{else if IsU8            $}}%" PRIu8 "
@@ -1048,7 +1048,12 @@
   {{AssertType $ "Function"}}
 
   {{range $i, $p := $.CallParameters}}
-    {{if $i}}, {{end}}{{$ty := TypeOf $p}}{{if IsStaticArray $ty}}"<static-array>"{{/* TODO */}}{{else}}{{$p.Name}}{{end}}§
+    {{if $i}}, {{end}}
+    {{$ty := TypeOf $p}}
+    {{if      IsStaticArray $ty}}"<static-array>"{{/* TODO */}}
+    {{else if IsClass       $ty}}"<{{$ty.Name}}>"{{/* TODO */}}
+    {{else                     }}{{$p.Name}}
+    {{end}}§
   {{end}}
 {{end}}
 
