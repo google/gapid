@@ -31,7 +31,6 @@ import io.grpc.stub.StreamObserver;
  * A {@link GapidClient} based on a gRPC service.
  */
 public class GapidClientGrpc implements GapidClient {
-  private static final PingRequest PING_REQUEST = Service.PingRequest.newBuilder().build();
   private final GapidGrpc.GapidFutureStub client;
   private final GapidGrpc.GapidStub stub;
 
@@ -42,7 +41,7 @@ public class GapidClientGrpc implements GapidClient {
 
   @Override
   public ListenableFuture<Void> ping() {
-    return Futures.transform(client.ping(PING_REQUEST), ignored -> null);
+    return Futures.transform(client.ping(PingRequest.getDefaultInstance()), ignored -> null);
   }
 
   @Override
