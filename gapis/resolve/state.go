@@ -58,6 +58,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+
 	s, err := capture.NewState(ctx)
 	if err != nil {
 		return nil, err

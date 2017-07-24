@@ -31,6 +31,16 @@ func Clone(v interface{}) (interface{}, error) {
 	return d.Elem().Interface(), nil
 }
 
+// MustClone makes a deep copy of v, or panics if it could not.
+func MustClone(v interface{}) interface{} {
+	s := reflect.ValueOf(v)
+	d := reflect.New(s.Type())
+	if err := reflectCopy(d.Elem(), s, "val", map[reflect.Value]reflect.Value{}); err != nil {
+		panic(err)
+	}
+	return d.Elem().Interface()
+}
+
 // Copy recursively copies all fields, map and slice elements from the value
 // src to the pointer dst.
 func Copy(dst, src interface{}) error {

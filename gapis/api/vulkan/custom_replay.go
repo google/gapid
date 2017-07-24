@@ -243,7 +243,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, s *api.State, b *builder.
 	// layer before delegating the real work back to the normal flow.
 
 	hijack := cb.ReplayCreateVkInstance(a.PCreateInfo, a.PAllocator, a.PInstance, a.Result)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
 
 	if b == nil || err != nil {
@@ -276,7 +276,7 @@ func (a *RecreateInstance) Mutate(ctx context.Context, s *api.State, b *builder.
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateInstance(a.PCreateInfo, allocator, a.PInstance, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -284,7 +284,7 @@ func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, s *api.State, b *b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEnumeratePhysicalDevices(a.Instance, a.Count, a.PPhysicalDevices, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -293,14 +293,14 @@ func (a *RecreateDevice) Mutate(ctx context.Context, s *api.State, b *builder.Bu
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDevice(a.PhysicalDevice, a.PCreateInfo, allocator, a.PDevice, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 func (a *RecreateQueue) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkGetDeviceQueue(a.Device, a.QueueFamilyIndex, a.QueueIndex, a.PQueue)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
@@ -308,7 +308,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *api.State, b *buil
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkAllocateMemory(a.Device, a.PAllocateInfo, allocator, a.PMemory, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
 	if err != nil {
 		return err
@@ -317,7 +317,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, s *api.State, b *buil
 		memory := a.PMemory.Read(ctx, a, s, b)
 		bind := cb.VkMapMemory(a.Device, memory, a.MappedOffset, a.MappedSize, VkMemoryMapFlags(0),
 			a.PpData, VkResult(0))
-		bind.Extras().Add(a.Extras().All()...)
+		bind.Extras().MustClone(a.Extras().All()...)
 		err = bind.Mutate(ctx, s, b)
 	}
 	return err
@@ -327,7 +327,7 @@ func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, s *api.State
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateCommandBuffers(a.Device, a.PAllocateInfo, a.PCommandBuffer, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
 	if err != nil {
 		return err
@@ -336,7 +336,7 @@ func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, s *api.State
 	if !a.PBeginInfo.IsNullptr() {
 		commandBuffer := a.PCommandBuffer.Read(ctx, a, s, b)
 		begin := cb.VkBeginCommandBuffer(commandBuffer, a.PBeginInfo, VkResult(0))
-		begin.Extras().Add(a.Extras().All()...)
+		begin.Extras().MustClone(a.Extras().All()...)
 		err = begin.Mutate(ctx, s, b)
 	}
 	return err
@@ -346,7 +346,7 @@ func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, s *api.State, b *
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEndCommandBuffer(a.CommandBuffer, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -356,7 +356,7 @@ func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, s *api.State, b *b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdUpdateBuffer(a.CommandBuffer, a.DstBuffer, a.DstOffset, a.DataSize, a.PData)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -373,7 +373,7 @@ func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, s *api.State, b
 		a.PBufferMemoryBarriers,
 		a.ImageMemoryBarrierCount,
 		a.PImageMemoryBarriers)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -381,7 +381,7 @@ func (a *RecreateCmdCopyBuffer) Mutate(ctx context.Context, s *api.State, b *bui
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyBuffer(a.CommandBuffer, a.SrcBuffer, a.DstBuffer, a.RegionCount, a.PRegions)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -389,7 +389,7 @@ func (a *RecreateCmdResolveImage) Mutate(ctx context.Context, s *api.State, b *b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResolveImage(a.CommandBuffer, a.SrcImage, a.SrcImageLayout, a.DstImage, a.DstImageLayout, a.RegionCount, a.PRegions)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -397,7 +397,7 @@ func (a *RecreateCmdBeginRenderPass) Mutate(ctx context.Context, s *api.State, b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBeginRenderPass(a.CommandBuffer, a.PRenderPassBegin, a.Contents)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -405,7 +405,7 @@ func (a *RecreateCmdBindPipeline) Mutate(ctx context.Context, s *api.State, b *b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindPipeline(a.CommandBuffer, a.PipelineBindPoint, a.Pipeline)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -421,7 +421,7 @@ func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, s *api.State
 		a.PDescriptorSets,
 		a.DynamicOffsetCount,
 		a.PDynamicOffsets)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -434,7 +434,7 @@ func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, s *api.State,
 		a.BindingCount,
 		a.PBuffers,
 		a.POffsets)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -446,7 +446,7 @@ func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, s *api.State, b
 		a.Buffer,
 		a.Offset,
 		a.IndexType)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -455,7 +455,7 @@ func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, s *api.State, b *
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdEndRenderPass(
 		a.CommandBuffer)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -467,7 +467,7 @@ func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, s *api.State, b
 		a.CommandBufferCount,
 		a.PCommandBuffers,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -478,7 +478,7 @@ func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, s *api.State, b *bu
 		a.CommandBuffer,
 		a.Contents,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -492,7 +492,7 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, s *api.State, b *bu
 		a.FirstIndex,
 		a.VertexOffset,
 		a.FirstInstance)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -504,7 +504,7 @@ func (a *RecreateCmdDispatch) Mutate(ctx context.Context, s *api.State, b *build
 		a.GroupCountX,
 		a.GroupCountY,
 		a.GroupCountZ)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -515,7 +515,7 @@ func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, s *api.State, 
 		a.CommandBuffer,
 		a.Buffer,
 		a.Offset)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -528,7 +528,7 @@ func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, s *api.State, b *b
 		a.Offset,
 		a.DrawCount,
 		a.Stride)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -541,7 +541,7 @@ func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, s *api.Stat
 		a.Offset,
 		a.DrawCount,
 		a.Stride)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -553,7 +553,7 @@ func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, s *api.State, b *b
 		a.DepthBiasConstantFactor,
 		a.DepthBiasClamp,
 		a.DepthBiasSlopeFactor)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -564,7 +564,7 @@ func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, s *api.State, b 
 		a.CommandBuffer,
 		a.MinDepthBounds,
 		a.MaxDepthBounds)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -574,7 +574,7 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, s *api.State,
 	hijack := cb.VkCmdSetBlendConstants(
 		a.CommandBuffer,
 		a.BlendConstants)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -586,7 +586,7 @@ func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, s *api.St
 		a.FaceMask,
 		a.CompareMask,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -598,7 +598,7 @@ func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, s *api.Stat
 		a.FaceMask,
 		a.WriteMask,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -610,7 +610,7 @@ func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, s *api.Stat
 		a.FaceMask,
 		a.Reference,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -623,7 +623,7 @@ func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, s *api.State, b *bui
 		a.DstOffset,
 		a.Size,
 		a.Data)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -633,7 +633,7 @@ func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, s *api.State, b *b
 	hijack := cb.VkCmdSetLineWidth(
 		a.CommandBuffer,
 		a.LineWidth)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -647,7 +647,7 @@ func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, s *api.State,
 		a.DstImageLayout,
 		a.RegionCount,
 		a.PRegions)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -661,7 +661,7 @@ func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, s *api.State,
 		a.DstBuffer,
 		a.RegionCount,
 		a.PRegions)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -678,7 +678,7 @@ func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, s *api.State, b *buil
 		a.PRegions,
 		a.Filter,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -693,7 +693,7 @@ func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, s *api.State, b *buil
 		a.DstImageLayout,
 		a.RegionCount,
 		a.PRegions)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -707,7 +707,7 @@ func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, s *api.State, b *
 		a.Offset,
 		a.Size,
 		a.PValues)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -720,7 +720,7 @@ func (a *RecreateCmdDraw) Mutate(ctx context.Context, s *api.State, b *builder.B
 		a.InstanceCount,
 		a.FirstVertex,
 		a.FirstInstance)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -732,7 +732,7 @@ func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, s *api.State, b *bui
 		a.FirstScissor,
 		a.ScissorCount,
 		a.PScissors)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -744,7 +744,7 @@ func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, s *api.State, b *bu
 		a.FirstViewport,
 		a.ViewportCount,
 		a.PViewports)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -756,7 +756,7 @@ func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, s *api.State, b *bui
 		a.QueryPool,
 		a.Query,
 		a.Flags)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -767,7 +767,7 @@ func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, s *api.State, b *build
 		a.CommandBuffer,
 		a.QueryPool,
 		a.Query)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -781,7 +781,7 @@ func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, s *api.State, 
 		a.RectCount,
 		a.PRects,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -796,7 +796,7 @@ func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, s *api.State, b
 		a.RangeCount,
 		a.PRanges,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -811,7 +811,7 @@ func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, s *api.S
 		a.RangeCount,
 		a.PRanges,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -823,7 +823,7 @@ func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, s *api.State, b 
 		a.QueryPool,
 		a.FirstQuery,
 		a.QueryCount)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -840,7 +840,7 @@ func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, s *api.Sta
 		a.Stride,
 		a.Flags,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -853,7 +853,7 @@ func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, s *api.State, b 
 		a.QueryPool,
 		a.Query,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -865,7 +865,7 @@ func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, s *api.State, b *build
 		a.Event,
 		a.StageMask,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -877,7 +877,7 @@ func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, s *api.State, b *bui
 		a.Event,
 		a.StageMask,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -897,7 +897,7 @@ func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, s *api.State, b *bui
 		a.ImageMemoryBarrierCount,
 		a.PImageMemoryBarriers,
 	)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -908,7 +908,7 @@ func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *api.St
 		a.PhysicalDevice,
 		a.PQueueFamilyPropertyCount,
 		a.PQueueFamilyProperties)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -916,7 +916,7 @@ func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *api.St
 		a.PhysicalDevice,
 		a.PMemoryProperties,
 	)
-	memoryProperties.Extras().Add(a.Extras().All()...)
+	memoryProperties.Extras().MustClone(a.Extras().All()...)
 	return memoryProperties.Mutate(ctx, s, b)
 }
 
@@ -925,7 +925,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, s *api.State, b *builder
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateSemaphore(a.Device, a.PCreateInfo, allocator, a.PSemaphore, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -972,7 +972,7 @@ func (a *RecreateFence) Mutate(ctx context.Context, s *api.State, b *builder.Bui
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateFence(a.Device, a.PCreateInfo, allocator, a.PFence, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -982,7 +982,7 @@ func (a *RecreateEvent) Mutate(ctx context.Context, s *api.State, b *builder.Bui
 	allocator := memory.Nullptr
 
 	hijack := cb.VkCreateEvent(a.Device, a.PCreateInfo, allocator, a.PEvent, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -1004,7 +1004,7 @@ func (a *RecreateCommandPool) Mutate(ctx context.Context, s *api.State, b *build
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateCommandPool(a.Device, a.PCreateInfo, allocator, a.PCommandPool, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1013,7 +1013,7 @@ func (a *RecreatePipelineCache) Mutate(ctx context.Context, s *api.State, b *bui
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreatePipelineCache(a.Device, a.PCreateInfo, allocator, a.PPipelineCache, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1022,7 +1022,7 @@ func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, s *api.State, 
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDescriptorSetLayout(a.Device, a.PCreateInfo, allocator, a.PSetLayout, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1031,7 +1031,7 @@ func (a *RecreatePipelineLayout) Mutate(ctx context.Context, s *api.State, b *bu
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreatePipelineLayout(a.Device, a.PCreateInfo, allocator, a.PPipelineLayout, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1040,7 +1040,7 @@ func (a *RecreateRenderPass) Mutate(ctx context.Context, s *api.State, b *builde
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateRenderPass(a.Device, a.PCreateInfo, allocator, a.PRenderPass, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1049,7 +1049,7 @@ func (a *RecreateShaderModule) Mutate(ctx context.Context, s *api.State, b *buil
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateShaderModule(a.Device, a.PCreateInfo, allocator, a.PShaderModule, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1058,7 +1058,7 @@ func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, s *api.State, 
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkDestroyShaderModule(a.Device, a.ShaderModule, allocator)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1067,7 +1067,7 @@ func (a *RecreateDescriptorPool) Mutate(ctx context.Context, s *api.State, b *bu
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateDescriptorPool(a.Device, a.PCreateInfo, allocator, a.PDescriptorPool, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1076,7 +1076,7 @@ func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, s *api.State, b *bui
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateXcbSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1085,7 +1085,7 @@ func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, s *api.State, b *bu
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateXlibSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1094,7 +1094,7 @@ func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, s *api.State, b 
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateWaylandSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1103,7 +1103,7 @@ func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, s *api.State, b *bui
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateMirSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1112,7 +1112,7 @@ func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, s *api.State, b 
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateAndroidSurfaceKHR(a.Instance, a.PCreateInfo, allocator, a.PSurface, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1121,7 +1121,7 @@ func (a *RecreateImageView) Mutate(ctx context.Context, s *api.State, b *builder
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateImageView(a.Device, a.PCreateInfo, allocator, a.PImageView, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1134,7 +1134,7 @@ func (a *RecreateSampler) Mutate(ctx context.Context, s *api.State, b *builder.B
 		memory.Nullptr,
 		a.PSampler,
 		VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1143,7 +1143,7 @@ func (a *RecreateFramebuffer) Mutate(ctx context.Context, s *api.State, b *build
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateFramebuffer(a.Device, a.PCreateInfo, allocator, a.PFramebuffer, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1151,7 +1151,7 @@ func (a *RecreateDescriptorSet) Mutate(ctx context.Context, s *api.State, b *bui
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateDescriptorSets(a.Device, a.PAllocateInfo, a.PDescriptorSet, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -1164,7 +1164,7 @@ func (a *RecreateGraphicsPipeline) Mutate(ctx context.Context, s *api.State, b *
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateGraphicsPipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1172,7 +1172,7 @@ func (a *RecreateComputePipeline) Mutate(ctx context.Context, s *api.State, b *b
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateComputePipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1182,7 +1182,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, s *api.State, b *builder.Bu
 
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, a.PCreateInfo, a.PAllocator, a.PDevice, a.Result)
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, s, b)
 
 	if b == nil || err != nil {
@@ -1512,7 +1512,7 @@ func (a *RecreateBufferView) Mutate(ctx context.Context, s *api.State, b *builde
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateBufferView(a.Device, a.PCreateInfo, allocator, a.PBufferView, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, s, b)
 }
 
@@ -1623,7 +1623,7 @@ func (a *RecreateImage) Mutate(ctx context.Context, s *api.State, b *builder.Bui
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateImage(a.Device, a.PCreateInfo, allocator, a.PImage, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -1792,7 +1792,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, s *api.State, b *builder.Bu
 	allocator := memory.Nullptr
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateBuffer(a.Device, createInfoData.Ptr(), allocator, a.PBuffer, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	hijack.AddRead(createInfoData.Data())
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
@@ -1925,7 +1925,7 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, s *api.State, b *builder
 	cb := CommandBuilder{Thread: a.thread}
 
 	hijack := cb.VkCreateQueryPool(a.Device, a.PCreateInfo, allocator, a.PPool, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -1992,7 +1992,7 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, s *api.State, b *builder
 	allocator := memory.Nullptr
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateSwapchainKHR(a.Device, a.PCreateInfo, allocator, a.PSwapchain, VkResult(0))
-	hijack.Extras().Add(a.Extras().All()...)
+	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, s, b); err != nil {
 		return err
 	}
@@ -2002,7 +2002,7 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, s *api.State, b *builder
 	defer swapchainCountData.Free()
 
 	getImages := cb.VkGetSwapchainImagesKHR(a.Device, swapchain, swapchainCountData.Ptr(), a.PSwapchainImages, VkResult(0))
-	getImages.Extras().Add(a.Extras().All()...)
+	getImages.Extras().MustClone(a.Extras().All()...)
 	getImages.AddRead(swapchainCountData.Data()).AddWrite(swapchainCountData.Data())
 	if err := getImages.Mutate(ctx, s, b); err != nil {
 		return err

@@ -17,6 +17,7 @@ package api
 import (
 	"context"
 
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/atom/atom_pb"
 )
@@ -57,6 +58,20 @@ func (e *CmdExtras) All() CmdExtras {
 func (e *CmdExtras) Add(es ...CmdExtra) {
 	if e != nil {
 		*e = append(*e, es...)
+	}
+}
+
+// MustClone clones on or more CmdExtras to the list of CmdExtras,
+// if there was an error, a panic is raised
+func (e *CmdExtras) MustClone(es ...CmdExtra) {
+	if e != nil {
+		for _, ex := range es {
+			i, err := deep.Clone(ex)
+			if err != nil {
+				panic(err)
+			}
+			*e = append(*e, i)
+		}
 	}
 }
 
