@@ -68,7 +68,7 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "ClassEntry"}}
-  {{$name := $.Name | Title}}
+  {{$name := $.Name}}
   {{Global "ProtoID" 0}}
   // {{$name}} is the structure for serializing the class {{$.Name}}¶
   message {{$name}} {»¶
@@ -104,7 +104,7 @@
   {{else if IsEnum          $}}uint32
   {{else if IsPointer       $}}memory_pb.Pointer
   {{else if IsSlice         $}}memory_pb.Slice
-  {{else if IsClass         $}}{{$.Name | Title}}
+  {{else if IsClass         $}}{{$.Name}}
   {{else if IsPseudonym     $}}{{Template "Proto.Type" $.To}}
   {{else}}{{Error "macro Proto.Type called with unsupported type: %T" $}}
   {{end}}
