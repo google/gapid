@@ -5,6 +5,7 @@
 /gles_types.h
 
 /gvr_exports.cpp
+/gvr_exports.h
 /gvr_imports.cpp
 /gvr_imports.h
 /gvr_types.cpp

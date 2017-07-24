@@ -12,17 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generated globbing source file
-# This file will be automatically regenerated if deleted, do not edit by hand.
-# If you add a new file to the directory, just delete this file, run any cmake
-# build and the file will be recreated, check in the new version.
+set(api gvr/gvr.api)
 
-set(files
-    gvr_install.cpp
-    gvr_install.h
-    installer.cpp
-    installer.h
-)
-set(dirs
-
-)
+apic(${api} TEMPLATE ${APIC_API_PATH}/gvr/templates/api_install.cpp.tmpl)
