@@ -20,6 +20,8 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
+import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
@@ -33,8 +35,11 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.server.Tracer;
+import com.google.gapid.server.Tracer.AndroidTraceRequest;
+import com.google.gapid.server.Tracer.DesktopTraceRequest;
 import com.google.gapid.server.Tracer.TraceRequest;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.OS;
 import com.google.gapid.views.ActivityPickerDialog.Action;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.FileTextbox;
@@ -61,6 +66,7 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.Text;
 
 import java.io.File;
@@ -122,7 +128,7 @@ public class TracerDialog {
       progress.open();
       trace.stop();
       if (!failed.get()) {
-        models.capture.loadCapture(input.getValue().output);
+        models.capture.loadCapture(input.getValue().getOutput());
       }
     }
   }
@@ -147,21 +153,12 @@ public class TracerDialog {
    * Dialog to request the information from the user to start a trace (which app, filename, etc.).
    */
   private static class TraceInputDialog extends TitleAreaDialog {
-    private static final String DEFAULT_TRACE_FILE = "trace.gfxtrace";
-    private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
+    private final Settings settings;
+    private final Widgets widgets;
 
-    protected final Settings settings;
-    protected final Widgets widgets;
-    private ComboViewer api;
-    private ComboViewer device;
-    private LoadingIndicator.Widget deviceLoader;
-    private Link adbWarning;
-    private ActionTextbox traceTarget;
-    private FileTextbox.Directory directory;
-    private Text file;
-    private Button clearCache;
-    private Button disablePcs;
-    private boolean userHasChangedOutputFile = false;
+    private TabFolder folder;
+    private AndroidInput androidInput;
+    private DesktopInput desktopInput;
     private List<Instance> devices;
 
     private Tracer.TraceRequest value;
@@ -174,9 +171,10 @@ public class TracerDialog {
 
     public void setDevices(List<Instance> devices) {
       this.devices = devices;
-      updateDevicesDropDown();
+      if (androidInput != null) {
+        androidInput.setDevices(settings, devices);
+      }
     }
-
 
     public Tracer.TraceRequest getValue() {
       return value;
@@ -203,153 +201,27 @@ public class TracerDialog {
     protected Control createDialogArea(Composite parent) {
       Composite area = (Composite)super.createDialogArea(parent);
 
-      Composite container = createComposite(area, new GridLayout(2, false));
-      container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-      createLabel(container, "API:");
-      api = createApiDropDown(container);
-      Api selectedApi = Api.parse(settings.traceApi);
-      if (selectedApi == null) {
-        selectedApi = Api.GLES;
+      // Mac has no Vulkan support, so cannot trace desktop apps.
+      if (!OS.isMac) {
+        folder = createStandardTabFolder(area);
+        androidInput = new AndroidInput(folder, settings, widgets);
+        desktopInput = new DesktopInput(folder, settings, widgets);
+        createStandardTabItem(folder, "Android", androidInput);
+        createStandardTabItem(folder, "Desktop", desktopInput);
+      } else {
+        androidInput = new AndroidInput(area, settings, widgets);
       }
-      api.setSelection(new StructuredSelection(selectedApi));
 
-      createLabel(container, "Device:");
-      Composite deviceComposite =
-          createComposite(container, withMargin(new GridLayout(2, false), 0, 0));
-      device = createDeviceDropDown(deviceComposite);
-      deviceLoader = widgets.loading.createWidget(deviceComposite);
-      device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-      deviceLoader.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-      deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      createLabel(container, "Package / Action:");
-      traceTarget = withLayoutData(new ActionTextbox(container, settings.tracePackage) {
-        @Override
-        protected String createAndShowDialog(String current) {
-          ActivityPickerDialog dialog = new ActivityPickerDialog(
-              getShell(), settings, widgets, getSelectedDevice());
-          dialog.open();
-          Action action = dialog.getSelected();
-          return (action == null) ? null : action.toString();
-        }
-      }, new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      createLabel(container, "Output Directory:");
-      directory = withLayoutData(new FileTextbox.Directory(container, settings.traceOutDir) {
-        @Override
-        protected void configureDialog(DirectoryDialog dialog) {
-          dialog.setText(Messages.CAPTURE_DIRECTORY);
-        }
-      }, new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      createLabel(container, "File Name:");
-      file = withLayoutData(createTextbox(container, settings.traceOutFile),
-          new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      createLabel(container, "");
-      clearCache = withLayoutData(
-          createCheckbox(container, "Clear package cache", settings.traceClearCache),
-          new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      createLabel(container, "");
-      disablePcs = withLayoutData(
-          createCheckbox(container, "Disable pre-compiled shaders", settings.traceDisablePcs),
-          new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      withLayoutData(createLabel(container, ""), withSpans(new GridData(), 2, 1));
-
-      createLabel(container, "");
-      adbWarning = withLayoutData(
-          createLink(container,
-              "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
-              e -> SettingsDialog.showSettingsDialog(getShell(), settings)),
-          new GridData(SWT.FILL, SWT.FILL, true, false));
-      adbWarning.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_RED));
-      adbWarning.setVisible(false);
-
-      updateDevicesDropDown();
-
-      traceTarget.addBoxListener(SWT.Modify, e -> {
-        if (!userHasChangedOutputFile) {
-          String pkg = traceTarget.getText();
-          int actionSep = pkg.indexOf(":");
-          int pkgSep = pkg.indexOf("/");
-          if (actionSep >= 0 && pkgSep > actionSep) {
-            pkg = pkg.substring(actionSep + 1, pkgSep);
-          }
-
-          int p = pkg.lastIndexOf('.');
-          if (p >= pkg.length() - 1) {
-            file.setText(DEFAULT_TRACE_FILE);
-          } else {
-            file.setText(pkg.substring(p + 1) + ".gfxtrace");
-          }
-          userHasChangedOutputFile = false;
-        }
-      });
-      file.addListener(SWT.Modify, e -> {
-        userHasChangedOutputFile = true;
-      });
-
+      if (devices != null) {
+        androidInput.setDevices(settings, devices);
+      }
       return area;
     }
 
-    private static ComboViewer createApiDropDown(Composite parent) {
-      ComboViewer combo = createDropDownViewer(parent);
-      combo.setContentProvider(ArrayContentProvider.getInstance());
-      combo.setLabelProvider(new LabelProvider() {
-        @Override
-        public String getText(Object element) {
-          return ((Api)element).displayName;
-        }
-      });
-      for (Api api : Api.values()) {
-        combo.add(api);
-      }
-      return combo;
+    private SharedTraceInput getInput() {
+      return (folder == null) ? androidInput :
+        (SharedTraceInput)folder.getItem(folder.getSelectionIndex()).getControl();
     }
-
-    private static ComboViewer createDeviceDropDown(Composite parent) {
-      ComboViewer combo = createDropDownViewer(parent);
-      combo.setContentProvider(ArrayContentProvider.getInstance());
-      combo.setLabelProvider(new LabelProvider() {
-        @Override
-        public String getText(Object element) {
-          Device.Instance info = (Device.Instance)element;
-          StringBuilder sb = new StringBuilder();
-          if (!info.getConfiguration().getHardware().getName().isEmpty()) {
-            sb.append(info.getConfiguration().getHardware().getName()).append(" - ");
-          }
-          if (!info.getConfiguration().getOS().getName().isEmpty()) {
-            sb.append(info.getConfiguration().getOS().getName()).append(" - ");
-          }
-          return sb.append(info.getSerial()).toString();
-        }
-      });
-      return combo;
-    }
-
-    private void updateDevicesDropDown() {
-      if (device != null && devices != null) {
-        deviceLoader.stopLoading();
-        device.setInput(devices);
-        if (!settings.traceDevice.isEmpty()) {
-          Optional<Device.Instance> deflt = devices.stream()
-              .filter(dev -> settings.traceDevice.equals(dev.getSerial()))
-              .findAny();
-          if (deflt.isPresent()) {
-            device.setSelection(new StructuredSelection(deflt.get()));
-          }
-        }
-        device.getCombo().notifyListeners(SWT.Selection, new Event());
-
-        adbWarning.setVisible(devices.isEmpty() && settings.adb.isEmpty());
-      } else if (deviceLoader != null) {
-        deviceLoader.startLoading();
-      }
-    }
-
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
@@ -357,16 +229,13 @@ public class TracerDialog {
       createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
 
       Listener modifyListener = e -> {
-        traceTarget.setActionEnabled(device.getCombo().getSelectionIndex() >= 0);
-        ok.setEnabled(
-            device.getCombo().getSelectionIndex() >= 0 &&
-            !traceTarget.getText().isEmpty() &&
-            !file.getText().isEmpty());
+        ok.setEnabled(getInput().isReady());
       };
-      api.getCombo().addListener(SWT.Selection, modifyListener);
-      device.getCombo().addListener(SWT.Selection, modifyListener);
-      traceTarget.addBoxListener(SWT.Modify, modifyListener);
-      file.addListener(SWT.Modify, modifyListener);
+      androidInput.addModifyListener(modifyListener);
+      if (folder != null) {
+        desktopInput.addModifyListener(modifyListener);
+        folder.addListener(SWT.Selection, modifyListener);
+      }
 
       modifyListener.handleEvent(null); // Set initial state of widgets.
     }
@@ -374,20 +243,256 @@ public class TracerDialog {
     @Override
     protected void buttonPressed(int buttonId) {
       if (buttonId == IDialogConstants.OK_ID) {
+        value = getInput().getTraceRequest(settings);
+      }
+      super.buttonPressed(buttonId);
+    }
+
+    private abstract static class SharedTraceInput extends Composite {
+      protected static final String DEFAULT_TRACE_FILE = "trace.gfxtrace";
+      private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
+
+      protected final ComboViewer api;
+      protected final FileTextbox.Directory directory;
+      protected final Text file;
+      protected boolean userHasChangedOutputFile = false;
+
+      public SharedTraceInput(Composite parent, Settings settings, Widgets widgets) {
+        super(parent, SWT.NONE);
+        setLayout(new GridLayout(2, false));
+
+        createLabel(this, "API:");
+        api = createApiDropDown(this, getDefaultApi(settings));
+
+        buildTargetSelection(settings, widgets);
+
+        createLabel(this, "Output Directory:");
+        directory = withLayoutData(new FileTextbox.Directory(this, settings.traceOutDir) {
+          @Override
+          protected void configureDialog(DirectoryDialog dialog) {
+            dialog.setText(Messages.CAPTURE_DIRECTORY);
+          }
+        }, new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(this, "File Name:");
+        file = withLayoutData(createTextbox(this, settings.traceOutFile),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        file.addListener(SWT.Modify, e -> {
+          userHasChangedOutputFile = true;
+        });
+      }
+
+      protected abstract void buildTargetSelection(Settings settings, Widgets widgets);
+      protected abstract Api getDefaultApi(Settings settings);
+
+      private static ComboViewer createApiDropDown(Composite parent, Api selection) {
+        ComboViewer combo = createDropDownViewer(parent);
+        combo.setContentProvider(ArrayContentProvider.getInstance());
+        combo.setLabelProvider(new LabelProvider() {
+          @Override
+          public String getText(Object element) {
+            return ((Api)element).displayName;
+          }
+        });
+        for (Api api : Api.values()) {
+          combo.add(api);
+        }
+        combo.setSelection(new StructuredSelection(selection));
+        return combo;
+      }
+
+      public boolean isReady() {
+        return api.getCombo().getSelectionIndex() >= 0 &&
+            !file.getText().isEmpty();
+      }
+
+      public void addModifyListener(Listener listener) {
+        api.getCombo().addListener(SWT.Selection, listener);
+        file.addListener(SWT.Modify, listener);
+      }
+
+      public abstract TraceRequest getTraceRequest(Settings settings);
+
+      protected Api getSelectedApi() {
+        return (Api)api.getStructuredSelection().getFirstElement();
+      }
+
+      protected File getOutputFile() {
+        String name = file.getText();
+        if (name.isEmpty()) {
+          name = DEFAULT_TRACE_FILE;
+        }
+        if (!userHasChangedOutputFile) {
+          int p = name.lastIndexOf('.');
+          if (p < 0) {
+            name = name + TRACE_DATE_FORMAT.format(new Date());
+          } else {
+            name = name.substring(0, p) + TRACE_DATE_FORMAT.format(new Date()) + name.substring(p);
+          }
+        }
+
+        String dir = directory.getText();
+        return dir.isEmpty() ? new File(name) : new File(dir, name);
+      }
+    }
+
+    private static class AndroidInput extends SharedTraceInput {
+      private ComboViewer device;
+      private LoadingIndicator.Widget deviceLoader;
+      private Link adbWarning;
+      private ActionTextbox traceTarget;
+      private Button clearCache;
+      private Button disablePcs;
+      private List<Instance> devices;
+
+      public AndroidInput(Composite parent, Settings settings, Widgets widgets) {
+        super(parent, settings, widgets);
+
+        createLabel(this, "");
+        clearCache = withLayoutData(
+            createCheckbox(this, "Clear package cache", settings.traceClearCache),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(this, "");
+        disablePcs = withLayoutData(
+            createCheckbox(this, "Disable pre-compiled shaders", settings.traceDisablePcs),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        withLayoutData(createLabel(this, ""), withSpans(new GridData(), 2, 1));
+
+        createLabel(this, "");
+        adbWarning = withLayoutData(
+            createLink(this,
+                "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
+                e -> SettingsDialog.showSettingsDialog(getShell(), settings)),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        adbWarning.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_RED));
+        adbWarning.setVisible(false);
+
+        device.getCombo().addListener(SWT.Selection,
+            e -> traceTarget.setActionEnabled(device.getCombo().getSelectionIndex() >= 0));
+        updateDevicesDropDown(settings);
+
+        traceTarget.addBoxListener(SWT.Modify, e -> {
+          if (!userHasChangedOutputFile) {
+            String pkg = traceTarget.getText();
+            int actionSep = pkg.indexOf(":");
+            int pkgSep = pkg.indexOf("/");
+            if (actionSep >= 0 && pkgSep > actionSep) {
+              pkg = pkg.substring(actionSep + 1, pkgSep);
+            }
+
+            int p = pkg.lastIndexOf('.');
+            if (p >= pkg.length() - 1) {
+              file.setText(DEFAULT_TRACE_FILE);
+            } else {
+              file.setText(pkg.substring(p + 1) + ".gfxtrace");
+            }
+            userHasChangedOutputFile = false;
+          }
+        });
+        file.addListener(SWT.Modify, e -> {
+          userHasChangedOutputFile = true;
+        });
+      }
+
+      @Override
+      protected void buildTargetSelection(Settings settings, Widgets widgets) {
+        createLabel(this, "Device:");
+        Composite deviceComposite =
+            createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
+        device = createDeviceDropDown(deviceComposite);
+        deviceLoader = widgets.loading.createWidget(deviceComposite);
+        device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+        deviceLoader.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+        deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(this, "Package / Action:");
+        traceTarget = withLayoutData(new ActionTextbox(this, settings.tracePackage) {
+          @Override
+          protected String createAndShowDialog(String current) {
+            ActivityPickerDialog dialog = new ActivityPickerDialog(
+                getShell(), settings, widgets, getSelectedDevice());
+            dialog.open();
+            Action action = dialog.getSelected();
+            return (action == null) ? null : action.toString();
+          }
+        }, new GridData(SWT.FILL, SWT.FILL, true, false));
+      }
+
+      @Override
+      protected Api getDefaultApi(Settings settings) {
+        Api result = Api.parse(settings.traceApi);
+        return (result == null) ? Api.GLES : result;
+      }
+
+      private static ComboViewer createDeviceDropDown(Composite parent) {
+        ComboViewer combo = createDropDownViewer(parent);
+        combo.setContentProvider(ArrayContentProvider.getInstance());
+        combo.setLabelProvider(new LabelProvider() {
+          @Override
+          public String getText(Object element) {
+            Device.Instance info = (Device.Instance)element;
+            StringBuilder sb = new StringBuilder();
+            if (!info.getConfiguration().getHardware().getName().isEmpty()) {
+              sb.append(info.getConfiguration().getHardware().getName()).append(" - ");
+            }
+            if (!info.getConfiguration().getOS().getName().isEmpty()) {
+              sb.append(info.getConfiguration().getOS().getName()).append(" - ");
+            }
+            return sb.append(info.getSerial()).toString();
+          }
+        });
+        return combo;
+      }
+
+      @Override
+      public boolean isReady() {
+        return super.isReady() &&
+            device.getCombo().getSelectionIndex() >= 0 &&
+            !traceTarget.getText().isEmpty();
+      }
+
+      @Override
+      public void addModifyListener(Listener listener) {
+        super.addModifyListener(listener);
+        device.getCombo().addListener(SWT.Selection, listener);
+        traceTarget.addBoxListener(SWT.Modify, listener);
+      }
+
+      public void setDevices(Settings settings, List<Instance> devices) {
+        this.devices = devices;
+        updateDevicesDropDown(settings);
+      }
+
+      private void updateDevicesDropDown(Settings settings) {
+        if (device != null && devices != null) {
+          deviceLoader.stopLoading();
+          device.setInput(devices);
+          if (!settings.traceDevice.isEmpty()) {
+            Optional<Device.Instance> deflt = devices.stream()
+                .filter(dev -> settings.traceDevice.equals(dev.getSerial()))
+                .findAny();
+            if (deflt.isPresent()) {
+              device.setSelection(new StructuredSelection(deflt.get()));
+            }
+          }
+          device.getCombo().notifyListeners(SWT.Selection, new Event());
+
+          adbWarning.setVisible(devices.isEmpty() && settings.adb.isEmpty());
+        } else if (deviceLoader != null) {
+          deviceLoader.startLoading();
+        }
+      }
+
+      @Override
+      public TraceRequest getTraceRequest(Settings settings) {
         String selectedApi = getSelectedApi().getName();
         String target = traceTarget.getText();
         int actionSep = target.indexOf(":");
         int pkgSep = target.indexOf("/");
-        if (actionSep >= 0 && pkgSep > actionSep) {
-          String action = target.substring(0, actionSep);
-          String pkg = target.substring(actionSep + 1, pkgSep);
-          String activity = target.substring(pkgSep + 1);
-          value = new TraceRequest(selectedApi, getSelectedDevice(), pkg, activity, action,
-              getOutputFile(), clearCache.getSelection(), disablePcs.getSelection());
-        } else {
-          value = new TraceRequest(selectedApi, getSelectedDevice(), target, getOutputFile(),
-              clearCache.getSelection(), disablePcs.getSelection());
-        }
+
         settings.traceApi = getSelectedApi().getName();
         settings.traceDevice = getSelectedDevice().getSerial();
         settings.tracePackage = traceTarget.getText();
@@ -395,36 +500,97 @@ public class TracerDialog {
         settings.traceOutFile = file.getText();
         settings.traceClearCache = clearCache.getSelection();
         settings.traceDisablePcs = disablePcs.getSelection();
-      }
-      super.buttonPressed(buttonId);
-    }
 
-    protected Api getSelectedApi() {
-      return (Api)api.getStructuredSelection().getFirstElement();
-    }
-
-    protected Device.Instance getSelectedDevice() {
-      int index = device.getCombo().getSelectionIndex();
-      return (index < 0) ? Device.Instance.getDefaultInstance() :
-          (Device.Instance)device.getElementAt(index);
-    }
-
-    private File getOutputFile() {
-      String name = file.getText();
-      if (name.isEmpty()) {
-        name = DEFAULT_TRACE_FILE;
-      }
-      if (!userHasChangedOutputFile) {
-        int p = name.lastIndexOf('.');
-        if (p < 0) {
-          name = name + TRACE_DATE_FORMAT.format(new Date());
+        if (actionSep >= 0 && pkgSep > actionSep) {
+          String action = target.substring(0, actionSep);
+          String pkg = target.substring(actionSep + 1, pkgSep);
+          String activity = target.substring(pkgSep + 1);
+          return new AndroidTraceRequest(selectedApi, getSelectedDevice(), pkg, activity, action,
+              getOutputFile(), clearCache.getSelection(), disablePcs.getSelection());
         } else {
-          name = name.substring(0, p) + TRACE_DATE_FORMAT.format(new Date()) + name.substring(p);
+          return new AndroidTraceRequest(selectedApi, getSelectedDevice(), target, getOutputFile(),
+              clearCache.getSelection(), disablePcs.getSelection());
         }
       }
 
-      String dir = directory.getText();
-      return dir.isEmpty() ? new File(name) : new File(dir, name);
+      protected Device.Instance getSelectedDevice() {
+        int index = device.getCombo().getSelectionIndex();
+        return (index < 0) ? Device.Instance.getDefaultInstance() :
+            (Device.Instance)device.getElementAt(index);
+      }
+    }
+
+    private static class DesktopInput extends SharedTraceInput {
+      private FileTextbox.File executable;
+      private Text arguments;
+
+      public DesktopInput(Composite parent, Settings settings, Widgets widgets) {
+        super(parent, settings, widgets);
+        api.getCombo().setEnabled(false);
+
+        executable.addBoxListener(SWT.Modify, e -> {
+          if (!userHasChangedOutputFile) {
+            String exe = executable.getText();
+            int fileSep = exe.lastIndexOf(File.separator);
+            if (fileSep >= 0) {
+              exe = exe.substring(fileSep + 1);
+            }
+            int extSep = exe.lastIndexOf('.');
+            if (extSep > 0) {
+              exe = exe.substring(0, extSep);
+            }
+
+            if (exe.isEmpty()) {
+              file.setText(DEFAULT_TRACE_FILE);
+            } else {
+              file.setText(exe + ".gfxtrace");
+            }
+            userHasChangedOutputFile = false;
+          }
+        });
+      }
+
+      @Override
+      protected void buildTargetSelection(Settings settings, Widgets widgets) {
+        createLabel(this, "Executable:");
+        executable = withLayoutData(new FileTextbox.File(this, settings.traceExecutable) {
+          @Override
+          protected void configureDialog(FileDialog dialog) {
+            dialog.setText(Messages.CAPTURE_EXECUTABLE);
+          }
+        }, new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(this, "Arguments:");
+        arguments = withLayoutData(createTextbox(this, settings.traceArgs),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+      }
+
+      @Override
+      protected Api getDefaultApi(Settings settings) {
+        return Api.Vulkan;
+      }
+
+      @Override
+      public boolean isReady() {
+        return super.isReady() &&
+            !executable.getText().isEmpty();
+      }
+
+      @Override
+      public void addModifyListener(Listener listener) {
+        super.addModifyListener(listener);
+        executable.addBoxListener(SWT.Modify, listener);
+      }
+
+      @Override
+      public TraceRequest getTraceRequest(Settings settings) {
+        settings.traceExecutable = executable.getText();
+        settings.traceArgs = arguments.getText();
+        settings.traceOutDir = directory.getText();
+        settings.traceOutFile = file.getText();
+        return new DesktopTraceRequest(
+            new File(executable.getText()), arguments.getText(), getOutputFile());
+      }
     }
   }
 
@@ -478,7 +644,7 @@ public class TracerDialog {
     public void create() {
       super.create();
       setTitle(Messages.CAPTURING_TRACE);
-      setMessage("Capturing " + request.getActionString() + " to " + request.output.getName());
+      setMessage(request.getProgressDialogTitle());
     }
 
     @Override
