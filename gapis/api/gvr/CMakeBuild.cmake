@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(test)
-build_subdirectory(gles)
-build_subdirectory(gvr)
-build_subdirectory(vulkan)
+set(api gvr/gvr.api)
+
+build_subdirectory(gvr_pb)
+
+apic(${api} TEMPLATE api.go.tmpl OUTPUTS api.go enum.go)
+apic(${api} TEMPLATE mutate.go.tmpl OUTPUTS mutate.go)
+apic(${api} TEMPLATE constant_sets.go.tmpl OUTPUTS constant_sets.go)
+apic(${api} TEMPLATE convert.go.tmpl OUTPUTS convert.go)

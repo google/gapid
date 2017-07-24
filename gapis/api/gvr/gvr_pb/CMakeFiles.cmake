@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(test)
-build_subdirectory(gles)
-build_subdirectory(gvr)
-build_subdirectory(vulkan)
+# Generated globbing source file
+# This file will be automatically regenerated if deleted, do not edit by hand.
+# If you add a new file to the directory, just delete this file, run any cmake
+# build and the file will be recreated, check in the new version.
+
+set(files
+    api.pb.go
+    api.proto
+)
+set(dirs
+    
+)

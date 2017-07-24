@@ -3,6 +3,13 @@
 /gles_imports.h
 /gles_types.cpp
 /gles_types.h
+
+/gvr_exports.cpp
+/gvr_imports.cpp
+/gvr_imports.h
+/gvr_types.cpp
+/gvr_types.h
+
 /vulkan_exports.cpp
 /vulkan_exports.h
 /vulkan_imports.cpp
