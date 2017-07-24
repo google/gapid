@@ -39,6 +39,18 @@ apic(${api} TEMPLATE api_spy.cpp.tmpl)
 apic(${api} TEMPLATE api_types.cpp.tmpl)
 apic(${api} TEMPLATE api_types.h.tmpl)
 
+
+set(api gvr/gvr.api)
+
+# apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_exports.cpp.tmpl)
+# apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_imports.cpp.tmpl)
+apic(${api} TEMPLATE api_imports.h.tmpl)
+apic(${api} TEMPLATE api_spy.cpp.tmpl)
+apic(${api} TEMPLATE api_spy.h.tmpl)
+apic(${api} TEMPLATE api_types.cpp.tmpl)
+apic(${api} TEMPLATE api_types.h.tmpl)
+
+
 glob_all_dirs()
 
 glob(sources

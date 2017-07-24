@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_subdirectory(test)
-build_subdirectory(gles)
-build_subdirectory(gvr)
-build_subdirectory(vulkan)
+apic(${api} TEMPLATE api.proto.tmpl OUTPUTS api.proto)

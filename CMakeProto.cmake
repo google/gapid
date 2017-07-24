@@ -42,15 +42,23 @@ protoc_cc("gapis/api/core/core_pb" "gapis/api/core/core_pb" "api.proto")
 protoc_go("github.com/google/gapid/gapis/api" "gapis/api" "api.proto")
 protoc_java("gapis/api" "api.proto" "com/google/gapid/proto/service/api/API")
 protoc_cc("gapis/api" "gapis/api" "api.proto")
+
 protoc_go("github.com/google/gapid/gapis/api/gles/gles_pb" "gapis/api/gles/gles_pb" "api.proto;extras.proto")
 protoc_cc("gapis/api/gles/gles_pb" "gapis/api/gles/gles_pb" "api.proto;extras.proto")
 protoc_go("github.com/google/gapid/gapis/api/gles" "gapis/api/gles" "resolvables.proto")
-protoc_go("github.com/google/gapid/gapis/api/vulkan" "gapis/api/vulkan" "resolvables.proto")
-protoc_go("github.com/google/gapid/gapis/api/test/test_pb" "gapis/api/test/test_pb" "api.proto")
-protoc_go("github.com/google/gapid/gapis/api/testcmd/test_pb" "gapis/api/testcmd/test_pb" "test.proto")
-protoc_cc("gapis/api/test/test_pb" "gapis/api/test/test_pb" "api.proto")
+
+protoc_go("github.com/google/gapid/gapis/api/gvr/gvr_pb" "gapis/api/gvr/gvr_pb" "api.proto")
+protoc_cc("gapis/api/gvr/gvr_pb" "gapis/api/gvr/gvr_pb" "api.proto")
+
 protoc_go("github.com/google/gapid/gapis/api/vulkan/vulkan_pb" "gapis/api/vulkan/vulkan_pb" "api.proto")
 protoc_cc("gapis/api/vulkan/vulkan_pb" "gapis/api/vulkan/vulkan_pb" "api.proto")
+protoc_go("github.com/google/gapid/gapis/api/vulkan" "gapis/api/vulkan" "resolvables.proto")
+
+protoc_go("github.com/google/gapid/gapis/api/test/test_pb" "gapis/api/test/test_pb" "api.proto")
+protoc_cc("gapis/api/test/test_pb" "gapis/api/test/test_pb" "api.proto")
+
+protoc_go("github.com/google/gapid/gapis/api/testcmd/test_pb" "gapis/api/testcmd/test_pb" "test.proto")
+
 protoc_go("github.com/google/gapid/gapis/memory" "gapis/memory" "memory.proto")
 protoc_java("gapis/memory" "memory.proto" "com/google/gapid/proto/service/memory/Memory")
 protoc_cc("gapis/memory" "gapis/memory" "memory.proto")
