@@ -45,6 +45,7 @@ public interface Messages {
   public static final String CAPTURE_TRACE = "Capture Graphics Trace";
   public static final String CAPTURING_TRACE = "Capturing Graphics Trace...";
   public static final String CAPTURE_DIRECTORY = "Capture output directory...";
+  public static final String CAPTURE_EXECUTABLE = "Executable to trace...";
   public static final String BROWSE = "Browse";
   public static final String SELECT_ACTIVITY = "Select Activity";
   public static final String WELCOME_WINDOW_TITLE = "Welcome";

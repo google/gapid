@@ -81,7 +81,16 @@ public class Tracer {
   /**
    * Contains information about how and what application to trace.
    */
-  public static class TraceRequest {
+  public static interface TraceRequest {
+    public List<String> appendCommandLine(List<String> cmd);
+    public File getOutput();
+    public String getProgressDialogTitle();
+  }
+
+  /**
+   * Contains information about how and what android application to trace.
+   */
+  public static class AndroidTraceRequest implements TraceRequest {
     public final String api;
     public final Device.Instance device;
     public final String pkg;
@@ -91,12 +100,12 @@ public class Tracer {
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public TraceRequest(String api, Device.Instance device, String action, File output, boolean clearCache,
+    public AndroidTraceRequest(String api, Device.Instance device, String action, File output, boolean clearCache,
         boolean disablePcs) {
       this(api, device, null, null, action, output, clearCache, disablePcs);
     }
 
-    public TraceRequest(String api, Device.Instance device, String pkg, String activity, String action,
+    public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity, String action,
         File output, boolean clearCache, boolean disablePcs) {
       this.api = api;
       this.device = device;
@@ -108,6 +117,7 @@ public class Tracer {
       this.disablePcs = disablePcs;
     }
 
+    @Override
     public List<String> appendCommandLine(List<String> cmd) {
       if (api != null) {
         cmd.add("-api");
@@ -141,8 +151,60 @@ public class Tracer {
       return cmd;
     }
 
-    public String getActionString() {
-      return (pkg != null) ? pkg : action;
+    @Override
+    public File getOutput() {
+      return output;
+    }
+
+    @Override
+    public String getProgressDialogTitle() {
+      return "Capturing " + ((pkg != null) ? pkg : action) + " to " + output.getName();
+    }
+
+    @Override
+    public String toString() {
+      return appendCommandLine(Lists.newArrayList()).toString();
+    }
+  }
+
+  public static class DesktopTraceRequest implements TraceRequest {
+    public final File executable;
+    public final String args;
+    public final File output;
+
+    public DesktopTraceRequest(File executable, String args, File output) {
+      this.executable = executable;
+      this.args = args;
+      this.output = output;
+    }
+
+    @Override
+    public List<String> appendCommandLine(List<String> cmd) {
+      cmd.add("-api");
+      cmd.add("vulkan");
+
+      cmd.add("-local-app");
+      cmd.add(executable.getAbsolutePath());
+
+      if (!args.isEmpty()) {
+        cmd.add("-local-args");
+        cmd.add(args);
+      }
+
+      cmd.add("-out");
+      cmd.add(output.getAbsolutePath());
+
+      return cmd;
+    }
+
+    @Override
+    public File getOutput() {
+      return output;
+    }
+
+    @Override
+    public String getProgressDialogTitle() {
+      return "Capturing " + executable.getName() + " to " + output.getName();
     }
 
     @Override
