@@ -87,24 +87,25 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, keepAl
 	// no activity from the client in a contiguous N chunks of time.
 	// This avoids killing the server if the machine is suspended (where the
 	// client cannot send hearbeats, and the system clock jumps forward).
-	const maxMissCount = 3
-	idleTimeout /= maxMissCount
-	misses := 0
+	waitTime := idleTimeout / 12
+	var idleTime time.Duration
 
 	defer server.GracefulStop()
 	for {
 		select {
 		case <-task.ShouldStop(ctx):
 			return
-		case <-time.After(idleTimeout):
-			misses++
-			if misses >= maxMissCount {
-				log.W(ctx, fmt.Sprintf("Stopping GAPIS server as it has been idle for more than %v (--idle-timeout)", idleTimeout))
+		case <-time.After(waitTime):
+			idleTime += waitTime
+			if idleTime >= idleTimeout {
+				log.E(ctx, fmt.Sprintf("Stopping GAPIS server: No communication with the client for %v (--idle-timeout %v)", idleTime, idleTimeout))
 				time.Sleep(time.Second * 3) // Wait a little in the hope this message makes its way to the client(s).
 				return
+			} else {
+				log.W(ctx, fmt.Sprintf("No communication with the client for %v (--idle-timeout %v)", idleTime, idleTimeout))
 			}
 		case <-keepAlive:
-			misses = 0
+			idleTime = 0
 		}
 	}
 }
