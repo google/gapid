@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+build_subdirectory(android)
+
 set(api gles/gles.api)
 
 apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_exports.cpp.tmpl)
@@ -42,8 +44,9 @@ apic(${api} TEMPLATE api_types.h.tmpl)
 
 set(api gvr/gvr.api)
 
-# apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_exports.cpp.tmpl)
-# apic(${api} TEMPLATE ${APIC_API_PATH}/gles/templates/api_imports.cpp.tmpl)
+apic(${api} TEMPLATE ${APIC_API_PATH}/gvr/templates/api_exports.cpp.tmpl)
+apic(${api} TEMPLATE ${APIC_API_PATH}/gvr/templates/api_exports.h.tmpl)
+apic(${api} TEMPLATE ${APIC_API_PATH}/gvr/templates/api_imports.cpp.tmpl)
 apic(${api} TEMPLATE api_imports.h.tmpl)
 apic(${api} TEMPLATE api_spy.cpp.tmpl)
 apic(${api} TEMPLATE api_spy.h.tmpl)
@@ -71,6 +74,7 @@ list(APPEND sources
     "${PROTO_CC_OUT}/gapis/api/vulkan/vulkan_pb/api.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/api.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/extras.pb.cc"
+    "${PROTO_CC_OUT}/gapis/api/gvr/gvr_pb/api.pb.cc"
 )
 
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
@@ -96,6 +100,10 @@ if(NOT DISABLED_CXX)
     target_include_directories(gapii PUBLIC "${PROTO_CC_OUT}")
     target_include_directories(gapii PUBLIC "${CMAKE_SOURCE_DIR}/external/protobuf/src")
 
+    # disable warning: 'foo' has C-linkage specified, but returns user-defined
+    # type 'bar' which is incompatible with C
+    target_compile_options(gapii PRIVATE "-Wno-return-type-c-linkage")
+
     if(APPLE)
         find_package(Cocoa REQUIRED)
         target_link_libraries(gapii Cocoa::Lib)
@@ -107,9 +115,7 @@ if(NOT DISABLED_CXX)
 
         set_target_properties(gapii PROPERTIES
           LINK_FLAGS "-Wl,--version-script,${CMAKE_CURRENT_SOURCE_DIR}/gapii.exports")
-    elseif(GAPII_TARGET)
-
-    else()
+    elseif(NOT GAPII_TARGET)
         find_package(GL REQUIRED)
         target_link_libraries(gapii GL::Lib)
 
