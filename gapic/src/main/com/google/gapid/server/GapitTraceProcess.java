@@ -96,17 +96,32 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
     });
   }
 
+  /**
+   * Only required for mid execution capture. Since the (current) mechanism to start the trace
+   * is the same as to end it, this function should never be called for non mid execution captures.
+   */
+  public void startTracing() {
+    if (isRunning()) {
+      LOG.log(INFO, "Attempting to start the trace.");
+      sendEnter();
+    }
+  }
+
   public void stopTracing() {
     if (isRunning()) {
       LOG.log(INFO, "Attempting to end the trace.");
-      try {
-        OutputStream out = process.getOutputStream();
-        out.write('\n');
-        out.flush();
-      } catch (IOException e) {
-        LOG.log(WARNING, "Failed to cleanly stop the trace", e);
-        shutdown();
-      }
+      sendEnter();
+    }
+  }
+
+  private void sendEnter() {
+    try {
+      OutputStream out = process.getOutputStream();
+      out.write('\n');
+      out.flush();
+    } catch (IOException e) {
+      LOG.log(WARNING, "Failed to send the 'enter' command to the trace", e);
+      shutdown();
     }
   }
 }

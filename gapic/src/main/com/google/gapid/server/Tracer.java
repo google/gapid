@@ -49,6 +49,11 @@ public class Tracer {
 
     return new Trace() {
       @Override
+      public void start() {
+        process.startTracing();
+      }
+
+      @Override
       public void stop() {
         process.stopTracing();
       }
@@ -73,6 +78,11 @@ public class Tracer {
    */
   public static interface Trace {
     /**
+     * Requests the current trace to start capturing. Only valid for mid-execution traces.
+     */
+    public void start();
+
+    /**
      * Requests the current trace to be stopped.
      */
     public void stop();
@@ -85,6 +95,7 @@ public class Tracer {
     public List<String> appendCommandLine(List<String> cmd);
     public File getOutput();
     public String getProgressDialogTitle();
+    public boolean usesMidExecutionCapture();
   }
 
   /**
@@ -162,6 +173,11 @@ public class Tracer {
     }
 
     @Override
+    public boolean usesMidExecutionCapture() {
+      return false;
+    }
+
+    @Override
     public String toString() {
       return appendCommandLine(Lists.newArrayList()).toString();
     }
@@ -171,11 +187,13 @@ public class Tracer {
     public final File executable;
     public final String args;
     public final File output;
+    public final boolean midExecution;
 
-    public DesktopTraceRequest(File executable, String args, File output) {
+    public DesktopTraceRequest(File executable, String args, File output, boolean midExecution) {
       this.executable = executable;
       this.args = args;
       this.output = output;
+      this.midExecution = midExecution;
     }
 
     @Override
@@ -189,6 +207,10 @@ public class Tracer {
       if (!args.isEmpty()) {
         cmd.add("-local-args");
         cmd.add(args);
+      }
+
+      if (midExecution) {
+        cmd.add("-start-defer");
       }
 
       cmd.add("-out");
@@ -205,6 +227,11 @@ public class Tracer {
     @Override
     public String getProgressDialogTitle() {
       return "Capturing " + executable.getName() + " to " + output.getName();
+    }
+
+    @Override
+    public boolean usesMidExecutionCapture() {
+      return midExecution;
     }
 
     @Override
