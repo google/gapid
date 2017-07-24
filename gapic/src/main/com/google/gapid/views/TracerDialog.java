@@ -125,6 +125,7 @@ public class TracerDialog {
           failed.set(true);
         }
       });
+      progress.setOnStart(trace::start);
       progress.open();
       trace.stop();
       if (!failed.get()) {
@@ -523,10 +524,16 @@ public class TracerDialog {
     private static class DesktopInput extends SharedTraceInput {
       private FileTextbox.File executable;
       private Text arguments;
+      private Button fromBeginning;
 
       public DesktopInput(Composite parent, Settings settings, Widgets widgets) {
         super(parent, settings, widgets);
         api.getCombo().setEnabled(false);
+
+        createLabel(this, "");
+        fromBeginning = withLayoutData(
+            createCheckbox(this, "Trace From Beginning", !settings.traceMidExecution),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
 
         executable.addBoxListener(SWT.Modify, e -> {
           if (!userHasChangedOutputFile) {
@@ -588,8 +595,9 @@ public class TracerDialog {
         settings.traceArgs = arguments.getText();
         settings.traceOutDir = directory.getText();
         settings.traceOutFile = file.getText();
-        return new DesktopTraceRequest(
-            new File(executable.getText()), arguments.getText(), getOutputFile());
+        settings.traceMidExecution = !fromBeginning.getSelection();
+        return new DesktopTraceRequest(new File(executable.getText()), arguments.getText(),
+            getOutputFile(), !fromBeginning.getSelection());
       }
     }
   }
@@ -625,10 +633,15 @@ public class TracerDialog {
     private final StringBuilder log = new StringBuilder();
     private final Tracer.TraceRequest request;
     private Text text;
+    private Runnable onStart;
 
     public TraceProgressDialog(Shell shell, Tracer.TraceRequest request) {
       super(shell);
       this.request = request;
+    }
+
+    public void setOnStart(Runnable onStart) {
+      this.onStart = onStart;
     }
 
     public void append(String line) {
@@ -674,7 +687,18 @@ public class TracerDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-      createButton(parent, IDialogConstants.OK_ID, "Stop", true);
+      createButton(parent, IDialogConstants.OK_ID,
+          request.usesMidExecutionCapture() ? "Start" : "Stop", true);
+    }
+
+    @Override
+    protected void buttonPressed(int buttonId) {
+      if (IDialogConstants.OK_ID == buttonId && "Start".equals(getButton(buttonId).getText())) {
+        getButton(buttonId).setText("Stop");
+        onStart.run();
+      } else {
+        super.buttonPressed(buttonId);
+      }
     }
   }
 }
