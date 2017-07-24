@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -311,8 +312,7 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	// idx[2] is the command index in the primary command-buffer
 	// idx[3] is the secondary command buffer index inside a vkCmdExecuteCommands
 	// idx[4] is the secondary command inside the secondary command-buffer
-	submitCopy := cb.VkQueueSubmit(a.Queue, a.SubmitCount, a.PSubmits, a.Fence, a.Result)
-	submitCopy.Extras().Add(a.Extras().All()...)
+	submitCopy := deep.MustClone(a).(*VkQueueSubmit)
 
 	newCommandBuffers := make([]VkCommandBuffer, 1)
 	lastSubmit := uint64(0)

@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/service/path"
@@ -47,14 +48,18 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
 	atomIdx := p.Indices[0]
-	if len(p.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported for resources") // TODO: Subcommands
-	}
 
-	cmds, err := NCmds(ctx, p.Capture, atomIdx+1)
+	allCmds, err := Cmds(ctx, p.Capture)
+
 	if err != nil {
 		return nil, err
 	}
+
+	cmds, err := sync.MutationCmdsFor(ctx, p.Capture, allCmds, api.CmdID(atomIdx), p.Indices[1:])
+	if err != nil {
+		return nil, err
+	}
+
 	state, err := capture.NewState(ctx)
 	if err != nil {
 		return nil, err
@@ -72,7 +77,15 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		resources[i] = r
 	}
 
-	for i, a := range cmds[:atomIdx+1] {
+	for i, cmd := range cmds {
+		currentCmdResourceCount = 0
+		currentCmdIndex = uint64(i)
+		if err := cmd.Mutate(ctx, state, nil); err != nil && err == context.Canceled {
+			return nil, err
+		}
+	}
+
+	for i, a := range cmds {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(i)
 		if err := a.Mutate(ctx, state, nil); err != nil && err == context.Canceled {
