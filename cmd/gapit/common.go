@@ -55,7 +55,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	if gapisFlags.Profile != "" {
 		args = append(args, "-cpuprofile", gapisFlags.Profile)
 	}
-	args = append(args, "--idle-timeout", "10000ms")
+	args = append(args, "--idle-timeout", "1m")
 
 	var token auth.Token
 	if gapisFlags.Port == 0 {
@@ -73,10 +73,10 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	}
 
 	// We start this goroutine to send a heartbeat to gapis.
-	// It has an idle-timeout of 10s, so for long requests,
-	// pinging every 2s should prevent it from closing down unexpectedly.
+	// It has an idle-timeout of 1m, so for long requests,
+	// pinging every 1s should prevent it from closing down unexpectedly.
 	go func() {
-		hb := time.NewTicker(time.Millisecond * 2000)
+		hb := time.NewTicker(time.Millisecond * 1000)
 		for {
 			select {
 			case <-ctx.Done():

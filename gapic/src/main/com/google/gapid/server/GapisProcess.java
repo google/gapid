@@ -55,7 +55,7 @@ public class GapisProcess extends ChildProcess<Integer> {
 
   private static final int SERVER_LAUNCH_TIMEOUT_MS = 10000;
   private static final int HEARTBEAT_RATE_MS = 1000;
-  private static final int IDLE_TIMEOUT_MS = 10000;
+  private static final int IDLE_TIMEOUT_MS = 60000;
   private static final String SERVER_HOST = "localhost";
 
   private final ListenableFuture<GapisConnection> connection;
