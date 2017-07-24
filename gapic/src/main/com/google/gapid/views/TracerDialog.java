@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.common.base.Throwables;
@@ -206,8 +207,7 @@ public class TracerDialog {
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
       createLabel(container, "API:");
-      Composite apiComposite = createComposite(container, new GridLayout(2, false));
-      api = createApiDropDown(apiComposite);
+      api = createApiDropDown(container);
       Api selectedApi = Api.parse(settings.traceApi);
       if (selectedApi == null) {
         selectedApi = Api.GLES;
@@ -215,7 +215,8 @@ public class TracerDialog {
       api.setSelection(new StructuredSelection(selectedApi));
 
       createLabel(container, "Device:");
-      Composite deviceComposite = createComposite(container, new GridLayout(2, false));
+      Composite deviceComposite =
+          createComposite(container, withMargin(new GridLayout(2, false), 0, 0));
       device = createDeviceDropDown(deviceComposite);
       deviceLoader = widgets.loading.createWidget(deviceComposite);
       device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
