@@ -63,10 +63,13 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	for _, cmd := range cmds {
-		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-			return nil, err
-		}
+
+	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, s, nil)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return s, nil
 }
@@ -93,20 +96,24 @@ func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (interface{}, 
 	if count := uint64(len(cmds)); cmdIdx >= count {
 		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, p)
 	}
-	api := cmds[cmdIdx].API()
-	if api == nil {
+	a := cmds[cmdIdx].API()
+	if a == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 	s, err := capture.NewState(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range cmds[:cmdIdx+1] {
-		if err := a.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-			return nil, err
-		}
+
+	err = api.ForeachCmd(ctx, cmds[:cmdIdx+1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, s, nil)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	res, found := s.APIs[api]
+
+	res, found := s.APIs[a]
 	if !found {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}

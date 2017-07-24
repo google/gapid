@@ -162,11 +162,12 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		commandMap[data.initialCall] = i
 	}
 
-	for idx, cmd := range cmds {
-		i = api.CmdID(idx)
-		if err := cmd.Mutate(ctx, st, nil); err != nil {
-			return err
-		}
+	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		i = id
+		return cmd.Mutate(ctx, st, nil)
+	})
+	if err != nil {
+		return err
 	}
 
 	if lastCmdIndex != api.CmdID(0) {

@@ -163,7 +163,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 
 	s := c.NewState()
 	t0 := dependencyGraphBuildCounter.Start()
-	for i, cmd := range cmds {
+	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		a := cmd.API()
 		if _, ok := behaviourProviders[a]; !ok {
 			if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
@@ -171,19 +171,19 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 			} else {
 				// API does not provide dependency information, always keep atoms for
 				// such APIs.
-				g.Behaviours[i].KeepAlive = true
+				g.Behaviours[id].KeepAlive = true
 				// Even if the atom does not belong to an API that provides dependency
 				// info, we still need to mutate it in the new state, because following
 				// atoms in other APIs may depends on the side effect of the current
 				// atom.
-				if err := cmd.Mutate(ctx, s, nil /* builder */); err != nil {
-					log.W(ctx, "Command %v %v: %v", api.CmdID(i), cmd, err)
-					return AtomBehaviour{Aborted: true}, nil
-				}
-				continue
+				return cmd.Mutate(ctx, s, nil /* builder */)
 			}
 		}
-		g.Behaviours[i] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, api.CmdID(i), cmd, g)
+		g.Behaviours[id] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
+		return nil
+	})
+	if err != nil {
+		return AtomBehaviour{Aborted: true}, nil
 	}
 	dependencyGraphBuildCounter.Stop(t0)
 	return g, nil

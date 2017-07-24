@@ -75,11 +75,12 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
-	for i, live := range isLive {
-		if live {
-			out.MutateAndWrite(ctx, api.CmdID(i), t.depGraph.Commands[i])
+	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if isLive[id] {
+			out.MutateAndWrite(ctx, id, cmd)
 		}
-	}
+		return nil
+	})
 }
 
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
