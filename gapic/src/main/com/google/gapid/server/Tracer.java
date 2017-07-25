@@ -37,8 +37,13 @@ public class Tracer {
     Futures.addCallback(process.start(), new FutureCallback<Boolean>() {
       @Override
       public void onFailure(Throwable t) {
-        // Give some time for all the output to pump through.
-        display.asyncExec(() -> display.timerExec(500, () -> listener.onFailure(t)));
+        if (t instanceof ChildProcess.EarlyExitException &&
+            ((ChildProcess.EarlyExitException)t).exitCode == 0) {
+          // Early, but clean exit. Treat it as success.
+        } else {
+          // Give some time for all the output to pump through.
+          display.asyncExec(() -> display.timerExec(500, () -> listener.onFailure(t)));
+        }
       }
 
       @Override

@@ -95,7 +95,7 @@ public abstract class ChildProcess<T> {
       stderr.finish(result);
       stdout.finish(result);
       if (!result.isDone()) {
-        result.setException(new Exception(name + " has exited"));
+        result.setException(new EarlyExitException(name, exitCode));
       }
     } catch (InterruptedException e) {
       LOG.log(INFO, "Killing " + name);
@@ -126,6 +126,19 @@ public abstract class ChildProcess<T> {
   public void shutdown() {
     LOG.log(INFO, "Shutting down " + name);
     serverThread.interrupt();
+  }
+
+  /**
+   * Exception used to signal that the process has exited before a result has been detected
+   * from the process output.
+   */
+  public static class EarlyExitException extends Exception {
+    public final int exitCode;
+
+    public EarlyExitException(String name, int exitCode) {
+      super(name + " has exited with exit code " + exitCode);
+      this.exitCode = exitCode;
+    }
   }
 
   /**
