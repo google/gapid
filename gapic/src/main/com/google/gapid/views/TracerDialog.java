@@ -256,6 +256,7 @@ public class TracerDialog {
       protected final ComboViewer api;
       protected final FileTextbox.Directory directory;
       protected final Text file;
+      protected final Button fromBeginning;
       protected boolean userHasChangedOutputFile = false;
 
       public SharedTraceInput(Composite parent, Settings settings, Widgets widgets) {
@@ -282,6 +283,11 @@ public class TracerDialog {
         file.addListener(SWT.Modify, e -> {
           userHasChangedOutputFile = true;
         });
+
+        createLabel(this, "");
+        fromBeginning = withLayoutData(
+            createCheckbox(this, "Trace From Beginning", !settings.traceMidExecution),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
       protected abstract void buildTargetSelection(Settings settings, Widgets widgets);
@@ -393,9 +399,17 @@ public class TracerDialog {
             userHasChangedOutputFile = false;
           }
         });
-        file.addListener(SWT.Modify, e -> {
-          userHasChangedOutputFile = true;
-        });
+
+        Listener apiListener = e -> {
+          if (getSelectedApi() == Api.Vulkan) {
+            fromBeginning.setEnabled(true);
+          } else {
+            fromBeginning.setEnabled(false);
+            fromBeginning.setSelection(true);
+          }
+        };
+        api.getCombo().addListener(SWT.Selection, apiListener);
+        apiListener.handleEvent(null);
       }
 
       @Override
@@ -507,10 +521,11 @@ public class TracerDialog {
           String pkg = target.substring(actionSep + 1, pkgSep);
           String activity = target.substring(pkgSep + 1);
           return new AndroidTraceRequest(selectedApi, getSelectedDevice(), pkg, activity, action,
-              getOutputFile(), clearCache.getSelection(), disablePcs.getSelection());
+              getOutputFile(), !fromBeginning.getSelection(), clearCache.getSelection(),
+              disablePcs.getSelection());
         } else {
           return new AndroidTraceRequest(selectedApi, getSelectedDevice(), target, getOutputFile(),
-              clearCache.getSelection(), disablePcs.getSelection());
+              !fromBeginning.getSelection(), clearCache.getSelection(), disablePcs.getSelection());
         }
       }
 
@@ -524,16 +539,10 @@ public class TracerDialog {
     private static class DesktopInput extends SharedTraceInput {
       private FileTextbox.File executable;
       private Text arguments;
-      private Button fromBeginning;
 
       public DesktopInput(Composite parent, Settings settings, Widgets widgets) {
         super(parent, settings, widgets);
         api.getCombo().setEnabled(false);
-
-        createLabel(this, "");
-        fromBeginning = withLayoutData(
-            createCheckbox(this, "Trace From Beginning", !settings.traceMidExecution),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
 
         executable.addBoxListener(SWT.Modify, e -> {
           if (!userHasChangedOutputFile) {

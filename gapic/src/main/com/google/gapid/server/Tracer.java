@@ -108,22 +108,24 @@ public class Tracer {
     public final String activity;
     public final String action;
     public final File output;
+    public final boolean midExecution;
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public AndroidTraceRequest(String api, Device.Instance device, String action, File output, boolean clearCache,
-        boolean disablePcs) {
-      this(api, device, null, null, action, output, clearCache, disablePcs);
+    public AndroidTraceRequest(String api, Device.Instance device, String action, File output,
+        boolean midExecution, boolean clearCache, boolean disablePcs) {
+      this(api, device, null, null, action, output, midExecution, clearCache, disablePcs);
     }
 
-    public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity, String action,
-        File output, boolean clearCache, boolean disablePcs) {
+    public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity,
+        String action, File output, boolean midExecution, boolean clearCache, boolean disablePcs) {
       this.api = api;
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
       this.action = action;
       this.output = output;
+      this.midExecution = midExecution;
       this.clearCache = clearCache;
       this.disablePcs = disablePcs;
     }
@@ -140,6 +142,9 @@ public class Tracer {
       }
       cmd.add("-out");
       cmd.add(output.getAbsolutePath());
+      if (midExecution) {
+        cmd.add("-start-defer");
+      }
       if (clearCache) {
         cmd.add("-clear-cache");
       }
@@ -174,7 +179,7 @@ public class Tracer {
 
     @Override
     public boolean usesMidExecutionCapture() {
-      return false;
+      return midExecution;
     }
 
     @Override
