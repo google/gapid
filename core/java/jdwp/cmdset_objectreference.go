@@ -27,6 +27,16 @@ func (c *Connection) GetObjectType(object ObjectID) (ObjectType, error) {
 	return res, err
 }
 
+// GetFieldValues returns the values of all the instance fields.
+func (c *Connection) GetFieldValues(obj ObjectID, fields ...FieldID) ([]Value, error) {
+	var res []Value
+	err := c.get(cmdSetObjectReference, 2, struct {
+		Obj    ObjectID
+		Fields []FieldID
+	}{obj, fields}, &res)
+	return res, err
+}
+
 // InvokeMethod invokes the specified static method.
 func (c *Connection) InvokeMethod(object ObjectID, class ClassID, method MethodID, thread ThreadID, options InvokeOptions, args ...Value) (InvokeResult, error) {
 	req := struct {

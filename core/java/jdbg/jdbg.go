@@ -227,9 +227,14 @@ func (j *JDbg) classFromSig(sig string) (*Class, error) {
 		implements[i] = j.typeFromID(jdwp.ReferenceTypeID(id)).(*Class)
 	}
 
+	fields, err := j.conn.GetFields(class.TypeID)
+	if err != nil {
+		return nil, err
+	}
+
 	name := strings.Replace(strings.TrimRight(strings.TrimLeft(sig, "[L"), ";"), "/", ".", -1)
 
-	ty := &Class{j: j, signature: sig, name: name, class: class, super: super, implements: implements}
+	ty := &Class{j: j, signature: sig, name: name, class: class, super: super, implements: implements, fields: fields}
 	j.cache.classes[sig] = ty
 	j.cache.idToSig[class.TypeID] = sig
 	return ty, nil
@@ -309,14 +314,7 @@ func (j *JDbg) GetStackObject(name string) Value {
 	if err != nil {
 		j.fail("GetValues() returned: %v", err)
 	}
-	v := Value{}
-	switch t := values[0].(type) {
-	case jdwp.Object:
-		v = j.object(t)
-	default:
-		j.fail("Unhandled variable type %v", t)
-	}
-	return v
+	return j.value(values[0])
 }
 
 // SetStackObject sets and object in the current stack-frame to the
@@ -344,4 +342,14 @@ func (j *JDbg) object(id jdwp.Object) Value {
 
 	ty := j.typeFromID(tyID.Type)
 	return newValue(ty, id)
+}
+
+func (j *JDbg) value(o interface{}) Value {
+	switch v := o.(type) {
+	case jdwp.Object:
+		return j.object(v)
+	default:
+		j.fail("Unhandled variable type %T", o)
+		return Value{}
+	}
 }
