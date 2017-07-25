@@ -199,7 +199,9 @@ func (e externs) execPendingCommands(queue VkQueue) {
 func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled bool) {
 	signal_semaphore := CommandBufferCommand{
 		function: func(ctx context.Context, cmd api.Cmd, s *api.State, b *rb.Builder) {
-			GetState(s).Semaphores[semaphore].Signaled = Signaled
+			if s, ok := GetState(s).Semaphores[semaphore]; ok {
+				s.Signaled = Signaled
+			}
 		},
 		actualSubmission: false,
 	}
