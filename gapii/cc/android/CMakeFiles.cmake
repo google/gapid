@@ -18,9 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    Interceptor.h
     installer.cpp
+    installer.h
 )
 set(dirs
-    
+
 )

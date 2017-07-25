@@ -67,10 +67,12 @@ namespace {
 
 typedef void* (InitializeInterceptorFunc)();
 typedef void (TerminateInterceptorFunc)(void *interceptor);
-typedef bool (InterceptFunctionFunc)(void *interceptor, void *old_function,
-                                     void *new_function, void **callback_function,
-                                     void (*error_callback)(void *, const char *),
-                                     void *error_callback_baton);
+typedef bool (InterceptFunctionFunc)(void* interceptor,
+                                     void* old_function,
+                                     const void* new_function,
+                                     void** callback_function,
+                                     void (*error_callback)(void*, const char*),
+                                     void* error_callback_baton);
 
 InitializeInterceptorFunc*             gInitializeInterceptor = nullptr;
 TerminateInterceptorFunc*              gTerminateInterceptor = nullptr;
@@ -115,110 +117,137 @@ void recordInterceptorError(void*, const char* message) {
     GAPID_WARNING("Interceptor error: %s", message);
 }
 
-}  // anonymous namespace
-
 class Installer {
 public:
-    void patch() {
-        GAPID_INFO("Calling gInitializeInterceptor at %p...", gInitializeInterceptor);
-        gInterceptor = gInitializeInterceptor();
-        GAPID_ASSERT(gInterceptor != nullptr);
+    Installer();
+    ~Installer();
 
-        // Start by loading all the drivers.
-        void* drivers[NELEM(gDriverPaths)];
+    void* install(void* func_import, const void* func_export);
+
+private:
+    void install_gles();
+};
+
+Installer::Installer() {
+    GAPID_INFO("Installing GAPII hooks...")
+
+    auto lib = dlopen("libinterceptor.so.4", RTLD_NOW);
+    if (lib == nullptr) {
+        // Older versions of Android use the filename instead of the SONAME from the executable.
+        lib = dlopen("libinterceptor.so", RTLD_NOW);
+    }
+    if (lib == nullptr) {
+        GAPID_FATAL("Couldn't resolve the interceptor library.");
+    }
+
+    gInitializeInterceptor = reinterpret_cast<InitializeInterceptorFunc*>(dlsym(lib, "InitializeInterceptor"));
+    gTerminateInterceptor = reinterpret_cast<TerminateInterceptorFunc*>(dlsym(lib, "TerminateInterceptor"));
+    gInterceptFunction = reinterpret_cast<InterceptFunctionFunc*>(dlsym(lib, "InterceptFunction"));
+
+    if (gInitializeInterceptor == nullptr ||
+        gTerminateInterceptor == nullptr ||
+        gInterceptFunction == nullptr) {
+        GAPID_FATAL("Couldn't resolve the interceptor methods. "
+                "Did you forget to load libinterceptor.so before libgapii.so?\n"
+                "gInitializeInterceptor = %p\n"
+                "gTerminateInterceptor  = %p\n"
+                "gInterceptFunction     = %p\n",
+                gInitializeInterceptor, gTerminateInterceptor, gInterceptFunction);
+    }
+
+    GAPID_INFO("Interceptor functions resolved")
+
+    GAPID_INFO("Calling gInitializeInterceptor at %p...", gInitializeInterceptor);
+    gInterceptor = gInitializeInterceptor();
+    GAPID_ASSERT(gInterceptor != nullptr);
+
+    // Patch the driver to trampoline to the spy for all OpenGL ES functions.
+    GAPID_INFO("Installing OpenGL ES hooks...");
+    install_gles();
+
+    // Switch to using the callbacks instead of the patched driver functions.
+    core::GetGlesProcAddress = resolveCallback;
+
+    GAPID_INFO("OpenGL ES hooks successfully installed");
+}
+
+Installer::~Installer() {
+    gTerminateInterceptor(gInterceptor);
+}
+
+void* Installer::install(void* func_import, const void* func_export) {
+    void* callback = nullptr;
+    if (!gInterceptFunction(gInterceptor,
+                            func_import,
+                            func_export,
+                            &callback,
+                            &recordInterceptorError,
+                            nullptr)) {
+        return nullptr;
+    }
+    return callback;
+}
+
+void Installer::install_gles() {
+    // Start by loading all the drivers.
+    void* drivers[NELEM(gDriverPaths)];
+    for (int i = 0; i < NELEM(gDriverPaths); ++i) {
+        drivers[i] = dlopen(gDriverPaths[i], RTLD_NOW | RTLD_LOCAL);
+    }
+
+    struct func {
+        const char* name;
+        void* func_export;
+    };
+
+    // Now resolve all the imported functions. We do this early so that
+    // the function resolver doesn't end up using patched functions.
+    std::unordered_map<void*, func> functions;
+    for (int i = 0; gapii::kGLESExports[i].mName != nullptr; ++i) {
+        const char* name = gapii::kGLESExports[i].mName;
+        void* func_export = gapii::kGLESExports[i].mFunc;
+        bool import_found = false;
         for (int i = 0; i < NELEM(gDriverPaths); ++i) {
-            drivers[i] = dlopen(gDriverPaths[i], RTLD_NOW | RTLD_LOCAL);
-        }
-
-        struct func {
-            const char* name;
-            void* func_export;
-        };
-
-        // Now resolve all the imported functions. We do this early so that
-        // the function resolver doesn't end up using patched functions.
-        std::unordered_map<void*, func> functions;
-        for (int i = 0; gapii::kGLESExports[i].mName != nullptr; ++i) {
-            const char* name = gapii::kGLESExports[i].mName;
-            void* func_export = gapii::kGLESExports[i].mFunc;
-            bool import_found = false;
-            for (int i = 0; i < NELEM(gDriverPaths); ++i) {
-                if (void* func_import = dlsym(drivers[i], name)) {
-                    import_found = true;
-                    functions[func_import] = func{name, func_export};
-                }
-            }
-            if (void* func_import = core::GetGlesProcAddress(name, true)) {
+            if (void* func_import = dlsym(drivers[i], name)) {
                 import_found = true;
                 functions[func_import] = func{name, func_export};
             }
-            if (!import_found) {
-                // Don't export this function if the driver didn't export it.
-                gapii::kGLESExports[i].mFunc = nullptr;
-            }
         }
-
-        // Now patch each of the functions.
-        for (auto it : functions) {
-            void* func_import = it.first;
-            void* func_export = it.second.func_export;
-            const char* name = it.second.name;
-            GAPID_DEBUG("Patching '%s' at %p...", name, func_import);
-            void* callback = nullptr;
-            if (gInterceptFunction(gInterceptor,
-                                   func_import,
-                                   func_export,
-                                   &callback,
-                                   &recordInterceptorError,
-                                   nullptr)) {
-                GAPID_DEBUG("Replaced function %s at %p with %p (callback %p)",
-                        name, func_import, func_export, callback);
-                gCallbacks[name] = callback;
-            } else {
-                GAPID_ERROR("Couldn't intercept function %s at %p", name, func_import);
-            }
+        if (void* func_import = core::GetGlesProcAddress(name, true)) {
+            import_found = true;
+            functions[func_import] = func{name, func_export};
+        }
+        if (!import_found) {
+            // Don't export this function if the driver didn't export it.
+            gapii::kGLESExports[i].mFunc = nullptr;
         }
     }
 
-    Installer() {
-        GAPID_INFO("Installing GAPII hooks...")
-
-        auto gInterceptor = dlopen("libinterceptor.so.4", RTLD_NOW);
-        if (gInterceptor == nullptr) {
-           // Older versions of Android use the filename instead of the SONAME from the executable.
-           gInterceptor = dlopen("libinterceptor.so", RTLD_NOW);
+    // Now patch each of the functions.
+    for (auto it : functions) {
+        void* func_import = it.first;
+        void* func_export = it.second.func_export;
+        const char* name = it.second.name;
+        GAPID_DEBUG("Patching '%s' at %p with %p...", name, func_import, func_export);
+        if (auto callback = install(func_import, func_export)) {
+            GAPID_DEBUG("Replaced function %s at %p with %p (callback %p)",
+                    name, func_import, func_export, callback);
+            gCallbacks[name] = callback;
+        } else {
+            GAPID_ERROR("Couldn't intercept function %s at %p", name, func_import);
         }
-        if (gInterceptor == nullptr) {
-           GAPID_FATAL("Couldn't resolve the interceptor library.");
-        }
-
-        gInitializeInterceptor = reinterpret_cast<InitializeInterceptorFunc*>(dlsym(gInterceptor, "InitializeInterceptor"));
-        gTerminateInterceptor = reinterpret_cast<TerminateInterceptorFunc*>(dlsym(gInterceptor, "TerminateInterceptor"));
-        gInterceptFunction = reinterpret_cast<InterceptFunctionFunc*>(dlsym(gInterceptor, "InterceptFunction"));
-
-        if (gInitializeInterceptor == nullptr ||
-            gTerminateInterceptor == nullptr ||
-            gInterceptFunction == nullptr) {
-           GAPID_FATAL("Couldn't resolve the interceptor methods. "
-                  "Did you forget to load libinterceptor.so before libgapii.so?\n"
-                  "gInitializeInterceptor = %p\n"
-                  "gTerminateInterceptor  = %p\n"
-                  "gInterceptFunction     = %p\n",
-                  gInitializeInterceptor, gTerminateInterceptor, gInterceptFunction);
-        }
-
-        GAPID_INFO("Interceptor functions resolved")
-
-        // Patch the driver to trampoline to the spy.
-        patch();
-
-        // Switch to using the callbacks instead of the patched driver functions.
-        core::GetGlesProcAddress = resolveCallback;
-
-        GAPID_INFO("GAPII successfully installed");
     }
+}
 
-    ~Installer() {
-        gTerminateInterceptor(gInterceptor);
-    }
-} gInstaller;
+// The installer global instance.
+Installer gInstaller;
+
+}  // anonymous namespace
+
+namespace gapii {
+
+void* install_function(void* func_import, const void* func_export) {
+    return gInstaller.install(func_import, func_export);
+}
+
+} // namespace gapii
