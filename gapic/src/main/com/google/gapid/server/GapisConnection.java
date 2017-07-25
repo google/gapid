@@ -93,7 +93,7 @@ public abstract class GapisConnection implements Closeable {
       // TODO: figure out what exactly is causing netty to deadlock.
       baseChannel = new OkHttpChannelProvider().builderForTarget(target)
         .usePlaintext(true)
-        .maxMessageSize(128 * 1024 * 1024)
+        .maxMessageSize(256 * 1024 * 1024)
         .build();
 
       channel = authToken.isEmpty() ? baseChannel :
