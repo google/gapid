@@ -42,7 +42,7 @@ const version = 1
 // architecture. All changes must be kept in sync with:
 //   platform/tools/gpu/gapii/cc/connection_header.h
 
-func sendHeader(out io.Writer, options Options) error {
+func sendHeader(out io.Writer, options Options, gvrHandle uint64) error {
 	w := endian.Writer(out, device.LittleEndian)
 	for _, m := range magic {
 		w.Uint8(m)
@@ -54,6 +54,7 @@ func sendHeader(out io.Writer, options Options) error {
 	w.Uint32(options.FramesToCapture)
 	w.Uint32(options.APIs)
 	w.Uint32(uint32(options.Flags))
+	w.Uint64(gvrHandle)
 
 	return w.Error()
 }

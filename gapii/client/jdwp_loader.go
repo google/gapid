@@ -173,11 +173,24 @@ func (p *Process) loadAndConnectViaJDWP(
 		return log.Err(ctx, err, "Waiting for Application.OnCreate")
 	}
 
+	// Attempt to get the GVR library handle.
+	// Will throw an exception for non-GVR apps.
+	var gvrHandle uint64
+	log.I(ctx, "Installing interceptor libraries")
+	err = jdbg.Do(conn, onCreate.Thread, func(j *jdbg.JDbg) error {
+		libLoader := j.Class("com/google/vr/cardboard/VrCoreLibraryLoader")
+		gvrHandle = (uint64)(libLoader.Call("loadNativeGvrLibrary", j.This(), 1, 8, 1).Get().(int64))
+		return nil
+	})
+	if err != nil {
+		log.I(ctx, "Couldn't obtain GVR library handle: %v", err)
+	}
+
 	// Connect to GAPII.
 	// This has to be done on a separate go-routine as the call to load gapii
 	// will block until a connection is made.
 	connErr := make(chan error)
-	go func() { connErr <- p.connect(ctx) }()
+	go func() { connErr <- p.connect(ctx, gvrHandle) }()
 
 	// Load GAPII library.
 	err = jdbg.Do(conn, onCreate.Thread, func(j *jdbg.JDbg) error {

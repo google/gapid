@@ -49,22 +49,11 @@ extern "C" {«
     {{$name := Macro "CmdName" $c}}
     {{$imports := print (Title (Global "API")) "Spy::imports()"}}
     EXPORT {{Template "C++.ReturnType" $c}} STDCALL {{$name}}({{Template "C++.CallParameters" $c}}) {
-    Spy* s = Spy::get();
     GAPID_DEBUG({{Template "C++.PrintfCommandCall" $c}});
-    if (!s->try_to_enter()) {
-        {{if not (GetAnnotation $c "ignore_reentry")}}
-        GAPID_INFO("{{$name}} at %p: GAPII re-entered. Just invoking imported function at %p", {{$name}}, s->{{$imports}}.{{$name}});
-        {{end}}
-        {{if not (IsVoid $c.Return.Type)}}auto _result_ = §{{end}}
-        s->{{$imports}}.{{$name}}({{Template "C++.CallArguments" $c}});
-        GAPID_DEBUG("{{$name}}() -- done");
-        {{if not (IsVoid $c.Return.Type)}}return _result_;{{else}}return;{{end}}
-    }
-    CallObserver observer(s, GvrAPI);
-    s->lock(&observer, "{{$name}}");
+    Spy* s = Spy::get();
+    auto spy_ctx = s->enter("{{$name}}", GvrAPI);
     {{if not (IsVoid $c.Return.Type)}}auto _result_ = §{{end}}
-    s->{{$name}}({{Macro "C++.CallArguments" $c | Strings "&observer" | JoinWith ", "}});
-    s->unlock();
+    s->{{$name}}({{Macro "C++.CallArguments" $c | Strings "spy_ctx" | JoinWith ", "}});
     s->exit();
     GAPID_DEBUG("{{$name}}() -- done");
     {{if not (IsVoid $c.Return.Type)}}return _result_;{{end}}

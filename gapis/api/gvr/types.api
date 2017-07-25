@@ -72,6 +72,11 @@ class gvr_vec3f {
   f32 z
 }
 
+// gvr_mat4f is used as a parameter and return value.
+// clang seems to change the method of passing parameters of
+// this type when there's a copy-constructor on the StaticArray.
+// Work around this by using a different type for the interface.
+@abi_type("gvr_mat4_abi")
 @serialize
 class gvr_mat4f {
   f32[16] m

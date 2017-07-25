@@ -37,28 +37,23 @@
 ¶
 namespace gapii {«
 ¶
-bool install_gvr(const char* nativeLibsDir, GvrImports* imports) {
+bool install_gvr(void* gvr_lib, GvrImports* imports) {
   struct func_t {
     const char* name;
     void**      imp;
     const void* exp;
   };
+¶
   func_t funcs[] = {
     {{range $c := AllCommands $}}
       {{$name := Macro "CmdName" $c}}
       { "{{$name}}", reinterpret_cast<void**>(&imports->{{$name}}), reinterpret_cast<const void*>({{$name}}) },
     {{end}}
   };
-
-  auto path = std::string(nativeLibsDir) + "libgvr.so";
-  auto gvr_lib = dlopen(path.c_str(), RTLD_NOW);
-  if (gvr_lib == nullptr) {
-    GAPID_WARNING("Could not open libgvr.so");
-    return false;
-  }
-
+¶
   for (auto func : funcs) {
     if (auto import = dlsym(gvr_lib, func.name)) {
+      GAPID_INFO("Installing '%s'...", func.name);
       *func.imp = gapii::install_function(import, func.exp);
     } else {
       GAPID_WARNING("Could not find GVR function '%s'", func.name);

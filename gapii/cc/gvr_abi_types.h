@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,19 +12,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-#ifndef GAPII_ANDROID_GVR_INSTALL_H
-#define GAPII_ANDROID_GVR_INSTALL_H
+
+#ifndef GAPII_GVR_ABI_TYPES_H
+#define GAPII_GVR_ABI_TYPES_H
 
 namespace gapii {
 
-class GvrImports;
+struct gvr_mat4_abi : core::CStaticArray<float, 16> {};
 
-// install_gvr installs interceptor hooks into all the GVR functions.
-bool install_gvr(void* gvr_lib, GvrImports* imports);
+gvr_mat4f::gvr_mat4f(gvr_mat4_abi const& abi) : mm(abi) {}
+gvr_mat4f::operator gvr_mat4_abi() const {
+    gvr_mat4_abi out;
+    memcpy(&out, this, sizeof(out));
+    return out;
+}
 
 } // namespace gapii
 
-#endif // GAPII_ANDROID_GVR_INSTALL_H
+#endif // GAPII_GVR_ABI_TYPES_H

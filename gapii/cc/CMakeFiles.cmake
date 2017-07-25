@@ -41,6 +41,7 @@ set(files
     gles_spy_subroutines_1.cpp
     gles_types.cpp
     gles_types.h
+    gvr_abi_types.h
     gvr_exports.cpp
     gvr_extras.inl
     gvr_imports.cpp
