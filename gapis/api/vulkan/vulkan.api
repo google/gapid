@@ -5409,6 +5409,7 @@ extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
     VkDeviceSize dstOffset
     VkDeviceSize dataSize
     const void*  data)
+extern void doUpdateBuffer(ref!RecreateCmdUpdateBufferData data)
 
 extern ref!RecreateCmdPushConstantsData createPushConstantsData(
     VkPipelineLayout   layout,
@@ -6945,14 +6946,15 @@ cmd void vkCmdCopyImageToBuffer(
   addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
-sub void doCmdUpdateBuffer(VkBuffer args) {
-  Buffers[args].LastBoundQueue = LastBoundQueue
-}
-
 @internal class RecreateCmdUpdateBufferData {
   VkBuffer     dstBuffer
   VkDeviceSize dstOffset
   VkDeviceSize dataSize
+}
+
+sub void doCmdUpdateBuffer(ref!RecreateCmdUpdateBufferData args) {
+  Buffers[args.dstBuffer].LastBoundQueue = LastBoundQueue
+  doUpdateBuffer(args)
 }
 
 @override
@@ -6981,7 +6983,11 @@ cmd void vkCmdUpdateBuffer(
       dstOffset,
       dataSize,
       pData),
-    dstBuffer,
+    createUpdateBufferData(
+      dstBuffer,
+      dstOffset,
+      dataSize,
+      pData),
     doCmdUpdateBuffer)
 }
 

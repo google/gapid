@@ -908,6 +908,9 @@
       {{if (eq $.Name "QueueObject")}}
         PendingCommands CommandBufferCommands `nobox:"true"`
       {{end}}
+      {{if (eq $.Name "RecreateCmdUpdateBufferData")}}
+        Data      []uint8 `nobox:"true"`
+      {{end}}
     }
 
     {{if GetAnnotation $ "resource"}}
