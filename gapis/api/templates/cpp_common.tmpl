@@ -213,7 +213,9 @@
 {{define "C++.ParameterTypeNoSuffix"}}
   {{AssertType $ "Type" "Parameter"}}
 
-  {{if IsParameter $}}
+  {{if $abi_type := GetAnnotation $ "abi_type"}}
+    {{index $abi_type.Arguments 0}}
+  {{else if IsParameter $}}
     {{ if IsAny (TypeOf $)}}
       {{Template "C++.ParameterTypeAny" $}}
     {{else}}

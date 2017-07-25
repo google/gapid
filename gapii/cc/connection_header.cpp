@@ -28,7 +28,8 @@ ConnectionHeader::ConnectionHeader()
     , mStartFrame(0)
     , mNumFrames(0)
     , mAPIs(0xFFFFFFFF)
-    , mFlags(0) {}
+    , mFlags(0)
+    , mGvrHandle(0) {}
 
 bool ConnectionHeader::read(core::StreamReader* reader) {
     if (!reader->read(mMagic)) {
@@ -62,7 +63,8 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
         !reader->read(mStartFrame) ||
         !reader->read(mNumFrames) ||
         !reader->read(mAPIs) ||
-        !reader->read(mFlags)) {
+        !reader->read(mFlags) ||
+        !reader->read(mGvrHandle)) {
         return false;
     }
 

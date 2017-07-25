@@ -46,14 +46,15 @@ public:
     // on success or false on error.
     bool read(core::StreamReader* reader);
 
-    uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
-    uint32_t mVersion;                      // 1
-    uint32_t mObserveFrameFrequency;        // non-zero == enabled.
-    uint32_t mObserveDrawFrequency;         // non-zero == enabled.
-    uint32_t mStartFrame;                   // non-zero == Frame to start at.
-    uint32_t mNumFrames;                    // non-zero == Number of frames to capture.
-    uint32_t mAPIs;                         // Bitset of APIS to enable.
-    uint32_t mFlags;                        // Combination of FLAG_XX bits.
+    uint8_t  mMagic[4];              // 's', 'p', 'y', '0'
+    uint32_t mVersion;               // 1
+    uint32_t mObserveFrameFrequency; // non-zero == enabled.
+    uint32_t mObserveDrawFrequency;  // non-zero == enabled.
+    uint32_t mStartFrame;            // non-zero == Frame to start at.
+    uint32_t mNumFrames;             // non-zero == Number of frames to capture.
+    uint32_t mAPIs;                  // Bitset of APIS to enable.
+    uint32_t mFlags;                 // Combination of FLAG_XX bits.
+    uint64_t mGvrHandle;             // Handle of GVR library.
 };
 
 } // namespace gapii
