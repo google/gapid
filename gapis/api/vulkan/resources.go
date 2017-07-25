@@ -593,9 +593,6 @@ func (shader *ShaderModuleObject) SetResourceData(
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
 
 	atomIdx := at.Indices[0]
-	if len(at.Indices) > 1 {
-		return fmt.Errorf("Subcommands currently not supported for Vulkan resources") // TODO: Subcommands
-	}
 
 	// Dirty. TODO: Make separate type for getting info for a single resource.
 	resources, err := resolve.Resources(ctx, at.Capture)

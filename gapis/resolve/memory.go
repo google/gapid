@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
@@ -31,11 +32,12 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	ctx = capture.Put(ctx, path.FindCapture(p))
 
 	cmdIdx := p.After.Indices[0]
-	if len(p.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported for Memory") // TODO: Subcommands
-	}
 
-	cmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
+	allCmds, err := Cmds(ctx, path.FindCapture(p))
+	if err != nil {
+		return nil, err
+	}
+	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), allCmds, api.CmdID(cmdIdx), p.After.Indices[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +47,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
-	err = api.ForeachCmd(ctx, cmds[:cmdIdx], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, s, nil)
 		return nil
 	})
