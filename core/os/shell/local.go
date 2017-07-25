@@ -19,6 +19,7 @@ import (
 	"os/exec"
 
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -51,6 +52,7 @@ func (p *localProcess) Wait(ctx context.Context) error {
 	case err := <-res:
 		return err
 	case <-task.ShouldStop(ctx):
+		log.W(ctx, "Killing %v (context cancelled)", p.exec.Path)
 		p.exec.Process.Kill()
 		return task.StopReason(ctx)
 	}
