@@ -99,11 +99,13 @@ public class Tracer {
   public static abstract class TraceRequest {
     public final String api;
     public final File output;
+    public final int frameCount;
     public final boolean midExecution;
 
-    public TraceRequest(String api, File output, boolean midExecution) {
+    public TraceRequest(String api, File output, int frameCount, boolean midExecution) {
       this.api = api;
       this.output = output;
+      this.frameCount = frameCount;
       this.midExecution = midExecution;
     }
 
@@ -115,6 +117,11 @@ public class Tracer {
 
       cmd.add("-out");
       cmd.add(output.getAbsolutePath());
+
+      if (frameCount > 0) {
+        cmd.add("-capture-frames");
+        cmd.add(Integer.toString(frameCount));
+      }
 
       if (midExecution) {
         cmd.add("-start-defer");
@@ -143,13 +150,15 @@ public class Tracer {
     public final boolean disablePcs;
 
     public AndroidTraceRequest(String api, Device.Instance device, String action, File output,
-        boolean midExecution, boolean clearCache, boolean disablePcs) {
-      this(api, device, null, null, action, output, midExecution, clearCache, disablePcs);
+        int frameCount, boolean midExecution, boolean clearCache, boolean disablePcs) {
+      this(api, device, null, null, action, output, frameCount, midExecution, clearCache,
+          disablePcs);
     }
 
     public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity,
-        String action, File output, boolean midExecution, boolean clearCache, boolean disablePcs) {
-      super(api, output, midExecution);
+        String action, File output, int frameCount, boolean midExecution, boolean clearCache,
+        boolean disablePcs) {
+      super(api, output, frameCount, midExecution);
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
@@ -200,8 +209,9 @@ public class Tracer {
     public final File executable;
     public final String args;
 
-    public DesktopTraceRequest(File executable, String args, File output, boolean midExecution) {
-      super("vulkan", output, midExecution);
+    public DesktopTraceRequest(
+        File executable, String args, File output, int frameCount, boolean midExecution) {
+      super("vulkan", output, frameCount, midExecution);
       this.executable = executable;
       this.args = args;
     }

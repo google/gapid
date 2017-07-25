@@ -69,6 +69,7 @@ public class Settings {
   public String traceExecutable = "";
   public String traceArgs = "";
   public boolean traceMidExecution = false;
+  public int traceFrameCount = 0;
   public boolean skipWelcomeScreen = false;
   public String[] recentFiles = new String[0];
   public String adb = "";
@@ -164,6 +165,7 @@ public class Settings {
     traceExecutable = properties.getProperty("trace.executable", traceExecutable);
     traceArgs = properties.getProperty("trace.args", traceArgs);
     traceMidExecution = getBoolean(properties, "trace.midExecution");
+    traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
@@ -195,6 +197,7 @@ public class Settings {
     properties.setProperty("trace.executable", traceExecutable);
     properties.setProperty("trace.args", traceArgs);
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
+    properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);
@@ -248,13 +251,9 @@ public class Settings {
 
   private static void setPoint(Properties properties, String name, Point point) {
     if (point != null) {
-      setInt(properties, name + ".x", point.x);
-      setInt(properties, name + ".y", point.y);
+      properties.setProperty(name + ".x", Integer.toString(point.x));
+      properties.setProperty(name + ".y", Integer.toString(point.y));
     }
-  }
-
-  private static void setInt(Properties properties, String name, int value) {
-    properties.setProperty(name, String.valueOf(value));
   }
 
   private static void setIntList(Properties properties, String name, int[] value) {
