@@ -20,6 +20,7 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTextbox;
@@ -66,6 +67,7 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.Text;
 
@@ -256,6 +258,7 @@ public class TracerDialog {
       protected final ComboViewer api;
       protected final FileTextbox.Directory directory;
       protected final Text file;
+      protected final Spinner frameCount;
       protected final Button fromBeginning;
       protected boolean userHasChangedOutputFile = false;
 
@@ -283,6 +286,13 @@ public class TracerDialog {
         file.addListener(SWT.Modify, e -> {
           userHasChangedOutputFile = true;
         });
+
+        createLabel(this, "Stop After:");
+        Composite frameCountComposite =
+            createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
+        frameCount = withLayoutData(createSpinner(frameCountComposite, 0, 0, 999999),
+            new GridData(SWT.LEFT, SWT.FILL, false, false));
+        createLabel(frameCountComposite, "Frames (0 for unlimited)");
 
         createLabel(this, "");
         fromBeginning = withLayoutData(
@@ -319,13 +329,25 @@ public class TracerDialog {
         file.addListener(SWT.Modify, listener);
       }
 
-      public abstract TraceRequest getTraceRequest(Settings settings);
+      public TraceRequest getTraceRequest(Settings settings) {
+        settings.traceApi = getSelectedApi().getName();
+        settings.traceOutDir = directory.getText();
+        settings.traceOutFile = file.getText();
+        settings.traceFrameCount = frameCount.getSelection();
+        settings.traceMidExecution = !fromBeginning.getSelection();
+
+        return getTraceRequest(settings, getSelectedApi().getName(), getOutputFile(),
+            frameCount.getSelection(), !fromBeginning.getSelection());
+      }
+
+      protected abstract TraceRequest getTraceRequest(
+          Settings settings, String traceApi, File output, int frames, boolean midExecution);
 
       protected Api getSelectedApi() {
         return (Api)api.getStructuredSelection().getFirstElement();
       }
 
-      protected File getOutputFile() {
+      private File getOutputFile() {
         String name = file.getText();
         if (name.isEmpty()) {
           name = DEFAULT_TRACE_FILE;
@@ -502,17 +524,14 @@ public class TracerDialog {
       }
 
       @Override
-      public TraceRequest getTraceRequest(Settings settings) {
-        String selectedApi = getSelectedApi().getName();
+      protected TraceRequest getTraceRequest(Settings settings, String traceApi, File output,
+          int frames, boolean midExecution) {
         String target = traceTarget.getText();
         int actionSep = target.indexOf(":");
         int pkgSep = target.indexOf("/");
 
-        settings.traceApi = getSelectedApi().getName();
         settings.traceDevice = getSelectedDevice().getSerial();
         settings.tracePackage = traceTarget.getText();
-        settings.traceOutDir = directory.getText();
-        settings.traceOutFile = file.getText();
         settings.traceClearCache = clearCache.getSelection();
         settings.traceDisablePcs = disablePcs.getSelection();
 
@@ -520,12 +539,11 @@ public class TracerDialog {
           String action = target.substring(0, actionSep);
           String pkg = target.substring(actionSep + 1, pkgSep);
           String activity = target.substring(pkgSep + 1);
-          return new AndroidTraceRequest(selectedApi, getSelectedDevice(), pkg, activity, action,
-              getOutputFile(), !fromBeginning.getSelection(), clearCache.getSelection(),
-              disablePcs.getSelection());
+          return new AndroidTraceRequest(traceApi, getSelectedDevice(), pkg, activity, action,
+              output, frames, midExecution, clearCache.getSelection(), disablePcs.getSelection());
         } else {
-          return new AndroidTraceRequest(selectedApi, getSelectedDevice(), target, getOutputFile(),
-              !fromBeginning.getSelection(), clearCache.getSelection(), disablePcs.getSelection());
+          return new AndroidTraceRequest(traceApi, getSelectedDevice(), target, output,
+              frames, midExecution, clearCache.getSelection(), disablePcs.getSelection());
         }
       }
 
@@ -599,14 +617,13 @@ public class TracerDialog {
       }
 
       @Override
-      public TraceRequest getTraceRequest(Settings settings) {
+      protected TraceRequest getTraceRequest(Settings settings, String traceApi, File output,
+          int frames, boolean midExecution) {
         settings.traceExecutable = executable.getText();
         settings.traceArgs = arguments.getText();
-        settings.traceOutDir = directory.getText();
-        settings.traceOutFile = file.getText();
-        settings.traceMidExecution = !fromBeginning.getSelection();
-        return new DesktopTraceRequest(new File(executable.getText()), arguments.getText(),
-            getOutputFile(), !fromBeginning.getSelection());
+
+        return new DesktopTraceRequest(
+            new File(executable.getText()), arguments.getText(), output, frames, midExecution);
       }
     }
   }
