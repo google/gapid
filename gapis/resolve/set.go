@@ -69,9 +69,8 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		cmdIdx := p.After.Indices[0]
-		if len(p.After.Indices) > 1 {
-			return nil, fmt.Errorf("Subcommands currently not supported for changing") // TODO: Subcommands
-		}
+		// If we change resource data, subcommands do not affect this, so change
+		// the main comand.
 
 		oldCmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
 		if err != nil {
@@ -111,7 +110,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 	case *path.Command:
 		cmdIdx := p.Indices[0]
 		if len(p.Indices) > 1 {
-			return nil, fmt.Errorf("Subcommands currently not supported, for changing") // TODO: Subcommands
+			return nil, fmt.Errorf("Cannot modify subcommands") // TODO: Subcommands
 		}
 
 		// Resolve the command list
