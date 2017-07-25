@@ -129,7 +129,7 @@ public class TracerDialog {
       progress.open();
       trace.stop();
       if (!failed.get()) {
-        models.capture.loadCapture(input.getValue().getOutput());
+        models.capture.loadCapture(input.getValue().output);
       }
     }
   }
@@ -696,8 +696,7 @@ public class TracerDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-      createButton(parent, IDialogConstants.OK_ID,
-          request.usesMidExecutionCapture() ? "Start" : "Stop", true);
+      createButton(parent, IDialogConstants.OK_ID, request.midExecution ? "Start" : "Stop", true);
     }
 
     @Override

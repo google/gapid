@@ -96,24 +96,49 @@ public class Tracer {
   /**
    * Contains information about how and what application to trace.
    */
-  public static interface TraceRequest {
-    public List<String> appendCommandLine(List<String> cmd);
-    public File getOutput();
-    public String getProgressDialogTitle();
-    public boolean usesMidExecutionCapture();
+  public static abstract class TraceRequest {
+    public final String api;
+    public final File output;
+    public final boolean midExecution;
+
+    public TraceRequest(String api, File output, boolean midExecution) {
+      this.api = api;
+      this.output = output;
+      this.midExecution = midExecution;
+    }
+
+    public List<String> appendCommandLine(List<String> cmd) {
+      if (api != null) {
+        cmd.add("-api");
+        cmd.add(api);
+      }
+
+      cmd.add("-out");
+      cmd.add(output.getAbsolutePath());
+
+      if (midExecution) {
+        cmd.add("-start-defer");
+      }
+
+      return cmd;
+    }
+
+    @Override
+    public String toString() {
+      return appendCommandLine(Lists.newArrayList()).toString();
+    }
+
+    public abstract String getProgressDialogTitle();
   }
 
   /**
    * Contains information about how and what android application to trace.
    */
-  public static class AndroidTraceRequest implements TraceRequest {
-    public final String api;
+  public static class AndroidTraceRequest extends TraceRequest {
     public final Device.Instance device;
     public final String pkg;
     public final String activity;
     public final String action;
-    public final File output;
-    public final boolean midExecution;
     public final boolean clearCache;
     public final boolean disablePcs;
 
@@ -124,35 +149,27 @@ public class Tracer {
 
     public AndroidTraceRequest(String api, Device.Instance device, String pkg, String activity,
         String action, File output, boolean midExecution, boolean clearCache, boolean disablePcs) {
-      this.api = api;
+      super(api, output, midExecution);
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
       this.action = action;
-      this.output = output;
-      this.midExecution = midExecution;
       this.clearCache = clearCache;
       this.disablePcs = disablePcs;
     }
 
     @Override
     public List<String> appendCommandLine(List<String> cmd) {
-      if (api != null) {
-        cmd.add("-api");
-        cmd.add(api);
-      }
+      super.appendCommandLine(cmd);
       if (!device.getSerial().isEmpty()) {
         cmd.add("-gapii-device");
         cmd.add(device.getSerial());
       }
-      cmd.add("-out");
-      cmd.add(output.getAbsolutePath());
-      if (midExecution) {
-        cmd.add("-start-defer");
-      }
+
       if (clearCache) {
         cmd.add("-clear-cache");
       }
+
       if (disablePcs) {
         cmd.add("-disable-pcs");
       }
@@ -169,47 +186,29 @@ public class Tracer {
       } else {
         cmd.add(action);
       }
-      return cmd;
-    }
 
-    @Override
-    public File getOutput() {
-      return output;
+      return cmd;
     }
 
     @Override
     public String getProgressDialogTitle() {
       return "Capturing " + ((pkg != null) ? pkg : action) + " to " + output.getName();
     }
-
-    @Override
-    public boolean usesMidExecutionCapture() {
-      return midExecution;
-    }
-
-    @Override
-    public String toString() {
-      return appendCommandLine(Lists.newArrayList()).toString();
-    }
   }
 
-  public static class DesktopTraceRequest implements TraceRequest {
+  public static class DesktopTraceRequest extends TraceRequest {
     public final File executable;
     public final String args;
-    public final File output;
-    public final boolean midExecution;
 
     public DesktopTraceRequest(File executable, String args, File output, boolean midExecution) {
+      super("vulkan", output, midExecution);
       this.executable = executable;
       this.args = args;
-      this.output = output;
-      this.midExecution = midExecution;
     }
 
     @Override
     public List<String> appendCommandLine(List<String> cmd) {
-      cmd.add("-api");
-      cmd.add("vulkan");
+      super.appendCommandLine(cmd);
 
       cmd.add("-local-app");
       cmd.add(executable.getAbsolutePath());
@@ -219,29 +218,12 @@ public class Tracer {
         cmd.add(args);
       }
 
-      if (midExecution) {
-        cmd.add("-start-defer");
-      }
-
-      cmd.add("-out");
-      cmd.add(output.getAbsolutePath());
-
       return cmd;
-    }
-
-    @Override
-    public File getOutput() {
-      return output;
     }
 
     @Override
     public String getProgressDialogTitle() {
       return "Capturing " + executable.getName() + " to " + output.getName();
-    }
-
-    @Override
-    public boolean usesMidExecutionCapture() {
-      return midExecution;
     }
 
     @Override
