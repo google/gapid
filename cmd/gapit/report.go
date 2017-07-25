@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 )
 
@@ -120,6 +122,39 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		msg := report.Msg(e.Message).Text(stringTable)
 		fmt.Fprintln(reportWriter, fmt.Sprintf("[%s] %s%s", e.Severity.String(), where, msg))
+	}
+
+	if verb.Histogram {
+		events, err := getEvents(ctx, client, &path.Events{
+			Capture:                 capturePath,
+			DrawCalls:               true,
+			LastInFrame:             true,
+			FramebufferObservations: true,
+		})
+		if err != nil {
+			return log.Err(ctx, err, "Failed to get events for replay diff histogram")
+		}
+
+		// The maximum width and height need to match the values in spy.cpp
+		// in order to properly compare observed and rendered framebuffers.
+		maxWidth := 1920
+		maxHeight := 1280
+		videoFrames, _, _, err := getVideoFrames(ctx, client, device, events, maxWidth, maxHeight)
+		if err != nil {
+			return log.Err(ctx, err, "Failed to get video frames for replay diff histogram")
+		}
+
+		for i, f := range videoFrames {
+			var histBuf bytes.Buffer
+			for bin := 0; bin < bins; bin++ {
+				histBuf.WriteString(fmt.Sprintf(", [%d,(%d,%d,%d,%d)]", bin,
+					f.histogramData[bin][0],
+					f.histogramData[bin][1],
+					f.histogramData[bin][2],
+					f.histogramData[bin][3]))
+			}
+			fmt.Fprintln(reportWriter, fmt.Sprintf("[Histogram] frame #%d%s", i, histBuf.String()))
+		}
 	}
 
 	if len(report.Items) == 0 {
