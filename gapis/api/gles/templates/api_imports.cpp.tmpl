@@ -46,23 +46,11 @@ namespace gapii {
     {{range $c := AllCommands $}}
       {{if not (GetAnnotation $c "synthetic")}}
         {{$name := Macro "CmdName" $c}}
-        {{$name}} = reinterpret_cast<{{Template "FunctionPtrType" $c}}>(GetGlesProcAddress("{{$name}}", true));
+        {{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(GetGlesProcAddress("{{$name}}", true));
       {{end}}
     {{end}}
   }
 ¶
 } // namespace gapii
 ¶
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the typedef function-pointer name for a given command.
--------------------------------------------------------------------------------
-*/}}
-{{define "FunctionPtrType"}}
-  {{AssertType $ "Function"}}
-
-  PFN{{Upper (Macro "CmdName" $)}}
 {{end}}
