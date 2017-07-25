@@ -158,9 +158,6 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	s.AddCommand = func(a interface{}) {
-		if s.IsRebuilding {
-			return
-		}
 		data := a.(CommandBufferCommand)
 		commandMap[data.initialCall] = i
 	}
