@@ -34,6 +34,7 @@ type Type interface {
 	Super() Type
 
 	call(object Value, method string, args []interface{}) Value
+	field(object Value, name string) Value
 	jdwp() *JDbg
 }
 
@@ -114,6 +115,11 @@ func (t *Simple) call(object Value, method string, args []interface{}) Value {
 	return Value{}
 }
 
+func (t *Simple) field(object Value, name string) Value {
+	t.j.fail("Type '%v' does not support fields", t.ty)
+	return Value{}
+}
+
 func (t *Simple) jdwp() *JDbg { return t.j }
 
 // Array is the type of an array.
@@ -159,6 +165,7 @@ type Class struct {
 	name       string
 	class      jdwp.ClassInfo
 	implements []*Class
+	fields     jdwp.Fields
 	super      *Class
 	resolved   *classResolvedInfo
 }
@@ -209,13 +216,7 @@ func (t *Class) Field(name string) Value {
 	if err != nil {
 		t.j.fail("GetValues() returned: %v", err)
 	}
-	switch v := values[0].(type) {
-	case jdwp.Object:
-		return t.j.object(v)
-	default:
-		t.j.fail("Unhandled variable type %v", t)
-		return Value{}
-	}
+	return t.j.value(values[0])
 }
 
 // Super returns the super type.
@@ -276,6 +277,28 @@ func (t *Class) call(object Value, method string, args []interface{}) Value {
 	}
 
 	return newValue(ty, res.Result)
+}
+
+func (t *Class) field(object Value, name string) Value {
+	if object == nilValue {
+		t.j.fail("Cannot get field '%v' on nill object", name)
+	}
+	f := t.fields.FindByName(name)
+	if f == nil {
+		t.j.fail("Class '%v' does not contain field '%v'", t.name, name)
+	}
+	obj, ok := object.val.(jdwp.Object)
+	if !ok {
+		t.j.fail("Class '%v' does not support fields", t.name)
+	}
+	vals, err := t.j.conn.GetFieldValues(obj.ID(), f.ID)
+	if err != nil {
+		t.j.fail("GetFieldValues() returned: %v", err)
+	}
+	if len(vals) != 1 {
+		t.j.fail("GetFieldValues() returned %n values, expected 1", len(vals))
+	}
+	return t.j.value(vals[0])
 }
 
 func (t *Class) jdwp() *JDbg { return t.j }

@@ -21,7 +21,7 @@ func (c *Connection) GetTypeSignature(ty ReferenceTypeID) (string, error) {
 	return res, err
 }
 
-// GetField returns all the fields for the specified type.
+// GetFields returns all the fields for the specified type.
 func (c *Connection) GetFields(ty ReferenceTypeID) (Fields, error) {
 	var res Fields
 	err := c.get(cmdSetReferenceType, 4, ty, &res)

@@ -43,6 +43,11 @@ func (v Value) Call(method string, args ...interface{}) Value {
 	return v.ty.call(v, method, args)
 }
 
+// Field returns the value of the specified field.
+func (v Value) Field(name string) Value {
+	return v.ty.field(v, name)
+}
+
 // Get returns the value, unmarshalled.
 func (v Value) Get() interface{} {
 	return v.ty.jdwp().unmarshal(v.val)
