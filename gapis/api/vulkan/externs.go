@@ -212,18 +212,20 @@ func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled boo
 	}
 }
 
-type RecreateCmdUpdateBufferDataExpanded struct {
-	DstBuffer VkBuffer
-	DstOffset VkDeviceSize
-	DataSize  VkDeviceSize
-	Data      []uint8
-}
-
-func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data Voidᶜᵖ) *RecreateCmdUpdateBufferDataExpanded {
+func (e externs) createUpdateBufferData(buffer VkBuffer, offset VkDeviceSize, size VkDeviceSize, data Voidᶜᵖ) *RecreateCmdUpdateBufferData {
 	d := U8ᵖ(data).Slice(uint64(uint32(0)), uint64(size), e.s.MemoryLayout).Read(e.ctx, e.cmd, e.s, e.b)
-	return &RecreateCmdUpdateBufferDataExpanded{
+	return &RecreateCmdUpdateBufferData{
 		buffer, offset, size, d,
 	}
+}
+
+func (e externs) doUpdateBuffer(args *RecreateCmdUpdateBufferData) {
+	l := e.s.MemoryLayout
+	o := GetState(e.s)
+	buffer := o.Buffers[args.DstBuffer]
+	bufferOffset := buffer.MemoryOffset
+
+	buffer.Memory.Data.Slice(uint64(bufferOffset+args.DstOffset), uint64((bufferOffset)+(args.DataSize)), l).Write(e.ctx, args.Data, e.cmd, e.s, e.b)
 }
 
 type RecreateCmdPushConstantsDataExpanded struct {

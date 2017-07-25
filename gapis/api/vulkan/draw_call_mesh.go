@@ -94,10 +94,8 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		// Get the current bound vertex buffers
 		vb, err = getVertexBuffers(ctx, s, dc.thread, p.VertexCount, p.FirstVertex)
 		if err != nil {
-			log.W(ctx, "err is not NIL!")
 			return nil, err
 		}
-
 	} else if p := lastDrawInfo.CommandParameters.DrawIndexed; p != nil {
 		// Last draw call is vkCmdDrawIndexed
 		// Get the current bound index buffer

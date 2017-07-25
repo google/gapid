@@ -94,8 +94,10 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []u
 		return log.Errf(ctx, nil, "The given atom does not have a subcommands")
 	}
 
+	// If we cannot find the subindex, backtrack to the main command
 	if !handled {
-		return log.Errf(ctx, nil, "Can not find the given subindex %+v, %+v", id, subcommand)
+		t.lastRequest = id
+		t.requestSubIndex = []uint64{uint64(id)}
 	}
 
 	return nil

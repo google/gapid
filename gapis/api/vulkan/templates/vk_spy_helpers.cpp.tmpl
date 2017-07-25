@@ -423,6 +423,8 @@ std::shared_ptr<RecreateCmdUpdateBufferData> VulkanSpy::createUpdateBufferData(
     return ret_val;
 }
 
+void VulkanSpy::doUpdateBuffer(CallObserver* observer, std::shared_ptr<RecreateCmdUpdateBufferData> data) {}
+
 std::shared_ptr<RecreateCmdPushConstantsData> VulkanSpy::createPushConstantsData(
         CallObserver* observer,
         VkPipelineLayout layout,

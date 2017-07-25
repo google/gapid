@@ -773,7 +773,7 @@ func rebuildCmdUpdateBuffer(
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.State,
-	d *RecreateCmdUpdateBufferDataExpanded) (func(), api.Cmd) {
+	d *RecreateCmdUpdateBufferData) (func(), api.Cmd) {
 
 	data := s.AllocDataOrPanic(ctx, d.Data)
 
@@ -896,7 +896,7 @@ func AddCommand(ctx context.Context,
 		return rebuildCmdSetStencilWriteMask(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdSetViewportData:
 		return rebuildCmdSetViewport(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdUpdateBufferDataExpanded:
+	case *RecreateCmdUpdateBufferData:
 		return rebuildCmdUpdateBuffer(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdWriteTimestampData:
 		return rebuildCmdWriteTimestamp(ctx, cb, commandBuffer, s, t)
