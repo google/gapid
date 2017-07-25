@@ -97,9 +97,10 @@ type (
 	InfoFlags struct {
 	}
 	ReportFlags struct {
-		Gapis GapisFlags
-		Gapir GapirFlags
-		Out   string `help:"output report path"`
+		Gapis     GapisFlags
+		Gapir     GapirFlags
+		Out       string `help:"output report path"`
+		Histogram bool   `help:"output observed vs replayed difference histogram"`
 		CommandFilterFlags
 	}
 	VideoFlags struct {

@@ -51,23 +51,12 @@ type videoFrame struct {
 	squareError   float64
 }
 
-func (verb *videoVerb) sxsVideoSource(
+func getVideoFrames(
 	ctx context.Context,
-	capture *path.Capture,
 	client service.Service,
-	device *path.Device) (videoFrameWriter, error) {
-
-	// Get the draw call and end-of-frame events.
-	events, err := getEvents(ctx, client, &path.Events{
-		Capture:                 capture,
-		DrawCalls:               true,
-		LastInFrame:             true,
-		FramebufferObservations: true,
-	})
-	if err != nil {
-		return nil, log.Err(ctx, err, "Couldn't get events")
-	}
-
+	device *path.Device,
+	events []*service.Event,
+	maxWidth, maxHeight int) ([]*videoFrame, int, int, error) {
 	// Find maximum frame width / height of all frames, and get all observation
 	// atom indices.
 	videoFrames := []*videoFrame{}
@@ -78,7 +67,7 @@ func (verb *videoVerb) sxsVideoSource(
 		case service.EventKind_FramebufferObservation:
 			cmd, err := client.Get(ctx, e.Command.Path())
 			if err != nil {
-				return nil, log.Err(ctx, err, "Couldn't get framebuffer observation")
+				return nil, 0, 0, log.Err(ctx, err, "Couldn't get framebuffer observation")
 			}
 			fbo := asFbo(cmd.(*api.Command))
 			if int(fbo.DataWidth) > w {
@@ -104,7 +93,7 @@ func (verb *videoVerb) sxsVideoSource(
 
 	// Get all the observed and rendered frames, and compare them.
 	start := time.Now()
-	w, h = uniformScale(w, h, verb.Max.Width/2, verb.Max.Height/2)
+	w, h = uniformScale(w, h, maxWidth/2, maxHeight/2)
 	var wg sync.WaitGroup
 	for _, v := range videoFrames {
 		wg.Add(1)
@@ -114,7 +103,7 @@ func (verb *videoVerb) sxsVideoSource(
 				Stride: int(v.fbo.DataWidth) * 4,
 				Rect:   image.Rect(0, 0, int(v.fbo.DataWidth), int(v.fbo.DataHeight)),
 			}
-			if frame, err := getFrame(ctx, verb.VideoFlags, v.command, device, client); err == nil {
+			if frame, err := getFrame(ctx, maxWidth, maxHeight, v.command, device, client); err == nil {
 				v.rendered = frame
 			} else {
 				v.renderError = err
@@ -131,8 +120,33 @@ func (verb *videoVerb) sxsVideoSource(
 	log.D(ctx, "Frames rendered in %v", time.Since(start))
 	for _, v := range videoFrames {
 		if v.renderError != nil {
-			return nil, v.renderError
+			return nil, 0, 0, v.renderError
 		}
+	}
+
+	return videoFrames, w, h, nil
+}
+
+func (verb *videoVerb) sxsVideoSource(
+	ctx context.Context,
+	capture *path.Capture,
+	client service.Service,
+	device *path.Device) (videoFrameWriter, error) {
+
+	// Get the draw call and end-of-frame events.
+	events, err := getEvents(ctx, client, &path.Events{
+		Capture:                 capture,
+		DrawCalls:               true,
+		LastInFrame:             true,
+		FramebufferObservations: true,
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get events")
+	}
+
+	videoFrames, w, h, err := getVideoFrames(ctx, client, device, events, verb.Max.Width, verb.Max.Height)
+	if err != nil {
+		return nil, err
 	}
 
 	// Produce the histogram image
@@ -173,7 +187,6 @@ func (verb *videoVerb) sxsVideoSource(
 			return image.Rectangle{Min: min, Max: max}
 		}
 
-		start = time.Now()
 		b := getBackground(w, h)
 		for i, v := range videoFrames {
 			// Create side-by-side image.
