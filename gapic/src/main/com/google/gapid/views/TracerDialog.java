@@ -211,8 +211,10 @@ public class TracerDialog {
         desktopInput = new DesktopInput(folder, settings, widgets);
         createStandardTabItem(folder, "Android", androidInput);
         createStandardTabItem(folder, "Desktop", desktopInput);
+        folder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       } else {
         androidInput = new AndroidInput(area, settings, widgets);
+        androidInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
       if (devices != null) {
