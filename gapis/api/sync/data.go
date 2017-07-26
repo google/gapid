@@ -20,17 +20,17 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-// An index defines the location of one side
-// synchronization dependency.
+// SynchronizationIndices is a list of command identifiers, defining the
+// location of a one side synchronization dependency.
 type SynchronizationIndices []api.CmdID
 
 // ExecutionRanges contains the information about a blocked command.
-// LastIndex is the final subcommand that exists within this command.
-// Ranges defines which future command will unblock the command in question, and
-// which subcommandis the last that will be run at that point.
 type ExecutionRanges struct {
+	// LastIndex is the final subcommand that exists within this command.
 	LastIndex api.SubCmdIdx
-	Ranges    map[api.CmdID]api.SubCmdIdx
+	// Ranges defines which future command will unblock the command in question, and
+	// which subcommand is the last that will be run at that point.
+	Ranges map[api.CmdID]api.SubCmdIdx
 }
 
 // SubcommandReference contains a subcommand index as well as an atom.ID that
@@ -41,15 +41,15 @@ type SubcommandReference struct {
 }
 
 // Data contains a map of synchronization pairs.
-// The api.CmdID is the command that will be blocked from
-// completion, and what subcommands will be made available by future commands.
-// SubcommandReferences contains the information about every subcommand
-// run by a particular command
-// SubcommandGroup represents the last Subcommand in every command buffer
 type Data struct {
-	CommandRanges        map[api.CmdID]ExecutionRanges
+	// CommandRanges contains commands that will be blocked from completion,
+	// and what subcommands will be made available by future commands.
+	CommandRanges map[api.CmdID]ExecutionRanges
+	// SubcommandReferences contains the information about every subcommand
+	// run by a particular command.
 	SubcommandReferences map[api.CmdID][]SubcommandReference
-	SubcommandGroups     map[api.CmdID][]api.SubCmdIdx
+	// SubcommandGroups represents the last Subcommand in every command buffer.
+	SubcommandGroups map[api.CmdID][]api.SubCmdIdx
 }
 
 // NewData creates a new clean Data object
@@ -79,7 +79,7 @@ func (s SynchronizationIndices) Less(i, j int) bool {
 // SortedKeys returns the keys of 's' in sorted order
 func (s Data) SortedKeys() SynchronizationIndices {
 	v := make(SynchronizationIndices, 0, len(s.CommandRanges))
-	for k, _ := range s.CommandRanges {
+	for k := range s.CommandRanges {
 		v = append(v, k)
 	}
 	sort.Sort(v)
@@ -89,7 +89,7 @@ func (s Data) SortedKeys() SynchronizationIndices {
 // SortedKeys returns the keys of 'e' in sorted order
 func (e ExecutionRanges) SortedKeys() SynchronizationIndices {
 	v := make(SynchronizationIndices, 0, len(e.Ranges))
-	for k, _ := range e.Ranges {
+	for k := range e.Ranges {
 		v = append(v, k)
 	}
 	sort.Sort(v)
