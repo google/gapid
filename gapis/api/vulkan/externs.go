@@ -227,7 +227,7 @@ func (e externs) doUpdateBuffer(args *RecreateCmdUpdateBufferData) {
 	buffer := o.Buffers[args.DstBuffer]
 	bufferOffset := buffer.MemoryOffset
 
-	buffer.Memory.Data.Slice(uint64(bufferOffset+args.DstOffset), uint64((bufferOffset)+(args.DataSize)), l).Write(e.ctx, args.Data, e.cmd, e.s, e.b)
+	buffer.Memory.Data.Slice(uint64(bufferOffset+args.DstOffset), uint64((bufferOffset)+args.DataSize+args.DstOffset), l).Write(e.ctx, args.Data, e.cmd, e.s, e.b)
 }
 
 type RecreateCmdPushConstantsDataExpanded struct {
