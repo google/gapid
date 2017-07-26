@@ -126,17 +126,17 @@ func (r *CmdIDRange) item(i uint64) SpanItem {
 func (r *CmdIDRange) itemIndex(i CmdID) uint64    { return uint64(i - r.Start) }
 func (r *CmdIDRange) split(i uint64) (Span, Span) { return r.Split(i) }
 
-func (c *SubCmdRoot) Bounds() CmdIDRange               { return CmdIDRange{CmdID(c.Id[0]), CmdID(c.Id[0] + 1)} }
-func (c *SubCmdRoot) itemCount() uint64                { return 1 }
-func (c *SubCmdRoot) item(uint64) SpanItem { return *c }
-func (c *SubCmdRoot) itemIndex(i CmdID) uint64         { return 0 }
-func (c *SubCmdRoot) split(i uint64) (Span, Span)      { return c, nil }
+func (c *SubCmdRoot) Bounds() CmdIDRange          { return CmdIDRange{CmdID(c.Id[0]), CmdID(c.Id[0] + 1)} }
+func (c *SubCmdRoot) itemCount() uint64           { return 1 }
+func (c *SubCmdRoot) item(uint64) SpanItem        { return *c }
+func (c *SubCmdRoot) itemIndex(i CmdID) uint64    { return 0 }
+func (c *SubCmdRoot) split(i uint64) (Span, Span) { return c, nil }
 
-func (g *CmdIDGroup) Bounds() CmdIDRange               { return g.Range }
-func (g *CmdIDGroup) itemCount() uint64                { return 1 }
-func (g *CmdIDGroup) item(uint64) SpanItem { return *g }
-func (g *CmdIDGroup) itemIndex(i CmdID) uint64         { return 0 }
-func (g *CmdIDGroup) split(i uint64) (Span, Span)      { return g, nil }
+func (g *CmdIDGroup) Bounds() CmdIDRange          { return g.Range }
+func (g *CmdIDGroup) itemCount() uint64           { return 1 }
+func (g *CmdIDGroup) item(uint64) SpanItem        { return *g }
+func (g *CmdIDGroup) itemIndex(i CmdID) uint64    { return 0 }
+func (g *CmdIDGroup) split(i uint64) (Span, Span) { return g, nil }
 
 func (c SubCmdRoot) Index(index uint64) SpanItem {
 	switch t := c.SubGroup.Index(index).(type) {
@@ -354,7 +354,7 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
 // AddRoot adds a new Subcommand Root for the given index.
 // It returns the span for this SubcommandGroup
 func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
-	r := CmdIDRange{Start: CmdID(rootidx[0]), End: CmdID(rootidx[0] + 1)}
+	r := CmdIDRange{Start: CmdID(rootidx[len(rootidx)-1]), End: CmdID(rootidx[len(rootidx)-1] + 1)}
 	s, c := interval.Intersect(&g.Spans, r.Span())
 	if c == 0 {
 		// No groups to put this in
@@ -405,7 +405,7 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	for _, x := range g.Spans {
 		if k, ok := x.(*SubCmdRoot); ok {
-			if CmdID(k.Id[0]) == id {
+			if CmdID(k.Id[len(k.Id)-1]) == id {
 				return k
 			}
 		}
