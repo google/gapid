@@ -208,12 +208,14 @@ public class Tracer {
   public static class DesktopTraceRequest extends TraceRequest {
     public final File executable;
     public final String args;
+    public final File cwd;
 
-    public DesktopTraceRequest(
-        File executable, String args, File output, int frameCount, boolean midExecution) {
+    public DesktopTraceRequest(File executable, String args, File cwd, File output,
+        int frameCount, boolean midExecution) {
       super("vulkan", output, frameCount, midExecution);
       this.executable = executable;
       this.args = args;
+      this.cwd = cwd;
     }
 
     @Override
@@ -226,6 +228,11 @@ public class Tracer {
       if (!args.isEmpty()) {
         cmd.add("-local-args");
         cmd.add(args);
+      }
+
+      if (cwd != null && cwd.exists() && cwd.isDirectory()) {
+        cmd.add("--local-workingdir");
+        cmd.add(cwd.getAbsolutePath());
       }
 
       return cmd;
