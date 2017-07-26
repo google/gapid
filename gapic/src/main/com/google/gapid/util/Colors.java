@@ -26,6 +26,8 @@ public class Colors {
   public static final int DARK_LUMINANCE8_THRESHOLD = 165;
   public static final RGB BLACK = new RGB(0, 0, 0);
   public static final RGB WHITE = new RGB(255, 255, 255);
+  // https://en.wikipedia.org/wiki/Golden_angle
+  private static final double GOLDEN_ANGLE = 2.39996322972865332f;
 
   private Colors() {
   }
@@ -40,6 +42,18 @@ public class Colors {
 
   public static RGB rgb(double r, double g, double b) {
     return new RGB((int)(r * 255), (int)(g * 255), (int)(b * 255));
+  }
+
+  public static RGB getRandomColor(int index) {
+    float hue = (float)Math.toDegrees(index * GOLDEN_ANGLE) % 360;
+    return new RGB(hue, 1f, 1f);
+  }
+
+  public static RGB lerp(RGB c1, RGB c2, float a) {
+    return new RGB(
+        clamp((int)(c2.red   + (c1.red   - c2.red  ) * a)),
+        clamp((int)(c2.green + (c1.green - c2.green) * a)),
+        clamp((int)(c2.blue  + (c1.blue  - c2.blue ) * a)));
   }
 
   /**
@@ -73,5 +87,9 @@ public class Colors {
       return -1;
     }
     return (byte)(f * 255);
+  }
+
+  public static int clamp(int v) {
+    return Math.max(Math.min(v, 255), 0);
   }
 }
