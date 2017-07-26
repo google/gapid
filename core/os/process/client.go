@@ -120,6 +120,9 @@ type StartOptions struct {
 	// PortFile, if not "", is a file that can be search if we can
 	// not find the output on stdout
 	PortFile string
+
+	// If not "", the working directory for this command
+	WorkingDir string
 }
 
 // Start runs the application with the given path and options, waits for
@@ -141,6 +144,7 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 	go func() {
 		cmd := shell.
 			Command(name, opts.Args...).
+			In(opts.WorkingDir).
 			Env(opts.Env).
 			Capture(stdout, opts.Stderr)
 		if opts.Verbose {

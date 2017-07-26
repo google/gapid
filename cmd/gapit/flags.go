@@ -163,9 +163,10 @@ type (
 		For   time.Duration `help:"duration to trace for"`
 		Out   string        `help:"the file to generate"`
 		Local struct {
-			Port int       `help:"capture a local program instead of using ADB"`
-			App  file.Path `help:"a local program to trace"`
-			Args string    `help:"arguments to pass to the traced program"`
+			Port       int       `help:"capture a local program instead of using ADB"`
+			App        file.Path `help:"a local program to trace"`
+			Args       string    `help:"arguments to pass to the traced program"`
+			WorkingDir string    `help:"working directory for the process"`
 		}
 		Android struct {
 			Package  string `help:"the full package name"`

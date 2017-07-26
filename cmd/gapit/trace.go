@@ -120,9 +120,10 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	args := r.FindAllString(verb.Local.Args, -1)
 	ctx, cancel := context.WithCancel(ctx)
 	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
-		Env:      env,
-		Args:     args,
-		PortFile: portFile,
+		Env:        env,
+		Args:       args,
+		PortFile:   portFile,
+		WorkingDir: verb.Local.WorkingDir,
 	})
 
 	if err != nil {
