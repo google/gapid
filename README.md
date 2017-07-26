@@ -2,9 +2,9 @@
 
 [![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
 [![Gitter](https://badges.gitter.im/google/gapid.svg)](https://gitter.im/google/gapid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-![Linux](kokoro/img/linux.png)![Linux Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_linux.svg)
-![MacOS](kokoro/img/macos.png)![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.svg)
-![Windows](kokoro/img/windows.png)![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)
+<img alt="Linux" src="kokoro/img/linux.png" width="20px" height="20px" hspace="2px"/>![Linux Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_linux.svg)
+<img alt="MacOS" src="kokoro/img/macos.png" width="20px" height="20px" hspace="2px"/>![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.svg)
+<img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)
 
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
 
