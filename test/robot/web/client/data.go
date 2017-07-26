@@ -73,7 +73,7 @@ var (
 			return t.trace.gapidApk
 		},
 		enumSrc: func() enum {
-			return toolFieldMerger("gapid_apk", queryArray("/packages/"))
+			return androidToolFieldMerger("gapid_apk", queryArray("/packages/"))
 		},
 	}
 	gapitDimension = &dimension{
@@ -82,7 +82,7 @@ var (
 			return t.trace.gapit
 		},
 		enumSrc: func() enum {
-			return toolFieldMerger("gapit", queryArray("/packages/"))
+			return hostToolFieldMerger("gapit", queryArray("/packages/"))
 		},
 	}
 
@@ -109,8 +109,8 @@ func itemGetter(idPattern string, displayPattern string) func([]interface{}) enu
 	}
 }
 
-func toolFieldMerger(field string, entries []interface{}) enum {
-	// TODO(valbulescu): maybe parse into the actual protos instead of using JSON
+func hostToolFieldMerger(field string, entries []interface{}) enum {
+	// TODO(baldwinn): parse into the actual protos instead of using JSON, already had to fix a schema change here.
 	result := enum{}
 	for _, it := range entries {
 		tool := (it.(map[string]interface{}))["tool"]
@@ -118,9 +118,37 @@ func toolFieldMerger(field string, entries []interface{}) enum {
 			continue
 		}
 		for _, t := range tool.([]interface{}) {
-			fieldVal, ok := (t.(map[string]interface{}))[field]
+			host, ok := (t.(map[string]interface{}))["host"]
+			if !ok {
+				continue
+			}
+			fieldVal, ok := (host.(map[string]interface{}))[field]
 			if ok {
 				result = append(result, item{id: fieldVal.(string)})
+			}
+		}
+	}
+	return result
+}
+
+func androidToolFieldMerger(field string, entries []interface{}) enum {
+	// TODO(baldwinn): parse into the actual protos instead of using JSON, already had to fix a schema change here.
+	result := enum{}
+	for _, it := range entries {
+		tool := (it.(map[string]interface{}))["tool"]
+		if tool == nil {
+			continue
+		}
+		for _, t := range tool.([]interface{}) {
+			android, ok := (t.(map[string]interface{}))["android"]
+			if !ok {
+				continue
+			}
+			for _, a := range android.([]interface{}) {
+				fieldVal, ok := (a.(map[string]interface{}))[field]
+				if ok {
+					result = append(result, item{id: fieldVal.(string)})
+				}
 			}
 		}
 	}

@@ -88,7 +88,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	tempDir := file.Abs(tempName)
 	restart := false
-	serverAddress := fmt.Sprintf("localhost:%v", v.Port)
+	serverAddress := fmt.Sprintf(":%v", v.Port)
 	err = grpcutil.Serve(ctx, serverAddress, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 		managers := monitor.Managers{}
 		err := error(nil)
