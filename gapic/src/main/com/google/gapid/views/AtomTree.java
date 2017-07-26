@@ -18,6 +18,8 @@ package com.google.gapid.views;
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.util.Colors.getRandomColor;
+import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.vertCenter;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -31,7 +33,6 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import com.google.gapid.glviewer.vec.VecD;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
@@ -94,7 +95,6 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -150,6 +150,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       models.contexts.removeListener(this);
       models.thumbs.removeListener(this);
       imageProvider.reset();
+      labelProvider.reset();
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
@@ -640,7 +641,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     private static final float COLOR_INTENSITY = 0.15f;
     private final ConstantSets constants;
     private final ImageProvider imageProvider;
-    private final Map<Long, Color> threadBackgroundColors;
+    private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
     private TreeItem hoveredItem;
     private Follower.Prefetcher<String> follower;
 
@@ -649,7 +650,6 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       super(viewer, theme);
       this.constants = constants;
       this.imageProvider = imageProvider;
-      this.threadBackgroundColors = new HashMap<>();
     }
 
     public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<String> follower) {
@@ -663,39 +663,26 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       if (cmd == null) {
         return null;
       }
+
       long threadId = cmd.getThread();
       Color color = threadBackgroundColors.get(threadId);
       if (color == null) {
-        // TODO: The index should be the i'th thread in use by the capture, not a hash of the
-        // thread ID. This requires using the list of threads exposed by the service.Capture.
-        long hash = threadId ^ (threadId >>> 32);
-        hash = hash ^ (hash >>> 16);
-        hash = hash ^ (hash >>> 8);
-        long index = hash & 0xff;
-        double goldenAngle = 2.39996322972865332f; // https://en.wikipedia.org/wiki/Golden_angle
-        double angle = index * goldenAngle;
         Control control = getViewer().getControl();
-        Display display = control.getDisplay();
-
-        RGBA rgba = control.getBackground().getRGBA();
-        VecD col = new VecD(rgba.rgb.red, rgba.rgb.green, rgba.rgb.blue);
-        col = hue(angle).lerp(col, COLOR_INTENSITY);
-        col = col.clamp(VecD.ZERO, new VecD(255, 255, 255));
-        color = new Color(display, (int)col.x, (int)col.y, (int)col.z, rgba.alpha);
-        // TODO: Dispose of colors created here.
+        RGBA bg = control.getBackground().getRGBA();
+        color = new Color(control.getDisplay(),
+            lerp(getRandomColor(getColorIndex(threadId)), bg.rgb, COLOR_INTENSITY), bg.alpha);
         threadBackgroundColors.put(threadId, color);
       }
       return color;
     }
 
-    private static VecD hue(double angle) {
-      return new VecD(
-          Math.sin(angle + Math.PI * 0.0 / 3.0),
-          Math.sin(angle + Math.PI * 2.0 / 3.0),
-          Math.sin(angle + Math.PI * 4.0 / 3.0))
-          .add(1.0)
-          .normalize()
-          .multiply(255);
+    private static int getColorIndex(long threadId) {
+      // TODO: The index should be the i'th thread in use by the capture, not a hash of the
+      // thread ID. This requires using the list of threads exposed by the service.Capture.
+      int hash = (int)(threadId ^ (threadId >>> 32));
+      hash = hash ^ (hash >>> 16);
+      hash = hash ^ (hash >>> 8);
+      return hash & 0xff;
     }
 
     @Override
@@ -757,6 +744,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       if (element instanceof AtomStream.Node) {
         imageProvider.unload((AtomStream.Node)element);
       }
+    }
+
+    public void reset() {
+      for (Color color : threadBackgroundColors.values()) {
+        color.dispose();
+      }
+      threadBackgroundColors.clear();
     }
   }
 }
