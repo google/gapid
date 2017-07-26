@@ -420,7 +420,7 @@ public class TracerDialog {
             } else {
               file.setText(pkg.substring(p + 1) + ".gfxtrace");
             }
-            userHasChangedOutputFile = false;
+            userHasChangedOutputFile = false; // cancel the modify event from set call.
           }
         });
 
@@ -458,6 +458,12 @@ public class TracerDialog {
             return (action == null) ? null : action.toString();
           }
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        // Space used by the desktop trace tab, helps line things up a bit.
+        if (!OS.isMac) {
+          createLabel(this, "");
+          createLabel(this, "");
+        }
       }
 
       @Override
@@ -559,6 +565,8 @@ public class TracerDialog {
     private static class DesktopInput extends SharedTraceInput {
       private FileTextbox.File executable;
       private Text arguments;
+      private FileTextbox.Directory cwd;
+      private boolean userHasChangedCwd = false;
 
       public DesktopInput(Composite parent, Settings settings, Widgets widgets) {
         super(parent, settings, widgets);
@@ -581,8 +589,25 @@ public class TracerDialog {
             } else {
               file.setText(exe + ".gfxtrace");
             }
-            userHasChangedOutputFile = false;
+            userHasChangedOutputFile = false; // cancel the modify event from set call.
           }
+
+          if (!userHasChangedCwd) {
+            File dir = new File(executable.getText()).getParentFile();
+            if (dir.exists() && dir.isDirectory()) {
+              String path = dir.getAbsolutePath();
+              if (path == null) {
+                path = dir.getPath();
+              }
+              if (path != null) {
+                cwd.setText(path);
+                userHasChangedCwd = false; // cancel the modify event from set call.
+              }
+            }
+          }
+        });
+        cwd.addBoxListener(SWT.Modify, e -> {
+          userHasChangedCwd = true;
         });
       }
 
@@ -599,6 +624,14 @@ public class TracerDialog {
         createLabel(this, "Arguments:");
         arguments = withLayoutData(createTextbox(this, settings.traceArgs),
             new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(this, "Working Directory:");
+        cwd = withLayoutData(new FileTextbox.Directory(this, settings.traceCwd) {
+          @Override
+          protected void configureDialog(DirectoryDialog dialog) {
+            dialog.setText(Messages.CAPTURE_CWD);
+          }
+        }, new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
       @Override
@@ -623,9 +656,12 @@ public class TracerDialog {
           int frames, boolean midExecution) {
         settings.traceExecutable = executable.getText();
         settings.traceArgs = arguments.getText();
+        settings.traceCwd = cwd.getText();
 
         return new DesktopTraceRequest(
-            new File(executable.getText()), arguments.getText(), output, frames, midExecution);
+            new File(executable.getText()), arguments.getText(),
+            cwd.getText().isEmpty() ? null : new File(cwd.getText()), output, frames,
+            midExecution);
       }
     }
   }

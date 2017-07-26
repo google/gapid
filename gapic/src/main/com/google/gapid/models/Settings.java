@@ -68,6 +68,7 @@ public class Settings {
   public boolean traceDisablePcs = false;
   public String traceExecutable = "";
   public String traceArgs = "";
+  public String traceCwd = "";
   public boolean traceMidExecution = false;
   public int traceFrameCount = 0;
   public boolean skipWelcomeScreen = false;
@@ -164,6 +165,7 @@ public class Settings {
     traceDisablePcs = getBoolean(properties, "trace.disablePCS");
     traceExecutable = properties.getProperty("trace.executable", traceExecutable);
     traceArgs = properties.getProperty("trace.args", traceArgs);
+    traceCwd  = properties.getProperty("trace.cwd", traceCwd);
     traceMidExecution = getBoolean(properties, "trace.midExecution");
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
@@ -196,6 +198,7 @@ public class Settings {
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.executable", traceExecutable);
     properties.setProperty("trace.args", traceArgs);
+    properties.setProperty("trace.cwd", traceCwd);
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
     properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
