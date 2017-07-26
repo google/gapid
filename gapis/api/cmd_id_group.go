@@ -365,7 +365,7 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		return g.Spans[i].(*SubCmdRoot)
 	} else {
 		if c != 1 {
-			panic("This should not happen, a single command cannot span 2 groups")
+			panic("This should not happen, a single command cannot span more than one group")
 		}
 		// We should insert into one of the spans.
 		// At least one overlap
@@ -383,10 +383,20 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 // This creates new SubcommandRoots underneath if necessary.
 func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 	id := CmdID(r[0])
+	oldEnd := c.SubGroup.Range.End
 	if CmdID(r[0]) >= c.SubGroup.Range.End {
 		c.SubGroup.Range.End = id + 1
 	}
+
 	if len(r) > 1 {
+		if c.SubGroup.Range.End > oldEnd+1 {
+			// If we have skipped over subcommands, then add empty
+			// roots for them.
+			x := uint64(c.SubGroup.Range.End - oldEnd - 1)
+			for i := uint64(0); i < x; i++ {
+				c.SubGroup.AddRoot(append(base, uint64(oldEnd)+i))
+			}
+		}
 		sg := c.SubGroup.FindSubCommandRoot(id)
 		if sg == nil {
 			sg = c.SubGroup.AddRoot(append(base, r[0]))
