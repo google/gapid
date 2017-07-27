@@ -24,15 +24,14 @@
     <MediaTemplate EmbedCab="yes" />
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder" Name="PFiles">
-        <Directory Id="gapid" Name="gapid">
-        </Directory>
+        <Directory Id="GAPID" Name="gapid" />
       </Directory>
     </Directory>
     <Feature Id="GAPID"  Title="Graphics API Debugger" Level="1">
       <ComponentGroupRef Id="gapid" />
     </Feature>
 
-    <Property Id="WIXUI_INSTALLDIR" Value="gapid" />
+    <Property Id="WIXUI_INSTALLDIR" Value="GAPID" />
     <!-- From WixUI_InstallDir.wxs - without a license dialog -->
     <UI Id="gapid">
       <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
