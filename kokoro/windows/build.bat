@@ -95,7 +95,7 @@ zip -r gapid-%VERSION%-windows.zip gapid
 
 REM Create an MSI installer.
 copy %SRC%\kokoro\windows\gapid.wxs .
-%WIX%\heat.exe dir gapid -ag -cg gapid -dr gapid -template fragment -sreg -sfrag -srd -o component.wxs
+%WIX%\heat.exe dir gapid -ag -cg gapid -dr GAPID -template fragment -sreg -sfrag -srd -o component.wxs
 %WIX%\candle.exe gapid.wxs component.wxs
 %WIX%\light.exe gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%.msi
 
