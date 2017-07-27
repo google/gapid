@@ -166,6 +166,10 @@ func getIndicesData(ctx context.Context, s *api.State, boundIndexBuffer *BoundIn
 		start := offset + uint64(firstIndex)*sizeOfIndex
 		size := uint64(indexCount) * sizeOfIndex
 		end := start + size
+		if start >= backingMem.Data.count || end > backingMem.Data.count {
+			log.E(ctx, "Shadow memory of index buffer is not big enough")
+			return []uint32{}
+		}
 		indicesSlice := backingMem.Data.Slice(start, end, s.MemoryLayout)
 		for i := uint64(0); (i < size) && (i+sizeOfIndex-1 < size); i += sizeOfIndex {
 			index := int32(0)
