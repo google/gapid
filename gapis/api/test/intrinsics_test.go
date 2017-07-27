@@ -36,12 +36,10 @@ func TestClone(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	for _, cmd := range []api.Cmd{
+	api.MutateCmds(ctx, s, nil,
 		cb.CmdClone(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
-	} {
-		cmd.Mutate(ctx, s, nil)
-	}
+	)
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
@@ -52,7 +50,9 @@ func TestMake(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
-	cb.CmdMake(10).Mutate(ctx, s, nil)
+	api.MutateCmds(ctx, s, nil,
+		cb.CmdMake(10),
+	)
 	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count()).Equals(uint64(10))
 	assert.For(ctx, "final NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(2))
 }
@@ -63,13 +63,11 @@ func TestCopy(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	for _, cmd := range []api.Cmd{
+	api.MutateCmds(ctx, s, nil,
 		cb.CmdMake(10),
 		cb.CmdCopy(p(0x1234), 10).
 			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
-	} {
-		cmd.Mutate(ctx, s, nil)
-	}
+	)
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
@@ -80,9 +78,10 @@ func TestCharsliceToString(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
-	cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
-		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
-		Mutate(ctx, s, nil)
+	api.MutateCmds(ctx, s, nil,
+		cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
+			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+	)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
 }
 
@@ -92,9 +91,10 @@ func TestCharptrToString(t *testing.T) {
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	expected := "ħęľĺő ŵōřŀď"
-	cb.CmdCharptrToString(p(0x1234)).
-		AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)).
-		Mutate(ctx, s, nil)
+	api.MutateCmds(ctx, s, nil,
+		cb.CmdCharptrToString(p(0x1234)).
+			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+	)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
 }
 
@@ -106,8 +106,9 @@ func TestSliceCasts(t *testing.T) {
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = l
-	cb.CmdSliceCasts(p(0x1234), 10).Mutate(ctx, s, nil)
-
+	api.MutateCmds(ctx, s, nil,
+		cb.CmdSliceCasts(p(0x1234), 10),
+	)
 	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(U8ᵖ{0x1234, 0}.Slice(0, 20, l))
 	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(U16ᵖ{0x1234, 0}.Slice(0, 10, l))
 	assert.For(ctx, "U16[] -> U32[]").That(GetState(s).U32s).Equals(U32ᵖ{0x1234, 0}.Slice(0, 5, l))

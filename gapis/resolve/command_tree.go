@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -285,17 +286,15 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Walk the list of unfiltered atoms to build the groups.
 	s := c.NewState()
-	for i, cmd := range c.Commands {
-		id := api.CmdID(i)
-		if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
-			return nil, err
-		}
+	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, s, nil)
 		if filter(cmd, s) {
 			for _, g := range groupers {
 				g.process(ctx, id, cmd, s)
 			}
 		}
-	}
+		return nil
+	})
 	for _, g := range groupers {
 		g.flush(uint64(len(c.Commands)))
 	}
@@ -326,12 +325,17 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	// Now we have all the groups, we finally need to add the filtered atoms.
-	s = c.NewState()
-	out.root.AddAtoms(func(i api.CmdID) bool {
-		cmd := c.Commands[i]
-		cmd.Mutate(ctx, s, nil)
-		return filter(cmd, s)
-	}, uint64(p.MaxChildren))
+	{
+		// Clone the context to prevent cancellation occuring in Mutate() calls.
+		ctx := keys.Clone(context.Background(), ctx)
+
+		s = c.NewState()
+		out.root.AddAtoms(func(i api.CmdID) bool {
+			cmd := c.Commands[i]
+			cmd.Mutate(ctx, s, nil)
+			return filter(cmd, s)
+		}, uint64(p.MaxChildren))
+	}
 
 	return out, nil
 }

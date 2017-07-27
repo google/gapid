@@ -73,7 +73,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 			interval.Merge(&writes, rng.Window(r).Span(), false)
 		}
 	}
-	cmds[cmdIdx].Mutate(ctx, s, nil /* no builder, just mutate */)
+	api.MutateCmds(ctx, s, nil, cmds[cmdIdx])
 
 	slice := pool.Slice(r)
 

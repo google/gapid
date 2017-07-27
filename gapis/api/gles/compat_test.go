@@ -16,7 +16,6 @@ package gles_test
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -175,7 +174,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
-	for _, cmd := range []api.Cmd{
+	api.ForeachCmd(ctx, []api.Cmd{
 		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),
@@ -183,34 +182,39 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 			AddRead(atom.Data(ctx, a, p(0x100000), positions)),
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(atom.Data(ctx, a, p(0x200000), indices)),
-	} {
+	}, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		transform.Transform(ctx, api.CmdNoID, cmd, mw)
-	}
+		return nil
+	})
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
 	s := newState(ctx)
-	for _, cmd := range mw.Cmds {
-		err := cmd.Mutate(ctx, s, nil)
-		ctx := log.V{"atom": fmt.Sprintf("%T", cmd)}.Bind(ctx)
-		if !assert.For(ctx, "err").ThatError(err).Succeeded() {
-			break
+	var found bool
+	err = api.ForeachCmd(ctx, mw.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, s, nil); err != nil {
+			return err
 		}
+
 		if _, ok := cmd.(*gles.GlDrawElements); ok {
 			ctx := gles.GetContext(s, cmd.Thread())
 			vao := ctx.Bound.VertexArray
 			array := vao.VertexAttributeArrays[0]
 			binding := vao.VertexBufferBindings[array.Binding]
 			if binding.Buffer != 0 && array.Pointer.Address() == 0 {
-				return // Success
+				found = true
+				return api.Break // Success
 			} else {
 				t.Error("glDrawElements does not source vertex data from buffer.")
-				return
+				return api.Break
 			}
 		}
-	}
+		return nil
+	})
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 
-	t.Error("glDrawElements atom not found.")
-	return
+	if !found {
+		t.Error("glDrawElements atom not found.")
+	}
 }
 
 func TestShaderCompat(t *testing.T) {

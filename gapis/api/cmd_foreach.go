@@ -20,9 +20,13 @@ import (
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/gapis/replay/builder"
 )
 
 // ForeachCmd calls the callback cb for each command in cmds.
+// If cb returns an error (excluding Break) then the iteration will stop
+// and the error will be returned. If cb returns Break then the iteration
+// will stop and nil will be returned.
 // ForeachCmd creates a non-cancellable sub-context to reduce cancellation
 // complexity in the callback function.
 // If cb panics, the error will be annotated with the panicing command index and
@@ -37,11 +41,13 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 	}()
 
 	subctx := keys.Clone(context.Background(), ctx)
-
 	for i, c := range cmds {
 		idx, cmd = CmdID(i), c
 		if err := cb(subctx, idx, cmd); err != nil {
-			return err
+			if err != Break {
+				return err
+			}
+			return nil
 		}
 		if err := task.StopReason(ctx); err != nil {
 			return err
@@ -50,3 +56,19 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 
 	return nil
 }
+
+// MutateCmds calls Mutate on each of cmds.
+func MutateCmds(ctx context.Context, state *State, builder *builder.Builder, cmds ...Cmd) {
+	ForeachCmd(ctx, cmds, func(ctx context.Context, id CmdID, cmd Cmd) error {
+		cmd.Mutate(ctx, state, builder)
+		return nil
+	})
+}
+
+// Break can be returned from the callback passed to ForeachCmd to stop
+// iteration of the loop.
+const Break tyBreak = tyBreak(0)
+
+type tyBreak int
+
+func (tyBreak) Error() string { return "<break>" }
