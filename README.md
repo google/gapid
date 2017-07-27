@@ -9,6 +9,7 @@
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
 
 GAPID can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
+GAPID can also trace any Desktop Vulkan application.
 
 <table>
   <tr>
@@ -40,8 +41,9 @@ GAPID can trace any Android [debuggable application](https://developer.android.c
 ## Status
 GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
 
-The UI runs on Windows, Linux and MacOS and can currently be used to trace on Android.
-We also plan to be able to trace OpenGL ES and Vulkan applications on hosts that support those APIs.
+The UI runs on Windows, Linux and MacOS and can currently be used to trace GLES on Android as well as Vulkan
+on Windows, Linux and Android.
+We also plan to be able to trace OpenGL ES applications on hosts that support the API.
 
 Downloadable prebuilts will be available once the project reaches the beta milestone.
 
