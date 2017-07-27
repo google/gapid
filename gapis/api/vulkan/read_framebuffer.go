@@ -992,7 +992,7 @@ func postImageData(ctx context.Context,
 					top := uint64(0)
 					bottom := bufferSize - rowSizeInBytes
 					var temp = make([]byte, rowSizeInBytes)
-					for top <= bottom {
+					for top < bottom {
 						copy(temp, bytes[top:top+rowSizeInBytes])
 						copy(bytes[top:top+rowSizeInBytes], bytes[bottom:bottom+rowSizeInBytes])
 						copy(bytes[bottom:bottom+rowSizeInBytes], temp)
