@@ -287,15 +287,13 @@ func getVerticesData(ctx context.Context, s *api.State, thread uint64,
 	out := make([]byte, compactOutputSize)
 
 	fullSize := uint64(vertexCount-1)*stride + perVertexSize
-	if uint64(attribute.Offset) >= vertexSlice.count {
-		// First vertex sits beyond the end of the buffer.
-		// Instead of erroring just return a 0-initialized buffer so other
-		// streams can be visualized. The report should display an error to
-		// alert the user to the bad data
-		// TODO: Actually add this as a report error
-		return out, nil
-	}
+
 	offset := uint64(attribute.Offset) + (uint64(firstVertex) * stride)
+	if offset > vertexSlice.count || offset+fullSize > vertexSlice.count {
+		// We do not actually have a big enough buffer for this. Return
+		// our zero-initialized buffer.
+		return out, fmt.Errorf("Vertex data is out of range")
+	}
 	data := vertexSlice.Slice(offset, offset+fullSize, s.MemoryLayout).Read(ctx, nil, s, nil)
 	if stride > perVertexSize {
 		// There are gaps between vertices.
