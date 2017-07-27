@@ -1,19 +1,35 @@
 # Vulkan Status
 
 ## Trace and Replay
-Vulkan is currently WIP. Many samples, and applications do work correctly,
-but not all.
+Vulkan is currently WIP. Many samples, and applications work correctly, but some
+bugs may still be present.
 
 ## Mid-Execution Capture
-Mid-Execution capture is currently in progress. Currently there is no way
-exposed to start a capture at any frame other than 0, but this will
-be exposed once the functionality is at parity with non mid-execution capture.
+Mid-Execution capture allows an application to be traced starting at an arbitrary point in time.
+
+If tracing from the command line this can be done with
+
+`gapit trace -start-defer`
+
+When using the GUI, this can be acheived by unchecking
+`Trace from Beginning`
 
 ## Subcommands
-When replaying to a specific command within a command buffer, we have to
-re-write the command-buffer. The Subcommands list shows all commands in
-command-buffers that support re-writing.
+When visualizing the tree of Commands, every VkQueueSubmit is expanded into
+a list of the commands that are run during that submission. From there you can
+query information about any call in the program.
 
+## Performance
+We are still tuning performance for Vulkan in GAPID. For Posix based platforms
+we handle persistently mapped coherent memory efficiently, but for Windows this
+is currently in progress. Large blocks of mapped coherent memory can greatly
+reduce replay performance and increase trace size.
+
+## Test applications
+We use a set of [Test Applications](https://github.com/google/vulkan_test_applications) to validate
+whether or not Vulkan support is functioning. This repository contains
+applications that use most parts of the API, and will be expanded as more interesting and tricky
+uses of the API are found.
 
 ## Current Support
 The current status of support for the Vulkan API on a method by method basis
@@ -71,7 +87,7 @@ are as follows.
 | vkCmdDrawIndirect                                     |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
 | vkCmdEndQuery                                         |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
 | vkCmdEndRenderPass                                    |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
-| vkCmdExecuteCommands                                  |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
+| vkCmdExecuteCommands                                  |   :white_check_mark:      |      :white_check_mark:         |      :white_medium_square:      |
 | vkCmdFillBuffer                                       |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
 | vkCmdNextSubpass                                      |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
 | vkCmdPipelineBarrier                                  |   :white_check_mark:      |      :white_check_mark:         |      :white_check_mark:         |
