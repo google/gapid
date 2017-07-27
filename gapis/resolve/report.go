@@ -114,18 +114,13 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		}
 	}
 
-	process := func(i int, cmd api.Cmd) {
-		items, lastError, currentAtom = items[:0], nil, uint64(i)
-
-		defer func() {
-			if err := recover(); err != nil {
-				items = append(items, r.newReportItem(log.Fatal, uint64(i),
-					messages.ErrCritical(fmt.Sprintf("%s", err))))
-			}
-		}()
+	// Gather report items from the state mutator, and collect together all the
+	// APIs in use.
+	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		items, lastError, currentAtom = items[:0], nil, uint64(id)
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
-			items = append(items, r.newReportItem(log.Fatal, uint64(i),
+			items = append(items, r.newReportItem(log.Fatal, uint64(id),
 				messages.ErrTraceAssert(as.Reason)))
 		}
 
@@ -133,25 +128,20 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 		if len(items) == 0 {
 			if err != nil && !api.IsErrCmdAborted(err) {
-				items = append(items, r.newReportItem(log.Error, uint64(i),
+				items = append(items, r.newReportItem(log.Error, uint64(id),
 					messages.ErrMessage(err)))
 			} else if lastError != nil {
-				items = append(items, r.newReportItem(log.Error, uint64(i),
+				items = append(items, r.newReportItem(log.Error, uint64(id),
 					messages.ErrMessage(fmt.Sprintf("%v", lastError))))
 			}
 		}
-	}
 
-	// Gather report items from the state mutator, and collect together all the
-	// APIs in use.
-	for i, cmd := range c.Commands {
-		process(i, cmd)
 		if filter(cmd, state) {
 			for _, item := range items {
 				item.Tags = append(item.Tags, getAtomNameTag(cmd))
 				builder.Add(ctx, item)
 			}
-			for _, issue := range issues[api.CmdID(i)] {
+			for _, issue := range issues[id] {
 				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
 					messages.ErrReplayDriver(issue.Error.Error()))
 				if int(issue.Command) < len(c.Commands) {
@@ -160,7 +150,8 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				builder.Add(ctx, item)
 			}
 		}
-	}
+		return nil
+	})
 
 	return builder.Build(), nil
 }

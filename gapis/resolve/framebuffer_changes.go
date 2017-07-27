@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/gapis/api"
@@ -47,13 +46,6 @@ const errNoAPI = fault.Const("Command has no API")
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
-
-	var id api.CmdID
-	defer func() {
-		if err := recover(); err != nil {
-			panic(fmt.Errorf("Panic at atom %d: %v", id, err))
-		}
-	}()
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

@@ -68,11 +68,13 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			}
 		}
 	}
-	for i, cmd := range c.Commands {
+
+	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
-		currentCmdIndex = uint64(i)
-		cmd.Mutate(ctx, state, nil /* no builder, just mutate */)
-	}
+		currentCmdIndex = uint64(id)
+		cmd.Mutate(ctx, state, nil)
+		return nil
+	})
 
 	types := map[api.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {

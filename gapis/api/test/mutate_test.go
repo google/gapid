@@ -17,7 +17,6 @@ package test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -59,21 +58,12 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 		s.Memory[memory.ApplicationPool].Write(w.at.Address(), w.src)
 	}
 
-	for i, cmd := range test.cmds {
-		func() {
-			defer func() {
-				err := recover()
-				ctx := log.V{"cmd": i, "type": fmt.Sprintf("%T", cmd)}.Bind(ctx)
-				if !assert.For(ctx, "Panic in replay").That(err).IsNil() {
-					panic(err)
-				}
-			}()
-			id := api.CmdID(i)
-			b.BeginCommand(uint64(id), 0)
-			cmd.Mutate(ctx, s, b)
-			b.CommitCommand()
-		}()
-	}
+	api.ForeachCmd(ctx, test.cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		b.BeginCommand(uint64(id), 0)
+		cmd.Mutate(ctx, s, b)
+		b.CommitCommand()
+		return nil
+	})
 
 	payload, _, err := b.Build(ctx)
 	assert.For(ctx, "Build opcodes").ThatError(err).Succeeded()

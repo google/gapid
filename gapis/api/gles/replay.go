@@ -259,8 +259,8 @@ func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
-	id := api.CmdNoID
 	s := out.State()
+	cmds := []api.Cmd{}
 
 	// Start by unbinding all the contexts from all the threads.
 	for t, c := range GetState(s).Contexts {
@@ -268,13 +268,13 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			continue
 		}
 		cb := CommandBuilder{Thread: t}
-		out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
+		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
 	}
 
 	// Now using a single thread, bind each context and delete all objects.
 	cb := CommandBuilder{Thread: 0}
 	for i, c := range GetState(s).EGLContexts {
-		out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
+		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
 
 		// Delete all Renderbuffers.
 		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers))
@@ -286,7 +286,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(renderbuffers) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, renderbuffers)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteRenderbuffers(GLsizei(len(renderbuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
 		// Delete all Textures.
@@ -296,7 +296,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(textures) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, textures)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteTextures(GLsizei(len(textures)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
 		// Delete all Framebuffers.
@@ -306,7 +306,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(framebuffers) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, framebuffers)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteFramebuffers(GLsizei(len(framebuffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
 		// Delete all Buffers.
@@ -316,7 +316,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(buffers) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, buffers)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteBuffers(GLsizei(len(buffers)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
 		// Delete all VertexArrays.
@@ -326,17 +326,17 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(vertexArrays) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, vertexArrays)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteVertexArrays(GLsizei(len(vertexArrays)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 
 		// Delete all Shaders.
 		for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
-			out.MutateAndWrite(ctx, id, cb.GlDeleteShader(shaderId))
+			cmds = append(cmds, cb.GlDeleteShader(shaderId))
 		}
 
 		// Delete all Programs.
 		for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
-			out.MutateAndWrite(ctx, id, cb.GlDeleteProgram(programId))
+			cmds = append(cmds, cb.GlDeleteProgram(programId))
 		}
 
 		// Delete all Queries.
@@ -346,8 +346,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 		if len(queries) > 0 {
 			tmp := s.AllocDataOrPanic(ctx, queries)
-			out.MutateAndWrite(ctx, id, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
+			cmds = append(cmds, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
 	}
-	out.MutateAndWrite(ctx, id, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
+	cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
+	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
+		return nil
+	})
 }
