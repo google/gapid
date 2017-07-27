@@ -293,7 +293,7 @@ func getVerticesData(ctx context.Context, s *api.State, thread uint64,
 	fullSize := uint64(vertexCount-1)*stride + perVertexSize
 
 	offset := uint64(attribute.Offset) + (uint64(firstVertex) * stride)
-	if offset > vertexSlice.count || offset+fullSize > vertexSlice.count {
+	if offset >= vertexSlice.count || offset+fullSize > vertexSlice.count {
 		// We do not actually have a big enough buffer for this. Return
 		// our zero-initialized buffer.
 		return out, fmt.Errorf("Vertex data is out of range")
