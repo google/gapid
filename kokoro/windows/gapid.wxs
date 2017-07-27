@@ -22,16 +22,35 @@
         Comments="Installs the Graphics API Debugger" Manufacturer="Google, Inc"
         InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
     <MediaTemplate EmbedCab="yes" />
+
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder" Name="PFiles">
         <Directory Id="GAPID" Name="gapid" />
       </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="GAPID" />
+      </Directory>
     </Directory>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="*">
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="GAPID" Description="Graphics API Debugger"
+            Target="[!gapid.bat]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="gapid.ico" />
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Google\GAPID" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Icon Id="gapid.ico" SourceFile="gapid.ico" />
+
     <Feature Id="GAPID"  Title="Graphics API Debugger" Level="1">
       <ComponentGroupRef Id="gapid" />
+      <ComponentRef Id="ApplicationShortcut" />
     </Feature>
 
     <Property Id="WIXUI_INSTALLDIR" Value="GAPID" />
+    <Property Id="ARPPRODUCTICON" Value="gapid.ico" />
+
     <!-- From WixUI_InstallDir.wxs - without a license dialog -->
     <UI Id="gapid">
       <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
