@@ -9,7 +9,7 @@ import (
 )
 
 // "HH:MM:SS.FFF [VDIWEF] tag file:line : msg"
-var hostLogMsgRegex = regexp.MustCompile(`\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([VDIWEF])\s*(\w*)\s*([a-zA-Z0-9_.]*):([0-9]*)\s:\s(.*)`)
+var hostLogMsgRegex = regexp.MustCompile(`\s*([0-9]*):([0-9]*):([0-9]*).([0-9]*)\s*([VDIWEF])\s*(\w*)\s*:\s*\[([a-zA-Z0-9_.]*):([0-9]*)\]\s(.*)`)
 
 func parseHostLogMsg(s string) *log.Message {
 	parts := hostLogMsgRegex.FindStringSubmatch(s)
