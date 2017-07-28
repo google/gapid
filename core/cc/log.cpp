@@ -65,7 +65,7 @@ void Logger::log(unsigned level, const char* src_file, unsigned src_line, const 
 
     for (FILE* file : mFiles) {
         // Print out the common part of the log messages
-        fprintf(file, "%02d:%02d:%02d.%03d %c %s %s:%u : ", loc->tm_hour, loc->tm_min, loc->tm_sec,
+        fprintf(file, "%02d:%02d:%02d.%03d %c %s: [%s:%u] ", loc->tm_hour, loc->tm_min, loc->tm_sec,
                 static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, src_file, src_line);
 
         // Print out the actual log message

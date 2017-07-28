@@ -94,10 +94,10 @@ namespace tmp {
     struct boxedStr { constexpr static const char* value() { return tmp::Basename(__FILE__); } }; \
     auto basename = tmp::Strcpy<boxedStr>(tmp::MakeIndices<tmp::Strlen(boxedStr{}.value())+1>{}); \
     if (LEVEL == LOG_LEVEL_FATAL) {                                                               \
-      __android_log_assert(nullptr, "GAPID", "%s:%u : " FORMAT,                                   \
+      __android_log_assert(nullptr, "GAPID", "[%s:%u] " FORMAT,                                   \
                            basename, __LINE__, ##__VA_ARGS__);                                    \
     } else {                                                                                      \
-      __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "%s:%u : " FORMAT,                          \
+      __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "[%s:%u] " FORMAT,                          \
                           basename, __LINE__, ##__VA_ARGS__);                                     \
     }                                                                                             \
   }
