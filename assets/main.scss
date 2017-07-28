@@ -62,6 +62,7 @@ h2 {
   color: rgba(255,255,255,.8);
   background-color: #202020;
   box-shadow: 1px 1px 1px 1px rgba(0,0,0,0.75);
+  z-index: 1;
 }
 
 .sidebar-title,
@@ -98,6 +99,24 @@ h2 {
   max-width: 70%;
 }
 
+table th {
+    font-weight: 600
+}
+
+table th,table td {
+    padding: 6px 13px;
+    border: 1px solid #dfe2e5
+}
+
+table tr {
+    background-color: #fff;
+    border-top: 1px solid #c6cbd1
+}
+
+table tr:nth-child(2n) {
+    background-color: #f6f8fa
+}
+
 // Callouts (1), (2) etc.
 .callouts li {
   list-style-type: none;
@@ -123,15 +142,7 @@ code {
 }
 
 // Info, Warning blocks
-.info {
-  background: rgba(100,250,150,0.3);
-  padding: 6px;
-  border-radius: 5px;
-  display: inline-block;
-}
-
-.info::before {
-  content: "info_outline";
+@mixin material-icon {
   vertical-align: top;
   padding-right: 5px;
 
@@ -148,4 +159,30 @@ code {
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+.info {
+  background: rgba(100,250,150,0.3);
+  padding: 6px;
+  margin: 5px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.info::before {
+  content: "info_outline";
+  @include material-icon;
+}
+
+.issue {
+  background: rgba(250,150,0,0.3);
+  padding: 6px;
+  margin: 5px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.issue::before {
+  content: "error_outline";
+  @include material-icon;
 }

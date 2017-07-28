@@ -49,7 +49,6 @@ Click `OK` to begin the trace.
 
 ## Known issues
 
-Please close any running instances of Android Studio before attempting to take a trace.
-
-
-
+<div class="issue" markdown="span">
+  Please close any running instances of Android Studio before attempting to take a trace.
+</div>
