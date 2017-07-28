@@ -348,10 +348,16 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			tmp := s.AllocDataOrPanic(ctx, queries)
 			cmds = append(cmds, cb.GlDeleteQueries(GLsizei(len(queries)), tmp.Ptr()).AddRead(tmp.Data()))
 		}
+
+		// Flush all buffered commands before proceeding to the next context.
+		// Contexts can share objects - e.g. several contexts can contain the same buffer.
+		// Mutating the delete command ensures the object is removed from all maps,
+		// and that we will not try to remove it again when iterating over the second context.
+		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
+		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+			out.MutateAndWrite(ctx, api.CmdNoID, cmd)
+			return nil
+		})
+		cmds = []api.Cmd{}
 	}
-	cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
-		return nil
-	})
 }
