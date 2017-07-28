@@ -82,6 +82,8 @@ namespace {
 
 typedef uint32_t EGLint;
 
+const EGLint EGL_NO_SURFACE                = 0x0000;
+const EGLint EGL_FALSE                     = 0x0000;
 const EGLint EGL_TRUE                      = 0x0001;
 const EGLint EGL_ALPHA_SIZE                = 0x3021;
 const EGLint EGL_BLUE_SIZE                 = 0x3022;
@@ -93,9 +95,16 @@ const EGLint EGL_CONFIG_ID                 = 0x3028;
 const EGLint EGL_NONE                      = 0x3038;
 const EGLint EGL_HEIGHT                    = 0x3056;
 const EGLint EGL_WIDTH                     = 0x3057;
+const EGLint EGL_DRAW                      = 0x3059;
+const EGLint EGL_READ                      = 0x305A;
 const EGLint EGL_SWAP_BEHAVIOR             = 0x3093;
 const EGLint EGL_BUFFER_PRESERVED          = 0x3094;
-const EGLint EGL_CONTEXT_MAJOR_VERSION_KHR = 0x3098;
+
+const EGLint EGL_CONTEXT_MAJOR_VERSION_KHR       = 0x3098;
+const EGLint EGL_CONTEXT_MINOR_VERSION_KHR       = 0x30FB;
+const EGLint EGL_CONTEXT_FLAGS_KHR               = 0x30FC;
+const EGLint EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR    = 0x0001;
+const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
 const uint32_t GLX_WIDTH  = 0x801D;
 const uint32_t GLX_HEIGHT = 0x801E;
@@ -238,10 +247,61 @@ EGLBoolean Spy::eglInitialize(CallObserver* observer, EGLDisplay dpy, EGLint* ma
 
 EGLContext Spy::eglCreateContext(CallObserver* observer, EGLDisplay display, EGLConfig config,
                                  EGLContext share_context, EGLint* attrib_list) {
-    EGLContext res = GlesSpy::eglCreateContext(observer, display, config, share_context, attrib_list);
-    for (int i = 0; attrib_list != nullptr && attrib_list[i] != EGL_NONE; i += 2) {
-        if (attrib_list[i] == EGL_CONTEXT_MAJOR_VERSION_KHR) {
-            GAPID_INFO("eglCreateContext requested GL version %i", attrib_list[i+1]);
+    // Read attrib list
+    std::map<EGLint, EGLint> attribs;
+    while(attrib_list != nullptr && *attrib_list != EGL_NONE) {
+        EGLint key = *(attrib_list++);
+        EGLint val = *(attrib_list++);
+        attribs[key] = val;
+    }
+
+    // Modify attrib list
+    if (mRecordGLErrorState) {
+        attribs[EGL_CONTEXT_FLAGS_KHR] |= EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR;
+    }
+
+    // Write attrib list
+    std::vector<EGLint> attrib_vector;
+    for(auto it: attribs) {
+        attrib_vector.push_back(it.first);
+        attrib_vector.push_back(it.second);
+    }
+    attrib_vector.push_back(EGL_NONE);
+    attrib_vector.push_back(EGL_NONE);
+
+    auto res = GlesSpy::eglCreateContext(observer, display, config, share_context, attrib_vector.data());
+
+    // NB: The getters modify the std::map, so this log must be last.
+    GAPID_INFO("eglCreateContext requested: GL %i.%i, profile 0x%x, flags 0x%x",
+               attribs[EGL_CONTEXT_MAJOR_VERSION_KHR], attribs[EGL_CONTEXT_MINOR_VERSION_KHR],
+               attribs[EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR], attribs[EGL_CONTEXT_FLAGS_KHR]);
+    return res;
+}
+
+static void STDCALL DebugCallback(uint32_t source, uint32_t type, uint32_t id, uint32_t severity,
+                                  uint32_t length, const char* message, void* user_param) {
+    Spy* spy = reinterpret_cast<Spy*>(user_param);
+    if (type == GL_DEBUG_TYPE_PUSH_GROUP || type == GL_DEBUG_TYPE_POP_GROUP) {
+        return; // Ignore
+    } else if (type == GL_DEBUG_TYPE_ERROR || severity == GL_DEBUG_SEVERITY_HIGH) {
+        GAPID_ERROR("KHR_debug: %s", message);
+    } else {
+        GAPID_INFO("KHR_debug: %s", message);
+    }
+    // TODO: We should store the message in the trace.
+}
+
+EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLSurface read, EGLContext context) {
+    EGLBoolean res = GlesSpy::eglMakeCurrent(observer, display, draw, read, context);
+    if (mRecordGLErrorState && Extension.mGL_KHR_debug) {
+        void* old_callback = nullptr;
+        void* new_callback = reinterpret_cast<void*>(&DebugCallback);
+        GlesSpy::mImports.glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &old_callback);
+        if (old_callback != new_callback) {
+            GlesSpy::mImports.glDebugMessageCallback(new_callback, this);
+            GlesSpy::mImports.glEnable(GL_DEBUG_OUTPUT);
+            GlesSpy::mImports.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            GAPID_INFO("KHR_debug extension enabled");
         }
     }
     return res;
