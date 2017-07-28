@@ -28,7 +28,7 @@ Please see the following for detailed steps on each platform.
 * Using the unzipped `tools\android.bat` download:
   * Android 5.0.1 (API 21)
     * SDK Platform
-  * Android SDK Build-tools 21.1.2
+  * Android SDK Build-tools 25.0.1
 
 ### Install the Android NDK
 * Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip) to a directory of your choosing.
@@ -83,7 +83,7 @@ The build output will be in the directory you specified with `do config`.
 * Using `tools/android` download:
   * Android 5.0.1 (API 21)
     * SDK Platform
-  * Android SDK Build-tools 21.1.2
+  * Android SDK Build-tools 25.0.1
 
 ### Install Android NDK
 * Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-darwin-x86_64.zip) to a directory of your choosing.
@@ -142,7 +142,7 @@ The build output will be in the directory you specified with `do config`.
 * Using `tools/android` download:
   * Android 5.0.1 (API 21)
     * SDK Platform
-  * Android SDK Build-tools 21.1.2
+  * Android SDK Build-tools 25.0.1
 
 ### Install Android NDK
 * Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.

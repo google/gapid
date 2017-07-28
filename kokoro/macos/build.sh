@@ -36,7 +36,7 @@ export PATH=$PATH:$GOROOT/bin
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
-echo y | ./android/tools/bin/sdkmanager build-tools\;21.1.2 platforms\;android-21 ndk-bundle
+echo y | ./android/tools/bin/sdkmanager build-tools\;25.0.1 platforms\;android-21 ndk-bundle
 
 # Create the debug keystore, so gradle won't try to and fail due to a race.
 mkdir -p ~/.android
