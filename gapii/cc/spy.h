@@ -44,6 +44,7 @@ class Spy : public GlesSpy, public VulkanSpy {
   EGLContext eglCreateContext(CallObserver* observer, EGLDisplay display,
                               EGLConfig config, EGLContext share_context,
                               EGLint* attrib_list);
+  EGLBoolean eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLSurface read, EGLContext context);
 
   // Intercepted GLES methods to optionally fake no support for precompiled
   // shaders.
