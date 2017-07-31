@@ -6,7 +6,7 @@ permalink: /inspect/textures
 parent: inspect
 ---
 
-<img src="../images/textures-view.png" width="558px"/>
+<img src="../images/textures-pane.png" width="558px"/>
 
 The textures pane displays all the texture resources created up to and including the selected command.
 
@@ -24,60 +24,52 @@ To the left of the texture view is a toolbar with the following buttons:
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_fit%402x.png" width="16px"/>
-        Zoom to Fit
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_fit%402x.png" alt="Zoom to Fit"/>
       </td>
       <td>
-        Click the button to adjust the graphic to fit completely within the Textures pane.
-        <br/>Right-clicking the image is another way to Zoom to Fit.
+        Click the button to adjust the graphic to fit completely within the <b>Textures</b> pane.
+        <br/>Right-clicking the image is another way to <b>Zoom to Fit</b>.
       </td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_actual%402x.png" width="16px"/>
-        Zoom to Actual Size
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_actual%402x.png" alt="Zoom to Actual Size"/>
       </td>
       <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen texel.</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_in%402x.png" width="16px"/>
-        Zoom In
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_in%402x.png" alt="Zoom In"/>
       </td>
       <td>Click the button to zoom in. You can also use your mouse wheel, or two-finger swipes on a touchpad, to scroll in and out. You can drag the image with your cursor.</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_out%402x.png" width="16px"/>
-        Zoom Out
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_out%402x.png" alt="Zoom Out"/>
       </td>
       <td>Click the button to zoom out. You can also use your mouse wheel, or two-finger swipes on a touchpad, to scroll in and out.</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/color_channels%402x.png" width="16px"/>
-        Color Channels
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/color_channels%402x.png" alt="Color Channels"/>
       </td>
-      <td>Click the button and then select the color channels to render or deselect color channels so they aren't rendered. The options are Red, Green, Blue, and Alpha (transparency).</td>
+      <td>Click the button and then select the color channels to render or deselect color channels so they aren't rendered. The options are <b>Red</b>, <b>Green</b>, <b>Blue</b>, and <b>Alpha</b> (transparency).</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/transparency%402x.png" width="16px"/>
-        Background
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/transparency%402x.png" alt="Background"/>
       </td>
       <td>Select the button to display a checkerboard background or solid color.</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/flip_vertically%402x.png" width="16px"/>
-        Flip Vertically
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/flip_vertically%402x.png" alt="Flip Vertically"/>
       </td>
       <td>Flips the texture vertically.</td>
     </tr>
     <tr>
       <td>
-        <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/jump%402x.png" width="16px"/>
-        Accesses / Modifications
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/jump%402x.png" alt="Accesses / Modifications"/>
       </td>
       <td>Select this button to view a list of all calls that updated the texture to this point. Select a call to view the texture after the call completes. The selected frame thumbnail and the Commands pane update accordingly.</td>
     </tr>

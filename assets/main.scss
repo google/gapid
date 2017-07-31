@@ -110,7 +110,8 @@ table th,table td {
 
 table tr {
     background-color: #fff;
-    border-top: 1px solid #c6cbd1
+    border-top: 1px solid #c6cbd1;
+    text-align: center;
 }
 
 table tr:nth-child(2n) {
@@ -185,4 +186,14 @@ code {
 .issue::before {
   content: "error_outline";
   @include material-icon;
+}
+
+.toolbar-btn {
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  margin: 2px;
+  background-color: rgba(100,100,100,.1);
+  border: solid 1px rgba(0,0,0,0.1);
+  border-radius: 2px;
 }
