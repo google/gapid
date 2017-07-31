@@ -15,5 +15,3 @@
 syntax = "proto3";
 
 package vulkan;
-
-import "gapis/service/path/path.proto";
