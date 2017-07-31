@@ -25,7 +25,7 @@ import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.box.Box;
-import com.google.gapid.proto.service.memory.MemoryProtos;
+import com.google.gapid.proto.service.memory.Memory;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Boxes;
 import com.google.gapid.util.IntRange;
@@ -336,7 +336,7 @@ public class Formatter {
   }
 
   private static void format(Box.Pointer pointer, StylingString string, Style style) {
-    if (MemoryProtos.PoolNames.Application_VALUE != pointer.getPool()) {
+    if (Memory.PoolNames.Application_VALUE != pointer.getPool()) {
       string.append("*", string.structureStyle());
       if (pointer.getAddress() != 0) {
         string.append(toPointerString(pointer.getAddress()) + " ", style);
@@ -366,7 +366,7 @@ public class Formatter {
     string.append(String.valueOf(slice.getCount()), style);
     string.append("]", string.structureStyle());
 
-    if (slice.getBase().getPool() != MemoryProtos.PoolNames.Application_VALUE ||
+    if (slice.getBase().getPool() != Memory.PoolNames.Application_VALUE ||
         slice.getBase().getAddress() != 0) {
       string.append(" (", string.structureStyle());
       format(slice.getBase(), string, style);
