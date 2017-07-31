@@ -717,7 +717,8 @@ public class MemoryView extends Composite
     private final long address;
     private final long lastAddress;
 
-    private final Map<Long, SoftReference<ListenableFuture<Service.Memory>>> cache = Maps.newHashMap();
+    private final Map<Long, SoftReference<ListenableFuture<Service.Memory>>> cache =
+        Maps.newHashMap();
 
     public PagedMemoryDataModel(MemoryFetcher fetcher, long address, long lastAddress) {
       this.fetcher = fetcher;
@@ -1322,7 +1323,8 @@ public class MemoryView extends Composite
 
     private static final int DOUBLE_SEPARATOR = 1;
 
-    private static final int DOUBLES_CHARS = (CHARS_PER_DOUBLE + DOUBLE_SEPARATOR) * DOUBLES_PER_ROW;
+    private static final int DOUBLES_CHARS =
+        (CHARS_PER_DOUBLE + DOUBLE_SEPARATOR) * DOUBLES_PER_ROW;
     private static final int CHARS_PER_ROW = ADDRESS_CHARS + DOUBLES_CHARS;
 
     private static final IntRange DOUBLES_RANGE =

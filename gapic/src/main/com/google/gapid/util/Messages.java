@@ -22,7 +22,8 @@ public interface Messages {
   public static final String NO_FRAMES_IN_CONTEXT = "No frames in selected context.";
   public static final String SELECT_ATOM = "Select a frame or command.";
   public static final String SELECT_DRAW_CALL = "Select a draw call.";
-  public static final String SELECT_MEMORY = "Select a command and observation or a pointer in the command list.";
+  public static final String SELECT_MEMORY =
+      "Select a command and observation or a pointer in the command list.";
   public static final String SELECT_TEXTURE = "Select a texture.";
   public static final String SELECT_OBSERVATION = "Select an observed memory range.";
   public static final String SELECT_SHADER = "Select a shader.";

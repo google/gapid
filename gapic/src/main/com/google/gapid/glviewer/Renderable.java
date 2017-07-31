@@ -40,7 +40,8 @@ public interface Renderable {
   };
 
   /**
-   * Called once to initialize this {@link Renderable} before any calls to {@link #render(Renderer, State)}.
+   * Called once to initialize this {@link Renderable} before any calls to
+   * {@link #render(Renderer, State)}.
    */
   public void init(Renderer renderer);
 
@@ -50,7 +51,8 @@ public interface Renderable {
   public void render(Renderer renderer, State state);
 
   /**
-   * Called once to dispose this {@link Renderable} after the last call to {@link #render(Renderer, State)}.
+   * Called once to dispose this {@link Renderable} after the last call to
+   * {@link #render(Renderer, State)}.
    */
   public void dispose(Renderer renderer);
 

@@ -420,7 +420,8 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     @Override
     public String toString() {
-      return parent + "/" + index + (data == null ? "" : " " + data.getGroup() + data.getCommands().getToList());
+      return parent + "/" + index +
+          (data == null ? "" : " " + data.getGroup() + data.getCommands().getToList());
     }
   }
 

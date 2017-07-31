@@ -103,7 +103,8 @@ public class IsoSurfaceCameraModel implements CameraModel {
       return false;
     }
 
-    VecD right = direction.cross(up).normalize().multiply(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
+    VecD right = direction.cross(up).normalize().multiply(
+        SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
     up = up.multiply(SMOOTHNESS_ROTATION / SMOOTHNESS_GRID_SIZE);
 
     // Generate the samples to compute the normal.

@@ -40,8 +40,8 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
    * The geometry and display mode for the viewer to render.
    */
   public static class Data {
-    public static final Data DEFAULTS =
-        new Data(Geometry.NULL, Geometry.DisplayMode.TRIANGLES, Shading.LIT, Winding.CCW, Culling.OFF);
+    public static final Data DEFAULTS = new Data(
+        Geometry.NULL, Geometry.DisplayMode.TRIANGLES, Shading.LIT, Winding.CCW, Culling.OFF);
 
     public final Geometry geometry;
     public final Geometry.DisplayMode displayMode;

@@ -147,7 +147,8 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
           e.gc.drawImage(image, x, (size.y - imageSize.y) / 2);
           x += imageSize.x + border;
         }
-        e.gc.drawText(text, x, (size.y - textSize.y) / 2, SWT.DRAW_TRANSPARENT | SWT.DRAW_DELIMITER);
+        e.gc.drawText(
+            text, x, (size.y - textSize.y) / 2, SWT.DRAW_TRANSPARENT | SWT.DRAW_DELIMITER);
       });
     }
 

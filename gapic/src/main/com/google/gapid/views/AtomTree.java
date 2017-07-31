@@ -27,6 +27,7 @@ import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -275,7 +276,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
             lastPrefetcher = nullPrefetcher();
           } else {
             lastPrefetcher = models.follower.prepare(lastCommand(node.getData().getCommands()),
-                node.getCommand(), () -> Widgets.scheduleIfNotDisposed(tree, treeRefresher::refresh));
+                node.getCommand(), () -> scheduleIfNotDisposed(tree, treeRefresher::refresh));
           }
 
           labelProvider.setHoveredItem(lastHovered, lastPrefetcher);
@@ -621,7 +622,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
-      return noAlpha(thumbs.getThumbnail(node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE));
+      return noAlpha(thumbs.getThumbnail(
+          node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE));
     }
 
     public void reset() {
