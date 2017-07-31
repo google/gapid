@@ -217,7 +217,8 @@ public class MainWindow extends ApplicationWindow {
   @Override
   protected Control createContents(Composite parent) {
     Composite shell = Widgets.createComposite(parent, new GridLayout(1, false));
-    new ContextSelector(shell, models()).setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    new ContextSelector(shell, models())
+        .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
     SashForm splitter = new SashForm(shell, SWT.VERTICAL);
     splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));

@@ -602,7 +602,8 @@ public class ImagePanel extends Composite {
       scaleImageToViewMax = Math.max(MAX_ZOOM_FACTOR, scaleImageToViewFit);
       // The smallest zoom factor to see the whole image or that causes the larger dimension to be
       // no less than MIN_ZOOM_WIDTH pixels.
-      scaleImageToViewMin = Math.min(MIN_ZOOM_SIZE.safeDivide(imageSize).minXY(), scaleImageToViewFit);
+      scaleImageToViewMin =
+          Math.min(MIN_ZOOM_SIZE.safeDivide(imageSize).minXY(), scaleImageToViewFit);
     }
 
     private void updateScrollbars() {
@@ -717,7 +718,8 @@ public class ImagePanel extends Composite {
     private void drawBackground(Renderer renderer) {
       switch (data.backgroundMode) {
         case Checkerboard:
-          renderer.drawChecker(data.transform, data.checkerLight, data.checkerDark, data.checkerSize);
+          renderer.drawChecker(
+              data.transform, data.checkerLight, data.checkerDark, data.checkerSize);
           break;
         case SolidColor:
           renderer.drawSolid(data.transform, data.backgroundColor);

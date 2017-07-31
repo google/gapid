@@ -54,7 +54,8 @@ public class ModelViewProjection {
 
   public void apply(Shader shader) {
     shader.setUniform(Constants.MODEL_VIEW_UNIFORM, modelView.toFloatArray());
-    shader.setUniform(Constants.MODEL_VIEW_PROJECTION_UNIFORM, projection.multiply(modelView).toFloatArray());
+    shader.setUniform(
+        Constants.MODEL_VIEW_PROJECTION_UNIFORM, projection.multiply(modelView).toFloatArray());
     shader.setUniform(Constants.NORMAL_MATRIX_UNIFORM, modelView.toNormalMatrix(invertNormals));
     shader.setUniform(Constants.INVERT_NORMALS_UNIFORM, invertNormals ? -1f : 1f);
   }

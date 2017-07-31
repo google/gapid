@@ -58,7 +58,8 @@ public abstract class GapisConnection implements Closeable {
     this.listener = listener;
   }
 
-  public static GapisConnection create(String target, String authToken, int heartbeatRateMS, CloseListener listener) {
+  public static GapisConnection create(
+      String target, String authToken, int heartbeatRateMS, CloseListener listener) {
     return new GRpcGapisConnection(listener, target, authToken, heartbeatRateMS);
   }
 
@@ -86,7 +87,8 @@ public abstract class GapisConnection implements Closeable {
     private final Channel channel;
     private final int heartbeatRateMS;
 
-    public GRpcGapisConnection(CloseListener listener, String target, String authToken, int heartbeatRateMS) {
+    public GRpcGapisConnection(
+        CloseListener listener, String target, String authToken, int heartbeatRateMS) {
       super(listener);
 
       // Us OkHTTP as netty deadlocks a lot with the go server.

@@ -58,7 +58,8 @@ public class ShaderSource {
   public static ShaderSource load(URL resource) {
     String version = isAtLeastVersion(3, 2) ? VERSION_150 : VERSION_130;
     try {
-      ShaderSource source = Resources.readLines(resource, Charsets.US_ASCII, new LineProcessor<ShaderSource>() {
+      ShaderSource source = Resources.readLines(resource, Charsets.US_ASCII,
+          new LineProcessor<ShaderSource>() {
         private static final int MODE_COMMON = 0;
         private static final int MODE_VERTEX = 1;
         private static final int MODE_FRAGMENT = 2;

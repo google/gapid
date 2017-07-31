@@ -73,7 +73,8 @@ public class GapisProcess extends ChildProcess<Integer> {
     this.listener = (listener == null) ? Listener.NULL : listener;
     connection = Futures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
-      return GapisConnection.create(SERVER_HOST + ":" + port, authToken, HEARTBEAT_RATE_MS, con -> shutdown());
+      return GapisConnection.create(
+          SERVER_HOST + ":" + port, authToken, HEARTBEAT_RATE_MS, con -> shutdown());
     });
   }
 
