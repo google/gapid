@@ -32,6 +32,7 @@ function(stringgen)
     add_custom_command(
         OUTPUT ${STRINGGEN_OUTPUT_GO} ${STRINGGEN_OUTPUT_API}
         COMMAND stringgen
+        --log-level Warning
         --def-go ${STRINGGEN_OUTPUT_GO}
         --def-api ${STRINGGEN_OUTPUT_API}
         --pkg ${STRINGGEN_PACKAGE}
