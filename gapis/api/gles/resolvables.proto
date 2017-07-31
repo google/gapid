@@ -16,8 +16,6 @@ syntax = "proto3";
 
 package gles;
 
-import "gapis/service/path/path.proto";
-
 // GAPIS internal structure.
 message GLSLParseResolvable {
 	string shader_source = 1;
