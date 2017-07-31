@@ -49,6 +49,27 @@ body {
   margin-bottom: 2rem;
 }
 
+.site-footer {
+  text-align: right;
+  font-size: 0.6rem;
+  padding: 5px;
+  border-top: solid 1px rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.6);
+}
+
+.site-footer a {
+  color: rgba(0,0,0,0.6);
+  text-decoration: none;
+}
+
+.site-footer a:hover,
+.site-footer a:focus {
+  color: rgba(0,0,0,0.8);
+}
+
+.site-footer .sep { padding: 0 5px 0 5px; }
+.site-footer .material-icons { font-size: 0.6rem; }
+
 h2 {
   border-bottom: solid 1px rgba(0,0,0,0.1);
 }
