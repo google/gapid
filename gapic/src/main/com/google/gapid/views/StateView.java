@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static java.util.Arrays.stream;
 import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -35,10 +36,8 @@ import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
@@ -78,7 +77,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * View that displays the API state as a tree.
@@ -219,7 +217,7 @@ public class StateView extends Composite
     Widgets.createMenuItem(popup, "&View Details", SWT.MOD1 + 'D', e -> {
       TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
       if (item != null && (item.getData() instanceof ApiState.Node)) {
-        StateTreeNode data = ((ApiState.Node)item.getData()).getData();
+        Service.StateTreeNode data = ((ApiState.Node)item.getData()).getData();
 
         if (data == null) {
           // Data not loaded yet, this shouldn't happen (see MenuDetect handler). Ignore.
@@ -246,7 +244,7 @@ public class StateView extends Composite
 
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
       if (object instanceof ApiState.Node) {
-        StateTreeNode node = ((ApiState.Node)object).getData();
+        Service.StateTreeNode node = ((ApiState.Node)object).getData();
         if (node == null) {
           // Copy before loaded. Not ideal, but this is unlikely.
           return new String[] { "Loading..." };
@@ -367,7 +365,7 @@ public class StateView extends Composite
         .map(element -> ((ApiState.Node)element).getData())
         .filter(data -> data != null)
         .map(data -> data.getValuePath())
-        .collect(Collectors.toList());
+        .collect(toList());
   }
 
   protected void updateExpansionState(List<Path.Any> paths, int retry) {
@@ -387,7 +385,7 @@ public class StateView extends Composite
     Rpc.listen(Futures.allAsList(futures),
         new UiCallback<List<TreePath>, TreePath[]>(viewer.getTree(), LOG) {
       @Override
-      protected TreePath[] onRpcThread(Result<List<TreePath>> result)
+      protected TreePath[] onRpcThread(Rpc.Result<List<TreePath>> result)
           throws RpcException, ExecutionException {
         List<TreePath> list = result.get();
         return list.toArray(new TreePath[list.size()]);
@@ -451,7 +449,7 @@ public class StateView extends Composite
     if (item == null || !(item.getData() instanceof ApiState.Node)) {
       return false;
     }
-    StateTreeNode data = ((ApiState.Node)item.getData()).getData();
+    Service.StateTreeNode data = ((ApiState.Node)item.getData()).getData();
     return data != null && data.hasPreview();
   }
 
@@ -508,7 +506,7 @@ public class StateView extends Composite
 
     @Override
     protected <S extends StylingString> S format(Widget item, Object element, S string) {
-      StateTreeNode data = ((ApiState.Node)element).getData();
+      Service.StateTreeNode data = ((ApiState.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
       } else {

@@ -16,7 +16,6 @@
 package com.google.gapid.models;
 
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.ResourcesByType;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -60,7 +59,7 @@ public class Resources
     listeners.fire().onResourcesLoaded();
   }
 
-  public List<ResourcesByType> getResources() {
+  public List<Service.ResourcesByType> getResources() {
     return getData().getTypesList();
   }
 

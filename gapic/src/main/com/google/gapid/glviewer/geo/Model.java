@@ -15,19 +15,19 @@
  */
 package com.google.gapid.glviewer.geo;
 
-import com.google.gapid.proto.service.api.API.DrawPrimitive;
+import com.google.gapid.proto.service.api.API;
 
 /**
  * The geometry data of a model to be displayed.
  */
 public class Model {
-  private final DrawPrimitive primitive;
+  private final API.DrawPrimitive primitive;
   private final float[] positions; // x, y, z
   private final float[] normals; // x, y, z
   private final int[] indices;
   private final BoundingBox bounds = new BoundingBox();
 
-  public Model(DrawPrimitive primitive, float[] positions, float[] normals, int[] indices) {
+  public Model(API.DrawPrimitive primitive, float[] positions, float[] normals, int[] indices) {
     this.primitive = primitive;
     this.positions = positions;
     this.normals = normals;
@@ -37,7 +37,7 @@ public class Model {
     }
   }
 
-  public DrawPrimitive getPrimitive() {
+  public API.DrawPrimitive getPrimitive() {
     return primitive;
   }
 

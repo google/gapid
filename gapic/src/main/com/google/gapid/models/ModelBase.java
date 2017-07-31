@@ -22,7 +22,6 @@ import static java.util.logging.Level.SEVERE;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
@@ -66,7 +65,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
       fireLoadStartEvent();
       rpcController.start().listen(doLoad(source), new UiErrorCallback<T, T, E>(shell, log) {
         @Override
-        protected ResultOrError<T, E> onRpcThread(Result<T> result) {
+        protected ResultOrError<T, E> onRpcThread(Rpc.Result<T> result) {
           return processResult(result);
         }
 
@@ -83,7 +82,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
     }
   }
 
-  protected ResultOrError<T, E> processResult(Result<T> result) {
+  protected ResultOrError<T, E> processResult(Rpc.Result<T> result) {
     try {
       return success(result.get());
     } catch (RpcException | ExecutionException e) {

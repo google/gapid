@@ -52,7 +52,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -194,7 +193,7 @@ public class ThumbnailScrubber extends Composite
   }
 
   private static List<Data> prepareData(Iterator<Service.Event> events) {
-    List<Data> generatedList = new ArrayList<>();
+    List<Data> generatedList = Lists.newArrayList();
     int frameCount = 0;
     while (events.hasNext()) {
       generatedList.add(new Data(AtomIndex.forGroup(events.next().getCommand()), ++frameCount));

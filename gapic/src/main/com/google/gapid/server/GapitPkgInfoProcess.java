@@ -22,7 +22,6 @@ import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.pkginfo.PkgInfo;
-import com.google.gapid.proto.pkginfo.PkgInfo.PackageList;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -120,7 +119,7 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
       }
     }) {
       @Override
-      public void finish(SettableFuture<PackageList> result) throws InterruptedException {
+      public void finish(SettableFuture<PkgInfo.PackageList> result) throws InterruptedException {
         if (!result.isDone()) {
           result.setException(new Exception("The gapit command didn't produce any output!"));
         }
@@ -129,14 +128,14 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   }
 
   @Override
-  protected OutputHandler<PackageList> createStderrHandler() {
+  protected OutputHandler<PkgInfo.PackageList> createStderrHandler() {
     StringBuilder output = new StringBuilder();
-    return new LoggingStringHandler<PackageList>(LOG, name, true, (line) -> {
+    return new LoggingStringHandler<PkgInfo.PackageList>(LOG, name, true, (line) -> {
       output.append(line).append('\n');
       return null;
     }) {
       @Override
-      public void finish(SettableFuture<PackageList> result) throws InterruptedException {
+      public void finish(SettableFuture<PkgInfo.PackageList> result) throws InterruptedException {
         if (!result.isDone() && output.length() > 0) {
           result.setException(new Exception("The gapit command failed:\n" + output.toString()));
         }

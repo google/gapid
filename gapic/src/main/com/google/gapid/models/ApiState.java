@@ -24,10 +24,9 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.AtomStream.AtomIndex;
-import com.google.gapid.proto.service.Service.StateTreeNode;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
@@ -82,7 +81,7 @@ public class ApiState
   }
 
   @Override
-  protected ResultOrError<Node, Loadable.Message> processResult(Result<Node> result) {
+  protected ResultOrError<Node, Loadable.Message> processResult(Rpc.Result<Node> result) {
     try {
       return success(result.get());
     } catch (DataUnavailableException e) {
@@ -126,7 +125,8 @@ public class ApiState
     if (future != null) {
       Rpc.listen(future, new UiCallback<Node, Node>(shell, LOG) {
         @Override
-        protected Node onRpcThread(Result<Node> result) throws RpcException, ExecutionException {
+        protected Node onRpcThread(Rpc.Result<Node> result)
+            throws RpcException, ExecutionException {
           return result.get();
         }
 
@@ -167,10 +167,10 @@ public class ApiState
     private final Node parent;
     private final int index;
     private Node[] children;
-    private StateTreeNode data;
+    private Service.StateTreeNode data;
     private ListenableFuture<Node> loadFuture;
 
-    public Node(StateTreeNode data) {
+    public Node(Service.StateTreeNode data) {
       this(null, 0);
       this.data = data;
       this.children = new Node[(int)data.getNumChildren()];
@@ -197,7 +197,7 @@ public class ApiState
       return node;
     }
 
-    public StateTreeNode getData() {
+    public Service.StateTreeNode getData() {
       return data;
     }
 
@@ -247,7 +247,7 @@ public class ApiState
   private static class RootNode extends Node {
     public final Path.ID tree;
 
-    public RootNode(Path.ID tree, StateTreeNode data) {
+    public RootNode(Path.ID tree, Service.StateTreeNode data) {
       super(data);
       this.tree = tree;
     }
@@ -279,9 +279,9 @@ public class ApiState
   }
 
   private static class NodeData {
-    public final StateTreeNode data;
+    public final Service.StateTreeNode data;
 
-    public NodeData(StateTreeNode data) {
+    public NodeData(Service.StateTreeNode data) {
       this.data = data;
     }
   }

@@ -40,7 +40,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
@@ -191,7 +191,7 @@ public class MemoryView extends Composite
     rpcController.start().listen(models.atoms.getObservations(range),
         new UiCallback<Observation[], Observation[]>(this, LOG) {
       @Override
-      protected Observation[] onRpcThread(Result<Observation[]> result)
+      protected Observation[] onRpcThread(Rpc.Result<Observation[]> result)
           throws RpcException, ExecutionException {
         return result.get();
       }

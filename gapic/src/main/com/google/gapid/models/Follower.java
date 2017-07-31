@@ -27,7 +27,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
@@ -171,7 +170,7 @@ public class Follower {
     long started = System.currentTimeMillis();
     Rpc.listen(client.follow(path), new UiCallback<Path.Any, Path.Any>(shell, LOG) {
       @Override
-      protected Path.Any onRpcThread(Result<Path.Any> result) {
+      protected Path.Any onRpcThread(Rpc.Result<Path.Any> result) {
         try {
           return result.get();
         } catch (RpcException | ExecutionException e) {

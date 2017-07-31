@@ -16,6 +16,7 @@
 package com.google.gapid.glviewer.gl;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.Constants;
 import com.google.gapid.glviewer.ShaderSource;
 import com.google.gapid.glviewer.vec.MatD;
@@ -26,7 +27,6 @@ import org.eclipse.swt.internal.DPIUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -34,7 +34,7 @@ import java.util.Set;
  */
 public final class Renderer {
   /** The set of {@link GlObject}s owned by this renderer */
-  private final Set<GlObject> objects = new HashSet<>();
+  private final Set<GlObject> objects = Sets.newHashSet();
 
   // The primitive shaders, vertex-buffers and index-buffers.
   private Shader solidShader;

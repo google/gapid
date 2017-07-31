@@ -16,7 +16,7 @@
 package com.google.gapid.util;
 
 import com.google.common.primitives.UnsignedLongs;
-import com.google.gapid.proto.service.Service.MemoryRange;
+import com.google.gapid.proto.service.Service;
 
 /**
  * Range utilities.
@@ -25,14 +25,14 @@ public class Ranges {
   private Ranges() {
   }
 
-  public static MemoryRange memory(long base, long size) {
-    return MemoryRange.newBuilder()
+  public static Service.MemoryRange memory(long base, long size) {
+    return Service.MemoryRange.newBuilder()
         .setBase(base)
         .setSize(size)
         .build();
   }
 
-  public static boolean contains(MemoryRange range, long value) {
+  public static boolean contains(Service.MemoryRange range, long value) {
     return UnsignedLongs.compare(range.getBase(), value) <= 0 &&
         UnsignedLongs.compare(range.getBase() + range.getSize(), value) > 0;
   }

@@ -28,12 +28,9 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandTreeNode;
-import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
@@ -109,7 +106,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   public ListenableFuture<Node> load(Node node) {
     return node.load(shell, () -> Futures.transformAsync(
         client.get(any(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
-          CommandTreeNode data = v1.getCommandTreeNode();
+          Service.CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
             return Futures.transform(
                 loadCommand(lastCommand(data.getCommands())), cmd -> new NodeData(data, cmd));
@@ -129,7 +126,8 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     if (future != null) {
       Rpc.listen(future, new UiCallback<Node, Node>(shell, LOG) {
         @Override
-        protected Node onRpcThread(Result<Node> result) throws RpcException, ExecutionException {
+        protected Node onRpcThread(Rpc.Result<Node> result)
+            throws RpcException, ExecutionException {
           return result.get();
         }
 
@@ -176,7 +174,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     Rpc.listen(client.get(commandTree(((RootNode)getData()).tree, command)),
         new UiCallback<Service.Value, Path.CommandTreeNode>(shell, LOG) {
       @Override
-      protected Path.CommandTreeNode onRpcThread(Result<Value> result)
+      protected Path.CommandTreeNode onRpcThread(Rpc.Result<Service.Value> result)
           throws RpcException, ExecutionException {
         Service.Value value = result.get();
         LOG.log(FINE, "Resolved selection to {0}", value);
@@ -334,11 +332,11 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     private final Node parent;
     private final int index;
     private Node[] children;
-    private CommandTreeNode data;
+    private Service.CommandTreeNode data;
     private API.Command command;
     private ListenableFuture<Node> loadFuture;
 
-    public Node(CommandTreeNode data) {
+    public Node(Service.CommandTreeNode data) {
       this(null, 0);
       this.data = data;
       this.children = new Node[(int)data.getNumChildren()];
@@ -369,7 +367,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       return parent == null || (parent.getChildCount() - 1 == index);
     }
 
-    public CommandTreeNode getData() {
+    public Service.CommandTreeNode getData() {
       return data;
     }
 
@@ -429,7 +427,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   private static class RootNode extends Node {
     public final Path.ID tree;
 
-    public RootNode(Path.ID tree, CommandTreeNode data) {
+    public RootNode(Path.ID tree, Service.CommandTreeNode data) {
       super(data);
       this.tree = tree;
     }
@@ -461,10 +459,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   }
 
   private static class NodeData {
-    public final CommandTreeNode data;
+    public final Service.CommandTreeNode data;
     public final API.Command command;
 
-    public NodeData(CommandTreeNode data, API.Command command) {
+    public NodeData(Service.CommandTreeNode data, API.Command command) {
       this.data = data;
       this.command = command;
     }

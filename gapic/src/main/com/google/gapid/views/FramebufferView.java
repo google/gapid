@@ -32,11 +32,8 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.RenderSettings;
-import com.google.gapid.proto.service.Service.WireframeMode;
-import com.google.gapid.proto.service.api.API.FramebufferAttachment;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.path.Path.ImageInfo;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -69,17 +66,17 @@ public class FramebufferView extends Composite
     implements Tab, Capture.Listener, Devices.Listener, AtomStream.Listener {
   private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
   private static final int MAX_SIZE = 0xffff;
-  private static final RenderSettings RENDER_SHADED = RenderSettings.newBuilder()
+  private static final Service.RenderSettings RENDER_SHADED = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(WireframeMode.None)
+      .setWireframeMode(Service.WireframeMode.None)
       .build();
-  private static final RenderSettings RENDER_OVERLAY = RenderSettings.newBuilder()
+  private static final Service.RenderSettings RENDER_OVERLAY = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(WireframeMode.Overlay)
+      .setWireframeMode(Service.WireframeMode.Overlay)
       .build();
-  private static final RenderSettings RENDER_WIREFRAME = RenderSettings.newBuilder()
+  private static final Service.RenderSettings RENDER_WIREFRAME = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(WireframeMode.All)
+      .setWireframeMode(Service.WireframeMode.All)
       .build();
   private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
       .setPrimary(true)
@@ -90,8 +87,8 @@ public class FramebufferView extends Composite
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final ImagePanel imagePanel;
   protected final Loadable loading;
-  private RenderSettings renderSettings = RENDER_SHADED;
-  private FramebufferAttachment target = FramebufferAttachment.Color0;
+  private Service.RenderSettings renderSettings = RENDER_SHADED;
+  private API.FramebufferAttachment target = API.FramebufferAttachment.Color0;
   private ToolItem targetItem;
 
   public FramebufferView(Composite parent, Client client, Models models, Widgets widgets) {
@@ -129,19 +126,19 @@ public class FramebufferView extends Composite
       ToolBar b = new ToolBar(c, SWT.HORIZONTAL | SWT.FLAT);
       exclusiveSelection(
           createToggleToolItem(b, theme.colorBuffer0(),
-              e -> updateRenderTarget(FramebufferAttachment.Color0, theme.colorBuffer0()),
+              e -> updateRenderTarget(API.FramebufferAttachment.Color0, theme.colorBuffer0()),
               "Show 1st color buffer"),
           createToggleToolItem(b, theme.colorBuffer1(),
-              e -> updateRenderTarget(FramebufferAttachment.Color1, theme.colorBuffer1()),
+              e -> updateRenderTarget(API.FramebufferAttachment.Color1, theme.colorBuffer1()),
               "Show 2nd color buffer"),
           createToggleToolItem(b, theme.colorBuffer2(),
-              e -> updateRenderTarget(FramebufferAttachment.Color2, theme.colorBuffer2()),
+              e -> updateRenderTarget(API.FramebufferAttachment.Color2, theme.colorBuffer2()),
               "Show 3rd color buffer"),
           createToggleToolItem(b, theme.colorBuffer3(),
-              e -> updateRenderTarget(FramebufferAttachment.Color3, theme.colorBuffer3()),
+              e -> updateRenderTarget(API.FramebufferAttachment.Color3, theme.colorBuffer3()),
               "Show 4th color buffer"),
           createToggleToolItem(b, theme.depthBuffer(),
-              e -> updateRenderTarget(FramebufferAttachment.Depth, theme.depthBuffer()),
+              e -> updateRenderTarget(API.FramebufferAttachment.Depth, theme.depthBuffer()),
               "Show depth buffer"));
     }, "Choose framebuffer attachment to display");
     createSeparator(bar);
@@ -205,7 +202,7 @@ public class FramebufferView extends Composite
     updateBuffer();
   }
 
-  private void updateRenderTarget(FramebufferAttachment attachment, Image icon) {
+  private void updateRenderTarget(API.FramebufferAttachment attachment, Image icon) {
     target = attachment;
     targetItem.setImage(icon);
     updateBuffer();
@@ -247,7 +244,7 @@ public class FramebufferView extends Composite
     }
   }
 
-  private ListenableFuture<ImageInfo> getImageInfoPath(Path.Command atomPath) {
+  private ListenableFuture<Path.ImageInfo> getImageInfoPath(Path.Command atomPath) {
     return client.getFramebufferAttachment(
         models.devices.getReplayDevice(), atomPath, target, renderSettings, HINTS);
   }
