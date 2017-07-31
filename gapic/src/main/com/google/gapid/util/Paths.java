@@ -597,14 +597,7 @@ public class Paths {
       end = ")";
     }
     if (filter.getThreadsCount() > 0) {
-      sb.append(sep).append("threads=[");
-      for (int i = 0; i < filter.getThreadsCount(); i++) {
-        if (i > 0) {
-          sb.append(",");
-        }
-        sb.append(filter.getThreads(i));
-      }
-      sb.append("]");
+      sb.append(sep).append("threads=").append(filter.getThreadsList());
       sep = ",";
       end = ")";
     }
