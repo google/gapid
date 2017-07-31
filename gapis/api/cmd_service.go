@@ -79,6 +79,7 @@ func ServiceToCmd(c *Command) (Cmd, error) {
 	if a == nil {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}
+	a.SetThread(c.Thread)
 
 	v := reflect.ValueOf(a)
 	for v.Kind() != reflect.Struct {
