@@ -34,6 +34,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.StateTreeNode;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -120,7 +121,13 @@ public class StateView extends Composite
     selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
       @Override
       protected void updateModel(Event e) {
-        // Do nothing.
+        Object selection = (tree.getSelectionCount() > 0) ? tree.getSelection()[0].getData() : null;
+        if (selection instanceof ApiState.Node) {
+          Service.StateTreeNode node = ((ApiState.Node)selection).getData();
+          if (node != null) {
+            models.state.selectPath(node.getValuePath(), false);
+          }
+        }
       }
     };
 
@@ -329,7 +336,7 @@ public class StateView extends Composite
       viewer.setSelection(
           new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
     } else {
-      onStateSelected(selection);
+      updateSelectionState(false);
     }
   }
 
@@ -338,15 +345,20 @@ public class StateView extends Composite
     if (!models.state.isLoaded()) {
       return; // Once loaded, we'll call ourselves again.
     }
+    updateSelectionState(true);
+  }
 
+  private void updateSelectionState(boolean show) {
     ApiState.Node root = models.state.getData();
     selectionHandler.updateSelectionFromModel(
         () -> Futures.transformAsync(
             models.state.getResolvedSelectedPath(), nodePath -> getTreePath(root, nodePath)).get(),
         selection -> {
           viewer.refresh();
-          viewer.setSelection(new TreeSelection(selection), true);
-          viewer.setExpandedState(selection, true);
+          viewer.setSelection(new TreeSelection(selection), show);
+          if (show) {
+            viewer.setExpandedState(selection, true);
+          }
         });
   }
 
