@@ -15,7 +15,7 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.proto.service.memory.MemoryProtos.PoolNames.Application_VALUE;
+import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application_VALUE;
 import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;

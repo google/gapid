@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package memory;
 option java_package = "com.google.gapid.proto.service.memory";
-option java_outer_classname = "MemoryProtos";
+option java_outer_classname = "Memory";
 // cc_package
 
 // PoolNames is the set of well known PoolID values.
