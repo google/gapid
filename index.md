@@ -1,4 +1,8 @@
 ---
-# You don't need to edit this file, it's empty on purpose.
-layout: default
 ---
+
+<script type="text/javascript">
+<!--
+window.location = "{{site.baseurl}}/about"
+//-->
+</script>
