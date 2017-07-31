@@ -7,9 +7,9 @@ permalink: /about/
 
 GAPID is a developer tool for recording and inspecting calls made by an application to the graphics driver.
 
-Once a capture of the target application has been made, GAPID lets you inspect every call made by the application in an 'offline mode'.
+Once a capture of the target application has been made, GAPID lets you disconnect from the target and inspect all the graphics commands made by the application.
 
-GAPID can 'replay' the command stream, letting you visualize the frame composition draw-call by draw-call, and inspect the driver state at any point in the stream. Replay also supports modifications, allowing you to tweak command parameters and shader source to instantly see what effect this would have on the frame.
+GAPID is able to replay the command stream, letting you visualize the frame composition draw-call by draw-call, and inspect the driver state at any point in the stream. Replay also supports modifications, allowing you to tweak command parameters and shader source to instantly see what effect this would have on the frame.
 
 GAPID can also visualize the textures, shaders and draw call geometry used by the application.
 
