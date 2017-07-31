@@ -15,5 +15,7 @@
         <a class="sidebar-item child{% if page.url == child.url %} active{% endif %}" href="{{site.baseurl}}{{child.url}}"> {{ child.sidebar }}</a>
       {% endfor %}
     {% endif %}
+    <div class="sidebar-sep"></div>
   {% endfor %}
+  <a class="sidebar-item" href="{{site.project-url}}/releases" target="_blank">Releases</a>
 </div>

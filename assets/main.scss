@@ -89,11 +89,14 @@ h2 {
 .sidebar-title,
 .sidebar-item {
   display: block;
-  padding: 10px;
+  padding: 5px;
   padding-left: 15px;
   color: rgba(255,255,255,.7);
-  border-bottom: solid 1px rgba(255,255,255,.1);
   text-decoration: none;
+}
+
+.sidebar-sep {
+  border-bottom: solid 1px rgba(100,100,100,.5);
 }
 
 .sidebar-title {
@@ -102,9 +105,7 @@ h2 {
 }
 
 .sidebar-item.child {
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-left: 50px;
+  padding-left: 35px;
 }
 
 .sidebar-item.active,
