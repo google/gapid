@@ -33,7 +33,7 @@ function(embed)
     abs_list(EMBED_UNPARSED_ARGUMENTS ${CMAKE_CURRENT_SOURCE_DIR})
     add_custom_command(
         OUTPUT ${EMBED_OUTPUT}
-        COMMAND embed --root ${CMAKE_CURRENT_SOURCE_DIR} --out ${EMBED_OUTPUT} --package ${EMBED_PACKAGE} ${EMBED_WEB} ${EMBED_UNPARSED_ARGUMENTS}
+        COMMAND embed --log-level Warning --root ${CMAKE_CURRENT_SOURCE_DIR} --out ${EMBED_OUTPUT} --package ${EMBED_PACKAGE} ${EMBED_WEB} ${EMBED_UNPARSED_ARGUMENTS}
         DEPENDS embed ${EMBED_UNPARSED_ARGUMENTS}
         COMMENT "Embed generating ${EMBED_OUTPUT}"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
