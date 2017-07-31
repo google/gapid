@@ -99,13 +99,13 @@ WGL::PBuffer::PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc) : mPBuf(pbuf), mCtx(
 WGL::PBuffer::~PBuffer() {
     auto wgl = WGL::get();
     if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
-        GAPID_FATAL("Failed to release HDC. Error: 0x%x", GetLastError());
+        GAPID_ERROR("Failed to release HDC. Error: 0x%x", GetLastError());
     }
     if (!wgl.DestroyPbufferARB(mPBuf)) {
-        GAPID_FATAL("Failed to destroy pbuffer. Error: 0x%x", GetLastError());
+        GAPID_ERROR("Failed to destroy pbuffer. Error: 0x%x", GetLastError());
     }
     if (!wglDeleteContext(mCtx)) {
-        GAPID_FATAL("Failed to delete GL context. Error: 0x%x", GetLastError());
+        GAPID_ERROR("Failed to delete GL context. Error: 0x%x", GetLastError());
     }
 }
 
@@ -155,6 +155,9 @@ WGL::WGL() {
     }
 
     mHDC = GetDC(mWindow);
+    if (mHDC == nullptr) {
+        GAPID_FATAL("GetDC failed. Error: 0x%x", GetLastError());
+    }
 
     PIXELFORMATDESCRIPTOR pfd;
     memset(&pfd, 0, sizeof(pfd));
