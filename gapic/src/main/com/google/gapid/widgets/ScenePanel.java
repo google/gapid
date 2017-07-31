@@ -15,6 +15,8 @@
  */
 package com.google.gapid.widgets;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.gapid.glcanvas.GlCanvas;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
@@ -29,8 +31,6 @@ import org.eclipse.swt.widgets.Listener;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -67,14 +67,14 @@ public class ScenePanel<T> extends GlCanvas {
   @Override
   public void addListener(int eventType, Listener listener) {
     if (eventListeners == null) {
-      eventListeners = new HashMap<>();
+      eventListeners = Maps.newHashMap();
     }
     List<Listener> existing = eventListeners.get(eventType);
     if (existing != null) {
       existing.add(listener);
       return;
     }
-    List<Listener> list = new ArrayList<>();
+    List<Listener> list = Lists.newArrayList();
     list.add(listener);
     super.addListener(eventType, this::dispatchEvents);
     eventListeners.put(eventType, list);

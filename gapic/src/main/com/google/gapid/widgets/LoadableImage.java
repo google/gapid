@@ -19,7 +19,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.Images;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client.DataUnavailableException;
@@ -83,7 +82,7 @@ public class LoadableImage {
     future = futureSupplier.get();
     Rpc.listen(future, new UiErrorCallback<Object, Object, Image>(widget, LOG) {
       @Override
-      protected ResultOrError<Object, Image> onRpcThread(Result<Object> result)
+      protected ResultOrError<Object, Image> onRpcThread(Rpc.Result<Object> result)
           throws RpcException, ExecutionException {
         try {
           return success(result.get());

@@ -43,10 +43,9 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.CommandTreeNode;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
@@ -344,7 +343,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
       if (object instanceof AtomStream.Node) {
         AtomStream.Node node = (AtomStream.Node)object;
-        CommandTreeNode data = node.getData();
+        Service.CommandTreeNode data = node.getData();
         if (data == null) {
           // Copy before loaded. Not ideal, but this is unlikely.
           return new String[] { "Loading..." };
@@ -381,7 +380,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
         @Override
-        protected TreePath onRpcThread(Result<TreePath> result)
+        protected TreePath onRpcThread(Rpc.Result<TreePath> result)
             throws RpcException, ExecutionException {
           return result.get();
         }
@@ -687,7 +686,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     protected <S extends StylingString> S format(Widget item, Object element, S string) {
-      CommandTreeNode data = ((AtomStream.Node)element).getData();
+      Service.CommandTreeNode data = ((AtomStream.Node)element).getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
       } else {

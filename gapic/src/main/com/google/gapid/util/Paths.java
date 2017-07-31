@@ -20,7 +20,7 @@ import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.proto.image.Image;
-import com.google.gapid.proto.service.Service.MemoryRange;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.views.Formatter;
@@ -98,7 +98,7 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any memoryAfter(AtomIndex index, int pool, MemoryRange range) {
+  public static Path.Any memoryAfter(AtomIndex index, int pool, Service.MemoryRange range) {
     if (index == null || range == null) {
       return null;
     }

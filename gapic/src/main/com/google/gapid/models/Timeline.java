@@ -21,7 +21,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Event;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -58,7 +57,7 @@ public class Timeline extends ModelBase.ForPath<List<Service.Event>, Void, Timel
   }
 
   @Override
-  protected ListenableFuture<List<Event>> doLoad(Path.Any path) {
+  protected ListenableFuture<List<Service.Event>> doLoad(Path.Any path) {
     return Futures.transform(client.get(path), v -> v.getEvents().getListList());
   }
 

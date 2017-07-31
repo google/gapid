@@ -29,10 +29,6 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.MsgRef;
-import com.google.gapid.proto.service.Service.Report;
-import com.google.gapid.proto.service.Service.ReportGroup;
-import com.google.gapid.proto.service.Service.ReportItem;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.util.Loadable;
@@ -170,10 +166,10 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
    * A node in the tree representing a report item group with children.
    */
   private static class Group {
-    public final ReportGroup group;
+    public final Service.ReportGroup group;
     public final String name;
 
-    public Group(MessageProvider messages, Report report, ReportGroup group) {
+    public Group(MessageProvider messages, Service.Report report, Service.ReportGroup group) {
       this.group = group;
       this.name = messages.get(report, group.getName());
     }
@@ -183,10 +179,10 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
    * A report item leaf in the tree.
    */
   private static class Item {
-    public final Report report;
-    public final ReportItem item;
+    public final Service.Report report;
+    public final Service.ReportItem item;
 
-    public Item(Report report, int index) {
+    public Item(Service.Report report, int index) {
       this.report = report;
       this.item = report.getItems(index);
     }
@@ -198,7 +194,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
   private static class ReportContentProvider implements ILazyTreeContentProvider {
     private final TreeViewer viewer;
     private final MessageProvider messages;
-    private Report report;
+    private Service.Report report;
 
     public ReportContentProvider(TreeViewer viewer, MessageProvider messages) {
       this.viewer = viewer;
@@ -207,13 +203,13 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
     @Override
     public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-      report = (Report)newInput;
+      report = (Service.Report)newInput;
     }
 
     @Override
     public void updateChildCount(Object element, int currentChildCount) {
-      if (element instanceof Report) {
-        viewer.setChildCount(element, ((Report)element).getGroupsCount());
+      if (element instanceof Service.Report) {
+        viewer.setChildCount(element, ((Service.Report)element).getGroupsCount());
       } else if (element instanceof Group) {
         viewer.setChildCount(element, ((Group)element).group.getItemsCount());
       } else {
@@ -223,8 +219,8 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
     @Override
     public void updateElement(Object parent, int index) {
-      if (parent instanceof Report) {
-        Group group = new Group(messages, (Report)parent, ((Report)parent).getGroups(index));
+      if (parent instanceof Service.Report) {
+        Group group = new Group(messages, report, report.getGroups(index));
         viewer.replace(parent, index, group);
         viewer.setChildCount(group, group.group.getItemsCount());
       } else if (parent instanceof Group) {
@@ -278,7 +274,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
         }
 
         String sep = " ";
-        for (MsgRef tag : item.item.getTagsList()) {
+        for (Service.MsgRef tag : item.item.getTagsList()) {
           string.append(sep, string.structureStyle());
           string.append(trimTagString(messages.get(item.report, tag)), string.defaultStyle());
           sep = ", ";
@@ -312,7 +308,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
       return result;
     }
 
-    private static String trimSeverity(ReportItem item) {
+    private static String trimSeverity(Service.ReportItem item) {
       String result = item.getSeverity().name();
       if (result.endsWith("Level")) {
         result = result.substring(0, result.length() - 5);
@@ -322,10 +318,11 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
   }
 
   /**
-   * Formats the various {@link MsgRef messages} in the report tree.
+   * Formats the {@link com.google.gapid.proto.service.Service.MsgRef messages} in the report tree.
    */
   private static class MessageProvider {
-    private final Cache<MsgRef, String> cache = CacheBuilder.newBuilder().softValues().build();
+    private final Cache<Service.MsgRef, String> cache =
+        CacheBuilder.newBuilder().softValues().build();
 
     public MessageProvider() {
     }
@@ -334,7 +331,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
       cache.invalidateAll();
     }
 
-    public String get(Report report, MsgRef ref) {
+    public String get(Service.Report report, Service.MsgRef ref) {
       try {
         return cache.get(ref, () -> {
           Map<String, Stringtable.Value> arguments = Maps.newHashMap();

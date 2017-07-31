@@ -19,7 +19,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Report;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -74,7 +73,7 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
   }
 
   @Override
-  protected ListenableFuture<Report> doLoad(Path.Any source) {
+  protected ListenableFuture<Service.Report> doLoad(Path.Any source) {
     return Futures.transform(client.get(source), Service.Value::getReport);
   }
 

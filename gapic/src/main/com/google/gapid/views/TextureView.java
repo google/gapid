@@ -45,7 +45,6 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
@@ -260,7 +259,7 @@ public class TextureView extends Composite
       rpcController.start().listen(FetchedImage.load(client, data.path.getResourceData()),
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
         @Override
-        protected ResultOrError<FetchedImage, String> onRpcThread(Result<FetchedImage> result)
+        protected ResultOrError<FetchedImage, String> onRpcThread(Rpc.Result<FetchedImage> result)
             throws RpcException, ExecutionException {
           try {
             return success(result.get());
@@ -370,7 +369,7 @@ public class TextureView extends Composite
     public void load(Client client, Widget widget, Widgets.Refresher refresher) {
       Rpc.listen(client.get(path), new UiCallback<Service.Value, AdditionalInfo>(widget, LOG) {
         @Override
-        protected AdditionalInfo onRpcThread(Result<Service.Value> result)
+        protected AdditionalInfo onRpcThread(Rpc.Result<Service.Value> result)
             throws RpcException, ExecutionException {
           try {
             return AdditionalInfo.from(result.get());
@@ -514,7 +513,7 @@ public class TextureView extends Composite
           Rpc.listen(models.atoms.loadCommand(path),
               new UiCallback<API.Command, String>(child, LOG) {
             @Override
-            protected String onRpcThread(Result<API.Command> result)
+            protected String onRpcThread(Rpc.Result<API.Command> result)
                 throws RpcException, ExecutionException {
               return Formatter.atomIndex(path) + ": " +
                 Formatter.toString(result.get(), models.constants::getConstants);

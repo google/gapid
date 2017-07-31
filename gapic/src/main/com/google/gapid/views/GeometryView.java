@@ -31,9 +31,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.gapid.glviewer.Geometry;
-import com.google.gapid.glviewer.Geometry.DisplayMode;
 import com.google.gapid.glviewer.GeometryScene;
-import com.google.gapid.glviewer.GeometryScene.Data;
 import com.google.gapid.glviewer.camera.CylindricalCameraModel;
 import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
@@ -110,7 +108,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final LoadablePanel<ScenePanel<GeometryScene.Data>> loading;
   protected final ScenePanel<GeometryScene.Data> canvas;
-  protected GeometryScene.Data data = Data.DEFAULTS;
+  protected GeometryScene.Data data = GeometryScene.Data.DEFAULTS;
   private final IsoSurfaceCameraModel camera =
       new IsoSurfaceCameraModel(new CylindricalCameraModel());
   private ToolItem originalModelItem, facetedModelItem;
@@ -385,7 +383,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   protected void setModel(Model model) {
-    DisplayMode newDisplayMode = desiredDisplayMode;
+    Geometry.DisplayMode newDisplayMode = desiredDisplayMode;
     switch (model.getPrimitive()) {
       case TriangleStrip:
       case Triangles:
@@ -397,22 +395,22 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
       case Lines:
         renderAsTriangles.setEnabled(false);
         renderAsLines.setEnabled(true);
-        if (newDisplayMode == DisplayMode.TRIANGLES) {
-          newDisplayMode = DisplayMode.LINES;
+        if (newDisplayMode == Geometry.DisplayMode.TRIANGLES) {
+          newDisplayMode = Geometry.DisplayMode.LINES;
         }
         break;
       case Points:
         renderAsTriangles.setEnabled(false);
         renderAsLines.setEnabled(false);
-        newDisplayMode = DisplayMode.POINTS;
+        newDisplayMode = Geometry.DisplayMode.POINTS;
         break;
       default:
         // Ignore.
     }
 
-    renderAsTriangles.setSelection(newDisplayMode == DisplayMode.TRIANGLES);
-    renderAsLines.setSelection(newDisplayMode == DisplayMode.LINES);
-    renderAsPoints.setSelection(newDisplayMode == DisplayMode.POINTS);
+    renderAsTriangles.setSelection(newDisplayMode == Geometry.DisplayMode.TRIANGLES);
+    renderAsLines.setSelection(newDisplayMode == Geometry.DisplayMode.LINES);
+    renderAsPoints.setSelection(newDisplayMode == Geometry.DisplayMode.POINTS);
     displayMode = newDisplayMode;
 
     setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp), displayMode));

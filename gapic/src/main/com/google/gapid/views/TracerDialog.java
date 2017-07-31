@@ -34,14 +34,12 @@ import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
-import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.AndroidTraceRequest;
 import com.google.gapid.server.Tracer.DesktopTraceRequest;
 import com.google.gapid.server.Tracer.TraceRequest;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
-import com.google.gapid.views.ActivityPickerDialog.Action;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.LoadingIndicator;
@@ -162,7 +160,7 @@ public class TracerDialog {
     private TabFolder folder;
     private AndroidInput androidInput;
     private DesktopInput desktopInput;
-    private List<Instance> devices;
+    private List<Device.Instance> devices;
 
     private Tracer.TraceRequest value;
 
@@ -172,7 +170,7 @@ public class TracerDialog {
       this.widgets = widgets;
     }
 
-    public void setDevices(List<Instance> devices) {
+    public void setDevices(List<Device.Instance> devices) {
       this.devices = devices;
       if (androidInput != null) {
         androidInput.setDevices(settings, devices);
@@ -376,7 +374,7 @@ public class TracerDialog {
       private ActionTextbox traceTarget;
       private Button clearCache;
       private Button disablePcs;
-      private List<Instance> devices;
+      private List<Device.Instance> devices;
 
       public AndroidInput(Composite parent, Settings settings, Widgets widgets) {
         super(parent, settings, widgets);
@@ -455,7 +453,7 @@ public class TracerDialog {
             ActivityPickerDialog dialog = new ActivityPickerDialog(
                 getShell(), settings, widgets, getSelectedDevice());
             dialog.open();
-            Action action = dialog.getSelected();
+            ActivityPickerDialog.Action action = dialog.getSelected();
             return (action == null) ? null : action.toString();
           }
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
@@ -507,7 +505,7 @@ public class TracerDialog {
         traceTarget.addBoxListener(SWT.Modify, listener);
       }
 
-      public void setDevices(Settings settings, List<Instance> devices) {
+      public void setDevices(Settings settings, List<Device.Instance> devices) {
         this.devices = devices;
         updateDevicesDropDown(settings);
       }

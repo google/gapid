@@ -17,7 +17,6 @@ package com.google.gapid.glviewer;
 
 import static java.util.logging.Level.FINE;
 
-import com.google.gapid.glviewer.Geometry.DisplayMode;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
@@ -75,7 +74,7 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
       return new Data(geometry, displayMode, newShading, winding, culling);
     }
 
-    public Data withGeometry(Geometry newGeometry, DisplayMode newDisplayMode) {
+    public Data withGeometry(Geometry newGeometry, Geometry.DisplayMode newDisplayMode) {
       return new Data(newGeometry, newDisplayMode, shading, winding, culling);
     }
   }

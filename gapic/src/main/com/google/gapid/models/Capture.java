@@ -23,7 +23,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
@@ -94,7 +94,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
   @Override
   protected ResultOrError<Path.Capture, Loadable.Message> processResult(
-      Result<Path.Capture> result) {
+      Rpc.Result<Path.Capture> result) {
     try {
       Path.Capture capturePath = result.get();
       if (capturePath == null) {
@@ -147,7 +147,8 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
     rpcController.start().listen(client.exportCapture(getData()),
         new UiErrorCallback<byte[], Boolean, Exception>(shell, LOG) {
       @Override
-      protected ResultOrError<Boolean, Exception> onRpcThread(Result<byte[]> result) throws RpcException, ExecutionException {
+      protected ResultOrError<Boolean, Exception> onRpcThread(Rpc.Result<byte[]> result)
+          throws RpcException, ExecutionException {
         try {
           byte[] data = result.get();
           try (FileOutputStream fos = new FileOutputStream(file)) {

@@ -28,11 +28,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image.Info;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.api.API.Cubemap;
-import com.google.gapid.proto.service.api.API.CubemapLevel;
-import com.google.gapid.proto.service.api.API.Texture2D;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Values;
@@ -103,11 +99,11 @@ public class FetchedImage implements MultiLevelImage {
     return Images.Format.from(imageInfo.getFormat());
   }
 
-  private static Images.Format getFormat(Texture2D texture) {
+  private static Images.Format getFormat(API.Texture2D texture) {
     return (texture.getLevelsCount() == 0) ? Images.Format.Color8 : getFormat(texture.getLevels(0));
   }
 
-  private static Images.Format getFormat(Cubemap cubemap) {
+  private static Images.Format getFormat(API.Cubemap cubemap) {
     return (cubemap.getLevelsCount() == 0) ?
         Images.Format.Color8 : getFormat(cubemap.getLevels(0).getNegativeZ());
   }
@@ -116,7 +112,7 @@ public class FetchedImage implements MultiLevelImage {
     levels = new Level[] { new SingleFacedLevel(client, format, imageInfo) };
   }
 
-  public FetchedImage(Client client, Images.Format format, Texture2D texture) {
+  public FetchedImage(Client client, Images.Format format, API.Texture2D texture) {
     List<Info> infos = texture.getLevelsList();
     levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
@@ -124,8 +120,8 @@ public class FetchedImage implements MultiLevelImage {
     }
   }
 
-  public FetchedImage(Client client, Images.Format format, Cubemap cubemap) {
-    List<CubemapLevel> infos = cubemap.getLevelsList();
+  public FetchedImage(Client client, Images.Format format, API.Cubemap cubemap) {
+    List<API.CubemapLevel> infos = cubemap.getLevelsList();
     levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SixFacedLevel(client, format, infos.get(i));
@@ -271,7 +267,7 @@ public class FetchedImage implements MultiLevelImage {
     private final Client client;
     protected final Info[] imageInfos;
 
-    public SixFacedLevel(Client client, Images.Format format, CubemapLevel level) {
+    public SixFacedLevel(Client client, Images.Format format, API.CubemapLevel level) {
       super(format);
       this.client = client;
       this.imageInfos = new Info[] {
@@ -284,14 +280,14 @@ public class FetchedImage implements MultiLevelImage {
     @Override
     protected ListenableFuture<ArrayImageBuffer> doLoad() {
       @SuppressWarnings("unchecked")
-      ListenableFuture<Value>[] futures = new ListenableFuture[imageInfos.length];
+      ListenableFuture<Service.Value>[] futures = new ListenableFuture[imageInfos.length];
       for (int i = 0; i < imageInfos.length; i++) {
         futures[i] = client.get(blob(imageInfos[i].getBytes()));
       }
       return Futures.transform(
-          Futures.allAsList(futures), new Function<List<Value>, ArrayImageBuffer>() {
+          Futures.allAsList(futures), new Function<List<Service.Value>, ArrayImageBuffer>() {
         @Override
-        public ArrayImageBuffer apply(List<Value> values) {
+        public ArrayImageBuffer apply(List<Service.Value> values) {
           byte[][] data = new byte[values.size()][];
           for (int i = 0; i < data.length; i++) {
             data[i] = Values.getBytes(values.get(i));

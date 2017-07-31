@@ -24,7 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
@@ -79,7 +79,7 @@ public class Devices {
     rpcController.start().listen(client.getDevicesForReplay(capturePath),
         new UiErrorCallback<List<Path.Device>, Path.Device, Void>(shell, LOG) {
       @Override
-      protected ResultOrError<Path.Device, Void> onRpcThread(Result<List<Path.Device>> result) {
+      protected ResultOrError<Path.Device, Void> onRpcThread(Rpc.Result<List<Path.Device>> result) {
         try {
           List<Path.Device> devs = result.get();
           return (devs == null || devs.isEmpty()) ? error(null) : success(devs.get(0));
@@ -124,7 +124,7 @@ public class Devices {
     }), new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
       @Override
       protected ResultOrError<List<Device.Instance>, Void> onRpcThread(
-          Result<List<Service.Value>> result) throws RpcException, ExecutionException {
+          Rpc.Result<List<Service.Value>> result) throws RpcException, ExecutionException {
         try {
           return success(result.get().stream().map(Service.Value::getDevice).collect(toList()));
         } catch (RpcException | ExecutionException e) {
