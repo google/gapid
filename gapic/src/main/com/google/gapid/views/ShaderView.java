@@ -455,13 +455,9 @@ public class ShaderView extends Composite
             data.resource = null;
           }
         }
-      } else {
-        shaderCombo.setInput(Collections.emptyList());
-        shaderCombo.refresh();
-        lastUpdateContainedAllShaders = false;
-        shaders = Collections.emptyList();
+
+        updateSelection();
       }
-      updateSelection();
     }
 
     private static Path.Command firstAccess(Service.Resource info) {
@@ -470,10 +466,9 @@ public class ShaderView extends Composite
 
     private void updateSelection() {
       int index = shaderCombo.getCombo().getSelectionIndex();
-      if (index < 0) {
-        clearSource();
-      } else if (index == 0) {
+      if (index <= 0) {
         // Ignore the null item selection.
+        clearSource();
       } else {
         Event event = new Event();
         event.data = shaderCombo.getElementAt(index);
