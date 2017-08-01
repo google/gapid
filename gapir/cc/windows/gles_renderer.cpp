@@ -363,6 +363,19 @@ void GlesRendererImpl::reset() {
     mBackbuffer = Backbuffer();
 }
 
+static void DebugCallback(Gles::GLenum source, Gles::GLenum type, Gles::GLuint id, Gles::GLenum severity,
+                           Gles::GLsizei length, const Gles::GLchar* message, const void* user_param) {
+    auto renderer = reinterpret_cast<const GlesRendererImpl*>(user_param);
+    auto listener = renderer->getListener();
+    if (listener != nullptr) {
+        if (type == Gles::GLenum::GL_DEBUG_TYPE_ERROR || severity == Gles::GLenum::GL_DEBUG_SEVERITY_HIGH) {
+            listener->onDebugMessage(LOG_LEVEL_ERROR, message);
+        } else {
+            listener->onDebugMessage(LOG_LEVEL_DEBUG, message);
+        }
+    }
+}
+
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     auto wasBound = tlsBound == this;
     GAPID_ASSERT(wasBound /* The renderer has to be bound when changing the backbuffer */);
@@ -376,6 +389,12 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         mContext->bind();
         mApi.resolve();
         mNeedsResolve = false;
+        if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+            mApi.mFunctionStubs.glDebugMessageCallback(reinterpret_cast<void*>(&DebugCallback), this);
+            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+            mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            GAPID_DEBUG("Enabled KHR_debug extension");
+        }
     } else {
         unbind();
         mContext->set_backbuffer(backbuffer);
