@@ -25,7 +25,6 @@ set(files
     connection.h
     connection_test.cpp
     core_ptr_types.h
-    debugger.cpp
     debugger.h
     dl_loader.cpp
     dl_loader.h

@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-#include "debugger.h"
+#include "../debugger.h"
+
+#include <windows.h>
 
 namespace core {
 
 void Debugger::waitForAttach() {
     while (!isAttached()) {}
+    DebugBreak();
+}
+
+bool Debugger::isAttached() {
+    return IsDebuggerPresent();
 }
 
 }  // namespace core
