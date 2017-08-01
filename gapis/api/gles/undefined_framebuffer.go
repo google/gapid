@@ -40,6 +40,19 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 			seenSurfaces[eglMakeCurrent.Draw] = true
 		}
 		if cmd.CmdFlags().IsStartOfFrame() {
+			if _, ok := cmd.(*EglSwapBuffersWithDamageKHR); ok {
+				// TODO: This is a hack. eglSwapBuffersWithDamageKHR is nearly
+				// exculsively used by the Android framework, which also loves
+				// to do partial framebuffer updates. Unfortunately we do not
+				// currently know whether the framebuffer is invalidated between
+				// calls to eglSwapBuffersWithDamageKHR as the OS now uses the
+				// EGL_EXT_buffer_age extension, which we do not track. For now,
+				// assume that eglSwapBuffersWithDamageKHR calls are coming from
+				// the framework, and that the framebuffer is reused between
+				// calls.
+				// BUG: https://github.com/google/gapid/issues/846.
+				return
+			}
 			if c != nil && !c.Info.PreserveBuffersOnSwap {
 				drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			}
