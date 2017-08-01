@@ -14,7 +14,7 @@ Click the `Capture Trace...` text in the welcome screen, or click the "File" -> 
 
 Click the `Desktop` tab.
 
-Using the `...` button, select the Android Activity you want to trace.
+Using the `...` button, select the Application you want to trace.
 
 Click OK to confirm.
 
