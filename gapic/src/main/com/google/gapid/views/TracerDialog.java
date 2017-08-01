@@ -292,7 +292,8 @@ public class TracerDialog {
         createLabel(this, "Stop After:");
         Composite frameCountComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
-        frameCount = withLayoutData(createSpinner(frameCountComposite, 0, 0, 999999),
+        frameCount = withLayoutData(
+            createSpinner(frameCountComposite, settings.traceFrameCount, 0, 999999),
             new GridData(SWT.LEFT, SWT.FILL, false, false));
         createLabel(frameCountComposite, "Frames (0 for unlimited)");
 
