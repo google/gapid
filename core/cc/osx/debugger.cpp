@@ -62,6 +62,10 @@ static bool AmIBeingDebugged(void)
 
 namespace core {
 
+void Debugger::waitForAttach() {
+    while (!isAttached()) {}
+}
+
 bool Debugger::isAttached() {
     return AmIBeingDebugged();
 }
