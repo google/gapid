@@ -39,7 +39,7 @@ The following table describes the operations you can perform with the toolbar bu
       <td>
         <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_actual%402x.png" alt="Zoom to Actual Size"/>
       </td>
-      <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen texel.</td>
+      <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen pixel.</td>
     </tr>
     <tr>
       <td>
@@ -69,13 +69,7 @@ The following table describes the operations you can perform with the toolbar bu
       <td>
         <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/flip_vertically%402x.png" alt="Flip Vertically"/>
       </td>
-      <td>Flips the texture vertically.</td>
-    </tr>
-    <tr>
-      <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/jump%402x.png" alt="Accesses / Modifications"/>
-      </td>
-      <td>Select this button to view a list of all calls that updated the texture to this point. Select a call to view the texture after the call completes. The selected frame thumbnail and the Commands pane update accordingly.</td>
+      <td>Flips the image vertically.</td>
     </tr>
   </tbody>
 </table>
