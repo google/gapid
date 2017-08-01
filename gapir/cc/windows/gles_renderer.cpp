@@ -61,14 +61,20 @@ class WGL {
 public:
     class PBuffer {
     public:
-        PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc);
         ~PBuffer();
+
+        static std::shared_ptr<PBuffer> create(const GlesRenderer::Backbuffer& backbuffer, PBuffer* shared_ctx);
 
         void bind();
         void unbind();
+        void set_backbuffer(const GlesRenderer::Backbuffer& backbuffer);
 
     private:
-        friend class WGL;
+        PBuffer(const GlesRenderer::Backbuffer& backbuffer, PBuffer* shared_ctx);
+
+        void create_buffer(const GlesRenderer::Backbuffer& backbuffer);
+        void release_buffer();
+
         HPBUFFERARB mPBuf;
         HGLRC mCtx;
         HDC  mHDC;
@@ -77,8 +83,6 @@ public:
     WGL();
 
     static const WGL& get();
-
-    std::shared_ptr<PBuffer> create_pbuffer(GlesRenderer::Backbuffer backbuffer, PBuffer* shared_ctx) const;
 
 private:
     HWND mWindow;
@@ -93,19 +97,99 @@ private:
     PFNWGLQUERYPBUFFERARB QueryPbufferARB;
 };
 
+WGL::PBuffer::PBuffer(const GlesRenderer::Backbuffer& backbuffer, PBuffer* shared_ctx)
+        : mPBuf(nullptr)
+        , mCtx(nullptr)
+        , mHDC(nullptr) {
 
-WGL::PBuffer::PBuffer(HPBUFFERARB pbuf, HGLRC ctx, HDC hdc) : mPBuf(pbuf), mCtx(ctx), mHDC(hdc) {}
+    create_buffer(backbuffer);
+
+    auto wgl = WGL::get();
+    for (auto gl_version : core::gl::sVersionSearchOrder) {
+        std::vector<int> attribs;
+        attribs.push_back(WGL_CONTEXT_MAJOR_VERSION_ARB);
+        attribs.push_back(gl_version.major);
+        attribs.push_back(WGL_CONTEXT_MINOR_VERSION_ARB);
+        attribs.push_back(gl_version.minor);
+        // https://www.khronos.org/registry/OpenGL/extensions/KHR/KHR_context_flush_control.txt
+        // These are disabled as they don't seem to improve performance.
+        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
+        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
+        attribs.push_back(0);
+        auto ctx = wgl.CreateContextAttribsARB(mHDC, (shared_ctx != nullptr) ? shared_ctx->mCtx : nullptr, attribs.data());
+        if (ctx != nullptr) {
+            mCtx = ctx;
+            return;
+        }
+    }
+    GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: 0x%x", GetLastError());
+}
 
 WGL::PBuffer::~PBuffer() {
-    auto wgl = WGL::get();
-    if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
-        GAPID_ERROR("Failed to release HDC. Error: 0x%x", GetLastError());
-    }
-    if (!wgl.DestroyPbufferARB(mPBuf)) {
-        GAPID_ERROR("Failed to destroy pbuffer. Error: 0x%x", GetLastError());
-    }
+    release_buffer();
     if (!wglDeleteContext(mCtx)) {
         GAPID_ERROR("Failed to delete GL context. Error: 0x%x", GetLastError());
+    }
+}
+
+void WGL::PBuffer::create_buffer(const GlesRenderer::Backbuffer& backbuffer) {
+    release_buffer();
+
+    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+    core::gl::getDepthBits(backbuffer.format.depth, d);
+    core::gl::getStencilBits(backbuffer.format.stencil, s);
+
+    const unsigned int MAX_FORMATS = 32;
+
+    int formats[MAX_FORMATS];
+    unsigned int num_formats;
+    const int fmt_attribs[] = {
+        WGL_DRAW_TO_PBUFFER_ARB, 1,
+        WGL_SUPPORT_OPENGL_ARB, 1,
+        WGL_DEPTH_BITS_ARB, d,
+        WGL_STENCIL_BITS_ARB, s,
+        WGL_RED_BITS_ARB, r,
+        WGL_GREEN_BITS_ARB, g,
+        WGL_BLUE_BITS_ARB, b,
+        WGL_ALPHA_BITS_ARB, a,
+        0, // terminator
+    };
+
+    auto wgl = WGL::get();
+
+    if (!wgl.ChoosePixelFormatARB(wgl.mHDC, fmt_attribs, nullptr, MAX_FORMATS, formats, &num_formats)) {
+        GAPID_FATAL("wglChoosePixelFormatARB failed. Error: 0x%x", GetLastError());
+    }
+    if (num_formats == 0) {
+        GAPID_FATAL("wglChoosePixelFormatARB returned no compatibile formats");
+    }
+    auto format = formats[0]; // TODO: Examine returned formats?
+    const int create_attribs[] = { 0 };
+    mPBuf = wgl.CreatePbufferARB(wgl.mHDC, format, backbuffer.width, backbuffer.height, create_attribs);
+    if (mPBuf == nullptr) {
+        GAPID_FATAL("wglCreatePbufferARB failed. Error: 0x%x", GetLastError());
+    }
+
+    mHDC = wgl.GetPbufferDCARB(mPBuf);
+    if (mHDC == nullptr) {
+        GAPID_FATAL("wglGetPbufferDCARB failed. Error: 0x%x", GetLastError());
+    }
+}
+
+void WGL::PBuffer::release_buffer() {
+    auto wgl = WGL::get();
+    if (mHDC != nullptr) {
+        if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
+            GAPID_ERROR("Failed to release HDC. Error: 0x%x", GetLastError());
+        }
+        mHDC = nullptr;
+    }
+    if (mPBuf != nullptr) {
+        if (!wgl.DestroyPbufferARB(mPBuf)) {
+            GAPID_ERROR("Failed to destroy pbuffer. Error: 0x%x", GetLastError());
+        }
+        mPBuf = nullptr;
     }
 }
 
@@ -119,6 +203,23 @@ void WGL::PBuffer::unbind() {
     if (!wglMakeCurrent(mHDC, nullptr)) {
         GAPID_FATAL("Failed to unbind GL context. Error: 0x%x", GetLastError());
     }
+}
+
+void WGL::PBuffer::set_backbuffer(const GlesRenderer::Backbuffer& backbuffer) {
+    // Kill the pbuffer, and create a new one with the new backbuffer settings.
+    //
+    // Note - according to the MSDN documentation of wglMakeCurrent:
+    // "It need not be the same hdc that was passed to wglCreateContext when
+    // hglrc was created, but it must be on the same device and have the same
+    // pixel format."
+    //
+    // This means pixel format changes should error. If this happens, we're
+    // going to have to come up with a different approach.
+    create_buffer(backbuffer);
+}
+
+std::shared_ptr<WGL::PBuffer> WGL::PBuffer::create(const GlesRenderer::Backbuffer& backbuffer, PBuffer* shared_ctx) {
+    return std::shared_ptr<PBuffer>(new PBuffer(backbuffer, shared_ctx));
 }
 
 WGL::WGL() {
@@ -211,64 +312,6 @@ const WGL& WGL::get() {
     return instance;
 }
 
-std::shared_ptr<WGL::PBuffer> WGL::create_pbuffer(GlesRenderer::Backbuffer backbuffer, PBuffer* shared_ctx) const {
-    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-    core::gl::getDepthBits(backbuffer.format.depth, d);
-    core::gl::getStencilBits(backbuffer.format.stencil, s);
-
-    const unsigned int MAX_FORMATS = 32;
-
-    int formats[MAX_FORMATS];
-    unsigned int num_formats;
-    const int fmt_attribs[] = {
-        WGL_DRAW_TO_PBUFFER_ARB, 1,
-        WGL_SUPPORT_OPENGL_ARB, 1,
-        WGL_DEPTH_BITS_ARB, d,
-        WGL_STENCIL_BITS_ARB, s,
-        WGL_RED_BITS_ARB, r,
-        WGL_GREEN_BITS_ARB, g,
-        WGL_BLUE_BITS_ARB, b,
-        WGL_ALPHA_BITS_ARB, a,
-        0, // terminator
-    };
-    if (!ChoosePixelFormatARB(mHDC, fmt_attribs, nullptr, MAX_FORMATS, formats, &num_formats)) {
-        GAPID_FATAL("wglChoosePixelFormatARB failed. Error: 0x%x", GetLastError());
-    }
-    if (num_formats == 0) {
-        GAPID_FATAL("wglChoosePixelFormatARB returned no compatibile formats");
-    }
-    auto format = formats[0]; // TODO: Examine returned formats?
-    const int create_attribs[] = { 0 };
-    auto pbuffer = CreatePbufferARB(mHDC, format, backbuffer.width, backbuffer.height, create_attribs);
-    if (pbuffer == nullptr) {
-        GAPID_FATAL("wglCreatePbufferARB failed. Error: 0x%x", GetLastError());
-    }
-    auto hdc = GetPbufferDCARB(pbuffer);
-    if (hdc == nullptr) {
-        GAPID_FATAL("wglGetPbufferDCARB failed. Error: 0x%x", GetLastError());
-    }
-    for (auto gl_version : core::gl::sVersionSearchOrder) {
-        std::vector<int> attribs;
-        attribs.push_back(WGL_CONTEXT_MAJOR_VERSION_ARB);
-        attribs.push_back(gl_version.major);
-        attribs.push_back(WGL_CONTEXT_MINOR_VERSION_ARB);
-        attribs.push_back(gl_version.minor);
-        // https://www.khronos.org/registry/OpenGL/extensions/KHR/KHR_context_flush_control.txt
-        // These are disabled as they don't seem to improve performance.
-        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
-        // attribs.push_back(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
-        attribs.push_back(0);
-        auto ctx = CreateContextAttribsARB(hdc, (shared_ctx != nullptr) ? shared_ctx->mCtx : nullptr, attribs.data());
-        if (ctx != nullptr) {
-            return std::shared_ptr<PBuffer>(new PBuffer(pbuffer, ctx, hdc));
-        }
-    }
-    GAPID_FATAL("Failed to create GL context using wglCreateContextAttribsARB. Error: 0x%x", GetLastError());
-    return nullptr;
-}
-
-
 class GlesRendererImpl : public GlesRenderer {
 public:
     GlesRendererImpl(GlesRendererImpl* shared_context);
@@ -333,11 +376,17 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
 
     auto wasBound = tlsBound == this;
 
-    reset();
+    if (mContext == nullptr) {
+        mContext = WGL::PBuffer::create(backbuffer, mSharedContext.get());
+    } else {
+        if (wasBound) {
+            unbind();
+        }
+        mContext->set_backbuffer(backbuffer);
+    }
 
-    mContext = WGL::get().create_pbuffer(backbuffer, mSharedContext.get());
-    mBackbuffer = backbuffer;
     mNeedsResolve = true;
+    mBackbuffer = backbuffer;
 
     if (wasBound) {
         bind();
