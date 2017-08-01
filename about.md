@@ -13,8 +13,11 @@ GAPID is able to replay the command stream, letting you visualize the frame comp
 
 GAPID can also visualize the textures, shaders and draw call geometry used by the application.
 
-GAPID support the OpenGL ES and Vulkan graphics APIs.
-GAPID can trace either on Android, and Vulkan applications on Windows, MacOS and Linux.
+GAPID supports the OpenGL ES and Vulkan graphics APIs:
+ * GAPID can trace OpenGL ES and Vulkan applications on Android.
+ * GAPID can trace Vulkan applications on Windows and Linux.
+ * GAPID can replay Vulkan captures on the same device used to trace.
+ * GAPID can replay OpenGL ES captures on Windows, MacOS and Linux.
 
 While GAPID is primarily targetted for games developers, it can also developers to inspect the low-level 2D graphics calls being made by the Android graphics framework.
 
