@@ -347,12 +347,6 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mNeedsResolve(true)
         , mQueriedExtensions(false)
         , mSharedContext(shared_context != nullptr ? shared_context->mContext : nullptr) {
-    // Initialize with a default target.
-    setBackbuffer(Backbuffer(
-          8, 8,
-          core::gl::GL_RGBA8,
-          core::gl::GL_DEPTH24_STENCIL8,
-          core::gl::GL_DEPTH24_STENCIL8));
 }
 
 GlesRendererImpl::~GlesRendererImpl() {
@@ -370,27 +364,26 @@ void GlesRendererImpl::reset() {
 }
 
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
+    auto wasBound = tlsBound == this;
+    GAPID_ASSERT(wasBound /* The renderer has to be bound when changing the backbuffer */);
+
     if (mBackbuffer == backbuffer) {
         return; // No change
     }
 
-    auto wasBound = tlsBound == this;
-
     if (mContext == nullptr) {
         mContext = WGL::PBuffer::create(backbuffer, mSharedContext.get());
+        mContext->bind();
+        mApi.resolve();
+        mNeedsResolve = false;
     } else {
-        if (wasBound) {
-            unbind();
-        }
+        unbind();
         mContext->set_backbuffer(backbuffer);
-    }
-
-    mNeedsResolve = true;
-    mBackbuffer = backbuffer;
-
-    if (wasBound) {
+        mNeedsResolve = true;
         bind();
     }
+
+    mBackbuffer = backbuffer;
 }
 
 void GlesRendererImpl::bind() {
@@ -403,8 +396,13 @@ void GlesRendererImpl::bind() {
         bound->unbind();
     }
 
-    mContext->bind();
     tlsBound = this;
+
+    if (mContext == nullptr) {
+        return;
+    }
+
+    mContext->bind();
 
     if (mNeedsResolve) {
         mNeedsResolve = false;
@@ -414,7 +412,9 @@ void GlesRendererImpl::bind() {
 
 void GlesRendererImpl::unbind() {
     if (tlsBound == this) {
-        mContext->unbind();
+        if (mContext != nullptr) {
+            mContext->unbind();
+        }
         tlsBound = nullptr;
     }
 }

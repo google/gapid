@@ -30,6 +30,7 @@
 
 #include "core/cc/log.h"
 #include "core/cc/target.h"
+#include "core/cc/gl/formats.h"
 
 #include <cstdlib>
 #include <sstream>
@@ -179,6 +180,13 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             // It is ok since correct replay will only reference what it is supposed to.
             if (!mRootGlesRenderer) {
                 mRootGlesRenderer.reset(GlesRenderer::create(nullptr));
+                mRootGlesRenderer->bind();
+                mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
+                    8, 8,
+                    core::gl::GL_RGBA8,
+                    core::gl::GL_DEPTH24_STENCIL8,
+                    core::gl::GL_DEPTH24_STENCIL8
+                ));
             }
             auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
             renderer->setListener(this);
