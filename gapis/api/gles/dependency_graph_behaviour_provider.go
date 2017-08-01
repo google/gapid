@@ -117,8 +117,16 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	c := GetContext(s, cmd.Thread())
 	if c != nil && c.Info.Initialized {
 		_, isEglSwapBuffers := cmd.(*EglSwapBuffers)
-		_, isEglSwapBuffersWithDamageKHR := cmd.(*EglSwapBuffersWithDamageKHR)
-		if isEglSwapBuffers || isEglSwapBuffersWithDamageKHR {
+		// TODO: We should also be considering eglSwapBuffersWithDamageKHR here
+		// too, but this is nearly exculsively used by the Android framework,
+		// which also loves to do partial framebuffer updates. Unfortunately
+		// we do not currently know whether the framebuffer is invalidated
+		// between calls to eglSwapBuffersWithDamageKHR as the OS now uses
+		// the EGL_EXT_buffer_age extension, which we do not track. For now,
+		// assume that eglSwapBuffersWithDamageKHR calls are coming from the
+		// framework, and that the framebuffer is reused between calls.
+		// BUG: https://github.com/google/gapid/issues/846.
+		if isEglSwapBuffers {
 			// Get default renderbuffers
 			fb := c.Objects.Framebuffers[0]
 			color := fb.ColorAttachments[0].Renderbuffer
