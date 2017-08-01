@@ -35,7 +35,7 @@ To the left of the texture view is a toolbar with the following buttons:
       <td>
         <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_actual%402x.png" alt="Zoom to Actual Size"/>
       </td>
-      <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen texel.</td>
+      <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen pixel.</td>
     </tr>
     <tr>
       <td>
