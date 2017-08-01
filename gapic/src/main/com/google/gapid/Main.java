@@ -177,6 +177,8 @@ public class Main {
     GapisProcess.disableGapisTimeout,
     Server.gapis,
     Server.gapisAuthToken,
+    GapisProcess.gapirArgs,
+    GapisProcess.gapisArgs,
     Logging.logLevel,
     Logging.logDir,
     Follower.logFollowRequests,
