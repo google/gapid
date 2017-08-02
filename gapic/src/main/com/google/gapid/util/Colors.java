@@ -27,7 +27,7 @@ public class Colors {
   public static final RGB BLACK = new RGB(0, 0, 0);
   public static final RGB WHITE = new RGB(255, 255, 255);
   // https://en.wikipedia.org/wiki/Golden_angle
-  private static final double GOLDEN_ANGLE = 2.39996322972865332f;
+  private static final double GOLDEN_ANGLE = 2.39996322972865332;
 
   private Colors() {
   }
@@ -46,7 +46,7 @@ public class Colors {
 
   public static RGB getRandomColor(int index) {
     float hue = (float)Math.toDegrees(index * GOLDEN_ANGLE) % 360;
-    return new RGB(hue, 1f, 1f);
+    return new RGB(hue, 0.8f, 0.8f);
   }
 
   public static RGB lerp(RGB c1, RGB c2, float a) {
