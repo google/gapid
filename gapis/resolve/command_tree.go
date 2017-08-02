@@ -235,7 +235,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	syncData, err := database.Build(ctx, &SynchronizationResolvable{p.Capture})
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, nil, "Error building sync data")
 	}
 	snc, ok := syncData.(*sync.Data)
 	if !ok {

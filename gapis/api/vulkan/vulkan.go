@@ -164,7 +164,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
-		return cmd.Mutate(ctx, st, nil)
+		cmd.Mutate(ctx, st, nil)
+		return nil
 	})
 	if err != nil {
 		return err
