@@ -146,9 +146,10 @@
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
       ϟc, ϟt := GetState(ϟs), ϟa.thread
+      ϟc.SetThread(ϟt)
       ϟl := ϟs.MemoryLayout
       ϟo := ϟa.Extras().Observations()
-      _, _, _ = ϟc, ϟl, ϟt
+      _ = ϟl
 
       {{Global "CurrentFunction" $}}
 

@@ -34,6 +34,10 @@ func (s *State) GetContext(thread uint64) *Context {
 	return s.Contexts[thread]
 }
 
+func (s *State) SetThread(thread uint64) {
+	s.CurrentContext = s.GetContext(thread)
+}
+
 func (b *Buffer) GetID() BufferId {
 	if b != nil {
 		return b.ID

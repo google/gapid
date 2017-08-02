@@ -27,6 +27,9 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 
 func (API) Context(*api.State, uint64) api.Context { return nil }
 
+func (s *State) SetThread(thread uint64) {
+}
+
 func (i Remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
 	return i, true
 }
