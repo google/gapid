@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/binary"
@@ -31,49 +32,72 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
+type readFbTask struct {
+	at   api.CmdID
+	work func(ctx context.Context, w transform.Writer)
+}
+
 type readFramebuffer struct {
-	injections map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)
+	tasks       []readFbTask
+	tasksSorted bool
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
-	return &readFramebuffer{
-		injections: make(map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)),
+	return &readFramebuffer{}
+}
+
+func (t *readFramebuffer) addTask(at api.CmdID, work func(context.Context, transform.Writer)) {
+	t.tasks = append(t.tasks, readFbTask{at, work})
+	t.tasksSorted = false
+}
+
+func (t *readFramebuffer) sortTasks() {
+	if !t.tasksSorted {
+		sort.Slice(t.tasks, func(i, j int) bool { return t.tasks[i].at < t.tasks[j].at })
+		t.tasksSorted = true
 	}
 }
 
 func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
-	if r, ok := t.injections[id]; ok {
-		for _, injection := range r {
-			injection(ctx, cmd, out)
+	if id.IsReal() {
+		t.sortTasks()
+		for len(t.tasks) > 0 && t.tasks[0].at < id {
+			t.tasks[0].work(ctx, out)
+			t.tasks = t.tasks[1:]
 		}
-		delete(t.injections, id)
 	}
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {}
+func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {
+	t.sortTasks()
+	for _, task := range t.tasks {
+		task.work(ctx, out)
+	}
+	t.tasks = nil
+}
 
-func (t *readFramebuffer) Depth(id api.CmdID, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
+func (t *readFramebuffer) depth(id api.CmdID, thread uint64, res replay.Result) {
+	t.addTask(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
-		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), api.FramebufferAttachment_Depth)
+		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(thread, api.FramebufferAttachment_Depth)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 
-		postColorData(ctx, s, int32(width), int32(height), format, out, id, cmd, res)
+		postColorData(ctx, s, int32(width), int32(height), format, out, id, thread, res)
 	})
 }
 
-func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, res replay.Result) {
-	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
+func (t *readFramebuffer) color(id api.CmdID, thread uint64, width, height, bufferIdx uint32, res replay.Result) {
+	t.addTask(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
-		c := GetContext(s, cmd.Thread())
+		c := GetContext(s, thread)
 
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
-		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(cmd.Thread(), attachment)
+		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(thread, attachment)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
@@ -93,7 +117,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		)
 
 		dID := id.Derived()
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: thread}
 		t := newTweaker(out, dID, cb)
 		t.glBindFramebuffer_Read(ctx, c.Bound.DrawFramebuffer.GetID())
 
@@ -113,7 +137,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		}
 
 		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, id, cmd, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, thread, res)
 		} else {
 			t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
 			framebufferID := t.glGenFramebuffer(ctx)
@@ -128,7 +152,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 			)
 			t.glBindFramebuffer_Read(ctx, framebufferID)
 
-			postColorData(ctx, s, outW, outH, fmt, out, id, cmd, res)
+			postColorData(ctx, s, outW, outH, fmt, out, id, thread, res)
 		}
 
 		t.revert(ctx)
@@ -141,7 +165,7 @@ func postColorData(ctx context.Context,
 	sizedFormat GLenum,
 	out transform.Writer,
 	id api.CmdID,
-	cmd api.Cmd,
+	thread uint64,
 	res replay.Result) {
 
 	unsizedFormat, ty := getUnsizedFormatAndType(sizedFormat)
@@ -152,7 +176,7 @@ func postColorData(ctx context.Context,
 	}
 
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: cmd.Thread()}
+	cb := CommandBuilder{Thread: thread}
 	t := newTweaker(out, dID, cb)
 	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
 

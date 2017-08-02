@@ -131,14 +131,15 @@ func (a API) Replay(
 			// TODO: Remove this and handle swap-buffers better.
 			deadCodeElimination.Request(req.after - 1)
 
+			thread := cmds[req.after].Thread()
 			switch req.attachment {
 			case api.FramebufferAttachment_Depth:
-				readFramebuffer.Depth(req.after, rr.Result)
+				readFramebuffer.depth(req.after, thread, rr.Result)
 			case api.FramebufferAttachment_Stencil:
 				return fmt.Errorf("Stencil buffer attachments are not currently supported")
 			default:
 				idx := uint32(req.attachment - api.FramebufferAttachment_Color0)
-				readFramebuffer.Color(req.after, req.width, req.height, idx, rr.Result)
+				readFramebuffer.color(req.after, thread, req.width, req.height, idx, rr.Result)
 			}
 
 			cfg := cfg.(drawConfig)
