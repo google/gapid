@@ -620,6 +620,7 @@ class Context {
 // Globals
 ContextID              NextContextID
 map!(u64, ref!Context) Contexts
+ref!Context            CurrentContext
 
 sub ref!Context GetContext() {
   context := Contexts[$Thread]
@@ -632,6 +633,7 @@ sub ref!Context GetContext() {
 
 sub void SetContext(ref!Context context) {
   Contexts[$Thread] = context
+  CurrentContext = context
 }
 
 sub ref!Context CreateContext(ref!Context sharedContext) {
