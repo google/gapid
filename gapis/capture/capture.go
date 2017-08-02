@@ -131,7 +131,7 @@ func Captures() []*path.Capture {
 func ResolveFromID(ctx context.Context, id id.ID) (*Capture, error) {
 	obj, err := database.Resolve(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, log.Err(ctx, err, "Error resolving capture")
 	}
 	return obj.(*Capture), nil
 }
@@ -245,10 +245,11 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 	var header *Header
 	for {
 		msg, err := reader.Unmarshal()
-		if errors.Cause(err) == io.EOF {
-			break
-		}
 		if err != nil {
+			cause := errors.Cause(err)
+			if cause == io.EOF || cause == io.ErrUnexpectedEOF {
+				break
+			}
 			return nil, log.Err(ctx, err, "Failed to unmarshal")
 		}
 		if h, ok := msg.(*Header); ok {
