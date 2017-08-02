@@ -24,6 +24,7 @@ import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 import static java.util.Collections.emptyList;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -36,6 +37,7 @@ import com.google.gapid.glviewer.GeometryScene.Data;
 import com.google.gapid.glviewer.camera.CylindricalCameraModel;
 import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
+import com.google.gapid.glviewer.geo.ObjWriter;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -54,8 +56,8 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Streams;
-import com.google.gapid.widgets.ScenePanel;
 import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.ScenePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import com.google.protobuf.ByteString;
@@ -65,9 +67,14 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -111,6 +118,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   private Geometry.DisplayMode displayMode = Geometry.DisplayMode.TRIANGLES;
   private Geometry.DisplayMode desiredDisplayMode = Geometry.DisplayMode.TRIANGLES;
   private ToolItem renderAsTriangles, renderAsLines, renderAsPoints;
+  private ToolItem saveItem;
 
   public GeometryView(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -138,6 +146,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
     originalModelItem.setEnabled(false);
     facetedModelItem.setEnabled(false);
+    saveItem.setEnabled(false);
   }
 
   private ToolBar createToolbar(Theme theme) {
@@ -191,6 +200,26 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
         createToggleToolItem(bar, theme.normals(), e -> {
           setSceneData(data.withShading(GeometryScene.Shading.NORMALS));
         }, "Render normals"));
+    createSeparator(bar);
+    saveItem = createToolItem(bar, theme.save(), e -> {
+      FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
+      dialog.setText("Save model to...");
+      dialog.setFilterNames(new String[] { "OBJ Files (*.obj)" });
+      dialog.setFilterExtensions(new String[] { "*.obj" });
+      dialog.setOverwrite(true);
+      String objFile = dialog.open();
+      if (objFile != null) {
+        try (Writer out = new FileWriter(objFile)) {
+          ObjWriter.write(out, originalModelItem.getSelection() ? originalModel : facetedModel);
+        } catch (IOException ex) {
+          LOG.log(WARNING, "Failed to save model as OBJ", e);
+          MessageBox mb = new MessageBox(getShell(), SWT.ICON_ERROR);
+          mb.setText("Failed to save model...");
+          mb.setMessage("Failed to save OBJ: " + ex.getMessage());
+          mb.open();
+        }
+      }
+    }, "Save model as OBJ");
     return bar;
   }
 
@@ -231,11 +260,13 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
       AtomIndex atom = models.atoms.getSelectedAtoms();
       if (atom == null) {
         loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+        saveItem.setEnabled(false);
       } else {
         fetchMeshes(atom);
       }
     } else {
       loading.showMessage(Info, Messages.LOADING_CAPTURE);
+      saveItem.setEnabled(false);
     }
   }
 
@@ -331,6 +362,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   protected void update(List<Model> modelList) {
     if (modelList.isEmpty()) {
       loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+      saveItem.setEnabled(false);
       return;
     }
 
@@ -339,6 +371,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     loading.stopLoading();
     originalModelItem.setEnabled(originalModel != null);
     facetedModelItem.setEnabled(facetedModel != null);
+    saveItem.setEnabled(true);
     if (originalModel != null) {
       setModel(originalModel);
       originalModelItem.setSelection(true);

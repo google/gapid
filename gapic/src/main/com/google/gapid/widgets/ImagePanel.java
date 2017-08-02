@@ -239,6 +239,7 @@ public class ImagePanel extends Composite {
 
   protected void save() {
     FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
+    dialog.setText("Save image to...");
     dialog.setFilterNames(new String[] { "PNG Images" });
     dialog.setFilterExtensions(new String[] { "*.png" });
     dialog.setOverwrite(true);
