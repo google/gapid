@@ -76,7 +76,7 @@ public class Settings {
   public String adb = "";
   public boolean autoCheckForUpdates = true;
   public boolean updateAvailable = false;
-  public long lastCheckForUpdates = 0; // milliseconds since January 1, 1970, 00:00:00 GMT.
+  public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
 
   public static Settings load() {
     Settings result = new Settings();

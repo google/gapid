@@ -24,6 +24,7 @@ import static com.google.gapid.widgets.AboutDialog.showAbout;
 import static com.google.gapid.widgets.GotoAtom.showGotoAtomDialog;
 import static com.google.gapid.widgets.GotoMemory.showGotoMemoryDialog;
 import static com.google.gapid.widgets.Licenses.showLicensesDialog;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -60,12 +61,6 @@ import com.google.gapid.widgets.TabArea.Persistance;
 import com.google.gapid.widgets.TabArea.TabInfo;
 import com.google.gapid.widgets.Widgets;
 
-import java.awt.Desktop;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
@@ -76,6 +71,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
@@ -92,7 +88,6 @@ import java.util.function.Function;
  * The main {@link ApplicationWindow} containing all of the UI components.
  */
 public class MainWindow extends ApplicationWindow {
-  private static final Logger LOG = Logger.getLogger(MainWindow.class.getName());
   protected final Client client;
   protected final ModelsAndWidgets maw;
   protected Action gotoAtom, gotoMemory;
@@ -233,7 +228,7 @@ public class MainWindow extends ApplicationWindow {
     SashForm splitter = new SashForm(shell, SWT.VERTICAL);
     splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    statusBar = new StatusBar(shell, widgets().theme);
+    statusBar = new StatusBar(shell);
     statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
     scrubber = new ThumbnailScrubber(splitter, models(), widgets());
@@ -281,23 +276,13 @@ public class MainWindow extends ApplicationWindow {
   }
 
   private void watchForUpdates() {
-    Desktop desktop = Desktop.getDesktop();
-    if (desktop.isSupported(Desktop.Action.BROWSE)) {
-      new UpdateWatcher(maw.models().settings, client, (release) -> {
-        try {
-          URI uri = new URI(release.getBrowserUrl());
-          statusBar.setNotification("New update available", () -> {
-            try {
-              desktop.browse(uri);
-            } catch (IOException e) {
-              LOG.log(Level.WARNING, "Couldn't launch browser", e);
-            }
-          });
-        } catch (URISyntaxException e) {
-          LOG.log(Level.WARNING, "Invalid release URI", e);
-        };
+    new UpdateWatcher(maw.models().settings, client, (release) -> {
+      scheduleIfNotDisposed(statusBar, () -> {
+        statusBar.setNotification("New update available", () -> {
+          Program.launch(release.getBrowserUrl());
+        });
       });
-    }
+    });
   }
 
   @Override
