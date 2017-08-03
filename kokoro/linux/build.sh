@@ -71,10 +71,13 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   END {print major"."minor"."micro}' ../pkg/build.properties)
 
 # Combine package contents.
-mkdir -p gapid/DEBIAN gapid/opt/gapid
+mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/share/menu
 cp -r ../pkg/* gapid/opt/gapid
 cp -r ../current/java/gapic-linux.jar gapid/opt/gapid/lib/gapic.jar
 cp $SRC/kokoro/linux/gapid.sh gapid/opt/gapid/gapid
+cp $SRC/gapic/res/icons/gapid/logo\@2x.png gapid/opt/gapid/icon.png
+cp $SRC/kokoro/linux/gapid.desktop gapid/usr/share/applications/google-gapid.desktop
+cp $SRC/kokoro/linux/gapid.menu gapid/usr/share/menu/google-gapid.menu
 
 # Create the dpkg config file.
 cat > gapid/DEBIAN/control <<EOF
