@@ -47,6 +47,7 @@ import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
+import com.google.gapid.views.StatusBar;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
@@ -91,6 +92,7 @@ public class MainWindow extends ApplicationWindow {
   protected final Map<MainTab.Type, Action> viewTabs = Maps.newHashMap();
   protected final Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
   protected Action editCopy;
+  private StatusBar statusBar;
   private Control scrubber;
   protected TabArea tabs;
 
@@ -222,6 +224,9 @@ public class MainWindow extends ApplicationWindow {
 
     SashForm splitter = new SashForm(shell, SWT.VERTICAL);
     splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    statusBar = new StatusBar(shell, widgets().theme);
+    statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
     scrubber = new ThumbnailScrubber(splitter, models(), widgets());
     scrubber.setVisible(!models().settings.hideScrubber);
