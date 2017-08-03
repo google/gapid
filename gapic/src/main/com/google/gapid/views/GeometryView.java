@@ -342,7 +342,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
     API.DrawPrimitive primitive = mesh.getDrawPrimitive();
     if (positions == null || (normals == null && isPolygon(primitive))) {
-      return Futures.immediateFailedFuture(new DataUnavailableException(NO_MESH_ERR));
+      return Futures.immediateFailedFuture(
+          new DataUnavailableException(NO_MESH_ERR, new Client.Stack(() -> "")));
     }
 
     int[] indices = mesh.getIndexBuffer().getIndicesList().stream().mapToInt(x -> x).toArray();
