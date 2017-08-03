@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
@@ -33,6 +34,7 @@ import com.google.gapid.proto.service.Service.GetServerInfoRequest;
 import com.google.gapid.proto.service.Service.GetStringTableRequest;
 import com.google.gapid.proto.service.Service.ImportCaptureRequest;
 import com.google.gapid.proto.service.Service.LoadCaptureRequest;
+import com.google.gapid.proto.service.Service.Release;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
 import com.google.gapid.proto.service.Service.Value;
@@ -64,6 +66,15 @@ public class Client {
     return Futures.transformAsync(
         client.getServerInfo(GetServerInfoRequest.newBuilder().build()),
         in -> Futures.immediateFuture(throwIfError(in.getInfo(), in.getError()))
+    );
+  }
+
+  public ListenableFuture<Release> checkForUpdates(boolean includePrereleases) {
+    LOG.log(FINE, "RPC->checkForUpdates()");
+    return Futures.transformAsync(
+        client.checkForUpdates(CheckForUpdatesRequest.newBuilder()
+            .setIncludePrereleases(includePrereleases).build()),
+        in -> Futures.immediateFuture(throwIfError(in.getRelease(), in.getError()))
     );
   }
 

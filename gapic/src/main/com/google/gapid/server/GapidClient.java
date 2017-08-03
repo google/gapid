@@ -28,6 +28,8 @@ public interface GapidClient {
   public ListenableFuture<Void> ping();
   public ListenableFuture<Service.GetServerInfoResponse> getServerInfo(
       Service.GetServerInfoRequest request);
+  public ListenableFuture<Service.CheckForUpdatesResponse> checkForUpdates(
+      Service.CheckForUpdatesRequest request);
   public ListenableFuture<Service.GetResponse> get(Service.GetRequest request);
   public ListenableFuture<Service.SetResponse> set(Service.SetRequest request);
   public ListenableFuture<Service.FollowResponse> follow(Service.FollowRequest request);
