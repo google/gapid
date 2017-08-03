@@ -91,6 +91,7 @@ Description: GAPID is a collection of tools that allows you to inspect, tweak
  GAPID can trace any Android debuggable application, or if you have root access
  to the device any application can be traced.
 Homepage: https://github.com/google/gapid
+Installed-Size: $(du -s gapid/opt | cut -f1)
 EOF
 
 # Fix up permissions and ownership.
