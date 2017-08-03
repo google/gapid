@@ -47,7 +47,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, s, nil)
 		return nil
 	})
@@ -73,7 +73,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 			interval.Merge(&writes, rng.Window(r).Span(), false)
 		}
 	}
-	api.MutateCmds(ctx, s, nil, cmds[cmdIdx])
+	api.MutateCmds(ctx, s, nil, cmds[len(cmds)-1])
 
 	slice := pool.Slice(r)
 
