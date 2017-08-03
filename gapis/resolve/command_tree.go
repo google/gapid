@@ -191,7 +191,7 @@ func (g *markerGrouper) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *
 		name = l.Label(ctx, s)
 	}
 	if len(name) > 0 {
-		g.stack = append(g.stack, group{start: id, name: name})
+		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("\"%s\"", name)})
 	} else {
 		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("Marker %d", g.count)})
 		g.count++
