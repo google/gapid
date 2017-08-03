@@ -76,3 +76,9 @@
 [submodule "third_party/astc-encoder"]
 	path = third_party/astc-encoder
 	url = https://github.com/ARM-software/astc-encoder.git
+[submodule "third_party/src/github.com/google/go-github"]
+	path = third_party/src/github.com/google/go-github
+	url = https://github.com/google/go-github.git
+[submodule "third_party/src/github.com/google/go-querystring"]
+	path = third_party/src/github.com/google/go-querystring
+	url = https://github.com/google/go-querystring.git
