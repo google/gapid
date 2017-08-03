@@ -1,0 +1,3 @@
+?package(gapid):needs="X11" section="Applications/Programming"\
+  title="GAPID" longtitle="Graphics API Debugger" command="/opt/gapid/gapid"\
+  icon="/opt/gapid/icon.png"
