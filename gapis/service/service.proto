@@ -117,6 +117,25 @@ message GetServerInfoResponse {
   }
 }
 
+message CheckForUpdatesRequest {
+  bool include_prereleases = 1;
+}
+message CheckForUpdatesResponse {
+  oneof res {
+    Release release = 1;
+    Error error = 2;
+  }
+}
+
+message Release {
+  string name = 1;
+  uint32 version_major = 2;
+  uint32 version_minor = 3;
+  uint32 version_point = 4;
+  bool prerelease = 5;
+  string browser_url = 6;
+}
+
 message GetRequest {
   path.Any path = 1;
 }
@@ -303,6 +322,11 @@ service Gapid {
 
   // GetServerInfo returns information about the running server.
   rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
+
+  // CheckForUpdates checks for a new build of GAPID on the hosting server.
+  // Care should be taken to call this infrequently to avoid reaching the
+  // server's maximum unauthenticated request limits.
+  rpc CheckForUpdates(CheckForUpdatesRequest) returns (CheckForUpdatesResponse) {}
 
   // Get resolves and returns the object, value or memory at the path p.
   rpc Get(GetRequest) returns (GetResponse) {}

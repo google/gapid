@@ -26,6 +26,7 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/event/task"
@@ -38,6 +39,8 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+
+	"github.com/google/go-github/github"
 
 	// Register all the apis
 	_ "github.com/google/gapid/gapis/api/all"
@@ -84,6 +87,44 @@ func (s *server) Ping(ctx context.Context) error {
 func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
 	ctx = log.Enter(ctx, "GetServerInfo")
 	return s.info, nil
+}
+
+func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (*service.Release, error) {
+	const (
+		githubOrg  = "google"
+		githubRepo = "gapid"
+	)
+	ctx = log.Enter(ctx, "CheckForUpdates")
+	client := github.NewClient(nil)
+	options := &github.ListOptions{}
+	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubRepo, options)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to list releases")
+	}
+	if len(releases) == 0 {
+		return nil, nil
+	}
+	var mostRecent *service.Release
+	mostRecentVersion := app.Version
+	for _, release := range releases {
+		if !includePrereleases && release.GetPrerelease() {
+			continue
+		}
+		var version app.VersionSpec
+		fmt.Sscanf(release.GetTagName(), "v%d.%d.%d", &version.Major, &version.Minor, &version.Point)
+		if version.GreaterThan(mostRecentVersion) {
+			mostRecent = &service.Release{
+				Name:         release.GetName(),
+				VersionMajor: uint32(version.Major),
+				VersionMinor: uint32(version.Minor),
+				VersionPoint: uint32(version.Point),
+				Prerelease:   release.GetPrerelease(),
+				BrowserUrl:   release.GetHTMLURL(),
+			}
+			mostRecentVersion = version
+		}
+	}
+	return mostRecent, nil
 }
 
 func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
