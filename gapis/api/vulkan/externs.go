@@ -272,18 +272,11 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 	absSrcStart := mem.MappedLocation.Address() + offset_in_mapped
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(read_size)}
 
-	if e.cmd.Extras() == nil || e.cmd.Extras().Observations() == nil {
-		return
+	writeRngList := e.s.Memory[memory.ApplicationPool].Slice(absSrcMemRng).ValidRanges()
+	for _, r := range writeRngList {
+		mem.Data.Slice(dstStart+r.Base, dstStart+r.Base+r.Size, l).Copy(
+			e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)
 	}
-	for _, r := range e.cmd.Extras().Observations().Reads {
-		if r.Range.Overlaps(absSrcMemRng) {
-			intersect := r.Range.Intersect(absSrcMemRng)
-			offset := intersect.Base - absSrcStart
-			mem.Data.Slice(dstStart+offset, dstStart+offset+intersect.Size, l).Copy(
-				e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+offset, srcStart+offset+intersect.Size, l), e.cmd, e.s, e.b)
-		}
-	}
-	return
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 
