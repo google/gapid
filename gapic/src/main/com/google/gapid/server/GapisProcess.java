@@ -15,8 +15,6 @@
  */
 package com.google.gapid.server;
 
-import static com.google.gapid.util.Logging.gapirLogLevel;
-import static com.google.gapid.util.Logging.gapisLogLevel;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 
@@ -96,10 +94,10 @@ public class GapisProcess extends ChildProcess<Integer> {
       args.add("-log-file");
       args.add(new File(logDir, "gapis.log").getAbsolutePath());
       args.add("-log-level");
-      args.add(gapisLogLevel.get().gapisLevel);
+      args.add(Logging.getGapisLogLevel());
 
       gapirFlags = "--log " + new File(logDir, "gapir.log").getAbsolutePath() +
-          " --log-level " + gapirLogLevel.get().gapirLevel;
+          " --log-level " + Logging.getGapirLogLevel();
       if (!gapirArgs.get().isEmpty()) {
         gapirFlags += " " + gapirArgs.get();
       }
