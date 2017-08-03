@@ -64,6 +64,24 @@ func (v VersionSpec) IsValid() bool {
 	return v.Major >= 0
 }
 
+// GreaterThan returns true if v is greater than o.
+func (v VersionSpec) GreaterThan(o VersionSpec) bool {
+	switch {
+	case v.Major > o.Major:
+		return true
+	case v.Major < o.Major:
+		return false
+	case v.Minor > o.Minor:
+		return true
+	case v.Minor < o.Minor:
+		return false
+	case v.Point > o.Point:
+		return true
+	default:
+		return false
+	}
+}
+
 // Format implements fmt.Formatter to print the version.
 func (v VersionSpec) Format(f fmt.State, c rune) {
 	fmt.Fprint(f, v.Major)
