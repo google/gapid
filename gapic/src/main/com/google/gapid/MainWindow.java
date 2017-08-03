@@ -38,6 +38,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
+import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.AtomTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
@@ -59,6 +60,12 @@ import com.google.gapid.widgets.TabArea.Persistance;
 import com.google.gapid.widgets.TabArea.TabInfo;
 import com.google.gapid.widgets.Widgets;
 
+import java.awt.Desktop;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
@@ -85,6 +92,7 @@ import java.util.function.Function;
  * The main {@link ApplicationWindow} containing all of the UI components.
  */
 public class MainWindow extends ApplicationWindow {
+  private static final Logger LOG = Logger.getLogger(MainWindow.class.getName());
   protected final Client client;
   protected final ModelsAndWidgets maw;
   protected Action gotoAtom, gotoMemory;
@@ -266,7 +274,30 @@ public class MainWindow extends ApplicationWindow {
         tabs.showTab(MainTab.Type.ApiState);
       }
     });
+
+    watchForUpdates();
+
     return shell;
+  }
+
+  private void watchForUpdates() {
+    Desktop desktop = Desktop.getDesktop();
+    if (desktop.isSupported(Desktop.Action.BROWSE)) {
+      new UpdateWatcher(maw.models().settings, client, (release) -> {
+        try {
+          URI uri = new URI(release.getBrowserUrl());
+          statusBar.setNotification("New update available", () -> {
+            try {
+              desktop.browse(uri);
+            } catch (IOException e) {
+              LOG.log(Level.WARNING, "Couldn't launch browser", e);
+            }
+          });
+        } catch (URISyntaxException e) {
+          LOG.log(Level.WARNING, "Invalid release URI", e);
+        };
+      });
+    }
   }
 
   @Override

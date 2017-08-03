@@ -74,6 +74,9 @@ public class Settings {
   public boolean skipWelcomeScreen = false;
   public String[] recentFiles = new String[0];
   public String adb = "";
+  public boolean autoCheckForUpdates = true;
+  public boolean updateAvailable = false;
+  public long lastCheckForUpdates = 0; // milliseconds since January 1, 1970, 00:00:00 GMT.
 
   public static Settings load() {
     Settings result = new Settings();
@@ -171,6 +174,9 @@ public class Settings {
     skipWelcomeScreen = getBoolean(properties, "skip.welcome");
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
+    autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
+    lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
+    updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
   }
 
   private void updateTo(Properties properties) {
@@ -204,6 +210,9 @@ public class Settings {
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);
+    properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));
+    properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
+    properties.setProperty("updates.available", Boolean.toString(updateAvailable));
   }
 
   private static Point getPoint(Properties properties, String name) {
@@ -224,8 +233,25 @@ public class Settings {
     }
   }
 
+  private static long getLong(Properties properties, String name, long dflt) {
+    String value = properties.getProperty(name);
+    if (value == null) {
+      return dflt;
+    }
+
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      return dflt;
+    }
+  }
+
   private static boolean getBoolean(Properties properties, String name) {
     return "true".equalsIgnoreCase(properties.getProperty(name, ""));
+  }
+
+  private static boolean getBoolean(Properties properties, String name, boolean dflt) {
+    return "true".equalsIgnoreCase(properties.getProperty(name, dflt ? "true" : "false"));
   }
 
   private static int[] getIntList(Properties properties, String name, int[] dflt) {
