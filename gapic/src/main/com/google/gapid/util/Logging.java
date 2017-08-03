@@ -98,8 +98,10 @@ public class Logging {
       "log-level", LogLevel.INFO, "Logging level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
   public static final Flag<String> logDir = Flags.value(
       "log-dir", System.getProperty("java.io.tmpdir"), "Directory for log files.");
+  // Actual default is to use logLevel's value.
   public static final Flag<LogLevel> gapisLogLevel = Flags.value(
       "gapis-log-level", LogLevel.INFO, "Gapis log level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
+  // Actual default is to use logLevel's value.
   public static final Flag<LogLevel> gapirLogLevel = Flags.value(
       "gapir-log-level", LogLevel.INFO, "Gapir log level [OFF, ERROR, WARNING, INFO, DEBUG, ALL].");
 
@@ -144,6 +146,14 @@ public class Logging {
 
   public static File getLogDir() {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
+  }
+
+  public static String getGapisLogLevel() {
+    return (gapisLogLevel.isSpecified() ? gapisLogLevel.get() : logLevel.get()).gapisLevel;
+  }
+
+  public static String getGapirLogLevel() {
+    return (gapirLogLevel.isSpecified() ? gapirLogLevel.get() : logLevel.get()).gapirLevel;
   }
 
   public static MessageIterator getMessageIterator() {
