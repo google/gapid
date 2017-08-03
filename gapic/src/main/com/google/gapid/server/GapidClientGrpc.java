@@ -51,6 +51,12 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
+  public ListenableFuture<Service.CheckForUpdatesResponse> checkForUpdates(
+      Service.CheckForUpdatesRequest request) {
+    return client.checkForUpdates(request);
+  }
+
+  @Override
   public ListenableFuture<Service.GetResponse> get(Service.GetRequest request) {
     return client.get(request);
   }
