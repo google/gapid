@@ -15,59 +15,47 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
-
-import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 
 /**
  * Displays status information at the bottom of the main window.
  */
 public class StatusBar extends Composite {
-  private final Theme theme;
   private final Label status;
-  private final Label notification;
+  private final Link notification;
   private Runnable onNotificationClick;
 
-  public StatusBar(Composite parent, Theme theme) {
+  public StatusBar(Composite parent) {
     super(parent, SWT.NONE);
-
-    this.theme = theme;
 
     setLayout(new GridLayout(2, false));
 
     status = Widgets.createLabel(this, "");
     status.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, true, false));
 
-    notification = Widgets.createLabel(this, "");
-    notification.setLayoutData(new GridData(SWT.RIGHT, SWT.FILL, false, false));
-    notification.addListener(SWT.MouseDown, (e) -> {
+    notification = Widgets.createLink(this, "", (e) -> {
       if (onNotificationClick != null) {
         onNotificationClick.run();
       }
     });
+    notification.setLayoutData(new GridData(SWT.RIGHT, SWT.FILL, false, false));
   }
 
   /**
-   * Updates the notification to the given text. Can be safely called on a non-UI thread.
+   * Updates the notification to the given text.
    *
    * @param text the notification text.
    * @param onClick the optional notifiction click handler.
    */
   public void setNotification(String text, Runnable onClick) {
-    scheduleIfNotDisposed(this, () -> {
-      notification.setText(text);
-      notification.setForeground(onClick != null ?
-          theme.linkForeground() : theme.notificationForeground());
-
-      onNotificationClick = onClick;
-
-      layout();
-    });
+    notification.setText((onClick != null) ? "<a>" + text + "</a>" : text);
+    onNotificationClick = onClick;
+    layout();
   }
 }

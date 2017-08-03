@@ -131,9 +131,6 @@ public interface Theme {
   @RGB(argb = 0xff000000) public Color imageCursorDark();
   @RGB(argb = 0xffffffff) public Color imageCursorLight();
 
-  @RGB(argb = 0xff0000ee) public Color linkForeground();
-  @RGB(argb = 0xff000000) public Color notificationForeground();
-
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();

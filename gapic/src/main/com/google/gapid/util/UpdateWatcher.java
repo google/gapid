@@ -19,7 +19,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service.Release;
 import com.google.gapid.server.Client;
-import java.util.Date;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -27,8 +26,7 @@ import java.util.concurrent.TimeUnit;
  * Utility class for checking for new releases of GAPID.
  */
 public class UpdateWatcher {
-  private static final int CHECK_INTERVAL_HOURS = 8;
-  private static final long CHECK_INTERVAL_MS = CHECK_INTERVAL_HOURS * 60 * 60 * 1000;
+  private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(8);
   private static final boolean INCLUDE_PRE_RELEASES = true;
 
   private final Settings settings;
@@ -53,7 +51,7 @@ public class UpdateWatcher {
   }
 
   private void scheduleCheck() {
-    long now = new Date().getTime();
+    long now = System.currentTimeMillis();
     long timeSinceLastUpdateMS = now - settings.lastCheckForUpdates;
     long delay = Math.max(CHECK_INTERVAL_MS - timeSinceLastUpdateMS, 0);
     Scheduler.EXECUTOR.schedule(this::doCheck, delay, TimeUnit.MILLISECONDS);
@@ -73,7 +71,7 @@ public class UpdateWatcher {
         /* never mind */
       }
     }
-    settings.lastCheckForUpdates = new Date().getTime();
+    settings.lastCheckForUpdates = System.currentTimeMillis();
     settings.save();
     scheduleCheck();
   }
