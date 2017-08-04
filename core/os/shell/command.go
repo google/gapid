@@ -20,9 +20,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
-
 	"path/filepath"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 )
@@ -139,7 +138,6 @@ func (cmd Cmd) Run(ctx context.Context) error {
 	if cmd.Verbosity {
 		log.I(ctx, "Exec: %v", cmd)
 	}
-	// We build a child context that we always cancel, so that the watchdog quits even on normal process exit
 	process, err := cmd.Target.Start(cmd)
 	if err != nil {
 		return log.From(ctx).Err(err, "Failed to start process")
