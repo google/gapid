@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # True source of GAPID versions.
-# Increment these numbers before releasing a new version.
+# Increment these numbers immediately after releasing a new version.
 set(GAPID_VERSION_MAJOR 0)
 set(GAPID_VERSION_MINOR 5)
-set(GAPID_VERSION_POINT 1)
+set(GAPID_VERSION_POINT 2)
 
 if (NOT DEFINED GAPID_BUILD_NUMBER)
     set(GAPID_BUILD_NUMBER 0)
