@@ -86,9 +86,6 @@ func loadLibrariesViaJDWP(ctx context.Context, gapidAPK *gapidapk.APK, pid int, 
 		reconnectDelay    = time.Second
 	)
 
-	ctx, stop := task.WithCancel(ctx)
-	defer stop()
-
 	jdwpPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
 		return log.Err(ctx, err, "Finding free port")
@@ -99,7 +96,10 @@ func loadLibrariesViaJDWP(ctx context.Context, gapidAPK *gapidapk.APK, pid int, 
 	if err := d.Forward(ctx, adb.TCPPort(jdwpPort), adb.Jdwp(pid)); err != nil {
 		return log.Err(ctx, err, "Setting up JDWP port forwarding")
 	}
-	defer d.RemoveForward(ctx, adb.TCPPort(jdwpPort))
+	defer d.RemoveForward(ctx, adb.TCPPort(jdwpPort)) // must come before: defer stop()
+
+	ctx, stop := task.WithCancel(ctx)
+	defer stop()
 
 	log.I(ctx, "Connecting to JDWP")
 
@@ -119,10 +119,7 @@ func loadLibrariesViaJDWP(ctx context.Context, gapidAPK *gapidapk.APK, pid int, 
 	if err != nil {
 		return log.Err(ctx, err, "Connecting to JDWP")
 	}
-	defer func() {
-		stop()
-		sock.Close()
-	}()
+	defer sock.Close()
 
 	classLoaderThread := jdwp.ThreadID(0)
 
