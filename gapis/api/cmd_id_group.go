@@ -406,7 +406,7 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 		if len(c.SubGroup.Spans) == 0 {
 			c.SubGroup.Spans = Spans{&CmdIDRange{CmdID(0), id + 1}}
 		}
-		r := c.SubGroup.Spans[0].(*CmdIDRange)
+		r := c.SubGroup.Spans[0].Bounds()
 		r.End = id + 1
 	}
 }
