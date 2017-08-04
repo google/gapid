@@ -126,10 +126,12 @@ func (r *CmdIDRange) item(i uint64) SpanItem {
 func (r *CmdIDRange) itemIndex(i CmdID) uint64    { return uint64(i - r.Start) }
 func (r *CmdIDRange) split(i uint64) (Span, Span) { return r.Split(i) }
 
-func (c *SubCmdRoot) Bounds() CmdIDRange          { return CmdIDRange{CmdID(c.Id[0]), CmdID(c.Id[0] + 1)} }
+func (c *SubCmdRoot) Bounds() CmdIDRange {
+	return CmdIDRange{CmdID(c.Id[len(c.Id)-1]), CmdID(c.Id[len(c.Id)-1] + 1)}
+}
 func (c *SubCmdRoot) itemCount() uint64           { return 1 }
 func (c *SubCmdRoot) item(uint64) SpanItem        { return *c }
-func (c *SubCmdRoot) itemIndex(i CmdID) uint64    { return 0 }
+func (c *SubCmdRoot) itemIndex(i CmdID) uint64    { return uint64(i) }
 func (c *SubCmdRoot) split(i uint64) (Span, Span) { return c, nil }
 
 func (g *CmdIDGroup) Bounds() CmdIDRange          { return g.Range }
@@ -372,8 +374,20 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		switch first := g.Spans[s].(type) {
 		case *CmdIDGroup:
 			return first.AddRoot(rootidx)
+		case *CmdIDRange:
+			firstHalf := &CmdIDRange{first.Start, first.End}
+			firstHalf.End = CmdID(rootidx[len(rootidx)-1])
+			if firstHalf.End > firstHalf.Start {
+				slice.InsertBefore(&g.Spans, s, firstHalf)
+				s++
+			}
+			slice.Replace(&g.Spans, s, 1, NewRoot(rootidx))
+			secondHalf := &CmdIDRange{first.Start, first.End}
+			secondHalf.Start = CmdID(rootidx[len(rootidx)-1] + 1)
+			slice.InsertBefore(&g.Spans, s+1, secondHalf)
+			return g.Spans[s].(*SubCmdRoot)
 		default:
-			x := fmt.Sprintf("Inserting root into non-group %+v, %+v", first, rootidx)
+			x := fmt.Sprintf("Inserting root into non-group/non-range %+v, %+v", first, rootidx)
 			panic(x)
 		}
 	}
@@ -406,8 +420,12 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 		if len(c.SubGroup.Spans) == 0 {
 			c.SubGroup.Spans = Spans{&CmdIDRange{CmdID(0), id + 1}}
 		}
-		r := c.SubGroup.Spans[0].(*CmdIDRange)
-		r.End = id + 1
+		r, ok := c.SubGroup.Spans[0].(*CmdIDRange)
+		if ok {
+			r.End = id + 1
+		} else {
+			panic("This should not happen, inner-most subcommands must be added to SubCmdRoot before other nesting Sub-SubCmdRoot")
+		}
 	}
 }
 

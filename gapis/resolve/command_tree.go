@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
@@ -114,7 +115,8 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			NumCommands: count,
 		}, nil
 	default:
-		panic(fmt.Errorf("Unexpected type: %T", item))
+		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): %v, indices: %v",
+			item, cmdTree.index(c.Indices), c.Indices))
 	}
 }
 
@@ -319,6 +321,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	for k, v := range snc.SubcommandGroups {
 		r := out.root.AddRoot([]uint64{uint64(k)})
+		// subcommands are added before nested SubCmdRoots.
+		sort.SliceStable(v, func(i, j int) bool { return len(v[i]) < len(v[j]) })
 		for _, x := range v {
 			r.Insert([]uint64{uint64(k)}, append([]uint64{}, x...))
 		}
