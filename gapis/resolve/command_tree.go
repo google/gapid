@@ -379,10 +379,30 @@ func addFrameEvents(ctx context.Context, events *service.Events, p *path.Command
 		case service.EventKind_FirstInFrame:
 			frameStart = i
 
+			// If the start is within existing group, move it past the end of the group
+			if idx := t.root.Spans.IndexOf(uint64(frameStart)); idx != -1 {
+				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
+					frameStart = subgroup.Range.End
+				}
+			}
+
 		case service.EventKind_LastInFrame:
-			t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
 			frameCount++
 			frameEnd = i
+
+			// If the end is within existing group, move it to the end of the group
+			if idx := t.root.Spans.IndexOf(uint64(frameEnd)); idx != -1 {
+				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
+					frameEnd = subgroup.Range.Last()
+				}
+			}
+
+			// If the app properly annotates frames as well, we will end up with
+			// both groupings, where one is the only child of the other.
+			// However, we can not reliably detect this situation as the user
+			// group might be surrounded by (potentially filtered) commands.
+
+			t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
 		}
 	}
 	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
