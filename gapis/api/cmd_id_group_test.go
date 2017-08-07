@@ -228,7 +228,7 @@ func TestAddGroupTopDown(t *testing.T) {
 					},
 					&CmdIDGroup{
 						Range: CmdIDRange{500, 600},
-						Name:  "C0",
+						Name:  "C2",
 						Spans: Spans{
 							&CmdIDGroup{
 								Range: CmdIDRange{500, 600},
@@ -236,7 +236,7 @@ func TestAddGroupTopDown(t *testing.T) {
 								Spans: Spans{
 									&CmdIDGroup{
 										Range: CmdIDRange{500, 600},
-										Name:  "C2",
+										Name:  "C0",
 									},
 								},
 							},
@@ -310,7 +310,7 @@ func TestAddGroupBottomUp(t *testing.T) {
 					},
 					&CmdIDGroup{
 						Range: CmdIDRange{500, 600},
-						Name:  "C2",
+						Name:  "C0",
 						Spans: Spans{
 							&CmdIDGroup{
 								Range: CmdIDRange{500, 600},
@@ -318,7 +318,7 @@ func TestAddGroupBottomUp(t *testing.T) {
 								Spans: Spans{
 									&CmdIDGroup{
 										Range: CmdIDRange{500, 600},
-										Name:  "C0",
+										Name:  "C2",
 									},
 								},
 							},
