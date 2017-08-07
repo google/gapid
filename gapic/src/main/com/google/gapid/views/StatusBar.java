@@ -15,7 +15,10 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.widgets.Widgets.withMargin;
+
 import com.google.gapid.widgets.Widgets;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -34,7 +37,7 @@ public class StatusBar extends Composite {
   public StatusBar(Composite parent) {
     super(parent, SWT.NONE);
 
-    setLayout(new GridLayout(2, false));
+    setLayout(withMargin(new GridLayout(2, false), 0, 0));
 
     status = Widgets.createLabel(this, "");
     status.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, true, false));
