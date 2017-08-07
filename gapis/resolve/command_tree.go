@@ -334,7 +334,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			cmd := c.Commands[i]
 			cmd.Mutate(ctx, s, nil)
 			return filter(cmd, s)
-		}, uint64(p.MaxChildren))
+		}, uint64(p.MaxChildren), uint64(p.MaxNeighbours))
 	}
 
 	return out, nil

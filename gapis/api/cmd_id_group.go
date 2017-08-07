@@ -423,11 +423,15 @@ func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	return nil
 }
 
-// AddAtoms fills the group and sub-groups with commands based on the predicate
-// pred. If maxChildren is positive, the group, and any of it's decendent
+// AddAtoms fills the group and sub-groups with commands based on the predicate pred.
+//
+// If maxChildren is positive, the group, and any of it's decendent
 // groups, which have more than maxChildren child elements, will have their
 // children grouped into new synthetic groups of at most maxChildren children.
-func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren uint64) error {
+//
+// If maxNeighbours is positive, we will group long list of ungrouped commands,
+// which are next to a group. This ensures the group is not lost in noise.
+func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren, maxNeighbours uint64) error {
 	rng := g.Range
 	spans := make(Spans, 0, len(g.Spans))
 
@@ -452,7 +456,7 @@ func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren uint64) erro
 		switch s := s.(type) {
 		case *CmdIDGroup:
 			scan(s.Bounds().Start)
-			s.AddAtoms(pred, maxChildren)
+			s.AddAtoms(pred, maxChildren, maxNeighbours)
 			rng.Start = s.Bounds().End
 			spans = append(spans, s)
 		case *SubCmdRoot:
@@ -466,6 +470,35 @@ func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren uint64) erro
 	scan(g.Range.End)
 
 	g.Spans = spans
+
+	if maxNeighbours > 0 {
+		spans := Spans{}
+		accum := Spans{}
+		flush := func() {
+			if len(accum) > 0 {
+				rng := CmdIDRange{accum[0].Bounds().Start, accum[len(accum)-1].Bounds().End}
+				group := CmdIDGroup{"Sub Group", rng, accum}
+				if group.Count() > maxNeighbours {
+					spans = append(spans, &group)
+				} else {
+					spans = append(spans, accum...)
+				}
+				accum = Spans{}
+			}
+		}
+		for _, s := range g.Spans {
+			if _, isCmdIDRange := s.(*CmdIDRange); isCmdIDRange {
+				accum = append(accum, s)
+			} else {
+				flush()
+				spans = append(spans, s)
+			}
+		}
+		if len(spans) > 0 { // Do not make one big nested group
+			flush()
+			g.Spans = spans
+		}
+	}
 
 	if maxChildren > 0 && g.Count() > maxChildren {
 		g.Spans = g.Spans.split(maxChildren)
