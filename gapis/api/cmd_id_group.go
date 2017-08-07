@@ -333,6 +333,9 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
 		last := g.Spans[s+c-1].(*CmdIDGroup)
 		sIn, eIn := first.Bounds().Contains(start), last.Bounds().Contains(end-1)
 		switch {
+		case c == 1 && g.Spans[s].Bounds() == r:
+			// New group exactly matches already existing group. Wrap the exiting group.
+			g.Spans[s] = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
 		case c == 1 && sIn && eIn:
 			// New group fits entirely within an existing group. Add as subgroup.
 			first.AddGroup(start, end, name)
