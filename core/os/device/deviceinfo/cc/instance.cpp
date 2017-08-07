@@ -20,10 +20,14 @@
 extern "C" {
 
 device_instance get_device_instance(void* platform_data) {
+    device_instance out = {};
+
     auto instance = query::getDeviceInstance(platform_data);
+    if (!instance) {
+        return out;
+    }
 
     // Reserialize the instance with the ID field.
-    device_instance out;
     out.size = instance->ByteSize();
     out.data = new uint8_t[out.size];
     instance->SerializeToArray(out.data, out.size);
