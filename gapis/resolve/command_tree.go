@@ -314,7 +314,22 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	if p.GroupByDrawCall || p.GroupByFrame {
-		addDrawAndFrameEvents(ctx, p, out, api.CmdID(len(c.Commands)))
+		events, err := Events(ctx, &path.Events{
+			Capture:      p.Capture,
+			Filter:       p.Filter,
+			DrawCalls:    true,
+			FirstInFrame: true,
+			LastInFrame:  true,
+		})
+		if err != nil {
+			return nil, log.Errf(ctx, err, "Couldn't get events")
+		}
+		if p.GroupByFrame {
+			addFrameEvents(ctx, events, p, out, api.CmdID(len(c.Commands)))
+		}
+		if p.GroupByDrawCall {
+			addDrawEvents(ctx, events, p, out, api.CmdID(len(c.Commands)))
+		}
 	}
 
 	for k, v := range snc.SubcommandGroups {
@@ -340,21 +355,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	return out, nil
 }
 
-func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandTree, last api.CmdID) error {
-	events, err := Events(ctx, &path.Events{
-		Capture:      t.path.Capture,
-		Filter:       p.Filter,
-		DrawCalls:    p.GroupByDrawCall,
-		FirstInFrame: true,
-		LastInFrame:  true,
-	})
-	if err != nil {
-		return log.Errf(ctx, err, "Couldn't get events")
-	}
-
+func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
 	drawCount, drawStart := 0, api.CmdID(0)
-	frameCount, frameStart, frameEnd := 0, api.CmdID(0), api.CmdID(0)
-
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
@@ -364,19 +366,26 @@ func addDrawAndFrameEvents(ctx context.Context, p *path.CommandTree, t *commandT
 			drawStart = i + 1
 
 		case service.EventKind_FirstInFrame:
-			drawCount, drawStart, frameStart = 0, i, i
-
-		case service.EventKind_LastInFrame:
-			if p.GroupByFrame {
-				t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
-				frameCount++
-				frameEnd = i
-			}
+			drawCount, drawStart = 0, i
 		}
 	}
+}
 
-	if p.AllowIncompleteFrame && p.GroupByFrame && frameCount > 0 && frameStart > frameEnd {
+func addFrameEvents(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
+	frameCount, frameStart, frameEnd := 0, api.CmdID(0), api.CmdID(0)
+	for _, e := range events.List {
+		i := api.CmdID(e.Command.Indices[0])
+		switch e.Kind {
+		case service.EventKind_FirstInFrame:
+			frameStart = i
+
+		case service.EventKind_LastInFrame:
+			t.root.AddGroup(frameStart, i+1, fmt.Sprintf("Frame %v", frameCount+1))
+			frameCount++
+			frameEnd = i
+		}
+	}
+	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
 		t.root.AddGroup(frameStart, last, "Incomplete Frame")
 	}
-	return nil
 }
