@@ -45,7 +45,7 @@ The UI runs on Windows, Linux and MacOS and can currently be used to trace GLES 
 on Windows, Linux and Android.
 We also plan to be able to trace OpenGL ES applications on hosts that support the API.
 
-Downloadable prebuilts will be available once the project reaches the beta milestone.
+Pre-release downloadable binaries can be found [here](https://github.com/google/gapid/releases).
 
 Detailed current status for Vulkan can be found [here](gapis/api/vulkan/README.md).
 
