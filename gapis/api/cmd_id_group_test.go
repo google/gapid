@@ -370,7 +370,7 @@ func TestAddAtomsFill(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
 
-	got.AddAtoms(func(CmdID) bool { return true }, 0)
+	got.AddAtoms(func(CmdID) bool { return true }, 0, 0)
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -410,7 +410,7 @@ func TestAddAtomsSparse(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
 
-	got.AddAtoms(func(id CmdID) bool { return (id/50)&1 == 0 }, 0)
+	got.AddAtoms(func(id CmdID) bool { return (id/50)&1 == 0 }, 0, 0)
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -448,7 +448,7 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(700)
 
-	got.AddAtoms(func(CmdID) bool { return true }, 45)
+	got.AddAtoms(func(CmdID) bool { return true }, 45, 0)
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 700}, Spans{
@@ -503,6 +503,32 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 	}
 
 	assert.With(ctx).That(got).DeepEquals(expected)
+}
+
+func TestAddAtomsWithNeighbours(t *testing.T) {
+	ctx := log.Testing(t)
+	{
+		got := CmdIDGroup{
+			"root", CmdIDRange{0, 52}, Spans{
+				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}},
+				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}},
+			},
+		}
+
+		got.AddAtoms(func(CmdID) bool { return true }, 0, 10)
+
+		expected := CmdIDGroup{
+			"root", CmdIDRange{0, 52}, Spans{
+				&CmdIDRange{0, 10},
+				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}},
+				&CmdIDGroup{"Sub Group", CmdIDRange{20, 31}, Spans{&CmdIDRange{20, 31}}},
+				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}},
+				&CmdIDRange{50, 52},
+			},
+		}
+
+		assert.With(ctx).That(got).DeepEquals(expected)
+	}
 }
 
 func TestSpansSplit(t *testing.T) {

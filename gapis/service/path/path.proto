@@ -242,6 +242,9 @@ message CommandTree {
     // If positive, synthetic sub-nodes are created for nodes with more than
     // this many children.
     int32 max_children = 11;
+    // If positive, synthetic sub-nodes are created for long spans of commands
+    // between groups. This ensures the groups do not get lost in the noise.
+    int32 max_neighbours = 12;
 }
 
 // CommandTreeNode is a path to a command tree node.
