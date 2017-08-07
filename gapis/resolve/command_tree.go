@@ -356,17 +356,34 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 }
 
 func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
-	drawCount, drawStart := 0, api.CmdID(0)
+	drawCount := 0
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
 		case service.EventKind_DrawCall:
+			// Find group which contains this draw command
+			group := &t.root
+			for true {
+				if idx := group.Spans.IndexOf(uint64(i)); idx != -1 {
+					if subgroup, ok := group.Spans[idx].(*api.CmdIDGroup); ok {
+						group = subgroup
+						continue
+					}
+				}
+				break
+			}
+
+			// Start with group of size 1 and grow it backward as long as nothing gets in the way.
+			drawStart := i
+			for drawStart >= group.Bounds().Start+1 && group.Spans.IndexOf(uint64(drawStart-1)) == -1 {
+				drawStart--
+			}
+
 			t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
 			drawCount++
-			drawStart = i + 1
 
-		case service.EventKind_FirstInFrame:
-			drawCount, drawStart = 0, i
+		case service.EventKind_LastInFrame:
+			drawCount = 0
 		}
 	}
 }
