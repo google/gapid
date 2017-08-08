@@ -99,7 +99,7 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 		}
 		switch m.dst.component.Channel {
 		case Channel_Alpha:
-			if srcFmt.HasColorComponent() {
+			if srcFmt.HasColorComponent() || srcFmt.HasDepthComponent() {
 				m.src = buf1Norm
 			}
 		case Channel_W:
@@ -114,12 +114,18 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 			if c, _ := srcFmt.Component(Channel_Gray, Channel_Luminance); c != nil {
 				// Missing red, green or blue but have a gray or luminance channel. Use that.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
+			} else if c, _ := srcFmt.Component(Channel_Depth); c != nil {
+				// Convert depth to RGB.
+				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			} else if srcFmt.HasColorComponent() {
 				m.src = buf0
 			}
 		case Channel_Luminance:
 			if c := srcFmt.GetSingleColorComponent(); c != nil {
 				// A format with a single color channel is equivalent to a luninance format.
+				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
+			} else if c, _ := srcFmt.Component(Channel_Depth); c != nil {
+				// Convert depth to luminance.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			}
 			// TODO: RGB->Luminance conversion (#276)

@@ -155,6 +155,17 @@ func (f *Format) GetSingleColorComponent() *Component {
 	return c
 }
 
+// HasDepthComponent returns true if the format contains a depth component.
+// See DepthChannels for channels considered depth.
+func (f *Format) HasDepthComponent() bool {
+	for _, t := range f.Components {
+		if t.Channel.IsDepth() {
+			return true
+		}
+	}
+	return false
+}
+
 // HasVectorComponent returns true if the format contains a vector component.
 // See VectorChannels for channels considered vectors.
 func (f *Format) HasVectorComponent() bool {
