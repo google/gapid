@@ -179,7 +179,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	}
 
 	outputObj := &Output{}
-	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}}, output)
+	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return nil, err
 	}
