@@ -94,7 +94,7 @@ func doReport(ctx context.Context, action string, in *Input, store *stash.Client
 	log.I(ctx, output)
 
 	outputObj := &Output{}
-	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"report.log"}}, output)
+	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"report.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return outputObj, err
 	}
