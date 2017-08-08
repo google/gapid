@@ -74,6 +74,11 @@ var ColorChannels = []Channel{
 	Channel_ChromaV,
 }
 
+// DepthChannels is the list of channels considered depth.
+var DepthChannels = []Channel{
+	Channel_Depth,
+}
+
 // VectorChannels is the list of channels considered vectors.
 var VectorChannels = []Channel{
 	Channel_X,
@@ -86,6 +91,17 @@ var VectorChannels = []Channel{
 // See ColorChannels for the list of channels considered color.
 func (c Channel) IsColor() bool {
 	for _, t := range ColorChannels {
+		if t == c {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDepth returns true if the channel is considered a depth channel.
+// See DepthChannels for the list of channels considered depth.
+func (c Channel) IsDepth() bool {
+	for _, t := range DepthChannels {
 		if t == c {
 			return true
 		}
