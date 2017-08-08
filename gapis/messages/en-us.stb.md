@@ -138,3 +138,7 @@ The requested command range does not contain any draw calls.
 # ERR_PATH_WITHOUT_CAPTURE
 
 The request path does not contain the required capture identifier.
+
+# NO_NEW_BUILDS_AVAILABLE
+
+There are no new builds available.

@@ -34,6 +34,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
@@ -101,9 +102,6 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to list releases")
 	}
-	if len(releases) == 0 {
-		return nil, nil
-	}
 	var mostRecent *service.Release
 	mostRecentVersion := app.Version
 	for _, release := range releases {
@@ -122,6 +120,12 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 				BrowserUrl:   release.GetHTMLURL(),
 			}
 			mostRecentVersion = version
+		}
+	}
+	if mostRecent == nil {
+		return nil, &service.ErrDataUnavailable{
+			Reason:    messages.NoNewBuildsAvailable(),
+			Transient: true,
 		}
 	}
 	return mostRecent, nil
