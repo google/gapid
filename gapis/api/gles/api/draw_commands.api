@@ -52,8 +52,8 @@ sub void checkIndicesType(GLenum indices_type) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml", Version.GLES32)
 cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
   checkPrimitiveType(draw_mode)
-  if first_index < 0 { glErrorInvalidValue() } // "Recommended behaviour"
-  if indices_count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLint(first_index) // "Recommended behaviour"
+  CheckNonNegative!GLsizei(indices_count)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
 }
@@ -82,9 +82,9 @@ cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indi
 
 sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
   checkPrimitiveType(draw_mode)
-  if first_index < 0 { glErrorInvalidValue() } // "Recommended behaviour"
-  if indices_count < 0 { glErrorInvalidValue() }
-  if instance_count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLint(first_index) // "Recommended behaviour"
+  CheckNonNegative!GLsizei(indices_count)
+  CheckNonNegative!GLsizei(instance_count)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
 }
@@ -97,9 +97,9 @@ sub void DrawElements(ref!Context    ctx,
                       GLsizei        instance_count,
                       GLint          base_vertex) {
   checkPrimitiveType(draw_mode)
-  if indices_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
+  CheckNonNegative!GLsizei(indices_count) // SPEC: missing in pdf
   checkIndicesType(indices_type)
-  if instance_count < 0 { glErrorInvalidValue() } // SPEC: missing in pdf
+  CheckNonNegative!GLsizei(instance_count) // SPEC: missing in pdf
   if indices_count > 0 {
     count := as!u32(indices_count)
     index_buffer := ctx.Bound.VertexArray.ElementArrayBuffer

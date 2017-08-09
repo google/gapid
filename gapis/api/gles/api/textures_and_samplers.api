@@ -336,16 +336,16 @@ sub void TexImage(TexImageFlags  flags,
   t := GetBoundTextureOrErrorInvalidEnum(target)
 
   // Check offsets and sizes
-  if loffset < 0 { glErrorInvalidValue() }
-  if xoffset < 0 { glErrorInvalidValue() }
-  if yoffset < 0 { glErrorInvalidValue() }
-  if zoffset < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLint(loffset)
+  CheckNonNegative!GLint(xoffset)
+  CheckNonNegative!GLint(yoffset)
+  CheckNonNegative!GLint(zoffset)
   if levels < 1 { glErrorInvalidValue() }
-  if width < 0 { glErrorInvalidValue() }
-  if height < 0 { glErrorInvalidValue() }
-  if depth < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(width)
+  CheckNonNegative!GLsizei(height)
+  CheckNonNegative!GLsizei(depth)
   if border != 0 { glErrorInvalidValue() }
-  if data_size < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(data_size)
   switch target {
     case GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
       if width != height { glErrorInvalidValue() }
@@ -854,7 +854,7 @@ sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoff
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml", Version.GLES32)
 cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -872,7 +872,7 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", Version.GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   t := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -890,7 +890,7 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml", Version.GLES32)
 cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -907,7 +907,7 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml", Version.GLES32)
 cmd void glGenTextures(GLsizei count, TextureId* textures) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   t := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -1265,7 +1265,7 @@ cmd GLboolean glIsTexture(TextureId texture) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glPixelStorei.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPixelStorei.xhtml", Version.GLES32)
 cmd void glPixelStorei(GLenum parameter, GLint value) {
-  if value < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLint(value)
   ctx := GetContext()
   switch (parameter) {
     @if(Version.GLES20)
@@ -1586,7 +1586,7 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
     @if(Version.GLES30)
     case GL_TEXTURE_BASE_LEVEL: {
       baseLevel := as!GLint(params[0])
-      if baseLevel < 0 { glErrorInvalidValue() }
+      CheckNonNegative!GLint(baseLevel)
       t.BaseLevel = baseLevel
     }
     @if(Version.GLES30 || Extension.GL_EXT_shadow_samplers)
@@ -1600,7 +1600,7 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
     @if(Version.GLES30)
     case GL_TEXTURE_MAX_LEVEL: {
       maxLevel := as!GLint(params[0])
-      if maxLevel < 0 { glErrorInvalidValue() }
+      CheckNonNegative!GLint(maxLevel)
       t.MaxLevel = maxLevel
     }
     @if(Version.GLES30)

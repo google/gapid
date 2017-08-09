@@ -83,6 +83,12 @@ sub void glErrorInvalidOperationMsg(message m) {
   abort
 }
 
+sub void CheckNonNegative!T(T param) {
+  if param < 0 {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_NEGATIVE(value: as!s64(param)))
+  }
+}
+
 sub T max!T(T a, T b) {
   return switch a > b {
     case true:  a

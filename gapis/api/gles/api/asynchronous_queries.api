@@ -61,7 +61,7 @@ cmd void glDeleteQueries(GLsizei count, const QueryId* queries) {
 }
 
 sub void DeleteQueries(GLsizei count, const QueryId* queries) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   q := queries[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -103,7 +103,7 @@ cmd void glGenQueries(GLsizei count, QueryId* queries) {
 }
 
 sub void GenQueries(GLsizei count, QueryId* queries) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   q := queries[0:count]
   ctx := GetContext()
   for i in (0 .. count) {

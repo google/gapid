@@ -225,7 +225,7 @@ cmd void glDeleteVertexArrays(GLsizei count, const VertexArrayId* arrays) {
 }
 
 sub void DeleteVertexArrays(GLsizei count, const VertexArrayId* arrays) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   ctx := GetContext()
   a := arrays[0:count]
   for i in (0 .. count) {
@@ -276,7 +276,7 @@ cmd void glGenVertexArrays(GLsizei count, VertexArrayId* arrays) {
 }
 
 sub void GenVertexArrays(GLsizei count, VertexArrayId* arrays) {
-  if count < 0 { glErrorInvalidValue() }
+  CheckNonNegative!GLsizei(count)
   ctx := GetContext()
   a := arrays[0:count]
   for i in (0 .. count) {
