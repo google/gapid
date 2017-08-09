@@ -19,6 +19,7 @@ import static com.google.gapid.glviewer.Geometry.isPolygon;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.meshAfter;
+import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
@@ -66,7 +67,6 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
@@ -212,10 +212,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
           ObjWriter.write(out, originalModelItem.getSelection() ? originalModel : facetedModel);
         } catch (IOException ex) {
           LOG.log(WARNING, "Failed to save model as OBJ", e);
-          MessageBox mb = new MessageBox(getShell(), SWT.ICON_ERROR);
-          mb.setText("Failed to save model...");
-          mb.setMessage("Failed to save OBJ: " + ex.getMessage());
-          mb.open();
+          showErrorDialog(getShell(), "Failed to save model as OBJ:\n  " + ex.getMessage(), ex);
         }
       }
     }, "Save model as OBJ");
