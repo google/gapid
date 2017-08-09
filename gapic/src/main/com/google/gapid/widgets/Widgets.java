@@ -345,7 +345,11 @@ public class Widgets {
   }
 
   public static Text createTextbox(Composite parent, String text) {
-    Text result = new Text(parent, SWT.SINGLE | SWT.BORDER);
+    return createTextbox(parent, SWT.SINGLE | SWT.BORDER, text);
+  }
+
+  public static Text createTextbox(Composite parent, int style, String text) {
+    Text result = new Text(parent, style);
     result.setText(text);
     return result;
   }
@@ -596,6 +600,12 @@ public class Widgets {
   public static GridData withSpans(GridData data, int colSpan, int rowSpan) {
     data.horizontalSpan = colSpan;
     data.verticalSpan = rowSpan;
+    return data;
+  }
+
+  public static GridData withSizeHints(GridData data, int widthHint, int heightHint) {
+    data.widthHint = widthHint;
+    data.heightHint = heightHint;
     return data;
   }
 
