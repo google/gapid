@@ -21,6 +21,7 @@ set(files
     api.go
     buffer_command.go
     command_buffer_rebuilder.go
+    constant_sets.go
     convert.go
     custom_replay.go
     dependency_graph_behaviour_provider.go
@@ -39,6 +40,7 @@ set(files
     state.go
     vulkan.go
     vulkan_terminator.go
+    wireframe.go
 )
 set(dirs
     android
