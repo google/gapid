@@ -56,7 +56,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 	case service.WireframeMode_Overlay:
 		wireframeMode = replay.WireframeMode_Overlay
 	default:
-		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnumValue(wireframeMode, "WireframeMode")}
+		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnum(wireframeMode)}
 	}
 
 	mgr := replay.GetManager(ctx)
