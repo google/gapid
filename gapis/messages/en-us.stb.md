@@ -27,6 +27,10 @@ The slice {{from_value}}:{{to_value}} for {{from_variable}}:{{to_variable}} is o
 
 Invalid value.
 
+# ERR_INVALID_VALUE_NEGATIVE
+
+Invalid value {{value:s64}}: The value must be positive or zero.
+
 # ERR_INVALID_ENUM
 
 Invalid enum {{value:u32}}.
