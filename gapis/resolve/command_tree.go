@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -27,6 +28,10 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
+
+type CommandTreeNodeUserData struct {
+	Thumbnail api.CmdID
+}
 
 // CommandTree resolves the specified command tree path.
 func CommandTree(ctx context.Context, c *path.CommandTree) (*service.CommandTree, error) {
@@ -339,6 +344,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
+	drawOrClearCmds := api.Spans{} // All the spans will have length 1
+
 	// Now we have all the groups, we finally need to add the filtered atoms.
 	{
 		// Clone the context to prevent cancellation occuring in Mutate() calls.
@@ -348,9 +355,15 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		out.root.AddAtoms(func(i api.CmdID) bool {
 			cmd := c.Commands[i]
 			cmd.Mutate(ctx, s, nil)
-			return filter(cmd, s)
+			include := filter(cmd, s)
+			if include && (cmd.CmdFlags().IsDrawCall() || cmd.CmdFlags().IsClear()) {
+				drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{i, i + 1})
+			}
+			return include
 		}, uint64(p.MaxChildren), uint64(p.MaxNeighbours))
 	}
+
+	setThumbnails(ctx, &out.root, drawOrClearCmds)
 
 	return out, nil
 }
@@ -424,5 +437,18 @@ func addFrameEvents(ctx context.Context, events *service.Events, p *path.Command
 	}
 	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
 		t.root.AddGroup(frameStart, last, "Incomplete Frame")
+	}
+}
+
+func setThumbnails(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
+	if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
+		thumbnail := drawOrClearCmds[s+c-1].Bounds().Start
+		g.UserData = &CommandTreeNodeUserData{Thumbnail: thumbnail}
+	}
+
+	for _, s := range g.Spans {
+		if subgroup, ok := s.(*api.CmdIDGroup); ok {
+			setThumbnails(ctx, subgroup, drawOrClearCmds)
+		}
 	}
 }
