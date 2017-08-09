@@ -33,9 +33,10 @@ import (
 // or an command range that is within this group's span but outside of any
 // sub-group.
 type CmdIDGroup struct {
-	Name  string     // Name of this group.
-	Range CmdIDRange // The range of commands this group (and items) represents.
-	Spans Spans      // All sub-groups and sub-ranges of this group.
+	Name     string     // Name of this group.
+	Range    CmdIDRange // The range of commands this group (and items) represents.
+	Spans    Spans      // All sub-groups and sub-ranges of this group.
+	UserData interface{}
 }
 
 // SubCmdRoot is a new namespace under which subcommands live.
@@ -480,7 +481,7 @@ func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren, maxNeighbou
 		flush := func() {
 			if len(accum) > 0 {
 				rng := CmdIDRange{accum[0].Bounds().Start, accum[len(accum)-1].Bounds().End}
-				group := CmdIDGroup{"Sub Group", rng, accum}
+				group := CmdIDGroup{"Sub Group", rng, accum, nil}
 				if group.Count() > maxNeighbours {
 					spans = append(spans, &group)
 				} else {
@@ -527,6 +528,7 @@ outer:
 				fmt.Sprintf("Sub Group %d", idx),
 				CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 				current,
+				nil,
 			})
 			current, idx, count, space, span = nil, idx+1, 0, max, tail
 			if span == nil {
@@ -542,6 +544,7 @@ outer:
 			fmt.Sprintf("Sub Group %d", idx),
 			CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 			current,
+			nil,
 		})
 	}
 	return out
