@@ -17,6 +17,7 @@ package com.google.gapid.models;
 
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
+import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 
@@ -138,7 +139,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
       }
 
       LOG.log(Level.WARNING, "Failed to save trace", e);
-      updateError(Loadable.Message.error("Saving trace failed"));
+      showErrorDialog(shell, "Failed to save trace:\n  " + e.getMessage(), e);
       return;
     }
 
@@ -168,6 +169,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
       @Override
       protected void onUiThreadError(Exception error) {
         LOG.log(WARNING, "Couldn't save trace", error);
+        showErrorDialog(shell, "Failed to save trace:\n  " + error.getMessage(), error);
       }
     });
   }

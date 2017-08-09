@@ -15,6 +15,7 @@
  */
 package com.google.gapid;
 
+import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
@@ -31,10 +32,6 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.MultiStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
@@ -89,6 +86,7 @@ public class Main {
             throw (ThreadDeath) t;
           }
           LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", t);
+          showErrorDialog(null, "Unhandled exception in the UI thread.", t);
         }
       });
     }
@@ -119,19 +117,7 @@ public class Main {
 
       scheduleIfNotDisposed(shell, () -> {
         // TODO: try to restart the server?
-        IStatus status;
-        if (panic == null) {
-          status = new Status(IStatus.ERROR, "gapid", "unknown");
-        } else {
-          int p = panic.indexOf('\n');
-          String reason = (p < 0) ? null : panic.substring(0, p);
-          status = new MultiStatus("gapid", IStatus.ERROR, new IStatus[] {
-              new Status(IStatus.ERROR, "gapid", panic)
-          }, reason, null);
-        }
-        ErrorDialog.openError(shell, "Fatal Error",
-            "The gapis server has exited with an error code of: " + code +
-            "\nPlease check the logs for more details.", status);
+        showErrorDialog(shell, "The gapis server has exited with an error code of: " + code, panic);
       });
     }
 
