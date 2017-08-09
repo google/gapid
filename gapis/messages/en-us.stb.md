@@ -25,15 +25,15 @@ The slice {{from_value}}:{{to_value}} for {{from_variable}}:{{to_variable}} is o
 
 # ERR_INVALID_VALUE
 
-Invalid value {{value}} for {{variable}}.
+Invalid value.
 
-# ERR_INVALID_ENUM_VALUE
+# ERR_INVALID_ENUM
 
-Invalid enum value {{value:u32}} for {{variable:string}}.
+Invalid enum {{value:u32}}.
 
 # ERR_INVALID_OPERATION
 
-Invalid operation: {{operation}}.
+Invalid operation.
 
 # ERR_CONTEXT_DOES_NOT_EXIST
 

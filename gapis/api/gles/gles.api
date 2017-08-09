@@ -53,31 +53,32 @@ sub void supportsBits(GLbitfield seenBits, GLbitfield validBits) {
   if (seenBits & validBits) != seenBits { glErrorInvalidValue() }
 }
 
-sub void glErrorInvalidEnum(GLenum param) {
+sub void glErrorInvalidEnum(GLenum value) {
+  glErrorInvalidEnumMsg(new!ERR_INVALID_ENUM(value: as!u32(value)))
+}
+
+sub void glErrorInvalidEnumMsg(message m) {
   onGlError(GL_INVALID_ENUM)
-  // TODO: be more specific in callers
-  _ = newMsg(SEVERITY_ERROR, new!ERR_INVALID_ENUM_VALUE(value: 0,variable:  "variable"))
-  abort
-}
-
-sub void glErrorInvalidValue() {
-  onGlError(GL_INVALID_VALUE)
-  _ = newMsg(SEVERITY_ERROR, new!ERR_INVALID_VALUE(value: "value",variable:  "variable"))
-  abort
-}
-
-sub void glErrorInvalidOperation() {
-  glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION(operation: "operation"))
-}
-
-sub void glErrorInvalidOperationMsg(message m) {
-  onGlError(GL_INVALID_OPERATION)
   _ = newMsg(SEVERITY_ERROR, m)
   abort
 }
 
+sub void glErrorInvalidValue() {
+  glErrorInvalidValueMsg(new!ERR_INVALID_VALUE())
+}
+
 sub void glErrorInvalidValueMsg(message m) {
   onGlError(GL_INVALID_VALUE)
+  _ = newMsg(SEVERITY_ERROR, m)
+  abort
+}
+
+sub void glErrorInvalidOperation() {
+  glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION())
+}
+
+sub void glErrorInvalidOperationMsg(message m) {
+  onGlError(GL_INVALID_OPERATION)
   _ = newMsg(SEVERITY_ERROR, m)
   abort
 }
