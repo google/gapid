@@ -45,6 +45,7 @@ public class LoadingIndicator {
   private final Display display;
   private final Image[] icons;
   private final Image[] smallIcons;
+  private final Image refresh;
   private final Set<Repaintable> componentsToRedraw = Sets.newIdentityHashSet();
 
   public LoadingIndicator(Display display, Theme theme) {
@@ -57,6 +58,7 @@ public class LoadingIndicator {
         theme.loading0small(), theme.loading1small(), theme.loading2small(), theme.loading3small(),
         theme.loading4small(), theme.loading5small(), theme.loading6small(), theme.loading7small()
     };
+    this.refresh = theme.refresh();
   }
 
   public void paint(GC g, int x, int y, Point size) {
@@ -65,6 +67,18 @@ public class LoadingIndicator {
 
   public void paint(GC g, int x, int y, int w, int h) {
     Image image = (Math.min(w, h) < SIZE_THRESHOLD) ? getCurrentSmallFrame() : getCurrentFrame();
+    paint(image, g, x, y, w, h);
+  }
+
+  public void paintRefresh(GC g, int x, int y, Point size) {
+    paintRefresh(g, x, y, size.x, size.y);
+  }
+
+  public void paintRefresh(GC g, int x, int y, int w, int h) {
+    paint(refresh, g, x, y, w, h);
+  }
+
+  private static void paint(Image image, GC g, int x, int y, int w, int h) {
     Rectangle s = image.getBounds();
     g.drawImage(image, 0, 0, s.width, s.height,
         x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
@@ -109,7 +123,11 @@ public class LoadingIndicator {
   }
 
   public Widget createWidget(Composite parent) {
-    return new Widget(parent);
+    return new Widget(parent, false);
+  }
+
+  public Widget createWidgetWithRefresh(Composite parent) {
+    return new Widget(parent, true);
   }
 
   /**
@@ -126,27 +144,29 @@ public class LoadingIndicator {
    * Widget that shows the loading indicator while loading and is blank once done.
    */
   public class Widget extends Canvas implements Loadable, Repaintable {
-    private boolean showing = false;
+    private boolean loading = false;
 
-    public Widget(Composite parent) {
+    public Widget(Composite parent, boolean showRefresh) {
       super(parent, SWT.DOUBLE_BUFFERED);
       addListener(SWT.Paint, e -> {
-        if (showing) {
+        if (loading) {
           paint(e.gc, 0, 0, getSize());
           scheduleForRedraw(this);
+        } else if (showRefresh) {
+          paintRefresh(e.gc, 0, 0, getSize());
         }
       });
     }
 
     @Override
     public void startLoading() {
-      showing = true;
+      loading = true;
       scheduleForRedraw(this);
     }
 
     @Override
     public void stopLoading() {
-      showing = false;
+      loading = false;
       scheduleForRedraw(this);
     }
 

@@ -67,6 +67,7 @@ public interface Theme {
   @Icon("gapid/normals.png") public Image normals();
   @Icon("gapid/opacity.png") public Image opacity();
   @Icon("gapid/point_cloud.png") public Image pointCloud();
+  @Icon("gapid/refresh.png") public Image refresh();
   @Icon("gapid/save.png") public Image save();
   @Icon("gapid/smooth.png") public Image smooth();
   @Icon("gapid/trace_file.png") public Image traceFile();
