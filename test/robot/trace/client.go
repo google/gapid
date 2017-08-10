@@ -121,7 +121,7 @@ func (r *runner) trace(ctx context.Context, t *Task) (err error) {
 	status := job.Succeeded
 	if err != nil {
 		status = job.Failed
-		log.F(ctx, "Error running trace: %v", err)
+		log.E(ctx, "Error running trace: %v", err)
 	}
 	return r.manager.Update(ctx, t.Action, status, output)
 }
