@@ -200,13 +200,12 @@ Spy::Spy()
     GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
     GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
 
-    CallObserver observer(this, 0);
-
     mEncoder = gapii::PackEncoder::create(mConnection);
 
+    CallObserver observer(this, 0);
     GlesSpy::init();
     VulkanSpy::init();
-    SpyBase::init(&observer, mEncoder);
+    SpyBase::init(&observer);
 
     if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
         mDeferStartJob = std::unique_ptr<core::AsyncJob>(
@@ -230,7 +229,7 @@ void Spy::writeHeader() {
     capture::Header file_header;
     file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
     file_header.set_allocated_abi(query::currentABI());
-    mEncoder->message(&file_header);
+    mEncoder->object(&file_header);
     query::destroyContext();
 }
 
@@ -475,7 +474,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
 
 void Spy::onPostEndOfFrame(CallObserver* observer) {
     if (mPendingFramebufferObservation) {
-        mEncoder->message(mPendingFramebufferObservation.get());
+        mEncoder->object(mPendingFramebufferObservation.get());
         mPendingFramebufferObservation.reset(nullptr);
     }
     if (!is_suspended() && mCaptureFrames >= 1) {
@@ -576,7 +575,7 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api, bool pendMessa
         if (pendMessaging) {
           mPendingFramebufferObservation = std::move(observation);
         } else {
-          mEncoder->message(observation.get());
+          mEncoder->object(observation.get());
         }
     }
 }

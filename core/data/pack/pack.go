@@ -30,20 +30,36 @@ const (
 	// VersionMajor is the curent major version the package writes.
 	VersionMajor = 1
 	// VersionMinor is the current minor version the package writes.
-	VersionMinor = 0
+	VersionMinor = 1
 
 	initalBufferSize = 4096
 	maxVarintSize    = 10
-	specialSection   = 0
+
+	tagFirstGroup     = -1
+	tagGroupFinalizer = 0
+	tagDeclareType    = 1
+	tagFirstObject    = 2
 )
 
-type (
-	// ErrUnknownVersion is the error returned when the header version is one this
-	// package cannot handle.
-	ErrUnknownVersion struct{ Version *Version }
-)
+func tyIdxAndGroupFromTag(tag uint64) (tyIdx uint64, isGroup bool) {
+	if int64(tag) <= tagFirstGroup {
+		return uint64(tagFirstGroup - int64(tag)), true
+	}
+	return uint64(tag - tagFirstObject), false
+}
 
-func (e ErrUnknownVersion) Error() string {
+func tagFromTyIdxAndGroup(tyIdx uint64, isGroup bool) (tag int64) {
+	if isGroup {
+		return tagFirstGroup - int64(tyIdx)
+	}
+	return tagFirstObject + int64(tyIdx)
+}
+
+// ErrUnsupportedVersion is the error returned when the header version is one
+// this package cannot handle.
+type ErrUnsupportedVersion struct{ Version Version }
+
+func (e ErrUnsupportedVersion) Error() string {
 	return fmt.Sprintf("Unknown pack file version: %+v", e.Version)
 }
 

@@ -189,7 +189,7 @@
         }¶
       {{end}}
 
-      observer->encode(cmd::{{.Name}}{§
+      observer->enter(cmd::{{.Name}}{§
       {{range $i, $p := $.CallParameters}}
         {{if $i}}, {{end}}{{$p.Name}}§
       {{end}}
@@ -266,6 +266,7 @@
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
 
       observer->observePending();
+      observer->exit();
 
       {{if not (IsVoid $.Return.Type)}}¶
         return result;

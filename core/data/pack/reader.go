@@ -15,106 +15,136 @@
 package pack
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"reflect"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/third_party/src/github.com/pkg/errors"
 )
 
-type (
-	// Reader is the type for a pack file reader.
-	// They should only be constructed by NewReader.
-	Reader struct {
-		// Types is the set of registered types this reader will decode.
-		Types *Types
-		buf   []byte
-		next  int
-		pb    *proto.Buffer
-		from  io.Reader
-		total int
-	}
-
-	// ErrUnknownType is the error returned by Reader.Unmarshal() when it
-	// encounters an unknown proto type.
-	ErrUnknownType struct{ TypeName string }
-)
+// ErrUnknownType is the error returned by Reader.Unmarshal() when it
+// encounters an unknown proto type.
+type ErrUnknownType struct{ TypeName string }
 
 func (e ErrUnknownType) Error() string { return fmt.Sprintf("Unknown proto type '%s'", e.TypeName) }
 
-// NewReader builds a pack file reader that gets it's data from the supplied
-// stream.
+// Read reads the pack file from the supplied stream.
 // This function will read the header from the stream, adjusting it's position.
 // It may read extra bytes from the stream into an internal buffer.
-func NewReader(from io.Reader) (*Reader, error) {
-	r := newReader(from)
+func Read(ctx context.Context, from io.Reader, events Events) error {
+	r := &reader{
+		types:  newTypes(),
+		from:   from,
+		buf:    make([]byte, 0, initalBufferSize),
+		events: events,
+	}
+	r.pb = proto.NewBuffer(r.buf)
 	if err := r.readMagic(); err != nil {
-		return nil, err
+		return err
 	}
 	if _, err := r.readHeader(); err != nil {
-		return nil, err
+		return err
 	}
-	return r, nil
-}
-
-func newReader(from io.Reader) *Reader {
-	r := &Reader{
-		Types: NewTypes(),
-		from:  from,
-	}
-	r.buf = make([]byte, 0, initalBufferSize)
-	r.pb = proto.NewBuffer(r.buf)
-	return r
-}
-
-// Unmarshal reads the next data section from the file, consuming any special
-// sections on the way.
-func (r *Reader) Unmarshal() (proto.Message, error) {
-	for {
-		tag, err := r.readSection()
-		if err != nil {
-			return nil, err
-		}
-		if tag != specialSection {
-			typ, ok := r.Types.Get(tag)
-			if !ok {
-				return nil, fmt.Errorf("Unknown tag: %v. Type count: %v", tag, r.Types.Count())
+	for !task.Stopped(ctx) {
+		if err := r.unmarshal(ctx); err != nil {
+			cause := errors.Cause(err)
+			if cause == io.EOF || cause == io.ErrUnexpectedEOF {
+				return nil
 			}
-			msg := reflect.New(typ.Type).Interface().(proto.Message)
-			if err := r.pb.Unmarshal(msg); err != nil {
-				return nil, err
-			}
-			return msg, nil
-		}
-		if err := r.readType(); err != nil {
-			return nil, err
+			return err
 		}
 	}
+	return task.StopReason(ctx)
 }
 
-func (r *Reader) readType() error {
-	name, err := r.readSectionName()
+// reader is the type for a pack file reader.
+// They should only be constructed by NewReader.
+type reader struct {
+	types     *types
+	events    Events
+	id        uint64
+	buf       []byte
+	bufOffset int
+	pb        *proto.Buffer
+	from      io.Reader
+}
+
+func (r *reader) unmarshal(ctx context.Context) error {
+	if err := r.readChunk(); err != nil {
+		return err
+	}
+	tag, err := r.pb.DecodeZigzag64()
 	if err != nil {
 		return err
 	}
-	d := &descriptor.DescriptorProto{}
-	if err = r.pb.Unmarshal(d); err != nil {
-		return err
-	}
-	t, ok := r.Types.AddName(name)
-	if !ok {
-		return ErrUnknownType{name}
-	}
-	if t.Descriptor != nil {
-		// TODO: validate the descriptor matches
-	} else {
-		t.Descriptor = d
+
+	switch tag {
+	case tagGroupFinalizer:
+		idx, err := r.pb.DecodeVarint()
+		if err != nil {
+			return err
+		}
+		id := r.id - idx
+		if err := r.events.EndGroup(ctx, id); err != nil {
+			return err
+		}
+
+	case tagDeclareType:
+		name, err := r.pb.DecodeStringBytes()
+		if err != nil {
+			return err
+		}
+		desc := &descriptor.DescriptorProto{}
+		if err = r.pb.Unmarshal(desc); err != nil {
+			return err
+		}
+		if _, ok := r.types.addNameAndDesc(name, desc); !ok {
+			return ErrUnknownType{name}
+		}
+		return nil
+
+	default:
+		tyIdx, isGroup := tyIdxAndGroupFromTag(tag)
+		if tyIdx >= r.types.count() {
+			return fmt.Errorf("Unknown type index: %v. Type count: %v. Tag: %v", tyIdx, r.types.count(), tag)
+		}
+		ty := *r.types.entries[tyIdx]
+		parentIdx, err := r.pb.DecodeVarint()
+		if err != nil {
+			return err
+		}
+		msg := ty.create()
+		if err := r.pb.Unmarshal(msg); err != nil {
+			return err
+		}
+		if parentIdx == 0 {
+			if isGroup {
+				err = r.events.BeginGroup(ctx, msg, r.id)
+			} else {
+				err = r.events.Object(ctx, msg)
+			}
+		} else {
+			parentID := r.id - parentIdx
+			if isGroup {
+				err = r.events.BeginChildGroup(ctx, msg, r.id, parentID)
+			} else {
+				err = r.events.ChildObject(ctx, msg, parentID)
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if isGroup {
+			r.id++
+		}
 	}
 	return nil
 }
 
-func (r *Reader) readMagic() error {
+func (r *reader) readMagic() error {
 	if err := r.readN(len(magicBytes)); err != nil {
 		return err
 	}
@@ -124,7 +154,7 @@ func (r *Reader) readMagic() error {
 	return nil
 }
 
-func (r *Reader) readHeader() (*Header, error) {
+func (r *reader) readHeader() (*Header, error) {
 	if err := r.readChunk(); err != nil {
 		return nil, err
 	}
@@ -132,24 +162,13 @@ func (r *Reader) readHeader() (*Header, error) {
 	if err := r.pb.Unmarshal(header); err != nil {
 		return nil, err
 	}
-	if header.GetVersion().GetMajor() != version.GetMajor() {
-		return header, ErrUnknownVersion{header.GetVersion()}
+	if got := *header.GetVersion(); got != version {
+		return header, ErrUnsupportedVersion{got}
 	}
 	return header, nil
 }
 
-func (r *Reader) readSection() (uint64, error) {
-	if err := r.readChunk(); err != nil {
-		return 0, err
-	}
-	return r.pb.DecodeVarint()
-}
-
-func (r *Reader) readSectionName() (string, error) {
-	return r.pb.DecodeStringBytes()
-}
-
-func (r *Reader) readChunk() error {
+func (r *reader) readChunk() error {
 	// Make sure we have enough bytes for the maxiumum a varint could be, but don't
 	// fail if the eof is within that range
 	if err := r.readN(maxVarintSize); err != nil {
@@ -159,7 +178,7 @@ func (r *Reader) readChunk() error {
 	}
 	data := r.pb.Bytes()
 	size, n := proto.DecodeVarint(data)
-	r.next -= len(data) - n
+	r.bufOffset -= len(data) - n
 	if n == 0 {
 		return io.EOF
 	}
@@ -167,13 +186,13 @@ func (r *Reader) readChunk() error {
 }
 
 // readN makes sure there is size bytes available in the buffer if possible
-func (r *Reader) readN(size int) error {
-	remains := r.buf[r.next:]
+func (r *reader) readN(size int) error {
+	remains := r.buf[r.bufOffset:]
 	extra := size - len(remains)
 	if extra <= 0 {
 		// We have all the data we need, just reslice
 		r.pb.SetBuf(remains[:size])
-		r.next += size
+		r.bufOffset += size
 		return nil
 	}
 	// We need more data first
@@ -195,7 +214,6 @@ func (r *Reader) readN(size int) error {
 		size = len(r.buf)
 	}
 	r.pb.SetBuf(r.buf[:size])
-	r.next = size
-	r.total += n
+	r.bufOffset = size
 	return err
 }

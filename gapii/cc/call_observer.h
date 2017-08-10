@@ -19,6 +19,7 @@
 
 #include "gapii/cc/abort_exception.h"
 #include "gapii/cc/gles_types.h"
+#include "gapii/cc/pack_encoder.h"
 #include "gapii/cc/slice.h"
 
 #include "gapis/memory/memory_pb/memory.pb.h"
@@ -28,6 +29,8 @@
 #include "core/cc/vector.h"
 
 #include <google/protobuf/arena.h>
+
+#include <stack>
 
 namespace gapii {
 
@@ -118,9 +121,23 @@ public:
     // slice is observed as a read operation.
     inline std::string string(const Slice<char>& slice);
 
+    // encoder returns the PackEncoder currently in use.
+    inline PackEncoder::SPtr encoder();
+
+    // enter calls toProto() on obj, then passes the proto to enterAndDelete.
+    template <typename T>
+    inline void enter(const T& obj);
+
     // encode calls toProto() on obj, then passes the proto to encodeAndDelete.
     template <typename T>
     inline void encode(const T& obj);
+
+    // enter encodes and deletes cmd as a group. All protobuf messages will be
+    // encoded to this group until exit() is called.
+    void enterAndDelete(::google::protobuf::Message* cmd);
+
+    // exit returns encoding to the group bound before calling enter().
+    void exit();
 
     // encodeAndDelete encodes the proto message to the PackEncoder and then
     // deletes the message.
@@ -145,7 +162,10 @@ private:
     inline Slice<T> make(uint64_t count) const;
 
     // A pointer to the spy instance.
-    SpyBase* mSpyPtr;
+    SpyBase* mSpy;
+
+    // The encoder stack.
+    std::stack<PackEncoder::SPtr> mEncoderStack;
 
     // A pointer to the static array that contains the current command name.
     const char* mCurrentCommandName;
@@ -242,11 +262,19 @@ inline std::string CallObserver::string(const Slice<char>& slice) {
     return std::string(slice.begin(), slice.end());
 }
 
+inline PackEncoder::SPtr CallObserver::encoder() {
+    return mEncoderStack.top();
+}
+
+template <typename T>
+inline void CallObserver::enter(const T& obj) {
+    enterAndDelete(obj.toProto());
+}
+
 template <typename T>
 inline void CallObserver::encode(const T& obj) {
     encodeAndDelete(obj.toProto());
 }
-
 
 }  // namespace gapii
 

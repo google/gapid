@@ -42,8 +42,12 @@ class PackEncoder {
 public:
     typedef std::shared_ptr<PackEncoder> SPtr;
 
-    // message encodes the protobuf message.
-    virtual void message(const ::google::protobuf::Message* msg) = 0;
+    // object encodes the leaf protobuf message.
+    virtual void object(const ::google::protobuf::Message* msg) = 0;
+
+    // group encodes the protobuf message as a group that can contain other
+    // objects and groups.
+    virtual SPtr group(const ::google::protobuf::Message* msg) = 0;
 
     // create returns a PackEncoder::SPtr that writes to output.
     static SPtr create(std::shared_ptr<core::StreamWriter> output);
