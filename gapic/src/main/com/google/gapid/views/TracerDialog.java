@@ -40,6 +40,7 @@ import com.google.gapid.server.Tracer.DesktopTraceRequest;
 import com.google.gapid.server.Tracer.TraceRequest;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
+import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.LoadingIndicator;
@@ -75,6 +76,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -107,7 +109,8 @@ public class TracerDialog {
   }
 
   public static void showTracingDialog(Shell shell, Models models, Widgets widgets) {
-    TraceInputDialog input = new TraceInputDialog(shell, models.settings, widgets);
+    TraceInputDialog input =
+        new TraceInputDialog(shell, models.settings, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
       TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue());
       AtomicBoolean failed = new AtomicBoolean(false);
@@ -156,6 +159,7 @@ public class TracerDialog {
   private static class TraceInputDialog extends TitleAreaDialog {
     private final Settings settings;
     private final Widgets widgets;
+    private final Runnable refreshDevices;
 
     private TabFolder folder;
     private AndroidInput androidInput;
@@ -164,10 +168,12 @@ public class TracerDialog {
 
     private Tracer.TraceRequest value;
 
-    public TraceInputDialog(Shell shell, Settings settings, Widgets widgets) {
+    public TraceInputDialog(
+        Shell shell, Settings settings, Widgets widgets, Runnable refreshDevices) {
       super(shell);
       this.settings = settings;
       this.widgets = widgets;
+      this.refreshDevices = refreshDevices;
     }
 
     public void setDevices(List<Device.Instance> devices) {
@@ -205,13 +211,13 @@ public class TracerDialog {
       // Mac has no Vulkan support, so cannot trace desktop apps.
       if (!OS.isMac) {
         folder = createStandardTabFolder(area);
-        androidInput = new AndroidInput(folder, settings, widgets);
+        androidInput = new AndroidInput(folder, settings, widgets, refreshDevices);
         desktopInput = new DesktopInput(folder, settings, widgets);
         createStandardTabItem(folder, "Android", androidInput);
         createStandardTabItem(folder, "Desktop", desktopInput);
         folder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       } else {
-        androidInput = new AndroidInput(area, settings, widgets);
+        androidInput = new AndroidInput(area, settings, widgets, refreshDevices);
         androidInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
@@ -368,6 +374,7 @@ public class TracerDialog {
     }
 
     private static class AndroidInput extends SharedTraceInput {
+      private final Runnable refreshDevices;
       private ComboViewer device;
       private LoadingIndicator.Widget deviceLoader;
       private Link adbWarning;
@@ -376,8 +383,10 @@ public class TracerDialog {
       private Button disablePcs;
       private List<Device.Instance> devices;
 
-      public AndroidInput(Composite parent, Settings settings, Widgets widgets) {
+      public AndroidInput(
+          Composite parent, Settings settings, Widgets widgets, Runnable refreshDevices) {
         super(parent, settings, widgets);
+        this.refreshDevices = refreshDevices;
 
         createLabel(this, "");
         clearCache = withLayoutData(
@@ -441,9 +450,16 @@ public class TracerDialog {
         Composite deviceComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
         device = createDeviceDropDown(deviceComposite);
-        deviceLoader = widgets.loading.createWidget(deviceComposite);
+        deviceLoader = widgets.loading.createWidgetWithRefresh(deviceComposite);
         device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
         deviceLoader.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+        // TODO: Make this a true button to allow keyboard use.
+        deviceLoader.addListener(SWT.MouseDown, e -> {
+          deviceLoader.startLoading();
+          // By waiting a tiny bit, the icon will change to the loading indicator, giving the user
+          // feedback that something is happening, in case the refresh is really quick.
+          Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS);
+        });
         deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "Package / Action:");
