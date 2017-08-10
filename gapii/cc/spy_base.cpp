@@ -40,9 +40,8 @@ SpyBase::SpyBase()
     mCurrentThread = core::Thread::current().id();
 }
 
-void SpyBase::init(CallObserver* observer, PackEncoder::SPtr encoder) {
+void SpyBase::init(CallObserver* observer) {
     auto threadID = core::Thread::current().id();
-    mEncoder = encoder;
     mObserveApplicationPool = true;
     mCurrentThread = threadID;
     mIsSuspended = false;

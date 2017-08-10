@@ -51,7 +51,7 @@ class SpyBase {
 public:
     SpyBase();
 
-    void init(CallObserver* observer, PackEncoder::SPtr encoder);
+    void init(CallObserver* observer);
 
     // lock begins the interception of a single command. It must be called
     // before invoking any command on the spy. Blocks if any other thread

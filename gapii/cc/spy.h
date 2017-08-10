@@ -101,7 +101,6 @@ class Spy : public GlesSpy, public VulkanSpy {
   // false if the dimensions could not be retrieved.
   bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t& width, uint32_t& height);
 
-  std::shared_ptr<gapii::PackEncoder> mEncoder;
   std::unordered_map<std::string, void*> mSymbols;
 
   int mNumFrames;

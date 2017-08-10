@@ -27,12 +27,12 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/core/core_pb"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/pkg/errors"
 )
 
 // The list of captures currently imported.
@@ -59,7 +59,7 @@ func init() {
 func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*path.Capture, error) {
 	b := newBuilder()
 	for _, cmd := range cmds {
-		b.addCmd(cmd)
+		b.addCmd(ctx, cmd)
 	}
 	c := b.build(name, header)
 
@@ -170,25 +170,20 @@ func Export(ctx context.Context, p *path.Capture, w io.Writer) error {
 }
 
 // Export encodes the given capture and associated resources
-// and writes it to the supplied io.Writer in the .gfxtrace format,
-// producing output suitable for use with Import or opening in the trace editor.
+// and writes it to the supplied io.Writer in the .gfxtrace format.
 func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 	write, err := pack.NewWriter(w)
 	if err != nil {
 		return err
 	}
 
-	writeMsg := func(ctx context.Context, m proto.Message) error { return write.Marshal(m) }
-
-	if err := writeMsg(ctx, c.Header); err != nil {
+	// Write the capture header.
+	if err := write.Object(ctx, c.Header); err != nil {
 		return err
 	}
 
-	writeAtom := api.CmdToProto(func(m proto.Message) error { return writeMsg(ctx, m) })
-
 	// IDs seen, so we can avoid encoding the same resource data multiple times.
 	seen := map[id.ID]bool{}
-
 	encodeObservation := func(o api.CmdObservation) error {
 		if seen[o.ID] {
 			return nil
@@ -197,25 +192,85 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		err = writeMsg(ctx, &Resource{Id: o.ID[:], Data: data.([]uint8)})
+		if err := write.Object(ctx, &Resource{Id: o.ID[:], Data: data.([]uint8)}); err != nil {
+			return err
+		}
 		seen[o.ID] = true
-		return err
+		return nil
 	}
 
-	for _, a := range c.Commands {
-		if observations := a.Extras().Observations(); observations != nil {
-			for _, r := range observations.Reads {
-				if err := encodeObservation(r); err != nil {
+	var threadID uint64
+
+	for _, cmd := range c.Commands {
+		if cmd.Thread() != threadID {
+			threadID = cmd.Thread()
+			if err := write.Object(ctx, &core_pb.SwitchThread{ThreadID: threadID}); err != nil {
+				return err
+			}
+		}
+
+		cmdProto, err := protoconv.ToProto(ctx, cmd)
+		if err != nil {
+			return err
+		}
+		cmdID, err := write.BeginGroup(ctx, cmdProto)
+		if err != nil {
+			return err
+		}
+
+		handledCall := false
+
+		for _, e := range cmd.Extras().All() {
+			switch e := e.(type) {
+			case *api.CmdObservations:
+				for _, o := range e.Reads {
+					if err := encodeObservation(o); err != nil {
+						return err
+					}
+					msg, err := protoconv.ToProto(ctx, o)
+					if err != nil {
+						return err
+					}
+					if err := write.ChildObject(ctx, msg, cmdID); err != nil {
+						return err
+					}
+				}
+				msg := api.CmdCallFor(cmd)
+				if err := write.ChildObject(ctx, msg, cmdID); err != nil {
 					return err
 				}
-			}
-			for _, w := range observations.Writes {
-				if err := encodeObservation(w); err != nil {
+				handledCall = true
+				for _, o := range e.Writes {
+					if err := encodeObservation(o); err != nil {
+						return err
+					}
+					msg, err := protoconv.ToProto(ctx, o)
+					if err != nil {
+						return err
+					}
+					if err := write.ChildObject(ctx, msg, cmdID); err != nil {
+						return err
+					}
+				}
+			default:
+				msg, err := protoconv.ToProto(ctx, e)
+				if err != nil {
+					return err
+				}
+				if err := write.ChildObject(ctx, msg, cmdID); err != nil {
 					return err
 				}
 			}
 		}
-		if err := writeAtom(ctx, a); err != nil {
+
+		if !handledCall {
+			msg := api.CmdCallFor(cmd)
+			if err := write.ChildObject(ctx, msg, cmdID); err != nil {
+				return err
+			}
+		}
+
+		if err := write.EndGroup(ctx, cmdID); err != nil {
 			return err
 		}
 	}
@@ -235,52 +290,151 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 }
 
 func fromProto(ctx context.Context, r *Record) (*Capture, error) {
-	reader, err := pack.NewReader(bytes.NewReader(r.Data))
+	d := newDecoder()
+	if err := pack.Read(ctx, bytes.NewReader(r.Data), d); err != nil {
+		return nil, err
+	}
+	if d.header == nil {
+		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
+	}
+	return d.builder.build(r.Name, d.header), nil
+}
+
+type decoder struct {
+	header  *Header
+	builder *builder
+	groups  map[uint64]interface{}
+	invoked map[api.Cmd]bool
+
+	// Below are fields that should be replaced with more sensible proto messages.
+	threadID uint64
+}
+
+func newDecoder() *decoder {
+	return &decoder{
+		builder: newBuilder(),
+		groups:  map[uint64]interface{}{},
+		invoked: map[api.Cmd]bool{},
+	}
+}
+
+func (d *decoder) unmarshal(ctx context.Context, in proto.Message) (interface{}, error) {
+	obj, err := protoconv.ToObject(ctx, in)
+	if err != nil {
+		if e, ok := err.(protoconv.ErrNoConverterRegistered); ok && e.Object == in {
+			return in, nil // No registered converter. Treat proto as the object.
+		}
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (d *decoder) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
+	obj, err := d.decode(ctx, msg)
+	if err != nil {
+		return err
+	}
+	d.groups[id] = obj
+	return nil
+}
+
+func (d *decoder) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
+	obj, err := d.decode(ctx, msg)
+	if err != nil {
+		return err
+	}
+	d.groups[id] = obj
+	return d.add(ctx, obj, d.groups[parentID])
+}
+
+func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
+	obj := d.groups[id]
+	delete(d.groups, id)
+
+	switch obj := obj.(type) {
+	case api.Cmd:
+		delete(d.invoked, obj)
+	}
+
+	return nil
+}
+
+func (d *decoder) Object(ctx context.Context, msg proto.Message) error {
+	_, err := d.decode(ctx, msg)
+	return err
+}
+
+func (d *decoder) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
+	obj, err := d.decode(ctx, msg)
+	if err != nil {
+		return err
+	}
+	return d.add(ctx, obj, d.groups[parentID])
+}
+
+func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
+	if cmd, ok := parent.(api.Cmd); ok {
+		if res, ok := child.(proto.Message); ok {
+			if cwr, ok := cmd.(api.CmdWithResult); ok {
+				if cwr.SetResult(res) == nil {
+					d.invoked[cmd] = true
+					return nil
+				}
+			}
+		}
+
+		switch obj := child.(type) {
+		case api.CmdObservation:
+			d.builder.addObservation(ctx, &obj)
+			observations := cmd.Extras().GetOrAppendObservations()
+			if !d.invoked[cmd] {
+				observations.Reads = append(observations.Reads, obj)
+			} else {
+				observations.Writes = append(observations.Writes, obj)
+			}
+
+		case *api.CmdCall:
+			d.invoked[cmd] = true
+
+		case api.CmdExtra:
+			cmd.Extras().Add(obj)
+		}
+	}
+
+	return nil
+}
+
+func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, error) {
+	obj, err := d.unmarshal(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 
-	b := newBuilder()
-	convert := api.ProtoToCmd(b.addCmd)
+	switch obj := obj.(type) {
+	case *Header:
+		d.header = obj
+		return in, nil
 
-	var header *Header
-	for {
-		msg, err := reader.Unmarshal()
-		if err != nil {
-			cause := errors.Cause(err)
-			if cause == io.EOF || cause == io.ErrUnexpectedEOF {
-				break
-			}
-			return nil, log.Err(ctx, err, "Failed to unmarshal")
+	case *Resource:
+		var rID id.ID
+		copy(rID[:], obj.Id)
+		if err := d.builder.addRes(ctx, rID, obj.Data); err != nil {
+			return nil, err
 		}
-		switch msg := msg.(type) {
-		case *Header:
-			header = msg
+		return in, nil
 
-		case *Resource:
-			var rID id.ID
-			copy(rID[:], msg.Id)
-			if err := b.addRes(ctx, rID, msg.Data); err != nil {
-				return nil, err
-			}
+	case *core_pb.SwitchThread:
+		d.threadID = obj.ThreadID
+		return in, nil
 
-		default:
-			if err := convert(ctx, msg); err != nil {
-				return nil, err
-			}
-		}
+	case api.Cmd:
+		d.invoked[obj] = false
+		obj.SetThread(d.threadID)
+		d.builder.cmds = append(d.builder.cmds, obj)
+		d.builder.addAPI(ctx, obj.API())
 	}
 
-	// must invoke the converter with nil to flush the last command
-	if err := convert(ctx, nil); err != nil {
-		return nil, err
-	}
-
-	if header == nil {
-		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
-	}
-
-	return b.build(r.Name, header), nil
+	return obj, nil
 }
 
 type builder struct {
@@ -301,30 +455,34 @@ func newBuilder() *builder {
 	}
 }
 
-func (b *builder) addCmd(cmd api.Cmd) error {
-	if api := cmd.API(); api != nil {
+func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) {
+	b.addAPI(ctx, cmd.API())
+	if observations := cmd.Extras().Observations(); observations != nil {
+		for i := range observations.Reads {
+			b.addObservation(ctx, &observations.Reads[i])
+		}
+		for i := range observations.Writes {
+			b.addObservation(ctx, &observations.Writes[i])
+		}
+	}
+	b.cmds = append(b.cmds, cmd)
+}
+
+func (b *builder) addAPI(ctx context.Context, api api.API) {
+	if api != nil {
 		apiID := api.ID()
 		if _, found := b.seenAPIs[apiID]; !found {
 			b.seenAPIs[apiID] = struct{}{}
 			b.apis = append(b.apis, api)
 		}
 	}
-	if observations := cmd.Extras().Observations(); observations != nil {
-		for i, r := range observations.Reads {
-			interval.Merge(&b.observed, r.Range.Span(), true)
-			if id, found := b.idmap[r.ID]; found {
-				observations.Reads[i].ID = id
-			}
-		}
-		for i, w := range observations.Writes {
-			interval.Merge(&b.observed, w.Range.Span(), true)
-			if id, found := b.idmap[w.ID]; found {
-				observations.Writes[i].ID = id
-			}
-		}
+}
+
+func (b *builder) addObservation(ctx context.Context, o *api.CmdObservation) {
+	interval.Merge(&b.observed, o.Range.Span(), true)
+	if id, found := b.idmap[o.ID]; found {
+		o.ID = id
 	}
-	b.cmds = append(b.cmds, cmd)
-	return nil
 }
 
 func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {

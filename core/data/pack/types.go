@@ -22,107 +22,89 @@ import (
 	"github.com/google/gapid/core/data/protoutil"
 )
 
-type (
-	// Type is an entry in the map of types stored in a packfile.
-	Type struct {
-		// Name is the cannocial unique name of the type.
-		// This will be the same name as used in the proto registry.
-		Name string
-		// Index is the tag index used for the type in this packfile.
-		Index uint64
-		// Type is the reflection type that maps to this type registry.
-		Type reflect.Type
-		// Descriptor is the proto description of this type, it is packed
-		// into the file and can be used to reflect on the type.
-		Descriptor *descriptor.DescriptorProto
-	}
+// ty is an entry in the map of types stored in a packfile.
+type ty struct {
+	// name is the cannocial unique name of the type.
+	// This will be the same name as used in the proto registry.
+	name string
+	// index is the tag index used for the type in this packfile.
+	index uint64
+	// create constructs a new proto of this type.
+	create func() proto.Message
+	// desc is the proto description of this type, it is packed
+	// into the file and can be used to reflect on the type.
+	desc *descriptor.DescriptorProto
+}
 
-	// Types stores the full type registry for a packfile.
-	// It is exposed so that you can pre-build a cannocial type registry
-	// rather than constructing on demand.
-	Types struct {
-		entries []*Type
-		nextTag uint64
-		byName  map[string]*Type
-		byType  map[reflect.Type]*Type
-	}
-)
+// types stores the full type registry for a packfile.
+// It is exposed so that you can pre-build a cannocial type registry
+// rather than constructing on demand.
+type types struct {
+	entries []*ty
+	byName  map[string]*ty
+}
 
-// NewTypes constructs a new empty type registry.
-func NewTypes() *Types {
-	return &Types{
-		entries: []*Type{nil}, // The 0th entry is special, reserve it
-		nextTag: 1,
-		byName:  map[string]*Type{},
-		byType:  map[reflect.Type]*Type{},
+// newTypes constructs a new empty type registry.
+func newTypes() *types {
+	return &types{
+		entries: []*ty{},
+		byName:  map[string]*ty{},
 	}
 }
 
-// Get returns a type given it's tag index.
-func (t *Types) Get(index uint64) (Type, bool) {
-	if index < t.Count() {
-		return *t.entries[index], true
-	}
-	return Type{}, false
-}
-
-// GetName returns a type given it's cannocial type name.
-func (t *Types) GetName(name string) Type {
-	if entry, found := t.byName[name]; found {
-		return *entry
-	}
-	return Type{}
-}
-
-// AddMessage adds a registry entry for a given message if needed.
+// addMessage adds a registry entry for a given message if needed.
 // It returns the registry entry, and a bool that is true if the entry
 // was newly added.
-func (t *Types) AddMessage(msg proto.Message) (Type, bool) {
-	typ := reflect.TypeOf(msg).Elem()
-	name := proto.MessageName(msg)
-	return t.add(msg, name, typ)
+func (t *types) addMessage(msg proto.Message) (ty, bool) {
+	return t.addType(reflect.TypeOf(msg).Elem())
 }
 
-// AddName adds a type by name.
+// addNameAndDesc adds a dynamic type by name and descriptor.
 // It uses the proto type registry to look up the name.
-func (t *Types) AddName(name string) (Type, bool) {
+func (t *types) addNameAndDesc(name string, desc *descriptor.DescriptorProto) (ty, bool) {
 	typ := proto.MessageType(name)
 	if typ == nil {
-		return Type{}, false
+		if desc == nil {
+			return ty{}, false
+		}
+		create := func() proto.Message { return newDynamic(desc, t) }
+		return t.add(name, desc, create)
 	}
-	typ = typ.Elem()
-	msg := reflect.New(typ).Interface().(proto.Message)
-	return t.add(msg, name, typ)
+	return t.addType(typ)
 }
 
-// AddType adds a type by it's reflection type.
-func (t *Types) AddType(typ reflect.Type) (Type, bool) {
-	msg := reflect.New(typ).Interface().(proto.Message)
+// addType adds a type by it's reflection type.
+func (t *types) addType(typ reflect.Type) (ty, bool) {
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	create := func() proto.Message { return reflect.New(typ).Interface().(proto.Message) }
+	msg := create()
 	name := proto.MessageName(msg)
-	return t.add(msg, name, typ)
+	var desc *descriptor.DescriptorProto
+	if d, ok := msg.(protoutil.Described); ok {
+		desc, _ = protoutil.DescriptorOf(d)
+	}
+	return t.add(name, desc, create)
 }
 
-// Count returns the number of types in the registry.
-func (t *Types) Count() uint64 {
+// count returns the number of types in the registry.
+func (t *types) count() uint64 {
 	return uint64(len(t.entries))
 }
 
-func (t *Types) add(msg proto.Message, name string, typ reflect.Type) (Type, bool) {
+func (t *types) add(name string, desc *descriptor.DescriptorProto, create func() proto.Message) (ty, bool) {
 	entry, found := t.byName[name]
 	if found {
 		return *entry, false
 	}
-	entry = &Type{
-		Name:  name,
-		Index: t.nextTag,
-		Type:  typ,
+	entry = &ty{
+		name:   name,
+		index:  t.count(),
+		create: create,
+		desc:   desc,
 	}
-	t.nextTag++
 	t.entries = append(t.entries, entry)
 	t.byName[name] = entry
-	t.byType[typ] = entry
-	if d, ok := msg.(protoutil.Described); ok {
-		entry.Descriptor, _ = protoutil.DescriptorOf(d)
-	}
 	return *entry, true
 }

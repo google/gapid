@@ -35,6 +35,9 @@ func Commands(ctx context.Context, p *path.Commands) (*service.Commands, error) 
 		return nil, fmt.Errorf("Subcommands currently not supported for Commands") // TODO: Subcommands
 	}
 	count := uint64(len(c.Commands))
+	if count == 0 {
+		return nil, fmt.Errorf("No commands in capture")
+	}
 	atomIdxFrom = u64.Min(atomIdxFrom, count-1)
 	atomIdxTo = u64.Min(atomIdxTo, count-1)
 	if atomIdxFrom > atomIdxTo {
