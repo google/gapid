@@ -47,6 +47,8 @@ message Output {
   string log = 1;
   // Trace is the stash id of the generated trace file.
   string trace = 2;
+  // CallError is the error string returned by the call to gapit.
+  string call_error = 3;
 }
 
 // Action holds the information about an execution of a task.

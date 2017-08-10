@@ -49,7 +49,11 @@ func (c *client) replay(ctx context.Context, t *Task) error {
 	if err != nil {
 		status = job.Failed
 		log.E(ctx, "Error running replay: %v", err)
+	} else if output.CallError != "" {
+		status = job.Failed
+		log.E(ctx, "Error during replay: %v", output.CallError)
 	}
+
 	return c.manager.Update(ctx, t.Action, status, output)
 }
 
@@ -113,6 +117,9 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	log.I(ctx, output)
 
 	outputObj := &Output{}
+	if callErr != nil {
+		outputObj.CallError = callErr.Error()
+	}
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"replay.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return outputObj, err
@@ -123,5 +130,5 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		return outputObj, err
 	}
 	outputObj.Video = videoID
-	return outputObj, callErr
+	return outputObj, nil
 }

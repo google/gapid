@@ -49,7 +49,11 @@ func (c *client) report(ctx context.Context, t *Task) error {
 	if err != nil {
 		status = job.Failed
 		log.E(ctx, "Error running report: %v", err)
+	} else if output.CallError != "" {
+		status = job.Failed
+		log.E(ctx, "Error during report: %v", output.CallError)
 	}
+
 	return c.manager.Update(ctx, t.Action, status, output)
 }
 
@@ -94,6 +98,9 @@ func doReport(ctx context.Context, action string, in *Input, store *stash.Client
 	log.I(ctx, output)
 
 	outputObj := &Output{}
+	if callErr != nil {
+		outputObj.CallError = callErr.Error()
+	}
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"report.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return outputObj, err
@@ -104,5 +111,5 @@ func doReport(ctx context.Context, action string, in *Input, store *stash.Client
 		return outputObj, err
 	}
 	outputObj.Report = reportID
-	return outputObj, callErr
+	return outputObj, nil
 }

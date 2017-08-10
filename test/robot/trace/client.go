@@ -122,6 +122,9 @@ func (r *runner) trace(ctx context.Context, t *Task) (err error) {
 	if err != nil {
 		status = job.Failed
 		log.E(ctx, "Error running trace: %v", err)
+	} else if output.CallError != "" {
+		status = job.Failed
+		log.E(ctx, "Error during trace: %v", output.CallError)
 	}
 	return r.manager.Update(ctx, t.Action, status, output)
 }
@@ -177,6 +180,9 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	log.I(ctx, output)
 
 	outputObj := &Output{}
+	if callErr != nil {
+		outputObj.CallError = callErr.Error()
+	}
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return nil, err
@@ -187,7 +193,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		return nil, err
 	}
 	outputObj.Trace = traceID
-	return outputObj, callErr
+	return outputObj, nil
 }
 
 type offlineDevice struct {
