@@ -17,11 +17,8 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
-import static com.google.gapid.util.GeoUtils.left;
-import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.ApiContext;
@@ -33,10 +30,9 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.models.Timeline;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.widgets.InfiniteScrolledComposite;
+import com.google.gapid.widgets.HorizontalList;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.LoadingIndicator;
@@ -51,11 +47,9 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Scrubber view displaying thumbnails of the frames in the current capture.
@@ -63,8 +57,7 @@ import java.util.function.Consumer;
 public class ThumbnailScrubber extends Composite
     implements Tab, Capture.Listener, AtomStream.Listener, ApiContext.Listener, Timeline.Listener {
   private final Models models;
-  private final LoadablePanel<InfiniteScrolledComposite> loading;
-  private final InfiniteScrolledComposite scroll;
+  private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
 
   public ThumbnailScrubber(Composite parent, Models models, Widgets widgets) {
@@ -73,19 +66,17 @@ public class ThumbnailScrubber extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    carousel = new Carousel(
-        this, models.thumbs, widgets, this::redrawScroll, this::resizeScroll, this::scrollTo);
-    loading = new LoadablePanel<InfiniteScrolledComposite>(this, widgets,
-        panel -> new InfiniteScrolledComposite(panel, SWT.H_SCROLL | SWT.V_SCROLL, carousel));
-    scroll = loading.getContents();
+    loading = new LoadablePanel<Carousel>(this, widgets,
+        panel -> new Carousel(panel, models.thumbs, widgets));
+    carousel = loading.getContents();
 
-    scroll.addContentListener(SWT.MouseDown, e -> {
-      Data frame = carousel.selectFrame(scroll.getLocation(e));
+    carousel.addContentListener(SWT.MouseDown, e -> {
+      Data frame = carousel.selectFrame(carousel.getItemAt(e.x));
       if (frame != null) {
         models.atoms.selectAtoms(frame.range, false);
       }
     });
-    scroll.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
+    carousel.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
 
     models.capture.addListener(this);
     models.contexts.addListener(this);
@@ -98,20 +89,6 @@ public class ThumbnailScrubber extends Composite
       models.atoms.removeListener(this);
       carousel.dispose();
     });
-  }
-
-  private void redrawScroll() {
-    redrawIfNotDisposed(scroll);
-  }
-
-  private void resizeScroll() {
-    scroll.updateMinSize();
-  }
-
-  private void scrollTo(BigInteger x) {
-    scroll.scrollTo(
-        x.subtract(BigInteger.valueOf(scroll.getClientArea().width / 2)).max(BigInteger.ZERO),
-        BigInteger.ZERO);
   }
 
   @Override
@@ -181,7 +158,6 @@ public class ThumbnailScrubber extends Composite
       } else {
         loading.stopLoading();
         carousel.setData(datas);
-        scroll.updateMinSize();
 
         if (models.atoms.getSelectedAtoms() != null) {
           carousel.selectFrame(models.atoms.getSelectedAtoms());
@@ -249,42 +225,57 @@ public class ThumbnailScrubber extends Composite
   /**
    * Renders the frame thumbnails.
    */
-  private static class Carousel
-      implements InfiniteScrolledComposite.Scrollable, Thumbnails.Listener {
-    private static final int MARGIN = 4;
+  private static class Carousel extends HorizontalList
+      implements LoadingIndicator.Repaintable, Thumbnails.Listener {
     private static final int MIN_SIZE = 80;
 
-    private final Control parent;
     private final Thumbnails thumbs;
     private final Widgets widgets;
-    private final LoadingIndicator.Repaintable repainter;
-    private final Runnable updateSize;
-    private final Consumer<BigInteger> scrollTo;
     private List<Data> datas = Collections.emptyList();
-    private Point imageSize;
     private int selectedIndex = -1;
 
-    public Carousel(Control parent, Thumbnails thumbs, Widgets widgets,
-        LoadingIndicator.Repaintable repainter, Runnable updateSize,
-        Consumer<BigInteger> scrollTo) {
-      this.parent = parent;
+    public Carousel(Composite parent, Thumbnails thumbs, Widgets widgets) {
+      super(parent);
       this.thumbs = thumbs;
       this.widgets = widgets;
-      this.repainter = repainter;
-      this.updateSize = updateSize;
-      this.scrollTo = scrollTo;
 
       thumbs.addListener(this);
     }
 
-    public Data selectFrame(BigPoint point) {
-      int frame = point.x.divide(BigInteger.valueOf(getCellWidth())).intValueExact();
+    @Override
+    protected void paint(GC gc, int index, int x, int y, int w, int h) {
+      Data data = datas.get(index);
+      if (data.image == null && thumbs.isReady()) {
+        data.image = LoadableImage.newBuilder(widgets.loading)
+            .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)))
+            .onErrorShowErrorIcon(widgets.theme)
+            .build(this, this);
+        data.image.addListener(new LoadableImage.Listener() {
+          @Override
+          public void onLoaded(boolean success) {
+            Rectangle bounds = data.image.getImage().getBounds();
+            setItemSize(index, Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
+          }
+        });
+      }
+
+      Image toDraw;
+      if (data.image != null) {
+        toDraw = data.image.getImage();
+      } else {
+        toDraw = widgets.loading.getCurrentFrame();
+        widgets.loading.scheduleForRedraw(this);
+      }
+      data.paint(gc, toDraw, x, y, w, h, index == selectedIndex);
+    }
+
+    public Data selectFrame(int frame) {
       if (frame < 0 || frame >= datas.size()) {
         return null;
       }
 
       selectedIndex = frame;
-      repainter.repaint();
+      repaint();
       return datas.get(frame);
     }
 
@@ -295,22 +286,24 @@ public class ThumbnailScrubber extends Composite
         index = -index - 1;
       }
       selectAndScroll(index);
-      repainter.repaint();
+      repaint();
     }
 
     public void setData(List<Data> newDatas) {
       dispose();
       datas = Lists.newArrayList(newDatas);
+      setItemCount(datas.size(), THUMB_SIZE, THUMB_SIZE);
     }
 
+    @Override
     public void dispose() {
       thumbs.removeListener(this);
       for (Data data : datas) {
         data.dispose();
       }
       datas = Collections.emptyList();
-      imageSize = null;
       selectedIndex = -1;
+      setItemCount(0, THUMB_SIZE, THUMB_SIZE);
     }
 
     @Override
@@ -321,93 +314,13 @@ public class ThumbnailScrubber extends Composite
           data.image = null;
         }
       }
-      repainter.repaint();
-    }
-
-    @Override
-    public BigInteger getWidth() {
-      return BigInteger.valueOf(datas.size() * (long)getCellWidth());
-    }
-
-    private int getCellWidth() {
-      return ((imageSize == null) ? THUMB_SIZE : imageSize.x) + MARGIN * 2;
-    }
-
-    @Override
-    public BigInteger getHeight() {
-      return BigInteger.valueOf(((imageSize == null) ? THUMB_SIZE : imageSize.y) + MARGIN);
-    }
-
-    @Override
-    public void paint(BigInteger xOffset, BigInteger yOffset, GC gc) {
-      if (datas.isEmpty()) {
-        return;
-      }
-
-      Rectangle clip = gc.getClipping();
-      Point size = (imageSize == null) ? new Point(THUMB_SIZE, THUMB_SIZE) : imageSize;
-      int first = (int)((xOffset.longValueExact() + left(clip)) / (size.x + 2 * MARGIN));
-      int last = Math.min(datas.size(),
-          (int)((xOffset.longValueExact() + right(clip) + size.x - 1) / size.x));
-      int x = (int)(first * ((long)size.x + 2 * MARGIN) - xOffset.longValueExact());
-
-      prepareImages(first, last);
-      for (int i = first; i < last; i++, x += size.x + 2 * MARGIN) {
-        Data data = datas.get(i);
-        Image toDraw;
-        if (data.image != null) {
-          toDraw = data.image.getImage();
-        } else {
-          toDraw = widgets.loading.getCurrentFrame();
-          widgets.loading.scheduleForRedraw(repainter);
-        }
-        data.paint(gc, toDraw, x + MARGIN, MARGIN / 2, size.x, size.y, i == selectedIndex);
-      }
-      updateSize(first, last);
-    }
-
-    private void prepareImages(int first, int last) {
-      for (int i = first; i < last; i++) {
-        Data data = datas.get(i);
-        if (data.image == null && thumbs.isReady()) {
-          data.image = LoadableImage.newBuilder(widgets.loading)
-              .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)))
-              .onErrorShowErrorIcon(widgets.theme)
-              .build(parent, repainter);
-        }
-      }
-    }
-
-    private void updateSize(int first, int last) {
-      boolean dirty = false;
-      for (int i = first; i < last; i++) {
-        Data data = datas.get(i);
-        if (data.image != null && data.image.hasFinished()) {
-          Rectangle bounds = data.image.getImage().getBounds();
-          if (imageSize == null) {
-            imageSize =
-                new Point(Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
-            dirty = true;
-          } else if (bounds.width > imageSize.x || bounds.height > imageSize.y) {
-            imageSize.x = Math.max(bounds.width, imageSize.x);
-            imageSize.y = Math.max(bounds.height, imageSize.y);
-            dirty = true;
-          }
-        }
-      }
-
-      if (dirty) {
-        updateSize.run();
-        selectAndScroll(selectedIndex);
-        repainter.repaint();
-      }
+      repaint();
     }
 
     private void selectAndScroll(int index) {
       selectedIndex = index;
       if (index >= 0) {
-        scrollTo.accept(
-            BigInteger.valueOf(selectedIndex).multiply(BigInteger.valueOf(getCellWidth())));
+        scrollIntoView(index);
       }
     }
   }
