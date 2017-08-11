@@ -57,7 +57,7 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, api.FramebufferAttachment_Color3+1),
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, func(s *api.State, subcommandIndex api.SubCmdIdx, cmd api.Cmd) {
+	postCmdAndSubCmd := func(s *api.State, subcommandIndex api.SubCmdIdx, cmd api.Cmd) {
 		api := cmd.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {
@@ -77,7 +77,8 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 				out.attachments[att] = attachment
 			}
 		}
-	})
+	}
 
+	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, postCmdAndSubCmd, nil, postCmdAndSubCmd)
 	return out, nil
 }

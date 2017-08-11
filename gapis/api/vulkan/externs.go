@@ -106,9 +106,12 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 			lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
 				c)
 		} else {
+			if command.actualSubmission && s.PreSubcommand != nil {
+				s.PreSubcommand(command)
+			}
 			command.function(e.ctx, e.cmd, e.s, e.b)
-			if command.actualSubmission && s.HandleSubcommand != nil {
-				s.HandleSubcommand(command)
+			if command.actualSubmission && s.PostSubcommand != nil {
+				s.PostSubcommand(command)
 			}
 			// If a vkCmdWaitEvents is hit in the commands, it will set the pending
 			// events list of the current LastBoundQueue. Once that happens, we should
@@ -172,9 +175,12 @@ func (e externs) execPendingCommands(queue VkQueue) {
 		} else {
 			o.CurrentSubmission = command.submit
 			o.SubCmdIdx = append([]uint64(nil), command.submissionIndex...)
+			if command.actualSubmission && o.PreSubcommand != nil {
+				o.PreSubcommand(command)
+			}
 			command.function(e.ctx, e.cmd, e.s, e.b)
-			if command.actualSubmission && o.HandleSubcommand != nil {
-				o.HandleSubcommand(command)
+			if command.actualSubmission && o.PostSubcommand != nil {
+				o.PostSubcommand(command)
 			}
 			// If a vkCmdWaitEvent is hit in the pending commands, it will set a new
 			// list of pending events to the LastBoundQueue. Once that happens, we
