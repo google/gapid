@@ -94,11 +94,18 @@ func (a *Actions) apply(ctx context.Context, item Action) error {
 }
 
 func (a *Actions) do(ctx context.Context, w *Worker, input Input) (string, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	action := proto.Clone(a.nullAction).(Action)
-	action.Init(id.Unique().String(), input, w.Info)
-	if err := a.ledger.Add(ctx, action); err != nil {
+	action, err := func() (Action, error) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		action := proto.Clone(a.nullAction).(Action)
+		action.Init(id.Unique().String(), input, w.Info)
+		err := a.ledger.Add(ctx, action)
+		if err != nil {
+			return nil, err
+		}
+		return action, nil
+	}()
+	if err != nil {
 		return "", err
 	}
 	task := proto.Clone(a.nullTask).(Task)
