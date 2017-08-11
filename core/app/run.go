@@ -133,6 +133,7 @@ func Run(main task.Task) {
 		return
 	}
 	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
+	defer closeLogs()
 	endProfile := applyProfiler(ctx, &flags.Profile)
 	// Defer the shutdown code
 	defer func() {

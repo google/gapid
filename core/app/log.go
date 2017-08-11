@@ -83,19 +83,19 @@ func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (cont
 		}
 		log.I(ctx, "Logging to: %v", flags.File)
 		// Build the logging context
-		handler := flags.Style.Handler(func(s string, _ log.Severity) {
+		handler := wrapHandler(flags.Style.Handler(func(s string, _ log.Severity) {
 			file.WriteString(s)
 			file.WriteString("\n")
-		})
-		ctx = log.PutHandler(ctx, wrapHandler(handler))
+		}))
+		ctx = log.PutHandler(ctx, handler)
 		closeLogs()
 		closeLogs = func() {
 			handler.Close()
 			file.Close()
 		}
 	} else {
-		handler := flags.Style.Handler(log.Std())
-		ctx = log.PutHandler(ctx, wrapHandler(handler))
+		handler := wrapHandler(flags.Style.Handler(log.Std()))
+		ctx = log.PutHandler(ctx, handler)
 		closeLogs()
 		closeLogs = handler.Close
 	}
