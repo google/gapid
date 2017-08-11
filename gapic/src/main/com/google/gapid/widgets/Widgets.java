@@ -556,6 +556,12 @@ public class Widgets {
     return combo;
   }
 
+  public static Combo createEditDropDown(Composite parent) {
+    Combo combo = new Combo(parent, SWT.DROP_DOWN);
+    combo.setVisibleItemCount(10);
+    return combo;
+  }
+
   public static ComboViewer createDropDownViewer(Composite parent) {
     return createDropDownViewer(createDropDown(parent));
   }

@@ -17,8 +17,8 @@ package com.google.gapid.widgets;
 
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createDropDown;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
+import static com.google.gapid.widgets.Widgets.createEditDropDown;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTextbox;
@@ -41,10 +41,12 @@ import com.google.gapid.util.Values;
 import com.google.gapid.views.Formatter;
 
 import org.eclipse.jface.dialogs.TitleAreaDialog;
+import org.eclipse.jface.fieldassist.ComboContentAdapter;
 import org.eclipse.jface.fieldassist.ContentProposal;
 import org.eclipse.jface.fieldassist.ContentProposalAdapter;
 import org.eclipse.jface.fieldassist.IContentProposal;
 import org.eclipse.jface.fieldassist.IContentProposalProvider;
+import org.eclipse.jface.fieldassist.IControlContentAdapter;
 import org.eclipse.jface.fieldassist.TextContentAdapter;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -247,42 +249,16 @@ public class AtomEditor {
     }
 
     /**
-     * {@link Editor} for enums using a drop down.
+     * Base {@link Editor} class for enums.
      */
-    private static class EnumEditor extends Editor<Combo> {
-      private final ComboViewer viewer;
-
-      public EnumEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
-        super(createDropDown(parent));
-        viewer = createDropDownViewer(control);
-        viewer.setContentProvider(ArrayContentProvider.getInstance());
-        viewer.setLabelProvider(new LabelProvider() {
-          @Override
-          public String getText(Object element) {
-            return Formatter.toString((Service.Constant)element);
-          }
-        });
-        viewer.setInput(constants.getConstantsList());
-        viewer.setSelection(new StructuredSelection(ConstantSets.find(constants, value)));
-      }
-
-      @Override
-      public void update(Box.Value.Builder param) {
-        Pods.setConstant(param.getPodBuilder(),
-            ((Service.Constant)viewer.getElementAt(control.getSelectionIndex())).getValue());
-      }
-    }
-
-    /**
-     * {@link Editor} for enums using a free from text box with auto completion suggestions.
-     */
-    private static class ConstantEditor extends Editor<Text> {
+    private abstract static class BaseEnumEditor<C extends Control> extends Editor<C> {
       private static final int MAX_PROPOSALS = 1000;
 
       protected final PrefixTree<ConstantValue> lookup;
 
-      public ConstantEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
-        super(Widgets.createTextbox(parent, ConstantSets.find(constants, value).getName()));
+      public BaseEnumEditor(
+          C control, Service.ConstantSet constants, IControlContentAdapter contentAdapter) {
+        super(control);
 
         lookup = PrefixTree.of(constants.getConstantsList().stream()
             // Reverse order. The prefix tree returns elements in LIFO order.
@@ -301,20 +277,12 @@ public class AtomEditor {
             return result.toArray(new IContentProposal[result.size()]);
           }
         };
-        ContentProposalAdapter adapter = new ContentProposalAdapter(
-            control, new TextContentAdapter(), cpp, null, null);
+        ContentProposalAdapter adapter =
+            new ContentProposalAdapter(control, contentAdapter, cpp, null, null);
         adapter.setProposalAcceptanceStyle(ContentProposalAdapter.PROPOSAL_REPLACE);
       }
 
-      @Override
-      public void update(Box.Value.Builder param) {
-        ConstantValue value = lookup.get(control.getText().toLowerCase());
-        if (value != null) { // TODO
-          Pods.setConstant(param.getPodBuilder(), value.constant.getValue());
-        }
-      }
-
-      private static class ConstantValue extends ContentProposal implements PrefixTree.Value {
+      protected static class ConstantValue extends ContentProposal implements PrefixTree.Value {
         public final Service.Constant constant;
 
         public ConstantValue(Service.Constant constant) {
@@ -325,6 +293,95 @@ public class AtomEditor {
         @Override
         public String getKey() {
           return constant.getName().toLowerCase();
+        }
+      }
+    }
+
+    /**
+     * {@link Editor} for enums using a drop down.
+     */
+    private static class EnumEditor extends BaseEnumEditor<Combo> {
+      private final ComboViewer viewer;
+
+      public EnumEditor(Composite parent, Service.ConstantSet constants, Box.Value value) {
+        super(createEditDropDown(parent), constants, new ComboContentAdapter());
+        viewer = createDropDownViewer(control);
+        viewer.setContentProvider(ArrayContentProvider.getInstance());
+        viewer.setLabelProvider(new LabelProvider() {
+          @Override
+          public String getText(Object element) {
+            return Formatter.toString((Service.Constant)element);
+          }
+        });
+        viewer.setInput(constants.getConstantsList());
+
+        Service.Constant constantValue = ConstantSets.find(constants, value);
+        if (!constantValue.getName().isEmpty()) {
+          viewer.setSelection(new StructuredSelection(constantValue));
+        } else {
+          control.setText(Long.toString(Pods.getConstant(value.getPod())));
+        }
+      }
+
+      @Override
+      public void update(Box.Value.Builder param) {
+        int selection = control.getSelectionIndex();
+        if (selection < 0) {
+          // The user either modified the text box or manually typed an entry.
+          String text = control.getText().toLowerCase();
+          int p = text.indexOf(' ');
+          if (p > 0) {
+            // If the user picked a value from the drop down, the constant number is part of the
+            // text. Cut off everything after the first space.
+            text = text.substring(0, p);
+          }
+          ConstantValue value = lookup.get(text);
+          if (value != null) {
+            Pods.setConstant(param.getPodBuilder(), value.constant.getValue());
+          } else {
+            // The user might have just typed in the constant value.
+            try {
+              Pods.setConstant(param.getPodBuilder(), Long.parseLong(text));
+            } catch (NumberFormatException e) {
+              // TODO.
+            }
+          }
+        } else {
+          Pods.setConstant(
+              param.getPodBuilder(), ((Service.Constant)viewer.getElementAt(selection)).getValue());
+        }
+      }
+    }
+
+    /**
+     * {@link Editor} for enums using a free from text box with auto completion suggestions.
+     */
+    private static class ConstantEditor extends BaseEnumEditor<Text> {
+      public ConstantEditor(Composite parent, Service.ConstantSet constants, Box.Value val) {
+        super(createTextbox(parent, getName(constants, val)), constants, new TextContentAdapter());
+      }
+
+      @Override
+      public void update(Box.Value.Builder param) {
+        ConstantValue value = lookup.get(control.getText().toLowerCase());
+        if (value != null) {
+          Pods.setConstant(param.getPodBuilder(), value.constant.getValue());
+        } else {
+          // The user might have just typed in the constant value.
+          try {
+            Pods.setConstant(param.getPodBuilder(), Long.parseLong(control.getText()));
+          } catch (NumberFormatException e) {
+            // TODO.
+          }
+        }
+      }
+
+      private static String getName(Service.ConstantSet constants, Box.Value value) {
+        Service.Constant constantValue = ConstantSets.find(constants, value);
+        if (!constantValue.getName().isEmpty()) {
+          return constantValue.getName();
+        } else {
+          return Long.toString(Pods.getConstant(value.getPod()));
         }
       }
     }
