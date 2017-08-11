@@ -63,9 +63,10 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	startScope api.CmdID
-	endScope   api.CmdID
-	subindices string // drawConfig needs to be comparable, so we cannot use a slice
+	startScope    api.CmdID
+	endScope      api.CmdID
+	subindices    string // drawConfig needs to be comparable, so we cannot use a slice
+	wireframeMode replay.WireframeMode
 }
 
 type imgRes struct {
@@ -498,6 +499,8 @@ func (a API) Replay(
 		dceInfo.deadCodeElimination = transform.NewDeadCodeElimination(ctx, dceInfo.dependencyGraph)
 	}
 
+	wire := false
+
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
@@ -526,6 +529,14 @@ func (a API) Replay(
 
 			}
 
+			cfg := cfg.(drawConfig)
+			switch cfg.wireframeMode {
+			case replay.WireframeMode_All:
+				wire = true
+			case replay.WireframeMode_Overlay:
+				return fmt.Errorf("Overlay wireframe view is not currently supported")
+			}
+
 			switch req.attachment {
 			case api.FramebufferAttachment_Depth:
 				readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
@@ -541,6 +552,10 @@ func (a API) Replay(
 	if !config.DisableDeadCodeElimination {
 		cmds = []api.Cmd{}
 		transforms.Prepend(dceInfo.deadCodeElimination)
+	}
+
+	if wire {
+		transforms.Add(wireframe(ctx))
 	}
 
 	if issues != nil {
@@ -628,7 +643,7 @@ func (a API) QueryFramebufferAttachment(
 		}
 	}
 
-	c := drawConfig{beginIndex, endIndex, subcommand}
+	c := drawConfig{beginIndex, endIndex, subcommand, wireframeMode}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
