@@ -27,7 +27,6 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
 import com.google.gapid.util.Messages;
-import com.google.gapid.widgets.AboutDialog;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IconAndMessageDialog;

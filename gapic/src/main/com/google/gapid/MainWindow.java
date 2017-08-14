@@ -15,15 +15,15 @@
  */
 package com.google.gapid;
 
+import static com.google.gapid.views.AboutDialog.showAbout;
+import static com.google.gapid.views.GotoAtom.showGotoAtomDialog;
+import static com.google.gapid.views.GotoMemory.showGotoMemoryDialog;
+import static com.google.gapid.views.Licenses.showLicensesDialog;
 import static com.google.gapid.views.SettingsDialog.showSettingsDialog;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
-import static com.google.gapid.widgets.AboutDialog.showAbout;
-import static com.google.gapid.widgets.GotoAtom.showGotoAtomDialog;
-import static com.google.gapid.widgets.GotoMemory.showGotoMemoryDialog;
-import static com.google.gapid.widgets.Licenses.showLicensesDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
@@ -40,6 +40,7 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.UpdateWatcher;
+import com.google.gapid.views.AboutDialog;
 import com.google.gapid.views.AtomTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
@@ -53,7 +54,6 @@ import com.google.gapid.views.StatusBar;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
-import com.google.gapid.widgets.AboutDialog;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;

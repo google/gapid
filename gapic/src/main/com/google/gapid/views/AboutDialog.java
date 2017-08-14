@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.widgets;
+package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -25,6 +25,8 @@ import com.google.gapid.models.Info;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
+import com.google.gapid.widgets.DialogBase;
+import com.google.gapid.widgets.Theme;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.resource.JFaceResources;
