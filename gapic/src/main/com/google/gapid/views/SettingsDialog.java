@@ -21,11 +21,11 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
+import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
-
 import com.google.gapid.widgets.Widgets;
+
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -38,7 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 /**
  * Dialog that allows the user to modify application settings.
  */
-public class SettingsDialog extends TitleAreaDialog {
+public class SettingsDialog extends DialogBase {
   private final Settings settings;
   private Button autoCheckForUpdates;
   private FileTextbox adbPath;
@@ -58,20 +58,8 @@ public class SettingsDialog extends TitleAreaDialog {
   }
 
   @Override
-  public void create() {
-    super.create();
-    setTitle(Messages.SETTINGS_TITLE);
-  }
-
-  @Override
-  protected boolean isResizable() {
-    return true;
-  }
-
-  @Override
-  protected void configureShell(Shell newShell) {
-    super.configureShell(newShell);
-    newShell.setText(Messages.SETTINGS_TITLE);
+  public String getTitle() {
+    return Messages.SETTINGS_TITLE;
   }
 
   @Override

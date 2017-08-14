@@ -22,7 +22,6 @@ import com.google.common.io.Resources;
 import com.google.gapid.util.Messages;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTError;
 import org.eclipse.swt.browser.Browser;
@@ -47,22 +46,23 @@ public class Licenses {
   }
 
   public static void showLicensesDialog(Shell shell) {
-    new MessageDialog(shell, Messages.LICENSES, null, Messages.LICENSES, MessageDialog.INFORMATION,
-        0, IDialogConstants.OK_LABEL) {
+    new DialogBase(shell) {
       @Override
-      protected boolean isResizable() {
-        return true;
+      public String getTitle() {
+        return Messages.LICENSES;
       }
 
       @Override
-      protected Control createCustomArea(Composite parent) {
+      protected Control createDialogArea(Composite parent) {
+        Composite area = (Composite)super.createDialogArea(parent);
+
         Browser browser;
         try {
-          browser = new Browser(parent, SWT.NONE);
+          browser = new Browser(area, SWT.NONE);
         } catch (SWTError e) {
           // Failed to initialize the browser. Show it as a plain text widget.
           Text text = new Text(
-              parent, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+              area, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
           text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
           text.setText(readLicenses(false));
           return text;
@@ -81,7 +81,13 @@ public class Licenses {
             }
           }
         });
-        return browser;
+
+        return area;
+      }
+
+      @Override
+      protected void createButtonsForButtonBar(Composite parent) {
+        createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
       }
     }.open();
   }

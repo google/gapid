@@ -28,10 +28,10 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.gapid.models.Models;
 import com.google.gapid.util.Messages;
+import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -53,19 +53,12 @@ public class WelcomeDialog {
   }
 
   public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
-    new TitleAreaDialog(shell) {
+    new DialogBase(shell) {
       private Button showWelcome;
 
       @Override
-      public void create() {
-        super.create();
-        setTitle(Messages.WELCOME_TITLE);
-      }
-
-      @Override
-      protected void configureShell(Shell newShell) {
-        super.configureShell(newShell);
-        newShell.setText(Messages.WELCOME_WINDOW_TITLE);
+      public String getTitle() {
+        return Messages.WELCOME_TITLE;
       }
 
       @Override
