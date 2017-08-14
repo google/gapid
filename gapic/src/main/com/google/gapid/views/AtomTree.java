@@ -58,7 +58,6 @@ import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
-import com.google.gapid.widgets.AtomEditor;
 import com.google.gapid.widgets.Balloon;
 import com.google.gapid.widgets.CopySources;
 import com.google.gapid.widgets.LoadableImage;

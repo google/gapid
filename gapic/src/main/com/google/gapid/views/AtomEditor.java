@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.widgets;
+package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -38,7 +38,8 @@ import com.google.gapid.util.Paths;
 import com.google.gapid.util.Pods;
 import com.google.gapid.util.PrefixTree;
 import com.google.gapid.util.Values;
-import com.google.gapid.views.Formatter;
+import com.google.gapid.widgets.DialogBase;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.fieldassist.ComboContentAdapter;
 import org.eclipse.jface.fieldassist.ContentProposal;

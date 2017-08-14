@@ -16,9 +16,9 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.GeoUtils.bottomLeft;
+import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
-import static com.google.gapid.widgets.AboutDialog.showHelp;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;

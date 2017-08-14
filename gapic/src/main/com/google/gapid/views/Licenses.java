@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.widgets;
+package com.google.gapid.views;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.common.io.Resources;
 import com.google.gapid.util.Messages;
+import com.google.gapid.widgets.DialogBase;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
