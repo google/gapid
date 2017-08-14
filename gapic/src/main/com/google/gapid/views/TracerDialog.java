@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
@@ -23,6 +24,7 @@ import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
+import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
@@ -42,12 +44,12 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.ActionTextbox;
+import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -156,7 +158,7 @@ public class TracerDialog {
   /**
    * Dialog to request the information from the user to start a trace (which app, filename, etc.).
    */
-  private static class TraceInputDialog extends TitleAreaDialog {
+  private static class TraceInputDialog extends DialogBase {
     private final Settings settings;
     private final Widgets widgets;
     private final Runnable refreshDevices;
@@ -188,20 +190,8 @@ public class TracerDialog {
     }
 
     @Override
-    public void create() {
-      super.create();
-      setTitle(Messages.CAPTURE_TRACE);
-    }
-
-    @Override
-    protected boolean isResizable() {
-      return true;
-    }
-
-    @Override
-    protected void configureShell(Shell newShell) {
-      super.configureShell(newShell);
-      newShell.setText(Messages.TRACE);
+    public String getTitle() {
+      return Messages.CAPTURE_TRACE;
     }
 
     @Override
@@ -684,7 +674,7 @@ public class TracerDialog {
   /**
    * Dialog that shows trace progress to the user and allows the user to stop the capture.
    */
-  private static class TraceProgressDialog extends TitleAreaDialog {
+  private static class TraceProgressDialog extends DialogBase {
     private final StringBuilder log = new StringBuilder();
     private final Tracer.TraceRequest request;
     private Text text;
@@ -709,21 +699,8 @@ public class TracerDialog {
     }
 
     @Override
-    public void create() {
-      super.create();
-      setTitle(Messages.CAPTURING_TRACE);
-      setMessage(request.getProgressDialogTitle());
-    }
-
-    @Override
-    protected void configureShell(Shell newShell) {
-      super.configureShell(newShell);
-      newShell.setText(Messages.TRACE);
-    }
-
-    @Override
-    protected boolean isResizable() {
-      return true;
+    public String getTitle() {
+      return Messages.CAPTURING_TRACE;
     }
 
     @Override
@@ -733,7 +710,10 @@ public class TracerDialog {
       Composite container = createComposite(area, new GridLayout(1, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      text = Widgets.createTextarea(container, log.toString());
+      createBoldLabel(container, request.getProgressDialogTitle())
+          .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
+      text = createTextarea(container, log.toString());
       text.setEditable(false);
       text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 

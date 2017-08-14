@@ -27,7 +27,6 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -65,17 +64,10 @@ public class AboutDialog {
   }
 
   public static void showAbout(Shell shell, Theme theme) {
-    new TitleAreaDialog(shell) {
+    new DialogBase(shell) {
       @Override
-      public void create() {
-        super.create();
-        setTitle(Messages.ABOUT_TITLE);
-      }
-
-      @Override
-      protected void configureShell(Shell newShell) {
-        super.configureShell(newShell);
-        newShell.setText(Messages.ABOUT_WINDOW_TITLE);
+      public String getTitle() {
+        return Messages.ABOUT_TITLE;
       }
 
       @Override

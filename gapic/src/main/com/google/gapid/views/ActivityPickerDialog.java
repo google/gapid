@@ -29,13 +29,13 @@ import com.google.gapid.server.GapitPkgInfoProcess;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable.MessageType;
 import com.google.gapid.util.Messages;
+import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.resource.LocalResourceManager;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
@@ -69,7 +69,7 @@ import java.util.regex.Pattern;
 /**
  * Dialog to allow the user to pick which application and activity to trace.
  */
-public class ActivityPickerDialog extends TitleAreaDialog {
+public class ActivityPickerDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(ActivityPickerDialog.class.getName());
   private static final int ICON_SIZE_DIP = 24;
   private static final int INITIAL_MIN_HEIGHT = 600;
@@ -163,22 +163,21 @@ public class ActivityPickerDialog extends TitleAreaDialog {
   }
 
   @Override
+  public String getTitle() {
+    return Messages.SELECT_ACTIVITY;
+  }
+
+
+  @Override
   public void create() {
     super.create();
-    setTitle(Messages.SELECT_ACTIVITY);
     getButton(OK_ID).setEnabled(false);
   }
 
   @Override
   protected void configureShell(Shell newShell) {
     super.configureShell(newShell);
-    newShell.setText(Messages.TRACE);
     load(newShell);
-  }
-
-  @Override
-  protected boolean isResizable() {
-    return true;
   }
 
   @Override

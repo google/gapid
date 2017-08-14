@@ -40,7 +40,6 @@ import com.google.gapid.util.PrefixTree;
 import com.google.gapid.util.Values;
 import com.google.gapid.views.Formatter;
 
-import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.fieldassist.ComboContentAdapter;
 import org.eclipse.jface.fieldassist.ContentProposal;
 import org.eclipse.jface.fieldassist.ContentProposalAdapter;
@@ -111,7 +110,7 @@ public class AtomEditor {
   /**
    * The dialog containing the editors for a given command.
    */
-  private static class EditDialog extends TitleAreaDialog {
+  private static class EditDialog extends DialogBase {
     private final Models models;
     private final API.Command atom;
     private final List<Editor<?>> editors = Lists.newArrayList();
@@ -124,15 +123,8 @@ public class AtomEditor {
     }
 
     @Override
-    public void create() {
-      super.create();
-      setTitle("Edit " + atom.getName());
-    }
-
-    @Override
-    protected void configureShell(Shell newShell) {
-      super.configureShell(newShell);
-      newShell.setText("Edit " + atom.getName() + "...");
+    public String getTitle() {
+      return "Edit " + atom.getName() + "...";
     }
 
     @Override
@@ -153,11 +145,6 @@ public class AtomEditor {
       }
 
       return area;
-    }
-
-    @Override
-    protected boolean isResizable() {
-      return true;
     }
 
     @Override

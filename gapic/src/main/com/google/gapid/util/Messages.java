@@ -34,7 +34,6 @@ public interface Messages {
   public static final String NO_TEXTURES = "No textures have been created by this point.";
   public static final String VIEW_DETAILS = "View Details";
   public static final String LICENSES = "Licenses";
-  public static final String ABOUT_WINDOW_TITLE = "About...";
   public static final String ABOUT_TITLE = "About " + WINDOW_TITLE;
   public static final String ABOUT_DESCRIPTION = "A GPU debugger for Android";
   public static final String ABOUT_COPY = "Copyright © 2017 Google Inc.";
@@ -44,7 +43,6 @@ public interface Messages {
   public static final String ATOM_ID = "API Call Number";
   public static final String MEMORY_ADDRESS = "Memory Address";
   public static final String MEMORY_POOL = "Memory Pool";
-  public static final String TRACE = "Trace...";
   public static final String CAPTURE_TRACE = "Capture Graphics Trace";
   public static final String CAPTURING_TRACE = "Capturing Graphics Trace...";
   public static final String CAPTURE_DIRECTORY = "Capture output directory...";
@@ -52,8 +50,7 @@ public interface Messages {
   public static final String CAPTURE_CWD = "Application working directory...";
   public static final String BROWSE = "Browse";
   public static final String SELECT_ACTIVITY = "Select Activity";
-  public static final String WELCOME_WINDOW_TITLE = "Welcome";
-  public static final String WELCOME_TITLE = WINDOW_TITLE;
+  public static final String WELCOME_TITLE = WINDOW_TITLE + " - Welcome";
   public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
   public static final String SETTINGS_TITLE = "Modify Settings";
   public static final String ERROR_MESSAGE =
