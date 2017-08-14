@@ -85,11 +85,5 @@ func (s *SubCmdIdx) Decrement() {
 
 // Contains returns true if s is one of the parent nodes of s2 or equals to s2.
 func (s SubCmdIdx) Contains(s2 SubCmdIdx) bool {
-	for i := len(s2); i > 0; i-- {
-		temp := s2[0:i]
-		if s.Equals(temp) {
-			return true
-		}
-	}
-	return false
+	return len(s2) >= len(s) && len(s) != 0 && s.Equals(s2[:len(s)])
 }

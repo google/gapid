@@ -41,7 +41,9 @@ type SynchronizedAPI interface {
 	// the given API
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 
-	// MutateSubcommands mutates the given Atom calling callback after each subcommand is executed.
+	// MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
+	// attached to that Cmd. preSubCmdCallback and postSubCmdCallback will be
+	// called before and after executing each subcommand callback.
 	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State,
 		preSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd),
 		postSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd)) error
@@ -96,9 +98,10 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 	return w.cmds, nil
 }
 
-// MutateWithSubcommands returns a list of commands that represent the correct
-// mutations to have the state for all commands before and including the given
-// index.
+// MutateWithSubcommands mutates a list of commands. And after mutating each
+// Cmd, the given post-Cmd callback will be called. And the given
+// pre-subcommand callback and the post-subcommand callback will be called
+// before and after calling each subcommand callback function.
 func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	postCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
 	preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),

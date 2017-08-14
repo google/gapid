@@ -32,12 +32,13 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	ctx = capture.Put(ctx, path.FindCapture(p))
 
 	cmdIdx := p.After.Indices[0]
+	fullCmdIdx := p.After.Indices
 
 	allCmds, err := Cmds(ctx, path.FindCapture(p))
 	if err != nil {
 		return nil, err
 	}
-	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), allCmds, api.CmdID(cmdIdx), p.After.Indices[1:])
+	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -63,42 +64,41 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	r := memory.Range{Base: p.Address, Size: p.Size}
 
 	var reads, writes, observed memory.RangeList
-	pool.OnRead = func(rng memory.Range) {
-		if rng.Overlaps(r) {
-			interval.Merge(&reads, rng.Window(r).Span(), false)
-		}
-	}
-	pool.OnWrite = func(rng memory.Range) {
-		if rng.Overlaps(r) {
-			interval.Merge(&writes, rng.Window(r).Span(), false)
-		}
-	}
-	// api.MutateCmds(ctx, s, nil, cmds[len(cmds)-1])
 
-	endCmd := cmds[len(cmds)-1]
-	if syncedApi, ok := endCmd.API().(sync.SynchronizedAPI); ok {
-		requestSubCmdIdx := api.SubCmdIdx(p.After.Indices)
-		syncedApi.MutateSubcommands(ctx, api.CmdID(cmdIdx), endCmd, s,
+	listenToReadWrite := func() {
+		pool.OnRead = func(rng memory.Range) {
+			if rng.Overlaps(r) {
+				interval.Merge(&reads, rng.Window(r).Span(), false)
+			}
+		}
+		pool.OnWrite = func(rng memory.Range) {
+			if rng.Overlaps(r) {
+				interval.Merge(&writes, rng.Window(r).Span(), false)
+			}
+		}
+	}
+
+	lastCmd := cmds[len(cmds)-1]
+	if syncedApi, ok := lastCmd.API().(sync.SynchronizedAPI); len(fullCmdIdx) > 1 && ok {
+		requestSubCmdIdx := api.SubCmdIdx(fullCmdIdx)
+		syncedApi.MutateSubcommands(ctx, api.CmdID(cmdIdx), lastCmd, s,
 			func(s *api.State, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
-				// Clear the read/write list before grabbing the observations for the
-				// requested subcommand
-				if requestSubCmdIdx.Equals(subCommandIndex) {
-					reads = memory.RangeList{}
-					writes = memory.RangeList{}
+				// Turn on OnRead and OnWrite if the subcommand to be executed is or
+				// contained by the requested subcommand.
+				if requestSubCmdIdx.Equals(subCommandIndex) ||
+					requestSubCmdIdx.Contains(subCommandIndex) {
+					listenToReadWrite()
 				}
 			}, // preSubCmdCallback
 			func(s *api.State, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
-				// Set the OnRead and OnWrite to nop after the execution of the
-				// requested subcommand, prevent the reads/writes list being polluted
-				// by following subcommands
-				if requestSubCmdIdx.Equals(subCommandIndex) {
-					pool.OnRead = func(memory.Range) {}
-					pool.OnWrite = func(memory.Range) {}
-				}
+				// Turn off OnRead and OnWrite after each subcommand.
+				pool.OnRead = func(memory.Range) {}
+				pool.OnWrite = func(memory.Range) {}
 			}, //postSubCmdCallback
 		)
 	} else {
-		api.MutateCmds(ctx, s, nil, endCmd)
+		listenToReadWrite()
+		api.MutateCmds(ctx, s, nil, lastCmd)
 	}
 
 	slice := pool.Slice(r)

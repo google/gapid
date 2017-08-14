@@ -204,12 +204,12 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
 	c := GetState(s)
 	if postSubCmdCb != nil {
-		c.PostSubcommand = func(_ interface{}) {
+		c.PostSubcommand = func(interface{}) {
 			postSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
 		}
 	}
 	if preSubCmdCb != nil {
-		c.PreSubcommand = func(_ interface{}) {
+		c.PreSubcommand = func(interface{}) {
 			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
 		}
 	}
