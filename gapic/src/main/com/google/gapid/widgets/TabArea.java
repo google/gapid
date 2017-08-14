@@ -223,6 +223,8 @@ public class TabArea {
       int[] curWeights = sash.getWeights();
       weights[1] = (weights[1] + weights[2]) * curWeights[1] / (curWeights[1] + curWeights[2]);
       weights[2] = (weights[1] + weights[2]) * curWeights[2] / (curWeights[1] + curWeights[2]);
+    } else {
+      weights = sash.getWeights();
     }
   }
 
