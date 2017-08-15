@@ -375,15 +375,13 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		case *CmdIDGroup:
 			return first.AddRoot(rootidx)
 		case *CmdIDRange:
-			firstHalf := &CmdIDRange{first.Start, first.End}
-			firstHalf.End = CmdID(rootidx[len(rootidx)-1])
+			firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1]}
 			if firstHalf.End > firstHalf.Start {
 				slice.InsertBefore(&g.Spans, s, firstHalf)
 				s++
 			}
 			slice.Replace(&g.Spans, s, 1, NewRoot(rootidx))
-			secondHalf := &CmdIDRange{first.Start, first.End}
-			secondHalf.Start = CmdID(rootidx[len(rootidx)-1] + 1)
+			secondHalf := &CmdIDRange{CmdID(rootidx[len(rootidx)-1] + 1), first.End}
 			slice.InsertBefore(&g.Spans, s+1, secondHalf)
 			return g.Spans[s].(*SubCmdRoot)
 		default:
