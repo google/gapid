@@ -278,7 +278,7 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 	absSrcStart := mem.MappedLocation.Address() + offset_in_mapped
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(read_size)}
 
-	writeRngList := e.s.Memory[memory.ApplicationPool].Slice(absSrcMemRng).ValidRanges()
+	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
 		mem.Data.Slice(dstStart+r.Base, dstStart+r.Base+r.Size, l).Copy(
 			e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)

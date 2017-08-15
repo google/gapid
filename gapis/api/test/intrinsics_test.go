@@ -49,12 +49,14 @@ func TestMake(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	assert.For(ctx, "initial NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(1))
+	idOfFirstPool, _ := s.Memory.NewPool()
+	assert.For(ctx, "initial NextPoolID").That(idOfFirstPool).Equals(memory.PoolID(1))
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdMake(10),
 	)
 	assert.For(ctx, "buffer count").That(GetState(s).U8s.Count()).Equals(uint64(10))
-	assert.For(ctx, "final NextPoolID").That(s.NextPoolID).Equals(memory.PoolID(2))
+	idOfOneAfterLastPool, _ := s.Memory.NewPool()
+	assert.For(ctx, "final NextPoolID").That(idOfOneAfterLastPool).Equals(memory.PoolID(3))
 }
 
 func TestCopy(t *testing.T) {

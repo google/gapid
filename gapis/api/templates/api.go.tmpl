@@ -264,7 +264,7 @@
   {{if $el_is_char}}
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
     func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *api.State) Charˢ {
-      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory[p.pool].At(p.addr))
+      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory.GetOrPanic(p.pool).At(p.addr))
       for {
         i++
         if b := d.U8(); b == 0 {
@@ -406,33 +406,24 @@
     // Make{{$slice_ty}}FromString returns a {{$slice_ty}} backed by a new
     // memory pool containing a copy of str.
     func Make{{$slice_ty}}FromString(str string, ϟs *api.State) {{$slice_ty}} {
-      pool := &ϟmem.Pool{}
+      id, pool := ϟs.Memory.NewPool()
       pool.Write(0, ϟmem.Blob([]byte(str)))
-      id := ϟs.NextPoolID
-      ϟs.Memory[id] = pool
-      ϟs.NextPoolID++
       return {{$slice_ty}}{ count: uint64(len(str)), pool: id }
     }
   {{end}}
 
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟs *api.State) {{$slice_ty}} {
-    id := ϟs.NextPoolID
-    ϟs.Memory[id] = &ϟmem.Pool{}
-    ϟs.NextPoolID++
+    id, _ := ϟs.Memory.NewPool()
     return {{$slice_ty}}{ count: count, pool: id }
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
   func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
-    pool := &ϟmem.Pool{}
-    pool.Write(0, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
-    id := ϟs.NextPoolID
-    ϟs.Memory[id] = pool
-    ϟs.NextPoolID++
-    dst := {{$slice_ty}}{ count: s.count, pool: id }
-    return dst
+    id, dst := ϟs.Memory.NewPool()
+    dst.Write(0, ϟs.Memory.GetOrPanic(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
+    return {{$slice_ty}}{ count: s.count, pool: id }
   }
 
   // Root returns the original pointer this slice derives from.
@@ -466,7 +457,7 @@
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
   func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟs *api.State) id.ID {
-    id, err := ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
+    id, err := ϟs.Memory.GetOrPanic(s.pool).Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
     if err != nil {
       panic(err)
     }
@@ -475,7 +466,7 @@
 
   // Reader returns a binary reader for the slice.
   func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟs *api.State) binary.Reader {
-    return ϟs.MemoryReader(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+    return ϟs.MemoryReader(ϟctx, ϟs.Memory.GetOrPanic(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
   }
 
   // Writer returns a binary writer for the slice.
@@ -485,7 +476,7 @@
 
   // Decoder returns a memory decoder for the slice.
   func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *api.State) *ϟmem.Decoder {
-    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory[s.pool].Slice(s.Range(ϟs.MemoryLayout)))
+    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory.GetOrPanic(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
   }
 
   // Encoder returns a memory encoder for the slice.
@@ -540,7 +531,7 @@
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟa, ϟs, ϟb)
-      ϟs.Memory[dst.pool].Write(dst.base, ϟs.Memory[src.pool].Slice(src.Range(ϟs.MemoryLayout)))
+      ϟs.Memory.GetOrPanic(dst.pool).Write(dst.base, ϟs.Memory.GetOrPanic(src.pool).Slice(src.Range(ϟs.MemoryLayout)))
       dst.OnWrite(ϟctx, ϟa, ϟs, ϟb)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
@@ -561,8 +552,10 @@
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
-    if f := ϟs.Memory[s.pool].OnRead; f != nil {
-      f(s.Range(ϟl))
+    if pool, err := ϟs.Memory.Get(s.pool); err == nil {
+      if f := pool.OnRead; f != nil {
+        f(s.Range(ϟl))
+      }
     }
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
       {{if IsPointer ($s.To | Underlying)}}
@@ -608,8 +601,10 @@
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa api.Cmd, ϟs *api.State, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl := ϟs.MemoryLayout
-    if f := ϟs.Memory[s.pool].OnWrite; f != nil {
-      f(s.Range(ϟl))
+    if pool, err := ϟs.Memory.Get(s.pool); err == nil {
+      if f := pool.OnWrite; f != nil {
+        f(s.Range(ϟl))
+      }
     }
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
       ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
