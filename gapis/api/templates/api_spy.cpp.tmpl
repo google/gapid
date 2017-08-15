@@ -226,7 +226,7 @@
           {{end}}
         {{end}}
         {{if (GetAnnotation $ "blocking")}}
-          lock(observer, "Tracing blocking command: {{$name}} locks again.");
+          lock(observer);
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}

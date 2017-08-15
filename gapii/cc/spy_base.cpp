@@ -48,22 +48,8 @@ void SpyBase::init(CallObserver* observer) {
     onThreadSwitched(observer, threadID);
 }
 
-bool SpyBase::try_to_enter() {
-  if (mReentrantFlag.get() != 0) {
-    return false;
-  }
-  mReentrantFlag.set(1u);
-  return true;
-}
-
-void SpyBase::exit() {
-  mReentrantFlag.set(0);
-}
-
-void SpyBase::lock(CallObserver* observer, const char* name) {
+void SpyBase::lock(CallObserver* observer) {
     mMutex.lock();
-    observer->setCurrentCommandName(name);
-
     auto threadID = core::Thread::current().id();
     if (threadID != mCurrentThread) {
         GAPID_DEBUG("Changing threads: %" PRIu64 "-> %" PRIu64, mCurrentThread, threadID);

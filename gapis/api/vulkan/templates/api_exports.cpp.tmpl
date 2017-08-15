@@ -129,16 +129,10 @@
   VKAPI_ATTR {{Template "C++.ReturnType" $}} VKAPI_CALL {{$name}}({{Template "C++.CallParameters" $}}) {
     Spy* s = Spy::get();
     GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
-    if (!s->try_to_enter()) {
-      GAPID_FATAL("Unexpected re-entrant call to vulkan function");
-      return {{if not (IsVoid $.Return.Type)}}{{Template "C++.Null" $.Return.Type}}{{end}};
-    }
-    CallObserver observer(s, {{Global "ApiIndex"}});
-    s->lock(&observer, "{{$name}}");
+    auto spy_ctx = s->enter("{{$name}}", {{Global "ApiIndex"}});
     {{if not (IsVoid $.Return.Type)}} auto _result_ = §{{end}}
-    s->{{$name}}({{Macro "C++.CallArguments" $ | Strings "&observer" | JoinWith ", "}});
-    s->unlock();
-    s->{{Title (Global "API")}}Spy::exit();
+    s->{{$name}}({{Macro "C++.CallArguments" $ | Strings "spy_ctx" | JoinWith ", "}});
+    s->exit();
     {{if not (IsVoid $.Return.Type)}} return _result_;{{end}}
   }
 {{end}}

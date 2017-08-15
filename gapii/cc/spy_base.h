@@ -27,7 +27,6 @@
 #include "core/cc/encoder.h"
 #include "core/cc/null_encoder.h"
 #include "core/cc/interval_list.h"
-#include "core/cc/mutex.h"
 #include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
 #include "core/cc/id.h"
@@ -42,6 +41,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_set>
 
@@ -52,15 +52,6 @@ public:
     SpyBase();
 
     void init(CallObserver* observer);
-
-    // lock begins the interception of a single command. It must be called
-    // before invoking any command on the spy. Blocks if any other thread
-    // is has called lock and not yet called unlock.
-    void lock(CallObserver* observer, const char* name);
-
-    // unlock must be called after invoking any command.
-    // resets the buffers reused between atoms.
-    void unlock();
 
     // Set whether to observe the application pool. If true, the default,
     // then reads and writes to the application pools are observed, but
@@ -83,15 +74,6 @@ public:
     // Returns true if we should observe application pool.
     bool shouldObserveApplicationPool() { return mObserveApplicationPool; }
 
-    // Tries to enter this function. If SpyBase has already been entered before
-    // by the same thread, this returns false. e.g.  If the driver calls the
-    // function recursively.
-    bool try_to_enter();
-
-    // Leaves this function. Only valid to call whenever we have succeeded
-    // at a call of try_to_enter.
-    void exit();
-
     // Returns true if this spy is suspended, i.e. We should not actually
     // be sending any data across to the server yet.
     bool is_suspended() const { return mIsSuspended; }
@@ -109,6 +91,15 @@ protected:
     static const size_t kMaxExtras = 16; // Per atom
 
     typedef std::unordered_set<core::Id> IdSet;
+
+    // lock begins the interception of a single command. It must be called
+    // before invoking any command on the spy. Blocks if any other thread
+    // is has called lock and not yet called unlock.
+    void lock(CallObserver* observer);
+
+    // unlock must be called after invoking any command.
+    // resets the buffers reused between atoms.
+    void unlock();
 
     // onThreadSwitched is invoked by enter() whenever the current thread changes.
     virtual void onThreadSwitched(CallObserver* observer, uint64_t threadID) = 0;
@@ -155,13 +146,6 @@ protected:
     // onPostFence is called immediately after the driver call.
     inline virtual void onPostFence(CallObserver* observer) {}
 
-    // Returns true if the current thread is currently "in" the spy, where
-    // "in" is defined as "the time between a true return of try_to_enter and
-    // a matching call to exit".
-    bool has_entered() {
-      return mReentrantFlag.get() != 0;
-    }
-
     // The output stream encoder.
     PackEncoder::SPtr mEncoder;
 
@@ -191,15 +175,10 @@ private:
     IdSet mResources;
 
     // The mutex that should be locked for the duration of each of the intercepted commands.
-    core::Mutex mMutex;
+    std::recursive_mutex mMutex;
 
     // True if we should observe the application pool.
     bool mObserveApplicationPool;
-
-    // Initially set to zero for all threads. This is set to a non-zero value
-    // for every thread that calls try_to_enter with a true return value,
-    // and reset for that thread when the matching exit() function is called.
-    core::ThreadLocalValue mReentrantFlag;
 
     // True if we should not be currently tracing, false if we should be tracing.
     bool mIsSuspended;
