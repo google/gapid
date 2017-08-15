@@ -81,10 +81,12 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 			if err != nil {
 				return nil, err
 			}
-			terminators = append(terminators, term)
-		} else {
-			terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
+			if term != nil {
+				terminators = append(terminators, term)
+				continue
+			}
 		}
+		terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
 	}
 	for _, t := range terminators {
 		if err := t.Add(ctx, id, subindex); err != nil {
