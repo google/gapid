@@ -379,7 +379,7 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		case *CmdIDGroup:
 			return first.AddRoot(rootidx)
 		case *CmdIDRange:
-			firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1]}
+			firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1])}
 			if firstHalf.End > firstHalf.Start {
 				slice.InsertBefore(&g.Spans, s, firstHalf)
 				s++
