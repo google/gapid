@@ -300,11 +300,15 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 	return d.builder.build(r.Name, d.header), nil
 }
 
+type cmdInfo struct {
+	invoked bool
+	id      api.CmdID
+}
 type decoder struct {
 	header  *Header
 	builder *builder
 	groups  map[uint64]interface{}
-	invoked map[api.Cmd]bool
+	cmds    map[api.Cmd]*cmdInfo
 
 	// Below are fields that should be replaced with more sensible proto messages.
 	threadID uint64
@@ -314,7 +318,7 @@ func newDecoder() *decoder {
 	return &decoder{
 		builder: newBuilder(),
 		groups:  map[uint64]interface{}{},
-		invoked: map[api.Cmd]bool{},
+		cmds:    map[api.Cmd]*cmdInfo{},
 	}
 }
 
@@ -353,7 +357,7 @@ func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
 
 	switch obj := obj.(type) {
 	case api.Cmd:
-		delete(d.invoked, obj)
+		delete(d.cmds, obj)
 	}
 
 	return nil
@@ -377,24 +381,27 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 		if res, ok := child.(proto.Message); ok {
 			if cwr, ok := cmd.(api.CmdWithResult); ok {
 				if cwr.SetResult(res) == nil {
-					d.invoked[cmd] = true
+					d.cmds[cmd].invoked = true
 					return nil
 				}
 			}
 		}
 
 		switch obj := child.(type) {
+		case api.Cmd:
+			obj.SetCaller(d.cmds[cmd].id)
+
 		case api.CmdObservation:
 			d.builder.addObservation(ctx, &obj)
 			observations := cmd.Extras().GetOrAppendObservations()
-			if !d.invoked[cmd] {
+			if !d.cmds[cmd].invoked {
 				observations.Reads = append(observations.Reads, obj)
 			} else {
 				observations.Writes = append(observations.Writes, obj)
 			}
 
 		case *api.CmdCall:
-			d.invoked[cmd] = true
+			d.cmds[cmd].invoked = true
 
 		case api.CmdExtra:
 			cmd.Extras().Add(obj)
@@ -428,7 +435,9 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		return in, nil
 
 	case api.Cmd:
-		d.invoked[obj] = false
+		d.cmds[obj] = &cmdInfo{
+			id: api.CmdID(len(d.builder.cmds)),
+		}
 		obj.SetThread(d.threadID)
 		d.builder.cmds = append(d.builder.cmds, obj)
 		d.builder.addAPI(ctx, obj.API())

@@ -62,7 +62,7 @@
   {{end}}
 
   {{range $i, $c := AllCommands $}}
-    {{Template "CommandEntry" "Command" $c "Index" $i}}
+    {{Template "Command" "Command" $c "Index" $i}}
   {{end}}
 
   {{range $c := $.Classes}}
@@ -815,7 +815,7 @@
   Emits a type declaration and implementation for the specified command.
 -------------------------------------------------------------------------------
 */}}
-{{define "CommandEntry"}}
+{{define "Command"}}
   {{AssertType $.Command "Function"}}
   {{$name       := $.Command | GoCommandName}}
   {{$ret        := not (IsVoid $.Command.Return.Type)}}
@@ -826,6 +826,7 @@
 
     type {{$name}} struct {
       extras api.CmdExtras
+      caller api.CmdID
       thread uint64
       {{range $p := $.Command.FullParameters}}
         {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
@@ -835,6 +836,10 @@
     func (ϟa *{{$name}}) Thread() uint64 { return ϟa.thread }
 
     func (ϟa *{{$name}}) SetThread(v uint64) { ϟa.thread = v }
+
+    func (ϟa *{{$name}}) Caller() api.CmdID { return ϟa.caller }
+
+    func (ϟa *{{$name}}) SetCaller(c api.CmdID) { ϟa.caller = c }
 
     func (ϟa *{{$name}}) CmdName() string { return "{{$.Command | CommandName}}" }
 
@@ -1188,6 +1193,7 @@
           {{end}}
         ) *{{$name}} {
         return &{{$name}} {§
+          caller: api.CmdNoID,
           thread: cb.Thread,
           {{range $p := $c.FullParameters}}
             {{if $p | TypeOf | Underlying | IsPointer}}
