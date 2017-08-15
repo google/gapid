@@ -21,22 +21,18 @@ import (
 )
 
 func TestSubCmdIdxTrie(t *testing.T) {
-	trie := NewSubCmdIdxTrie()
+	trie := &SubCmdIdxTrie{}
 
 	expectValue := func(indices SubCmdIdx, expectedValue int) {
-		v, ok := trie.GetValue(indices)
-		assert.To(t).For("Expect GetValue(%v) ok: %v", indices, true).That(ok).Equals(true)
-		assert.To(t).For("Expect GetValue(%v) value: %v", indices, expectedValue).That(v).Equals(expectedValue)
+		v := trie.Value(indices)
+		assert.To(t).For("Expect Value(%v) value: %v", indices, expectedValue).That(v).Equals(expectedValue)
 	}
 	expectNonValue := func(indices SubCmdIdx) {
-		_, ok := trie.GetValue(indices)
-		assert.To(t).For("Expect GetValue(%v) ok: %v", indices, false).That(ok).Equals(false)
+		v := trie.Value(indices)
+		assert.To(t).For("Expect Value(%v) value: %v", indices, v).That(v).Equals(nil)
 	}
 	expectRemoveValue := func(indices SubCmdIdx, expectedReturn bool) {
 		assert.To(t).For("Expect RemoveValue(%v) returns: %v", indices, expectedReturn).That(trie.RemoveValue(indices)).Equals(expectedReturn)
-	}
-	expectRemoveNode := func(indices SubCmdIdx, expectedReturn bool) {
-		assert.To(t).For("Expect RemoveNode(%v) returns: %v", indices, expectedReturn).That(trie.RemoveNode(indices)).Equals(expectedReturn)
 	}
 
 	expectNonValue(SubCmdIdx{})
@@ -74,11 +70,13 @@ func TestSubCmdIdxTrie(t *testing.T) {
 	expectValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
 	expectValue(SubCmdIdx{100, 99, 98, 97}, 103)
 
-	expectRemoveNode(SubCmdIdx{100, 99}, true)
+	expectRemoveValue(SubCmdIdx{100, 99}, false)
+	expectValue(SubCmdIdx{100, 99, 98, 97}, 103)
+	expectNonValue(SubCmdIdx{100, 99})
+
+	expectRemoveValue(SubCmdIdx{100, 99, 98, 97}, true)
 	expectNonValue(SubCmdIdx{100, 99, 98, 97})
-
-	expectRemoveNode(SubCmdIdx{1}, true)
-	expectNonValue(SubCmdIdx{1, 2, 3, 4, 5, 6})
-
-	expectRemoveNode(SubCmdIdx{}, false)
+	expectNonValue(SubCmdIdx{100, 99, 98})
+	expectNonValue(SubCmdIdx{100, 99})
+	expectNonValue(SubCmdIdx{100})
 }
