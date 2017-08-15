@@ -316,6 +316,23 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 			}
 
+		case *GlBindBufferBase:
+			if cmd.Buffer == 0 {
+				genBuf, err := subGetBoundBuffer(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				if err != nil {
+					log.E(ctx, "Can not get bound buffer: %v ", err)
+				}
+				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target, cmd.Index)
+				if err != nil {
+					log.E(ctx, "Can not get bound buffer: %v ", err)
+				}
+				if genBuf == nil && idxBuf == nil {
+					// Both of the binding points are already clear. Thus this command is a no-op.
+					// It is helpful to remove those no-ops in case the replay driver does not support the target.
+					return
+				}
+			}
+
 		case *GlBindBufferRange:
 			misalignment := cmd.Offset % GLintptr(glDev.UniformBufferAlignment)
 			if cmd.Target == GLenum_GL_UNIFORM_BUFFER && misalignment != 0 {
