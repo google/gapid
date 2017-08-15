@@ -30,6 +30,12 @@ class Buffer {
 }
 
 sub ref!Buffer GetBoundBufferOrError(GLenum target) {
+  b := GetBoundBuffer(target)
+  if b == null { glErrorInvalidOperation() }
+  return b
+}
+
+sub ref!Buffer GetBoundBuffer(GLenum target) {
   ctx := GetContext()
   // TODO: The error conditions are not spelled out for all commands in the spec.
   b := switch (target) {
@@ -90,8 +96,19 @@ sub ref!Buffer GetBoundBufferOrError(GLenum target) {
       as!ref!Buffer(null)
     }
   }
-  if b == null { glErrorInvalidOperation() }
   return b
+}
+
+sub ref!Buffer GetBoundBufferAtIndex(GLenum target, GLuint index) {
+  ctx := GetContext()
+  bb := switch (target) {
+    @if(Version.GLES30) case GL_TRANSFORM_FEEDBACK_BUFFER: ctx.Bound.TransformFeedback.Buffers[index]
+    @if(Version.GLES30) case GL_UNIFORM_BUFFER:            ctx.Bound.UniformBuffers[index]
+    @if(Version.GLES31) case GL_ATOMIC_COUNTER_BUFFER:     ctx.Bound.AtomicCounterBuffers[index]
+    @if(Version.GLES31) case GL_SHADER_STORAGE_BUFFER:     ctx.Bound.ShaderStorageBuffers[index]
+    default: BufferBinding()
+  }
+  return bb.Binding
 }
 
 sub ref!Buffer GetOrCreateBuffer(BufferId id) {
