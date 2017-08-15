@@ -83,8 +83,15 @@ func (unpacker) ChildObject(ctx context.Context, msg proto.Message, parentID uin
 }
 
 func msgString(msg proto.Message) string {
-	if msg, ok := msg.(*pack.Dynamic); ok {
-		return fmt.Sprintf("%+v", msg)
+	var str string
+	switch msg := msg.(type) {
+	case *pack.Dynamic:
+		str = fmt.Sprintf("%+v", msg)
+	default:
+		str = fmt.Sprintf("%T{%+v}", msg, msg)
 	}
-	return fmt.Sprintf("%T{%+v}", msg, msg)
+	if len(str) > 100 {
+		str = str[:97] + "..." // TODO: Consider unicode.
+	}
+	return str
 }
