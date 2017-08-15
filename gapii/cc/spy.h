@@ -39,6 +39,9 @@ class Spy : public GlesSpy, public VulkanSpy {
   // external factors.
   void resolveImports();
 
+  CallObserver* enter(const char* name, uint32_t api);
+  void exit();
+
   EGLBoolean eglInitialize(CallObserver* observer, EGLDisplay dpy,
                            EGLint* major, EGLint* minor);
   EGLContext eglCreateContext(CallObserver* observer, EGLDisplay display,

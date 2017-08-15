@@ -119,8 +119,9 @@ const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 
 const int32_t  kSuspendIndefinitely = -1;
 
-core::Mutex gMutex;  // Guards gSpy.
+std::recursive_mutex gMutex;  // Guards gSpy.
 std::unique_ptr<gapii::Spy> gSpy;
+thread_local gapii::CallObserver* gContext = nullptr;
 
 } // anonymous namespace
 
@@ -129,7 +130,7 @@ namespace gapii {
 Spy* Spy::get() {
     bool init;
     {
-        core::Lock<core::Mutex> lock(&gMutex);
+        std::lock_guard<std::recursive_mutex> lock(gMutex);
         init = !gSpy;
         if (init) {
             GAPID_INFO("Constructing spy...");
@@ -142,13 +143,8 @@ Spy* Spy::get() {
     }
     if (init) {
         auto s = gSpy.get();
-        if (!s->try_to_enter()) {
-            GAPID_FATAL("Couldn't enter on init?!")
-        }
-        CallObserver observer(s, 0);
-        s->lock(&observer, "writeHeader");
+        s->enter("writeHeader", 0);
         s->writeHeader();
-        s->unlock();
         s->exit();
     }
     return gSpy.get();
@@ -202,10 +198,11 @@ Spy::Spy()
 
     mEncoder = gapii::PackEncoder::create(mConnection);
 
-    CallObserver observer(this, 0);
+    auto context = enter("init", 0);
     GlesSpy::init();
     VulkanSpy::init();
-    SpyBase::init(&observer);
+    SpyBase::init(context);
+    exit();
 
     if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
         mDeferStartJob = std::unique_ptr<core::AsyncJob>(
@@ -235,6 +232,21 @@ void Spy::writeHeader() {
 
 void Spy::resolveImports() {
     GlesSpy::mImports.resolve();
+}
+
+CallObserver* Spy::enter(const char* name, uint32_t api) {
+    auto ctx = new CallObserver(this, gContext, api);
+    lock(ctx);
+    ctx->setCurrentCommandName(name);
+    gContext = ctx;
+    return ctx;
+}
+
+void Spy::exit() {
+    auto context = gContext;
+    gContext = context->getParent();
+    delete context;
+    unlock();
 }
 
 EGLBoolean Spy::eglInitialize(CallObserver* observer, EGLDisplay dpy, EGLint* major, EGLint* minor) {

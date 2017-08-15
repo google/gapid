@@ -47,8 +47,9 @@ void releaseBuffer(uint8_t* buffer) { delete[] buffer; }
 namespace gapii {
 // Creates a CallObserver with a given spy and applies the memory space for
 // observation data from the spy instance.
-CallObserver::CallObserver(SpyBase* spy, uint8_t api)
+CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
     : mSpy(spy),
+      mParent(parent),
       mCurrentCommandName(nullptr),
       mObserveApplicationPool(spy->shouldObserveApplicationPool()),
       mScratch(
@@ -56,7 +57,8 @@ CallObserver::CallObserver(SpyBase* spy, uint8_t api)
           [](uint8_t* buffer) { return releaseBuffer(buffer); }),
       mError(GLenum::GL_NO_ERROR),
       mApi(api) {
-    mEncoderStack.push(mSpy->getEncoder(mApi));
+    mEncoderStack.push((parent == nullptr) ?
+            mSpy->getEncoder(mApi) : parent->encoder());
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
 }
 
