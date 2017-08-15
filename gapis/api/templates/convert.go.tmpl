@@ -27,6 +27,7 @@
     "context"¶
 ¶
     "github.com/google/gapid/core/data/protoconv"¶
+    "github.com/google/gapid/gapis/api"¶
     "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
@@ -96,7 +97,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) *{{$name}} {»¶
-    ϟa := &{{$name}}{}¶
+    ϟa := &{{$name}}{caller: api.CmdNoID}¶
     {{range $v := $.FullParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}
