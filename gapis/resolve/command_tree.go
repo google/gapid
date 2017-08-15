@@ -248,7 +248,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, log.Errf(ctx, nil, "Could not find valid Synchronization Data")
 	}
 
-	filter, err := buildFilter(ctx, p.Capture, p.Filter)
+	filter, err := buildFilter(ctx, p.Capture, p.Filter, snc)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	s := c.NewState()
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, s, nil)
-		if filter(cmd, s) {
+		if filter(id, cmd, s) {
 			for _, g := range groupers {
 				g.process(ctx, id, cmd, s)
 			}
@@ -345,7 +345,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, s, nil)
 
-		if !filter(cmd, s) {
+		if !filter(id, cmd, s) {
 			return nil
 		}
 

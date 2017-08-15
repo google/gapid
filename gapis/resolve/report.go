@@ -58,7 +58,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter)
+	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			}
 		}
 
-		if filter(cmd, state) {
+		if filter(id, cmd, state) {
 			for _, item := range items {
 				item.Tags = append(item.Tags, getAtomNameTag(cmd))
 				builder.Add(ctx, item)

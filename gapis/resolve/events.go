@@ -31,7 +31,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, p.Capture, p.Filter)
+	filter, err := buildFilter(ctx, p.Capture, p.Filter, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		cmd.Mutate(ctx, s, nil)
 
 		// TODO: Add event generation to the API files.
-		if !filter(cmd, s) {
+		if !filter(id, cmd, s) {
 			return nil
 		}
 		f := cmd.CmdFlags()

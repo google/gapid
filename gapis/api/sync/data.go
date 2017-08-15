@@ -50,15 +50,19 @@ type Data struct {
 	SubcommandReferences map[api.CmdID][]SubcommandReference
 	// SubcommandGroups represents the last Subcommand in every command buffer.
 	SubcommandGroups map[api.CmdID][]api.SubCmdIdx
+	// Hidden contains all the commands that should be hidden from the regular
+	// command tree as they exist as a subcommand of another command.
+	Hidden api.CmdIDSet
 }
 
 // NewData creates a new clean Data object
 func NewData() *Data {
-	s := new(Data)
-	s.CommandRanges = make(map[api.CmdID]ExecutionRanges)
-	s.SubcommandReferences = make(map[api.CmdID][]SubcommandReference)
-	s.SubcommandGroups = make(map[api.CmdID][]api.SubCmdIdx)
-	return s
+	return &Data{
+		CommandRanges:        map[api.CmdID]ExecutionRanges{},
+		SubcommandReferences: map[api.CmdID][]SubcommandReference{},
+		SubcommandGroups:     map[api.CmdID][]api.SubCmdIdx{},
+		Hidden:               api.CmdIDSet{},
+	}
 }
 
 // Len returns the length of subcommand indices

@@ -19,13 +19,19 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type filter func(api.Cmd, *api.State) bool
+type filter func(api.CmdID, api.Cmd, *api.State) bool
 
-func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (filter, error) {
+func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (filter, error) {
 	filters := []filter{}
+	if sd != nil {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+			return !sd.Hidden.Contains(id)
+		})
+	}
 	if c := f.GetContext(); c.IsValid() {
 		c, err := Context(ctx, p.Context(c))
 		if err != nil {
@@ -36,7 +42,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 			return nil, err
 		}
 		ctxID := api.ContextID(id)
-		filters = append(filters, func(cmd api.Cmd, s *api.State) bool {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
 			if api := cmd.API(); api != nil {
 				if ctx := api.Context(s, cmd.Thread()); ctx != nil {
 					return ctx.ID() == ctxID
@@ -46,7 +52,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 		})
 	}
 	if len(f.GetThreads()) > 0 {
-		filters = append(filters, func(cmd api.Cmd, s *api.State) bool {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
 			thread := cmd.Thread()
 			for _, t := range f.Threads {
 				if t == thread {
@@ -56,9 +62,9 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter) (f
 			return false
 		})
 	}
-	return func(cmd api.Cmd, s *api.State) bool {
+	return func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
 		for _, f := range filters {
-			if !f(cmd, s) {
+			if !f(id, cmd, s) {
 				return false
 			}
 		}
