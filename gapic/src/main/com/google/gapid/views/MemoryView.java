@@ -16,6 +16,8 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.GeoUtils.top;
+import static com.google.gapid.util.Loadable.Message.error;
+import static com.google.gapid.util.Loadable.Message.info;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Ranges.memory;
@@ -24,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -45,6 +48,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
+import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.Float16;
 import com.google.gapid.util.IntRange;
@@ -91,15 +95,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
- * View that displays the observed memory contents in an infinte scrolling panel.
+ * View that displays the observed memory contents in an infinite scrolling panel.
  */
 public class MemoryView extends Composite
     implements Tab, Capture.Listener, AtomStream.Listener, Follower.Listener {
-  private static final Logger LOG = Logger.getLogger(MemoryView.class.getName());
+  protected static final Logger LOG = Logger.getLogger(MemoryView.class.getName());
 
   private final Client client;
   private final Models models;
@@ -130,6 +136,11 @@ public class MemoryView extends Composite
             memoryScroll.redraw();
           }
         });
+      }
+
+      @Override
+      public void showMessage(Message message) {
+        ifNotDisposed(loading, () -> loading.showMessage(message));
       }
     }, widgets);
     setLayout(new GridLayout(1, true));
@@ -882,14 +893,28 @@ public class MemoryView extends Composite
       }
       ListenableFuture<MemorySegment> future =
           data.get(startRow * BYTES_PER_ROW, (int)(endRow - startRow) * BYTES_PER_ROW);
+      MemorySegment result = null;
       if (future.isDone()) {
-        loadable.stopLoading();
-        return Futures.getUnchecked(future);
+        try {
+          result = Rpc.get(future, 0, TimeUnit.MILLISECONDS);
+          loadable.stopLoading();
+        } catch (RpcException e) {
+          if (e instanceof DataUnavailableException) {
+            loadable.showMessage(info(e));
+          } else {
+            loadable.showMessage(error(e));
+          }
+        } catch (TimeoutException e) {
+          throw new AssertionError(); // Should not happen.
+        } catch (ExecutionException e) {
+          LOG.log(WARNING, "Unexpected error fetching memory", e);
+          loadable.showMessage(error("Unexpected error: " + e.getCause()));
+        }
       } else {
         loadable.startLoading();
         future.addListener(loadable::stopLoading, MoreExecutors.directExecutor());
-        return null;
       }
+      return result;
     }
 
     @Override
