@@ -239,11 +239,9 @@ func rebuildCommandBuffer(ctx context.Context,
 		numCommandsToCopy += 1
 	case 2:
 		// Ends at a secondary command buffer
-		log.W(ctx, "Cut at secondary command buffer: %v", idx)
 		numSecondaryCmdBuffersToCopy = idx[1] + 1
 	case 3:
 		// Ends at a secondary command, copies including idx
-		log.W(ctx, "Cut at secondary command: %v", idx)
 		numSecondaryCmdBuffersToCopy = idx[1]
 		numSecondaryCommandsToCopy = idx[2] + 1
 	}
