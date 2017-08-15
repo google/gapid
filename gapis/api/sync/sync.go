@@ -41,8 +41,12 @@ type SynchronizedAPI interface {
 	// the given API
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 
-	// MutateSubcommands mutates the given Atom calling callback after each subcommand is executed.
-	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error
+	// MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
+	// attached to that Cmd. preSubCmdCallback and postSubCmdCallback will be
+	// called before and after executing each subcommand callback.
+	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State,
+		preSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd),
+		postSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd)) error
 }
 
 type writer struct {
@@ -94,10 +98,14 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 	return w.cmds, nil
 }
 
-// MutateWithSubcommands returns a list of commands that represent the correct
-// mutations to have the state for all commands before and including the given
-// index.
-func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error {
+// MutateWithSubcommands mutates a list of commands. And after mutating each
+// Cmd, the given post-Cmd callback will be called. And the given
+// pre-subcommand callback and the post-subcommand callback will be called
+// before and after calling each subcommand callback function.
+func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
+	postCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
+	preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
+	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -109,11 +117,11 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 
 	return api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			sync.MutateSubcommands(ctx, id, cmd, s, callback)
+			sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb)
 		} else {
 			cmd.Mutate(ctx, s, nil)
 		}
-		callback(s, api.SubCmdIdx{uint64(id)}, cmd)
+		postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
 		return nil
 	})
 }

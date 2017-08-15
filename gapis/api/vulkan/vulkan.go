@@ -31,7 +31,8 @@ import (
 type CustomState struct {
 	SubCmdIdx         api.SubCmdIdx
 	CurrentSubmission *api.Cmd
-	HandleSubcommand  func(interface{})
+	PreSubcommand     func(interface{})
+	PostSubcommand    func(interface{})
 	AddCommand        func(interface{})
 	IsRebuilding      bool
 }
@@ -105,7 +106,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	lastSubcommand := api.SubCmdIdx{}
 	lastCmdIndex := api.CmdID(0)
 
-	s.HandleSubcommand = func(a interface{}) {
+	s.PostSubcommand = func(a interface{}) {
 		// We do not record/handle any subcommands inside any of our
 		// rebuild commands
 		if s.IsRebuilding {
@@ -198,10 +199,19 @@ func (API) GetDependencyGraphBehaviourProvider(ctx context.Context) dependencygr
 	return newVulkanDependencyGraphBehaviourProvider()
 }
 
-func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State, callback func(*api.State, api.SubCmdIdx, api.Cmd)) error {
+func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
+	s *api.State, preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
+	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
 	c := GetState(s)
-	c.HandleSubcommand = func(_ interface{}) {
-		callback(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+	if postSubCmdCb != nil {
+		c.PostSubcommand = func(interface{}) {
+			postSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+		}
+	}
+	if preSubCmdCb != nil {
+		c.PreSubcommand = func(interface{}) {
+			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+		}
 	}
 	if err := cmd.Mutate(ctx, s, nil); err != nil && err == context.Canceled {
 		return err

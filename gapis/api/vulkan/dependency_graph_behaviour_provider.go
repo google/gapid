@@ -232,7 +232,7 @@ func (p *VulkanDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	// All the behaviours added by the executed commands will be rolled out when
 	// processing vkQueueSubmit or vkSetEvent atoms.
 	executedCommands := []executedCommandIndex{}
-	GetState(s).HandleSubcommand = func(a interface{}) {
+	GetState(s).PostSubcommand = func(a interface{}) {
 		subcommandIndex := append(api.SubCmdIdx(nil), GetState(s).SubCmdIdx...)
 		submitAtom, ok := (*GetState(s).CurrentSubmission).(*VkQueueSubmit)
 		if !ok {

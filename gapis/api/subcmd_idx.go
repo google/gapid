@@ -82,3 +82,8 @@ func (s *SubCmdIdx) Decrement() {
 		*s = (*s)[:len(*s)-1]
 	}
 }
+
+// Contains returns true if s is one of the parent nodes of s2 or equals to s2.
+func (s SubCmdIdx) Contains(s2 SubCmdIdx) bool {
+	return len(s2) >= len(s) && len(s) != 0 && s.Equals(s2[:len(s)])
+}
