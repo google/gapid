@@ -40,9 +40,6 @@ type State struct {
 	// Memory holds the memory state of the application.
 	Memory memory.Pools
 
-	// NextPoolID hold the identifier of the next Pool to be created.
-	NextPoolID memory.PoolID
-
 	// APIs holds the per-API context states.
 	APIs map[API]interface{}
 
@@ -79,24 +76,19 @@ func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *State {
 func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *State {
 	return &State{
 		MemoryLayout: memoryLayout,
-		Memory:       memory.Pools{memory.ApplicationPool: {}},
-		NextPoolID:   memory.ApplicationPool + 1,
+		Memory:       memory.NewPools(),
 		APIs:         map[API]interface{}{},
 		Allocator:    allocator,
 	}
 }
 
 func (s State) String() string {
-	mem := make([]string, 0, len(s.Memory))
-	for i, p := range s.Memory {
-		mem = append(mem, fmt.Sprintf("    %d: %v", i, strings.Replace(p.String(), "\n", "\n      ", -1)))
-	}
 	apis := make([]string, 0, len(s.APIs))
 	for a, s := range s.APIs {
 		apis = append(apis, fmt.Sprintf("    %v: %v", a, s))
 	}
 	return fmt.Sprintf("State{\n  %v\n  Memory:\n%v\n  APIs:\n%v\n}",
-		s.MemoryLayout, strings.Join(mem, "\n"), strings.Join(apis, "\n"))
+		s.MemoryLayout, s.Memory, strings.Join(apis, "\n"))
 }
 
 // MemoryReader returns a binary reader using the state's memory endianness to
@@ -108,7 +100,7 @@ func (s State) MemoryReader(ctx context.Context, d memory.Data) binary.Reader {
 // MemoryWriter returns a binary writer using the state's memory endianness to
 // write data to the pool p, for the range rng.
 func (s State) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
-	bw := memory.Writer(s.Memory[p], rng)
+	bw := memory.Writer(s.Memory.GetOrPanic(p), rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }
 

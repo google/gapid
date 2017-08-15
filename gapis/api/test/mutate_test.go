@@ -55,7 +55,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	s.MemoryLayout = ca
 
 	for _, w := range test.writes {
-		s.Memory[memory.ApplicationPool].Write(w.at.Address(), w.src)
+		s.Memory.ApplicationPool().Write(w.at.Address(), w.src)
 	}
 
 	api.ForeachCmd(ctx, test.cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

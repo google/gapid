@@ -106,7 +106,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread()}
-	cmd.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
+	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
 		info := pinfo.Read(ctx, image, s, nil)

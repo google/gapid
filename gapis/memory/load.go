@@ -25,7 +25,7 @@ import (
 
 // LoadSlice loads the slice elements from s into a go-slice of the slice type.
 func LoadSlice(ctx context.Context, s Slice, pools Pools, l *device.MemoryLayout) (interface{}, error) {
-	pool := pools[s.Pool()]
+	pool := pools.GetOrPanic(s.Pool())
 	rng := s.Range(l)
 	ioR := pool.Slice(rng).NewReader(ctx)
 	binR := endian.Reader(ioR, l.GetEndian())
@@ -41,7 +41,7 @@ func LoadSlice(ctx context.Context, s Slice, pools Pools, l *device.MemoryLayout
 
 // LoadPointer loads the element from p.
 func LoadPointer(ctx context.Context, p Pointer, pools Pools, l *device.MemoryLayout) (interface{}, error) {
-	pool := pools[p.Pool()]
+	pool := pools.GetOrPanic(p.Pool())
 	ioR := pool.At(p.Address()).NewReader(ctx)
 	binR := endian.Reader(ioR, l.GetEndian())
 	d := NewDecoder(binR, l)

@@ -20,7 +20,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/memory"
 )
 
 // wireframe returns a transform that set all the graphics pipeline to be
@@ -32,7 +31,7 @@ func wireframe(ctx context.Context) transform.Transformer {
 		s := out.State()
 		l := s.MemoryLayout
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		cmd.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
+		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		switch cmd := cmd.(type) {
 		case *VkCreateGraphicsPipelines:
 			count := uint64(cmd.CreateInfoCount)

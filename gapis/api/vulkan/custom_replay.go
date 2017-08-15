@@ -1242,10 +1242,10 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, s *api.State, b *buil
 func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
+	o.ApplyReads(s.Memory.ApplicationPool())
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
-	o.ApplyWrites(s.Memory[memory.ApplicationPool])
+	o.ApplyWrites(s.Memory.ApplicationPool())
 	_ = a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)
@@ -1646,7 +1646,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, s *api.State, b *builder
 	l := s.MemoryLayout
 	t := a.thread
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
+	o.ApplyReads(s.Memory.ApplicationPool())
 	imageObject := GetState(s).Images[a.Image]
 	cb := CommandBuilder{Thread: a.thread}
 	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
@@ -1783,7 +1783,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, s *api.State, b *builder.Bu
 	// ApplyReads() is necessary only because we need to access the Read
 	// observation data prior to calling the VkCreateBuffer's Mutate().
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
+	o.ApplyReads(s.Memory.ApplicationPool())
 
 	createInfo := a.PCreateInfo.Read(ctx, a, s, b)
 	createInfo.Usage = createInfo.Usage | VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
@@ -1815,7 +1815,7 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, s *api.State, b *builde
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory[memory.ApplicationPool])
+	o.ApplyReads(s.Memory.ApplicationPool())
 
 	// If we have data to fill this buffer with:
 	if !a.Data.IsNullptr() {

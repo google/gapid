@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -56,9 +55,9 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
-	pool, ok := s.Memory[memory.PoolID(p.Pool)]
-	if !ok {
-		return nil, fmt.Errorf("Pool %v not found", p)
+	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
+	if err != nil {
+		return nil, err
 	}
 
 	r := memory.Range{Base: p.Address, Size: p.Size}

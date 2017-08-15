@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/memory"
 )
 
 var luminanceSwizzle = map[GLenum]GLenum{
@@ -225,7 +224,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
-		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
+		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	}
 
 	format, err := getCompressedImageFormat(a.Internalformat)
@@ -278,7 +277,7 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
-		a.Extras().Observations().ApplyReads(s.Memory[memory.ApplicationPool])
+		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	}
 
 	format, err := getCompressedImageFormat(a.Internalformat)
