@@ -48,6 +48,7 @@ type PoolID uint32
 type Pools struct {
 	pools      map[PoolID]*Pool
 	nextPoolID PoolID
+	OnCreate   func(PoolID, *Pool)
 }
 
 type poolSlice struct {
@@ -116,6 +117,10 @@ func (m *Pools) NewPool() (id PoolID, p *Pool) {
 	id, p = m.nextPoolID, &Pool{}
 	m.pools[id] = p
 	m.nextPoolID++
+
+	if m.OnCreate != nil {
+		m.OnCreate(id, p)
+	}
 	return
 }
 
@@ -143,6 +148,14 @@ func (m *Pools) ApplicationPool() *Pool {
 // Count returns the number of pools.
 func (m *Pools) Count() int {
 	return len(m.pools)
+}
+
+// SetOnCreate sets the OnCreate callback and invokes it for every pool already created.
+func (m *Pools) SetOnCreate(onCreate func(PoolID, *Pool)) {
+	m.OnCreate = onCreate
+	for i, p := range m.pools {
+		onCreate(i, p)
+	}
 }
 
 // String returns a string representation of all pools.
