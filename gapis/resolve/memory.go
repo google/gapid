@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -57,7 +58,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 
 	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
 	if err != nil {
-		return nil, err
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrInvalidMemoryPool(p.Pool)}
 	}
 
 	r := memory.Range{Base: p.Address, Size: p.Size}

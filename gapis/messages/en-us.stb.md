@@ -146,3 +146,7 @@ The request path does not contain the required capture identifier.
 # NO_NEW_BUILDS_AVAILABLE
 
 There are no new builds available.
+
+# ERR_INVALID_MEMORY_POOL
+
+Pool {{pool}} not found.
