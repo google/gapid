@@ -112,6 +112,55 @@ void SpvManager::renameViewIndex() {
   }
 }
 
+// Explicitly initialize locals. This is a work around for SPIR-V cross problem
+// where it may generate code which reads locals before initializing them.
+// For example, "v.x = 42.0;" becomes "v = vec4(42.0, v.y, v.z, v.w);"
+void SpvManager::initLocals() {
+  for (auto& function : *module) {
+    std::map<Instruction*, std::unique_ptr<Instruction>> replacement;
+    std::unordered_set<Instruction*> seen;
+    function.ForEachInst([this,&seen,&replacement](Instruction* inst) {
+      if (inst->opcode() == SpvOpLoad || inst->opcode() == SpvOpStore) {
+        Instruction* var = def_use_mgr->GetDef(inst->GetSingleWordInOperand(0));
+        if (seen.insert(var).second) {
+          if (inst->opcode() == SpvOpLoad &&
+              var->opcode() == SpvOpVariable &&
+              (var->GetSingleWordInOperand(0) == spv::StorageClassFunction ||
+               var->GetSingleWordInOperand(0) == spv::StorageClassPrivate) &&
+              var->NumInOperands() == 1 /* No initializer */) {
+            // We have found Load before Store to a local variable (function scope)
+            auto* vecType = getPointeeIfPointer(var->type_id())->AsVector();
+            if (vecType && vecType->element_count() == 4) {
+              // TODO: Handle more then just vec4 types, or fix the issue in SPIRV-Cross
+              uint32_t elem_type_id = TypeToId(vecType->element_type());
+              uint32_t elem_id = addConstant(elem_type_id, {0});
+              uint32_t init_value_id = getUnique();
+              module->AddGlobalValue(makeInstruction(SpvOpConstantComposite, TypeToId(vecType), init_value_id,
+                                     {{elem_id, elem_id, elem_id, elem_id}}));
+              replacement[var] = makeInstruction(var->opcode(), var->type_id(), var->result_id(),
+                                                 {{var->GetSingleWordInOperand(0)}, {init_value_id}});
+            }
+          }
+        }
+      }
+    });
+    for (auto& basic_block : function) {
+      for (auto it = basic_block.begin(); it != basic_block.end(); it++) {
+        std::unique_ptr<Instruction> newInst(std::move(replacement[&*it]));
+        if (newInst != nullptr) {
+          it = it.Erase().InsertBefore(std::move(newInst));
+        }
+      }
+    }
+    for (auto it = module->types_values_begin(); it != module->types_values_end(); it++) {
+      std::unique_ptr<Instruction> newInst(std::move(replacement[&*it]));
+      if (newInst != nullptr) {
+        it = it.Erase().InsertBefore(std::move(newInst));
+      }
+    }
+  }
+}
+
 // Remove all layout(location = ...) qualifiers.
 // For most use cases we should be binding/remapping locations regardless whether they
 // are assigned explicit location or compiler generated one.
