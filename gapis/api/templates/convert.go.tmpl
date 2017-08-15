@@ -101,7 +101,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
-    ϟa := &{{$name}}{}¶
+    ϟa := &{{$name}}{caller: api.CmdNoID}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}

@@ -40,6 +40,8 @@ func (a *FBO) String() string {
 }
 
 // api.Cmd compliance
+func (FBO) Caller() api.CmdID      { return api.CmdNoID }
+func (FBO) SetCaller(api.CmdID)    {}
 func (FBO) Thread() uint64         { return 0 }
 func (FBO) SetThread(uint64)       {}
 func (FBO) CmdName() string        { return FBOName }
