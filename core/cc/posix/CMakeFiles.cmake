@@ -19,7 +19,6 @@
 
 set(files
     debugger.cpp
-    mutex.cpp
     thread_local.cpp
     thread.cpp
 )

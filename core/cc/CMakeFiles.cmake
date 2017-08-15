@@ -47,7 +47,6 @@ set(files
     mock_connection.h
     mru_cache.h
     mru_cache_test.cpp
-    mutex.h
     null_encoder.h
     null_writer.h
     scratch_allocator.h

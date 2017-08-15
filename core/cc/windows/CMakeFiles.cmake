@@ -21,7 +21,6 @@ set(files
     debugger.cpp
     get_gles_proc_address.cpp
     get_vulkan_proc_address.cpp
-    mutex.cpp
     thread.cpp
     thread_local.cpp
 )
