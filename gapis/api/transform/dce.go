@@ -40,11 +40,11 @@ type commandIndicesSet struct {
 }
 
 func newCommandIndicesSet() *commandIndicesSet {
-	return &commandIndicesSet{*api.NewSubCmdIdxTrie(), uint64(0)}
+	return &commandIndicesSet{api.SubCmdIdxTrie{}, uint64(0)}
 }
 
 func (s *commandIndicesSet) insert(fci api.SubCmdIdx) {
-	if _, ok := s.GetValue(fci); !ok {
+	if v := s.Value(fci); v != nil {
 		s.count++
 	}
 	s.SetValue(fci, true)
@@ -52,8 +52,8 @@ func (s *commandIndicesSet) insert(fci api.SubCmdIdx) {
 
 func (s *commandIndicesSet) contains(
 	fci api.SubCmdIdx) bool {
-	v, ok := s.GetValue(fci)
-	if ok {
+	v := s.Value(fci)
+	if v != nil {
 		if bv, ok := v.(bool); ok {
 			return bv
 		}
@@ -76,7 +76,6 @@ func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 }
 
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
-	log.W(ctx, "request: %v", fci)
 	t.requests.insert(fci)
 	bi := t.footprint.GetBehaviourIndex(ctx, fci)
 	if bi > t.endBehaviourIndex {
@@ -90,17 +89,10 @@ func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 }
 
 func (t *DCE) Flush(ctx context.Context, out Writer) {
-	log.W(ctx, "DCE Flush called on DCE: %p, %v", t, t)
 	t0 := dCECounter.Start()
 	livenessBoard, aliveCmds := t.backPropagate(ctx)
 	dCECounter.Stop(t0)
 	flushedCommands := newCommandIndicesSet()
-
-	debug := func(fmt string, args ...interface{}) {
-		if t.requests.count == uint64(1) {
-			log.W(ctx, fmt, args...)
-		}
-	}
 
 	numCmd, numDead, numDeadDraws, numLive, numLiveDraws := 0, 0, 0, 0, 0
 	deadMem, liveMem := uint64(0), uint64(0)
@@ -124,21 +116,6 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 				}
 			}
 
-			// log the memory size
-			// aliveCmd := t.footprint.Commands[fci[0]]
-			// mem := uint64(0)
-			// if e := aliveCmd.Extras(); e != nil && e.Observations() != nil {
-			// for _, r := range e.Observations().Reads {
-			// mem += r.Range.Size
-			// }
-			// }
-			// if mem/1024 > uint64(0) {
-			// debug(ctx, "Alive: CommandIndex %v, mem: %v KB, Command: %v", fci, mem/1024, t.footprint.Commands[fci[0]])
-			// }
-
-			// if numCmd > 27728 {
-			// debug("Alive CMD: %v, %v", fci, aliveCmd)
-			// }
 			out.MutateAndWrite(ctx, api.CmdID(fci[0]), aliveCmd)
 		} else {
 			if len(fci) == 1 && !aliveCmds.contains(fci) {
@@ -154,9 +131,6 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 						deadMem += r.Range.Size
 					}
 				}
-				// if t.requests.count == uint64(1) {
-				debug("Dead CMD: %v, %v", fci, deadCmd)
-				// }
 			}
 		}
 	}
@@ -166,7 +140,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 	dCEDrawLiveCounter.AddInt64(int64(numLiveDraws))
 	dCEDataDeadCounter.AddInt64(int64(deadMem))
 	dCEDataLiveCounter.AddInt64(int64(liveMem))
-	log.E(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
+	log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
 		100*numDead/numCmd, numDead, deadMem/1024/1024, numDeadDraws,
 		100*numLive/numCmd, numLive, liveMem/1024/1024, numLiveDraws)
 }

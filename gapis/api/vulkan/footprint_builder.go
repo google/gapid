@@ -688,7 +688,7 @@ type descriptorSet struct {
 
 func newDescriptorSet() *descriptorSet {
 	return &descriptorSet{
-		descriptors:      *api.NewSubCmdIdxTrie(),
+		descriptors:      api.SubCmdIdxTrie{},
 		descriptorCounts: map[uint64]uint64{},
 	}
 }
@@ -703,7 +703,7 @@ func (ds *descriptorSet) reserveDescriptor(bi, di uint64) {
 
 func (ds *descriptorSet) getDescriptor(ctx context.Context,
 	bh *dependencygraph.Behaviour, bi, di uint64) *descriptor {
-	if v, ok := ds.descriptors.GetValue([]uint64{bi, di}); ok {
+	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
 			read(ctx, bh, d)
 			return d
@@ -723,7 +723,7 @@ func (ds *descriptorSet) getDescriptor(ctx context.Context,
 func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	bh *dependencygraph.Behaviour, bi, di uint64, ty VkDescriptorType,
 	data dependencygraph.DefUseAtom, sampler vkHandle) {
-	if v, ok := ds.descriptors.GetValue([]uint64{bi, di}); ok {
+	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
 			write(ctx, bh, d)
 			d.backingData = data
@@ -1150,7 +1150,7 @@ func (vb *VulkanFootprintBuilder) BuildFootprint(ctx context.Context,
 	// Register callback function to record only the truly executed
 	// commandbuffer commands.
 	executedCommands := []api.SubCmdIdx{}
-	GetState(s).HandleSubcommand = func(a interface{}) {
+	GetState(s).PostSubcommand = func(a interface{}) {
 		queueSubmit, isQs := (*GetState(s).CurrentSubmission).(*VkQueueSubmit)
 		if !isQs {
 			log.E(ctx, "CurrentSubmission command in State is not a VkQueueSubmit")
@@ -2897,13 +2897,19 @@ func (vb *VulkanFootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Buffer))
 	case *VkGetRenderAreaGranularity:
 		read(ctx, bh, vkHandle(cmd.RenderPass))
+	case *VkEnumerateInstanceExtensionProperties,
+		*VkEnumerateDeviceExtensionProperties,
+		*VkEnumerateInstanceLayerProperties,
+		*VkEnumerateDeviceLayerProperties:
 
-	// Kept alive
+	// Keep alive
 	case *VkGetDeviceProcAddr,
 		*VkGetInstanceProcAddr:
 		bh.Alive = true
 	case *VkCreateInstance,
 		*RecreateInstance:
+		bh.Alive = true
+	case *VkEnumeratePhysicalDevices:
 		bh.Alive = true
 	case *VkCreateDevice,
 		*RecreateDevice,
