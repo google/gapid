@@ -90,6 +90,7 @@ class SpvManager {
   void mapDeclarationNames(std::string = "x");
   void renameViewIndex();
   void removeLayoutLocations();
+  void initLocals();
   void makeSpvDebuggable();
   std::vector<unsigned int> getSpvBinary();
   debug_instructions_t* getDebugInstructions();
