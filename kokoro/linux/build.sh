@@ -112,7 +112,7 @@ cd ../../
 # Build the .deb package.
 echo "$(date): Building package."
 dpkg-deb -v --build  gapid
-mv gapid.deb gapid-$VERSION.deb
+mv gapid.deb gapid-$VERSION-linux.deb
 echo "$(date): Done."
 
 # Clean up - this prevents kokoro from rsyncing many unneeded files
