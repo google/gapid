@@ -17,6 +17,7 @@ package trace
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +43,13 @@ type client struct {
 	registry *bind.Registry
 	runners  map[string]*runner
 	l        sync.Mutex
+}
+
+type retryError struct {
+}
+
+func (r retryError) Error() string {
+	return "try again"
 }
 
 type runner struct {
@@ -117,16 +125,20 @@ func (r *runner) trace(ctx context.Context, t *Task) (err error) {
 	if err := r.manager.Update(ctx, t.Action, job.Running, nil); err != nil {
 		return err
 	}
-	output, err := doTrace(ctx, t.Action, t.Input, r.store, r.device, r.tempDir)
-	status := job.Succeeded
-	if err != nil {
-		status = job.Failed
-		log.E(ctx, "Error running trace: %v", err)
-	} else if output.CallError != "" {
-		status = job.Failed
-		log.E(ctx, "Error during trace: %v", output.CallError)
+	for {
+		output, err := doTrace(ctx, t.Action, t.Input, r.store, r.device, r.tempDir)
+		status := job.Succeeded
+		if _, ok := err.(retryError); ok {
+			continue
+		} else if err != nil {
+			status = job.Failed
+			log.E(ctx, "Error running trace: %v", err)
+		} else if output.CallError != "" {
+			status = job.Failed
+			log.E(ctx, "Error during trace: %v", output.CallError)
+		}
+		return r.manager.Update(ctx, t.Action, status, output)
 	}
-	return r.manager.Update(ctx, t.Action, status, output)
 }
 
 func doTrace(ctx context.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
@@ -176,13 +188,19 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	}
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)
-	output = fmt.Sprintf("%s\n\n%s", cmd, output)
-	log.I(ctx, output)
+	if strings.Contains(output, "text file busy") || strings.Contains(output, "Failed to connect to the GAPIS server") || (callErr != nil && strings.Contains(callErr.Error(), "text file busy")) {
+		return nil, retryError{}
+	}
 
 	outputObj := &Output{}
 	if callErr != nil {
+		if strings.Contains(callErr.Error(), "text file busy") {
+			return nil, retryError{}
+		}
 		outputObj.CallError = callErr.Error()
 	}
+	output = fmt.Sprintf("%s\n\n%s", cmd, output)
+	log.I(ctx, output)
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
 		return nil, err
