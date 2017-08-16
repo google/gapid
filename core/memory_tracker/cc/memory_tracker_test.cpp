@@ -972,9 +972,9 @@ TEST(MemoryTrackerTest, OverlappedTrackingRange) {
 }
 
 // Allocates a page of memory, add a not-aligned range of space to the tracker,
-// touches an address higher than the tracking range, the tracker should not
-// record the touched page.
-TEST(MemoryTrackerTest, UnalignedRangeNotTrackingHigherAddress) {
+// touches an address higher than the tracking range, the tracker should record
+// the touched page.
+TEST(MemoryTrackerTest, UnalignedRangeTrackingHigherAddress) {
   SilentSignal<SIGSEGV> ss;
   SilentSignal<SIGTRAP> st;
   ASSERT_TRUE(st.succeeded());
@@ -997,13 +997,14 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingHigherAddress) {
   std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
   EXPECT_TRUE(t.ClearTrackingRanges());
 
-  EXPECT_EQ(0u, dirty_pages.size());
+  EXPECT_EQ(1u, dirty_pages.size());
+  EXPECT_EQ(m.mem(), dirty_pages[0]);
   ASSERT_TRUE(t.UnregisterSegfaultHandler());
 }
 
 // Allocates a page of memory, add a not-aligned range of space to the tracker,
-// touches an address lower than the tracking range, the tracker should not
-// record the touched page.
+// touches an address lower than the tracking range, the tracker should record
+// the touched page.
 TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
   SilentSignal<SIGSEGV> ss;
   SilentSignal<SIGTRAP> st;
@@ -1026,7 +1027,41 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
   std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
   EXPECT_TRUE(t.ClearTrackingRanges());
 
-  EXPECT_EQ(0u, dirty_pages.size());
+  EXPECT_EQ(1u, dirty_pages.size());
+  EXPECT_EQ(m.mem(), dirty_pages[0]);
+  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+}
+
+// Two not overlapping ranges in the same page. Removing just one of them
+// should not affect tracking of the other one.
+TEST(MemoryTrackerTest, RemoveOneRangeShouldNotAffectOthersInSamePage) {
+  SilentSignal<SIGSEGV> ss;
+  SilentSignal<SIGTRAP> st;
+
+  const size_t first_offset = 128;
+  const size_t first_size = 97;
+
+  const size_t second_offset = 1024;
+  const size_t second_size = 97;
+
+  MemoryTracker t;
+  AlignedMemory m(t.page_size(), t.page_size());
+
+  void* first_start = VoidPointerAdd(m.mem(), first_offset);
+  void* second_start = VoidPointerAdd(m.mem(), second_offset);
+  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  EXPECT_TRUE(t.AddTrackingRange(first_start, first_size));
+  EXPECT_TRUE(t.AddTrackingRange(second_start, second_size));
+
+  EXPECT_TRUE(t.RemoveTrackingRange(first_start, first_size));
+
+  memset(second_start, 0xFF, second_size);
+
+  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
+  EXPECT_TRUE(t.ClearTrackingRanges());
+
+  EXPECT_EQ(1u, dirty_pages.size());
+  EXPECT_EQ(m.mem(), dirty_pages[0]);
   ASSERT_TRUE(t.UnregisterSegfaultHandler());
 }
 
