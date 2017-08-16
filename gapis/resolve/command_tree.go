@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -339,33 +338,40 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
-	for k, v := range snc.SubcommandGroups {
-		r := out.root.AddRoot([]uint64{uint64(k)})
-		// subcommands are added before nested SubCmdRoots.
-		sort.SliceStable(v, func(i, j int) bool { return len(v[i]) < len(v[j]) })
-		for _, x := range v {
-			r.Insert([]uint64{uint64(k)}, append([]uint64{}, x...))
-		}
-	}
-
 	drawOrClearCmds := api.Spans{} // All the spans will have length 1
 
-	// Now we have all the groups, we finally need to add the filtered atoms.
-	{
-		// Clone the context to prevent cancellation occuring in Mutate() calls.
-		ctx := keys.Clone(context.Background(), ctx)
+	// Now we have all the groups, we finally need to add the filtered commands.
+	s = c.NewState()
+	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, s, nil)
 
-		s = c.NewState()
-		out.root.AddAtoms(func(i api.CmdID) bool {
-			cmd := c.Commands[i]
-			cmd.Mutate(ctx, s, nil)
-			include := filter(cmd, s)
-			if include && (cmd.CmdFlags().IsDrawCall() || cmd.CmdFlags().IsClear()) {
-				drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{i, i + 1})
+		if !filter(cmd, s) {
+			return nil
+		}
+
+		if v, ok := snc.SubcommandGroups[id]; ok {
+			r := out.root.AddRoot([]uint64{uint64(id)})
+			// subcommands are added before nested SubCmdRoots.
+			sort.SliceStable(v, func(i, j int) bool { return len(v[i]) < len(v[j]) })
+			for _, x := range v {
+				r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
 			}
-			return include
-		}, uint64(p.MaxChildren), uint64(p.MaxNeighbours))
-	}
+			return nil
+		}
+
+		out.root.AddCommand(id)
+
+		if cmd.CmdFlags().IsDrawCall() || cmd.CmdFlags().IsClear() {
+			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
+				Start: id, End: id + 1,
+			})
+		}
+
+		return nil
+	})
+
+	// Finally cluster the commands
+	out.root.Cluster(uint64(p.MaxChildren), uint64(p.MaxNeighbours))
 
 	setThumbnails(ctx, &out.root, drawOrClearCmds)
 
@@ -381,7 +387,7 @@ func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandT
 			// Find group which contains this draw command
 			group := &t.root
 			for true {
-				if idx := group.Spans.IndexOf(uint64(i)); idx != -1 {
+				if idx := group.Spans.IndexOf(i); idx != -1 {
 					if subgroup, ok := group.Spans[idx].(*api.CmdIDGroup); ok {
 						group = subgroup
 						continue
@@ -392,7 +398,7 @@ func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandT
 
 			// Start with group of size 1 and grow it backward as long as nothing gets in the way.
 			drawStart := i
-			for drawStart >= group.Bounds().Start+1 && group.Spans.IndexOf(uint64(drawStart-1)) == -1 {
+			for drawStart >= group.Bounds().Start+1 && group.Spans.IndexOf(drawStart-1) == -1 {
 				drawStart--
 			}
 
@@ -414,7 +420,7 @@ func addFrameEvents(ctx context.Context, events *service.Events, p *path.Command
 			frameStart = i
 
 			// If the start is within existing group, move it past the end of the group
-			if idx := t.root.Spans.IndexOf(uint64(frameStart)); idx != -1 {
+			if idx := t.root.Spans.IndexOf(frameStart); idx != -1 {
 				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
 					frameStart = subgroup.Range.End
 				}
@@ -425,7 +431,7 @@ func addFrameEvents(ctx context.Context, events *service.Events, p *path.Command
 			frameEnd = i
 
 			// If the end is within existing group, move it to the end of the group
-			if idx := t.root.Spans.IndexOf(uint64(frameEnd)); idx != -1 {
+			if idx := t.root.Spans.IndexOf(frameEnd); idx != -1 {
 				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
 					frameEnd = subgroup.Range.Last()
 				}

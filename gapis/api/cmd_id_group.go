@@ -65,10 +65,10 @@ func NewRoot(idx []uint64) *SubCmdRoot {
 // mutation.
 type Spans []Span
 
-// IndexOf returns the index of the group that contains the command index or
+// IndexOf returns the index of the group that contains the command id or
 // -1 if not found.
-func (l *Spans) IndexOf(atomIndex uint64) int {
-	return interval.IndexOf(l, atomIndex)
+func (l *Spans) IndexOf(id CmdID) int {
+	return interval.IndexOf(l, uint64(id))
 }
 
 // Length returns the number of groups in the list.
@@ -216,7 +216,7 @@ func (g CmdIDGroup) DeepCount(pred func(g CmdIDGroup) bool) uint64 {
 			if pred(*s) {
 				count += s.DeepCount(pred)
 			} else {
-				count += 1
+				count++
 			}
 		default:
 			count += s.itemCount()
@@ -369,33 +369,32 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		})
 		slice.InsertBefore(&g.Spans, i, NewRoot(rootidx))
 		return g.Spans[i].(*SubCmdRoot)
-	} else {
-		if c != 1 {
-			panic("This should not happen, a single command cannot span more than one group")
+	}
+	if c != 1 {
+		panic("This should not happen, a single command cannot span more than one group")
+	}
+	// We should insert into one of the spans.
+	// At least one overlap
+	switch first := g.Spans[s].(type) {
+	case *CmdIDGroup:
+		return first.AddRoot(rootidx)
+	case *CmdIDRange:
+		firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1])}
+		if firstHalf.End > firstHalf.Start {
+			slice.InsertBefore(&g.Spans, s, firstHalf)
+			s++
 		}
-		// We should insert into one of the spans.
-		// At least one overlap
-		switch first := g.Spans[s].(type) {
-		case *CmdIDGroup:
-			return first.AddRoot(rootidx)
-		case *CmdIDRange:
-			firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1])}
-			if firstHalf.End > firstHalf.Start {
-				slice.InsertBefore(&g.Spans, s, firstHalf)
-				s++
-			}
-			slice.Replace(&g.Spans, s, 1, NewRoot(rootidx))
-			secondHalf := &CmdIDRange{CmdID(rootidx[len(rootidx)-1] + 1), first.End}
-			slice.InsertBefore(&g.Spans, s+1, secondHalf)
-			return g.Spans[s].(*SubCmdRoot)
-		default:
-			x := fmt.Sprintf("Inserting root into non-group/non-range %+v, %+v", first, rootidx)
-			panic(x)
-		}
+		slice.Replace(&g.Spans, s, 1, NewRoot(rootidx))
+		secondHalf := &CmdIDRange{CmdID(rootidx[len(rootidx)-1] + 1), first.End}
+		slice.InsertBefore(&g.Spans, s+1, secondHalf)
+		return g.Spans[s].(*SubCmdRoot)
+	default:
+		x := fmt.Sprintf("Inserting root into non-group/non-range %+v, %+v", first, rootidx)
+		panic(x)
 	}
 }
 
-// Inserts a new leaf into the SubCmdRoot.
+// Insert adds a new leaf into the SubCmdRoot.
 // This creates new SubcommandRoots underneath if necessary.
 func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 	id := CmdID(r[0])
@@ -431,7 +430,7 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 	}
 }
 
-// Finds the SubCmdRoot that represents the given CmdID
+// FindSubCommandRoot returns the SubCmdRoot that represents the given CmdID.
 func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	for _, x := range g.Spans {
 		if k, ok := x.(*SubCmdRoot); ok {
@@ -443,7 +442,60 @@ func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	return nil
 }
 
-// AddAtoms fills the group and sub-groups with commands based on the predicate pred.
+// AddCommand adds the command to the groups.
+func (g *CmdIDGroup) AddCommand(id CmdID) bool {
+	i := sort.Search(len(g.Spans), func(i int) bool {
+		return id < g.Spans[i].Bounds().Start
+	})
+
+	var prev, next *CmdIDRange
+	if i > 0 {
+		if span := g.Spans[i-1]; span.Bounds().Contains(id) {
+			// id is within an existing span
+			switch span := span.(type) {
+			case *CmdIDGroup:
+				return span.AddCommand(id)
+			default:
+				return false // Collision
+			}
+		}
+
+		// id is not inside an existing span.
+
+		switch span := g.Spans[i-1].(type) {
+		case *CmdIDRange:
+			if span.End == id {
+				prev = span
+			}
+		}
+	}
+
+	if i < len(g.Spans) {
+		switch span := g.Spans[i].(type) {
+		case *CmdIDRange:
+			if span.Start == id+1 {
+				next = span
+			}
+		}
+	}
+
+	switch {
+	case prev != nil && next != nil: // merge
+		prev.End = next.End
+		slice.RemoveAt(&g.Spans, i, 1)
+	case prev != nil: // grow prev
+		prev.End++
+	case next != nil: // grow next
+		next.Start--
+	default: // insert
+		slice.InsertBefore(&g.Spans, i, &CmdIDRange{id, id + 1})
+	}
+
+	return true
+}
+
+// Cluster groups together chains of command using the limits maxChildren and
+// maxNeighbours.
 //
 // If maxChildren is positive, the group, and any of it's decendent
 // groups, which have more than maxChildren child elements, will have their
@@ -451,46 +503,7 @@ func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 //
 // If maxNeighbours is positive, we will group long list of ungrouped commands,
 // which are next to a group. This ensures the group is not lost in noise.
-func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren, maxNeighbours uint64) error {
-	rng := g.Range
-	spans := make(Spans, 0, len(g.Spans))
-
-	scan := func(to CmdID) {
-		for id := rng.Start; id < to; id++ {
-			if !pred(id) {
-				rng.End = id
-				if rng.Start != rng.End {
-					spans = append(spans, &CmdIDRange{rng.Start, rng.End})
-				}
-				rng.Start = id + 1
-			}
-		}
-		if rng.Start != to {
-			rng.End = to
-			spans = append(spans, &CmdIDRange{rng.Start, rng.End})
-			rng.Start = to
-		}
-	}
-
-	for _, s := range g.Spans {
-		switch s := s.(type) {
-		case *CmdIDGroup:
-			scan(s.Bounds().Start)
-			s.AddAtoms(pred, maxChildren, maxNeighbours)
-			rng.Start = s.Bounds().End
-			spans = append(spans, s)
-		case *SubCmdRoot:
-			scan(s.Bounds().Start)
-			pred(CmdID(s.Id[0])) // We have to run pred in case it has
-			// side-effects, but for now ignore the results
-			rng.Start = s.Bounds().End
-			spans = append(spans, s)
-		}
-	}
-	scan(g.Range.End)
-
-	g.Spans = spans
-
+func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 	if maxNeighbours > 0 {
 		spans := Spans{}
 		accum := Spans{}
@@ -523,8 +536,6 @@ func (g *CmdIDGroup) AddAtoms(pred func(id CmdID) bool, maxChildren, maxNeighbou
 	if maxChildren > 0 && g.Count() > maxChildren {
 		g.Spans = g.Spans.split(maxChildren)
 	}
-
-	return nil
 }
 
 // split returns a new list of spans where each new span will represent no more
