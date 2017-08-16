@@ -21,20 +21,20 @@ set(files
     api.go
     api.pb.go
     api.proto
+    cmd.go
     cmd_convert.go
     cmd_errors.go
     cmd_extras.go
     cmd_flags.go
     cmd_foreach.go
-    cmd_id_group_test.go
+    cmd_id.go
     cmd_id_group.go
+    cmd_id_group_test.go
     cmd_id_range.go
     cmd_id_set.go
-    cmd_id.go
     cmd_observations.go
-    cmd_service_test.go
     cmd_service.go
-    cmd.go
+    cmd_service_test.go
     context.go
     doc.go
     labeled.go
@@ -43,6 +43,8 @@ set(files
     state.go
     subcmd_idx.go
     subcmd_idx_test.go
+    subcmd_idx_trie.go
+    subcmd_idx_trie_test.go
     texture.go
 )
 set(dirs
@@ -50,8 +52,11 @@ set(dirs
     all
     core
     gles
+    gvr
     sync
     templates
     test
+    testcmd
+    transform
     vulkan
 )
