@@ -15,25 +15,24 @@
 package web
 
 import (
-	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
 
-	"github.com/google/gapid/test/robot/subject"
+	"github.com/google/gapid/test/robot/search"
+	"github.com/google/gapid/test/robot/search/script"
 )
 
-func (s *Server) handleSubjects(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	result := []*subject.Subject(nil)
 
-	if query, err := query(w, r); err == nil {
-		if err = s.Subject.Search(ctx, query, func(ctx context.Context, entry *subject.Subject) error {
-			result = append(result, entry)
-			return nil
-		}); err != nil {
-			writeError(w, 500, err)
-			return
-		}
-		json.NewEncoder(w).Encode(result)
+func query(w http.ResponseWriter, r *http.Request) (*search.Query, error) {
+	builder, err := script.Parse(r.Context(), r.FormValue("q"))
+	if err != nil {
+		return nil, writeError(w, 400, err)
 	}
+	return builder.Query(), nil
+}
+
+func writeError(w http.ResponseWriter, code int, err error) error {
+	w.WriteHeader(code)
+	fmt.Fprintf(w, "Error processing request: %v", err)
+	return err
 }

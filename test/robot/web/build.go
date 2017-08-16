@@ -20,35 +20,52 @@ import (
 	"net/http"
 
 	"github.com/google/gapid/test/robot/build"
-	"github.com/google/gapid/test/robot/search/query"
 )
 
 func (s *Server) handleArtifacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*build.Artifact(nil)
-	s.Build.SearchArtifacts(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Artifact) error {
-		result = append(result, entry)
-		return nil
-	})
-	json.NewEncoder(w).Encode(result)
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Build.SearchArtifacts(ctx, query, func(ctx context.Context, entry *build.Artifact) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
+	}
 }
 
 func (s *Server) handlePackages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*build.Package(nil)
-	s.Build.SearchPackages(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Package) error {
-		result = append(result, entry)
-		return nil
-	})
-	json.NewEncoder(w).Encode(result)
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Build.SearchPackages(ctx, query, func(ctx context.Context, entry *build.Package) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
+	}
 }
 
 func (s *Server) handleTracks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*build.Track(nil)
-	s.Build.SearchTracks(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *build.Track) error {
-		result = append(result, entry)
-		return nil
-	})
-	json.NewEncoder(w).Encode(result)
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Build.SearchTracks(ctx, query, func(ctx context.Context, entry *build.Track) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
+	}
 }

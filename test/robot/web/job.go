@@ -20,18 +20,20 @@ import (
 	"net/http"
 
 	"github.com/google/gapid/test/robot/job"
-	"github.com/google/gapid/test/robot/search/query"
 )
 
 func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*job.Device{}
-	if err := s.Job.SearchDevices(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *job.Device) error {
-		result = append(result, entry)
-		return nil
-	}); err != nil {
-		w.WriteHeader(500)
-		return
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Job.SearchDevices(ctx, query, func(ctx context.Context, entry *job.Device) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
 	}
-	json.NewEncoder(w).Encode(result)
 }

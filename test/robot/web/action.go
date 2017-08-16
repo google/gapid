@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/test/robot/replay"
 	"github.com/google/gapid/test/robot/report"
-	"github.com/google/gapid/test/robot/search/query"
 	"github.com/google/gapid/test/robot/trace"
 )
 
@@ -29,43 +28,49 @@ func (s *Server) handleReplays(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*replay.Action{}
 
-	if err := s.Replay.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *replay.Action) error {
-		result = append(result, entry)
-		return nil
-	}); err != nil {
-		w.WriteHeader(500)
-		return
-	}
+	if query, err := query(w, r); err == nil {
+		if err = s.Replay.Search(ctx, query, func(ctx context.Context, entry *replay.Action) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
 
-	json.NewEncoder(w).Encode(result)
+		json.NewEncoder(w).Encode(result)
+	}
 }
 
 func (s *Server) handleTraces(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*trace.Action{}
 
-	if err := s.Trace.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *trace.Action) error {
-		result = append(result, entry)
-		return nil
-	}); err != nil {
-		w.WriteHeader(500)
-		return
-	}
+	if query, err := query(w, r); err == nil {
+		if err = s.Trace.Search(ctx, query, func(ctx context.Context, entry *trace.Action) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
 
-	json.NewEncoder(w).Encode(result)
+		json.NewEncoder(w).Encode(result)
+	}
 }
 
 func (s *Server) handleReports(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*report.Action{}
 
-	if err := s.Report.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *report.Action) error {
-		result = append(result, entry)
-		return nil
-	}); err != nil {
-		w.WriteHeader(500)
-		return
-	}
+	if query, err := query(w, r); err == nil {
+		if err = s.Report.Search(ctx, query, func(ctx context.Context, entry *report.Action) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
 
-	json.NewEncoder(w).Encode(result)
+		json.NewEncoder(w).Encode(result)
+	}
 }
