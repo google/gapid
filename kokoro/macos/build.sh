@@ -123,7 +123,7 @@ cp $SRC/kokoro/macos/background\@2x.png .
 # Yes, height, then width.... sigh.
 sips -z 480 640 background\@2x.png --out background.png
 cp $SRC/kokoro/macos/dmg-settings.py .
-~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION.dmg
+~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
 
 # Clean up - this prevents kokoro from rsyncing many unneeded files
 shopt -s extglob
