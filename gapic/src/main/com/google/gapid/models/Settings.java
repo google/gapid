@@ -65,7 +65,7 @@ public class Settings {
   public String traceOutDir = "";
   public String traceOutFile = "";
   public boolean traceClearCache = false;
-  public boolean traceDisablePcs = false;
+  public boolean traceDisablePcs = true;
   public String traceExecutable = "";
   public String traceArgs = "";
   public String traceCwd = "";
@@ -143,9 +143,9 @@ public class Settings {
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
-    hideScrubber = getBoolean(properties, "hide.scrubber");
-    hideLeft = getBoolean(properties, "hide.left");
-    hideRight = getBoolean(properties, "hide.right");
+    hideScrubber = getBoolean(properties, "hide.scrubber", hideScrubber);
+    hideLeft = getBoolean(properties, "hide.left", hideLeft);
+    hideRight = getBoolean(properties, "hide.right", hideRight);
     splitterWeights = getIntList(properties, "splitter.weights", splitterWeights);
     leftTabs = getStringList(properties, "tabs.left", leftTabs);
     centerTabs = getStringList(properties, "tabs.center", centerTabs);
@@ -164,14 +164,14 @@ public class Settings {
     tracePackage = properties.getProperty("trace.package", tracePackage);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
     traceOutFile = properties.getProperty("trace.file", traceOutFile);
-    traceClearCache = getBoolean(properties, "trace.clearCache");
-    traceDisablePcs = getBoolean(properties, "trace.disablePCS");
+    traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
+    traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceExecutable = properties.getProperty("trace.executable", traceExecutable);
     traceArgs = properties.getProperty("trace.args", traceArgs);
     traceCwd  = properties.getProperty("trace.cwd", traceCwd);
-    traceMidExecution = getBoolean(properties, "trace.midExecution");
+    traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
-    skipWelcomeScreen = getBoolean(properties, "skip.welcome");
+    skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
     autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
@@ -246,12 +246,12 @@ public class Settings {
     }
   }
 
-  private static boolean getBoolean(Properties properties, String name) {
-    return "true".equalsIgnoreCase(properties.getProperty(name, ""));
-  }
-
   private static boolean getBoolean(Properties properties, String name, boolean dflt) {
-    return "true".equalsIgnoreCase(properties.getProperty(name, dflt ? "true" : "false"));
+    if (dflt) {
+      return !"false".equalsIgnoreCase(properties.getProperty(name));
+    } else {
+      return "true".equalsIgnoreCase(properties.getProperty(name));
+    }
   }
 
   private static int[] getIntList(Properties properties, String name, int[] dflt) {
