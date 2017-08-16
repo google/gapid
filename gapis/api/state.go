@@ -100,7 +100,7 @@ func (s State) MemoryReader(ctx context.Context, d memory.Data) binary.Reader {
 // MemoryWriter returns a binary writer using the state's memory endianness to
 // write data to the pool p, for the range rng.
 func (s State) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
-	bw := memory.Writer(s.Memory.GetOrPanic(p), rng)
+	bw := memory.Writer(s.Memory.MustGet(p), rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }
 
