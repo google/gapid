@@ -258,32 +258,36 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
   if (context == null) {
     SetContext(null)
   } else if context in EGLContexts {
-      ctx := EGLContexts[context]
-      SetContext(ctx)
-      if !ctx.Info.Initialized {
-        ApplyStaticContextState(ctx, GetEGLStaticContextState(display, draw, context))
-      }
-      ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))
-    } else {
-      staticState := GetEGLStaticContextState(display, draw, context)
-      dynamicState := GetEGLDynamicContextState(display, draw, context)
-      if (dynamicState != null) && (staticState != null) {
-        // We don't know anything about this context, but it existed at trace
-        // time. In this situation it is likely that the context was created
-        // before the interceptor was injected. The best thing we can do in this
-        // situation is to build the context now.
-        _ = newMsg(SEVERITY_WARNING, new!WARN_UNKNOWN_CONTEXT(id: as!u64(context)))
-        ctx := CreateContext(null)
-        EGLContexts[context] = ctx
-        ApplyStaticContextState(ctx, staticState)
-        ApplyDynamicContextState(ctx, dynamicState)
-        SetContext(ctx)
-      } else if context != null {
-          // TODO: onEGLError(EGL_BAD_CONTEXT)
-          _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
-          abort
-        }
+    ctx := EGLContexts[context]
+    if ctx.Other.IsBound {
+      _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_BOUND(id: as!u64(context)))
+      abort
     }
+    SetContext(ctx)
+    if !ctx.Info.Initialized {
+      ApplyStaticContextState(ctx, GetEGLStaticContextState(display, draw, context))
+    }
+    ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))
+  } else {
+    staticState := GetEGLStaticContextState(display, draw, context)
+    dynamicState := GetEGLDynamicContextState(display, draw, context)
+    if (dynamicState != null) && (staticState != null) {
+      // We don't know anything about this context, but it existed at trace
+      // time. In this situation it is likely that the context was created
+      // before the interceptor was injected. The best thing we can do in this
+      // situation is to build the context now.
+      _ = newMsg(SEVERITY_WARNING, new!WARN_UNKNOWN_CONTEXT(id: as!u64(context)))
+      ctx := CreateContext(null)
+      EGLContexts[context] = ctx
+      ApplyStaticContextState(ctx, staticState)
+      ApplyDynamicContextState(ctx, dynamicState)
+      SetContext(ctx)
+    } else if context != null {
+      // TODO: onEGLError(EGL_BAD_CONTEXT)
+      _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
+      abort
+    }
+  }
   return ?
 }
 
