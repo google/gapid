@@ -118,6 +118,8 @@ func (a *Actions) do(ctx context.Context, w *Worker, input Input) (string, error
 
 // update an action, and return the merged action.
 func (a *Actions) update(ctx context.Context, action Action) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.ledger.Add(ctx, action)
 }
 
