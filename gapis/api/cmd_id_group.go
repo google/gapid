@@ -520,9 +520,10 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 			}
 		}
 		for _, s := range g.Spans {
-			if _, isCmdIDRange := s.(*CmdIDRange); isCmdIDRange {
+			switch s.(type) {
+			case *CmdIDRange, *SubCmdRoot:
 				accum = append(accum, s)
-			} else {
+			default:
 				flush()
 				spans = append(spans, s)
 			}
