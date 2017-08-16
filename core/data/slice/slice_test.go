@@ -85,6 +85,39 @@ func TestRemove(t *testing.T) {
 	}
 }
 
+func TestRemoveAt(t *testing.T) {
+	ctx := log.Testing(t)
+
+	for _, test := range []struct {
+		data     []int
+		i, n     int
+		expected []int
+	}{
+		// No removal.
+		{[]int{1, 2, 3}, 0, 0, []int{1, 2, 3}},
+		{[]int{1, 2, 3}, 1, 0, []int{1, 2, 3}},
+		{[]int{1, 2, 3}, 2, 0, []int{1, 2, 3}},
+
+		// Single removal.
+		{[]int{1, 2, 3}, 0, 1, []int{2, 3}},
+		{[]int{1, 2, 3}, 1, 1, []int{1, 3}},
+		{[]int{1, 2, 3}, 2, 1, []int{1, 2}},
+
+		// Double removal.
+		{[]int{1, 2, 3}, 0, 2, []int{3}},
+		{[]int{1, 2, 3}, 1, 2, []int{1}},
+
+		// All.
+		{[]int{1, 2, 3}, 0, 3, []int{}},
+	} {
+		got := make([]int, len(test.data))
+		copy(got, test.data)
+		slice.RemoveAt(&got, test.i, test.n)
+		assert.For(ctx, "RemoveAt(%v, %v, %v)", test.data, test.i, test.n).
+			That(got).DeepEquals(test.expected)
+	}
+}
+
 func TestInsertBefore(t *testing.T) {
 	ctx := log.Testing(t)
 
