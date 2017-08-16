@@ -44,7 +44,7 @@ type Pool struct {
 // PoolID is an identifier of a Pool.
 type PoolID uint32
 
-// Pools is a map of PoolID to *Pool.
+// Pools contains a collection of Pools identified by PoolIDs.
 type Pools struct {
 	pools      map[PoolID]*Pool
 	nextPoolID PoolID
@@ -113,7 +113,7 @@ func (m *Pool) String() string {
 }
 
 // New creates and returns a new Pool and its id.
-func (m *Pools) NewPool() (id PoolID, p *Pool) {
+func (m *Pools) New() (id PoolID, p *Pool) {
 	id, p = m.nextPoolID, &Pool{}
 	m.pools[id] = p
 	m.nextPoolID++
@@ -132,8 +132,8 @@ func (m *Pools) Get(id PoolID) (*Pool, error) {
 	return nil, fmt.Errorf("Pool %v not found", id)
 }
 
-// GetOrPanic returns the Pool with the given id, or panics if it's not found.
-func (m *Pools) GetOrPanic(id PoolID) *Pool {
+// MustGet returns the Pool with the given id, or panics if it's not found.
+func (m *Pools) MustGet(id PoolID) *Pool {
 	if p, ok := m.pools[id]; ok {
 		return p
 	}
