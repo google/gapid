@@ -20,15 +20,20 @@ import (
 	"net/http"
 
 	"github.com/google/gapid/test/robot/master"
-	"github.com/google/gapid/test/robot/search/query"
 )
 
 func (s *Server) handleSatellites(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result := []*master.Satellite(nil)
-	s.Master.Search(ctx, query.Bool(true).Query(), func(ctx context.Context, entry *master.Satellite) error {
-		result = append(result, entry)
-		return nil
-	})
-	json.NewEncoder(w).Encode(result)
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Master.Search(ctx, query, func(ctx context.Context, entry *master.Satellite) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
+	}
 }

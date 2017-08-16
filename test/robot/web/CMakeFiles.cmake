@@ -24,6 +24,7 @@ set(files
     entity.go
     job.go
     master.go
+    requests.go
     static.go
     status.go
     subject.go

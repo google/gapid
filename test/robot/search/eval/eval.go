@@ -270,7 +270,7 @@ func compileGetMember(ctx context.Context, name string, t reflect.Type) (eval, r
 	}
 	field, found := t.FieldByName(name)
 	if !found {
-		return nil, boolType, log.Err(ctx, nil, "Invalid field name "+name)
+		return nil, boolType, log.Errf(ctx, nil, "No field '%v' found in %v", name, t)
 	}
 	if wasPtr {
 		return func(ctx context.Context, value interface{}) interface{} {
