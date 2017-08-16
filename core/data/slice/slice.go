@@ -50,6 +50,20 @@ func Remove(s, v interface{}) {
 	ptr.Elem().Set(out)
 }
 
+// RemoveAt removes n elements from s starting at i.
+// s must be a pointer to a slice.
+func RemoveAt(s interface{}, i, n int) {
+	ptr, slice := getSlicePtr(s)
+	out := New(slice.Type(), 0, slice.Len()-n)
+	//  aaaaa XXXXXX bbbbbb
+	// 0     i      j      e
+	e := slice.Len()
+	j := i + n
+	out = reflect.AppendSlice(out, slice.Slice(0, i))
+	out = reflect.AppendSlice(out, slice.Slice(j, e))
+	ptr.Elem().Set(out)
+}
+
 // InsertBefore inserts v before the i'th element in s.
 // s must be a pointer to a slice.
 // v can be a slice or a single element.
