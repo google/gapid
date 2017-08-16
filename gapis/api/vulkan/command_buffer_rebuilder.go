@@ -43,6 +43,76 @@ func unpackMap(ctx context.Context, s *api.State, m interface{}) (api.AllocResul
 	return s.AllocDataOrPanic(ctx, sl.Interface()), uint32(mv.Len())
 }
 
+// allocateNewCmdBufFromExistingOneAndBegin takes an existing VkCommandBuffer
+// and allocate then begin a new one with the same allocation/inheritance and
+// begin info. It returns the new allocated and began VkCommandBuffer, the new
+// commands added to roll out the allocation and command buffer begin, and the
+// clean up functions to recycle the data.
+func allocateNewCmdBufFromExistingOneAndBegin(
+	ctx context.Context,
+	cb CommandBuilder,
+	modelCmdBuf VkCommandBuffer,
+	s *api.State) (VkCommandBuffer, []api.Cmd, []func()) {
+
+	x := make([]api.Cmd, 0)
+	cleanup := make([]func(), 0)
+	// DestroyResourcesAtEndOfFrame will handle this actually removing the
+	// command buffer. We have no way to handle WHEN this will be done
+
+	modelCmdBufObj := GetState(s).CommandBuffers[modelCmdBuf]
+
+	newCmdBufId := VkCommandBuffer(
+		newUnusedID(true,
+			func(x uint64) bool {
+				_, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]
+				return ok
+			}))
+	allocate := VkCommandBufferAllocateInfo{
+		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		NewVoidᶜᵖ(memory.Nullptr),
+		modelCmdBufObj.Pool,
+		modelCmdBufObj.Level,
+		uint32(1),
+	}
+	allocateData := s.AllocDataOrPanic(ctx, allocate)
+	cleanup = append(cleanup, func() { allocateData.Free() })
+
+	newCmdBufData := s.AllocDataOrPanic(ctx, newCmdBufId)
+	cleanup = append(cleanup, func() { newCmdBufData.Free() })
+
+	x = append(x,
+		cb.VkAllocateCommandBuffers(modelCmdBufObj.Device,
+			allocateData.Ptr(), newCmdBufData.Ptr(), VkResult_VK_SUCCESS,
+		).AddRead(allocateData.Data()).AddWrite(newCmdBufData.Data()))
+
+	beginInfo := VkCommandBufferBeginInfo{
+		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		NewVoidᶜᵖ(memory.Nullptr),
+		VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
+		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
+	}
+	if modelCmdBufObj.BeginInfo.Inherited {
+		inheritanceInfo := VkCommandBufferInheritanceInfo{
+			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+			NewVoidᶜᵖ(memory.Nullptr),
+			modelCmdBufObj.BeginInfo.InheritedRenderPass,
+			modelCmdBufObj.BeginInfo.InheritedSubpass,
+			modelCmdBufObj.BeginInfo.InheritedFramebuffer,
+			modelCmdBufObj.BeginInfo.InheritedOcclusionQuery,
+			modelCmdBufObj.BeginInfo.InheritedQueryFlags,
+			modelCmdBufObj.BeginInfo.InheritedPipelineStatsFlags,
+		}
+		inheritanceInfoData := s.AllocDataOrPanic(ctx, inheritanceInfo)
+		cleanup = append(cleanup, func() { inheritanceInfoData.Free() })
+		beginInfo.PInheritanceInfo = NewVkCommandBufferInheritanceInfoᶜᵖ(inheritanceInfoData.Ptr())
+	}
+	beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)
+	cleanup = append(cleanup, func() { beginInfoData.Free() })
+	x = append(x,
+		cb.VkBeginCommandBuffer(newCmdBufId, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
+	return newCmdBufId, x, cleanup
+}
+
 func rebuildCmdBeginRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,

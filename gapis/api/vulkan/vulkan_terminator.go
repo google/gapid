@@ -219,61 +219,75 @@ func rebuildCommandBuffer(ctx context.Context,
 	idx api.SubCmdIdx,
 	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 
-	x := make([]api.Cmd, 0)
-	cleanup := make([]func(), 0)
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
 	// command buffer. We have no way to handle WHEN this will be done
-
-	commandBufferId := VkCommandBuffer(
-		newUnusedID(true,
-			func(x uint64) bool {
-				_, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]
-				return ok
-			}))
-	allocate := VkCommandBufferAllocateInfo{
-		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		NewVoidᶜᵖ(memory.Nullptr),
-		commandBuffer.Pool,
-		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		uint32(1),
-	}
-	allocateData := s.AllocDataOrPanic(ctx, allocate)
-	commandBufferData := s.AllocDataOrPanic(ctx, commandBufferId)
-
-	x = append(x,
-		cb.VkAllocateCommandBuffers(commandBuffer.Device,
-			allocateData.Ptr(), commandBufferData.Ptr(), VkResult_VK_SUCCESS,
-		).AddRead(allocateData.Data()).AddWrite(commandBufferData.Data()))
-
-	beginInfo := VkCommandBufferBeginInfo{
-		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		NewVoidᶜᵖ(memory.Nullptr),
-		VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
-		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
-	}
-
-	beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)
-	x = append(x,
-		cb.VkBeginCommandBuffer(commandBufferId, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
+	commandBufferId, x, cleanup := allocateNewCmdBufFromExistingOneAndBegin(ctx, cb, commandBuffer.VulkanHandle, s)
 
 	// If we have ANY data, then we need to copy up to that point
-	commandsToCopy := uint64(0)
+	numCommandsToCopy := uint64(0)
+	numSecondaryCmdBuffersToCopy := uint64(0)
+	numSecondaryCommandsToCopy := uint64(0)
 	if len(idx) > 0 {
-		commandsToCopy = idx[0]
+		numCommandsToCopy = idx[0]
 	}
 	// If we only have 1 index, then we have to copy the last command entirely,
 	// and not re-write. Otherwise the last command is a vkCmdExecuteCommands
 	// and it needs to be modified.
-	if len(idx) == 1 {
-		commandsToCopy += 1
+	switch len(idx) {
+	case 1:
+		// Only primary commands, copies including idx
+		numCommandsToCopy += 1
+	case 2:
+		// Ends at a secondary command buffer
+		numSecondaryCmdBuffersToCopy = idx[1] + 1
+	case 3:
+		// Ends at a secondary command, copies including idx
+		numSecondaryCmdBuffersToCopy = idx[1]
+		numSecondaryCommandsToCopy = idx[2] + 1
 	}
 
-	for i := 0; i < int(commandsToCopy); i++ {
+	for i := 0; i < int(numCommandsToCopy); i++ {
 		cmd := commandBuffer.Commands[i]
 		c, a := AddCommand(ctx, cb, commandBufferId, s, cmd.recreateData)
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
+
+	if numSecondaryCommandsToCopy != uint64(0) ||
+		numSecondaryCmdBuffersToCopy != uint64(0) {
+
+		newCmdExecuteCommandsData := &RecreateCmdExecuteCommandsData{
+			CommandBuffers: U32ːVkCommandBufferᵐ{},
+		}
+		pcmd := commandBuffer.Commands[idx[0]]
+		execCmdData, ok := pcmd.recreateData.(*RecreateCmdExecuteCommandsData)
+		if !ok {
+			panic("Rebuild command buffer including secondary commands at a primary " +
+				"command other than VkCmdExecuteCommands or RecreateCmdExecuteCommands")
+		}
+		for scbi := uint32(0); scbi < uint32(numSecondaryCmdBuffersToCopy); scbi++ {
+			newCmdExecuteCommandsData.CommandBuffers[scbi] = execCmdData.CommandBuffers.Get(scbi)
+		}
+		if numSecondaryCommandsToCopy != uint64(0) {
+			lastSecCmdBuf := execCmdData.CommandBuffers.Get(uint32(idx[1]))
+			newSecCmdBuf, extraCmds, extraCleanup := allocateNewCmdBufFromExistingOneAndBegin(ctx, cb, lastSecCmdBuf, s)
+			x = append(x, extraCmds...)
+			cleanup = append(cleanup, extraCleanup...)
+			for sci := 0; sci < int(numSecondaryCommandsToCopy); sci++ {
+				secCmd := GetState(s).CommandBuffers.Get(lastSecCmdBuf).Commands[sci]
+				newCleanups, newSecCmds := AddCommand(ctx, cb, newSecCmdBuf, s, secCmd.recreateData)
+				x = append(x, newSecCmds)
+				cleanup = append(cleanup, newCleanups)
+			}
+			x = append(x, cb.VkEndCommandBuffer(newSecCmdBuf, VkResult_VK_SUCCESS))
+			newCmdExecuteCommandsData.CommandBuffers[uint32(idx[1])] = newSecCmdBuf
+		}
+		cleanupNewExecSecCmds, newExecSecCmds := AddCommand(
+			ctx, cb, commandBufferId, s, newCmdExecuteCommandsData)
+		cleanup = append(cleanup, cleanupNewExecSecCmds)
+		x = append(x, newExecSecCmds)
+	}
+
 	for i := range additionalCommands {
 		c, a := AddCommand(ctx, cb, commandBufferId, s, additionalCommands[i])
 		x = append(x, a)
@@ -281,11 +295,6 @@ func rebuildCommandBuffer(ctx context.Context,
 	}
 	x = append(x,
 		cb.VkEndCommandBuffer(commandBufferId, VkResult_VK_SUCCESS))
-	cleanup = append(cleanup, func() {
-		allocateData.Free()
-		commandBufferData.Free()
-		beginInfoData.Free()
-	})
 	return VkCommandBuffer(commandBufferId), x, cleanup
 }
 
