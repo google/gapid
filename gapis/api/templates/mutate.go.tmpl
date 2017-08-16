@@ -146,10 +146,13 @@
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
       ϟc, ϟt := GetState(ϟs), ϟa.thread
-      ϟc.SetThread(ϟt)
       ϟl := ϟs.MemoryLayout
       ϟo := ϟa.Extras().Observations()
-      _ = ϟl
+      _, _ = ϟl, ϟt
+
+      if err := ϟc.preMutate(ϟctx, ϟs, ϟa); err != nil {
+        return err
+      }
 
       {{Global "CurrentFunction" $}}
 

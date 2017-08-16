@@ -15,6 +15,8 @@
 package test
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
 )
@@ -27,7 +29,8 @@ func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttac
 
 func (API) Context(*api.State, uint64) api.Context { return nil }
 
-func (s *State) SetThread(thread uint64) {
+func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+	return nil
 }
 
 func (i Remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
