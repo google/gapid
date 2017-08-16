@@ -17,72 +17,66 @@ package api
 // SubCmdIdxTrie is a map-based trie using SubCmdIdx for indexing the data
 // stored inside.
 type SubCmdIdxTrie struct {
-	value     interface{}
-	nextLevel map[uint64]*SubCmdIdxTrie
-}
-
-func (t *SubCmdIdxTrie) index(indices SubCmdIdx, indexCb func(*SubCmdIdxTrie),
-	preOrderCb, postOrderCb func(*SubCmdIdxTrie, SubCmdIdx)) bool {
-	if len(indices) == 0 {
-		indexCb(t)
-		return true
-	}
-	var ret bool
-	if preOrderCb != nil {
-		preOrderCb(t, indices)
-	}
-	if next, ok := t.nextLevel[indices[0]]; ok {
-		ret = next.index(indices[1:], indexCb, preOrderCb, postOrderCb)
-	} else {
-		return false
-	}
-	if postOrderCb != nil {
-		postOrderCb(t, indices)
-	}
-	return ret
+	value    interface{}
+	children map[uint64]*SubCmdIdxTrie
 }
 
 // Value returnes the value stored in the trie indexed by the given SubCmdIdx.
 // if no value is found by the given SubCmdIdx, returns nil.
 func (t *SubCmdIdxTrie) Value(indices SubCmdIdx) interface{} {
-	var n *SubCmdIdxTrie
-	t.index(indices, func(t *SubCmdIdxTrie) { n = t }, nil, nil)
-	if n != nil {
-		return n.value
+	for t != nil && len(indices) > 0 && len(t.children) > 0 {
+		t, indices = t.children[indices[0]], indices[1:]
 	}
-	return nil
+	if t == nil || len(indices) > 0 {
+		return nil // invalid index
+	}
+	return t.value
 }
 
 // SetValue sets a value to the trie with the given SubCmdIdx as index.
 func (t *SubCmdIdxTrie) SetValue(indices SubCmdIdx, v interface{}) {
-	t.index(indices, func(t *SubCmdIdxTrie) { t.value = v },
-		func(t *SubCmdIdxTrie, indices SubCmdIdx) {
-			if t.nextLevel == nil {
-				t.nextLevel = map[uint64]*SubCmdIdxTrie{}
+	if v == nil { // nil value behaves the same as no value
+		t.RemoveValue(indices)
+		return
+	}
+	for _, i := range indices {
+		next, ok := t.children[i]
+		if !ok { // child does not exist - create it
+			if t.children == nil {
+				t.children = map[uint64]*SubCmdIdxTrie{}
 			}
-			if _, ok := t.nextLevel[indices[0]]; !ok {
-				t.nextLevel[indices[0]] = &SubCmdIdxTrie{}
-			}
-		}, nil)
+			next = &SubCmdIdxTrie{}
+			t.children[i] = next
+		}
+		t = next
+	}
+	t.value = v
 }
 
 // RemoveValue tries to remove a value indexed by the given SubCmdIdx in the
 // trie. If a value is found, removes it and returns true. If a value with that
 // SubCmdIdx is not found, returns false.
 func (t *SubCmdIdxTrie) RemoveValue(indices SubCmdIdx) bool {
-	hadValue := false
-	r := t.index(indices, func(t *SubCmdIdxTrie) {
-		hadValue = t.value != nil
-		t.value = nil
-	}, nil, func(t *SubCmdIdxTrie, indices SubCmdIdx) {
-		if n, ok := t.nextLevel[indices[0]]; ok {
-			if n.value == nil && n.nextLevel == nil {
-				delete(t.nextLevel, indices[0])
-			}
+	n := len(indices)
+	stack := make([]*SubCmdIdxTrie, n+1)
+	stack[0] = t
+	for i, j := range indices { // build a stack of nodes starting with t
+		t = t.children[j]
+		if t == nil {
+			return false // invalid index
 		}
-		if len(t.nextLevel) == 0 {
-			t.nextLevel = nil
+		stack[i+1] = t
+	}
+	if t.value == nil {
+		return false // cannot remove a value it doesn't have
+	}
+	t.value = nil             // clear the value
+	for i := n; i >= 0; i-- { // remove nodes that have no value or children
+		if t.value != nil || len(t.children) > 0 {
+			break // node cannot be deleted
 		}
-	})
-	return r && hadValue
+		delete(stack[i].children, indices[i-1])
+		t = stack[i]
+	}
+	return true
 }
