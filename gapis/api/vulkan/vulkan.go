@@ -56,7 +56,8 @@ func (API) Context(s *api.State, thread uint64) api.Context {
 	return VulkanContext{}
 }
 
-func (s *State) SetThread(thread uint64) {
+func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+	return nil
 }
 
 func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachment api.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {

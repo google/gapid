@@ -17,9 +17,12 @@ package gles
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -34,8 +37,16 @@ func (s *State) GetContext(thread uint64) *Context {
 	return s.Contexts[thread]
 }
 
-func (s *State) SetThread(thread uint64) {
-	s.CurrentContext = s.GetContext(thread)
+func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+	c.CurrentContext = c.GetContext(cmd.Thread())
+	// TODO: Find better way to separate GL and EGL commands.
+	if c.CurrentContext == nil && strings.HasPrefix(cmd.CmdName(), "gl") {
+		if f := s.NewMessage; f != nil {
+			f(log.Error, messages.ErrNoContextBound(cmd.Thread()))
+		}
+		return api.ErrCmdAborted("NoContext")
+	}
+	return nil
 }
 
 func (b *Buffer) GetID() BufferId {
