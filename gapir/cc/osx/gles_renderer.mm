@@ -31,6 +31,10 @@
 #undef GL_VENDOR
 #undef GL_VERSION
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+#define NSWindowStyleMaskBorderless  NSBorderlessWindowMask
+#endif
+
 namespace gapir {
 namespace {
 
@@ -129,7 +133,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     NSRect rect = NSMakeRect(0, 0, backbuffer.width, backbuffer.height);
     mWindow = [[NSWindow alloc]
         initWithContentRect:rect
-        styleMask:NSBorderlessWindowMask
+        styleMask:NSWindowStyleMaskBorderless
         backing:NSBackingStoreBuffered
         defer:NO
     ];
