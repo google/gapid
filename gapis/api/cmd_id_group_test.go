@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 )
@@ -392,11 +393,40 @@ func TestAddGroupMixed(t *testing.T) {
 	assert.With(ctx).That(got).DeepEquals(expected)
 }
 
+func shuffle(r CmdIDRange) []CmdID {
+	const magic = 5329857283
+	n := r.End - r.Start
+	remaining := make([]CmdID, 0, n)
+	for i := r.Start; i < r.End; i++ {
+		remaining = append(remaining, i)
+	}
+	out := make([]CmdID, 0, n)
+	for len(remaining) > 0 {
+		i := magic % len(remaining)
+		out = append(out, remaining[i])
+		slice.RemoveAt(&remaining, i, 1)
+	}
+	return out
+}
+
+func addAtomsAndCluster(g *CmdIDGroup, maxChildren, maxNeighbours uint64, pred func(id CmdID) bool) {
+	for _, id := range shuffle(g.Bounds()) {
+		if pred(id) {
+			g.AddCommand(id)
+		}
+	}
+	for _, s := range g.Spans {
+		if s, ok := s.(*CmdIDGroup); ok {
+			addAtomsAndCluster(s, maxChildren, maxNeighbours, pred)
+		}
+	}
+	g.Cluster(maxChildren, maxNeighbours)
+}
+
 func TestAddAtomsFill(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
-
-	got.AddAtoms(func(CmdID) bool { return true }, 0, 0)
+	addAtomsAndCluster(&got, 0, 0, func(CmdID) bool { return true })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -429,14 +459,30 @@ func TestAddAtomsFill(t *testing.T) {
 		},
 		nil}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	if !assert.With(ctx).That(got).DeepEquals(expected) {
+		fmt.Printf("Got: %+v\n", got)
+		fmt.Println()
+		fmt.Printf("Want: %+v\n", expected)
+	}
 }
 
 func TestAddAtomsSparse(t *testing.T) {
 	ctx := log.Testing(t)
-	got := buildTestGroup(1100)
+	got := CmdIDGroup{
+		"root", CmdIDRange{0, 1100}, Spans{
+			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{}, nil},
+			&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
+				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{}, nil},
+				&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
+					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{}, nil},
+					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{}, nil},
+				}, nil},
+			}, nil},
+			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{}, nil},
+		}, nil,
+	}
 
-	got.AddAtoms(func(id CmdID) bool { return (id/50)&1 == 0 }, 0, 0)
+	addAtomsAndCluster(&got, 0, 0, func(id CmdID) bool { return (id/50)&1 == 0 })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -467,14 +513,18 @@ func TestAddAtomsSparse(t *testing.T) {
 		},
 		nil}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	if !assert.With(ctx).That(got).DeepEquals(expected) {
+		fmt.Printf("Got: %+v\n", got)
+		fmt.Println()
+		fmt.Printf("Want: %+v\n", expected)
+	}
 }
 
 func TestAddAtomsWithSplitting(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(700)
 
-	got.AddAtoms(func(CmdID) bool { return true }, 45, 0)
+	addAtomsAndCluster(&got, 45, 0, func(CmdID) bool { return true })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 700}, Spans{
@@ -542,7 +592,7 @@ func TestAddAtomsWithNeighbours(t *testing.T) {
 			nil,
 		}
 
-		got.AddAtoms(func(CmdID) bool { return true }, 0, 10)
+		addAtomsAndCluster(&got, 0, 10, func(CmdID) bool { return true })
 
 		expected := CmdIDGroup{
 			"root", CmdIDRange{0, 52}, Spans{
