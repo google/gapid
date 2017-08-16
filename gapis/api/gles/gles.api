@@ -608,6 +608,8 @@ class OtherState {
 // GLboolean HasError = GL_FALSE
 // Vec3u CurrentQuery = Vec3u(0,0,0)
 // GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
+
+  bool IsBound
 }
 
 @internal
@@ -638,9 +640,16 @@ sub ref!Context GetContext() {
   return context
 }
 
-sub void SetContext(ref!Context context) {
-  Contexts[$Thread] = context
-  CurrentContext = context
+sub void SetContext(ref!Context newContext) {
+  oldContext := Contexts[$Thread]
+  if oldContext != null {
+    oldContext.Other.IsBound = false
+  }
+  Contexts[$Thread] = newContext
+  CurrentContext = newContext
+  if newContext != null {
+    newContext.Other.IsBound = true
+  }
 }
 
 sub ref!Context CreateContext(ref!Context sharedContext) {

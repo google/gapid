@@ -47,6 +47,10 @@ No context with id {{id:u64}} exists.
 
 No context bound in thread: {{thread:u64}}
 
+# ERR_CONTEXT_BOUND
+
+Can not bind context with id {{id:u64}} since it is already bound on different thread.
+
 # ERR_FIELD_DOES_NOT_EXIST
 
 Value of type {{ty}} does not have field {{field}}.
