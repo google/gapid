@@ -215,7 +215,7 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 	return nil
 }
 
-// FootprintBuilder implements dependencygraph.FootprintBuilderAPI interface
+// FootprintBuilder implements dependencygraph.FootprintBuilderProvider interface
 func (API) FootprintBuilder(ctx context.Context) dependencygraph.FootprintBuilder {
 	return newVulkanFootprintBuilder()
 }

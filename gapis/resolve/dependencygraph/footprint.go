@@ -133,31 +133,20 @@ func (m *dummyMachine) Clear() {}
 
 // GetBehaviourIndex returns the index of the last Behaviour in the Footprint
 // which belongs to the command or subcomand indexed by the given SubCmdIdx. In
-// case the SubCmdIdx is invalid or the Behaviour index is not found, error
+// case the SubCmdIdx is invalid or a valid Behaviour index is not found, error
 // will be logged and uint64(0) will be returned.
 func (fpt *Footprint) GetBehaviourIndex(ctx context.Context,
 	fci api.SubCmdIdx) uint64 {
-	switch len(fci) {
-	case 1,
-		// Only API command ID
-		4,
-		// For Vulkan: ID of VkQueueSubmit -> SubmitInfo Index ->
-		// CommandBuffer Index -> Command Index
-		6:
-		// For Vulkan: ID of VkQueueSubmit -> SubmitInfo Index ->
-		// CommandBuffer Index -> Index of vkCmdExecuteCommands ->
-		// secondary CommandBuffer Index -> Command Index
-		v := fpt.commandIndexToBehaviourIndexLookupTable.Value(fci)
+	v := fpt.commandIndexToBehaviourIndexLookupTable.Value(fci)
+	if v != nil {
 		if u, ok := v.(uint64); ok {
 			return u
-		} else {
-			log.E(ctx, "Invalid value of behaviour index: %v, (not a uint64)", v)
-			return uint64(0)
 		}
-	default:
-		log.E(ctx, "Invalid length of SubCmdIdx (full command index): %v", len(fci))
-		return 0
+		log.E(ctx, "Invalid behaviour index: %v is not a uint64", v)
+		return uint64(0)
 	}
+	log.E(ctx, "Cannot get behaviour index for command indexed with: %v", fci)
+	return uint64(0)
 }
 
 // AddBehaviour adds the given Behaviour to the Footprint and updates the
@@ -166,28 +155,23 @@ func (fpt *Footprint) GetBehaviourIndex(ctx context.Context,
 func (fpt *Footprint) AddBehaviour(ctx context.Context, b *Behaviour) bool {
 	bi := uint64(len(fpt.Behaviours))
 	fci := b.BelongTo
-	switch len(fci) {
-	case 1, 4, 6:
-		fpt.commandIndexToBehaviourIndexLookupTable.SetValue(fci, bi)
-		fpt.Behaviours = append(fpt.Behaviours, b)
-		fpt.BehaviourIndices[b] = bi
-		return true
-	default:
-		log.E(ctx, "Invalid length of SubCmdIdx (full command index): %v", len(fci))
-		return false
-	}
+	fpt.commandIndexToBehaviourIndexLookupTable.SetValue(fci, bi)
+	fpt.Behaviours = append(fpt.Behaviours, b)
+	fpt.BehaviourIndices[b] = bi
+	return true
 }
 
-// FootprintBuilderAPI provides FootprintBuilder
-type FootprintBuilderAPI interface {
+// FootprintBuilderProvider provides FootprintBuilder
+type FootprintBuilderProvider interface {
 	FootprintBuilder(context.Context) FootprintBuilder
 }
 
-// FootprintBuilder builds Footprint from a stream of commands.
+// FootprintBuilder incrementally builds Footprint one command by one command.
 type FootprintBuilder interface {
 	BuildFootprint(context.Context, *api.State, *Footprint, api.CmdID, api.Cmd)
 }
 
+// GetFootprint returns a pointer to the resolved Footprint.
 func GetFootprint(ctx context.Context) (*Footprint, error) {
 	r, err := database.Build(ctx, &FootprintResolvable{Capture: capture.Get(ctx)})
 	if err != nil {
@@ -196,6 +180,7 @@ func GetFootprint(ctx context.Context) (*Footprint, error) {
 	return r.(*Footprint), nil
 }
 
+// Resolve implements the database.Resolver interface.
 func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{},
 	error) {
 	c, err := capture.ResolveFromPath(ctx, r.Capture)
@@ -212,7 +197,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{},
 	for i, cmd := range cmds {
 		a := cmd.API()
 		if _, ok := builders[a]; !ok {
-			if bp, ok := a.(FootprintBuilderAPI); ok {
+			if bp, ok := a.(FootprintBuilderProvider); ok {
 				builders[a] = bp.FootprintBuilder(ctx)
 			} else {
 				// API does not provide execution footprint info, always keep commands

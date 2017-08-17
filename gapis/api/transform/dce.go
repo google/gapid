@@ -50,8 +50,7 @@ func (s *commandIndicesSet) insert(fci api.SubCmdIdx) {
 	s.SetValue(fci, true)
 }
 
-func (s *commandIndicesSet) contains(
-	fci api.SubCmdIdx) bool {
+func (s *commandIndicesSet) contains(fci api.SubCmdIdx) bool {
 	v := s.Value(fci)
 	if v != nil {
 		if bv, ok := v.(bool); ok {
@@ -62,12 +61,18 @@ func (s *commandIndicesSet) contains(
 	return false
 }
 
+// DCE contains an execution footprint built from a list of commands, and a
+// list of requested command indices. It drives the back-propagation to drop
+// commands which are not contributing to the final state at the requested
+// commands.
 type DCE struct {
 	footprint         *dependencygraph.Footprint
 	endBehaviourIndex uint64
 	requests          *commandIndicesSet
 }
 
+// NewDCE constructs a new DCE instance and returns a pointer to the created
+// DCE instance.
 func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 	return &DCE{
 		footprint: footprint,
@@ -75,6 +80,8 @@ func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 	}
 }
 
+// Request added a requsted command or subcommand, represented by its full
+// command index, to the DCE.
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 	t.requests.insert(fci)
 	bi := t.footprint.GetBehaviourIndex(ctx, fci)
@@ -83,11 +90,19 @@ func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 	}
 }
 
+// Transform is to comform the interface of Transformer, but does not accept
+// any input.
 func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 	out Writer) {
 	panic(fmt.Errorf("This transform does not accept input atoms"))
 }
 
+// Flush is to comform the interface of Transformer. Flush starts the back
+// propagation of the behaviours recorded in the footprint from the last
+// requested command (the one with largest SubCmdIdx, not the one added the
+// last in the order of time) to get a list of alive commands. Then it sends
+// the alive commands to the following transforms to mutate them and write them
+// to build instructions for replay.
 func (t *DCE) Flush(ctx context.Context, out Writer) {
 	t0 := dCECounter.Start()
 	livenessBoard, aliveCmds := t.backPropagate(ctx)
@@ -106,10 +121,10 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 			aliveCmd := t.footprint.Commands[fci[0]]
 
 			// Logging the DCE result of alive commands
-			numCmd += 1
-			numLive += 1
+			numCmd++
+			numLive++
 			if aliveCmd.CmdFlags().IsDrawCall() {
-				numLiveDraws += 1
+				numLiveDraws++
 			}
 			if e := aliveCmd.Extras(); e != nil && e.Observations() != nil {
 				for _, r := range e.Observations().Reads {
@@ -122,10 +137,10 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 			if len(fci) == 1 && !aliveCmds.contains(fci) {
 				// logging the DCE result of dead commands
 				deadCmd := t.footprint.Commands[fci[0]]
-				numCmd += 1
-				numDead += 1
+				numCmd++
+				numDead++
 				if deadCmd.CmdFlags().IsDrawCall() {
-					numDeadDraws += 1
+					numDeadDraws++
 				}
 				if e := deadCmd.Extras(); e != nil && e.Observations() != nil {
 					for _, r := range e.Observations().Reads {
@@ -173,7 +188,7 @@ func (t *DCE) backPropagate(ctx context.Context) (
 			}
 		}
 	}
-	for m, _ := range usedMachines {
+	for m := range usedMachines {
 		m.Clear()
 	}
 	return livenessBoard, aliveCommands

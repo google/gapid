@@ -117,13 +117,13 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				return
 			}
 			if lastDrawInfo.Framebuffer == nil {
-				res(nil, fmt.Errorf("There have been no framebuffer"))
+				res(nil, fmt.Errorf("There has been no framebuffer"))
 				return
 			}
 
 			imageView, ok := lastDrawInfo.Framebuffer.ImageAttachments[bufferIdx]
 			if !ok {
-				res(nil, fmt.Errorf("There have been no attchment %v in the framebuffer", bufferIdx))
+				res(nil, fmt.Errorf("There has been no attchment %v in the framebuffer", bufferIdx))
 				return
 			}
 			imageObject := imageView.Image

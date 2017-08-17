@@ -89,7 +89,7 @@ type deadCodeEliminationInfo struct {
 	deadCodeElimination *transform.DeadCodeElimination
 }
 
-type DCEInfo struct {
+type dCEInfo struct {
 	ft  *dependencygraph.Footprint
 	dce *transform.DCE
 }
@@ -494,7 +494,7 @@ func (a API) Replay(
 	}
 
 	// Prepare data for dead-code-elimination
-	dceInfo := DCEInfo{}
+	dceInfo := dCEInfo{}
 	if !config.DisableDeadCodeElimination {
 		ft, err := dependencygraph.GetFootprint(ctx)
 		if err != nil {
