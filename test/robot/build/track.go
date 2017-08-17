@@ -45,6 +45,7 @@ func (t *tracks) init(ctx context.Context, library record.Library) error {
 	}
 	t.ledger = ledger
 	t.byID = map[string]*Track{}
+	t.byName = map[string]*Track{}
 	apply := event.AsHandler(ctx, t.apply)
 	if err := ledger.Read(ctx, apply); err != nil {
 		return err
@@ -60,6 +61,9 @@ func (t *tracks) apply(ctx context.Context, track *Track) error {
 	if old == nil {
 		t.entries = append(t.entries, track)
 		t.byID[track.Id] = track
+		if track.Name != "" {
+			t.byName[track.Name] = track
+		}
 		t.onChange.Send(ctx, track)
 		return nil
 	}
