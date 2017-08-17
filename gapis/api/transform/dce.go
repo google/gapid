@@ -100,6 +100,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 	for bi := uint64(0); bi <= t.endBehaviourIndex; bi++ {
 		bh := t.footprint.Behaviours[bi]
 		fci := bh.BelongTo
+
 		if livenessBoard[bi] && len(fci) == 1 && !flushedCommands.contains(fci) {
 			flushedCommands.insert(fci)
 			aliveCmd := t.footprint.Commands[fci[0]]
