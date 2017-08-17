@@ -17,7 +17,7 @@ package replay
 import (
 	"context"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/stash"
 )
 
@@ -32,13 +33,6 @@ type client struct {
 	store   *stash.Client
 	manager Manager
 	tempDir file.Path
-}
-
-type retryError struct {
-}
-
-func (r retryError) Error() string {
-	return "try again"
 }
 
 // Run starts new replay client if any hardware is available.
@@ -52,21 +46,21 @@ func (c *client) replay(ctx context.Context, t *Task) error {
 	if err := c.manager.Update(ctx, t.Action, job.Running, nil); err != nil {
 		return err
 	}
-	for {
-		output, err := doReplay(ctx, t.Action, t.Input, c.store, c.tempDir)
-		status := job.Succeeded
-		if _, ok := err.(retryError); ok {
-			continue
-		} else if err != nil {
-			status = job.Failed
-			log.E(ctx, "Error running replay: %v", err)
-		} else if output.CallError != "" {
-			status = job.Failed
-			log.E(ctx, "Error during replay: %v", output.CallError)
-		}
-
-		return c.manager.Update(ctx, t.Action, status, output)
+	var output *Output
+	err := worker.RetryFunction(ctx, 4, time.Millisecond*100, func() (err error) {
+		output, err = doReplay(ctx, t.Action, t.Input, c.store, c.tempDir)
+		return
+	})
+	status := job.Succeeded
+	if err != nil {
+		status = job.Failed
+		log.E(ctx, "Error running replay: %v", err)
+	} else if output.CallError != "" {
+		status = job.Failed
+		log.E(ctx, "Error during replay: %v", output.CallError)
 	}
+
+	return c.manager.Update(ctx, t.Action, status, output)
 }
 
 func doReplay(ctx context.Context, action string, in *Input, store *stash.Client, tempDir file.Path) (*Output, error) {
@@ -125,14 +119,14 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	}
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)
-	if strings.Contains(output, "text file busy") || strings.Contains(output, "Failed to connect to the GAPIS server") || (callErr != nil && strings.Contains(callErr.Error(), "text file busy")) {
-		return nil, retryError{}
+	if err := worker.NeedsRetry(output, "Failed to connect to the GAPIS server"); err != nil {
+		return nil, err
 	}
 
 	outputObj := &Output{}
 	if callErr != nil {
-		if strings.Contains(callErr.Error(), "text file busy") {
-			return nil, retryError{}
+		if err := worker.NeedsRetry(callErr.Error()); err != nil {
+			return nil, err
 		}
 		outputObj.CallError = callErr.Error()
 	}

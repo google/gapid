@@ -16,7 +16,9 @@ package worker
 
 import (
 	"context"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/event"
@@ -60,6 +62,49 @@ type Task interface {
 type taskEntry struct {
 	task   Task
 	result chan error
+}
+
+// TaskRetryError is used to communicate that an action Failed in such a way that the task should attempt a retry.
+// It simply contains the reason for the retry.
+type TaskRetryError struct {
+	Reason string
+}
+
+// NeedsRetry is used to check if a string signals a retry attempt in a task.
+// "text file busy" is the main cause for retry attempts, but if extra checks are necessary they can be passed into they
+// variadic argument.
+// This is the idiomatic method of creating a TaskRetryError and if no need for a retry exists it returns nil.
+func NeedsRetry(reason string, retryStrings ...string) error {
+	if strings.Contains(reason, "text file busy") {
+		return &TaskRetryError{Reason: reason}
+	}
+	for _, retryString := range retryStrings {
+		if strings.Contains(reason, retryString) {
+			return &TaskRetryError{Reason: reason}
+		}
+	}
+	return nil
+}
+
+// Error returns the reason for the retry
+func (e TaskRetryError) Error() string {
+	return "Try again: " + e.Reason
+}
+
+// RetryFunction wraps a function that can return TaskRetryError and handles performing a delay and retrying up to maxAttempts
+func RetryFunction(ctx context.Context, maxAttempts int, delay time.Duration, task func() error) error {
+	numRetries := 0
+	var err error
+	for numRetries < maxAttempts {
+		err = task()
+		if _, retry := err.(TaskRetryError); retry {
+			time.Sleep(delay)
+			numRetries++
+		} else {
+			return err
+		}
+	}
+	return log.Errf(ctx, err, "Retried maximum attempts, %v", maxAttempts)
 }
 
 func (w *Workers) init(ctx context.Context, jobs job.Manager, op job.Operation) {

@@ -17,7 +17,6 @@ package trace
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
+	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/stash"
 
 	_ "github.com/google/gapid/gapidapk"
@@ -116,7 +116,7 @@ func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file
 	return nil
 }
 
-func (r *runner) trace(ctx context.Context, t *Task) (err error) {
+func (r *runner) trace(ctx context.Context, t *Task) error {
 	if r.device.Status() != bind.Status_Online {
 		log.I(ctx, "Trying to trace %s on %s not started, device status %s", t.Input.Subject, r.device.Instance().GetSerial(), r.device.Status().String())
 		return nil
@@ -125,20 +125,21 @@ func (r *runner) trace(ctx context.Context, t *Task) (err error) {
 	if err := r.manager.Update(ctx, t.Action, job.Running, nil); err != nil {
 		return err
 	}
-	for {
-		output, err := doTrace(ctx, t.Action, t.Input, r.store, r.device, r.tempDir)
-		status := job.Succeeded
-		if _, ok := err.(retryError); ok {
-			continue
-		} else if err != nil {
-			status = job.Failed
-			log.E(ctx, "Error running trace: %v", err)
-		} else if output.CallError != "" {
-			status = job.Failed
-			log.E(ctx, "Error during trace: %v", output.CallError)
-		}
-		return r.manager.Update(ctx, t.Action, status, output)
+	var output *Output
+	err := worker.RetryFunction(ctx, 4, time.Millisecond*100, func() (err error) {
+		output, err = doTrace(ctx, t.Action, t.Input, r.store, r.device, r.tempDir)
+		return
+	})
+	status := job.Succeeded
+	if err != nil {
+		status = job.Failed
+		log.E(ctx, "Error running trace: %v", err)
+	} else if output.CallError != "" {
+		status = job.Failed
+		log.E(ctx, "Error during trace: %v", output.CallError)
 	}
+
+	return r.manager.Update(ctx, t.Action, status, output)
 }
 
 func doTrace(ctx context.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
@@ -188,14 +189,14 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	}
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)
-	if strings.Contains(output, "text file busy") || strings.Contains(output, "Failed to connect to the GAPIS server") || (callErr != nil && strings.Contains(callErr.Error(), "text file busy")) {
-		return nil, retryError{}
+	if err := worker.NeedsRetry(output, "Failed to connect to the GAPIS server"); err != nil {
+		return nil, err
 	}
 
 	outputObj := &Output{}
 	if callErr != nil {
-		if strings.Contains(callErr.Error(), "text file busy") {
-			return nil, retryError{}
+		if err := worker.NeedsRetry(callErr.Error()); err != nil {
+			return nil, err
 		}
 		outputObj.CallError = callErr.Error()
 	}
