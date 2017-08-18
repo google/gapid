@@ -43,6 +43,8 @@ type traceVerb struct{ TraceFlags }
 
 func init() {
 	verb := &traceVerb{}
+	verb.TraceFlags.Disable.PCS = true
+
 	app.AddVerb(&app.Verb{
 		Name:      "trace",
 		ShortHelp: "Captures a gfx trace from an application",

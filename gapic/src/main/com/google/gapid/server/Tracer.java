@@ -194,13 +194,11 @@ public class Tracer {
         cmd.add(device.getSerial());
       }
 
-      if (clearCache) {
-        cmd.add("-clear-cache");
-      }
+      cmd.add("-clear-cache");
+      cmd.add(Boolean.toString(clearCache));
 
-      if (disablePcs) {
-        cmd.add("-disable-pcs");
-      }
+      cmd.add("-disable-pcs");
+      cmd.add(Boolean.toString(disablePcs));
 
       if (pkg != null) {
         cmd.add("-android-package");
