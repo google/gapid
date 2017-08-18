@@ -149,16 +149,6 @@ protected:
     // The output stream encoder.
     PackEncoder::SPtr mEncoder;
 
-    // A counter that is incremented each time a graphics command starts or
-    // ends. The first command start gets a value of 0 for its starting command
-    // counter value.
-    uint64_t mCommandStartEndCounter;
-
-    // The expected counter value for the starting of the next command. This
-    // equals the counter value of the last command ending plus one. This value
-    // starts at 0 before any atoms have been sent.
-    uint64_t mExpectedNextCommandStartCounterValue;
-
 #if COHERENT_TRACKING_ENABLED
     track_memory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS

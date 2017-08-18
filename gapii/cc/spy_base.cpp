@@ -29,8 +29,6 @@ namespace gapii {
 
 SpyBase::SpyBase()
     : mObserveApplicationPool(true)
-    , mCommandStartEndCounter(0)
-    , mExpectedNextCommandStartCounterValue(0)
     , mNullEncoder(PackEncoder::noop())
     , mWatchedApis(0xFFFFFFFF)
 #ifdef COHERENT_TRACKING_ENABLED

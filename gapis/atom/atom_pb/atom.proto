@@ -16,16 +16,3 @@ syntax = "proto3";
 
 package atom_pb;
 // cc_package
-
-// CommandCounter holds the counter value of the begining and end of an API
-// command. It should only be sent for the first completed graphics command, or
-// for any graphics command which overlaps the startup or termination of
-// another graphics command. Unless this is the first completed graphics
-// command, CounterAtEnd-CounterAtBegin should never be 1. We expect uses to
-// be relatively rare.
-message CommandCounter {
-	// counter value at the begain of an API command.
-    uint64 CounterAtBegin = 1;
-	// counter value at the end of an API command.
-    uint64 CounterAtEnd = 2;
-}
