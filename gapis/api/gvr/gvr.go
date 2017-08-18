@@ -16,16 +16,19 @@ package gvr
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
+
+var _ = replay.QueryFramebufferAttachment(API{})
 
 func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
 	return nil
@@ -33,9 +36,40 @@ func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error 
 
 type CustomState struct{}
 
+func (API) QueryFramebufferAttachment(
+	ctx context.Context,
+	intent replay.Intent,
+	mgr *replay.Manager,
+	after []uint64,
+	width, height uint32,
+	attachment api.FramebufferAttachment,
+	framebufferIndex uint32,
+	wireframeMode replay.WireframeMode,
+	hints *service.UsageHints) (*image.Data, error) {
+
+	if framebufferIndex == 0 {
+		fb, err := getBoundFramebuffer(ctx, api.CmdID(after[0]), intent.Capture)
+		if err != nil {
+			return nil, err
+		}
+		framebufferIndex = uint32(fb)
+	}
+	return gles.API{}.QueryFramebufferAttachment(
+		ctx,
+		intent,
+		mgr,
+		after,
+		width, height,
+		attachment,
+		framebufferIndex,
+		wireframeMode,
+		hints,
+	)
+}
+
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
-	return 0, 0, 0, nil, fmt.Errorf("GVR does not support framebuffers")
+func (API) GetFramebufferAttachmentInfo(s *api.State, t uint64, a api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+	return gles.API{}.GetFramebufferAttachmentInfo(s, t, a)
 }
 
 // Context returns the active context for the given state and thread.

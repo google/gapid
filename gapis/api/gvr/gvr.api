@@ -327,7 +327,8 @@ cmd s32 gvr_frame_get_framebuffer_object(const gvr_frame* frame, s32 index) {
 @EndOfFrame
 cmd void gvr_frame_submit(gvr_frame** frame, const gvr_buffer_viewport_list* list,
                           gvr_mat4f   head_space_from_start_space) {
-
+  read(frame[0:1])
+  write(frame[0:1]) // frame pointer is nullified on returning.
 }
 
 @no_replay
