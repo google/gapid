@@ -24,13 +24,13 @@ set(files
     constant_sets.go
     convert.go
     custom_replay.go
-    dependency_graph_behaviour_provider.go
     doc.go
     drawCall.go
     draw_call_mesh.go
     enum.go
     externs.go
     find_issues.go
+    footprint_builder.go
     mutate.go
     read_framebuffer.go
     replay.go

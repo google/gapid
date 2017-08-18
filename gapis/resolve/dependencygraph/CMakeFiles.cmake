@@ -19,6 +19,8 @@
 
 set(files
     dependency_graph.go
+    footprint.go
+    footprint_test.go
     resolvables.pb.go
     resolvables.proto
 )

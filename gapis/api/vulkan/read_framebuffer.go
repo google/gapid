@@ -116,8 +116,16 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				res(nil, fmt.Errorf("There have been no previous draws"))
 				return
 			}
+			if lastDrawInfo.Framebuffer == nil {
+				res(nil, fmt.Errorf("There has been no framebuffer"))
+				return
+			}
 
-			imageView := lastDrawInfo.Framebuffer.ImageAttachments[bufferIdx]
+			imageView, ok := lastDrawInfo.Framebuffer.ImageAttachments[bufferIdx]
+			if !ok {
+				res(nil, fmt.Errorf("There has been no attchment %v in the framebuffer", bufferIdx))
+				return
+			}
 			imageObject := imageView.Image
 			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Format
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)

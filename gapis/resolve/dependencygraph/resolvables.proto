@@ -21,3 +21,7 @@ import "gapis/service/path/path.proto";
 message DependencyGraphResolvable {
   path.Capture capture = 1;
 }
+
+message FootprintResolvable {
+  path.Capture capture = 1;
+}
