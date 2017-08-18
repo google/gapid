@@ -521,7 +521,7 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 	if qei.subpasses[subpassI].depthStencilAttachment != nil {
 		bh := sc.cmd.newBehavior(ctx, sc, m, qei)
 		dsAtt := qei.subpasses[subpassI].depthStencilAttachment
-		if dsAtt.desc.StoreOp.isStore() && dsAtt.desc.StencilStoreOp.isStore() {
+		if dsAtt.desc.StoreOp.isStore() || dsAtt.desc.StencilStoreOp.isStore() {
 			modify(ctx, bh, dsAtt.data)
 		} else {
 			if dsAtt.fullImageData {
