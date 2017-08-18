@@ -238,8 +238,6 @@
         onPostFence(observer);
       };
 ¶
-      uint64_t counter_at_begin = mCommandStartEndCounter++;
-¶
       try {
         do {
           {{Template "C++.Block" $.Block}}
@@ -249,18 +247,7 @@
           call(); // abort() was called before the fence.
         }
       }
-      uint64_t counter_at_end = mCommandStartEndCounter++;
 ¶
-      if (counter_at_end > counter_at_begin + 1 ||
-          counter_at_begin != mExpectedNextCommandStartCounterValue) {
-
-        auto counter = new atom_pb::CommandCounter();
-        counter->set_counteratbegin(counter_at_begin);
-        counter->set_counteratend(counter_at_end);
-        observer->encodeAndDelete(counter);
-      }
-      mExpectedNextCommandStartCounterValue = counter_at_end + 1;
-
       {{if GetAnnotation $ "DrawCall"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
       {{if GetAnnotation $ "StartOfFrame"}}onPostStartOfFrame(observer);{{end}}
       {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
