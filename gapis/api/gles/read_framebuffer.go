@@ -77,27 +77,53 @@ func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {
 	t.tasks = nil
 }
 
-func (t *readFramebuffer) depth(id api.CmdID, thread uint64, res replay.Result) {
+func (t *readFramebuffer) depth(
+	id api.CmdID,
+	thread uint64,
+	fb FramebufferId,
+	res replay.Result) {
+
 	t.addTask(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
-		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(thread, api.FramebufferAttachment_Depth)
+		c := GetContext(s, thread)
+
+		if fb == 0 {
+			fb = c.Bound.DrawFramebuffer.GetID()
+		}
+
+		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, api.FramebufferAttachment_Depth)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
 
+		t := newTweaker(out, id.Derived(), CommandBuilder{Thread: thread})
+		defer t.revert(ctx)
+		t.glBindFramebuffer_Read(ctx, fb)
+
 		postColorData(ctx, s, int32(width), int32(height), format, out, id, thread, res)
 	})
 }
 
-func (t *readFramebuffer) color(id api.CmdID, thread uint64, width, height, bufferIdx uint32, res replay.Result) {
+func (t *readFramebuffer) color(
+	id api.CmdID,
+	thread uint64,
+	width, height uint32,
+	fb FramebufferId,
+	bufferIdx uint32,
+	res replay.Result) {
+
 	t.addTask(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s, thread)
 
+		if fb == 0 {
+			fb = c.Bound.DrawFramebuffer.GetID()
+		}
+
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
-		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(thread, attachment)
+		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, attachment)
 		if err != nil {
 			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
@@ -119,7 +145,8 @@ func (t *readFramebuffer) color(id api.CmdID, thread uint64, width, height, buff
 		dID := id.Derived()
 		cb := CommandBuilder{Thread: thread}
 		t := newTweaker(out, dID, cb)
-		t.glBindFramebuffer_Read(ctx, c.Bound.DrawFramebuffer.GetID())
+		defer t.revert(ctx)
+		t.glBindFramebuffer_Read(ctx, fb)
 
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
@@ -155,7 +182,6 @@ func (t *readFramebuffer) color(id api.CmdID, thread uint64, width, height, buff
 			postColorData(ctx, s, outW, outH, fmt, out, id, thread, res)
 		}
 
-		t.revert(ctx)
 	})
 }
 

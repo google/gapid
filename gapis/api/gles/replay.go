@@ -63,6 +63,7 @@ type issuesRequest struct{}
 type framebufferRequest struct {
 	after            api.CmdID
 	width, height    uint32
+	fb               FramebufferId
 	attachment       api.FramebufferAttachment
 	wireframeOverlay bool
 }
@@ -134,12 +135,12 @@ func (a API) Replay(
 			thread := cmds[req.after].Thread()
 			switch req.attachment {
 			case api.FramebufferAttachment_Depth:
-				readFramebuffer.depth(req.after, thread, rr.Result)
+				readFramebuffer.depth(req.after, thread, req.fb, rr.Result)
 			case api.FramebufferAttachment_Stencil:
 				return fmt.Errorf("Stencil buffer attachments are not currently supported")
 			default:
 				idx := uint32(req.attachment - api.FramebufferAttachment_Color0)
-				readFramebuffer.color(req.after, thread, req.width, req.height, idx, rr.Result)
+				readFramebuffer.color(req.after, thread, req.width, req.height, req.fb, idx, rr.Result)
 			}
 
 			cfg := cfg.(drawConfig)
@@ -241,7 +242,13 @@ func (a API) QueryFramebufferAttachment(
 	if wireframeMode == replay.WireframeMode_Overlay {
 		c.wireframeOverlayID = api.CmdID(after[0])
 	}
-	r := framebufferRequest{after: api.CmdID(after[0]), width: width, height: height, attachment: attachment}
+	r := framebufferRequest{
+		after:      api.CmdID(after[0]),
+		width:      width,
+		height:     height,
+		fb:         FramebufferId(framebufferIndex),
+		attachment: attachment,
+	}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err

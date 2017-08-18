@@ -99,7 +99,18 @@ func (b *Texture) GetID() TextureId {
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
 func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachment api.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
-	w, h, sizedFormat, err := GetState(state).getFramebufferAttachmentInfo(thread, attachment)
+	s := GetState(state)
+	c := s.GetContext(thread)
+	if c == nil {
+		return 0, 0, 0, nil, fmt.Errorf("No context bound")
+	}
+	if !c.Info.Initialized {
+		return 0, 0, 0, nil, fmt.Errorf("Context not initialized")
+	}
+
+	fb := c.Bound.DrawFramebuffer.GetID()
+
+	w, h, sizedFormat, err := s.getFramebufferAttachmentInfo(thread, fb, attachment)
 	if sizedFormat == 0 {
 		return 0, 0, 0, nil, fmt.Errorf("No format set")
 	}
@@ -108,7 +119,7 @@ func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachm
 	}
 	fmt, ty := getUnsizedFormatAndType(sizedFormat)
 	f, err := getImageFormat(fmt, ty)
-	return w, h, uint32(attachment), f, err
+	return w, h, 0, f, err
 }
 
 // Context returns the active context for the given state and thread.
