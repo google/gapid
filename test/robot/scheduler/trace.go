@@ -24,37 +24,20 @@ import (
 	"github.com/google/gapid/test/robot/trace"
 )
 
-func (s schedule) getTraceTargetTools(ctx context.Context, subj *monitor.Subject) *build.AndroidToolSet {
-	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
-	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Host), s.data.FindDevice(s.worker.Target), subj.GetAPK())
-
-	if tools == nil {
-		return nil
-	}
-	if tools.GapidApk == "" {
-		return nil
-	}
-	return tools
-}
-
-func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject) error {
+func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject, tools *build.ToolSet, androidTools *build.AndroidToolSet) error {
 	if !s.worker.Supports(job.Trace) {
 		return nil
 	}
 	ctx = log.Enter(ctx, "Trace")
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
-	hostTools := s.getHostTools(ctx)
-	targetTools := s.getTraceTargetTools(ctx, subj)
-	if hostTools == nil || targetTools == nil {
-		return log.Err(ctx, nil, "Failed to find tools for trace!")
-	}
 	input := &trace.Input{
 		Subject:  subj.Id,
-		Gapit:    hostTools.Host.Gapit,
-		GapidApk: targetTools.GapidApk,
+		Gapit:    tools.Host.Gapit,
+		GapidApk: androidTools.GapidApk,
+		Package:  s.pkg.Id,
 		Hints:    subj.Hints,
 		Layout: &trace.ToolingLayout{
-			GapidAbi: targetTools.Abi,
+			GapidAbi: androidTools.Abi,
 		},
 	}
 	action := &trace.Action{

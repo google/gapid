@@ -49,23 +49,27 @@ func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) [
 		s.pkg = pkg
 		for _, w := range data.Workers.All() {
 			s.worker = w
-			for _, subj := range data.Subjects.All() {
-				if err := s.doTrace(ctx, subj); err != nil {
-					errs = append(errs, err)
+			if tools := s.getHostTools(ctx); tools != nil {
+				for _, subj := range data.Subjects.All() {
+					if android_tools := s.getAndroidTools(ctx, subj); android_tools != nil {
+						if err := s.doTrace(ctx, subj, tools, android_tools); err != nil {
+							errs = append(errs, err)
+						}
+					}
 				}
-			}
-			for _, t := range data.Traces.All() {
-				if t.Status != job.Succeeded {
-					continue
-				}
-				if t.Output == nil {
-					continue
-				}
-				if err := s.doReport(ctx, t); err != nil {
-					errs = append(errs, err)
-				}
-				if err := s.doReplay(ctx, t); err != nil {
-					errs = append(errs, err)
+				for _, t := range data.Traces.All() {
+					if t.Status != job.Succeeded {
+						continue
+					}
+					if t.Output == nil {
+						continue
+					}
+					if err := s.doReport(ctx, t, tools); err != nil {
+						errs = append(errs, err)
+					}
+					if err := s.doReplay(ctx, t, tools); err != nil {
+						errs = append(errs, err)
+					}
 				}
 			}
 		}
@@ -86,6 +90,24 @@ func (s schedule) getHostTools(ctx context.Context) *build.ToolSet {
 		return nil
 	}
 	if tools.Host.Gapir == "" {
+		return nil
+	}
+	if tools.Host.VirtualSwapChainLib == "" {
+		return nil
+	}
+	if tools.Host.VirtualSwapChainJson == "" {
+		return nil
+	}
+	return tools
+}
+
+func (s schedule) getAndroidTools(ctx context.Context, subj *monitor.Subject) *build.AndroidToolSet {
+	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
+	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Host), s.data.FindDevice(s.worker.Target), subj.GetAPK())
+	if tools == nil {
+		return nil
+	}
+	if tools.GapidApk == "" {
 		return nil
 	}
 	return tools

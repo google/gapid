@@ -18,25 +18,23 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/monitor"
 	"github.com/google/gapid/test/robot/report"
 )
 
-func (s schedule) doReport(ctx context.Context, t *monitor.Trace) error {
+func (s schedule) doReport(ctx context.Context, t *monitor.Trace, tools *build.ToolSet) error {
 	if !s.worker.Supports(job.Report) {
 		return nil
 	}
 	ctx = log.Enter(ctx, "Report")
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
-	hostTools := s.getHostTools(ctx)
-	if hostTools == nil {
-		return log.Err(ctx, nil, "Failed to find tools for report!")
-	}
 	input := &report.Input{
-		Trace: t.Action.Output.Trace,
-		Gapit: hostTools.Host.Gapit,
-		Gapis: hostTools.Host.Gapis,
+		Trace:   t.Action.Output.Trace,
+		Gapit:   tools.Host.Gapit,
+		Gapis:   tools.Host.Gapis,
+		Package: s.pkg.Id,
 	}
 	action := &report.Action{
 		Input:  input,

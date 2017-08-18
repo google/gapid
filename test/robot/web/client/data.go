@@ -21,6 +21,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"time"
 
 	"os"
@@ -33,13 +34,31 @@ var (
 	reportKind = item{id: "report"}
 	replayKind = item{id: "replay"}
 
+	packageDisplayTemplate = "{{if .information.tag}}{{.information.tag}}" +
+		"{{else if and (isUserType .information.type) (.information.cl)}}{{.information.cl}}" +
+		"{{else if  .information.uploader}}{{.information.uploader}} - {{.id}}" +
+		"{{else}}unknown - {{.id}}" +
+		"{{end}}"
+
+	machineDisplayTemplate = "{{if .information.Name}}{{.information.Name}}" +
+		"{{else if .information.Configuration.Hardware.Name}}{{.information.Configuration.Hardware.Name}}" +
+		"{{else}}{{.information.Configuration.OS}} - {{.information.id.data}}" +
+		"{{end}}"
+
+	kindDimension = &dimension{
+		name:     "kind",
+		enumData: enum{traceKind, replayKind, reportKind},
+		valueOf: func(t *task) Item {
+			return t.kind
+		},
+	}
 	subjectDimension = &dimension{
 		name: "subject",
 		valueOf: func(t *task) Item {
 			return t.trace.subject
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", "{{.Information.APK.package}}")(queryArray("/subjects/"))
+			return itemGetter("{{.id}}", "{{.Information.APK.package}}", template.FuncMap{})(queryArray("/subjects/"))
 		},
 	}
 	targetDimension = &dimension{
@@ -48,50 +67,39 @@ var (
 			return t.trace.target
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", "{{.information.Configuration.Hardware.Name}}")(queryArray("/devices/"))
+			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
 		},
 	}
 	hostDimension = &dimension{
-		name: "traceHost",
+		name: "host",
 		valueOf: func(t *task) Item {
-			return t.trace.host
+			return t.host
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", "{{.information.Configuration.Hardware.Name}}")(queryArray("/devices/"))
+			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
 		},
 	}
-	kindDimension = &dimension{
-		name:     "kind",
-		enumData: enum{traceKind, replayKind, reportKind},
+	packageDimension = &dimension{
+		name: "package",
 		valueOf: func(t *task) Item {
-			return t.kind
-		},
-	}
-	gapidApkDimension = &dimension{
-		name: "gapid_apk",
-		valueOf: func(t *task) Item {
-			return t.trace.gapidApk
+			return t.pkg
 		},
 		enumSrc: func() enum {
-			return androidToolFieldMerger("gapid_apk", queryArray("/packages/"))
-		},
-	}
-	gapitDimension = &dimension{
-		name: "gapit",
-		valueOf: func(t *task) Item {
-			return t.trace.gapit
-		},
-		enumSrc: func() enum {
-			return hostToolFieldMerger("gapit", queryArray("/packages/"))
+			return itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
 		},
 	}
 
-	dimensions = []*dimension{subjectDimension, targetDimension, hostDimension, kindDimension, gapidApkDimension, gapitDimension}
+	dimensions = []*dimension{kindDimension, subjectDimension, targetDimension, hostDimension, packageDimension}
 )
 
-func itemGetter(idPattern string, displayPattern string) func([]interface{}) enum {
+func isUserType(t reflect.Value) bool {
+	// cannot currently use build.Type_UserType to check the type need to fix that.
+	return t.Kind() == reflect.Float64 && t.Float() == float64(2)
+}
+
+func itemGetter(idPattern string, displayPattern string, functions template.FuncMap) func([]interface{}) enum {
 	mustTemplate := func(s string) *template.Template {
-		return template.Must(template.New(fmt.Sprintf("t%d", time.Now().Unix())).Parse(s))
+		return template.Must(template.New(fmt.Sprintf("t%d", time.Now().Unix())).Funcs(functions).Parse(s))
 	}
 	exec := func(t *template.Template, item interface{}) string {
 		var b bytes.Buffer
@@ -107,52 +115,6 @@ func itemGetter(idPattern string, displayPattern string) func([]interface{}) enu
 		}
 		return result
 	}
-}
-
-func hostToolFieldMerger(field string, entries []interface{}) enum {
-	// TODO(baldwinn): parse into the actual protos instead of using JSON, already had to fix a schema change here.
-	result := enum{}
-	for _, it := range entries {
-		tool := (it.(map[string]interface{}))["tool"]
-		if tool == nil {
-			continue
-		}
-		for _, t := range tool.([]interface{}) {
-			host, ok := (t.(map[string]interface{}))["host"]
-			if !ok {
-				continue
-			}
-			fieldVal, ok := (host.(map[string]interface{}))[field]
-			if ok {
-				result = append(result, item{id: fieldVal.(string)})
-			}
-		}
-	}
-	return result
-}
-
-func androidToolFieldMerger(field string, entries []interface{}) enum {
-	// TODO(baldwinn): parse into the actual protos instead of using JSON, already had to fix a schema change here.
-	result := enum{}
-	for _, it := range entries {
-		tool := (it.(map[string]interface{}))["tool"]
-		if tool == nil {
-			continue
-		}
-		for _, t := range tool.([]interface{}) {
-			android, ok := (t.(map[string]interface{}))["android"]
-			if !ok {
-				continue
-			}
-			for _, a := range android.([]interface{}) {
-				fieldVal, ok := (a.(map[string]interface{}))[field]
-				if ok {
-					result = append(result, item{id: fieldVal.(string)})
-				}
-			}
-		}
-	}
-	return result
 }
 
 func queryRestEndpoint(path string) ([]byte, error) {
@@ -208,8 +170,10 @@ func clearDimensionData() {
 func newTask(entry map[string]interface{}, kind Item) *task {
 	t := &task{
 		underlying: entry,
+		trace:      traceInfo{target: nilItem, pkg: nilItem, subject: nilItem},
 		kind:       kind,
-		trace:      traceInfo{host: nilItem, subject: nilItem, target: nilItem, gapidApk: nilItem, gapit: nilItem},
+		host:       nilItem,
+		pkg:        nilItem,
 	}
 
 	if st, ok := entry["status"].(float64); ok {
@@ -249,12 +213,11 @@ func getRobotTasks() []*task {
 	traceProc := func(e map[string]interface{}, t *task) {
 		ei := e["input"].(map[string]interface{})
 		t.trace = traceInfo{
-			host:     hostDimension.GetItem(e["host"]),
-			subject:  subjectDimension.GetItem(ei["subject"]),
-			target:   targetDimension.GetItem(e["target"]),
-			gapidApk: gapidApkDimension.GetItem(ei["gapid_apk"]),
-			gapit:    gapitDimension.GetItem(ei["gapit"]),
+			target:  targetDimension.GetItem(e["target"]),
+			subject: subjectDimension.GetItem(ei["subject"]),
 		}
+		t.host = hostDimension.GetItem(e["host"])
+		t.pkg = packageDimension.GetItem(ei["package"])
 		if eo := e["output"]; eo != nil {
 			if traceOutput := eo.(map[string]interface{})["trace"]; traceOutput != nil {
 				traceMap[traceOutput.(string)] = t
@@ -271,6 +234,8 @@ func getRobotTasks() []*task {
 		} else {
 			fmt.Fprintf(os.Stderr, "Trace %s not found when processing action\n", id)
 		}
+		t.host = hostDimension.GetItem(e["host"])
+		t.pkg = packageDimension.GetItem(ei["package"])
 	}
 	tasks = append(tasks, robotTasksPerKind(replayKind, "/replays/", subTaskProc)...)
 	tasks = append(tasks, robotTasksPerKind(reportKind, "/reports/", subTaskProc)...)
