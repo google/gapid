@@ -22,8 +22,12 @@ set(files
     constant_sets.go
     convert.go
     enum.go
+    framebindings.go
+    gvr.api
     gvr.go
     mutate.go
+    resolvables.proto
+    types.api
 )
 set(dirs
     gvr_pb

@@ -49,6 +49,7 @@ protoc_go("github.com/google/gapid/gapis/api/gles" "gapis/api/gles" "resolvables
 
 protoc_go("github.com/google/gapid/gapis/api/gvr/gvr_pb" "gapis/api/gvr/gvr_pb" "api.proto")
 protoc_cc("gapis/api/gvr/gvr_pb" "gapis/api/gvr/gvr_pb" "api.proto")
+protoc_go("github.com/google/gapid/gapis/api/gvr" "gapis/api/gvr" "resolvables.proto")
 
 protoc_go("github.com/google/gapid/gapis/api/vulkan/vulkan_pb" "gapis/api/vulkan/vulkan_pb" "api.proto")
 protoc_cc("gapis/api/vulkan/vulkan_pb" "gapis/api/vulkan/vulkan_pb" "api.proto")
