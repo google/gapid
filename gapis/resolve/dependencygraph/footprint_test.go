@@ -22,36 +22,36 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-func TestFootprintAddAndGetBehaviour(t *testing.T) {
+func TestFootprintAddAndGetBehavior(t *testing.T) {
 	ctx := log.Testing(t)
 	ft := NewEmptyFootprint(ctx)
-	behaviours := []*Behaviour{
-		NewBehaviour(api.SubCmdIdx{0}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{1}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{2}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{3}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 3}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 4}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 5, 6, 7}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 5, 6, 8}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 6}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{5}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 7}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4, 1, 2, 8}, &dummyMachine{}),
-		NewBehaviour(api.SubCmdIdx{4}, &dummyMachine{}), // overwrites the previous one
-		NewBehaviour(api.SubCmdIdx{6}, &dummyMachine{}),
+	behaviors := []*Behavior{
+		NewBehavior(api.SubCmdIdx{0}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{1}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{2}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{3}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 3}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 4}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 7}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 8}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 6}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{5}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 7}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4, 1, 2, 8}, &dummyMachine{}),
+		NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}), // overwrites the previous one
+		NewBehavior(api.SubCmdIdx{6}, &dummyMachine{}),
 	}
-	for _, b := range behaviours {
-		ft.AddBehaviour(ctx, b)
+	for _, b := range behaviors {
+		ft.AddBehavior(ctx, b)
 	}
-	for bi, b := range behaviours {
-		i := ft.GetBehaviourIndex(ctx, b.BelongTo)
+	for bi, b := range behaviors {
+		i := ft.BehaviorIndex(ctx, b.Owner)
 		if bi == 4 {
-			assert.To(t).For("Behaviour Index should be %v", 13).That(
+			assert.To(t).For("Behavior Index should be %v", 13).That(
 				i).Equals(uint64(13))
 		} else {
-			assert.To(t).For("Behaviour Index should be %v", bi).That(
+			assert.To(t).For("Behavior Index should be %v", bi).That(
 				i).Equals(uint64(bi))
 		}
 	}

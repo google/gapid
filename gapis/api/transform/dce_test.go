@@ -23,19 +23,19 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
-type dummyDefUseAtom uint64
+type dummyDefUseVar uint64
 
-func (dummyDefUseAtom) DefUseAtom() {}
+func (dummyDefUseVar) DefUseVariable() {}
 
 type dummyMachine struct {
-	undefined map[dummyDefUseAtom]struct{}
+	undefined map[dummyDefUseVar]struct{}
 }
 
-func (m *dummyMachine) IsAlive(behaviourIndex uint64,
+func (m *dummyMachine) IsAlive(behaviorIndex uint64,
 	ft *dependencygraph.Footprint) bool {
-	bh := ft.Behaviours[behaviourIndex]
+	bh := ft.Behaviors[behaviorIndex]
 	for _, w := range bh.Writes {
-		if u, ok := w.(dummyDefUseAtom); ok {
+		if u, ok := w.(dummyDefUseVar); ok {
 			_, contains := m.undefined[u]
 			if contains {
 				return true
@@ -45,17 +45,17 @@ func (m *dummyMachine) IsAlive(behaviourIndex uint64,
 	return false
 }
 
-func (m *dummyMachine) RecordBehaviourEffects(behaviourIndex uint64,
+func (m *dummyMachine) RecordBehaviorEffects(behaviorIndex uint64,
 	ft *dependencygraph.Footprint) []uint64 {
-	alive := []uint64{behaviourIndex}
-	bh := ft.Behaviours[behaviourIndex]
+	alive := []uint64{behaviorIndex}
+	bh := ft.Behaviors[behaviorIndex]
 	for _, w := range bh.Writes {
-		if u, ok := w.(dummyDefUseAtom); ok {
+		if u, ok := w.(dummyDefUseVar); ok {
 			delete(m.undefined, u)
 		}
 	}
 	for _, r := range bh.Reads {
-		if u, ok := r.(dummyDefUseAtom); ok {
+		if u, ok := r.(dummyDefUseVar); ok {
 			m.undefined[u] = struct{}{}
 		}
 	}
@@ -63,17 +63,17 @@ func (m *dummyMachine) RecordBehaviourEffects(behaviourIndex uint64,
 }
 
 func (m *dummyMachine) Clear() {
-	m.undefined = map[dummyDefUseAtom]struct{}{}
+	m.undefined = map[dummyDefUseVar]struct{}{}
 }
 
 func TestDCE(t *testing.T) {
 	ctx := log.Testing(t)
 	ft := dependencygraph.NewEmptyFootprint(ctx)
-	machine := &dummyMachine{undefined: map[dummyDefUseAtom]struct{}{}}
+	machine := &dummyMachine{undefined: map[dummyDefUseVar]struct{}{}}
 
 	behave := func(fci api.SubCmdIdx,
-		reads, writes []dummyDefUseAtom) {
-		b := dependencygraph.NewBehaviour(fci, machine)
+		reads, writes []dummyDefUseVar) {
+		b := dependencygraph.NewBehavior(fci, machine)
 		for _, r := range reads {
 			b.Read(r)
 		}
@@ -81,10 +81,10 @@ func TestDCE(t *testing.T) {
 			b.Write(w)
 		}
 		b.Machine = machine
-		ft.AddBehaviour(ctx, b)
+		ft.AddBehavior(ctx, b)
 	}
 
-	// FullCommandIndex: Behaviour Reads, Writes
+	// FullCommandIndex: Behavior Reads, Writes
 	// 0: R[], W[1, 2, 3]
 	// 1: R[], W[2, 3]
 	// 2: R[], W[4]
@@ -95,16 +95,16 @@ func TestDCE(t *testing.T) {
 	// 3-0-0-4: R[8], W[9]
 	// 3-0-1-0: R[8, 9], W[10]
 	// 4: R[10], W[]
-	behave([]uint64{0}, []dummyDefUseAtom{}, []dummyDefUseAtom{1, 2, 3})
-	behave([]uint64{1}, []dummyDefUseAtom{}, []dummyDefUseAtom{2, 3})
-	behave([]uint64{2}, []dummyDefUseAtom{}, []dummyDefUseAtom{4})
-	behave([]uint64{3, 0, 0, 0}, []dummyDefUseAtom{2}, []dummyDefUseAtom{5})
-	behave([]uint64{3, 0, 0, 1}, []dummyDefUseAtom{3}, []dummyDefUseAtom{6})
-	behave([]uint64{3, 0, 0, 2}, []dummyDefUseAtom{4}, []dummyDefUseAtom{7})
-	behave([]uint64{3, 0, 0, 3}, []dummyDefUseAtom{5, 6, 7}, []dummyDefUseAtom{8})
-	behave([]uint64{3, 0, 0, 4}, []dummyDefUseAtom{8}, []dummyDefUseAtom{9})
-	behave([]uint64{3, 0, 1, 0}, []dummyDefUseAtom{8, 9}, []dummyDefUseAtom{10})
-	behave([]uint64{4}, []dummyDefUseAtom{10}, []dummyDefUseAtom{})
+	behave([]uint64{0}, []dummyDefUseVar{}, []dummyDefUseVar{1, 2, 3})
+	behave([]uint64{1}, []dummyDefUseVar{}, []dummyDefUseVar{2, 3})
+	behave([]uint64{2}, []dummyDefUseVar{}, []dummyDefUseVar{4})
+	behave([]uint64{3, 0, 0, 0}, []dummyDefUseVar{2}, []dummyDefUseVar{5})
+	behave([]uint64{3, 0, 0, 1}, []dummyDefUseVar{3}, []dummyDefUseVar{6})
+	behave([]uint64{3, 0, 0, 2}, []dummyDefUseVar{4}, []dummyDefUseVar{7})
+	behave([]uint64{3, 0, 0, 3}, []dummyDefUseVar{5, 6, 7}, []dummyDefUseVar{8})
+	behave([]uint64{3, 0, 0, 4}, []dummyDefUseVar{8}, []dummyDefUseVar{9})
+	behave([]uint64{3, 0, 1, 0}, []dummyDefUseVar{8, 9}, []dummyDefUseVar{10})
+	behave([]uint64{4}, []dummyDefUseVar{10}, []dummyDefUseVar{})
 
 	dce := NewDCE(ctx, ft)
 	expectedLiveness := func(alivedCommands *commandIndicesSet, fci api.SubCmdIdx, expected bool) {
@@ -127,7 +127,7 @@ func TestDCE(t *testing.T) {
 	expectedLiveness(alived, []uint64{4}, true)
 
 	dce.requests = newCommandIndicesSet()
-	dce.endBehaviourIndex = uint64(0)
+	dce.endBehaviorIndex = uint64(0)
 	dce.requests.count = uint64(0)
 
 	// Case: Request: 3-0-0-1, Dead: 3-0-0-0, 2, 0, and all after 3-0-0-1

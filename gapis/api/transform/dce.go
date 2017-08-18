@@ -66,9 +66,9 @@ func (s *commandIndicesSet) contains(fci api.SubCmdIdx) bool {
 // commands which are not contributing to the final state at the requested
 // commands.
 type DCE struct {
-	footprint         *dependencygraph.Footprint
-	endBehaviourIndex uint64
-	requests          *commandIndicesSet
+	footprint        *dependencygraph.Footprint
+	endBehaviorIndex uint64
+	requests         *commandIndicesSet
 }
 
 // NewDCE constructs a new DCE instance and returns a pointer to the created
@@ -84,9 +84,9 @@ func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 // command index, to the DCE.
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 	t.requests.insert(fci)
-	bi := t.footprint.GetBehaviourIndex(ctx, fci)
-	if bi > t.endBehaviourIndex {
-		t.endBehaviourIndex = bi
+	bi := t.footprint.BehaviorIndex(ctx, fci)
+	if bi > t.endBehaviorIndex {
+		t.endBehaviorIndex = bi
 	}
 }
 
@@ -98,7 +98,7 @@ func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 }
 
 // Flush is to comform the interface of Transformer. Flush starts the back
-// propagation of the behaviours recorded in the footprint from the last
+// propagation of the behaviors recorded in the footprint from the last
 // requested command (the one with largest SubCmdIdx, not the one added the
 // last in the order of time) to get a list of alive commands. Then it sends
 // the alive commands to the following transforms to mutate them and write them
@@ -112,9 +112,9 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 	numCmd, numDead, numDeadDraws, numLive, numLiveDraws := 0, 0, 0, 0, 0
 	deadMem, liveMem := uint64(0), uint64(0)
 
-	for bi := uint64(0); bi <= t.endBehaviourIndex; bi++ {
-		bh := t.footprint.Behaviours[bi]
-		fci := bh.BelongTo
+	for bi := uint64(0); bi <= t.endBehaviorIndex; bi++ {
+		bh := t.footprint.Behaviors[bi]
+		fci := bh.Owner
 
 		if livenessBoard[bi] && len(fci) == 1 && !flushedCommands.contains(fci) {
 			flushedCommands.insert(fci)
@@ -163,12 +163,12 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 
 func (t *DCE) backPropagate(ctx context.Context) (
 	[]bool, *commandIndicesSet) {
-	livenessBoard := make([]bool, t.endBehaviourIndex+1)
+	livenessBoard := make([]bool, t.endBehaviorIndex+1)
 	aliveCommands := newCommandIndicesSet()
 	usedMachines := map[dependencygraph.BackPropagationMachine]struct{}{}
-	for bi := int64(t.endBehaviourIndex); bi >= 0; bi-- {
-		bh := t.footprint.Behaviours[bi]
-		fci := bh.BelongTo
+	for bi := int64(t.endBehaviorIndex); bi >= 0; bi-- {
+		bh := t.footprint.Behaviors[bi]
+		fci := bh.Owner
 		machine := bh.Machine
 		usedMachines[machine] = struct{}{}
 		if bh.Aborted {
@@ -177,13 +177,13 @@ func (t *DCE) backPropagate(ctx context.Context) (
 		if t.requests.contains(fci) ||
 			t.requests.contains(api.SubCmdIdx{fci[0]}) ||
 			bh.Alive || machine.IsAlive(uint64(bi), t.footprint) {
-			alivedBehaviourIndices := machine.RecordBehaviourEffects(uint64(bi), t.footprint)
+			alivedBehaviorIndices := machine.RecordBehaviorEffects(uint64(bi), t.footprint)
 			// TODO: Theoretically, we should re-back-propagation from the alive
-			// behaviours other than |bi|.
-			for _, aliveBI := range alivedBehaviourIndices {
-				if aliveBI < t.endBehaviourIndex+1 {
+			// behaviors other than |bi|.
+			for _, aliveBI := range alivedBehaviorIndices {
+				if aliveBI < t.endBehaviorIndex+1 {
 					livenessBoard[aliveBI] = true
-					aliveCommands.insert(t.footprint.Behaviours[aliveBI].BelongTo)
+					aliveCommands.insert(t.footprint.Behaviors[aliveBI].Owner)
 				}
 			}
 		}
