@@ -463,13 +463,13 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 		dsAtt := qei.subpasses[subpassI].depthStencilAttachment
 		// TODO: Not all subpasses change layouts
 		modify(ctx, bh, dsAtt.layout)
-		if dsAtt.desc.LoadOp.isLoad() && dsAtt.desc.StencilLoadOp.isLoad() {
+		if !dsAtt.desc.LoadOp.isLoad() && !dsAtt.desc.StencilLoadOp.isLoad() {
 			if dsAtt.fullImageData {
 				write(ctx, bh, dsAtt.data)
 			} else {
 				modify(ctx, bh, dsAtt.data)
 			}
-		} else if !dsAtt.desc.LoadOp.isLoad() && !dsAtt.desc.StencilLoadOp.isLoad() {
+		} else if dsAtt.desc.LoadOp.isLoad() && dsAtt.desc.StencilLoadOp.isLoad() {
 			read(ctx, bh, dsAtt.data)
 		} else {
 			modify(ctx, bh, dsAtt.data)
