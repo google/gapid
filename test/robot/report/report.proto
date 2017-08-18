@@ -28,6 +28,8 @@ message Input{
   string gapit = 2;
   // Gapis is the stash id of the graphics analysis server to use.
   string gapis = 3;
+  // Package is the stash id of the package used to generate the report.
+  string package = 4;
 }
 
 // Output describes the outputs of a report action.

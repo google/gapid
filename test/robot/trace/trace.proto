@@ -34,6 +34,8 @@ message Input {
   subject.Hints hints = 4;
   // layout represents details about what tools we're using to trace.
   ToolingLayout layout = 5;
+  // Package is the stash id of the package used to trace.
+  string package = 6;
 }
 
 // ToolingLayout describes tools we use for tracing.

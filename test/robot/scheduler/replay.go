@@ -24,36 +24,20 @@ import (
 	"github.com/google/gapid/test/robot/replay"
 )
 
-func (s schedule) getReplayTargetTools(ctx context.Context) *build.ToolSet {
-	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
-	tools := s.pkg.FindTools(ctx, s.data.FindDevice(s.worker.Target))
-	if tools == nil {
-		return nil
-	}
-	if tools.Host.Gapir == "" {
-		return nil
-	}
-	return tools
-}
-
-func (s schedule) doReplay(ctx context.Context, t *monitor.Trace) error {
+func (s schedule) doReplay(ctx context.Context, t *monitor.Trace, tools *build.ToolSet) error {
 	if !s.worker.Supports(job.Replay) {
 		return nil
 	}
 	ctx = log.Enter(ctx, "Replay")
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
-	hostTools := s.getHostTools(ctx)
-	targetTools := s.getReplayTargetTools(ctx)
-	if hostTools == nil || targetTools == nil {
-		return log.Err(ctx, nil, "Failed to find tools for report!")
-	}
 	input := &replay.Input{
 		Trace:                t.Action.Output.Trace,
-		Gapit:                hostTools.Host.Gapit,
-		Gapis:                hostTools.Host.Gapis,
-		Gapir:                targetTools.Host.Gapir,
-		VirtualSwapChainLib:  targetTools.Host.VirtualSwapChainLib,
-		VirtualSwapChainJson: targetTools.Host.VirtualSwapChainJson,
+		Gapit:                tools.Host.Gapit,
+		Gapis:                tools.Host.Gapis,
+		Gapir:                tools.Host.Gapir,
+		VirtualSwapChainLib:  tools.Host.VirtualSwapChainLib,
+		VirtualSwapChainJson: tools.Host.VirtualSwapChainJson,
+		Package:                s.pkg.Id,
 	}
 	action := &replay.Action{
 		Input:  input,

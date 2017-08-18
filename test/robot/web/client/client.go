@@ -25,17 +25,17 @@ import (
 )
 
 type traceInfo struct {
-	target   Item
-	gapidApk Item
-	gapit    Item
-	subject  Item
-	host     Item
+	target  Item
+	pkg     Item
+	subject Item
 }
 
 type task struct {
 	trace traceInfo
 
 	kind   Item
+	host   Item
+	pkg    Item
 	result grid.Result
 	status grid.Status
 
@@ -45,10 +45,10 @@ type task struct {
 func (t *task) Representation() interface{} {
 	tr := map[string]interface{}{}
 	tr["trace target"] = t.trace.target.Underlying()
-	tr["trace host"] = t.trace.host.Underlying()
 	tr["trace subject"] = t.trace.subject.Underlying()
-	tr["trace gapid.apk"] = t.trace.gapidApk.Underlying()
-	tr["trace gapit"] = t.trace.gapit.Underlying()
+	tr["trace package"] = t.trace.pkg.Underlying()
+	tr["host"] = t.host.Underlying()
+	tr["package"] = t.pkg.Underlying()
 	return []interface{}{tr, t.underlying}
 }
 

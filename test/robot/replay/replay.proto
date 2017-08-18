@@ -36,6 +36,8 @@ message Input {
   // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
   // json file.
   string virtual_swap_chain_json = 6;
+  // Package is the stash id of the package used to generate the report.
+  string package = 7;
 }
 
 // Output holds the outputs of a replay action.
