@@ -22,7 +22,7 @@ import (
 
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-func (s *State) getFramebufferAttachmentInfo(thread uint64, att api.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
+func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att api.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
 	c := s.GetContext(thread)
 	if c == nil {
 		return 0, 0, 0, fmt.Errorf("No context bound")
@@ -31,7 +31,10 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, att api.FramebufferA
 		return 0, 0, 0, fmt.Errorf("Context not initialized")
 	}
 
-	framebuffer := c.Bound.DrawFramebuffer
+	framebuffer, ok := c.Objects.Framebuffers[fb]
+	if !ok {
+		return 0, 0, 0, fmt.Errorf("Invalid framebuffer %v", fb)
+	}
 
 	var a FramebufferAttachment
 	switch att {
