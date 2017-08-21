@@ -39,6 +39,7 @@ set(files
     read.go
     resource.go
     slice.go
+    store.go
     subslice.go
     write.go
     write_test.go

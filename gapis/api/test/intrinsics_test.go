@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -38,7 +37,7 @@ func TestClone(t *testing.T) {
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdClone(p(0x1234), 10).
-			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)
@@ -69,7 +68,7 @@ func TestCopy(t *testing.T) {
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdMake(10),
 		cb.CmdCopy(p(0x1234), 10).
-			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
 	got := GetState(s).U8s.Read(ctx, nil, s, nil)
 	assert.With(ctx).ThatSlice(got).Equals(expected)
@@ -83,7 +82,7 @@ func TestCharsliceToString(t *testing.T) {
 	expected := "ħęľĺő ŵōřŀď"
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
-			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
 }
@@ -96,7 +95,7 @@ func TestCharptrToString(t *testing.T) {
 	expected := "ħęľĺő ŵōřŀď"
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdCharptrToString(p(0x1234)).
-			AddRead(atom.Data(ctx, s.MemoryLayout, p(0x1234), expected)),
+			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
 	assert.For(ctx, "Data").That(GetState(s).Str).Equals(expected)
 }

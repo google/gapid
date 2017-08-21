@@ -18,7 +18,6 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    data.go
     doc.go
     framebuffer_observation.go
     resource.go
