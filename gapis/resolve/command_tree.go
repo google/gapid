@@ -352,8 +352,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if v, ok := snc.SubcommandGroups[id]; ok {
 			r := out.root.AddRoot([]uint64{uint64(id)})
 			// subcommands are added before nested SubCmdRoots.
-			sort.SliceStable(v, func(i, j int) bool { return len(v[i]) < len(v[j]) })
-			for _, x := range v {
+			cv := append([]api.SubCmdIdx{}, v...)
+			sort.SliceStable(cv, func(i, j int) bool { return len(cv[i]) < len(cv[j]) })
+			for _, x := range cv {
 				r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
 			}
 			return nil
