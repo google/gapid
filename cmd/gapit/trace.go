@@ -54,9 +54,9 @@ func init() {
 
 // These are hard-coded and need to be kept in sync with the api_index
 // in the *.api files.
-const coreAPI = uint32(1 << 0)
 const glesAPI = uint32(1 << 1)
 const vulkanAPI = uint32(1 << 2)
+const gvrAPI = uint32(1 << 3)
 
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	options := client.Options{
@@ -84,9 +84,10 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	switch verb.API {
 	case "vulkan":
-		options.APIs = coreAPI | vulkanAPI
+		options.APIs = vulkanAPI
 	case "gles":
-		options.APIs = coreAPI | glesAPI
+		// TODO: Separate these two out once we can trace Vulkan with OpenGL ES.
+		options.APIs = glesAPI | gvrAPI
 	case "":
 		options.APIs = uint32(0xFFFFFFFF)
 	default:
