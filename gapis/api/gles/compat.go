@@ -274,7 +274,17 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		switch cmd := cmd.(type) {
 		case *GlBindBuffer:
-			if cmd.Buffer != 0 && !c.Objects.Shared.GeneratedNames.Buffers[cmd.Buffer] {
+			if cmd.Buffer == 0 {
+				buf, err := subGetBoundBuffer(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				if err != nil {
+					log.E(ctx, "Can not get bound buffer: %v ", err)
+				}
+				if buf == nil {
+					// The buffer is already unbound. Thus this command is a no-op.
+					// It is helpful to remove those no-ops in case the replay driver does not support the target.
+					return
+				}
+			} else if !c.Objects.Shared.GeneratedNames.Buffers[cmd.Buffer] {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Buffer)
 				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
