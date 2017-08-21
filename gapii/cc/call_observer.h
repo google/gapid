@@ -72,6 +72,9 @@ public:
     // required.
     core::DefaultScratchAllocator* getScratch() { return &mScratch; }
 
+    // getCurrentThread returns the current thread identifier.
+    uint64_t getCurrentThread() { return mCurrentThread; }
+
     // read is called to make a read memory observation of size bytes, starting
     // at base. It only records the range of the read memory, the actual
     // copying of the data is deferred until the data is to be sent.
@@ -192,6 +195,9 @@ private:
 
     // The current API that this call-observer is observing.
     uint8_t mApi;
+
+    // The current thread id.
+    uint64_t mCurrentThread;
 };
 
 template <typename T>

@@ -47,6 +47,7 @@
     ¶
     // {{$name}} is the structure for serializing the parameters to the api command {{$.Name}}¶
     message {{$name}} {»¶
+      uint64 thread = {{Inc "ProtoID"}};¶
       {{range $p := $.CallParameters}}
         {{Template "Proto.Entry" "Param" $p "Type" (TypeOf $p)}}
       {{end}}

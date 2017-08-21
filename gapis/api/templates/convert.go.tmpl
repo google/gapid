@@ -92,7 +92,7 @@
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
   func (ϟa *{{$name}}) ToProto() *{{$p}} {»¶
-    to := &{{$p}}{}¶
+    to := &{{$p}}{Thread: ϟa.Thread()}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
     {{end}}
@@ -101,7 +101,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
-    ϟa := &{{$name}}{caller: api.CmdNoID}¶
+    ϟa := &{{$name}}{caller: api.CmdNoID, thread: from.GetThread()}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}

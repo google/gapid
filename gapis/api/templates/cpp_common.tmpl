@@ -706,7 +706,7 @@
 {{define "C++.Global"}}
   {{AssertType $ "Global"}}
 
-  {{if eq $.Name "$Thread"}}mCurrentThread
+  {{if eq $.Name "$Thread"}}observer->getCurrentThread()
   {{else                  }}this->{{$.Name}}
   {{end}}
 {{end}}

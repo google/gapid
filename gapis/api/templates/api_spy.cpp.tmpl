@@ -190,9 +190,10 @@
       {{end}}
 
       observer->enter(cmd::{{.Name}}{§
-      {{range $i, $p := $.CallParameters}}
-        {{if $i}}, {{end}}{{$p.Name}}§
-      {{end}}
+        observer->getCurrentThread(),
+        {{range $i, $p := $.CallParameters}}
+          {{if $i}}, {{end}}{{$p.Name}}§
+        {{end}}
       });
 ¶
       {{if not (IsVoid $.Return.Type)}}

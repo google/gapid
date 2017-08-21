@@ -15,10 +15,11 @@
  */
 
 #include "call_observer.h"
+#include "spy_base.h"
+
+#include "core/cc/thread.h"
 
 #include <tuple>
-
-#include "spy_base.h"
 
 using core::Interval;
 
@@ -56,7 +57,8 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
           [](size_t size) { return createBuffer(size, SCRATCH_BUFFER_SIZE); },
           [](uint8_t* buffer) { return releaseBuffer(buffer); }),
       mError(GLenum::GL_NO_ERROR),
-      mApi(api) {
+      mApi(api),
+      mCurrentThread(core::Thread::current().id()) {
     mEncoderStack.push((parent == nullptr) ?
             mSpy->getEncoder(mApi) : parent->encoder());
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
