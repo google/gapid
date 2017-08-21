@@ -16,7 +16,6 @@
 
 #include "memory_tracker.h"
 
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include <map>
 
 namespace gapii {
@@ -74,8 +73,8 @@ bool MemoryTracker::AddTrackingRangeImpl(void* start, size_t size) {
   dirty_pages_.Reserve(size_aligned / page_size_);
   ranges_[reinterpret_cast<uintptr_t>(start)] = size;
   // TODO(qining): Add Windows support
-  return mprotect(start_page_addr, size_aligned,
-                  track_read_ ? PROT_NONE : PROT_READ) == 0;
+  return set_protection(start_page_addr, size_aligned,
+                  track_read_ ? page_protections::none : page_protections::read) == 0;
 }
 
 bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
@@ -87,7 +86,7 @@ bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
   void* start_page_addr = GetAlignedAddress(start, page_size_);
   size_t size_aligned = GetAlignedSize(start, size, page_size_);
   dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
-  // TODO(qining): Add Windows support
+
   bool can_be_removed = true;
   for (uint8_t* p = reinterpret_cast<uint8_t*>(start_page_addr);
       p < reinterpret_cast<uint8_t*>(start_page_addr)+size_aligned;
@@ -98,7 +97,7 @@ bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
     }
   }
   if (can_be_removed) {
-    return mprotect(start_page_addr, size_aligned, PROT_WRITE | PROT_READ) == 0;
+    return set_protection(start_page_addr, size_aligned, page_protections::read_write) == 0;
   }
   return true;
 }
@@ -114,8 +113,8 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
                         GetAlignedSize(start, size, page_size_);
                     dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
                     // TODO(qining): Add Windows support
-                    return mprotect(start_page_addr, size_aligned,
-                                    PROT_WRITE | PROT_READ) != 0;
+                    return set_protection(start_page_addr, size_aligned,
+                                    page_protections::read_write) != 0;
                   })) {
     return false;
   }
@@ -123,13 +122,9 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
   return true;
 }
 
-void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
-  void* fault_addr = info->si_addr;
+bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
   if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_, true)) {
-#ifndef NDEBUG
-    raise(SIGTRAP);
-#endif // NDEBUG
-    return (*orig_action_.sa_sigaction)(sig, info, unused);
+    return false;
   }
 
   // The fault address is within a tracking range
@@ -140,20 +135,17 @@ void MemoryTracker::HandleSegfaultImpl(int sig, siginfo_t* info, void* unused) {
     // two ranges that shares a common page, but not overlapping. The later
     // added range will mark the shared page as read-only, even though the
     // page has already been marked as dirty before. 
-    mprotect(page_addr, page_size_, PROT_READ | PROT_WRITE);
-    return;
+    set_protection(page_addr, page_size_, page_protections::read_write);
+    return true;
   }
   if (!dirty_pages_.Record(page_addr)) {
     // The dirty page table does not have enough space pre-allocated,
     // fallback to the original handler.
-#ifndef NDEBUG
-    raise(SIGTRAP);
-#endif // NDEBUG
-    return (*orig_action_.sa_sigaction)(sig, info, unused);
+    return false;
   }
-  mprotect(page_addr, page_size_, PROT_READ | PROT_WRITE);
+  set_protection(page_addr, page_size_, page_protections::read_write);
+  return true;
 }
 
 }  // namespace TrackMemory
 }  // namespace gapii
-#endif  // TARGET_OS
