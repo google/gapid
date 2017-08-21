@@ -170,7 +170,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayCreateRenderer, [this](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-            GAPID_INFO("replayCreateRenderer(%u)", id);
+            GAPID_DEBUG("replayCreateRenderer(%u)", id);
             auto existing = mGlesRenderers.find(id);
             if (existing != mGlesRenderers.end()) {
                 delete existing->second;
@@ -248,7 +248,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
 
         if (stack->isValid()) {
-            GAPID_INFO("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
+            GAPID_DEBUG("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
                     label,
                     backbuffer.width,
                     backbuffer.height,
@@ -258,7 +258,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                     resetViewportScissor ? "true" : "false");
             auto renderer = mGlesRenderers[id];
             if (renderer == nullptr) {
-                GAPID_INFO("[%u]replayChangeBackbuffer called with unknown renderer %d", label, renderer);
+                GAPID_WARNING("[%u]replayChangeBackbuffer called with unknown renderer %d", label, renderer);
                 return false;
             }
             renderer->setBackbuffer(backbuffer);
