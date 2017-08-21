@@ -16,18 +16,24 @@
 
 #include "core/cc/target.h"
 
-#define COHERENT_TRACKING_ENABLED
-
 #ifndef GAPII_MEMORY_TRACKER_H
 #define GAPII_MEMORY_TRACKER_H
 
+#define COHERENT_TRACKING_ENABLED 1
+#if COHERENT_TRACKING_ENABLED
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #define IS_POSIX 1
-#include <signal.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#include "core/memory_tracker/cc/posix/memory_tracker.h"
+#elif (TARGET_OS == GAPID_OS_WINDOWS)
+#define IS_POSIX 0
+#include "core/memory_tracker/cc/windows/memory_tracker.h"
+#else
+#undef COHERENT_TRACKING_ENABLED
+#define COHERENT_TRACKING_ENABLED 0
 #endif
+#endif // COHERENT_TRACKING_ENABLED
+
+#if COHERENT_TRACKING_ENABLED
 
 #include <algorithm>
 #include <atomic>
@@ -37,85 +43,10 @@
 #include <utility>
 #include <vector>
 
+#include "core/memory_tracker/cc/memory_protections.h"
+
 namespace gapii {
-namespace TrackMemory {
-
-enum class page_protections {
-  none = 0,
-  read = 1,
-  write = 2,
-  read_write = 1 | 2
-};
-
-#if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
-inline bool set_protection(void* p, size_t size, page_protections prot) {
-  uint32_t protections = (prot == page_protections::read) ? PROT_READ :
-                    (prot == page_protections::write) ? PROT_WRITE :
-                (prot == page_protections::read_write) ? PROT_READ | PROT_WRITE: 0;
-  return mprotect(p, size, protections); 
-}
-
-// SignalBlocker blocks the specified signal when it is constructed, and
-// unblock the signal when it is destroyed.
-// TODO(qining): Add Windows support
-class SignalBlocker {
- public:
-  SignalBlocker(int sig) : set_{0}, old_set_{0} {
-    sigemptyset(&set_);
-    sigaddset(&set_, sig);
-    pthread_sigmask(SIG_BLOCK, &set_, &old_set_);
-  }
-  ~SignalBlocker() { pthread_sigmask(SIG_SETMASK, &old_set_, nullptr); }
-  // Not copyable, not movable.
-  SignalBlocker(const SignalBlocker&) = delete;
-  SignalBlocker(SignalBlocker&&) = delete;
-  SignalBlocker& operator=(const SignalBlocker&) = delete;
-  SignalBlocker& operator=(SignalBlocker&&) = delete;
-
- private:
-  sigset_t set_;
-  sigset_t old_set_;
-};
-
-inline uint32_t GetPageSize() {
-  return getpagesize();
-}
-
-#elif (TARGET_OS == GAPID_OS_WINDOWS)
-#include <Windows.h>
-
-inline bool set_protection(void* p, size_t size, page_protections prot) {
-  DWORD protections = (prot == page_protections::read) ? PAGE_READONLY :
-                    (prot == page_protections::write) ? PAGE_READWRITE :
-                (prot == page_protections::read_write) ?PAGE_READWRITE: 0;
-  return VirtualProtect(p, size, protections, nullptr); 
-}
-
-#define IS_POSIX 0
-// SignalBlocker is a no-op on Windows.
-class SignalBlocker {
- public:
-  SignalBlocker(int) {}
-  ~SignalBlocker() { }
-  // Not copyable, not movable.
-  SignalBlocker(const SignalBlocker&) = delete;
-  SignalBlocker(SignalBlocker&&) = delete;
-  SignalBlocker& operator=(const SignalBlocker&) = delete;
-  SignalBlocker& operator=(SignalBlocker&&) = delete;
-};
-
-inline uint32_t GetPageSize() {
-  static std::atomic<uint32_t> pageSize;
-  int x = pageSize.load();
-  if (x != 0) {
-    return x;
-  }
-  SYSTEM_INFO si;
-  GetSystemInfo(&si);
-  pageSize.store(si.dwPageSize);
-  return si.dwPageSize;
-}
-#endif
+namespace track_memory {
 
 // Returns the lower bound aligned address for a given pointer |addr| and a
 // given |alignment|. |alignment| must be a power of two and cannot be zero.
@@ -367,31 +298,28 @@ class DirtyPageTable {
       current_;  // The space for the last page address stored.
 };
 
-// MemoryTracker utilizes Segfault signal on Linux to track accesses to
+// MemoryTrackerImpl utilizes Segfault signal on Linux to track accesses to
 // memories.
-class MemoryTracker {
+template<typename SpecificMemoryTracker>
+class MemoryTrackerImpl : public SpecificMemoryTracker {
  public:
+  using derived_tracker_type = SpecificMemoryTracker;
   // Creates a memory tracker to track memory write operations. If
   // |track_read| is set to true, also tracks the memory read operations.
   // By default |track_read| is set to false.
-  MemoryTracker(bool track_read = false)
-      : track_read_(track_read),
-#if IS_POSIX
-        signal_handler_registered_(false),
-        orig_action_{0},
-#else
-        vectored_exception_handler_(nullptr),
-#endif
+  MemoryTrackerImpl(bool track_read = false)
+      : SpecificMemoryTracker([this](void* v) { return DoHandleSegfault(v); }),
+        track_read_(track_read),
         page_size_(GetPageSize()),
         l_(),
         ranges_(),
         dirty_pages_(),
 #define CONSTRUCT_LOCKED(function) \
-  function(this, &MemoryTracker::function##Impl, &l_)
+  function(this, &MemoryTrackerImpl::function##Impl, &l_)
         CONSTRUCT_LOCKED(HandleSegfault),
 #undef CONSTRUCT_LOCKED
 #define CONSTRUCT_SIGNAL_SAFE(function) \
-  function(this, &MemoryTracker::function##Impl, &l_, SIGSEGV)
+  function(this, &MemoryTrackerImpl::function##Impl, &l_, SIGSEGV)
         CONSTRUCT_SIGNAL_SAFE(AddTrackingRange),
         CONSTRUCT_SIGNAL_SAFE(RemoveTrackingRange),
         CONSTRUCT_SIGNAL_SAFE(GetDirtyPagesInRange),
@@ -405,12 +333,12 @@ class MemoryTracker {
   {
   }
   // Not copyable, not movable.
-  MemoryTracker(const MemoryTracker&) = delete;
-  MemoryTracker(MemoryTracker&&) = delete;
-  MemoryTracker& operator=(const MemoryTracker&) = delete;
-  MemoryTracker& operator=(MemoryTracker&&) = delete;
+  MemoryTrackerImpl(const MemoryTrackerImpl&) = delete;
+  MemoryTrackerImpl(MemoryTrackerImpl&&) = delete;
+  MemoryTrackerImpl& operator=(const MemoryTrackerImpl&) = delete;
+  MemoryTrackerImpl& operator=(MemoryTrackerImpl&&) = delete;
 
-  ~MemoryTracker() {
+  ~MemoryTrackerImpl() {
     DisableMemoryTracker();
     ClearTrackingRanges();
   }
@@ -479,10 +407,15 @@ class MemoryTracker {
     std::for_each(pages.begin(), pages.end(), [this, &succeeded](void* p) {
       if (IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
         succeeded &=
-            set_protection(p, page_size_, track_read_ ? page_protections::none : page_protections::read) == 0;
+            set_protection(p, page_size_, track_read_ ? PageProtections::kNone : PageProtections::kRead) == 0;
       }
     });
     return succeeded;
+  }
+
+  // Dummy function that we can pass down to the specific memory tracker.
+  bool DoHandleSegfault(void* v) {
+    return HandleSegfault(v);
   }
 
   // Returns a vector of dirty pages addresses that overlaps a memory range
@@ -497,110 +430,9 @@ class MemoryTracker {
     return r;
   }
 
-  // We need a static pointer as the handler function passed to
-  // must be a static function..
-  static MemoryTracker* unique_tracker;
-
-#if IS_POSIX
-  // A static wrapper of HandleSegfault() as sigaction() asks for a static
-  // function.
-  static void SegfaultHandlerFunction(int sig, siginfo_t* info, void* unused) {
-    if (unique_tracker) {
-      if (!unique_tracker->HandleSegfault(info->si_addr)) {
-        #ifndef NDEBUG
-          raise(SIGTRAP);
-        #endif // NDEBUG
-          (*unique_tracker->orig_action_.sa_sigaction)(sig, info, unused);
-      }
-    }
-  }
-
-  // EnableMemoryTrackerImpl calls sigaction() to register the new segfault
-  // handler to the thread (and affects all the child threads), stores the
-  // original segfault handler. This method sets the static pointer:
-  // unique_tracker to |this| pointer. The signal handler will not be set again
-  // if the signal handler has already been set by the same memory tracker
-  // instance before, all following calls to this function will just return
-  // true.
-  bool EnableMemoryTrackerImpl() {
-    if (signal_handler_registered_) {
-      return true;
-    }
-    unique_tracker = this;
-    struct sigaction sa {
-      0
-    };
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_sigaction = SegfaultHandlerFunction;
-    signal_handler_registered_ = sigaction(SIGSEGV, &sa, &orig_action_) != 1;
-    return signal_handler_registered_;
-  }
-
-  // DisableMemoryTrackerImpl recovers the original segfault signal
-  // handler. Returns true if the handler is recovered successfully,
-  // othwerwise returns false.
-  bool DisableMemoryTrackerImpl() {
-    if (signal_handler_registered_) {
-      signal_handler_registered_ = false;
-      return sigaction(SIGSEGV, &orig_action_, nullptr) != 1;
-    }
-    return true;
-  }
-#else
-  // A static wrapper of HandleSegfault() as sigaction() asks for a static
-  // function.
-  static LONG NTAPI VectoredExceptionHandler(struct _EXCEPTION_POINTERS *info){
-    if (info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
-          unique_tracker) {
-      if (unique_tracker->HandleSegfault(
-          reinterpret_cast<void*>(info->ExceptionRecord->ExceptionInformation[1]))) {
-        return EXCEPTION_CONTINUE_EXECUTION;
-      }
-    }
-    return EXCEPTION_CONTINUE_SEARCH;  
-  }
-
-  // EnableMemoryTrackerImpl calls sigaction() to register the new segfault
-  // handler to the thread (and affects all the child threads), stores the
-  // original segfault handler. This method sets the static pointer:
-  // unique_tracker to |this| pointer. The signal handler will not be set again
-  // if the signal handler has already been set by the same memory tracker
-  // instance before, all following calls to this function will just return
-  // true.
-  bool EnableMemoryTrackerImpl() {
-    if (vectored_exception_handler_) {
-      return true;
-    }
-    const uint32_t kCallFirst = 1;
-    unique_tracker = this;
-    vectored_exception_handler_ = AddVectoredExceptionHandler(kCallFirst, &VectoredExceptionHandler);
-    return vectored_exception_handler_ != nullptr;
-  }
-
-  // DisableMemoryTrackerImpl recovers the original segfault signal
-  // handler. Returns true if the handler is recovered successfully,
-  // othwerwise returns false.
-  bool DisableMemoryTrackerImpl() {
-    if (vectored_exception_handler_) {
-      ULONG ret = RemoveVectoredExceptionHandler(vectored_exception_handler_);
-      vectored_exception_handler_ = nullptr;
-      return ret != 0;
-    }
-    return true;
-  }
-#endif
-
   bool track_read_;  // A flag to indicate whether to track read operations on
                      // the tracking memory ranges.
-#if IS_POSIX
-  bool signal_handler_registered_;  // A flag to indicate whether the signal
-                                    // handler has been registered
-  struct sigaction orig_action_;    // The original signal action for SIGSEGV
-#else
-  void* vectored_exception_handler_; // The currently registered vectored exception
-                                     // handler. Nullptr if this is none.
-#endif
+
   const size_t page_size_;          // Size of a memory page in byte
   SpinLock l_;  // Spin lock to guard the accesses of shared data
   std::map<uintptr_t, size_t> ranges_;  // Memory ranges registered for tracking
@@ -612,7 +444,7 @@ class MemoryTracker {
 // SignalSafe wrapped methods that access shared data and cannot be
 // interrupted by SIGSEGV signal.
 #define SIGNAL_SAFE(function) \
-  SignalSafe<MemoryTracker, decltype(&MemoryTracker::function##Impl)> function;
+  SignalSafe<MemoryTrackerImpl, decltype(&MemoryTrackerImpl::function##Impl)> function;
   SIGNAL_SAFE(AddTrackingRange);
   SIGNAL_SAFE(RemoveTrackingRange);
   SIGNAL_SAFE(GetDirtyPagesInRange);
@@ -626,12 +458,19 @@ class MemoryTracker {
 
 // SpinLockGuarded wrapped methods that access critical region.
 #define LOCKED(function)                                                   \
-  SpinLockGuarded<MemoryTracker, decltype(&MemoryTracker::function##Impl)> \
+  SpinLockGuarded<MemoryTrackerImpl, decltype(&MemoryTrackerImpl::function##Impl)> \
       function;
   LOCKED(HandleSegfault);
 #undef LOCKED
 };
-}  // namespace TrackMemory
+}  // namespace track_memory
 }  // namespace gapii
 
+#if IS_POSIX 
+#include  "core/memory_tracker/cc/posix/memory_tracker.inl"
+#else
+#include  "core/memory_tracker/cc/windows/memory_tracker.inl"
+#endif
+
+#endif // COHERENT_TRACKING_ENABLED
 #endif  // GAPII_MEMORY_TRACKER_H

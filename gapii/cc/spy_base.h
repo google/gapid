@@ -174,8 +174,8 @@ protected:
     // starts at 0 before any atoms have been sent.
     uint64_t mExpectedNextCommandStartCounterValue;
 
-#ifdef COHERENT_TRACKING_ENABLED
-    TrackMemory::MemoryTracker mMemoryTracker;
+#if COHERENT_TRACKING_ENABLED
+    track_memory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
 
     // The current thread ID.

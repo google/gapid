@@ -15,7 +15,7 @@
  */
 
 #include "memory_tracker.h"
-#ifdef COHERENT_TRACKING_ENABLED
+#if COHERENT_TRACKING_ENABLED
 
 #include <gmock/gmock.h>
 
@@ -31,7 +31,7 @@
 #include <thread>
 
 namespace gapii {
-namespace TrackMemory {
+namespace track_memory {
 namespace test {
 
 using ::testing::Contains;
@@ -1049,7 +1049,7 @@ TEST(MemoryTrackerTest, RemoveOneRangeShouldNotAffectOthersInSamePage) {
 
   void* first_start = VoidPointerAdd(m.mem(), first_offset);
   void* second_start = VoidPointerAdd(m.mem(), second_offset);
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(first_start, first_size));
   EXPECT_TRUE(t.AddTrackingRange(second_start, second_size));
 
@@ -1105,6 +1105,6 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
 }
 
 }  // namespace test
-}  // namespace TrackMemory
+}  // namespace track_memory
 }  // namespace gapii
-#endif  // TARGET_OS
+#endif  // COHERENT_TRACKING_ENABLED
