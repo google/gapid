@@ -95,14 +95,8 @@ type Span interface {
 	// item returns the i'th sub-item for this span.
 	// For a CmdIDRange, this is the i'th CmdID in the interval.
 	// For a CmdIDGroup, this is always the group itself.
-	// For an SubCmdRoot, this is the subcommand index within the command
+	// For a SubCmdRoot, this is the subcommand index within the command
 	item(i uint64) SpanItem
-
-	// itemIndex returns the item sub-index for the given CmdID.
-	// For a CmdIDRange, this is i minus the first CmdID in the interval.
-	// For a CmdIDGroup, this is always 0.
-	// For an SubCmdRoot this is i
-	itemIndex(i CmdID) uint64
 
 	// split returns two spans over the same range as this span, but where the
 	// first contains the given number of items and the second the rest.
@@ -124,7 +118,6 @@ func (r *CmdIDRange) itemCount() uint64  { return r.Length() }
 func (r *CmdIDRange) item(i uint64) SpanItem {
 	return SubCmdIdx{uint64(r.Start + CmdID(i))}
 }
-func (r *CmdIDRange) itemIndex(i CmdID) uint64    { return uint64(i - r.Start) }
 func (r *CmdIDRange) split(i uint64) (Span, Span) { return r.Split(i) }
 
 func (c *SubCmdRoot) Bounds() CmdIDRange {
@@ -132,13 +125,11 @@ func (c *SubCmdRoot) Bounds() CmdIDRange {
 }
 func (c *SubCmdRoot) itemCount() uint64           { return 1 }
 func (c *SubCmdRoot) item(uint64) SpanItem        { return *c }
-func (c *SubCmdRoot) itemIndex(i CmdID) uint64    { return uint64(i) }
 func (c *SubCmdRoot) split(i uint64) (Span, Span) { return c, nil }
 
 func (g *CmdIDGroup) Bounds() CmdIDRange          { return g.Range }
 func (g *CmdIDGroup) itemCount() uint64           { return 1 }
 func (g *CmdIDGroup) item(uint64) SpanItem        { return *g }
-func (g *CmdIDGroup) itemIndex(i CmdID) uint64    { return 0 }
 func (g *CmdIDGroup) split(i uint64) (Span, Span) { return g, nil }
 
 func (c SubCmdRoot) Index(index uint64) SpanItem {
@@ -242,7 +233,11 @@ func (g CmdIDGroup) IndexOf(id CmdID) uint64 {
 	idx := uint64(0)
 	for _, s := range g.Spans {
 		if s.Bounds().Contains(id) {
-			return idx + s.itemIndex(id)
+			if group, ok := s.(*CmdIDRange); ok {
+				// ranges are flattened inline.
+				return idx + uint64(id-group.Start)
+			}
+			return idx
 		}
 		idx += s.itemCount()
 	}
