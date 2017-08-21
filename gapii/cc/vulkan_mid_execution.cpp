@@ -1581,14 +1581,33 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
                 switch(binding.mBindingType) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER:
-                    case VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                    case VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
                         for (size_t j = 0 ; j < binding.mImageBinding.size(); ++j) {
                             if (!binding.mImageBinding[j]->mSampler &&
                                 !binding.mImageBinding[j]->mImageView) {
                                     continue;
+                            }
+                            if (binding.mBindingType ==
+                                VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+                                // If this a combined image/sampler, then we have to make sure that
+                                // both are valid.
+                                if (!binding.mImageBinding[j]->mSampler ||
+                                    !binding.mImageBinding[j]->mImageView) {
+                                        continue;
+                                }
+                            }
+                            if (binding.mImageBinding[j]->mSampler && 
+                                Samplers.find(binding.mImageBinding[j]->mSampler) ==
+                                        Samplers.end()) {
+                                continue;
+                            }
+                            if (binding.mImageBinding[j]->mImageView &&
+                                    ImageViews.find(binding.mImageBinding[j]->mImageView) ==
+                                        ImageViews.end()) {
+                                continue;
                             }
                             image_infos.push_back(*binding.mImageBinding[j]);
                             VkWriteDescriptorSet write = write_template;
@@ -1601,7 +1620,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 
                         for (size_t j = 0 ; j < binding.mBufferViewBindings.size(); ++j) {
-                            if (!binding.mBufferViewBindings[j]) {
+                            if (!binding.mBufferViewBindings[j] ||
+                                    BufferViews.find(binding.mBufferViewBindings[j]) ==
+                                        BufferViews.end()) {
                                 continue;
                             }
                             buffer_views.push_back(binding.mBufferViewBindings[j]);
@@ -1616,7 +1637,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
                     case VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
                         for (size_t j = 0 ; j < binding.mBufferBinding.size(); ++j) {
-                            if (!binding.mBufferBinding[j]->mBuffer) {
+                            if (!binding.mBufferBinding[j]->mBuffer ||
+                                    Buffers.find(binding.mBufferBinding[j]->mBuffer) ==
+                                        Buffers.end()) {
                                 continue;
                             }
                             buffer_infos.push_back(*binding.mBufferBinding[j]);
@@ -1718,10 +1741,15 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
     // Helper function to fill and end a given command buffer object.
     auto fill_and_end_cmd_buf = [this](
         CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+      bool failure = false;
       for (auto& recreate : cmdBuff->recreateCommands) {
-        recreate(observer);
+        if (!recreate(observer)) {
+          failure = true;
+          break;
+        }
       }
-      if (cmdBuff->mRecording == RecordingState::COMPLETED) {
+      if (cmdBuff->mRecording == RecordingState::COMPLETED &&
+            !failure) {
         RecreateEndCommandBuffer(observer, cmdBuff->mVulkanHandle);
       }
     };

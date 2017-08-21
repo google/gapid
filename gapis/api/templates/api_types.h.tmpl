@@ -162,7 +162,7 @@
 
     {{if $is_cmd_buffer}}
       std::vector<std::function<void(CallObserver* observer)>> commands;
-      std::vector<std::function<void(CallObserver* observer)>> recreateCommands;
+      std::vector<std::function<bool(CallObserver* observer)>> recreateCommands;
     {{end}}
     {{if $is_shader_module}}
       std::vector<uint32_t> shaderWords;
