@@ -704,7 +704,7 @@ class AlignedMemory {
 TEST(MemoryTrackerTest, Basic) {
   MemoryTracker t;
   AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
   memset(m.mem(), 0xFF, t.page_size());
   std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
@@ -713,14 +713,14 @@ TEST(MemoryTrackerTest, Basic) {
   EXPECT_EQ(0xFF, *(uint8_t*)m.mem());
   // Clean up
   EXPECT_TRUE(t.ClearTrackingRanges());
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Test for GetDirtyPagesInRange and ResetPagesToTrack interfaces.
 TEST(MemoryTrackerTest, GetDirtyPagesInRangeAndResetPagesToTrack) {
   MemoryTracker t;
   AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
 
   memset(m.mem(), 0xFF, t.page_size());
@@ -742,14 +742,14 @@ TEST(MemoryTrackerTest, GetDirtyPagesInRangeAndResetPagesToTrack) {
   EXPECT_EQ(m.mem(), dirty_pages[0]);
 
   EXPECT_TRUE(t.ClearTrackingRanges());
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Test for GetAndResetInRange interface.
 TEST(MemoryTrackerTest, GetAndResetInRange) {
   MemoryTracker t;
   AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
 
   // Test getting dirty pages in a range
@@ -785,7 +785,7 @@ TEST(MemoryTrackerTest, GetAndResetInRange) {
   EXPECT_EQ(0u, dirty_pages.size());
 
   EXPECT_TRUE(t.ClearTrackingRanges());
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates one page of memory, does not add the memory range to the memory
@@ -796,14 +796,14 @@ TEST(MemoryTrackerTest, NoTrackingMemory) {
   AlignedMemory m(t.page_size(), t.page_size());
   // Still register the segfault handler, even though it should not be
   // triggered.
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
 
   memset(m.mem(), 0xFF, t.page_size());
   std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
   EXPECT_TRUE(t.ClearTrackingRanges());
 
   EXPECT_EQ(0u, dirty_pages.size());
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates one page of memory, adds the same memory range to the memory
@@ -813,7 +813,7 @@ TEST(MemoryTrackerTest, MultithreadSamePage) {
   MemoryTracker t;
   // allocates one pages.
   AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
 
   std::thread t1([&t, &m]() {
     // Adding tracking range may return false
@@ -831,7 +831,7 @@ TEST(MemoryTrackerTest, MultithreadSamePage) {
   EXPECT_TRUE(t.ClearTrackingRanges());
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates two pages of memory, adds the two pages and touches them in two
@@ -843,7 +843,7 @@ TEST(MemoryTrackerTest, MultithreadDifferentPage) {
   AlignedMemory m(t.page_size(), t.page_size() * 2);
   void* first_page = m.mem();
   void* second_page = VoidPointerAdd(m.mem(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
 
   std::thread t1([&t, first_page]() {
     // touches the first page.
@@ -862,7 +862,7 @@ TEST(MemoryTrackerTest, MultithreadDifferentPage) {
   EXPECT_EQ(2u, dirty_pages.size());
   EXPECT_THAT(dirty_pages, Contains(first_page));
   EXPECT_THAT(dirty_pages, Contains(second_page));
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates one page of memory, add part of the page as an un-aligned range to
@@ -877,7 +877,7 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingMemory) {
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
 
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
   memset(range_start, 0xFF, range_size);
   std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
@@ -885,7 +885,7 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingMemory) {
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 namespace {
@@ -929,17 +929,17 @@ TEST(MemoryTrackerTest, RegisterAndUnregister) {
 
   MemoryTracker t;
   AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   // A second call to register segfault handler should return true.
-  EXPECT_TRUE(t.RegisterSegfaultHandler());
+  EXPECT_TRUE(t.EnableMemoryTracker());
   // Register segfault handler with the same tracker in another thread should
   // also return true.
   std::thread another_thread(
-      [&t]() { EXPECT_TRUE(t.RegisterSegfaultHandler()); });
+      [&t]() { EXPECT_TRUE(t.EnableMemoryTracker()); });
   another_thread.join();
 
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
-  EXPECT_TRUE(t.UnregisterSegfaultHandler());
+  EXPECT_TRUE(t.DisableMemoryTracker());
   // Although multiple calls to register segfault handler are made, the handler
   // should only be set once, and by one call to unregister segfault handler,
   // the disposition of segfault signal should be recovered to the previous
@@ -964,11 +964,11 @@ TEST(MemoryTrackerTest, OverlappedTrackingRange) {
   AlignedMemory m(t.page_size(), t.page_size());
 
   void* second_range_start = VoidPointerAdd(m.mem(), second_range_offset);
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), range_size));
   EXPECT_FALSE(t.AddTrackingRange(second_range_start, range_size));
 
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates a page of memory, add a not-aligned range of space to the tracker,
@@ -987,7 +987,7 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingHigherAddress) {
   AlignedMemory m(t.page_size(), t.page_size());
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
 
   void* touch_start = VoidPointerAdd(range_start, range_size);
@@ -999,7 +999,7 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingHigherAddress) {
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates a page of memory, add a not-aligned range of space to the tracker,
@@ -1016,7 +1016,7 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
   AlignedMemory m(t.page_size(), t.page_size());
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
 
   void* touch_start = reinterpret_cast<void*>(
@@ -1029,7 +1029,7 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Two not overlapping ranges in the same page. Removing just one of them
@@ -1062,7 +1062,7 @@ TEST(MemoryTrackerTest, RemoveOneRangeShouldNotAffectOthersInSamePage) {
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 // Allocates a lot of pages and tracking/touches them in multiple threads.
@@ -1073,7 +1073,7 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
   const size_t page_size = getpagesize();
 
   MemoryTracker t;
-  ASSERT_TRUE(t.RegisterSegfaultHandler());
+  ASSERT_TRUE(t.EnableMemoryTracker());
   AlignedMemory m(page_size, num_pages * page_size);
   void* mem_start_addr = m.mem();
 
@@ -1101,7 +1101,7 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
     EXPECT_THAT(dirty_pages, Contains(page));
   }
 
-  ASSERT_TRUE(t.UnregisterSegfaultHandler());
+  ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
 }  // namespace test

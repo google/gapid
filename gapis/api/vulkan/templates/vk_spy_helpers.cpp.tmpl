@@ -446,7 +446,7 @@ void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start, size_va
       return;
   }
 #ifdef COHERENT_TRACKING_ENABLED
-    mMemoryTracker.RegisterSegfaultHandler();
+    mMemoryTracker.EnableMemoryTracker();
     void* start_addr = reinterpret_cast<void*>(start);
     mMemoryTracker.AddTrackingRange(start_addr, size);
 #endif // COHERENT_TRACKING_ENABLED
