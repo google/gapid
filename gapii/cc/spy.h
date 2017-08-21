@@ -81,12 +81,8 @@ class Spy : public GlesSpy, public VulkanSpy {
     return (symbol == mSymbols.end()) ? nullptr : symbol->second;
   }
 
-  void setFakeGlError(GLenum_Error error);
+  void setFakeGlError(CallObserver* observer, GLenum_Error error);
   uint32_t glGetError(CallObserver* observer);
-
- protected:
-  virtual void onThreadSwitched(CallObserver* observer,
-                                uint64_t threadID) override;
 
  private:
   Spy();

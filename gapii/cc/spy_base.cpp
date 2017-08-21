@@ -18,7 +18,6 @@
 #include "to_proto.h"
 
 #include "core/cc/log.h"
-#include "core/cc/thread.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -35,25 +34,15 @@ SpyBase::SpyBase()
     , mMemoryTracker()
 #endif // TARGET_OS
 {
-    mCurrentThread = core::Thread::current().id();
 }
 
 void SpyBase::init(CallObserver* observer) {
-    auto threadID = core::Thread::current().id();
     mObserveApplicationPool = true;
-    mCurrentThread = threadID;
     mIsSuspended = false;
-    onThreadSwitched(observer, threadID);
 }
 
 void SpyBase::lock(CallObserver* observer) {
     mMutex.lock();
-    auto threadID = core::Thread::current().id();
-    if (threadID != mCurrentThread) {
-        GAPID_DEBUG("Changing threads: %" PRIu64 "-> %" PRIu64, mCurrentThread, threadID);
-        mCurrentThread = threadID;
-        onThreadSwitched(observer, threadID);
-    }
 }
 
 void SpyBase::unlock() {

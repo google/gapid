@@ -31,7 +31,6 @@
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
-#include "gapis/api/core/core_pb/api.pb.h"
 #include "gapis/api/gles/gles_pb/api.pb.h"
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 
@@ -599,7 +598,7 @@ void Spy::onPostFence(CallObserver* observer) {
         // glGetError() cleared the error in the driver.
         // Fake it the next time the user calls glGetError().
         if (traceErr != 0) {
-            setFakeGlError(traceErr);
+            setFakeGlError(observer, traceErr);
         }
 
         auto es = new gles_pb::ErrorState();
@@ -609,8 +608,8 @@ void Spy::onPostFence(CallObserver* observer) {
     }
 }
 
-void Spy::setFakeGlError(GLenum_Error error) {
-    std::shared_ptr<Context> ctx = this->Contexts[mCurrentThread];
+void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
+    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError == 0) {
@@ -620,7 +619,7 @@ void Spy::setFakeGlError(GLenum_Error error) {
 }
 
 uint32_t Spy::glGetError(CallObserver* observer) {
-    std::shared_ptr<Context> ctx = this->Contexts[mCurrentThread];
+    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
@@ -631,12 +630,6 @@ uint32_t Spy::glGetError(CallObserver* observer) {
         }
     }
     return GlesSpy::glGetError(observer);
-}
-
-void Spy::onThreadSwitched(CallObserver* observer, uint64_t threadID) {
-    auto st = new core_pb::switchThread();
-    st->set_threadid(threadID);
-    observer->encodeAndDelete(st);
 }
 
 #if 0 // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED

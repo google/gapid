@@ -286,6 +286,7 @@
     struct {{$name}} {
       ::google::protobuf::Message* toProto() const;
       ¶
+      uint64_t thread;¶
       {{range $p := $.CallParameters}}
         {{$ty := TypeOf $p | Underlying}}
         {{if IsString $ty}}const char* {{$p.Name}};

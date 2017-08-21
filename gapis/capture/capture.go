@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/core/core_pb"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
@@ -199,16 +198,7 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 		return nil
 	}
 
-	var threadID uint64
-
 	for _, cmd := range c.Commands {
-		if cmd.Thread() != threadID {
-			threadID = cmd.Thread()
-			if err := write.Object(ctx, &core_pb.SwitchThread{ThreadID: threadID}); err != nil {
-				return err
-			}
-		}
-
 		cmdProto, err := protoconv.ToProto(ctx, cmd)
 		if err != nil {
 			return err
@@ -309,9 +299,6 @@ type decoder struct {
 	builder *builder
 	groups  map[uint64]interface{}
 	cmds    map[api.Cmd]*cmdInfo
-
-	// Below are fields that should be replaced with more sensible proto messages.
-	threadID uint64
 }
 
 func newDecoder() *decoder {
@@ -430,15 +417,10 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		}
 		return in, nil
 
-	case *core_pb.SwitchThread:
-		d.threadID = obj.ThreadID
-		return in, nil
-
 	case api.Cmd:
 		d.cmds[obj] = &cmdInfo{
 			id: api.CmdID(len(d.builder.cmds)),
 		}
-		obj.SetThread(d.threadID)
 		d.builder.cmds = append(d.builder.cmds, obj)
 		d.builder.addAPI(ctx, obj.API())
 	}

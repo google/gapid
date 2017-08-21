@@ -101,9 +101,6 @@ protected:
     // resets the buffers reused between atoms.
     void unlock();
 
-    // onThreadSwitched is invoked by enter() whenever the current thread changes.
-    virtual void onThreadSwitched(CallObserver* observer, uint64_t threadID) = 0;
-
     // make constructs and returns a Slice backed by a new pool.
     template<typename T>
     inline Slice<T> make(uint64_t count) const;
@@ -153,8 +150,6 @@ protected:
     track_memory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
 
-    // The current thread ID.
-    uint64_t mCurrentThread;
 private:
     template <class T> bool shouldObserve(const Slice<T>& slice) const;
 

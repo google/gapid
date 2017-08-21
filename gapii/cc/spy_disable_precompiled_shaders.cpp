@@ -38,9 +38,11 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t bin
     if (mDisablePrecompiledShaders) {
         // GL_INVALID_ENUM is generated if binaryformat is not a supported format returned in
         // GL_SHADER_BINARY_FORMATS.
-        setFakeGlError(GL_INVALID_ENUM);
+        setFakeGlError(observer, GL_INVALID_ENUM);
 
-        observer->encode(cmd::glProgramBinary{program, binary_format, binary, binary_size});
+        observer->encode(cmd::glProgramBinary{
+            observer->getCurrentThread(), program, binary_format, binary, binary_size
+        });
 
         observer->read(binary, binary_size);
         observer->observePending();
@@ -56,9 +58,11 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t 
     if (mDisablePrecompiledShaders) {
         // GL_INVALID_ENUM is generated if binaryformat is not a supported format returned in
         // GL_SHADER_BINARY_FORMATS.
-        setFakeGlError(GL_INVALID_ENUM);
+        setFakeGlError(observer, GL_INVALID_ENUM);
 
-        observer->encode(cmd::glProgramBinaryOES{program, binary_format, binary, binary_size});
+        observer->encode(cmd::glProgramBinaryOES{
+            observer->getCurrentThread(), program, binary_format, binary, binary_size
+        });
 
         observer->read(binary, binary_size);
         observer->observePending();
@@ -73,9 +77,11 @@ void Spy::glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shader
                          int32_t binary_size) {
     if (mDisablePrecompiledShaders) {
         // GL_INVALID_ENUM is generated if binaryFormat is not a value recognized by the implementation.
-        setFakeGlError(GL_INVALID_ENUM);
+        setFakeGlError(observer, GL_INVALID_ENUM);
 
-        observer->encode(cmd::glShaderBinary{count, shaders, binary_format, binary, binary_size});
+        observer->encode(cmd::glShaderBinary{
+            observer->getCurrentThread(), count, shaders, binary_format, binary, binary_size
+        });
 
         observer->read(slice(shaders, (uint64_t)((GLsizei)(0)), (uint64_t)(count)));
         observer->read(slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
@@ -92,7 +98,9 @@ void Spy::glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* value
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->encode(cmd::glGetInteger64v{param, values});
+        observer->encode(cmd::glGetInteger64v{
+            observer->getCurrentThread(), param, values
+        });
 
         observer->encodeAndDelete(new api::CmdCall);
 
@@ -108,7 +116,9 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
         (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
         values[0] = 0;
 
-        observer->encode(cmd::glGetIntegerv{param, values});
+        observer->encode(cmd::glGetIntegerv{
+            observer->getCurrentThread(), param, values
+        });
 
         observer->encodeAndDelete(new api::CmdCall);
 
