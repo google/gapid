@@ -26,7 +26,7 @@ type Transformer interface {
 	// transformed set of commands to the output.
 	// Transform must not modify cmd in any way.
 	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)
-	// Flush is called at the end of an command stream to cause Transformers
+	// Flush is called at the end of a command stream to cause Transformers
 	// that cache commands to send any they have stored into the output.
 	Flush(ctx context.Context, output Writer)
 }
@@ -45,6 +45,6 @@ type Writer interface {
 	// State returns the state object associated with this writer.
 	State() *api.State
 	// MutateAndWrite mutates the state object associated with this writer,
-	// and it passes the atom to further consumers.
+	// and it passes the command to further consumers.
 	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
 }

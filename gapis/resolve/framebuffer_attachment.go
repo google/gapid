@@ -64,10 +64,10 @@ func FramebufferAttachment(
 }
 
 // FramebufferAttachmentInfo returns the framebuffer dimensions and format
-// after a given atom in the given capture, atom and attachment.
+// after a given command in the given capture, command and attachment.
 // The first call to getFramebufferInfo for a given capture/context
-// will trigger a computation for all atoms of this capture, which will be
-// cached to the database for subsequent calls, regardless of the given atom.
+// will trigger a computation for all commands of this capture, which will be
+// cached to the database for subsequent calls, regardless of the given command.
 func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (framebufferAttachmentInfo, error) {
 	changes, err := FramebufferChanges(ctx, path.FindCapture(after))
 	if err != nil {
@@ -139,7 +139,7 @@ type framebufferAttachmentChanges struct {
 // framebufferAttachmentInfo describes the dimensions and format of a
 // framebuffer attachment.
 type framebufferAttachmentInfo struct {
-	after  api.SubCmdIdx // index of the last atom to change the attachment.
+	after  api.SubCmdIdx // index of the last command to change the attachment.
 	width  uint32
 	height uint32
 	index  uint32 // The api-specific attachment index
@@ -162,7 +162,7 @@ func (c framebufferAttachmentChanges) after(ctx context.Context, i api.SubCmdIdx
 	idx := sort.Search(len(c.changes), func(x int) bool { return i.LessThan(c.changes[x].after) }) - 1
 
 	if idx < 0 {
-		log.W(ctx, "No dimension records found after atom %d. FB dimension records = %d", i, len(c.changes))
+		log.W(ctx, "No dimension records found after command %d. FB dimension records = %d", i, len(c.changes))
 		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 

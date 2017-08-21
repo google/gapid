@@ -24,8 +24,8 @@ import (
 // Transforms is a list of Transformer objects.
 type Transforms []Transformer
 
-// Transform sequentially transforms the atoms by each of the transformers in
-// the list, before writing the final output to the output atom Writer.
+// Transform sequentially transforms the commands by each of the transformers in
+// the list, before writing the final output to the output command Writer.
 func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
@@ -79,8 +79,8 @@ func (t transform) Flush(ctx context.Context, output Writer) {}
 
 func (t transform) Name() string { return t.N }
 
-// TransformWriter implements the Writer interface, transforming each atom that
-// is written with T, before writing the result to O.
+// TransformWriter implements the Writer interface, transforming each command
+// that is written with T, before writing the result to O.
 type TransformWriter struct {
 	S *api.State
 	T Transformer

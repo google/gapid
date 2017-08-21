@@ -31,10 +31,10 @@ type Sample time.Duration
 // multiple runs of a
 type Multisample []Sample
 
-// KeyedSamples maps atom indices to Multisamples.
+// KeyedSamples maps command indices to Multisamples.
 type KeyedSamples map[string]*Multisample
 
-// IndexedMultisample is a Multisample together with an atom index.
+// IndexedMultisample is a Multisample together with a command index.
 type IndexedMultisample struct {
 	Index  int64
 	Values *Multisample

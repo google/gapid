@@ -78,8 +78,8 @@ type Service interface {
 	GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error)
 
 	// GetFramebufferAttachment returns the ImageInfo identifier describing the
-	// given framebuffer attachment and device, immediately following the atom
-	// after.
+	// given framebuffer attachment and device, immediately following the
+	// command after.
 	// The provided RenderSettings structure can be used to adjust maximum desired
 	// dimensions of the image, as well as applying debug visualizations.
 	GetFramebufferAttachment(

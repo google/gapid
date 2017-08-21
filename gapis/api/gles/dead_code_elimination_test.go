@@ -33,11 +33,11 @@ func TestDeadAtomRemoval(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	// Keep the given atom alive in the optimization.
+	// Keep the given command alive in the optimization.
 	isLive := map[api.Cmd]bool{}
 	live := func(cmd api.Cmd) api.Cmd { isLive[cmd] = true; return cmd }
 
-	// Expect the atom to be removed by the optimization.
+	// Expect the command to be removed by the optimization.
 	isDead := map[api.Cmd]bool{}
 	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 

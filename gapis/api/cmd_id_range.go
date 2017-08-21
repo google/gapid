@@ -22,8 +22,8 @@ import (
 
 // CmdIDRange describes an interval of commands.
 type CmdIDRange struct {
-	Start CmdID // The first atom within the range.
-	End   CmdID // One past the last atom within the range.
+	Start CmdID // The first command within the range.
+	End   CmdID // One past the last command within the range.
 }
 
 // String returns a string representing the range.
@@ -31,7 +31,7 @@ func (i CmdIDRange) String() string {
 	return fmt.Sprintf("[%d..%d]", i.Start, i.End-1)
 }
 
-// Contains returns true if atomIndex is within the range, otherwise false.
+// Contains returns true if id is within the range, otherwise false.
 func (i CmdIDRange) Contains(id CmdID) bool {
 	return id >= i.Start && id < i.End
 }
@@ -47,7 +47,7 @@ func (i CmdIDRange) Clamp(id CmdID) CmdID {
 	return id
 }
 
-// Length returns the number of atoms in the range.
+// Length returns the number of commands in the range.
 func (i CmdIDRange) Length() uint64 {
 	return uint64(i.End - i.Start)
 }
@@ -57,12 +57,12 @@ func (i CmdIDRange) CmdIDRange() (start, end CmdID) {
 	return i.Start, i.End
 }
 
-// First returns the first atom index within the range.
+// First returns the first command index within the range.
 func (i CmdIDRange) First() CmdID {
 	return i.Start
 }
 
-// Last returns the last atom index within the range.
+// Last returns the last command index within the range.
 func (i CmdIDRange) Last() CmdID {
 	return i.End - 1
 }

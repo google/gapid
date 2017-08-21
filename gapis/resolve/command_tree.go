@@ -134,14 +134,14 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	cmdTree := boxed.(*commandTree)
 
-	atomIdx := p.Command.Indices[0]
+	cmdIdx := p.Command.Indices[0]
 	if len(p.Command.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for Command Tree") // TODO: Subcommands
 	}
 
 	return &path.CommandTreeNode{
 		Tree:    p.Tree,
-		Indices: cmdTree.indices(api.CmdID(atomIdx)),
+		Indices: cmdTree.indices(api.CmdID(cmdIdx)),
 	}, nil
 }
 
@@ -290,7 +290,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		groupers = append(groupers, &markerGrouper{})
 	}
 
-	// Walk the list of unfiltered atoms to build the groups.
+	// Walk the list of unfiltered commands to build the groups.
 	s := c.NewState()
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, s, nil)

@@ -101,7 +101,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 		transform.Transform(ctx, api.CmdNoID, a, mw)
 	}
 
-	// Find the output glShaderSource atom.
+	// Find the output glShaderSource command.
 	var cmd *gles.GlShaderSource
 	for _, c := range mw.Cmds {
 		if c, ok := c.(*gles.GlShaderSource); ok {
@@ -213,7 +213,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	if !found {
-		t.Error("glDrawElements atom not found.")
+		t.Error("glDrawElements command not found.")
 	}
 }
 

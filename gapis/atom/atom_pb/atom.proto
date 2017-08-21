@@ -17,17 +17,18 @@ syntax = "proto3";
 package atom_pb;
 // cc_package
 
-// Invoke is the atom that marks the invocation point in the set of atoms for a command.
+// Invoke is the command that marks the invocation point in the set of protos
+// for a command.
 message Invoke {}
 
-// Aborted is an extra used to mark atoms which did not finish execution.
+// Aborted is an extra used to mark commands which did not finish execution.
 // This can be expected (e.g. GL error), or unexpected (failed assertion).
 message Aborted {
     bool IsAssert = 1;
     string Reason = 2;
 }
 
-// Resource is the storage type for a resource atom.
+// Resource is the storage type for a resource command.
 message Resource {
     // Id is the resource id of the data blob.
     string id = 1;
@@ -35,9 +36,9 @@ message Resource {
     bytes data = 2;
 }
 
-// FramebufferObservation is an Atom that holds a snapshot of the color-buffer
-// of the bound framebuffer at the time of capture. These atoms can be used to
-// verify that replay gave the same results as what was captured.
+// FramebufferObservation is an Cmd that holds a snapshot of the color-buffer
+// of the bound framebuffer at the time of capture. These commands can be used
+// to verify that replay gave the same results as what was captured.
 message FramebufferObservation {
     // Framebuffer width in pixels
     uint32 OriginalWidth = 1;

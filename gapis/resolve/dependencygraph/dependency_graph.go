@@ -34,9 +34,9 @@ import (
 var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
 
 type DependencyGraph struct {
-	Commands   []api.Cmd             // Atom list which this graph was build for.
-	Behaviours []AtomBehaviour       // State reads/writes for each atom (graph edges).
-	Roots      map[StateAddress]bool // State to mark live at requested atoms.
+	Commands   []api.Cmd             // Command list which this graph was build for.
+	Behaviours []AtomBehaviour       // State reads/writes for each command (graph edges).
+	Roots      map[StateAddress]bool // State to mark live at requested commands.
 	addressMap addressMapping        // Remap state keys to integers for performance.
 }
 
@@ -74,7 +74,7 @@ type StateAddress uint32
 
 const NullStateAddress = StateAddress(0)
 
-// State key uniquely represents part of the GL state.
+// StateKey uniquely represents part of the GL state.
 // Think of it as memory range (which stores the state data).
 type StateKey interface {
 	// Parent returns enclosing state (and this state is strict subset of it).
@@ -83,11 +83,11 @@ type StateKey interface {
 }
 
 type AtomBehaviour struct {
-	Reads     []StateAddress // States read by an atom.
-	Modifies  []StateAddress // States read and written by an atom.
-	Writes    []StateAddress // States written by an atom.
-	Roots     []StateAddress // States labeled as root by an atom.
-	KeepAlive bool           // Force the atom to be live.
+	Reads     []StateAddress // States read by a command.
+	Modifies  []StateAddress // States read and written by a command.
+	Writes    []StateAddress // States written by a command.
+	Roots     []StateAddress // States labeled as root by a command.
+	KeepAlive bool           // Force the command to be live.
 	Aborted   bool           // Mutation of this command aborts.
 }
 
@@ -169,13 +169,13 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 			if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
 				behaviourProviders[a] = bp.GetDependencyGraphBehaviourProvider(ctx)
 			} else {
-				// API does not provide dependency information, always keep atoms for
-				// such APIs.
+				// API does not provide dependency information, always keep
+				// commands for such APIs.
 				g.Behaviours[id].KeepAlive = true
-				// Even if the atom does not belong to an API that provides dependency
-				// info, we still need to mutate it in the new state, because following
-				// atoms in other APIs may depends on the side effect of the current
-				// atom.
+				// Even if the command does not belong to an API that provides
+				// dependency info, we still need to mutate it in the new state,
+				// because following commands in other APIs may depends on the
+				// side effect of the current command.
 				if err := cmd.Mutate(ctx, s, nil /* builder */); err != nil {
 					log.W(ctx, "Command %v %v: %v", id, cmd, err)
 					g.Behaviours[id].Aborted = true

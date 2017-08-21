@@ -23,8 +23,8 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// ClearBackbuffer returns the atom list needed to create a context then clear,
-// sequentially the backbuffer to red, green, blue and black.
+// ClearBackbuffer returns the command list needed to create a context then
+// clear, sequentially the backbuffer to red, green, blue and black.
 func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) (cmds []api.Cmd, red, green, blue, black api.CmdID) {
 	b := newBuilder(ctx, ml)
 	b.newEglContext(64, 64, memory.Nullptr, false)

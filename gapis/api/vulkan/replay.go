@@ -124,11 +124,11 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 			info.Usage = newUsage
 			newInfo := s.AllocDataOrPanic(ctx, info)
-			newAtom := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
+			newCmd := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
 			// Carry all non-observation extras through.
 			for _, e := range image.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
-					newAtom.Extras().Add(e)
+					newCmd.Extras().Add(e)
 				}
 			}
 			// Carry observations through. We cannot merge these code with the
@@ -138,14 +138,14 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, r := range observations.Reads {
 				// TODO: filter out the old VkImageCreateInfo. That should be done via
 				// creating new observations for data we are interested from t.state.
-				newAtom.AddRead(r.Range, r.ID)
+				newCmd.AddRead(r.Range, r.ID)
 			}
 			// Use our new VkImageCreateInfo.
-			newAtom.AddRead(newInfo.Data())
+			newCmd.AddRead(newInfo.Data())
 			for _, w := range observations.Writes {
-				newAtom.AddWrite(w.Range, w.ID)
+				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newAtom)
+			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
 	} else if recreateImage, ok := cmd.(*RecreateImage); ok {
@@ -158,11 +158,11 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 			info.Usage = newUsage
 			newInfo := s.AllocDataOrPanic(ctx, info)
-			newAtom := cb.RecreateImage(device, newInfo.Ptr(), pimage)
+			newCmd := cb.RecreateImage(device, newInfo.Ptr(), pimage)
 			// Carry all non-observation extras through.
 			for _, e := range recreateImage.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
-					newAtom.Extras().Add(e)
+					newCmd.Extras().Add(e)
 				}
 			}
 			// Carry observations through. We cannot merge these code with the
@@ -172,14 +172,14 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, r := range observations.Reads {
 				// TODO: filter out the old RecreateImage. That should be done via
 				// creating new observations for data we are interested from t.state.
-				newAtom.AddRead(r.Range, r.ID)
+				newCmd.AddRead(r.Range, r.ID)
 			}
 			// Use our new VkImageCreateInfo.
-			newAtom.AddRead(newInfo.Data())
+			newCmd.AddRead(newInfo.Data())
 			for _, w := range observations.Writes {
-				newAtom.AddWrite(w.Range, w.ID)
+				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newAtom)
+			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
@@ -194,23 +194,23 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 			info.ImageUsage = newUsage
 			newInfo := s.AllocDataOrPanic(ctx, info)
-			newAtom := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
+			newCmd := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
 			for _, e := range swapchain.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
-					newAtom.Extras().Add(e)
+					newCmd.Extras().Add(e)
 				}
 			}
 			observations := swapchain.Extras().Observations()
 			for _, r := range observations.Reads {
 				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
 				// creating new observations for data we are interested from t.state.
-				newAtom.AddRead(r.Range, r.ID)
+				newCmd.AddRead(r.Range, r.ID)
 			}
-			newAtom.AddRead(newInfo.Data())
+			newCmd.AddRead(newInfo.Data())
 			for _, w := range observations.Writes {
-				newAtom.AddWrite(w.Range, w.ID)
+				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newAtom)
+			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
 	} else if recreateSwapchain, ok := cmd.(*RecreateSwapchain); ok {
@@ -226,23 +226,23 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 			info.ImageUsage = newUsage
 			newInfo := s.AllocDataOrPanic(ctx, info)
-			newAtom := cb.RecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
+			newCmd := cb.RecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
 			for _, e := range recreateSwapchain.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {
-					newAtom.Extras().Add(e)
+					newCmd.Extras().Add(e)
 				}
 			}
 			observations := recreateSwapchain.Extras().Observations()
 			for _, r := range observations.Reads {
 				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
 				// creating new observations for data we are interested from t.state.
-				newAtom.AddRead(r.Range, r.ID)
+				newCmd.AddRead(r.Range, r.ID)
 			}
-			newAtom.AddRead(newInfo.Data())
+			newCmd.AddRead(newInfo.Data())
 			for _, w := range observations.Writes {
-				newAtom.AddWrite(w.Range, w.ID)
+				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newAtom)
+			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
@@ -262,11 +262,11 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
-		// Build new attachments data, new create info and new atom
+		// Build new attachments data, new create info and new command
 		newAttachments := s.AllocDataOrPanic(ctx, attachments)
 		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
 		newInfo := s.AllocDataOrPanic(ctx, info)
-		newAtom := cb.VkCreateRenderPass(createRenderPass.Device,
+		newCmd := cb.VkCreateRenderPass(createRenderPass.Device,
 			newInfo.Ptr(),
 			memory.Pointer(createRenderPass.PAllocator),
 			memory.Pointer(createRenderPass.PRenderPass),
@@ -274,17 +274,17 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		// Add back the extras and read/write observations
 		for _, e := range createRenderPass.Extras().All() {
 			if _, ok := e.(*api.CmdObservations); !ok {
-				newAtom.Extras().Add(e)
+				newCmd.Extras().Add(e)
 			}
 		}
 		for _, r := range createRenderPass.Extras().Observations().Reads {
-			newAtom.AddRead(r.Range, r.ID)
+			newCmd.AddRead(r.Range, r.ID)
 		}
-		newAtom.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
+		newCmd.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
 		for _, w := range createRenderPass.Extras().Observations().Writes {
-			newAtom.AddWrite(w.Range, w.ID)
+			newCmd.AddWrite(w.Range, w.ID)
 		}
-		out.MutateAndWrite(ctx, id, newAtom)
+		out.MutateAndWrite(ctx, id, newCmd)
 		return
 	} else if recreateRenderPass, ok := cmd.(*RecreateRenderPass); ok {
 		pInfo := recreateRenderPass.PCreateInfo
@@ -303,27 +303,27 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
-		// Build new attachments data, new create info and new atom
+		// Build new attachments data, new create info and new command
 		newAttachments := s.AllocDataOrPanic(ctx, attachments)
 		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
 		newInfo := s.AllocDataOrPanic(ctx, info)
-		newAtom := cb.RecreateRenderPass(recreateRenderPass.Device,
+		newCmd := cb.RecreateRenderPass(recreateRenderPass.Device,
 			newInfo.Ptr(),
 			memory.Pointer(recreateRenderPass.PRenderPass))
 		// Add back the extras and read/write observations
 		for _, e := range recreateRenderPass.Extras().All() {
 			if _, ok := e.(*api.CmdObservations); !ok {
-				newAtom.Extras().Add(e)
+				newCmd.Extras().Add(e)
 			}
 		}
 		for _, r := range recreateRenderPass.Extras().Observations().Reads {
-			newAtom.AddRead(r.Range, r.ID)
+			newCmd.AddRead(r.Range, r.ID)
 		}
-		newAtom.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
+		newCmd.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
 		for _, w := range recreateRenderPass.Extras().Observations().Writes {
-			newAtom.AddWrite(w.Range, w.ID)
+			newCmd.AddWrite(w.Range, w.ID)
 		}
-		out.MutateAndWrite(ctx, id, newAtom)
+		out.MutateAndWrite(ctx, id, newCmd)
 		return
 	}
 	out.MutateAndWrite(ctx, id, cmd)
@@ -524,7 +524,7 @@ func (a API) Replay(
 			if len(req.after) > 1 {
 				// If we are dealing with subcommands, 2 things are true.
 				// 1) We will never get multiple requests at the same time for different locations.
-				// 2) the earlyTerminator.lastRequest is the last atom we have to actually run.
+				// 2) the earlyTerminator.lastRequest is the last command we have to actually run.
 				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
 				after = earlyTerminator.lastRequest
 			}

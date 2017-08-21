@@ -167,7 +167,7 @@ func (verb *videoVerb) regularVideoSource(
 			sb := new(bytes.Buffer)
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
-			fmt.Fprintf(refw, "Frame: %d, atom: %v", i, eofEvents[i].Command.Indices)
+			fmt.Fprintf(refw, "Frame: %d, cmd: %v", i, eofEvents[i].Command.Indices)
 			refw.Flush()
 			str := sb.String()
 			font.DrawString(str, frame, image.Pt(4, 4), color.Black)

@@ -55,7 +55,7 @@ type ResourceMeta struct {
 	IDMap    ResourceMap // Map for resolved resources to ids.
 }
 
-// ReplaceCallback is called from SetResourceData to propagate changes to current atom stream.
+// ReplaceCallback is called from SetResourceData to propagate changes to current command stream.
 type ReplaceCallback func(where uint64, with interface{})
 
 // Interface compliance check

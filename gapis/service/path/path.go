@@ -27,7 +27,7 @@ import (
 )
 
 // Node is the interface for types that represent a reference to a capture,
-// atom list, single atom, memory, state or sub-object. A path can be
+// command list, single command, memory, state or sub-object. A path can be
 // passed between client and server using RPCs in order to describe some data
 // in a capture.
 type Node interface {

@@ -985,7 +985,7 @@ func postImageData(ctx context.Context,
 		).AddRead(mappedMemoryRangeData.Data()),
 	)
 
-	// Add post atom
+	// Add post command
 	writeEach(ctx, out,
 		cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {

@@ -420,7 +420,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			return
 
 		case *GlShaderSource:
-			// Apply the state mutation of the unmodified glShaderSource atom.
+			// Apply the state mutation of the unmodified glShaderSource
+			// command.
 			// This is so we can grab the source string from the Shader object.
 			// We will actually provide the source to driver at compile time.
 			cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
@@ -533,7 +534,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						// Some of the vertex arrays for the glDrawElements call is in
 						// client memory and we need to move this into temporary buffer(s).
 						// The indices are also in client memory, so we need to apply the
-						// atom's reads now so that the indices can be read from the
+						// command's reads now so that the indices can be read from the
 						// application pool.
 						cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 						indexSize := DataTypeSize(cmd.IndicesType)

@@ -99,7 +99,8 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 	return &GlesDependencyGraphBehaviourProvider{}
 }
 
-// GetBehaviourForAtom returns state reads/writes that the given atom performs.
+// GetBehaviourForAtom returns state reads/writes that the given command
+// performs.
 //
 // Writes: Write dependencies keep atoms alive. Each atom must correctly report
 // all its writes or it must set the keep-alive flag. If a write is missing

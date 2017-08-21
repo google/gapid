@@ -127,7 +127,7 @@ func (a API) Replay(
 
 		case framebufferRequest:
 			deadCodeElimination.Request(req.after)
-			// HACK: Also ensure we have framebuffer before the atom.
+			// HACK: Also ensure we have framebuffer before the command.
 			// TODO: Remove this and handle swap-buffers better.
 			deadCodeElimination.Request(req.after - 1)
 

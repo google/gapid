@@ -335,7 +335,7 @@ message Resources {
 }
 
 // ResourceData is a path to a single resource snapshot at a given point in an
-// atom stream.
+// command stream.
 message ResourceData {
     ID id = 1;
     Command after = 2;

@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// DrawTexturedSquare returns the atom list needed to create a context then
+// DrawTexturedSquare returns the command list needed to create a context then
 // draw a textured square.
 func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool, ml *device.MemoryLayout) (cmds []api.Cmd, draw api.CmdID, swap api.CmdID) {
 	squareVertices := []float32{

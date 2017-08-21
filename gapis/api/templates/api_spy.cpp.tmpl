@@ -161,7 +161,7 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the method body for the given atom.
+  Emits the method body for the given command.
 -------------------------------------------------------------------------------
 */}}
 {{define "MethodImplementation"}}
@@ -219,7 +219,7 @@
           {{end}}
         {{end}}
         {{if (GetAnnotation $ "blocking")}}
-          lock(observer, "Tracing blocking atom: {{$name}} locks again.");
+          lock(observer, "Tracing blocking command: {{$name}} locks again.");
         {{end}}
         onPostFence(observer);
       };
