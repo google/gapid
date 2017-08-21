@@ -14,13 +14,7 @@
 
 package api
 
-import (
-	"context"
-
-	"github.com/google/gapid/core/data/deep"
-	"github.com/google/gapid/core/data/protoconv"
-	"github.com/google/gapid/gapis/atom/atom_pb"
-)
+import "github.com/google/gapid/core/data/deep"
 
 // CmdExtra is the interface implemented by command 'extras' - additional
 // information that can be placed inside a command.
@@ -95,18 +89,4 @@ func (e *CmdExtras) GetOrAppendObservations() *CmdObservations {
 func WithExtras(a Cmd, extras ...CmdExtra) Cmd {
 	a.Extras().Add(extras...)
 	return a
-}
-
-// Convert calls the Convert method on all the extras in the list.
-func (e *CmdExtras) Convert(ctx context.Context, out atom_pb.Handler) error {
-	for _, o := range e.All() {
-		m, err := protoconv.ToProto(ctx, o)
-		if err != nil {
-			return err
-		}
-		if err := out(ctx, m); err != nil {
-			return err
-		}
-	}
-	return nil
 }

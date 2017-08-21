@@ -21,5 +21,4 @@ set(files
     doc.go
 )
 set(dirs
-    atom_pb
 )
