@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/gles/glsl/ast"
 	"github.com/google/gapid/gapis/api/testcmd"
-	"github.com/google/gapid/gapis/atom"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
@@ -94,9 +93,9 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 		eglMakeCurrent,
 		cb.GlCreateShader(shaderType, 0x10),
 		cb.GlShaderSource(0x10, 1, p(0x100000), p(0x100010)).
-			AddRead(atom.Data(ctx, a, p(0x100000), p(0x100020))).
-			AddRead(atom.Data(ctx, a, p(0x100010), int32(len(c.source)))).
-			AddRead(atom.Data(ctx, a, p(0x100020), c.source)),
+			AddRead(memory.Store(ctx, a, p(0x100000), p(0x100020))).
+			AddRead(memory.Store(ctx, a, p(0x100010), int32(len(c.source)))).
+			AddRead(memory.Store(ctx, a, p(0x100020), c.source)),
 	} {
 		transform.Transform(ctx, api.CmdNoID, a, mw)
 	}
@@ -179,9 +178,9 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),
 		cb.GlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
-			AddRead(atom.Data(ctx, a, p(0x100000), positions)),
+			AddRead(memory.Store(ctx, a, p(0x100000), positions)),
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
-			AddRead(atom.Data(ctx, a, p(0x200000), indices)),
+			AddRead(memory.Store(ctx, a, p(0x200000), indices)),
 	}, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		transform.Transform(ctx, api.CmdNoID, cmd, mw)
 		return nil

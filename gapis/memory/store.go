@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package atom
+package memory
 
 import (
 	"bytes"
@@ -22,19 +22,18 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/memory"
 )
 
-// Data encodes and stores the value v to the database d, returning the
+// Store encodes and stores the value v to the database d, returning the
 // memory range and new resource identifier. Data can be used to as a helper
-// to AddRead and AddWrite methods on atoms.
-func Data(ctx context.Context, l *device.MemoryLayout, at memory.Pointer, v ...interface{}) (memory.Range, id.ID) {
+// to AddRead and AddWrite methods on commands.
+func Store(ctx context.Context, l *device.MemoryLayout, at Pointer, v ...interface{}) (Range, id.ID) {
 	buf := &bytes.Buffer{}
-	e := memory.NewEncoder(endian.Writer(buf, l.GetEndian()), l)
-	memory.Write(e, v)
+	e := NewEncoder(endian.Writer(buf, l.GetEndian()), l)
+	Write(e, v)
 	id, err := database.Store(ctx, buf.Bytes())
 	if err != nil {
 		panic(err)
 	}
-	return memory.Range{Base: at.Address(), Size: uint64(len(buf.Bytes()))}, id
+	return Range{Base: at.Address(), Size: uint64(len(buf.Bytes()))}, id
 }
