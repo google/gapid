@@ -26,9 +26,9 @@ import (
 // Generator is the interface for types that support replay generation.
 type Generator interface {
 	// Replay is called when a replay pass is ready to be sent to the replay
-	// device. Replay may filter or transform the list of atoms, satisfying all
-	// the specified requests and config, before outputting the final atom stream
-	// to out.
+	// device. Replay may filter or transform the list of commands, satisfying
+	// all the specified requests and config, before outputting the final
+	// command stream to out.
 	Replay(
 		ctx context.Context,
 		intent Intent,
@@ -57,7 +57,7 @@ type Config interface{}
 // Request is a user-defined type that holds information relevant to a single
 // replay request. An example Request would be one that informs ReplayTransforms
 // to insert a postback of the currently bound render-target content at a
-// specific atom.
+// specific command.
 type Request interface{}
 
 // Result is the function called for the result of a request.

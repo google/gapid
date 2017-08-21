@@ -25,9 +25,9 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-// Resource is an Atom that embeds a blob of memory into the atom stream. These
-// atoms are typically only used for .gfxtrace files as they are stripped from
-// the stream on import and their resources are placed into the database.
+// Resource is a Cmd that embeds a blob of memory into the command stream. These
+// commands are typically only used for .gfxtrace files as they are stripped
+// from the stream on import and their resources are placed into the database.
 type Resource struct {
 	ID   id.ID  // The resource identifier holding the memory that was observed.
 	Data []byte // The resource data

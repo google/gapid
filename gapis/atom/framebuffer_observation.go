@@ -24,9 +24,9 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-// FramebufferObservation is an Atom that holds a snapshot of the color-buffer
-// of the bound framebuffer at the time of capture. These atoms can be used to
-// verify that replay gave the same results as what was captured.
+// FramebufferObservation is a Cmd that holds a snapshot of the color-buffer
+// of the bound framebuffer at the time of capture. These commandss can be used
+// to verify that replay gave the same results as what was captured.
 type FramebufferObservation struct {
 	OriginalWidth  uint32 `param:"OriginalWidth"`  // Framebuffer width in pixels
 	OriginalHeight uint32 `param:"OriginalHeight"` // Framebuffer height in pixels

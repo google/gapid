@@ -216,7 +216,7 @@ func (shader *Shader) SetResourceData(
 			return nil
 		}
 	}
-	return fmt.Errorf("No atom to set data in")
+	return fmt.Errorf("No command to set data in")
 }
 
 func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {

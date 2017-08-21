@@ -195,7 +195,7 @@ func (i SrcImageId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap boo
 	case *GlCopyImageSubDataOES:
 		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	default:
-		panic(fmt.Errorf("Remap of SrcImageId for unhandeled atom: %v", cmd))
+		panic(fmt.Errorf("Remap of SrcImageId for unhandled command: %v", cmd))
 	}
 }
 
@@ -208,7 +208,7 @@ func (i DstImageId) remap(cmd api.Cmd, s *api.State) (key interface{}, remap boo
 	case *GlCopyImageSubDataOES:
 		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	default:
-		panic(fmt.Errorf("Remap of DstImageId for unhandeled atom: %v", cmd))
+		panic(fmt.Errorf("Remap of DstImageId for unhandled command: %v", cmd))
 	}
 }
 

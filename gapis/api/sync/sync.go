@@ -31,14 +31,14 @@ import (
 
 // SynchronizedAPI defines an API that explicitly has multiple threads of
 // execution. This means that replays are not necessarily linear in terms
-// of atoms.
+// of commands.
 type SynchronizedAPI interface {
 	// GetTerminator returns a transform that will allow the given capture to be terminated
-	// after a atom
+	// after a command.
 	GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error)
 
 	// ResolveSynchronization resolve all of the synchronization information for
-	// the given API
+	// the given API.
 	ResolveSynchronization(ctx context.Context, d *Data, c *path.Capture) error
 
 	// MutateSubcommands mutates the given Cmd and calls callbacks for subcommands

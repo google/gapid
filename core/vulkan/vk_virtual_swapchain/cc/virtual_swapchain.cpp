@@ -98,7 +98,7 @@ VirtualSwapchain::VirtualSwapchain(
       // Handle more formats later if we have other swapchain formats we care
       // about.
 
-      // maximum non-coherent-atom-size is 128 bytes
+      // maximum non-coherent-command-size is 128 bytes
       // This means we can write subsequent layers on 128-byte
       // boundaries
       size_t buffer_memory_size =

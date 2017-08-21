@@ -27,7 +27,7 @@ import (
 )
 
 // CmdObservations is a collection of reads and write observations performed by an
-// atom.
+// command.
 type CmdObservations struct {
 	Reads  []CmdObservation
 	Writes []CmdObservation
@@ -89,7 +89,8 @@ func (o *CmdObservations) DataString(ctx context.Context) string {
 	return buf.String()
 }
 
-// CmdObservation represents a single read or write observation made by an atom.
+// CmdObservation represents a single read or write observation made by an
+// command.
 type CmdObservation struct {
 	Range memory.Range // Memory range that was observed.
 	ID    id.ID        // The resource identifier of the observed data.

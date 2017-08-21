@@ -55,7 +55,7 @@ type Benchmark struct {
 	Fit            string                  // String representation of the best Complexity.Fit() for the Samples.
 	FitByFrame     string                  `json:",omitempty"` // String representation of the best fit, with frames on the x-axis.
 	Links          map[string]*Link        `diff:"3"`          // Links to additional data (e.g. cpu or heap profiles).
-	Samples        KeyedSamples            `diff:"2"`          // Per-atom-index duration data.
+	Samples        KeyedSamples            `diff:"2"`          // Per-command-index duration data.
 	Metrics        map[string]*Multisample // Additional per-benchmark metrics.
 	Counters       *benchmark.Counters     // Benchmark counters.
 

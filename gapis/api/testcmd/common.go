@@ -46,8 +46,8 @@ type CmdAndID struct {
 
 type CmdAndIDList []CmdAndID
 
-// List takes a mix of Atoms and CmdIDsAndCmd and returns a CmdIDListAndCmd.
-// Atoms are transformed into CmdIDsAndCmd by using the ID field as the atom
+// List takes a mix of Cmds and CmdIDsAndCmd and returns a CmdIDListAndCmd.
+// Cmds are transformed into CmdIDsAndCmd by using the ID field as the command
 // id.
 func List(cmds ...interface{}) CmdAndIDList {
 	l := CmdAndIDList{}

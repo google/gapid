@@ -113,7 +113,7 @@ var (
 func storeCommands(ctx context.Context, cmds []api.Cmd) id.ID {
 	id, err := database.Store(ctx, cmds)
 	if err != nil {
-		log.F(ctx, "Failed to store atom stream: %v", err)
+		log.F(ctx, "Failed to store command stream: %v", err)
 	}
 	return id
 }
@@ -375,9 +375,9 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 	cmdsUntilSwitchThread, modFourCounter := 4, 3
 	for remainingCmds > 0 {
 		if cmdsUntilSwitchThread > 0 && len(lists[threadIndex]) > 0 {
-			atom := lists[threadIndex][0]
-			atom.SetThread(threads[threadIndex])
-			merged = append(merged, atom)
+			cmd := lists[threadIndex][0]
+			cmd.SetThread(threads[threadIndex])
+			merged = append(merged, cmd)
 			lists[threadIndex] = lists[threadIndex][1:]
 			remainingCmds--
 			cmdsUntilSwitchThread--

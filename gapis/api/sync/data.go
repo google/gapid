@@ -33,7 +33,7 @@ type ExecutionRanges struct {
 	Ranges map[api.CmdID]api.SubCmdIdx
 }
 
-// SubcommandReference contains a subcommand index as well as an atom.ID that
+// SubcommandReference contains a subcommand index as well as an api.CmdID that
 // references the command that generated this subcommand.
 type SubcommandReference struct {
 	Index         api.SubCmdIdx

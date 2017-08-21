@@ -61,8 +61,9 @@ func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTer
 	return &VulkanTerminator{api.CmdID(0), make([]uint64, 0), false, s}, nil
 }
 
-// Add adds the atom with identifier id to the set of atoms that must be seen
-// before the VulkanTerminator will consume all atoms (excluding the EOS atom).
+// Add adds the command with identifier id to the set of commands that must be
+// seen before the VulkanTerminator will consume all commands (excluding the EOS
+// command).
 func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []uint64) error {
 	if len(t.requestSubIndex) != 0 {
 		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
@@ -89,7 +90,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand []u
 			}
 		}
 	} else {
-		return log.Errf(ctx, nil, "The given atom does not have a subcommands")
+		return log.Errf(ctx, nil, "The given command does not have a subcommands")
 	}
 
 	// If we cannot find the subindex, backtrack to the main command
@@ -297,9 +298,9 @@ func rebuildCommandBuffer(ctx context.Context,
 	return VkCommandBuffer(commandBufferId), x, cleanup
 }
 
-// cutCommandBuffer rebuilds the given VkQueueSubmit atom.
+// cutCommandBuffer rebuilds the given VkQueueSubmit command.
 // It will re-write the submission so that it ends at
-// idx. It writes any new atoms to transform.Writer.
+// idx. It writes any new commands to transform.Writer.
 // It will make sure that if the replay were to stop at the given
 // index it would remain valid. This means closing any open
 // RenderPasses.

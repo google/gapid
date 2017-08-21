@@ -101,7 +101,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 				state.MarkLive(root)
 			}
 		}
-		// If any output state is live then this atom is live as well.
+		// If any output state is live then this command is live as well.
 		for _, write := range b.Writes {
 			if state.IsLive(write) {
 				isLive[i] = true
@@ -129,7 +129,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 		}
 		// Debug output
 		if config.DebugDeadCodeElimination && t.requests.Contains(api.CmdID(i)) {
-			log.I(ctx, "DCE: Requested atom %v: %v", i, t.depGraph.Commands[i])
+			log.I(ctx, "DCE: Requested cmd %v: %v", i, t.depGraph.Commands[i])
 			t.depGraph.Print(ctx, &b)
 		}
 	}

@@ -37,8 +37,8 @@ import (
 	"github.com/google/gapid/gapis/shadertools"
 )
 
-// findIssues is an atom transform that detects issues when replaying the
-// stream of atoms. Any issues that are found are written to all the chans in
+// findIssues is a command transform that detects issues when replaying the
+// stream of commands. Any issues that are found are written to all the chans in
 // the slice out. Once the last issue is sent (if any) all the chans in out are
 // closed.
 type findIssues struct {

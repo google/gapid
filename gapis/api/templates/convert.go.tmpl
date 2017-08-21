@@ -85,7 +85,7 @@
   {{$name := $.Name | GoCommandName}}
   {{$proto := $.Name | ProtoGoName}}
   ¶
-  // ToProto returns the primary storage atom of the {{$name}} command.¶
+  // ToProto returns the primary storage proto of the {{$name}} command.¶
   func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
     to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
     {{range $v := $.FullParameters}}

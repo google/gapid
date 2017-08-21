@@ -30,7 +30,7 @@ import (
 // Groups are ideal for expressing nested hierarchies of commands.
 //
 // Groups have the concept of items. An item is either an immediate sub-group,
-// or an command range that is within this group's span but outside of any
+// or a command range that is within this group's span but outside of any
 // sub-group.
 type CmdIDGroup struct {
 	Name     string     // Name of this group.

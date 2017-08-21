@@ -337,7 +337,7 @@ func (s *session) grabSamples(ctx context.Context) error {
 	log.I(ctx, "Getting samples...")
 	start := time.Now()
 
-	// Map atom indices to frames.
+	// Map command indices to frames.
 	interesting := map[int]bool{}
 	for _, index := range as {
 		interesting[index] = true
@@ -403,7 +403,7 @@ func getFrame(ctx context.Context, session *session, cmd *path.Command) error {
 		return err
 	}
 	if ii.Width == 0 || ii.Height == 0 {
-		return fmt.Errorf("Framebuffer at atom %d was %x x %x", cmd.Indices, ii.Width, ii.Height)
+		return fmt.Errorf("Framebuffer at command %d was %x x %x", cmd.Indices, ii.Width, ii.Height)
 	}
 
 	return nil

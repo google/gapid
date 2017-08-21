@@ -24,8 +24,8 @@ import (
 )
 
 // ProtoToCmd returns a function that converts all the storage commands it is
-// handed, passing the generated live atoms to the handler.
-// You must call this with a nil to flush the final atom.
+// handed, passing the generated live commands to the handler.
+// You must call this with a nil to flush the final command.
 func ProtoToCmd(handler func(Cmd)) func(context.Context, atom_pb.Atom) error {
 	var (
 		last         Cmd

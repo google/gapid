@@ -16,14 +16,14 @@ package api
 
 import "fmt"
 
-// CmdID is the index of an atom in an atom stream.
+// CmdID is the index of a command in a command stream.
 type CmdID uint64
 
 // CmdNoID is used when you have to pass an ID, but don't have one to use.
 const CmdNoID = CmdID(1<<63 - 1) // use max int64 for the benefit of java
 
-// Derived is used to create an ID which is used for generated extra atoms.
-// It is used purely for debugging (to print the related original atom ID).
+// Derived is used to create an ID which is used for generated extra commands.
+// It is used purely for debugging (to print the related original command ID).
 func (id CmdID) Derived() CmdID {
 	return id | derivedBit
 }

@@ -58,7 +58,7 @@ func getVideoFrames(
 	events []*service.Event,
 	maxWidth, maxHeight int) ([]*videoFrame, int, int, error) {
 	// Find maximum frame width / height of all frames, and get all observation
-	// atom indices.
+	// command indices.
 	videoFrames := []*videoFrame{}
 	w, h := 0, 0
 	frameIndex, numDrawCalls := 0, 0
@@ -224,7 +224,7 @@ func (verb *videoVerb) sxsVideoSource(
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
 			fmt.Fprintf(refw, "Dimensions:║%dx%d¶", v.fbo.OriginalWidth, v.fbo.OriginalHeight)
-			fmt.Fprintf(refw, "Atom:║%d¶", v.fboIndex)
+			fmt.Fprintf(refw, "Cmd:║%d¶", v.fboIndex)
 			fmt.Fprintf(refw, "Frame:║%d¶", v.frameIndex)
 			fmt.Fprintf(refw, "Draw calls:║%d¶", v.numDrawCalls)
 			fmt.Fprintf(refw, "Difference:║%.4f¶", v.squareError)

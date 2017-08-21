@@ -23,8 +23,8 @@ import (
 	"github.com/google/gapid/gapis/api/gles/gles_pb"
 )
 
-// ErrorState is an atom extra used to describe the GLES error state after
-// the atom has been executed. It is optional - we use it only for testing.
+// ErrorState is a command extra used to describe the GLES error state after
+// the command has been executed. It is optional - we use it only for testing.
 type ErrorState struct {
 	TraceDriversGlError GLenum
 	InterceptorsGlError GLenum

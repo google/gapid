@@ -265,7 +265,7 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
 	}
 
-	// must invoke the converter with nil to flush the last atom
+	// must invoke the converter with nil to flush the last command
 	if err := convert(ctx, nil); err != nil {
 		return nil, err
 	}
