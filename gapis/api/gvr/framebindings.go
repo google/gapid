@@ -81,6 +81,8 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
 			frame := cmd.Frame.Read(ctx, cmd, s, nil)
 			out.submitBuffer[id] = frameToBuffer[frame]
+		case *Gvr_frame_get_framebuffer_object:
+			frameToBuffer[GvrFrameᵖ(cmd.Frame)] = gles.FramebufferId(cmd.Result)
 		case *gles.GlBindFramebuffer:
 			if callerID := cmd.Caller(); callerID != api.CmdNoID {
 				switch caller := cmds[callerID].(type) {
