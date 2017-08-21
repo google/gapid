@@ -37,7 +37,6 @@ import (
 	_ "github.com/google/gapid/gapis/api"
 	_ "github.com/google/gapid/gapis/api/test/test_pb"
 	_ "github.com/google/gapid/gapis/atom"
-	_ "github.com/google/gapid/gapis/atom/atom_pb"
 	_ "github.com/google/gapid/gapis/capture"
 	_ "github.com/google/gapid/gapis/memory"
 	_ "github.com/google/gapid/gapis/memory/memory_pb"

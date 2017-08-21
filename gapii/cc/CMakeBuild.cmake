@@ -65,7 +65,6 @@ glob(sources
 list(APPEND sources
     "${PROTO_CC_OUT}/core/data/pack/pack.pb.cc"
     "${PROTO_CC_OUT}/core/os/device/device.pb.cc"
-    "${PROTO_CC_OUT}/gapis/atom/atom_pb/atom.pb.cc"
     "${PROTO_CC_OUT}/gapis/memory/memory.pb.cc"
     "${PROTO_CC_OUT}/gapis/memory/memory_pb/memory.pb.cc"
     "${PROTO_CC_OUT}/gapis/capture/capture.pb.cc"
