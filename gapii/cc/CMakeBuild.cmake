@@ -70,7 +70,6 @@ list(APPEND sources
     "${PROTO_CC_OUT}/gapis/memory/memory_pb/memory.pb.cc"
     "${PROTO_CC_OUT}/gapis/capture/capture.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/gfxtrace.pb.cc"
-    "${PROTO_CC_OUT}/gapis/api/core/core_pb/api.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/vulkan/vulkan_pb/api.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/api.pb.cc"
     "${PROTO_CC_OUT}/gapis/api/gles/gles_pb/extras.pb.cc"
