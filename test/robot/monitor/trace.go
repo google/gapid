@@ -36,6 +36,17 @@ func (t *Traces) All() []*Trace {
 	return t.entries
 }
 
+// MatchPackage returns the set of Trace objects that were traced with a specific package.
+func (t *Traces) MatchPackage(p *Package) []*Trace {
+	result := []*Trace{}
+	for _, trace := range t.entries {
+		if trace.Input.Package == p.Id {
+			result = append(result, trace)
+		}
+	}
+	return result
+}
+
 func (o *DataOwner) updateTrace(ctx context.Context, action *trace.Action) error {
 	o.Write(func(data *Data) {
 		entry, _ := data.Traces.FindOrCreate(ctx, action)

@@ -170,7 +170,7 @@ func clearDimensionData() {
 func newTask(entry map[string]interface{}, kind Item) *task {
 	t := &task{
 		underlying: entry,
-		trace:      traceInfo{target: nilItem, pkg: nilItem, subject: nilItem},
+		trace:      traceInfo{target: nilItem, subject: nilItem},
 		kind:       kind,
 		host:       nilItem,
 		pkg:        nilItem,

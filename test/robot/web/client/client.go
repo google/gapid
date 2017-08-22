@@ -26,7 +26,6 @@ import (
 
 type traceInfo struct {
 	target  Item
-	pkg     Item
 	subject Item
 }
 
@@ -46,7 +45,6 @@ func (t *task) Representation() interface{} {
 	tr := map[string]interface{}{}
 	tr["trace target"] = t.trace.target.Underlying()
 	tr["trace subject"] = t.trace.subject.Underlying()
-	tr["trace package"] = t.trace.pkg.Underlying()
 	tr["host"] = t.host.Underlying()
 	tr["package"] = t.pkg.Underlying()
 	return []interface{}{tr, t.underlying}
