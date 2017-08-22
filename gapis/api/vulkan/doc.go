@@ -15,8 +15,6 @@
 // Package vulkan implementes the API interface for the Vulkan graphics library.
 package vulkan
 
-// binary: cpp = vulkan
-
 // The following are the imports that generated source files pull in when present
 // Having these here helps out tools that can't cope with missing dependancies
 import (

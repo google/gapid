@@ -43,8 +43,6 @@ import (
 	"github.com/google/gapid/core/text/parse"
 )
 
-// binary: ignore
-
 type Language uint8
 
 // Constants identifying various sub-languages.
