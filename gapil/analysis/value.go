@@ -475,12 +475,14 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 		lhs, _ := s.valueOf(n.LHS)
 		rhs, _ := s.valueOf(n.RHS)
 		set := func(v Value) {
-			switch v.(*BoolValue).Possibility {
-			case True:
-				s.considerTrue(n)
+			if v, ok := v.(*BoolValue); ok {
+				switch v.Possibility {
+				case True:
+					s.considerTrue(n)
 
-			case False:
-				s.considerFalse(n)
+				case False:
+					s.considerFalse(n)
+				}
 			}
 		}
 
@@ -519,6 +521,16 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 		case ast.OpOr:
 			if r, ok := lhs.(*BoolValue); ok {
 				return r.Or(rhs.(*BoolValue)), set
+			}
+
+		case ast.OpBitwiseOr:
+			if r, ok := lhs.(*EnumValue); ok {
+				return r.Union(rhs.(*EnumValue)), set
+			}
+
+		case ast.OpBitwiseAnd:
+			if r, ok := lhs.(*EnumValue); ok {
+				return r.Intersect(rhs.(*EnumValue)), set
 			}
 		}
 
