@@ -83,6 +83,8 @@ define NULL_HANDLE 0
 @extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_SPEC_VERSION   1
 @extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_EXTENSION_NAME "VK_EXT_debug_report"
 
+@extension("VK_EXT_debug_marker") define VK_EXT_DEBUG_MARKER_SPEC_VERSION 4
+@extension("VK_EXT_debug_marker") define VK_EXT_DEBUG_MARKER_EXTENSION_NAME "VK_EXT_debug_marker"
 
 /////////////
 //  Types  //
@@ -278,6 +280,11 @@ enum VkStructureType {
 
   //@extension("VK_EXT_debug_report")
   VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = 1000011000,
+
+  //@extension("VK_EXT_debug_marker")
+  VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT = 1000022000
+  VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT = 1000022001
+  VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT = 1000022002
 
   //@extension("VK_NV_dedicated_allocation")
   VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV    = 1000026000,
@@ -2694,6 +2701,7 @@ cmd VkResult vkEnumerateInstanceExtensionProperties(
 }
 
 @indirect("VkPhysicalDevice", "VkInstance")
+@override
 cmd VkResult vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice       physicalDevice,
     string                 pLayerName,
@@ -8643,6 +8651,100 @@ cmd void vkDebugReportMessageEXT(
     string                     pMessage) {
 }
 extern void validate(string layerName, bool condition, string message)
+
+// ----------------------------------------------------------------------------
+// VK_EXT_debug_marker
+// ----------------------------------------------------------------------------
+@extension("VK_EXT_debug_marker")
+@serialize
+class VkDebugMarkerObjectNameInfoEXT {
+  VkStructureType             sType
+  const void*                 pNext
+  VkDebugReportObjectTypeEXT  objectType
+  u64                         object
+  const char*                 pObjectName
+}
+
+@extension("VK_EXT_debug_marker")
+@serialize
+class VkDebugMarkerObjectTagInfoEXT {
+    VkStructureType               sType
+    const void*                   pNext
+    VkDebugReportObjectTypeEXT    objectType
+    u64                           object
+    u64                           tagName
+    size                          tagSize
+    const void*                   pTag
+}
+
+@extension("VK_EXT_debug_marker")
+@serialize
+class VkDebugMarkerMarkerInfoEXT {
+    VkStructureType    sType
+    const void*        pNext
+    const char*        pMarkerName
+    @readonly f32[4]   color
+}
+
+@threadSafety("app")
+@extension("VK_EXT_debug_marker")
+@extension("VK_EXT_debug_report")
+@indirect("VkDevice")
+@override
+@no_replay
+cmd VkResult vkDebugMarkerSetObjectTagEXT(
+    VkDevice                                    device,
+    VkDebugMarkerObjectTagInfoEXT*              pTagInfo) {
+  read(pTagInfo[0:1])
+  return ?
+}
+
+@threadSafety("app")
+@extension("VK_EXT_debug_marker")
+@extension("VK_EXT_debug_report")
+@indirect("VkDevice")
+@override
+@no_replay
+cmd VkResult vkDebugMarkerSetObjectNameEXT(
+    VkDevice                                    device,
+    VkDebugMarkerObjectNameInfoEXT*             pNameInfo) {
+  read(pNameInfo[0:1])
+  return ?
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_marker")
+@extension("VK_EXT_debug_report")
+@override
+@no_replay
+cmd void vkCmdDebugMarkerBeginEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  read(pMarkerInfo[0:1])
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_marker")
+@extension("VK_EXT_debug_report")
+@override
+@no_replay
+cmd void vkCmdDebugMarkerEndEXT(
+    VkCommandBuffer                             commandBuffer) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_marker")
+@extension("VK_EXT_debug_report")
+@override
+@no_replay
+cmd void vkCmdDebugMarkerInsertEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  read(pMarkerInfo[0:1])
+}
 
 /////////////////////////////
 // Struct subroutines      //

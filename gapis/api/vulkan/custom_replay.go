@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -1181,12 +1182,51 @@ func (a *RecreateComputePipeline) Mutate(ctx context.Context, s *api.State, b *b
 }
 
 func (a *VkCreateDevice) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	// Hijack VkCreateDevice's Mutate() method entirely with our ReplayCreateVkDevice's Mutate().
-	// Similar to VkCreateInstance's Mutate() above.
+	// Hijack VkCreateDevice's Mutate() method entirely with our
+	// ReplayCreateVkDevice's Mutate(). Similar to VkCreateInstance's Mutate()
+	// above.
+	// And we need to strip off the VK_EXT_debug_marker extension name when
+	// building instructions for replay.
+	createInfoPtr := a.PCreateInfo
+	allocated := []*api.AllocResult{}
+	if b != nil {
+		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		defer func() {
+			for _, d := range allocated {
+				d.Free()
+			}
+		}()
+		extensionCount := uint64(createInfo.EnabledExtensionCount)
+		newExtensionNames := []memory.Pointer{}
+		for _, e := range createInfo.PpEnabledExtensionNames.Slice(0, extensionCount, s.MemoryLayout).Read(ctx, a, s, nil) {
+			extensionName := string(memory.CharToBytes(e.StringSlice(ctx, s).Read(ctx, a, s, nil)))
+			if !strings.Contains(extensionName, "VK_EXT_debug_marker") {
+				nameSliceData := s.AllocDataOrPanic(ctx, extensionName)
+				allocated = append(allocated, &nameSliceData)
+				newExtensionNames = append(newExtensionNames, nameSliceData.Ptr())
+			}
+		}
+		new_extensionNamesData := s.AllocDataOrPanic(ctx, newExtensionNames)
+		allocated = append(allocated, &new_extensionNamesData)
+		createInfo.EnabledExtensionCount = uint32(len(newExtensionNames))
+		createInfo.PpEnabledExtensionNames = NewCharᶜᵖᶜᵖ(new_extensionNamesData.Ptr())
+
+		newCreateInfoData := s.AllocDataOrPanic(ctx, createInfo)
+		allocated = append(allocated, &newCreateInfoData)
+		createInfoPtr = NewVkDeviceCreateInfoᶜᵖ(newCreateInfoData.Ptr())
+	}
 
 	cb := CommandBuilder{Thread: a.thread}
-	hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, a.PCreateInfo, a.PAllocator, a.PDevice, a.Result)
+	hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, createInfoPtr, a.PAllocator, a.PDevice, a.Result)
 	hijack.Extras().MustClone(a.Extras().All()...)
+
+	if b != nil {
+		for _, d := range allocated {
+			hijack.AddRead(d.Data())
+		}
+	}
+
 	err := hijack.Mutate(ctx, s, b)
 
 	if b == nil || err != nil {
