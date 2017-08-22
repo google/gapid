@@ -20,7 +20,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -171,101 +170,11 @@ func Export(ctx context.Context, p *path.Capture, w io.Writer) error {
 // Export encodes the given capture and associated resources
 // and writes it to the supplied io.Writer in the .gfxtrace format.
 func (c *Capture) Export(ctx context.Context, w io.Writer) error {
-	write, err := pack.NewWriter(w)
+	writer, err := pack.NewWriter(w)
 	if err != nil {
 		return err
 	}
-
-	// Write the capture header.
-	if err := write.Object(ctx, c.Header); err != nil {
-		return err
-	}
-
-	// IDs seen, so we can avoid encoding the same resource data multiple times.
-	seen := map[id.ID]bool{}
-	encodeObservation := func(o api.CmdObservation) error {
-		if seen[o.ID] {
-			return nil
-		}
-		data, err := database.Resolve(ctx, o.ID)
-		if err != nil {
-			return err
-		}
-		if err := write.Object(ctx, &Resource{Id: o.ID[:], Data: data.([]uint8)}); err != nil {
-			return err
-		}
-		seen[o.ID] = true
-		return nil
-	}
-
-	for _, cmd := range c.Commands {
-		cmdProto, err := protoconv.ToProto(ctx, cmd)
-		if err != nil {
-			return err
-		}
-		cmdID, err := write.BeginGroup(ctx, cmdProto)
-		if err != nil {
-			return err
-		}
-
-		handledCall := false
-
-		for _, e := range cmd.Extras().All() {
-			switch e := e.(type) {
-			case *api.CmdObservations:
-				for _, o := range e.Reads {
-					if err := encodeObservation(o); err != nil {
-						return err
-					}
-					msg, err := protoconv.ToProto(ctx, o)
-					if err != nil {
-						return err
-					}
-					if err := write.ChildObject(ctx, msg, cmdID); err != nil {
-						return err
-					}
-				}
-				msg := api.CmdCallFor(cmd)
-				if err := write.ChildObject(ctx, msg, cmdID); err != nil {
-					return err
-				}
-				handledCall = true
-				for _, o := range e.Writes {
-					if err := encodeObservation(o); err != nil {
-						return err
-					}
-					msg, err := protoconv.ToProto(ctx, o)
-					if err != nil {
-						return err
-					}
-					if err := write.ChildObject(ctx, msg, cmdID); err != nil {
-						return err
-					}
-				}
-			default:
-				msg, err := protoconv.ToProto(ctx, e)
-				if err != nil {
-					return err
-				}
-				if err := write.ChildObject(ctx, msg, cmdID); err != nil {
-					return err
-				}
-			}
-		}
-
-		if !handledCall {
-			msg := api.CmdCallFor(cmd)
-			if err := write.ChildObject(ctx, msg, cmdID); err != nil {
-				return err
-			}
-		}
-
-		if err := write.EndGroup(ctx, cmdID); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return newEncoder(c, writer).encode(ctx)
 }
 
 func toProto(ctx context.Context, c *Capture) (*Record, error) {
@@ -290,144 +199,6 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 	return d.builder.build(r.Name, d.header), nil
 }
 
-type cmdInfo struct {
-	invoked bool
-	id      api.CmdID
-}
-type decoder struct {
-	header  *Header
-	builder *builder
-	groups  map[uint64]interface{}
-	cmds    map[api.Cmd]*cmdInfo
-}
-
-func newDecoder() *decoder {
-	return &decoder{
-		builder: newBuilder(),
-		groups:  map[uint64]interface{}{},
-		cmds:    map[api.Cmd]*cmdInfo{},
-	}
-}
-
-func (d *decoder) unmarshal(ctx context.Context, in proto.Message) (interface{}, error) {
-	obj, err := protoconv.ToObject(ctx, in)
-	if err != nil {
-		if e, ok := err.(protoconv.ErrNoConverterRegistered); ok && e.Object == in {
-			return in, nil // No registered converter. Treat proto as the object.
-		}
-		return nil, err
-	}
-	return obj, nil
-}
-
-func (d *decoder) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
-	obj, err := d.decode(ctx, msg)
-	if err != nil {
-		return err
-	}
-	d.groups[id] = obj
-	return nil
-}
-
-func (d *decoder) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
-	obj, err := d.decode(ctx, msg)
-	if err != nil {
-		return err
-	}
-	d.groups[id] = obj
-	return d.add(ctx, obj, d.groups[parentID])
-}
-
-func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
-	obj := d.groups[id]
-	delete(d.groups, id)
-
-	switch obj := obj.(type) {
-	case api.Cmd:
-		delete(d.cmds, obj)
-	}
-
-	return nil
-}
-
-func (d *decoder) Object(ctx context.Context, msg proto.Message) error {
-	_, err := d.decode(ctx, msg)
-	return err
-}
-
-func (d *decoder) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
-	obj, err := d.decode(ctx, msg)
-	if err != nil {
-		return err
-	}
-	return d.add(ctx, obj, d.groups[parentID])
-}
-
-func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
-	if cmd, ok := parent.(api.Cmd); ok {
-		if res, ok := child.(proto.Message); ok {
-			if cwr, ok := cmd.(api.CmdWithResult); ok {
-				if cwr.SetResult(res) == nil {
-					d.cmds[cmd].invoked = true
-					return nil
-				}
-			}
-		}
-
-		switch obj := child.(type) {
-		case api.Cmd:
-			obj.SetCaller(d.cmds[cmd].id)
-
-		case api.CmdObservation:
-			d.builder.addObservation(ctx, &obj)
-			observations := cmd.Extras().GetOrAppendObservations()
-			if !d.cmds[cmd].invoked {
-				observations.Reads = append(observations.Reads, obj)
-			} else {
-				observations.Writes = append(observations.Writes, obj)
-			}
-
-		case *api.CmdCall:
-			d.cmds[cmd].invoked = true
-
-		case api.CmdExtra:
-			cmd.Extras().Add(obj)
-		}
-	}
-
-	return nil
-}
-
-func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, error) {
-	obj, err := d.unmarshal(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-
-	switch obj := obj.(type) {
-	case *Header:
-		d.header = obj
-		return in, nil
-
-	case *Resource:
-		var rID id.ID
-		copy(rID[:], obj.Id)
-		if err := d.builder.addRes(ctx, rID, obj.Data); err != nil {
-			return nil, err
-		}
-		return in, nil
-
-	case api.Cmd:
-		d.cmds[obj] = &cmdInfo{
-			id: api.CmdID(len(d.builder.cmds)),
-		}
-		d.builder.cmds = append(d.builder.cmds, obj)
-		d.builder.addAPI(ctx, obj.API())
-	}
-
-	return obj, nil
-}
-
 type builder struct {
 	idmap    map[id.ID]id.ID
 	apis     []api.API
@@ -446,7 +217,7 @@ func newBuilder() *builder {
 	}
 }
 
-func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) {
+func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) api.CmdID {
 	b.addAPI(ctx, cmd.API())
 	if observations := cmd.Extras().Observations(); observations != nil {
 		for i := range observations.Reads {
@@ -456,7 +227,9 @@ func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) {
 			b.addObservation(ctx, &observations.Writes[i])
 		}
 	}
+	id := api.CmdID(len(b.cmds))
 	b.cmds = append(b.cmds, cmd)
+	return id
 }
 
 func (b *builder) addAPI(ctx context.Context, api api.API) {
