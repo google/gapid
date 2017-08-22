@@ -17,6 +17,8 @@ package gles
 import (
 	"strings"
 
+	"github.com/google/gapid/core/stream"
+	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/vertex"
 )
 
@@ -36,6 +38,18 @@ var semanticPatterns = []struct {
 	{"vertex", vertex.Semantic_Position},
 }
 
+var semanticFormats = []struct {
+	format   *stream.Format
+	semantic vertex.Semantic_Type
+}{
+	// Ordered from highest priority to lowest
+	{fmts.XYZ_F32, vertex.Semantic_Position},
+	{fmts.XYZ_S8_NORM, vertex.Semantic_Normal},
+}
+
+// guessSemantics uses string and format matching to try and guess the semantic
+// usage of a vertex stream.
+// This is a big fat hack. See: https://github.com/google/gapid/issues/960
 func guessSemantics(vb *vertex.Buffer) {
 	taken := map[vertex.Semantic_Type]bool{}
 	for _, p := range semanticPatterns {
@@ -44,6 +58,18 @@ func guessSemantics(vb *vertex.Buffer) {
 		}
 		for _, s := range vb.Streams {
 			if strings.Contains(strings.ToLower(s.Name), p.pattern) {
+				s.Semantic.Type = p.semantic
+				taken[p.semantic] = true
+				break
+			}
+		}
+	}
+	for _, p := range semanticFormats {
+		if taken[p.semantic] {
+			continue
+		}
+		for _, s := range vb.Streams {
+			if s.Format.String() == p.format.String() {
 				s.Semantic.Type = p.semantic
 				taken[p.semantic] = true
 				break
