@@ -19,6 +19,7 @@ import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.ApiContext;
@@ -246,17 +247,7 @@ public class ThumbnailScrubber extends Composite
     protected void paint(GC gc, int index, int x, int y, int w, int h) {
       Data data = datas.get(index);
       if (data.image == null && thumbs.isReady()) {
-        data.image = LoadableImage.newBuilder(widgets.loading)
-            .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE)))
-            .onErrorShowErrorIcon(widgets.theme)
-            .build(this, this);
-        data.image.addListener(new LoadableImage.Listener() {
-          @Override
-          public void onLoaded(boolean success) {
-            Rectangle bounds = data.image.getImage().getBounds();
-            setItemSize(index, Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
-          }
-        });
+        load(data, index);
       }
 
       Image toDraw;
@@ -267,6 +258,22 @@ public class ThumbnailScrubber extends Composite
         widgets.loading.scheduleForRedraw(this);
       }
       data.paint(gc, toDraw, x, y, w, h, index == selectedIndex);
+    }
+
+    private void load(Data data, int index) {
+      data.image = LoadableImage.newBuilder(widgets.loading)
+          .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE,
+              info -> scheduleIfNotDisposed(this, () -> setItemSize(index,
+                  Math.max(MIN_SIZE, info.getWidth()), Math.max(MIN_SIZE, info.getHeight()))))))
+          .onErrorShowErrorIcon(widgets.theme)
+          .build(this, this);
+      data.image.addListener(new LoadableImage.Listener() {
+        @Override
+        public void onLoaded(boolean success) {
+          Rectangle bounds = data.image.getImage().getBounds();
+          setItemSize(index, Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
+        }
+      });
     }
 
     public Data selectFrame(int frame) {

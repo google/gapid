@@ -331,7 +331,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
       private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
         return noAlpha(models.thumbs.getThumbnail(
-            node.getPath(Path.CommandTreeNode.newBuilder()).build(), THUMB_SIZE));
+            node.getPath(Path.CommandTreeNode.newBuilder()).build(), THUMB_SIZE, i -> { /*noop*/}));
       }
     };
     tree.addMouseListener(mouseHandler);
@@ -622,7 +622,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
       return noAlpha(thumbs.getThumbnail(
-          node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE));
+          node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE, i -> {/*noop*/}));
     }
 
     public void reset() {
