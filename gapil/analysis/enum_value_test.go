@@ -43,20 +43,20 @@ func TestEnumGlobalAnalysis(t *testing.T) {
 			Labels:  map[uint64]string{},
 		}},
 		{`cmd void c(E e) {
-            switch e {
-              case A, B, C:
-                G = e
-            }
-          }`, &analysis.EnumValue{
+				switch e {
+					case A, B, C:
+						G = e
+				}
+			}`, &analysis.EnumValue{
 			Numbers: u64(0, 1, 2, 3),
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
 		{`cmd void c(E e) {
-            switch e {
-              case A, B, C:
-                G = e
-            }
-          }`, &analysis.EnumValue{
+				switch e {
+					case A, B, C:
+						G = e
+				}
+			}`, &analysis.EnumValue{
 			Numbers: u64(0, 1, 2, 3),
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
@@ -83,34 +83,34 @@ func TestEnumParameterAnalysis(t *testing.T) {
 		expected *analysis.EnumValue
 	}{
 		{`cmd void c(E e) {
-            switch e {
-              case A, B, C: {}
-            }
-          }`, &analysis.EnumValue{
+				switch e {
+					case A, B, C: {}
+				}
+			}`, &analysis.EnumValue{
 			Numbers: anyU64,
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}}, {`cmd void c(E e) {
-                if e == A {}
-                if e == B {}
-                if e == C {}
-              }`, &analysis.EnumValue{
+						if e == A {}
+						if e == B {}
+						if e == C {}
+					}`, &analysis.EnumValue{
 			Numbers: anyU64,
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}}, {`cmd s32 c(E e) {
-               return switch (e) {
-                 case A, B: 10
-                 case C: 30
-               }
-             }`, &analysis.EnumValue{
+						return switch (e) {
+							case A, B: 10
+							case C: 30
+						}
+					}`, &analysis.EnumValue{
 			Numbers: u64(1, 2, 3),
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}}, {`sub s32 S(E e) {
-                return switch (e) {
-                  case A, B: 10
-                  case C: 30
-                }
-              }
-              cmd void c(E e) { x := S(e) }`, &analysis.EnumValue{
+						return switch (e) {
+							case A, B: 10
+							case C: 30
+						}
+					}
+					cmd void c(E e) { x := S(e) }`, &analysis.EnumValue{
 			Numbers: u64(1, 2, 3),
 			Labels:  map[uint64]string{1: "A", 2: "B", 3: "C"},
 		}},
@@ -146,19 +146,28 @@ func TestBitfieldGlobalAnalysis(t *testing.T) {
 			Labels:  map[uint64]string{},
 		}},
 		{`cmd void c(E e) {
-            switch e {
-              case A, B, C:
-                G = e
-            }
-          }`, &analysis.EnumValue{
+				switch e {
+					case A, B, C:
+						G = e
+				}
+			}`, &analysis.EnumValue{
 			Numbers: u64(0, 1, 2, 4),
 			Labels:  map[uint64]string{1: "A", 2: "B", 4: "C"},
 		}},
 		{`cmd void c(E e) {
-            if (A in e) { G = A }
-            if (B in e) { G = B }
-            if (C in e) { G = C }
-          }`, &analysis.EnumValue{
+				if (A in e) { G = A }
+				if (B in e) { G = B }
+				if (C in e) { G = C }
+			}`, &analysis.EnumValue{
+			Numbers: u64(0, 1, 2, 4),
+			Labels:  map[uint64]string{1: "A", 2: "B", 4: "C"},
+		}},
+		{`sub void s(E e) {
+				G = e
+			}
+			cmd void c(E e) {
+				s(A | B | C)
+			}`, &analysis.EnumValue{
 			Numbers: u64(0, 1, 2, 4),
 			Labels:  map[uint64]string{1: "A", 2: "B", 4: "C"},
 		}},
@@ -185,18 +194,18 @@ func TestBitfieldParameterAnalysis(t *testing.T) {
 		expected *analysis.EnumValue
 	}{
 		{`cmd void c(E e) {
-            switch e {
-              case A, B, C: {}
-            }
-          }`, &analysis.EnumValue{
+				switch e {
+					case A, B, C: {}
+				}
+			}`, &analysis.EnumValue{
 			Numbers: anyU64,
 			Labels:  map[uint64]string{1: "A", 2: "B", 4: "C"},
 		}},
 		{`cmd void c(E e) {
-            if (A in e) { }
-            if (B in e) { }
-            if (C in e) { }
-          }`, &analysis.EnumValue{
+				if (A in e) { }
+				if (B in e) { }
+				if (C in e) { }
+			}`, &analysis.EnumValue{
 			Numbers: anyU64,
 			Labels:  map[uint64]string{1: "A", 2: "B", 4: "C"},
 		}},
