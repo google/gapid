@@ -37,7 +37,7 @@ func (s schedule) doReplay(ctx context.Context, t *monitor.Trace, tools *build.T
 		Gapir:                tools.Host.Gapir,
 		VirtualSwapChainLib:  tools.Host.VirtualSwapChainLib,
 		VirtualSwapChainJson: tools.Host.VirtualSwapChainJson,
-		Package:                s.pkg.Id,
+		Package:              s.pkg.Id,
 	}
 	action := &replay.Action{
 		Input:  input,

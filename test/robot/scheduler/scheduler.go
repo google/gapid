@@ -49,27 +49,31 @@ func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) [
 		s.pkg = pkg
 		for _, w := range data.Workers.All() {
 			s.worker = w
-			if tools := s.getHostTools(ctx); tools != nil {
-				for _, subj := range data.Subjects.All() {
-					if android_tools := s.getAndroidTools(ctx, subj); android_tools != nil {
-						if err := s.doTrace(ctx, subj, tools, android_tools); err != nil {
-							errs = append(errs, err)
-						}
-					}
+			tools := s.getHostTools(ctx)
+			if tools == nil {
+				continue
+			}
+			for _, subj := range data.Subjects.All() {
+				androidTools := s.getAndroidTools(ctx, subj)
+				if androidTools == nil {
+					continue
 				}
-				for _, t := range data.Traces.All() {
-					if t.Status != job.Succeeded {
-						continue
-					}
-					if t.Output == nil {
-						continue
-					}
-					if err := s.doReport(ctx, t, tools); err != nil {
-						errs = append(errs, err)
-					}
-					if err := s.doReplay(ctx, t, tools); err != nil {
-						errs = append(errs, err)
-					}
+				if err := s.doTrace(ctx, subj, tools, androidTools); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			for _, t := range data.Traces.MatchPackage(s.pkg) {
+				if t.Status != job.Succeeded {
+					continue
+				}
+				if t.Output == nil {
+					continue
+				}
+				if err := s.doReport(ctx, t, tools); err != nil {
+					errs = append(errs, err)
+				}
+				if err := s.doReplay(ctx, t, tools); err != nil {
+					errs = append(errs, err)
 				}
 			}
 		}
