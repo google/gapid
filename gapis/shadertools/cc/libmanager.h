@@ -46,12 +46,20 @@ typedef struct code_with_debug_info_t {
   debug_instructions_t* info;
 } code_with_debug_info_t;
 
+typedef enum shader_type_t {
+  VERTEX,
+  TESS_CONTROL,
+  TESS_EVALUATION,
+  GEOMETRY,
+  FRAGMENT,
+  COMPUTE
+} shader_type;
+
 /**
  * Debug options
  **/
 typedef struct options_t {
-  bool is_fragment_shader;
-  bool is_vertex_shader;
+  shader_type shader_type;
   bool prefix_names;
   const char* names_prefix; /* optional */
   bool add_outputs_for_inputs;

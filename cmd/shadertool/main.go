@@ -91,9 +91,9 @@ func convert(source, shaderType string) (result string, err error) {
 	opts := shadertools.Option{}
 	switch shaderType {
 	case ".vert":
-		opts.IsVertexShader = true
+		opts.ShaderType = shadertools.TypeVertex
 	case ".frag":
-		opts.IsFragmentShader = true
+		opts.ShaderType = shadertools.TypeFragment
 	default:
 		return "", fmt.Errorf("File extension must be .vert or .frag (seen %v)", shaderType)
 	}
