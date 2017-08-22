@@ -22,6 +22,8 @@ set(files
     capture.pb.go
     capture.proto
     context.go
+    decoder.go
+    encoder.go
     doc.go
     fbo.go
 )
