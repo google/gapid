@@ -76,11 +76,11 @@ type TaskRetryError struct {
 // This is the idiomatic method of creating a TaskRetryError and if no need for a retry exists it returns nil.
 func NeedsRetry(reason string, retryStrings ...string) error {
 	if strings.Contains(reason, "text file busy") {
-		return &TaskRetryError{Reason: reason}
+		return TaskRetryError{Reason: reason}
 	}
 	for _, retryString := range retryStrings {
 		if strings.Contains(reason, retryString) {
-			return &TaskRetryError{Reason: reason}
+			return TaskRetryError{Reason: reason}
 		}
 	}
 	return nil
