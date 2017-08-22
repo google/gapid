@@ -72,12 +72,41 @@ func FormatDebugInfo(insts []Instruction, linePrefix string) string {
 	return buffer.String()
 }
 
-// Options controls how ConvertGlsl converts its passed-in GLSL source code.
+// ShaderType is the enumerator of shader types.
+type ShaderType int
+
+const (
+	TypeVertex         = ShaderType(C.VERTEX)
+	TypeTessControl    = ShaderType(C.TESS_CONTROL)
+	TypeTessEvaluation = ShaderType(C.TESS_EVALUATION)
+	TypeGeometry       = ShaderType(C.GEOMETRY)
+	TypeFragment       = ShaderType(C.FRAGMENT)
+	TypeCompute        = ShaderType(C.COMPUTE)
+)
+
+func (t ShaderType) String() string {
+	switch t {
+	case TypeVertex:
+		return "Vertex"
+	case TypeTessControl:
+		return "TessControl"
+	case TypeTessEvaluation:
+		return "TessEvaluation"
+	case TypeGeometry:
+		return "Geometry"
+	case TypeFragment:
+		return "Fragment"
+	case TypeCompute:
+		return "Compute"
+	default:
+		return "Unknown"
+	}
+}
+
+// Option controls how ConvertGlsl converts its passed-in GLSL source code.
 type Option struct {
-	// Whether the passed-in shader is of the fragment stage.
-	IsFragmentShader bool
-	// Whether the passed-in shader is of the vertex stage.
-	IsVertexShader bool
+	// The type of shader.
+	ShaderType ShaderType
 	// Whether to add prefix to all non-builtin symbols.
 	PrefixNames bool
 	// The name prefix to be added to all non-builtin symbols.
@@ -105,8 +134,7 @@ func ConvertGlsl(source string, option *Option) (CodeWithDebugInfo, error) {
 	np := C.CString(option.NamesPrefix)
 	op := C.CString(option.OutputPrefix)
 	opts := C.struct_options_t{
-		is_fragment_shader:     C.bool(option.IsFragmentShader),
-		is_vertex_shader:       C.bool(option.IsVertexShader),
+		shader_type:            C.shader_type(option.ShaderType),
 		prefix_names:           C.bool(option.PrefixNames),
 		names_prefix:           np,
 		add_outputs_for_inputs: C.bool(option.AddOutputsForInputs),
@@ -146,14 +174,8 @@ func ConvertGlsl(source string, option *Option) (CodeWithDebugInfo, error) {
 	}
 
 	if !result.ok {
-		msg := []string{}
-		switch {
-		case option.IsFragmentShader:
-			msg = append(msg, "Failed to convert fragment shader.")
-		case option.IsVertexShader:
-			msg = append(msg, "Failed to convert vertex shader.")
-		default:
-			msg = append(msg, "Failed to convert shader.")
+		msg := []string{
+			fmt.Sprintf("Failed to convert %v shader.", option.ShaderType),
 		}
 		if m := C.GoString(result.message); len(m) > 0 {
 			msg = append(msg, m)

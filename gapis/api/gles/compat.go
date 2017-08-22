@@ -440,12 +440,18 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			src := ""
 
 			if config.UseGlslang {
-				opts := shadertools.Option{
-					IsFragmentShader: shader.Type == GLenum_GL_FRAGMENT_SHADER,
-					IsVertexShader:   shader.Type == GLenum_GL_VERTEX_SHADER,
+				st, err := shader.Type.ShaderType()
+				if err != nil {
+					log.W(ctx, "%v compat: %v", cmd, err)
 				}
+				opts := shadertools.Option{ShaderType: st}
 
-				res, err := shadertools.ConvertGlsl(shader.Source, &opts)
+				// Trim any prefix whitespace / newlines.
+				// This isn't legal if it comes before the #version, but this
+				// will be picked up by find_issues.go anyway.
+				src = strings.TrimLeft(shader.Source, "\n\r\t ")
+
+				res, err := shadertools.ConvertGlsl(src, &opts)
 				if err != nil {
 					log.E(ctx, "%v compat: %v", cmd, err)
 					return

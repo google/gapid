@@ -170,9 +170,13 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	case *GlCompileShader:
 		shader := c.Objects.Shared.Shaders[cmd.Shader]
 		if config.UseGlslang {
+			st, err := shader.Type.ShaderType()
+			if err != nil {
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
+				return
+			}
 			opts := shadertools.Option{
-				IsFragmentShader:  shader.Type == GLenum_GL_FRAGMENT_SHADER,
-				IsVertexShader:    shader.Type == GLenum_GL_VERTEX_SHADER,
+				ShaderType:        st,
 				CheckAfterChanges: true,
 				Disassemble:       true,
 			}

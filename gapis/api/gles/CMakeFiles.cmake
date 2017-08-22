@@ -38,6 +38,7 @@ set(files
     gles.go
     glsl_compat.go
     glsl_compat_test.go
+    glsl.go
     guess_semantics.go
     helpers.go
     image.go
