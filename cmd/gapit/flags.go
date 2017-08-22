@@ -222,4 +222,5 @@ type (
 		Gapir GapirFlags
 		At    flags.U64Slice `help:"command/subcommand index for the screenshot. Empty for last"`
 	}
+	UnpackFlags struct{}
 )
