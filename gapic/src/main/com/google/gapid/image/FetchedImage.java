@@ -36,6 +36,7 @@ import com.google.gapid.util.Values;
 import org.eclipse.swt.graphics.ImageData;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * A {@link MultiLevelImage} fetched from the RPC server.
@@ -90,7 +91,13 @@ public class FetchedImage implements MultiLevelImage {
   }
 
   public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
+    return loadThumbnail(client, path, i -> {/* do nothing */});
+  }
+
+  public static ListenableFuture<ImageData> loadThumbnail(
+      Client client, Path.Thumbnail path, Consumer<Info> onInfo) {
     return loadLevel(Futures.transform(client.get(thumbnail(path)), value -> {
+      onInfo.accept(value.getImageInfo());
       return new FetchedImage(client, Images.Format.Color8, value.getImageInfo());
     }), 0);
   }
