@@ -35,6 +35,7 @@ set(files
     sxs_video.go
     trace.go
     video.go
+    unpack.go
 )
 set(dirs
 
