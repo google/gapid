@@ -55,6 +55,7 @@ import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
 import com.google.gapid.widgets.CopyPaste;
+import com.google.gapid.widgets.FixedTopSplitter;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
@@ -66,7 +67,6 @@ import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
@@ -95,8 +95,8 @@ public class MainWindow extends ApplicationWindow {
   protected final Map<MainTab.Type, Action> viewTabs = Maps.newHashMap();
   protected final Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
   protected Action editCopy;
+  private FixedTopSplitter splitter;
   private StatusBar statusBar;
-  private Control scrubber;
   protected TabArea tabs;
 
   public MainWindow(Client client, ModelsAndWidgets maw) {
@@ -225,31 +225,38 @@ public class MainWindow extends ApplicationWindow {
     new ContextSelector(shell, models())
         .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
-    SashForm splitter = new SashForm(shell, SWT.VERTICAL);
+    splitter = new FixedTopSplitter(shell, models().settings.splitterTopHeight) {
+      @Override
+      protected Control createTopControl() {
+        return new ThumbnailScrubber(this, models(), widgets());
+      }
+
+      @Override
+      protected Control createBottomControl() {
+        tabs = new TabArea(this, new Persistance() {
+          @Override
+          public void store(FolderInfo[] folders) {
+            MainTab.store(models(), folders);
+          }
+
+          @Override
+          public FolderInfo[] restore() {
+            return MainTab.getFolders(client, models(), widgets(), hiddenTabs);
+          }
+        });
+        tabs.setLeftVisible(!models().settings.hideLeft);
+        tabs.setRightVisible(!models().settings.hideRight);
+        return tabs.getControl();
+      }
+    };
     splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    splitter.setTopVisible(!models().settings.hideScrubber);
 
     statusBar = new StatusBar(shell);
     statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
-    scrubber = new ThumbnailScrubber(splitter, models(), widgets());
-    scrubber.setVisible(!models().settings.hideScrubber);
-    tabs = new TabArea(splitter, new Persistance() {
-      @Override
-      public void store(FolderInfo[] folders) {
-        MainTab.store(models(), folders);
-      }
-
-      @Override
-      public FolderInfo[] restore() {
-        return MainTab.getFolders(client, models(), widgets(), hiddenTabs);
-      }
-    });
-    tabs.setLeftVisible(!models().settings.hideLeft);
-    tabs.setRightVisible(!models().settings.hideRight);
-
-    splitter.setWeights(models().settings.splitterWeights);
     splitter.addListener(SWT.Dispose, e -> {
-      models().settings.splitterWeights = splitter.getWeights();
+      models().settings.splitterTopHeight = splitter.getTopHeight();
     });
 
     models().capture.addListener(new Capture.Listener() {
@@ -353,9 +360,8 @@ public class MainWindow extends ApplicationWindow {
   private MenuManager createViewMenu() {
     MenuManager manager = new MenuManager("&View");
     viewScrubber = MenuItems.ViewThumbnails.createCheckbox(show -> {
-      if (scrubber != null) {
-        scrubber.setVisible(show);
-        scrubber.requestLayout();
+      if (splitter != null) {
+        splitter.setTopVisible(show);
         models().settings.hideScrubber = !show;
       }
     });
