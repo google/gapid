@@ -63,7 +63,6 @@ public class Settings {
   public String traceDevice = "";
   public String tracePackage = "";
   public String traceOutDir = "";
-  public String traceOutFile = "";
   public boolean traceClearCache = false;
   public boolean traceDisablePcs = true;
   public String traceExecutable = "";
@@ -163,7 +162,6 @@ public class Settings {
     traceDevice = properties.getProperty("trace.device", traceDevice);
     tracePackage = properties.getProperty("trace.package", tracePackage);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
-    traceOutFile = properties.getProperty("trace.file", traceOutFile);
     traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceExecutable = properties.getProperty("trace.executable", traceExecutable);
@@ -199,7 +197,6 @@ public class Settings {
     properties.setProperty("trace.device", traceDevice);
     properties.setProperty("trace.package", tracePackage);
     properties.setProperty("trace.dir", traceOutDir);
-    properties.setProperty("trace.file", traceOutFile);
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.executable", traceExecutable);

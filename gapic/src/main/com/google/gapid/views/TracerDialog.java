@@ -248,9 +248,11 @@ public class TracerDialog {
     }
 
     private abstract static class SharedTraceInput extends Composite {
-      protected static final String DEFAULT_TRACE_FILE = "trace.gfxtrace";
+      private static final String DEFAULT_TRACE_FILE = "trace";
+      private static final String TRACE_EXTENSION = ".gfxtrace";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
 
+      private final String date = TRACE_DATE_FORMAT.format(new Date());
       protected final ComboViewer api;
       protected final FileTextbox.Directory directory;
       protected final Text file;
@@ -276,8 +278,8 @@ public class TracerDialog {
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "File Name:");
-        file = withLayoutData(createTextbox(this, settings.traceOutFile),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
+        file = withLayoutData(
+            createTextbox(this, ""), new GridData(SWT.FILL, SWT.FILL, true, false));
 
         file.addListener(SWT.Modify, e -> {
           userHasChangedOutputFile = true;
@@ -295,6 +297,10 @@ public class TracerDialog {
         fromBeginning = withLayoutData(
             createCheckbox(this, "Trace From Beginning", !settings.traceMidExecution),
             new GridData(SWT.FILL, SWT.FILL, true, false));
+      }
+
+      protected String formatTraceName(String name) {
+        return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + date + TRACE_EXTENSION;
       }
 
       protected abstract void buildTargetSelection(Settings settings, Widgets widgets);
@@ -330,7 +336,6 @@ public class TracerDialog {
       public TraceRequest getTraceRequest(Settings settings) {
         settings.traceApi = getSelectedApi().name();
         settings.traceOutDir = directory.getText();
-        settings.traceOutFile = file.getText();
         settings.traceFrameCount = frameCount.getSelection();
         settings.traceMidExecution = !fromBeginning.getSelection();
 
@@ -348,17 +353,8 @@ public class TracerDialog {
       private File getOutputFile() {
         String name = file.getText();
         if (name.isEmpty()) {
-          name = DEFAULT_TRACE_FILE;
+          name = formatTraceName(DEFAULT_TRACE_FILE);
         }
-        if (!userHasChangedOutputFile) {
-          int p = name.lastIndexOf('.');
-          if (p < 0) {
-            name = name + TRACE_DATE_FORMAT.format(new Date());
-          } else {
-            name = name.substring(0, p) + TRACE_DATE_FORMAT.format(new Date()) + name.substring(p);
-          }
-        }
-
         String dir = directory.getText();
         return dir.isEmpty() ? new File(name) : new File(dir, name);
       }
@@ -404,7 +400,7 @@ public class TracerDialog {
             e -> traceTarget.setActionEnabled(device.getCombo().getSelectionIndex() >= 0));
         updateDevicesDropDown(settings);
 
-        traceTarget.addBoxListener(SWT.Modify, e -> {
+        Listener targetListener = e -> {
           if (!userHasChangedOutputFile) {
             String pkg = traceTarget.getText();
             int actionSep = pkg.indexOf(":");
@@ -412,16 +408,12 @@ public class TracerDialog {
             if (actionSep >= 0 && pkgSep > actionSep) {
               pkg = pkg.substring(actionSep + 1, pkgSep);
             }
-
-            int p = pkg.lastIndexOf('.');
-            if (p >= pkg.length() - 1) {
-              file.setText(DEFAULT_TRACE_FILE);
-            } else {
-              file.setText(pkg.substring(p + 1) + ".gfxtrace");
-            }
+            file.setText(formatTraceName(pkg.substring(pkg.lastIndexOf('.') + 1)));
             userHasChangedOutputFile = false; // cancel the modify event from set call.
           }
-        });
+        };
+        traceTarget.addBoxListener(SWT.Modify, targetListener);
+        targetListener.handleEvent(null);
 
         Listener apiListener = e -> {
           if (getSelectedApi() == Tracer.Api.Vulkan) {
@@ -578,7 +570,7 @@ public class TracerDialog {
         super(parent, settings, widgets);
         api.getCombo().setEnabled(false);
 
-        executable.addBoxListener(SWT.Modify, e -> {
+        Listener exeListener = e -> {
           if (!userHasChangedOutputFile) {
             String exe = executable.getText();
             int fileSep = exe.lastIndexOf(File.separator);
@@ -589,18 +581,13 @@ public class TracerDialog {
             if (extSep > 0) {
               exe = exe.substring(0, extSep);
             }
-
-            if (exe.isEmpty()) {
-              file.setText(DEFAULT_TRACE_FILE);
-            } else {
-              file.setText(exe + ".gfxtrace");
-            }
+            file.setText(formatTraceName(exe));
             userHasChangedOutputFile = false; // cancel the modify event from set call.
           }
 
           if (!userHasChangedCwd) {
             File dir = new File(executable.getText()).getParentFile();
-            if (dir.exists() && dir.isDirectory()) {
+            if (dir != null && dir.exists() && dir.isDirectory()) {
               String path = dir.getAbsolutePath();
               if (path == null) {
                 path = dir.getPath();
@@ -611,7 +598,10 @@ public class TracerDialog {
               }
             }
           }
-        });
+        };
+        executable.addBoxListener(SWT.Modify, exeListener);
+        exeListener.handleEvent(null);
+
         cwd.addBoxListener(SWT.Modify, e -> {
           userHasChangedCwd = true;
         });
