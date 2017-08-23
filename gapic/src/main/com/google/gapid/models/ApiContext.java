@@ -178,6 +178,7 @@ public class ApiContext
           return path
               .setGroupByFrame(true)
               .setGroupByDrawCall(true)
+              .setGroupByTransformFeedback(true)
               .setGroupByUserMarkers(true)
               .setAllowIncompleteFrame(true);
         }
@@ -199,6 +200,7 @@ public class ApiContext
       return path
           .setGroupByFrame(true)
           .setGroupByDrawCall(true)
+          .setGroupByTransformFeedback(true)
           .setGroupByUserMarkers(true)
           .setAllowIncompleteFrame(true);
     }

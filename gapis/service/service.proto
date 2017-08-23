@@ -652,16 +652,17 @@ message Event {
 enum EventKind {
     Unknown = 0;
     DrawCall = 1;
-    FirstInFrame = 2;
-    LastInFrame = 3;
-    Clear = 4;
-    UserMarker = 5;
-    PushUserMarker = 6;
-    PopUserMarker = 7;
-    FramebufferObservation = 8;
+    TransformFeedback = 2;
+    FirstInFrame = 3;
+    LastInFrame = 4;
+    Clear = 5;
+    UserMarker = 6;
+    PushUserMarker = 7;
+    PopUserMarker = 8;
+    FramebufferObservation = 9;
     // Note you probably only want to use AllCommands for debugging/testing
     // purposes.
-    AllCommands = 9;
+    AllCommands = 10;
 }
 
 // StateTree represents a state tree hierarchy.

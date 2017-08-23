@@ -145,14 +145,15 @@ message Events {
     Capture capture = 1;
     CommandFilter filter = 2;
     bool draw_calls = 3;
-    bool first_in_frame = 4;
-    bool last_in_frame = 5;
-    bool clears = 6;
-    bool user_markers = 7;
-    bool push_user_markers = 8;
-    bool pop_user_markers = 9;
-    bool framebuffer_observations = 10;
-    bool all_commands = 11;
+    bool transform_feedbacks = 4;
+    bool first_in_frame = 5;
+    bool last_in_frame = 6;
+    bool clears = 7;
+    bool user_markers = 8;
+    bool push_user_markers = 9;
+    bool pop_user_markers = 10;
+    bool framebuffer_observations = 11;
+    bool all_commands = 12;
 }
 
 // Parameter is the path to a single parameter on a command.
@@ -229,22 +230,24 @@ message CommandTree {
     bool group_by_thread = 5;
     // If true then commands will be grouped by draw calls.
     bool group_by_draw_call = 6;
+    // If true then commands will be grouped by transform feedback calls.
+    bool group_by_transform_feedback = 7;
     // If true then commands will be grouped by frame.
-    bool group_by_frame = 7;
+    bool group_by_frame = 8;
     // If true then commands will be grouped by user markers.
-    bool group_by_user_markers = 8;
+    bool group_by_user_markers = 9;
     // If true and grouping by context, 'no context' groups will be created.
-    bool include_no_context_groups = 9;
+    bool include_no_context_groups = 10;
     // If true and grouping by frames, commands after the last frame will be
     // grouped into an 'incomplete frame' group. Only if there is at least one
     // complete frame.
-    bool allow_incomplete_frame = 10;
+    bool allow_incomplete_frame = 11;
     // If positive, synthetic sub-nodes are created for nodes with more than
     // this many children.
-    int32 max_children = 11;
+    int32 max_children = 12;
     // If positive, synthetic sub-nodes are created for long spans of commands
     // between groups. This ensures the groups do not get lost in the noise.
-    int32 max_neighbours = 12;
+    int32 max_neighbours = 13;
 }
 
 // CommandTreeNode is a path to a command tree node.
