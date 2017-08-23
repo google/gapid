@@ -51,7 +51,7 @@ public class Settings {
   public boolean hideScrubber = false;
   public boolean hideLeft = false;
   public boolean hideRight = false;
-  public int[] splitterWeights = new int[]{ 15, 85 };
+  public int splitterTopHeight = 200;
   public String[] leftTabs = new String[0], centerTabs = new String[0], rightTabs = new String[0];
   public String[] hiddenTabs = new String[] { "Log" };
   public int[] tabWeights = new int[] { 20, 60, 20 };
@@ -146,7 +146,7 @@ public class Settings {
     hideScrubber = getBoolean(properties, "hide.scrubber", hideScrubber);
     hideLeft = getBoolean(properties, "hide.left", hideLeft);
     hideRight = getBoolean(properties, "hide.right", hideRight);
-    splitterWeights = getIntList(properties, "splitter.weights", splitterWeights);
+    splitterTopHeight = getInt(properties, "splitter.topHeight", splitterTopHeight);
     leftTabs = getStringList(properties, "tabs.left", leftTabs);
     centerTabs = getStringList(properties, "tabs.center", centerTabs);
     rightTabs = getStringList(properties, "tabs.right", rightTabs);
@@ -185,7 +185,7 @@ public class Settings {
     properties.setProperty("hide.scrubber", Boolean.toString(hideScrubber));
     properties.setProperty("hide.left", Boolean.toString(hideLeft));
     properties.setProperty("hide.right", Boolean.toString(hideRight));
-    setIntList(properties, "splitter.weights", splitterWeights);
+    properties.setProperty("splitter.topHeight", Integer.toString(splitterTopHeight));
     setStringList(properties, "tabs.left", leftTabs);
     setStringList(properties, "tabs.center", centerTabs);
     setStringList(properties, "tabs.right", rightTabs);

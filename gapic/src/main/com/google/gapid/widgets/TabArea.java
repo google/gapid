@@ -100,6 +100,10 @@ public class TabArea {
     });
   }
 
+  public Control getControl() {
+    return sash;
+  }
+
   public boolean showTab(Object id) {
     return findAndSelect(left, id) || findAndSelect(center, id) || findAndSelect(right, id);
   }
