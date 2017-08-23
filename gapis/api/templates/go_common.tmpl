@@ -113,7 +113,7 @@
   {{else if IsEnum          $}}{{$.Name}}(0)
   {{else if IsString        $}}""
   {{else if IsPseudonym     $}}{{Template "Go.Type" $}}({{Template "Go.Null" $.To}})
-  {{else}}{{Error "macro Go.Null called with unsupported type: %s" $.Name}}
+  {{else}}{{Error "macro Go.Null called with unsupported type: %s (%T)" $.Name $}}
   {{end}}
 {{end}}
 
@@ -742,8 +742,12 @@
   {{$err := $}}
 
   {{$f := Global "CurrentFunction"}}
-  {{if and (IsFunction $f) ($f.Subroutine) (not (IsVoid $f.Return.Type))}}
-    return {{Template "Go.Null" $f.Return.Type}}, {{$err}}
+  {{if $f}}
+    {{if and (IsFunction $f) ($f.Subroutine) (not (IsVoid $f.Return.Type))}}
+      return {{Template "Go.Null" $f.Return.Type}}, {{$err}}
+    {{else}}
+      return {{$err}}
+    {{end}}
   {{else}}
     return {{$err}}
   {{end}}
