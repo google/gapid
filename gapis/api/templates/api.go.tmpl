@@ -874,16 +874,68 @@
     }
 
     func (ϟa *{{$name}}) API() api.API { return API{} }
-    func (ϟa *{{$name}}) CmdFlags(context.Context, *api.State) api.CmdFlags { return 0 §
-        {{if GetAnnotation $.Command "draw_call"}} | api.DrawCall §{{end}}
-        {{if GetAnnotation $.Command "clear"}} | api.Clear §{{end}}
-        {{if GetAnnotation $.Command "frame_start"}} | api.StartOfFrame §{{end}}
-        {{if GetAnnotation $.Command "frame_end"}} | api.EndOfFrame §{{end}}
-        {{if GetAnnotation $.Command "user_marker"}} | api.UserMarker §{{end}}
-        {{if GetAnnotation $.Command "push_user_marker"}} | api.PushUserMarker §{{end}}
-        {{if GetAnnotation $.Command "pop_user_marker"}} | api.PopUserMarker §{{end}}
+    func (ϟa *{{$name}}) CmdFlags(ϟctx context.Context, ϟs *api.State) api.CmdFlags {
+      {{$names := Strings "draw_call" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
+      {{$flags := Strings "DrawCall"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker"}}
+
+      var out api.CmdFlags
+      {{range $i, $name := $names}}
+        {{$flag := index $flags $i}}
+        {{if $a := GetAnnotation $.Command $name}}
+          {{if $expr := Macro "FlagExpr" "Annotation" $a "Flag" $flag}}
+            {{$expr}}
+          {{else}}
+            out = out | api.{{$flag}}
+          {{end}}
+        {{end}}
+      {{end}}
+      return out
     }
     func (ϟa *{{$name}}) Extras() *api.CmdExtras { return &ϟa.extras }
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a the logic to add flags to the local variable out based on the flag
+  expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "FlagExpr"}}
+  {{AssertType $.Annotation "Annotation"}}
+  {{AssertType $.Flag       "string"}}
+
+  {{if len $.Annotation.Arguments}}
+    {{$expr := index $.Annotation.Arguments 0}}
+    {{if $call := Macro "FlagCall" "Expr" $expr "Flag" $.Flag}}
+      if {{$call}}; v {
+        out = out | api.{{$.Flag}}
+      }
+    {{else}}
+      if {{Template "Go.Read" $expr}} {
+        out = out | api.{{$.Flag}}
+      }
+    {{end}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a local assigned to the result of an expression call if $.Expr is a
+  call. Used by CmdFlags().
+-------------------------------------------------------------------------------
+*/}}
+{{define "FlagCall"}}
+  {{AssertType $.Expr "Expression"}}
+
+  {{if IsCall $.Expr}}
+    {{$call := Unpack $.Expr}}
+    {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
+    v, _ := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟa.Extras().Observations(), ϟs, GetState(ϟs), ϟa.thread, nil, {{$args}})
+  {{else}}
+    {{Error "%T" $.Expr}}
   {{end}}
 {{end}}
 
