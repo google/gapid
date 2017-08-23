@@ -212,10 +212,11 @@ func (g *markerGrouper) pop(id api.CmdID) {
 }
 
 func (g *markerGrouper) process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
-	if cmd.CmdFlags().IsPushUserMarker() {
+	flags := cmd.CmdFlags(ctx, s)
+	if flags.IsPushUserMarker() {
 		g.push(ctx, id, cmd, s)
 	}
-	if cmd.CmdFlags().IsPopUserMarker() && len(g.stack) > 0 {
+	if flags.IsPopUserMarker() && len(g.stack) > 0 {
 		g.pop(id)
 	}
 }
@@ -362,7 +363,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 		out.root.AddCommand(id)
 
-		if cmd.CmdFlags().IsDrawCall() || cmd.CmdFlags().IsClear() {
+		if flags := cmd.CmdFlags(ctx, s); flags.IsDrawCall() || flags.IsClear() {
 			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
 				Start: id, End: id + 1,
 			})

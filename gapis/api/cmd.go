@@ -45,7 +45,7 @@ type Cmd interface {
 	CmdName() string
 
 	// CmdFlags returns the flags of the command.
-	CmdFlags() CmdFlags
+	CmdFlags(context.Context, *State) CmdFlags
 
 	// Extras returns all the Extras associated with the dynamic command.
 	Extras() *CmdExtras

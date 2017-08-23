@@ -39,7 +39,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 			drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			seenSurfaces[eglMakeCurrent.Draw] = true
 		}
-		if cmd.CmdFlags().IsStartOfFrame() {
+		if cmd.CmdFlags(ctx, s).IsStartOfFrame() {
 			if _, ok := cmd.(*EglSwapBuffersWithDamageKHR); ok {
 				// TODO: This is a hack. eglSwapBuffersWithDamageKHR is nearly
 				// exculsively used by the Android framework, which also loves

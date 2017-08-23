@@ -112,6 +112,12 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 	numCmd, numDead, numDeadDraws, numLive, numLiveDraws := 0, 0, 0, 0, 0
 	deadMem, liveMem := uint64(0), uint64(0)
 
+	// This state is the state after all the commands have been mutated.
+	// It is currently only used for getting command flags, which in turn is
+	// used for getting statistics.
+	// Do not use for expected state!
+	s := out.State()
+
 	for bi := uint64(0); bi <= t.endBehaviorIndex; bi++ {
 		bh := t.footprint.Behaviors[bi]
 		fci := bh.Owner
@@ -123,7 +129,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 			// Logging the DCE result of alive commands
 			numCmd++
 			numLive++
-			if aliveCmd.CmdFlags().IsDrawCall() {
+			if aliveCmd.CmdFlags(ctx, s).IsDrawCall() {
 				numLiveDraws++
 			}
 			if e := aliveCmd.Extras(); e != nil && e.Observations() != nil {
@@ -139,7 +145,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 				deadCmd := t.footprint.Commands[fci[0]]
 				numCmd++
 				numDead++
-				if deadCmd.CmdFlags().IsDrawCall() {
+				if deadCmd.CmdFlags(ctx, s).IsDrawCall() {
 					numDeadDraws++
 				}
 				if e := deadCmd.Extras(); e != nil && e.Observations() != nil {

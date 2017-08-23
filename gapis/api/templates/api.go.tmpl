@@ -874,7 +874,7 @@
     }
 
     func (ϟa *{{$name}}) API() api.API { return API{} }
-    func (ϟa *{{$name}}) CmdFlags() api.CmdFlags { return 0 §
+    func (ϟa *{{$name}}) CmdFlags(context.Context, *api.State) api.CmdFlags { return 0 §
         {{if GetAnnotation $.Command "DrawCall"}} | api.DrawCall §{{end}}
         {{if GetAnnotation $.Command "Clear"}} | api.Clear §{{end}}
         {{if GetAnnotation $.Command "StartOfFrame"}} | api.StartOfFrame §{{end}}
