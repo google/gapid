@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/cmdgrouper"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -145,90 +146,6 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 	}, nil
 }
 
-type group struct {
-	start api.CmdID
-	end   api.CmdID
-	name  string
-}
-
-type grouper interface {
-	process(context.Context, api.CmdID, api.Cmd, *api.State)
-	flush(count uint64)
-	groups() []group
-}
-
-type runGrouper struct {
-	f       func(cmd api.Cmd, s *api.State) (value interface{}, name string)
-	start   api.CmdID
-	current interface{}
-	name    string
-	out     []group
-}
-
-func (g *runGrouper) process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
-	val, name := g.f(cmd, s)
-	if val != g.current {
-		if g.current != nil {
-			g.out = append(g.out, group{g.start, id, g.name})
-		}
-		g.start = id
-	}
-	g.current, g.name = val, name
-}
-
-func (g *runGrouper) flush(count uint64) {
-	end := api.CmdID(count)
-	if g.current != nil && g.start != end {
-		g.out = append(g.out, group{g.start, end, g.name})
-	}
-}
-
-func (g *runGrouper) groups() []group { return g.out }
-
-type markerGrouper struct {
-	stack []group
-	count int
-	out   []group
-}
-
-func (g *markerGrouper) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
-	var name string
-	if l, ok := cmd.(api.Labeled); ok {
-		name = l.Label(ctx, s)
-	}
-	if len(name) > 0 {
-		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("\"%s\"", name)})
-	} else {
-		g.stack = append(g.stack, group{start: id, name: fmt.Sprintf("Marker %d", g.count)})
-		g.count++
-	}
-}
-
-func (g *markerGrouper) pop(id api.CmdID) {
-	m := g.stack[len(g.stack)-1]
-	m.end = id + 1 // +1 to include pop marker
-	g.out = append(g.out, m)
-	g.stack = g.stack[:len(g.stack)-1]
-}
-
-func (g *markerGrouper) process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
-	flags := cmd.CmdFlags(ctx, s)
-	if flags.IsPushUserMarker() {
-		g.push(ctx, id, cmd, s)
-	}
-	if flags.IsPopUserMarker() && len(g.stack) > 0 {
-		g.pop(id)
-	}
-}
-
-func (g *markerGrouper) flush(count uint64) {
-	for len(g.stack) > 0 {
-		g.pop(api.CmdID(count) - 1)
-	}
-}
-
-func (g *markerGrouper) groups() []group { return g.out }
-
 // Resolve builds and returns a *commandTree for the path.CommandTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
@@ -254,15 +171,16 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	groupers := []grouper{}
+	groupers := []cmdgrouper.Grouper{}
 
 	if p.GroupByApi {
-		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
-			if api := cmd.API(); api != nil {
-				return api.ID(), api.Name()
-			}
-			return nil, "No context"
-		}})
+		groupers = append(groupers, cmdgrouper.Run(
+			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+				if api := cmd.API(); api != nil {
+					return api.ID(), api.Name()
+				}
+				return nil, "No context"
+			}))
 	}
 
 	if p.GroupByContext {
@@ -270,25 +188,27 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if p.IncludeNoContextGroups {
 			noContextID = api.ContextID{}
 		}
-		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
-			if api := cmd.API(); api != nil {
-				if context := api.Context(s, cmd.Thread()); context != nil {
-					return context.ID(), context.Name()
+		groupers = append(groupers, cmdgrouper.Run(
+			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+				if api := cmd.API(); api != nil {
+					if context := api.Context(s, cmd.Thread()); context != nil {
+						return context.ID(), context.Name()
+					}
 				}
-			}
-			return noContextID, "No context"
-		}})
+				return noContextID, "No context"
+			}))
 	}
 
 	if p.GroupByThread {
-		groupers = append(groupers, &runGrouper{f: func(cmd api.Cmd, s *api.State) (interface{}, string) {
-			thread := cmd.Thread()
-			return thread, fmt.Sprintf("Thread: 0x%x", thread)
-		}})
+		groupers = append(groupers, cmdgrouper.Run(
+			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+				thread := cmd.Thread()
+				return thread, fmt.Sprintf("Thread: 0x%x", thread)
+			}))
 	}
 
 	if p.GroupByUserMarkers {
-		groupers = append(groupers, &markerGrouper{})
+		groupers = append(groupers, cmdgrouper.Marker())
 	}
 
 	// Walk the list of unfiltered commands to build the groups.
@@ -297,14 +217,11 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		cmd.Mutate(ctx, s, nil)
 		if filter(id, cmd, s) {
 			for _, g := range groupers {
-				g.process(ctx, id, cmd, s)
+				g.Process(ctx, id, cmd, s)
 			}
 		}
 		return nil
 	})
-	for _, g := range groupers {
-		g.flush(uint64(len(c.Commands)))
-	}
 
 	// Build the command tree
 	out := &commandTree{
@@ -315,8 +232,8 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		},
 	}
 	for _, g := range groupers {
-		for _, l := range g.groups() {
-			out.root.AddGroup(l.start, l.end, l.name)
+		for _, l := range g.Build(api.CmdID(len(c.Commands))) {
+			out.root.AddGroup(l.Start, l.End, l.Name)
 		}
 	}
 
