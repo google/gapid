@@ -58,7 +58,13 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-		if p.DrawCalls && f.IsUserMarker() {
+		if p.TransformFeedbacks && f.IsTransformFeedback() {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_TransformFeedback,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
+		if p.UserMarkers && f.IsUserMarker() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_UserMarker,
 				Command: p.Capture.Command(uint64(id)),

@@ -875,8 +875,8 @@
 
     func (ϟa *{{$name}}) API() api.API { return API{} }
     func (ϟa *{{$name}}) CmdFlags(ϟctx context.Context, ϟs *api.State) api.CmdFlags {
-      {{$names := Strings "draw_call" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
-      {{$flags := Strings "DrawCall"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker"}}
+      {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
+      {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker"}}
 
       var out api.CmdFlags
       {{range $i, $name := $names}}

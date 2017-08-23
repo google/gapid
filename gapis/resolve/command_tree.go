@@ -322,20 +322,26 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	if p.GroupByDrawCall || p.GroupByFrame {
 		events, err := Events(ctx, &path.Events{
-			Capture:      p.Capture,
-			Filter:       p.Filter,
-			DrawCalls:    true,
-			FirstInFrame: true,
-			LastInFrame:  true,
+			Capture:            p.Capture,
+			Filter:             p.Filter,
+			DrawCalls:          true,
+			TransformFeedbacks: true,
+			FirstInFrame:       true,
+			LastInFrame:        true,
 		})
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Couldn't get events")
 		}
 		if p.GroupByFrame {
-			addFrameEvents(ctx, events, p, out, api.CmdID(len(c.Commands)))
+			addFrameGroups(ctx, events, p, out, api.CmdID(len(c.Commands)))
+		}
+		if p.GroupByTransformFeedback {
+			addFrameEventGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
+				service.EventKind_TransformFeedback, "Transform Feedback")
 		}
 		if p.GroupByDrawCall {
-			addDrawEvents(ctx, events, p, out, api.CmdID(len(c.Commands)))
+			addFrameEventGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
+				service.EventKind_DrawCall, "Draw")
 		}
 	}
 
@@ -380,13 +386,21 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	return out, nil
 }
 
-func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
-	drawCount := 0
+func addFrameEventGroups(
+	ctx context.Context,
+	events *service.Events,
+	p *path.CommandTree,
+	t *commandTree,
+	last api.CmdID,
+	kind service.EventKind,
+	prefix string) {
+
+	count := 0
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
-		case service.EventKind_DrawCall:
-			// Find group which contains this draw command
+		case kind:
+			// Find group which contains this event
 			group := &t.root
 			for true {
 				if idx := group.Spans.IndexOf(i); idx != -1 {
@@ -399,21 +413,21 @@ func addDrawEvents(ctx context.Context, events *service.Events, p *path.CommandT
 			}
 
 			// Start with group of size 1 and grow it backward as long as nothing gets in the way.
-			drawStart := i
-			for drawStart >= group.Bounds().Start+1 && group.Spans.IndexOf(drawStart-1) == -1 {
-				drawStart--
+			start := i
+			for start >= group.Bounds().Start+1 && group.Spans.IndexOf(start-1) == -1 {
+				start--
 			}
 
-			t.root.AddGroup(drawStart, i+1, fmt.Sprintf("Draw %v", drawCount+1))
-			drawCount++
+			t.root.AddGroup(start, i+1, fmt.Sprintf("%v %v", prefix, count+1))
+			count++
 
 		case service.EventKind_LastInFrame:
-			drawCount = 0
+			count = 0
 		}
 	}
 }
 
-func addFrameEvents(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
+func addFrameGroups(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
 	frameCount, frameStart, frameEnd := 0, api.CmdID(0), api.CmdID(0)
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
