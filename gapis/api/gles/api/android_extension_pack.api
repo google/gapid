@@ -213,7 +213,7 @@ cmd void glPatchParameteriEXT(GLenum pname, GLint value) {
 }
 
 @if(Extension.GL_KHR_debug)
-@PopUserMarker
+@pop_user_marker
 @doc("https://www.khronos.org/registry/gles/extensions/KHR/KHR_debug.txt", Extension.GL_KHR_debug)
 cmd void glPopDebugGroupKHR() {
   PopDebugGroup()
@@ -233,7 +233,7 @@ cmd void glPrimitiveBoundingBoxEXT(GLfloat minX,
 }
 
 @if(Extension.GL_KHR_debug)
-@PushUserMarker
+@push_user_marker
 @doc("https://www.khronos.org/registry/gles/extensions/KHR/KHR_debug.txt", Extension.GL_KHR_debug)
 cmd void glPushDebugGroupKHR(GLenum source, GLuint id, GLsizei length, const GLchar* message) {
   PushDebugGroup(source, id, length, message)

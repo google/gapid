@@ -201,7 +201,7 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 	// Expected annotations.
 	annots := []string{}
 	if strings.HasPrefix(cmdName, "glDraw") && !strings.HasPrefix(cmdName, "glDrawBuffers") {
-		annots = append(annots, "@DrawCall")
+		annots = append(annots, "@draw_call")
 	}
 	for _, version := range versions {
 		if version == Version("1.0") && len(versions) > 1 {
@@ -255,7 +255,7 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 	}
 	seen := make(map[string]struct{})
 	for _, a := range apiCmd.Annotations {
-		if a.Name() == "if" || a.Name() == "doc" || a.Name() == "DrawCall" {
+		if a.Name() == "if" || a.Name() == "doc" || a.Name() == "draw_call" {
 			seen[getSource(mappings.CST(a.AST))] = struct{}{}
 		}
 	}
