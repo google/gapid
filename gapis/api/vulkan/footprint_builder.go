@@ -583,9 +583,14 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 		}
 		// TODO: handle preserveAttachments
 
+		for _, viewObj := range fb.ImageAttachments {
+			if read(ctx, bh, vkHandle(viewObj.VulkanHandle)) {
+				read(ctx, bh, vkHandle(viewObj.Image.VulkanHandle))
+			}
+		}
+
 		for _, ai := range rp.AttachmentDescriptions.KeysSorted() {
 			viewObj := fb.ImageAttachments.Get(ai)
-			read(ctx, bh, vkHandle(viewObj.VulkanHandle))
 			imgObj := viewObj.Image
 			layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
 			imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
@@ -624,7 +629,6 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 			dsAi := desc.DepthStencilAttachment.Attachment
 			if dsAi != vkAttachmentUnused {
 				viewObj := fb.ImageAttachments.Get(dsAi)
-				read(ctx, bh, vkHandle(viewObj.VulkanHandle))
 				imgObj := viewObj.Image
 				layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
 				imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
@@ -1645,6 +1649,14 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkDestroyPipelineCache:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
 		bh.Alive = true
+	case *VkGetPipelineCacheData:
+		read(ctx, bh, vkHandle(cmd.PipelineCache))
+	case *VkMergePipelineCaches:
+		modify(ctx, bh, vkHandle(cmd.DstCache))
+		srcCount := uint64(cmd.SrcCacheCount)
+		for _, src := range cmd.PSrcCaches.Slice(0, srcCount, l).Read(ctx, cmd, s, nil) {
+			read(ctx, bh, vkHandle(src))
+		}
 
 	// Shader module
 	case *VkCreateShaderModule:
@@ -2034,8 +2046,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		rp := GetState(s).RenderPasses.Get(vkRp)
 		fb := GetState(s).Framebuffers.Get(vkFb)
 		read(ctx, bh, vkHandle(fb.RenderPass.VulkanHandle))
-		for _, ia := range fb.ImageAttachments.Range() {
-			read(ctx, bh, vkHandle(ia.VulkanHandle))
+		for _, ia := range fb.ImageAttachments {
+			if read(ctx, bh, vkHandle(ia.VulkanHandle)) {
+				read(ctx, bh, vkHandle(ia.Image.VulkanHandle))
+			}
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
@@ -2054,8 +2068,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		rp := GetState(s).RenderPasses.Get(vkRp)
 		fb := GetState(s).Framebuffers.Get(vkFb)
 		read(ctx, bh, vkHandle(fb.RenderPass.VulkanHandle))
-		for _, ia := range fb.ImageAttachments.Range() {
-			read(ctx, bh, vkHandle(ia.VulkanHandle))
+		for _, ia := range fb.ImageAttachments {
+			if read(ctx, bh, vkHandle(ia.VulkanHandle)) {
+				read(ctx, bh, vkHandle(ia.Image.VulkanHandle))
+			}
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
