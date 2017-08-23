@@ -37,6 +37,9 @@ import (
 	"github.com/google/gapid/gapis/server"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/stringtable"
+
+	// Extensions
+	_ "github.com/google/gapid/gapis/extensions/unity"
 )
 
 var (

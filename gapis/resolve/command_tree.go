@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/extensions"
 	"github.com/google/gapid/gapis/resolve/cmdgrouper"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -209,6 +210,11 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	if p.GroupByUserMarkers {
 		groupers = append(groupers, cmdgrouper.Marker())
+	}
+
+	// Add any extension groupers
+	for _, e := range extensions.Get() {
+		groupers = append(groupers, e.CmdGroupers...)
 	}
 
 	// Walk the list of unfiltered commands to build the groups.
