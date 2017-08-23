@@ -360,8 +360,11 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 
 			// If the start is within existing group, move it past the end of the group
 			if idx := t.root.Spans.IndexOf(frameStart); idx != -1 {
-				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
-					frameStart = subgroup.Range.End
+				span := t.root.Spans[idx]
+				if span.Bounds().Start < i { // Unless the start is equal to the group start.
+					if subgroup, ok := span.(*api.CmdIDGroup); ok {
+						frameStart = subgroup.Range.End
+					}
 				}
 			}
 
