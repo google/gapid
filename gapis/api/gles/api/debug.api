@@ -303,7 +303,7 @@ sub void ObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
 }
 
 @if(Version.GLES32)
-@PopUserMarker
+@pop_user_marker
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPopDebugGroup.xhtml", Version.GLES32)
 cmd void glPopDebugGroup() {
   PopDebugGroup()
@@ -314,7 +314,7 @@ sub void PopDebugGroup() {
 }
 
 @if(Version.GLES32)
-@PushUserMarker
+@push_user_marker
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPushDebugGroup.xhtml", Version.GLES32)
 cmd void glPushDebugGroup(GLenum source, GLuint id, GLsizei length, const GLchar* message) {
   PushDebugGroup(source, id, length, message)

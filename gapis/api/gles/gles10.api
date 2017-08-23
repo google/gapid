@@ -250,7 +250,7 @@ cmd void glDisableClientState(GLenum array) {
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat height) {
@@ -258,7 +258,7 @@ cmd void glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat h
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexfvOES(const GLfloat* coords) {
@@ -266,7 +266,7 @@ cmd void glDrawTexfvOES(const GLfloat* coords) {
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexiOES(GLint x, GLint y, GLint z, GLint width, GLint height) {
@@ -274,7 +274,7 @@ cmd void glDrawTexiOES(GLint x, GLint y, GLint z, GLint width, GLint height) {
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexivOES(const GLint* coords) {
@@ -282,7 +282,7 @@ cmd void glDrawTexivOES(const GLint* coords) {
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexsOES(GLshort x, GLshort y, GLshort z, GLshort width, GLshort height) {
@@ -290,7 +290,7 @@ cmd void glDrawTexsOES(GLshort x, GLshort y, GLshort z, GLshort width, GLshort h
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexsvOES(const GLshort* coords) {
@@ -298,7 +298,7 @@ cmd void glDrawTexsvOES(const GLshort* coords) {
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z, GLfixed width, GLfixed height) {
@@ -306,7 +306,7 @@ cmd void glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z, GLfixed width, GLfixed h
 }
 
 @if(Extension.GL_OES_draw_texture)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_texture.txt", Extension.GL_OES_draw_texture)
 @ignore_unreachables
 cmd void glDrawTexxvOES(const GLfixed* coords) {

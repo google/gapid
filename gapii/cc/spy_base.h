@@ -124,19 +124,19 @@ protected:
     // abort signals that the atom should stop execution immediately.
     void abort();
 
-    // onPostDrawCall is after any command annotated with @DrawCall
+    // onPostDrawCall is after any command annotated with @draw_call
     inline virtual void onPostDrawCall(CallObserver*, uint8_t) {}
 
-    // onPreStartOfFrame is before any command annotated with @StartOfFrame
+    // onPreStartOfFrame is before any command annotated with @frame_start
     inline virtual void onPreStartOfFrame(CallObserver*, uint8_t) {}
 
-    // onPostStrartOfFrame is after any command annotated with @StartOfFrame
+    // onPostStrartOfFrame is after any command annotated with @frame_start
     inline virtual void onPostStartOfFrame(CallObserver* observer) {}
 
-    // onPreEndOfFrame is before any command annotated with @EndOfFrame
+    // onPreEndOfFrame is before any command annotated with @frame_end
     inline virtual void onPreEndOfFrame(CallObserver*, uint8_t) {}
 
-    // onPostEndOfFrame is after any command annotated with @EndOfFrame
+    // onPostEndOfFrame is after any command annotated with @frame_end
     inline virtual void onPostEndOfFrame(CallObserver* observer) {}
 
     // onPostFence is called immediately after the driver call.

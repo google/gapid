@@ -2769,7 +2769,7 @@ cmd void vkGetDeviceQueue(
 // TODO: Not all vkQueueSubmit calls submit vkCmdDrawXXX commands. Need better
 // a way so that only those recorded with draw commands will be labelled as
 // draw call.
-@DrawCall
+@draw_call
 @threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 cmd VkResult vkQueueSubmit(
@@ -8174,7 +8174,7 @@ cmd VkResult vkAcquireNextImageKHR(
 
 @extension("VK_KHR_swapchain")
 @indirect("VkQueue", "VkDevice")
-@EndOfFrame
+@frame_end
 cmd VkResult vkQueuePresentKHR(
     VkQueue                 queue,
     const VkPresentInfoKHR* pPresentInfo) {

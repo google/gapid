@@ -45,7 +45,7 @@ sub void checkIndicesType(GLenum indices_type) {
 }
 
 @if(Version.GLES10)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawArrays.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArrays.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArrays.xhtml", Version.GLES31)
@@ -59,7 +59,7 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
 }
 
 @if(Version.GLES31)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml", Version.GLES32)
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
@@ -72,7 +72,7 @@ cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
 }
 
 @if(Version.GLES30)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawArraysInstanced.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysInstanced.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysInstanced.xhtml", Version.GLES32)
@@ -132,7 +132,7 @@ sub void DrawElements(ref!Context    ctx,
 }
 
 @if(Version.GLES10)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDrawElements.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElements.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElements.xhtml", Version.GLES31)
@@ -146,7 +146,7 @@ cmd void glDrawElements(GLenum         draw_mode,
 }
 
 @if(Version.GLES32)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawElementsBaseVertex(GLenum         draw_mode,
                                   GLsizei        indices_count,
@@ -162,7 +162,7 @@ sub void DrawElementsBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum 
 }
 
 @if(Version.GLES31)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml", Version.GLES32)
 cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const void* indirect) {
@@ -178,7 +178,7 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
 }
 
 @if(Version.GLES30)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawElementsInstanced.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsInstanced.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstanced.xhtml", Version.GLES32)
@@ -196,7 +196,7 @@ sub void DrawElementsInstanced(GLenum draw_mode, GLsizei indices_count, GLenum i
 }
 
 @if(Version.GLES32)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsInstancedBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawElementsInstancedBaseVertex(GLenum         draw_mode,
                                            GLsizei        indices_count,
@@ -213,7 +213,7 @@ sub void DrawElementsInstancedBaseVertex(GLenum draw_mode, GLsizei indices_count
 }
 
 @if(Version.GLES30)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDrawRangeElements.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawRangeElements.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElements.xhtml", Version.GLES32)
@@ -229,7 +229,7 @@ cmd void glDrawRangeElements(GLenum         draw_mode,
 }
 
 @if(Version.GLES32)
-@DrawCall
+@draw_call
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawRangeElementsBaseVertex.xhtml", Version.GLES32)
 cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
                                        GLuint         start,

@@ -287,7 +287,7 @@ cmd GLenum glCheckFramebufferStatus(GLenum target) {
   return ?
 }
 
-@Clear
+@clear
 @if(Version.GLES10)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glClear.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClear.xhtml", Version.GLES30)
@@ -310,7 +310,7 @@ cmd void glClear(GLbitfield mask) {
   }
 }
 
-@Clear
+@clear
 @if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
@@ -326,7 +326,7 @@ cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint s
   }
 }
 
-@Clear
+@clear
 @if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
@@ -348,7 +348,7 @@ cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) 
   }
 }
 
-@Clear
+@clear
 @if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
@@ -370,7 +370,7 @@ cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
   }
 }
 
-@Clear
+@clear
 @if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glClearBuffer.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)

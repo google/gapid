@@ -203,10 +203,10 @@
       bool called = false;
       auto call = [{{Macro "CallCapture" $}}] {
         called = true;
-        {{if GetAnnotation $ "StartOfFrame"}}
+        {{if GetAnnotation $ "frame_start"}}
           onPreStartOfFrame(observer, {{Global "ApiIndex"}});
         {{end}}
-        {{if GetAnnotation $ "EndOfFrame"}}
+        {{if GetAnnotation $ "frame_end"}}
           onPreEndOfFrame(observer, {{Global "ApiIndex"}});
         {{end}}
 
@@ -249,9 +249,9 @@
         }
       }
 ¶
-      {{if GetAnnotation $ "DrawCall"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
-      {{if GetAnnotation $ "StartOfFrame"}}onPostStartOfFrame(observer);{{end}}
-      {{if GetAnnotation $ "EndOfFrame"}}onPostEndOfFrame(observer);{{end}}
+      {{if GetAnnotation $ "draw_call"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
+      {{if GetAnnotation $ "frame_start"}}onPostStartOfFrame(observer);{{end}}
+      {{if GetAnnotation $ "frame_end"}}onPostEndOfFrame(observer);{{end}}
 
       observer->observePending();
       observer->exit();

@@ -475,7 +475,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-        // The EndOfFrame atom for Vulkan is vkQueuePresentKHR. Because once an
+        // The EndOfFrame command for Vulkan is vkQueuePresentKHR. Because once an
         // image is sent to device for presenting, we cannot access the image
         // again before acquiring it back. The data of the framebuffer image to
         // be presented must be gather before calling the underlying

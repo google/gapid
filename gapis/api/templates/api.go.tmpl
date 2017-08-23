@@ -819,7 +819,7 @@
   {{AssertType $.Command "Function"}}
   {{$name       := $.Command | GoCommandName}}
   {{$ret        := not (IsVoid $.Command.Return.Type)}}
-  {{$isDrawCall := GetAnnotation $.Command "DrawCall"}}
+  {{$isDrawCall := GetAnnotation $.Command "draw_call"}}
   {{$isPFN      := GetAnnotation $.Command "pfn"}}
   {{if not $isPFN}}
     {{template "Go.CommentHeader" $name}}
@@ -875,13 +875,13 @@
 
     func (ϟa *{{$name}}) API() api.API { return API{} }
     func (ϟa *{{$name}}) CmdFlags(context.Context, *api.State) api.CmdFlags { return 0 §
-        {{if GetAnnotation $.Command "DrawCall"}} | api.DrawCall §{{end}}
-        {{if GetAnnotation $.Command "Clear"}} | api.Clear §{{end}}
-        {{if GetAnnotation $.Command "StartOfFrame"}} | api.StartOfFrame §{{end}}
-        {{if GetAnnotation $.Command "EndOfFrame"}} | api.EndOfFrame §{{end}}
-        {{if GetAnnotation $.Command "UserMarker"}} | api.UserMarker §{{end}}
-        {{if GetAnnotation $.Command "PushUserMarker"}} | api.PushUserMarker §{{end}}
-        {{if GetAnnotation $.Command "PopUserMarker"}} | api.PopUserMarker §{{end}}
+        {{if GetAnnotation $.Command "draw_call"}} | api.DrawCall §{{end}}
+        {{if GetAnnotation $.Command "clear"}} | api.Clear §{{end}}
+        {{if GetAnnotation $.Command "frame_start"}} | api.StartOfFrame §{{end}}
+        {{if GetAnnotation $.Command "frame_end"}} | api.EndOfFrame §{{end}}
+        {{if GetAnnotation $.Command "user_marker"}} | api.UserMarker §{{end}}
+        {{if GetAnnotation $.Command "push_user_marker"}} | api.PushUserMarker §{{end}}
+        {{if GetAnnotation $.Command "pop_user_marker"}} | api.PopUserMarker §{{end}}
     }
     func (ϟa *{{$name}}) Extras() *api.CmdExtras { return &ϟa.extras }
   {{end}}
