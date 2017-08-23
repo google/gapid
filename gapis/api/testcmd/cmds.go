@@ -36,6 +36,8 @@ type A struct {
 	Flags api.CmdFlags
 }
 
+func (a *A) Caller() api.CmdID      { return api.CmdNoID }
+func (a *A) SetCaller(api.CmdID)    {}
 func (a *A) Thread() uint64         { return 1 }
 func (a *A) SetThread(uint64)       {}
 func (a *A) CmdName() string        { return "A" }
@@ -51,13 +53,15 @@ type B struct {
 	Bool bool
 }
 
-func (a *B) Thread() uint64         { return 1 }
-func (a *B) SetThread(uint64)       {}
-func (a *B) CmdName() string        { return "B" }
-func (a *B) API() api.API           { return nil }
-func (a *B) CmdFlags() api.CmdFlags { return 0 }
-func (a *B) Extras() *api.CmdExtras { return nil }
-func (a *B) Mutate(context.Context, *api.State, *builder.Builder) error {
+func (*B) Caller() api.CmdID      { return api.CmdNoID }
+func (*B) SetCaller(api.CmdID)    {}
+func (*B) Thread() uint64         { return 1 }
+func (*B) SetThread(uint64)       {}
+func (*B) CmdName() string        { return "B" }
+func (*B) API() api.API           { return nil }
+func (*B) CmdFlags() api.CmdFlags { return 0 }
+func (*B) Extras() *api.CmdExtras { return nil }
+func (*B) Mutate(context.Context, *api.State, *builder.Builder) error {
 	return nil
 }
 
@@ -110,6 +114,8 @@ type X struct {
 	PMap IntːStructPtr `param:"PMap"`
 }
 
+func (X) Caller() api.CmdID      { return api.CmdNoID }
+func (X) SetCaller(api.CmdID)    {}
 func (X) Thread() uint64         { return 1 }
 func (X) SetThread(uint64)       {}
 func (X) CmdName() string        { return "X" }

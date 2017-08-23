@@ -37,6 +37,8 @@ func (a *Resource) String() string {
 	return fmt.Sprintf("ID: %s - 0x%x bytes", a.ID, len(a.Data))
 }
 
+func (Resource) Caller() api.CmdID      { return api.CmdNoID }
+func (Resource) SetCaller(api.CmdID)    {}
 func (Resource) Thread() uint64         { return 0 }
 func (Resource) SetThread(uint64)       {}
 func (Resource) CmdName() string        { return "<Resource>" }

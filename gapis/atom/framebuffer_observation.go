@@ -40,6 +40,8 @@ func (a *FramebufferObservation) String() string {
 }
 
 // api.Cmd compliance
+func (FramebufferObservation) Caller() api.CmdID      { return api.CmdNoID }
+func (FramebufferObservation) SetCaller(api.CmdID)    {}
 func (FramebufferObservation) Thread() uint64         { return 0 }
 func (FramebufferObservation) SetThread(uint64)       {}
 func (FramebufferObservation) CmdName() string        { return "<FramebufferObservation>" }
