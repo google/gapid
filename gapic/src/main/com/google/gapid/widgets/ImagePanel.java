@@ -875,20 +875,23 @@ public class ImagePanel extends Composite {
     private final Composite levelComposite;
     private final Scale levelScale;
     private final Label levelValue;
+    private final Label levelSize;
     private final Label pixelLabel;
     private int lastSelection = 0;
 
     public StatusBar(Composite parent, IntConsumer levelListener) {
       super(parent, SWT.NONE);
-      setLayout(new GridLayout(2, false));
+      setLayout(new GridLayout(3, false));
 
       levelComposite = createComposite(this, centered(new RowLayout(SWT.HORIZONTAL)));
       createLabel(levelComposite, "Level:");
-      levelScale = createScale(levelComposite);
       levelValue = createLabel(levelComposite, "");
+      levelScale = createScale(levelComposite);
+      levelSize = createLabel(this, "");
       pixelLabel = createLabel(this, "");
 
       levelComposite.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, true));
+      levelSize.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, true));
       pixelLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
 
       levelScale.addListener(SWT.Selection, e -> {
@@ -915,12 +918,13 @@ public class ImagePanel extends Composite {
         levelValue.setText("0");
         lastSelection = 0;
       }
+      levelSize.setText("");
       levelComposite.requestLayout();
     }
 
     public void setLevelSize(int width, int height) {
-      levelValue.setText(levelScale.getSelection() + ": " + width + "x" + height);
-      levelComposite.requestLayout();
+      levelSize.setText("W: " + width + " H: " + height);
+      levelSize.requestLayout();
     }
 
     public void setPixel(Pixel pixel) {
