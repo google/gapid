@@ -420,14 +420,16 @@ cmd void glDiscardFramebufferEXT(GLenum        target,
 }
 
 @if(Extension.GL_ANGLE_instanced_arrays)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", Extension.GL_ANGLE_instanced_arrays)
 cmd void glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei primcount) {
   DrawArraysInstanced(mode, first, count, primcount)
 }
 
 @if(Extension.GL_EXT_base_instance)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", Extension.GL_EXT_base_instance)
 cmd void glDrawArraysInstancedBaseInstanceEXT(GLenum  mode,
                                               GLint   first,
@@ -438,7 +440,8 @@ cmd void glDrawArraysInstancedBaseInstanceEXT(GLenum  mode,
 }
 
 @if(Extension.GL_EXT_draw_instanced || Extension.GL_EXT_instanced_arrays)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_instanced.txt", Extension.GL_EXT_draw_instanced)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", Extension.GL_EXT_instanced_arrays)
 cmd void glDrawArraysInstancedEXT(GLenum mode, GLint start, GLsizei count, GLsizei primcount) {
@@ -446,7 +449,8 @@ cmd void glDrawArraysInstancedEXT(GLenum mode, GLint start, GLsizei count, GLsiz
 }
 
 @if(Extension.GL_NV_draw_instanced)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", Extension.GL_NV_draw_instanced)
 cmd void glDrawArraysInstancedNV(GLenum mode, GLint first, GLsizei count, GLsizei primcount) {
   DrawArraysInstanced(mode, first, count, primcount)
@@ -471,7 +475,8 @@ cmd void glDrawBuffersNV(GLsizei n, const GLenum* bufs) {
 }
 
 @if(Extension.GL_EXT_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", Extension.GL_EXT_draw_elements_base_vertex)
 cmd void glDrawElementsBaseVertexEXT(GLenum         mode,
                                      GLsizei        count,
@@ -482,7 +487,8 @@ cmd void glDrawElementsBaseVertexEXT(GLenum         mode,
 }
 
 @if(Extension.GL_OES_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", Extension.GL_OES_draw_elements_base_vertex)
 cmd void glDrawElementsBaseVertexOES(GLenum         mode,
                                      GLsizei        count,
@@ -493,7 +499,8 @@ cmd void glDrawElementsBaseVertexOES(GLenum         mode,
 }
 
 @if(Extension.GL_ANGLE_instanced_arrays)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/ANGLE/ANGLE_instanced_arrays.txt", Extension.GL_ANGLE_instanced_arrays)
 cmd void glDrawElementsInstancedANGLE(GLenum         mode,
                                       GLsizei        count,
@@ -504,7 +511,8 @@ cmd void glDrawElementsInstancedANGLE(GLenum         mode,
 }
 
 @if(Extension.GL_EXT_base_instance)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", Extension.GL_EXT_base_instance)
 cmd void glDrawElementsInstancedBaseInstanceEXT(GLenum      mode,
                                                 GLsizei     count,
@@ -516,7 +524,8 @@ cmd void glDrawElementsInstancedBaseInstanceEXT(GLenum      mode,
 }
 
 @if(Extension.GL_EXT_base_instance)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_base_instance.txt", Extension.GL_EXT_base_instance)
 cmd void glDrawElementsInstancedBaseVertexBaseInstanceEXT(GLenum      mode,
                                                           GLsizei     count,
@@ -529,7 +538,8 @@ cmd void glDrawElementsInstancedBaseVertexBaseInstanceEXT(GLenum      mode,
 }
 
 @if(Extension.GL_EXT_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", Extension.GL_EXT_draw_elements_base_vertex)
 cmd void glDrawElementsInstancedBaseVertexEXT(GLenum         mode,
                                               GLsizei        count,
@@ -541,7 +551,8 @@ cmd void glDrawElementsInstancedBaseVertexEXT(GLenum         mode,
 }
 
 @if(Extension.GL_OES_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", Extension.GL_OES_draw_elements_base_vertex)
 cmd void glDrawElementsInstancedBaseVertexOES(GLenum         mode,
                                               GLsizei        count,
@@ -553,7 +564,8 @@ cmd void glDrawElementsInstancedBaseVertexOES(GLenum         mode,
 }
 
 @if(Extension.GL_EXT_draw_instanced || Extension.GL_EXT_instanced_arrays)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_instanced.txt", Extension.GL_EXT_draw_instanced)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_instanced_arrays.txt", Extension.GL_EXT_instanced_arrays)
 cmd void glDrawElementsInstancedEXT(GLenum         mode,
@@ -565,7 +577,8 @@ cmd void glDrawElementsInstancedEXT(GLenum         mode,
 }
 
 @if(Extension.GL_NV_draw_instanced)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/NV/NV_draw_instanced.txt", Extension.GL_NV_draw_instanced)
 cmd void glDrawElementsInstancedNV(GLenum         mode,
                                    GLsizei        count,
@@ -576,7 +589,8 @@ cmd void glDrawElementsInstancedNV(GLenum         mode,
 }
 
 @if(Extension.GL_EXT_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_elements_base_vertex.txt", Extension.GL_EXT_draw_elements_base_vertex)
 cmd void glDrawRangeElementsBaseVertexEXT(GLenum         mode,
                                           GLuint         start,
@@ -589,7 +603,8 @@ cmd void glDrawRangeElementsBaseVertexEXT(GLenum         mode,
 }
 
 @if(Extension.GL_OES_draw_elements_base_vertex)
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_draw_elements_base_vertex.txt", Extension.GL_OES_draw_elements_base_vertex)
 cmd void glDrawRangeElementsBaseVertexOES(GLenum         mode,
                                           GLuint         start,
@@ -2871,13 +2886,15 @@ cmd void glDepthRangeArrayfvOES(GLuint first, GLsizei count, const GLfloat* v) {
 cmd void glDepthRangeIndexedfOES(GLuint index, GLfloat n, GLfloat f) {
 }
 
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @if(Extension.GL_EXT_draw_transform_feedback)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", Extension.GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackEXT(GLenum mode, GLuint id) {
 }
 
-@draw_call
+@draw_call(isDrawCall())
+@transform_feedback(isTransformFeedback())
 @if(Extension.GL_EXT_draw_transform_feedback)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_draw_transform_feedback.txt", Extension.GL_EXT_draw_transform_feedback)
 cmd void glDrawTransformFeedbackInstancedEXT(GLenum mode, GLuint id, GLsizei instancecount) {
