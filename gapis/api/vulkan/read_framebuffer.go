@@ -44,12 +44,13 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
 func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	isEof := cmd.CmdFlags().IsEndOfFrame()
+	s := out.State()
+	isEOF := cmd.CmdFlags(ctx, s).IsEndOfFrame()
 	doMutate := func() {
 		out.MutateAndWrite(ctx, id, cmd)
 	}
 
-	if !isEof {
+	if !isEOF {
 		doMutate()
 	} else {
 		// This is a VkQueuePresent, we need to extract the information out of this,
@@ -64,7 +65,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		delete(t.injections, id)
 	}
 
-	if isEof {
+	if isEOF {
 		doMutate()
 	}
 }

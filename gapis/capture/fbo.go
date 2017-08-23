@@ -40,14 +40,14 @@ func (a *FBO) String() string {
 }
 
 // api.Cmd compliance
-func (FBO) Caller() api.CmdID      { return api.CmdNoID }
-func (FBO) SetCaller(api.CmdID)    {}
-func (FBO) Thread() uint64         { return 0 }
-func (FBO) SetThread(uint64)       {}
-func (FBO) CmdName() string        { return FBOName }
-func (FBO) API() api.API           { return nil }
-func (FBO) CmdFlags() api.CmdFlags { return 0 }
-func (FBO) Extras() *api.CmdExtras { return nil }
+func (FBO) Caller() api.CmdID                                 { return api.CmdNoID }
+func (FBO) SetCaller(api.CmdID)                               {}
+func (FBO) Thread() uint64                                    { return 0 }
+func (FBO) SetThread(uint64)                                  {}
+func (FBO) CmdName() string                                   { return FBOName }
+func (FBO) API() api.API                                      { return nil }
+func (FBO) CmdFlags(context.Context, *api.State) api.CmdFlags { return 0 }
+func (FBO) Extras() *api.CmdExtras                            { return nil }
 func (FBO) Mutate(ctx context.Context, s *api.State, b *rb.Builder) error {
 	return nil
 }

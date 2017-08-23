@@ -138,7 +138,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			}
 			b.Write(g, renderbufferDataKey{depth})
 			b.Write(g, renderbufferDataKey{stencil})
-		} else if cmd.CmdFlags().IsDrawCall() {
+		} else if cmd.CmdFlags(ctx, s).IsDrawCall() {
 			b.Read(g, uniformGroupKey{c.Bound.Program})
 			b.Read(g, vertexAttribGroupKey{c.Bound.VertexArray})
 			for _, stateKey := range getAllUsedTextureData(ctx, cmd, s, c) {
@@ -150,7 +150,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				b.Modify(g, data)
 			})
 			// TODO: Write transform feedback buffers.
-		} else if cmd.CmdFlags().IsClear() {
+		} else if cmd.CmdFlags(ctx, s).IsClear() {
 			switch cmd := cmd.(type) {
 			case *GlClearBufferfi:
 				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)

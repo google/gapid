@@ -45,7 +45,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		if !filter(id, cmd, s) {
 			return nil
 		}
-		f := cmd.CmdFlags()
+		f := cmd.CmdFlags(ctx, s)
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_Clear,

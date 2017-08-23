@@ -29,8 +29,6 @@ var (
 	deadCodeEliminationCounter         = benchmark.GlobalCounters.Duration("deadCodeElimination")
 	deadCodeEliminationCmdDeadCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.dead")
 	deadCodeEliminationCmdLiveCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.live")
-	deadCodeEliminationDrawDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.dead")
-	deadCodeEliminationDrawLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.draw.live")
 	deadCodeEliminationDataDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.dead")
 	deadCodeEliminationDataLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.live")
 )
@@ -136,7 +134,7 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 
 	{
 		// Collect and report statistics
-		num, numDead, numDeadDraws, numLive, numLiveDraws := len(isLive), 0, 0, 0, 0
+		num, numDead, numLive := len(isLive), 0, 0
 		deadMem, liveMem := uint64(0), uint64(0)
 		for i := 0; i < num; i++ {
 			cmd := t.depGraph.Commands[i]
@@ -148,27 +146,19 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			}
 			if !isLive[i] {
 				numDead++
-				if cmd.CmdFlags().IsDrawCall() {
-					numDeadDraws++
-				}
 				deadMem += mem
 			} else {
 				numLive++
-				if cmd.CmdFlags().IsDrawCall() {
-					numLiveDraws++
-				}
 				liveMem += mem
 			}
 		}
 		deadCodeEliminationCmdDeadCounter.AddInt64(int64(numDead))
 		deadCodeEliminationCmdLiveCounter.AddInt64(int64(numLive))
-		deadCodeEliminationDrawDeadCounter.AddInt64(int64(numDeadDraws))
-		deadCodeEliminationDrawLiveCounter.AddInt64(int64(numLiveDraws))
 		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
 		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
-		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
-			100*numDead/num, numDead, deadMem/1024/1024, numDeadDraws,
-			100*numLive/num, numLive, liveMem/1024/1024, numLiveDraws)
+		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB, live: %v%% %v cmds %v MB",
+			100*numDead/num, numDead, deadMem/1024/1024,
+			100*numLive/num, numLive, liveMem/1024/1024)
 	}
 	return isLive
 }

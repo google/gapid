@@ -1074,11 +1074,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		default:
-			if cmd.CmdFlags().IsClear() {
+			flags := cmd.CmdFlags(ctx, s)
+			if flags.IsClear() {
 				compatMultiviewDraw(ctx, id, cmd, out)
 				return
 			}
-			if cmd.CmdFlags().IsDrawCall() {
+			if flags.IsDrawCall() {
 				if clientVAsBound(c, clientVAs) {
 					log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Command: %v", cmd)
 				}

@@ -39,11 +39,11 @@ func (c Custom) Mutate(ctx context.Context, s *api.State, b *builder.Builder) er
 }
 
 // api.Cmd compliance
-func (Custom) Caller() api.CmdID      { return api.CmdNoID }
-func (Custom) SetCaller(api.CmdID)    {}
-func (cmd Custom) Thread() uint64     { return cmd.T }
-func (cmd Custom) SetThread(t uint64) { cmd.T = t }
-func (Custom) CmdName() string        { return "<Custom>" }
-func (Custom) API() api.API           { return nil }
-func (Custom) CmdFlags() api.CmdFlags { return 0 }
-func (Custom) Extras() *api.CmdExtras { return nil }
+func (Custom) Caller() api.CmdID                                 { return api.CmdNoID }
+func (Custom) SetCaller(api.CmdID)                               {}
+func (cmd Custom) Thread() uint64                                { return cmd.T }
+func (cmd Custom) SetThread(t uint64)                            { cmd.T = t }
+func (Custom) CmdName() string                                   { return "<Custom>" }
+func (Custom) API() api.API                                      { return nil }
+func (Custom) CmdFlags(context.Context, *api.State) api.CmdFlags { return 0 }
+func (Custom) Extras() *api.CmdExtras                            { return nil }
