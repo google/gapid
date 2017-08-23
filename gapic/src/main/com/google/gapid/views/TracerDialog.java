@@ -318,12 +318,13 @@ public class TracerDialog {
 
       public boolean isReady() {
         return api.getCombo().getSelectionIndex() >= 0 &&
-            !file.getText().isEmpty();
+            !file.getText().isEmpty() && !directory.getText().isEmpty();
       }
 
       public void addModifyListener(Listener listener) {
         api.getCombo().addListener(SWT.Selection, listener);
         file.addListener(SWT.Modify, listener);
+        directory.addBoxListener(SWT.Modify, listener);
       }
 
       public TraceRequest getTraceRequest(Settings settings) {
