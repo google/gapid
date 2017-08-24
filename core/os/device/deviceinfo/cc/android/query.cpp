@@ -19,6 +19,7 @@
 
 #include "../query.h"
 
+#include "core/cc/assert.h"
 #include "core/cc/log.h"
 #include "core/cc/get_gles_proc_address.h"
 
@@ -188,14 +189,20 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    auto eglGetError = reinterpret_cast<PFNEGLGETERROR>(core::GetGlesProcAddress("eglGetError", true));
-    auto eglInitialize = reinterpret_cast<PFNEGLINITIALIZE>(core::GetGlesProcAddress("eglInitialize", true));
-    auto eglBindAPI = reinterpret_cast<PFNEGLBINDAPI>(core::GetGlesProcAddress("eglBindAPI", true));
-    auto eglChooseConfig = reinterpret_cast<PFNEGLCHOOSECONFIG>(core::GetGlesProcAddress("eglChooseConfig", true));
-    auto eglCreateContext = reinterpret_cast<PFNEGLCREATECONTEXT>(core::GetGlesProcAddress("eglCreateContext", true));
-    auto eglCreatePbufferSurface = reinterpret_cast<PFNEGLCREATEPBUFFERSURFACE>(core::GetGlesProcAddress("eglCreatePbufferSurface", true));
-    auto eglMakeCurrent = reinterpret_cast<PFNEGLMAKECURRENT>(core::GetGlesProcAddress("eglMakeCurrent", true));
-    auto eglGetDisplay = reinterpret_cast<PFNEGLGETDISPLAY>(core::GetGlesProcAddress("eglGetDisplay", true));
+#define RESOLVE(name, pfun) \
+    auto name = reinterpret_cast<pfun>(core::GetGlesProcAddress(#name, true)); \
+    GAPID_ASSERT(name != nullptr)
+
+    RESOLVE(eglGetError,             PFNEGLGETERROR);
+    RESOLVE(eglInitialize,           PFNEGLINITIALIZE);
+    RESOLVE(eglBindAPI,              PFNEGLBINDAPI);
+    RESOLVE(eglChooseConfig,         PFNEGLCHOOSECONFIG);
+    RESOLVE(eglCreateContext,        PFNEGLCREATECONTEXT);
+    RESOLVE(eglCreatePbufferSurface, PFNEGLCREATEPBUFFERSURFACE);
+    RESOLVE(eglMakeCurrent,          PFNEGLMAKECURRENT);
+    RESOLVE(eglGetDisplay,           PFNEGLGETDISPLAY);
+
+#undef RESOLVE
 
 #define CHECK(x) \
     x; \
