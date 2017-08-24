@@ -38,6 +38,8 @@ type task struct {
 	result grid.Result
 	status grid.Status
 
+	parent *task
+
 	underlying map[string]interface{}
 }
 
