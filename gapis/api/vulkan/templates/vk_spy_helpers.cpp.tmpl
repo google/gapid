@@ -140,7 +140,9 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
                 return reinterpret_cast<PFN_vkVoidFunction>(gapii::{{$name}});
         {{end}}
     {{end}}
-    return nullptr;
+    // This is not strictly correct, but some applications incorrectly
+    // call vkGetDeviceProcAddr, when they actually mean vkGetInstanceProcAddr.
+    return SpyOverride_vkGetInstanceProcAddr(PhysicalDevices[Devices[device]->mPhysicalDevice]->mInstance, pName);
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {

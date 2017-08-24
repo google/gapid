@@ -3000,12 +3000,17 @@ cmd VkResult vkFlushMappedMemoryRanges(
     flushStart := flushRange.offset - memoryObject.MappedOffset
     // TODO: Log errors if flush offset - mapped offset is negative or
     // flushRange.size is out of bounds.
-    if (flushRange.size == 0xFFFFFFFFFFFFFFFF) {
-      // copy() contains an implicit read observation
-      copy(memoryObject.Data[flushRange.offset:memoryObject.MappedOffset + memoryObject.MappedSize], (mappedLocation)[flushStart:memoryObject.MappedSize])
+
+    if (IsMemoryCoherent(memoryObject)) {
+      readCoherentMemory(memoryObject, flushRange.offset, flushRange.size)
     } else {
-      // copy() contains an implicit read observation
-      copy(memoryObject.Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
+      if (flushRange.size == 0xFFFFFFFFFFFFFFFF) {
+        // copy() contains an implicit read observation
+        copy(memoryObject.Data[flushRange.offset:memoryObject.MappedOffset + memoryObject.MappedSize], (mappedLocation)[flushStart:memoryObject.MappedSize])
+      } else {
+        // copy() contains an implicit read observation
+        copy(memoryObject.Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
+      }
     }
   }
   return ?
