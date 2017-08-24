@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 )
@@ -30,7 +31,7 @@ import (
 func (b *binding) InstalledPackages(ctx context.Context) (android.InstalledPackages, error) {
 	str, err := b.Shell("dumpsys", "package").Call(ctx)
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Failed to get installed packages")
 	}
 	return b.parsePackages(str)
 }
