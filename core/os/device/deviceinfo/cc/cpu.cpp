@@ -35,7 +35,7 @@ const char* cpuName() {
 
         return str;
     }
-    return "<unknown>";
+    return "";
 }
 
 const char* cpuVendor() {
@@ -47,7 +47,7 @@ const char* cpuVendor() {
     if (__get_cpuid(0, &eax, &reg[0], &reg[2], &reg[1])) {
         return str;
     }
-    return "<unknown>";
+    return "";
 }
 
 device::Architecture cpuArchitecture() {
@@ -60,11 +60,11 @@ device::Architecture cpuArchitecture() {
 namespace query {
 
 const char* cpuName() {
-    return "<unknown>";
+    return "";
 }
 
 const char* cpuVendor() {
-    return "<unknown>";
+    return "";
 }
 
 device::Architecture cpuArchitecture() {

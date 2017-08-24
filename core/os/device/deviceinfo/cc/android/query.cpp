@@ -416,19 +416,17 @@ void abi(int idx, device::ABI* abi) {
 
 int cpuNumCores() { return gContext.mNumCores; }
 
-const char* cpuName() { return "<unknown>"; }
+const char* cpuName() { return ""; }
 
-const char* cpuVendor() { return "<unknown>"; }
+const char* cpuVendor() { return ""; }
 
 device::Architecture cpuArchitecture() { return gContext.mCpuArchitecture; }
 
-const char* gpuName() { return "<unknown>"; }
+const char* gpuName() { return ""; }
 
-const char* gpuVendor() { return "<unknown>"; }
+const char* gpuVendor() { return ""; }
 
 const char* instanceName()  { return gContext.mSerial.c_str(); }
-
-const char* instanceSerial()  { return gContext.mSerial.c_str(); }
 
 const char* hardwareName() { return gContext.mHardware.c_str(); }
 

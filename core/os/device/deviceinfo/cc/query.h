@@ -49,7 +49,6 @@ int cpuNumCores();
 const char* gpuName();
 const char* gpuVendor();
 
-const char* instanceSerial();
 const char* instanceName();
 
 void glDriver(device::OpenGLDriver*);

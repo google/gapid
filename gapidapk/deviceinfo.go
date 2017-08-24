@@ -67,7 +67,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return log.Err(ctx, err, "Reading data")
 	}
 
-	if err := proto.Unmarshal(data, d.Instance()); err != nil {
+	if err := proto.UnmarshalMerge(data, d.Instance()); err != nil {
 		return log.Err(ctx, err, "Unmarshalling device Instance")
 	}
 
