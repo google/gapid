@@ -157,7 +157,22 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 			return nil, err
 		}
 	}
+
+	if i := d.Instance(); i.Id == nil || allZero(i.Id.Data) {
+		// Generate an identifier for the device based on it's details.
+		i.GenID()
+	}
+
 	return d, nil
+}
+
+func allZero(bytes []byte) bool {
+	for _, b := range bytes {
+		if b != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // scanDevices returns the list of attached Android devices.
@@ -221,6 +236,7 @@ func parseDevices(ctx context.Context, out string) (map[string]bind.Status, erro
 			continue
 		case 2:
 			serial, status := fields[0], fields[1]
+			fmt.Printf("serial: %v, status: %v\n", serial, status)
 			switch status {
 			case "unknown":
 				devices[serial] = bind.Status_Unknown

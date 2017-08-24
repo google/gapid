@@ -46,6 +46,7 @@ func TestParseDevices(t_ *testing.T) {
 			ABIs: []*device.ABI{device.AndroidARMv7a},
 		},
 	}
+	expected.GenID()
 	got, err := adb.Devices(ctx)
 	assert.For(ctx, "Normal devices").ThatError(err).Succeeded()
 	assert.For(ctx, "Normal devices").That(got.FindBySerial(expected.Serial).Instance()).DeepEquals(expected)
