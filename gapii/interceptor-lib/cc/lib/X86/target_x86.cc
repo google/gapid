@@ -136,6 +136,14 @@ Error TargetX86::RewriteInstruction(const llvm::MCInst &inst,
                                     size_t offset,
                                     bool &possible_end_of_function) {
   switch (inst.getOpcode()) {
+    case llvm::X86::AND32rr:
+    case llvm::X86::AND32mr:
+    case llvm::X86::AND32ri8:
+    case llvm::X86::AND32mi8:
+    case llvm::X86::AND32i32:
+    case llvm::X86::AND32ri:
+    case llvm::X86::AND32mi:
+    case llvm::X86::AND32rm:
     case llvm::X86::LEA32r:
     case llvm::X86::MOV32ao32:
     case llvm::X86::MOV32rm:
