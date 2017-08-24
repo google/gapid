@@ -36,8 +36,6 @@ func TestHost(t *testing.T) {
 		That(h.Configuration.OS.Kind).NotEquals(device.UnknownOS)
 	assert.For(ctx, "Host.Configuration.Hardware.CPU").
 		ThatString(h.Configuration.Hardware.CPU.Name).NotEquals("")
-	assert.For(ctx, "Host.Configuration.Hardware.GPU").
-		ThatString(h.Configuration.Hardware.GPU.Name).NotEquals("")
 }
 
 func TestHostConcurrent(t *testing.T) {
