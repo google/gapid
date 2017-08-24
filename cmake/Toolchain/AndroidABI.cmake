@@ -13,7 +13,7 @@
 # limitations under the License.
 
 if(NOT ANDROID_ABI)
-    set(ANDROID_ACTIVE_ABI_LIST "armeabi-v7a" "arm64-v8a" "x86_64")
+    set(ANDROID_ACTIVE_ABI_LIST "armeabi-v7a" "arm64-v8a" "x86")
 endif()
 
 set(ANDROID_ABI_NAME_armeabi-v7a "armeabi")
@@ -24,6 +24,6 @@ set(ANDROID_ABI_NAME_arm64-v8a "arm64-v8a")
 set(ANDROID_APK_NAME_arm64-v8a "aarch64")
 set(ANDROID_BUILD_PATH_arm64-v8a "android-armv8a")
 
-set(ANDROID_ABI_NAME_x86_64 "x86_64")
-set(ANDROID_APK_NAME_x86_64 "x86_64")
-set(ANDROID_BUILD_PATH_x86_64 "android-x86_64")
+set(ANDROID_ABI_NAME_x86 "x86")
+set(ANDROID_APK_NAME_x86 "x86")
+set(ANDROID_BUILD_PATH_x86 "android-x86")
