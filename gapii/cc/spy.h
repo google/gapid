@@ -68,9 +68,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;
-  void onPostStartOfFrame(CallObserver* observer) override;
+  void onPostStartOfFrame() override;
   void onPreEndOfFrame(CallObserver* observer, uint8_t api) override;
-  void onPostEndOfFrame(CallObserver* observer) override;
+  void onPostEndOfFrame() override;
   void onPostFence(CallObserver* observer) override;
 
   inline void RegisterSymbol(const std::string& name, void* symbol) {

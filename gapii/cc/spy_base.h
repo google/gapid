@@ -131,14 +131,13 @@ protected:
     inline virtual void onPreStartOfFrame(CallObserver*, uint8_t) {}
 
     // onPostStrartOfFrame is after any command annotated with @frame_start
-    inline virtual void onPostStartOfFrame(CallObserver* observer) {}
+    inline virtual void onPostStartOfFrame() {}
 
     // onPreEndOfFrame is before any command annotated with @frame_end
     inline virtual void onPreEndOfFrame(CallObserver*, uint8_t) {}
 
     // onPostEndOfFrame is after any command annotated with @frame_end
-    inline virtual void onPostEndOfFrame(CallObserver* observer) {}
-
+    inline virtual void onPostEndOfFrame() {}
     // onPostFence is called immediately after the driver call.
     inline virtual void onPostFence(CallObserver* observer) {}
 
