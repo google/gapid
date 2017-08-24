@@ -453,7 +453,7 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
     mNumDrawsPerFrame = 0;
 }
 
-void Spy::onPostStartOfFrame(CallObserver* observer) {
+void Spy::onPostStartOfFrame() {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
@@ -463,8 +463,13 @@ void Spy::onPostStartOfFrame(CallObserver* observer) {
     }
     if (mSuspendCaptureFrames.load() > 0) {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
+            exit();
             set_suspended(false);
-            EnumerateVulkanResources(observer);
+            auto spy_ctx = enter("RecreateState", 2);
+            spy_ctx->enter(cmd::RecreateState{});
+            EnumerateVulkanResources(spy_ctx);
+            spy_ctx->exit();
+            // The outer call will handle the spy->exit() for us.
         }
     }
 }
@@ -490,7 +495,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
     mNumDrawsPerFrame = 0;
 }
 
-void Spy::onPostEndOfFrame(CallObserver* observer) {
+void Spy::onPostEndOfFrame() {
     if (mPendingFramebufferObservation) {
         mEncoder->object(mPendingFramebufferObservation.get());
         mPendingFramebufferObservation.reset(nullptr);
@@ -504,8 +509,13 @@ void Spy::onPostEndOfFrame(CallObserver* observer) {
     }
     if (mSuspendCaptureFrames.load() > 0) {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
+            exit();
             set_suspended(false);
-            EnumerateVulkanResources(observer);
+            auto spy_ctx = enter("RecreateState", 2);
+            spy_ctx->enter(cmd::RecreateState{});
+            EnumerateVulkanResources(spy_ctx);
+            spy_ctx->exit();
+            // The outer call to VkQueuePresent will handle the spy->exit() for us.
         }
     }
 }

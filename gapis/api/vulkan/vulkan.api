@@ -3058,6 +3058,13 @@ cmd void vkGetDeviceMemoryCommitment(
   _ = pCommittedMemoryInBytes[0]
 }
 
+
+@override
+@custom
+@no_replay
+cmd void RecreateState() {
+}
+
 @override
 @custom
 @no_replay

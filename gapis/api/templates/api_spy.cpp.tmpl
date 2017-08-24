@@ -250,12 +250,12 @@
       }
 ¶
       {{if GetAnnotation $ "draw_call"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
-      {{if GetAnnotation $ "frame_start"}}onPostStartOfFrame(observer);{{end}}
-      {{if GetAnnotation $ "frame_end"}}onPostEndOfFrame(observer);{{end}}
 
       observer->observePending();
       observer->exit();
 
+      {{if GetAnnotation $ "frame_start"}}onPostStartOfFrame();{{end}}
+      {{if GetAnnotation $ "frame_end"}}onPostEndOfFrame();{{end}}
       {{if not (IsVoid $.Return.Type)}}¶
         return result;
       {{end}}

@@ -280,6 +280,10 @@ func (a *RecreateInstance) Mutate(ctx context.Context, s *api.State, b *builder.
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateState) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	return nil
+}
+
 func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
