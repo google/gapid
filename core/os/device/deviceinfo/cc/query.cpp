@@ -103,7 +103,6 @@ device::Instance* getDeviceInstance(void* platform_data) {
 
     // Instance
     auto instance = new Instance();
-    instance->set_serial(query::instanceSerial());
     instance->set_name(query::instanceName());
     instance->set_allocated_configuration(configuration);
 

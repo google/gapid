@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-#define STR_OR_UNKNOWN(x) ((x != nullptr) ? x : "<unknown>")
+#define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
 namespace query {
 
@@ -149,21 +149,19 @@ device::ABI* currentABI() {
 
 int cpuNumCores() { return gContext.mNumCores; }
 
-const char* gpuName() { return "<unknown>"; }
+const char* gpuName() { return ""; }
 
-const char* gpuVendor() { return "<unknown>"; }
+const char* gpuVendor() { return ""; }
 
 const char* instanceName() { return gContext.mHostName; }
 
-const char* instanceSerial()  { return gContext.mHostName; }
-
-const char* hardwareName() { return STR_OR_UNKNOWN(gContext.mHwModel); }
+const char* hardwareName() { return STR_OR_EMPTY(gContext.mHwModel); }
 
 device::OSKind osKind() { return device::OSX; }
 
 const char* osName() { return "OSX"; }
 
-const char* osBuild() { return "<unknown>"; }
+const char* osBuild() { return ""; }
 
 int osMajor() { return gContext.mOsVersion.majorVersion; }
 

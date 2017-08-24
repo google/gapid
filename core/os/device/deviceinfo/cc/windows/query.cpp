@@ -138,7 +138,7 @@ bool createContext(void* platform_data) {
     } else if (major == 5 && minor == 0) {
         gContext.mOsName = "Windows 2000";
     } else {
-        gContext.mOsName = "<unknown>";
+        gContext.mOsName = "";
     }
 
     SYSTEM_INFO sysInfo;
@@ -187,21 +187,19 @@ device::ABI* currentABI() {
 
 int cpuNumCores() { return gContext.mNumCores; }
 
-const char* gpuName() { return "<unknown>"; }
+const char* gpuName() { return ""; }
 
-const char* gpuVendor() { return "<unknown>"; }
+const char* gpuVendor() { return ""; }
 
 const char* instanceName() { return gContext.mHostName; }
 
-const char* instanceSerial()  { return gContext.mHostName; }
-
-const char* hardwareName() { return "<unknown>"; }
+const char* hardwareName() { return ""; }
 
 device::OSKind osKind() { return device::Windows; }
 
 const char* osName() { return gContext.mOsName; }
 
-const char* osBuild() { return "<unknown>"; }
+const char* osBuild() { return ""; }
 
 int osMajor() { return gContext.mOsVersion.dwMajorVersion; }
 
