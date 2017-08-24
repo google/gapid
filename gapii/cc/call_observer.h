@@ -237,7 +237,7 @@ inline void CallObserver::write(const Slice<T>& dst, uint64_t index,
 template <typename T>
 inline Slice<T> CallObserver::copy(const Slice<T>& dst, const Slice<T>& src) {
     read(src);
-    if (!shouldObserve(
+    if (isActive() && !shouldObserve(
             dst)) {  // The spy must not mutate data in the application pool.
         uint64_t c = (src.count() < dst.count()) ? src.count() : dst.count();
         src.copy(dst, 0, c, 0);

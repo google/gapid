@@ -1255,7 +1255,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           create_info.mstage.mpSpecializationInfo = &specialization_info;
         }
         RecreateComputePipeline(observer, pipeline.mDevice,
-                                pipeline.mPipelineCache->mVulkanHandle,
+                                pipeline.mPipelineCache ? pipeline.mPipelineCache->mVulkanHandle : 0,
                                 &create_info, &pipeline.mVulkanHandle);
       }
 
