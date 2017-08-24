@@ -278,9 +278,12 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
       _ = newMsg(SEVERITY_WARNING, new!WARN_UNKNOWN_CONTEXT(id: as!u64(context)))
       ctx := CreateContext(null)
       EGLContexts[context] = ctx
+      SetContext(ctx)
+      // The current context is fetched by ApplyStaticContextState() and
+      // ApplyDynamicContextState() so SetContext() must be set before these
+      // calls.
       ApplyStaticContextState(ctx, staticState)
       ApplyDynamicContextState(ctx, dynamicState)
-      SetContext(ctx)
     } else if context != null {
       // TODO: onEGLError(EGL_BAD_CONTEXT)
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
