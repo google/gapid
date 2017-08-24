@@ -15,6 +15,7 @@
 package app
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -116,33 +117,44 @@ func Run(main task.Task) {
 		}
 	}()
 	flags := &AppFlags{Log: logDefaults()}
+
 	// install all the common application flags
-	ctx, closeLogs, cancel := prepareContext(&flags.Log)
+	rootCtx, closeLogs := prepareContext(&flags.Log)
 	defer closeLogs()
+
 	// parse the command line
-	flag.CommandLine.Usage = func() { Usage(ctx, "") }
+	flag.CommandLine.Usage = func() { Usage(rootCtx, "") }
 	verbMainPrepare(flags)
 	globalVerbs.flags.Parse(os.Args[1:]...)
+
 	// Force the global verb's flags back into the default location for
 	// main programs that still look in flag.Args()
 	//TODO: We need to stop doing this
 	globalVerbs.flags.ForceCommandLine()
+
 	// apply the flags
 	if flags.Version {
 		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
 		return
 	}
-	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
-	defer closeLogs()
-	endProfile := applyProfiler(ctx, &flags.Profile)
+
+	endProfile := applyProfiler(rootCtx, &flags.Profile)
+
+	ctx, cancel := context.WithCancel(rootCtx)
+
 	// Defer the shutdown code
 	defer func() {
 		cancel()
-		WaitForCleanup(ctx)
+		WaitForCleanup(rootCtx)
 		endProfile()
 	}()
+
+	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
+	defer closeLogs()
+
 	// Add the abort signal handler
-	handleAbortSignals(cancel)
+	handleAbortSignals(task.CancelFunc(cancel))
+
 	// Now we are ready to run the main task
 	err := main(ctx)
 	if errors.Cause(err) == Restart {

@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
@@ -50,7 +49,7 @@ func wrapHandler(to log.Handler) log.Handler {
 	}, to.Close)
 }
 
-func prepareContext(flags *LogFlags) (context.Context, func(), task.CancelFunc) {
+func prepareContext(flags *LogFlags) (context.Context, func()) {
 	// now build the initial root context
 	process := file.Abs(os.Args[0]).NoExt().Basename()
 	handler := wrapHandler(flags.Style.Handler(log.Std()))
@@ -58,8 +57,7 @@ func prepareContext(flags *LogFlags) (context.Context, func(), task.CancelFunc) 
 	ctx = log.PutProcess(ctx, process)
 	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
 	ctx = log.PutHandler(ctx, handler)
-	ctx, cancel := context.WithCancel(ctx)
-	return ctx, handler.Close, task.CancelFunc(cancel)
+	return ctx, handler.Close
 }
 
 func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (context.Context, func()) {
