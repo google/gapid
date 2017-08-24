@@ -97,23 +97,21 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 		return nil, log.Err(ctx, err, "Setting up port forwarding")
 	}
 
-	removeForward := func(ctx context.Context) error {
-		// Clone context to ignore cancellation.
-		ctx = keys.Clone(context.Background(), ctx)
-		return d.RemoveForward(ctx, port)
-	}
-
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
 	if err := d.Command("shell", "setprop", "debug.vulkan.layers", "VkGraphicsSpy").Run(ctx); err != nil {
-		removeForward(ctx)
+		// Clone context to ignore cancellation.
+		ctx := keys.Clone(context.Background(), ctx)
+		d.RemoveForward(ctx, port)
 		return nil, log.Err(ctx, err, "Setting up vulkan layer")
 	}
 
 	app.AddCleanup(ctx, func() {
+		// Clone context to ignore cancellation.
+		ctx := keys.Clone(context.Background(), ctx)
+		d.RemoveForward(ctx, port)
 		d.Command("shell", "setprop", "debug.vulkan.layers", "\"\"").Run(ctx)
-		removeForward(ctx)
 	})
 
 	if a != nil {
