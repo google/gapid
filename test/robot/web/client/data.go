@@ -79,13 +79,52 @@ var (
 			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
 		},
 	}
+	packageListByTrack = map[string][]string{"auto": []string{}}
+
 	packageDimension = &dimension{
 		name: "package",
 		valueOf: func(t *task) Item {
 			return t.pkg
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
+			e := itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
+			itemMap := map[string]Item{}
+			childMap := map[string]string{}
+			rootPkgs := []string{}
+			for _, it := range e {
+				pkgRoot := it.Underlying().(map[string]interface{})
+				pkgId, ok := pkgRoot["id"].(string)
+				itemMap[pkgId] = it
+				if !ok {
+					continue
+				}
+				if parentMem, ok := pkgRoot["parent"]; ok {
+					parentId, ok := parentMem.(string)
+					if !ok {
+						continue
+					}
+					childMap[parentId] = pkgId
+				} else {
+					rootPkgs = append(rootPkgs, pkgId)
+				}
+			}
+			result := enum{}
+			for _, root := range rootPkgs {
+				track := []string{root}
+				result = append(result, itemMap[root])
+				for childId, ok := childMap[root]; ok; childId, ok = childMap[root] {
+					// want tracks stored from Root -> Head
+					track = append(track, childId)
+					result = append(result, itemMap[childId])
+					root = childId
+				}
+				// TODO:(baldwinn) identify the actual track and ensure each head only maps to one track
+				packageListByTrack["auto"] = append(packageListByTrack["auto"], track...)
+			}
+			if len(childMap) != 0 {
+				fmt.Fprintf(os.Stderr, "did not map all values in package child map")
+			}
+			return result
 		},
 	}
 
@@ -174,6 +213,7 @@ func newTask(entry map[string]interface{}, kind Item) *task {
 		kind:       kind,
 		host:       nilItem,
 		pkg:        nilItem,
+		parent:     nil,
 	}
 
 	if st, ok := entry["status"].(float64); ok {
@@ -195,13 +235,70 @@ func newTask(entry map[string]interface{}, kind Item) *task {
 	return t
 }
 
+func compareTasksSimilar(t1 *task, t2 *task) bool {
+	if t1.trace.target.Id() == t2.trace.target.Id() && t1.trace.subject.Id() == t2.trace.subject.Id() && t1.host.Id() == t2.host.Id() {
+		return true
+	}
+	return false
+}
+
+func connectTaskParentChild(childListMap map[string][]*task, parentListMap map[string][]*task, t *task) {
+	findParentPkgIdInList := func(idList []string, childId string) string {
+		for it, id := range idList[1:] {
+			if childId == id {
+				return idList[it]
+			}
+		}
+		return ""
+	}
+	pkgId := t.pkg.Id()
+	parentListMap[pkgId] = append(parentListMap[pkgId], t)
+
+	if parPkgId := findParentPkgIdInList(packageListByTrack["auto"], pkgId); parPkgId != "" {
+		childListMap[parPkgId] = append(childListMap[parPkgId], t)
+
+		if parentList, ok := parentListMap[parPkgId]; ok {
+			for _, parent := range parentList {
+				if compareTasksSimilar(t, parent) {
+					t.parent = parent
+				}
+			}
+		}
+	}
+
+	if childList, ok := childListMap[pkgId]; ok {
+		for _, child := range childList {
+			if compareTasksSimilar(t, child) {
+				if child.parent != nil {
+					fmt.Fprintf(os.Stderr, "A task's parent was found twice? parent package id: %v; child package id: %v", pkgId, child.pkg.Id())
+				} else {
+					child.parent = t
+				}
+			}
+		}
+	}
+}
+
 func robotTasksPerKind(kind Item, path string, fun func(map[string]interface{}, *task)) []*task {
 	tasks := []*task{}
+	notCurrentTasks := []*task{}
+	childMap := map[string][]*task{}
+	parentMap := map[string][]*task{}
+
 	for _, e := range queryArray(path) {
 		e := e.(map[string]interface{})
 		t := newTask(e, kind)
 		fun(e, t)
+		connectTaskParentChild(childMap, parentMap, t)
 		tasks = append(tasks, t)
+		if t.status != grid.Current {
+			notCurrentTasks = append(notCurrentTasks, t)
+		}
+	}
+	for _, t := range notCurrentTasks {
+		if t.parent != nil {
+			t.result = t.parent.result
+		}
 	}
 	return tasks
 }
