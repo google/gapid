@@ -44,6 +44,7 @@ import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -264,7 +265,8 @@ public class ThumbnailScrubber extends Composite
       data.image = LoadableImage.newBuilder(widgets.loading)
           .forImageData(noAlpha(thumbs.getThumbnail(data.range.getCommand(), THUMB_SIZE,
               info -> scheduleIfNotDisposed(this, () -> setItemSize(index,
-                  Math.max(MIN_SIZE, info.getWidth()), Math.max(MIN_SIZE, info.getHeight()))))))
+                  Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getWidth())),
+                  Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getHeight())))))))
           .onErrorShowErrorIcon(widgets.theme)
           .build(this, this);
       data.image.addListener(new LoadableImage.Listener() {
