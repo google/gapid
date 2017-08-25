@@ -230,6 +230,10 @@ public class Client {
         Service.ErrPathNotFollowable e = err.getErrPathNotFollowable();
         throw new PathNotFollowableException(e.getPath(), stack);
       }
+      case ERR_UNSUPPORTED_VERSION: {
+        Service.ErrUnsupportedVersion e = err.getErrUnsupportedVersion();
+        throw new UnsupportedVersionException(e.getReason(), e.getSuggestUpdate(), stack);
+      }
       default:
         throw new RuntimeException("Unknown error: " + err.getErrCase(), stack);
     }
@@ -270,6 +274,12 @@ public class Client {
   public static class PathNotFollowableException extends RpcException {
     public PathNotFollowableException(Path.Any path, Stack stack) {
       super("Path " + Paths.toString(path) + " not followable.", stack);
+    }
+  }
+
+  public static class UnsupportedVersionException extends RpcException {
+    public UnsupportedVersionException(Stringtable.Msg reason, boolean suggestUpdate, Stack stack) {
+      super(Strings.getMessage(reason), stack);
     }
   }
 

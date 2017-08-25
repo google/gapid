@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+	"github.com/pkg/errors"
 )
 
 type Service interface {
@@ -133,7 +134,7 @@ type FindHandler func(*FindResponse) error
 // NewError attempts to box and return err into an Error.
 // If err cannot be boxed into an Error then nil is returned.
 func NewError(err error) *Error {
-	switch err := err.(type) {
+	switch err := errors.Cause(err).(type) {
 	case nil:
 		return nil
 	case *ErrDataUnavailable:
@@ -144,6 +145,8 @@ func NewError(err error) *Error {
 		return &Error{&Error_ErrInvalidArgument{err}}
 	case *ErrPathNotFollowable:
 		return &Error{&Error_ErrPathNotFollowable{err}}
+	case *ErrUnsupportedVersion:
+		return &Error{&Error_ErrUnsupportedVersion{err}}
 	default:
 		return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
 	}

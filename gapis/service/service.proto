@@ -413,6 +413,7 @@ message Error {
     ErrInvalidPath err_invalid_path = 3;
     ErrInvalidArgument err_invalid_argument = 4;
     ErrPathNotFollowable err_path_not_followable = 5;
+    ErrUnsupportedVersion err_unsupported_version = 6;
   }
 }
 
@@ -452,6 +453,15 @@ message ErrInvalidArgument {
 // that cannot be followed.
 message ErrPathNotFollowable {
   path.Any path = 1;
+}
+
+// ErrUnsupportedVersion is the error raised attempting to load data with an
+// unsupported version.
+message ErrUnsupportedVersion {
+  // The reason the data is unsupported.
+  stringtable.Msg reason = 1;
+  // If true, the client should prompt the user to update GAPID.
+  bool suggest_update = 2;
 }
 
 // Capture describes single capture file held by the server.

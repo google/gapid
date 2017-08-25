@@ -28,9 +28,11 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/pkg/errors"
 )
 
 // The list of captures currently imported.
@@ -191,6 +193,24 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 	d := newDecoder()
 	if err := pack.Read(ctx, bytes.NewReader(r.Data), d); err != nil {
+		switch err := errors.Cause(err).(type) {
+		case pack.ErrUnsupportedVersion:
+			switch {
+			case err.Version.GreaterThan(pack.MaxVersion):
+				return nil, &service.ErrUnsupportedVersion{
+					Reason:        messages.ErrFileTooNew(),
+					SuggestUpdate: true,
+				}
+			case err.Version.LessThan(pack.MinVersion):
+				return nil, &service.ErrUnsupportedVersion{
+					Reason: messages.ErrFileTooOld(),
+				}
+			default:
+				return nil, &service.ErrUnsupportedVersion{
+					Reason: messages.ErrFileCannotBeRead(),
+				}
+			}
+		}
 		return nil, err
 	}
 	if d.header == nil {

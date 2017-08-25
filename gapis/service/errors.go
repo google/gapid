@@ -25,7 +25,7 @@ func (e *ErrInvalidPath) Error() string {
 }
 
 func (e *ErrInvalidArgument) Error() string {
-	return fmt.Sprintf("The argument is invalid", e.Reason.Text(nil))
+	return fmt.Sprintf("The argument is invalid. Reason: %v", e.Reason.Text(nil))
 }
 
 func (e *ErrPathNotFollowable) Error() string {
@@ -34,4 +34,8 @@ func (e *ErrPathNotFollowable) Error() string {
 
 func (e *ErrInternal) Error() string {
 	return fmt.Sprintf("Internal error: %s", e.Message)
+}
+
+func (e *ErrUnsupportedVersion) Error() string {
+	return fmt.Sprintf("Unsupported version: %v", e.Reason.Text(nil))
 }

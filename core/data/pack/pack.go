@@ -27,11 +27,6 @@ const (
 	// ErrIncorrectMagic is the error returned when the file header is not matched.
 	ErrIncorrectMagic = fault.Const("Incorrect pack magic header")
 
-	// VersionMajor is the curent major version the package writes.
-	VersionMajor = 1
-	// VersionMinor is the current minor version the package writes.
-	VersionMinor = 1
-
 	initalBufferSize = 4096
 	maxVarintSize    = 10
 
@@ -39,6 +34,19 @@ const (
 	tagGroupFinalizer = 0
 	tagDeclareType    = 1
 	tagFirstObject    = 2
+)
+
+var (
+	// MinVersion is the current minimum supported version of pack files.
+	MinVersion = &Version{1, 1}
+
+	// MaxVersion is the current maximum supported version of pack files.
+	MaxVersion = &Version{1, 1}
+
+	// version is the version written by this package.
+	version = &Version{1, 1}
+
+	magicBytes = []byte(Magic)
 )
 
 func tyIdxAndGroupFromTag(tag uint64) (tyIdx uint64, isGroup bool) {
@@ -60,13 +68,35 @@ func tagFromTyIdxAndGroup(tyIdx uint64, isGroup bool) (tag int64) {
 type ErrUnsupportedVersion struct{ Version Version }
 
 func (e ErrUnsupportedVersion) Error() string {
-	return fmt.Sprintf("Unknown pack file version: %+v", e.Version)
+	return fmt.Sprintf("Unsupported pack file version: %+v", e.Version)
 }
 
-var (
-	magicBytes = []byte(Magic)
-	version    = Version{
-		Major: VersionMajor,
-		Minor: VersionMinor,
+// GreaterThan returns true if v is greater than o.
+func (v *Version) GreaterThan(o *Version) bool {
+	switch {
+	case v.Major > o.Major:
+		return true
+	case v.Major < o.Major:
+		return false
+	case v.Minor > o.Minor:
+		return true
+	case v.Minor < o.Minor:
+		return false
 	}
-)
+	return false
+}
+
+// LessThan returns true if v is less than o.
+func (v *Version) LessThan(o *Version) bool {
+	switch {
+	case v.Major < o.Major:
+		return true
+	case v.Major > o.Major:
+		return false
+	case v.Minor < o.Minor:
+		return true
+	case v.Minor > o.Minor:
+		return false
+	}
+	return false
+}

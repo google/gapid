@@ -162,8 +162,8 @@ func (r *reader) readHeader() (*Header, error) {
 	if err := r.pb.Unmarshal(header); err != nil {
 		return nil, err
 	}
-	if got := *header.GetVersion(); got != version {
-		return header, ErrUnsupportedVersion{got}
+	if got := header.GetVersion(); got.LessThan(MinVersion) || got.GreaterThan(MaxVersion) {
+		return header, ErrUnsupportedVersion{*got}
 	}
 	return header, nil
 }

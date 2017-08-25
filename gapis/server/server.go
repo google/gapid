@@ -152,7 +152,15 @@ func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*s
 
 func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error) {
 	ctx = log.Enter(ctx, "ImportCapture")
-	return capture.Import(ctx, name, data)
+	p, err := capture.Import(ctx, name, data)
+	if err != nil {
+		return nil, err
+	}
+	// Ensure the capture can be read by resolving it now.
+	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error) {
@@ -171,7 +179,15 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	if err != nil {
 		return nil, err
 	}
-	return capture.Import(ctx, name, in)
+	p, err := capture.Import(ctx, name, in)
+	if err != nil {
+		return nil, err
+	}
+	// Ensure the capture can be read by resolving it now.
+	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
