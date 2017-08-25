@@ -169,6 +169,13 @@ message Mesh {
 	DrawPrimitive draw_primitive = 1;
 	vertex.Buffer vertex_buffer = 2;
 	IndexBuffer index_buffer = 3;
+
+	message Stats {
+		uint32 vertices = 1;
+		uint32 indices = 2;
+		uint32 primitives = 3;
+	}
+	Stats stats = 4;
 }
 
 // Texture1D represents a one-dimensional texture resource.

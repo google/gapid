@@ -46,7 +46,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	c := GetContext(s, dc.Thread())
 
-	indices, glPrimitive, err := dc.getIndices(ctx, c, s)
+	indices, origIndexCount, glPrimitive, err := dc.getIndices(ctx, c, s)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +61,12 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 	}
 
 	// Look at the indices to find the number of vertices we're dealing with.
-	count := 0
+	count, uniqueIndices := 0, make(map[uint32]bool)
 	for _, i := range indices {
 		if count <= int(i) {
 			count = int(i) + 1
 		}
+		uniqueIndices[i] = true
 	}
 
 	if count == 0 {
@@ -123,6 +124,11 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		DrawPrimitive: drawPrimitive,
 		VertexBuffer:  vb,
 		IndexBuffer:   ib,
+		Stats:         &api.Mesh_Stats{
+			Vertices:   uint32(len(uniqueIndices)),
+			Indices:    origIndexCount,
+			Primitives: drawPrimitive.Count(origIndexCount),
+		},
 	}
 
 	if p.Options != nil && p.Options.Faceted {
