@@ -121,16 +121,15 @@ func (m *Mesh) Faceted(ctx context.Context) (*Mesh, error) {
 		DrawPrimitive: DrawPrimitive_Triangles,
 		VertexBuffer:  &vertex.Buffer{Streams: streams},
 		IndexBuffer:   ib,
+		Stats:         m.Stats,
 	}, nil
 }
 
 // TriangleCount returns the number of triangles this mesh contains.
 func (m *Mesh) TriangleCount() int {
 	switch m.DrawPrimitive {
-	case DrawPrimitive_Triangles:
-		return len(m.IndexBuffer.Indices) / 3
-	case DrawPrimitive_TriangleStrip, DrawPrimitive_TriangleFan:
-		return len(m.IndexBuffer.Indices) - 2
+	case DrawPrimitive_Triangles, DrawPrimitive_TriangleStrip, DrawPrimitive_TriangleFan:
+		return int(m.DrawPrimitive.Count(uint32(len(m.IndexBuffer.Indices))))
 	default:
 		return 0
 	}
@@ -197,5 +196,30 @@ func (m *Mesh) ConvertTo(ctx context.Context, f *vertex.BufferFormat) (*Mesh, er
 		DrawPrimitive: m.DrawPrimitive,
 		VertexBuffer:  vb,
 		IndexBuffer:   m.IndexBuffer,
+		Stats:         m.Stats,
 	}, nil
+}
+
+// Count returns the primitive count for the given number of vertices.
+func (dp DrawPrimitive) Count(vertices uint32) uint32 {
+	switch dp {
+	case DrawPrimitive_Points, DrawPrimitive_LineLoop:
+		return vertices
+	case DrawPrimitive_Lines:
+		return vertices / 2
+	case DrawPrimitive_LineStrip:
+		if vertices < 2 {
+			return 0
+		}
+		return vertices - 1
+	case DrawPrimitive_Triangles:
+		return vertices / 3
+	case DrawPrimitive_TriangleStrip, DrawPrimitive_TriangleFan:
+		if vertices < 3 {
+			return 0
+		}
+		return vertices - 2
+	default:
+		return 0
+	}
 }

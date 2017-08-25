@@ -90,7 +90,7 @@ func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.State, 
 	cb := CommandBuilder{Thread: dc.Thread()}
 	dID := i.Derived()
 
-	indices, drawMode, err := dc.getIndices(ctx, c, s)
+	indices, _, drawMode, err := dc.getIndices(ctx, c, s)
 	if err != nil {
 		return err
 	}
