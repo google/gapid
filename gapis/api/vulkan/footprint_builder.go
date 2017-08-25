@@ -1714,6 +1714,20 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Framebuffer))
 		bh.Alive = true
 
+	// debug marker name and tag setting commands. Always kept alive.
+	case *VkDebugMarkerSetObjectTagEXT:
+		read(ctx, bh, vkHandle(cmd.PTagInfo.Read(ctx, cmd, s, nil).Object))
+		bh.Alive = true
+	case *RecreateDebugMarkerSetObjectTagEXT:
+		read(ctx, bh, vkHandle(cmd.PTagInfo.Read(ctx, cmd, s, nil).Object))
+		bh.Alive = true
+	case *VkDebugMarkerSetObjectNameEXT:
+		read(ctx, bh, vkHandle(cmd.PNameInfo.Read(ctx, cmd, s, nil).Object))
+		bh.Alive = true
+	case *RecreateDebugMarkerSetObjectNameEXT:
+		read(ctx, bh, vkHandle(cmd.PNameInfo.Read(ctx, cmd, s, nil).Object))
+		bh.Alive = true
+
 	// commandbuffer
 	case *VkAllocateCommandBuffers:
 		count := uint64(cmd.PAllocateInfo.Read(ctx, cmd, s, nil).CommandBufferCount)

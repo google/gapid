@@ -667,8 +667,13 @@ bool inline CommandListRecreator<
     std::shared_ptr<RecreateCmdDebugMarkerBeginEXTData>>::
 operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
            const std::shared_ptr<RecreateCmdDebugMarkerBeginEXTData>& t) {
-  auto markerInfo = t->mMarkerInfo;
-  spy->RecreateCmdDebugMarkerBeginEXT(observer, commandBuf, &markerInfo);
+  VkDebugMarkerMarkerInfoEXT info{
+    VkStructureType::VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+    nullptr,
+    const_cast<char*>(t->mMarkerName.c_str()),
+    t->mColor,
+  };
+  spy->RecreateCmdDebugMarkerBeginEXT(observer, commandBuf, &info);
   return true;
 }
 
@@ -686,8 +691,13 @@ bool inline CommandListRecreator<
     std::shared_ptr<RecreateCmdDebugMarkerInsertEXTData>>::
 operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
            const std::shared_ptr<RecreateCmdDebugMarkerInsertEXTData>& t) {
-  auto markerInfo = t->mMarkerInfo;
-  spy->RecreateCmdDebugMarkerInsertEXT(observer, commandBuf, &markerInfo);
+  VkDebugMarkerMarkerInfoEXT info{
+    VkStructureType::VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+    nullptr,
+    const_cast<char*>(t->mMarkerName.c_str()),
+    t->mColor,
+  };
+  spy->RecreateCmdDebugMarkerInsertEXT(observer, commandBuf, &info);
   return true;
 }
 ///////////////// End CommandBuffer Commands

@@ -482,6 +482,10 @@ void VulkanSpy::addWords(CallObserver* observer, VkShaderModule module, size_val
     m->shaderWords = std::vector<uint32_t>(words, words+count/4);
 }
 
+void VulkanSpy::addDebugMarkerTagBytes(CallObserver* observer, std::shared_ptr<VulkanDebugMarkerInfo> debug_info, size_val size, uint8_t* ptag) {
+    debug_info->tagBytes = std::vector<uint8_t>(ptag, ptag+size);
+}
+
 void VulkanSpy::setSpecData(CallObserver* observer, std::shared_ptr<SpecializationInfo> info, size_val numBytes, void* pData) {
     info->specializationData = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(pData), reinterpret_cast<uint8_t*>(pData) + numBytes);
 }

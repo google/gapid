@@ -872,6 +872,67 @@ func rebuildCmdWriteTimestamp(
 		)
 }
 
+func rebuildCmdDebugMarkerBeginEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	s *api.State,
+	d *RecreateCmdDebugMarkerBeginEXTData) (func(), api.Cmd) {
+	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
+	var color F32ː4ᵃ
+	color[0] = d.Color[0]
+	color[1] = d.Color[1]
+	color[2] = d.Color[2]
+	color[3] = d.Color[3]
+	markerInfoData := s.AllocDataOrPanic(ctx,
+		VkDebugMarkerMarkerInfoEXT{
+			SType:       VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+			PNext:       NewVoidᶜᵖ(memory.Nullptr),
+			PMarkerName: NewCharᶜᵖ(markerNameData.Ptr()),
+			Color:       color,
+		})
+	return func() {
+			markerNameData.Free()
+			markerInfoData.Free()
+		}, cb.VkCmdDebugMarkerBeginEXT(commandBuffer, markerInfoData.Ptr()).AddRead(
+			markerNameData.Data()).AddRead(markerInfoData.Data())
+}
+
+func rebuildCmdDebugMarkerEndEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	s *api.State,
+	d *RecreateCmdDebugMarkerEndEXTData) (func(), api.Cmd) {
+	return func() {}, cb.VkCmdDebugMarkerEndEXT(commandBuffer)
+}
+
+func rebuildCmdDebugMarkerInsertEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	s *api.State,
+	d *RecreateCmdDebugMarkerInsertEXTData) (func(), api.Cmd) {
+	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
+	var color F32ː4ᵃ
+	color[0] = d.Color[0]
+	color[1] = d.Color[1]
+	color[2] = d.Color[2]
+	color[3] = d.Color[3]
+	markerInfoData := s.AllocDataOrPanic(ctx,
+		VkDebugMarkerMarkerInfoEXT{
+			SType:       VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+			PNext:       NewVoidᶜᵖ(memory.Nullptr),
+			PMarkerName: NewCharᶜᵖ(markerNameData.Ptr()),
+			Color:       color,
+		})
+	return func() {
+			markerNameData.Free()
+			markerInfoData.Free()
+		}, cb.VkCmdDebugMarkerInsertEXT(commandBuffer, markerInfoData.Ptr()).AddRead(
+			markerNameData.Data()).AddRead(markerInfoData.Data())
+}
+
 // AddCommand recreates the command defined by recreateInfo and places it
 // into the given command buffer. It returns the atoms that it
 // had to create in order to satisfy the command. It also returns a function
@@ -970,6 +1031,13 @@ func AddCommand(ctx context.Context,
 		return rebuildCmdUpdateBuffer(ctx, cb, commandBuffer, s, t)
 	case *RecreateCmdWriteTimestampData:
 		return rebuildCmdWriteTimestamp(ctx, cb, commandBuffer, s, t)
+	case *RecreateCmdDebugMarkerBeginEXTData:
+		return rebuildCmdDebugMarkerBeginEXT(ctx, cb, commandBuffer, s, t)
+	case *RecreateCmdDebugMarkerEndEXTData:
+		return rebuildCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, s, t)
+	case *RecreateCmdDebugMarkerInsertEXTData:
+		return rebuildCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, s, t)
+
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

@@ -258,6 +258,8 @@ func (e externs) createPushConstantsData(layout VkPipelineLayout, stageFlags VkS
 func (e externs) addWords(module VkShaderModule, numBytes interface{}, data interface{}) {
 }
 
+func (e externs) addDebugMarkerTagBytes(*VulkanDebugMarkerInfo, interface{}, interface{}) {}
+
 func (e externs) setSpecData(module *SpecializationInfo, numBytes interface{}, data interface{}) {
 }
 
