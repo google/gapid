@@ -62,6 +62,115 @@ class TemporaryShaderModule {
   VulkanSpy* spy_;
   std::vector<std::shared_ptr<ShaderModuleObject>> temporary_shader_modules_;
 };
+
+VkRenderPass RebuildRenderPass(CallObserver* observer, VulkanSpy* spy,
+            std::shared_ptr<RenderPassObject>& render_pass_object) {
+    if (!render_pass_object) {
+        return VkRenderPass(0);
+    }
+    VkRenderPassCreateInfo create_info = {
+        VkStructureType::VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        nullptr,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        0,
+        nullptr
+    };
+    RenderPassObject& render_pass = *render_pass_object;
+    std::vector<VkAttachmentDescription> attachment_descriptions;
+    for (size_t i = 0; i < render_pass.mAttachmentDescriptions.size(); ++i) {
+        attachment_descriptions.push_back(render_pass.mAttachmentDescriptions[i]);
+    }
+    struct SubpassDescriptionData {
+        std::vector<VkAttachmentReference> inputAttachments;
+        std::vector<VkAttachmentReference> colorAttachments;
+        std::vector<VkAttachmentReference> resolveAttachments;
+        std::vector<uint32_t> preserveAttachments;
+    };
+    std::vector<std::unique_ptr<SubpassDescriptionData>> descriptionData;
+    std::vector<VkSubpassDescription> subpassDescriptions;
+    for (size_t i = 0; i < render_pass.mSubpassDescriptions.size(); ++i) {
+        auto& s = render_pass.mSubpassDescriptions[i];
+        auto dat = std::unique_ptr<SubpassDescriptionData>(new SubpassDescriptionData());
+        for (size_t j = 0; j < s.mInputAttachments.size(); ++j) {
+            dat->inputAttachments.push_back(s.mInputAttachments[j]);
+        }
+        for (size_t j = 0; j < s.mColorAttachments.size(); ++j) {
+            dat->colorAttachments.push_back(s.mColorAttachments[j]);
+        }
+        for (size_t j = 0; j < s.mResolveAttachments.size(); ++j) {
+            dat->resolveAttachments.push_back(s.mResolveAttachments[j]);
+        }
+        for (size_t j = 0; j < s.mPreserveAttachments.size(); ++j) {
+            dat->preserveAttachments.push_back(s.mPreserveAttachments[j]);
+        }
+        subpassDescriptions.push_back({});
+        auto& d = subpassDescriptions.back();
+        d.mflags = s.mFlags;
+        d.mpipelineBindPoint = s.mPipelineBindPoint;
+        d.minputAttachmentCount = dat->inputAttachments.size();
+        d.mpInputAttachments = dat->inputAttachments.data();
+        d.mcolorAttachmentCount = dat->colorAttachments.size();
+        d.mpColorAttachments =dat->colorAttachments.data();
+        d.mpResolveAttachments = dat->resolveAttachments.size() > 0?
+                                    dat->resolveAttachments.data(): nullptr;
+        d.mpreserveAttachmentCount = dat->preserveAttachments.size();
+        d.mpPreserveAttachments = dat->preserveAttachments.data();
+
+        if (s.mDepthStencilAttachment) {
+            d.mpDepthStencilAttachment = s.mDepthStencilAttachment.get();
+        }
+        descriptionData.push_back(std::move(dat));
+    }
+    std::vector<VkSubpassDependency> subpassDependencies;
+    for (size_t i = 0; i < render_pass.mSubpassDependencies.size(); ++i) {
+        subpassDependencies.push_back(render_pass.mSubpassDependencies[i]);
+    }
+    create_info.mattachmentCount = attachment_descriptions.size();
+    create_info.mpAttachments = attachment_descriptions.data();
+    create_info.msubpassCount = subpassDescriptions.size();
+    create_info.mpSubpasses = subpassDescriptions.data();
+    create_info.mdependencyCount = subpassDependencies.size();
+    create_info.mpDependencies = subpassDependencies.data();
+    spy->RecreateRenderPass(observer, render_pass.mDevice, &create_info, &render_pass.mVulkanHandle);
+    return render_pass.mVulkanHandle;
+}
+
+class TemporaryRenderPass {
+ public:
+  TemporaryRenderPass(CallObserver* observer, VulkanSpy* spy)
+      : observer_(observer), spy_(spy), temporary_render_passes_() {}
+
+  VkRenderPass CreateRenderPass(
+      std::shared_ptr<RenderPassObject>& render_pass_object) {
+    RebuildRenderPass(observer_, spy_, render_pass_object);
+    temporary_render_passes_.push_back(render_pass_object);
+    return render_pass_object->mVulkanHandle;
+  }
+
+  ~TemporaryRenderPass() {
+    for (auto m : temporary_render_passes_) {
+      spy_->RecreateDestroyRenderPass(observer_, m->mDevice,
+                                        m->mVulkanHandle);
+    }
+  }
+
+  bool has(VkRenderPass renderpass) {
+      return std::find_if(temporary_render_passes_.begin(), 
+        temporary_render_passes_.end(), 
+        [renderpass](std::shared_ptr<RenderPassObject>& p) {
+             return p->mVulkanHandle == renderpass;
+        }) != temporary_render_passes_.end();
+  }
+
+ private:
+  CallObserver* observer_;
+  VulkanSpy* spy_;
+  std::vector<std::shared_ptr<RenderPassObject>> temporary_render_passes_;
+};
 }  // anonymous namespace
 
 void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
@@ -1120,75 +1229,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
     }
     {
-        VkRenderPassCreateInfo create_info = {
-            VkStructureType::VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            nullptr,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            nullptr
-        };
         for (auto& rp: RenderPasses) {
-            auto& render_pass = *rp.second;
-            std::vector<VkAttachmentDescription> attachment_descriptions;
-            for (size_t i = 0; i < render_pass.mAttachmentDescriptions.size(); ++i) {
-                attachment_descriptions.push_back(render_pass.mAttachmentDescriptions[i]);
-            }
-            struct SubpassDescriptionData {
-                std::vector<VkAttachmentReference> inputAttachments;
-                std::vector<VkAttachmentReference> colorAttachments;
-                std::vector<VkAttachmentReference> resolveAttachments;
-                std::vector<uint32_t> preserveAttachments;
-            };
-            std::vector<std::unique_ptr<SubpassDescriptionData>> descriptionData;
-            std::vector<VkSubpassDescription> subpassDescriptions;
-            for (size_t i = 0; i < render_pass.mSubpassDescriptions.size(); ++i) {
-                auto& s = render_pass.mSubpassDescriptions[i];
-                auto dat = std::unique_ptr<SubpassDescriptionData>(new SubpassDescriptionData());
-                for (size_t j = 0; j < s.mInputAttachments.size(); ++j) {
-                    dat->inputAttachments.push_back(s.mInputAttachments[j]);
-                }
-                for (size_t j = 0; j < s.mColorAttachments.size(); ++j) {
-                    dat->colorAttachments.push_back(s.mColorAttachments[j]);
-                }
-                for (size_t j = 0; j < s.mResolveAttachments.size(); ++j) {
-                    dat->resolveAttachments.push_back(s.mResolveAttachments[j]);
-                }
-                for (size_t j = 0; j < s.mPreserveAttachments.size(); ++j) {
-                    dat->preserveAttachments.push_back(s.mPreserveAttachments[j]);
-                }
-                subpassDescriptions.push_back({});
-                auto& d = subpassDescriptions.back();
-                d.mflags = s.mFlags;
-                d.mpipelineBindPoint = s.mPipelineBindPoint;
-                d.minputAttachmentCount = dat->inputAttachments.size();
-                d.mpInputAttachments = dat->inputAttachments.data();
-                d.mcolorAttachmentCount = dat->colorAttachments.size();
-                d.mpColorAttachments =dat->colorAttachments.data();
-                d.mpResolveAttachments = dat->resolveAttachments.size() > 0?
-                                            dat->resolveAttachments.data(): nullptr;
-                d.mpreserveAttachmentCount = dat->preserveAttachments.size();
-                d.mpPreserveAttachments = dat->preserveAttachments.data();
-
-                if (s.mDepthStencilAttachment) {
-                    d.mpDepthStencilAttachment = s.mDepthStencilAttachment.get();
-                }
-                descriptionData.push_back(std::move(dat));
-            }
-            std::vector<VkSubpassDependency> subpassDependencies;
-            for (size_t i = 0; i < render_pass.mSubpassDependencies.size(); ++i) {
-                subpassDependencies.push_back(render_pass.mSubpassDependencies[i]);
-            }
-            create_info.mattachmentCount = attachment_descriptions.size();
-            create_info.mpAttachments = attachment_descriptions.data();
-            create_info.msubpassCount = subpassDescriptions.size();
-            create_info.mpSubpasses = subpassDescriptions.data();
-            create_info.mdependencyCount = subpassDependencies.size();
-            create_info.mpDependencies = subpassDependencies.data();
-            RecreateRenderPass(observer, render_pass.mDevice, &create_info, &render_pass.mVulkanHandle);
+            RebuildRenderPass(observer, this, rp.second);
         }
     }
     {
@@ -1212,6 +1254,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
     // use them in the recreated pipelines, then delete them.
     {
       TemporaryShaderModule temporary_shader_modules(observer, this);
+      TemporaryRenderPass temporary_render_passes(observer, this);
 
       for (auto& compute_pipeline : ComputePipelines) {
         auto& pipeline = *compute_pipeline.second;
@@ -1316,12 +1359,18 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         dynamic_state.msType = VkStructureType::
             VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 
-        create_info.mflags = pipeline.mFlags;
+        create_info.mflags = pipeline.mFlags & ~(VkPipelineCreateFlagBits::VK_PIPELINE_CREATE_DERIVATIVE_BIT);
         create_info.mstageCount = pipeline.mStages.size();
         create_info.mlayout = pipeline.mLayout->mVulkanHandle;
-        create_info.mrenderPass = pipeline.mRenderPass->mVulkanHandle;
+        bool render_pass_exists = RenderPasses.find(pipeline.mRenderPass->mVulkanHandle) != RenderPasses.end() ||
+                                    temporary_render_passes.has(pipeline.mRenderPass->mVulkanHandle);
+        create_info.mrenderPass = render_pass_exists ?
+                                        pipeline.mRenderPass->mVulkanHandle: temporary_render_passes.CreateRenderPass(pipeline.mRenderPass);
         create_info.msubpass = pipeline.mSubpass;
-        create_info.mbasePipelineHandle = pipeline.mBasePipeline;
+        // Turn off derived pipelines in MEC.
+        // Dervied pipelines are a performance improvement, but have no semantic impact.
+        // TODO(awoloszy): Re-enable derived pipelines, i.e. sort pipeline creation. 
+        create_info.mbasePipelineHandle = 0;
 
         for (size_t i = 0; i < pipeline.mStages.size(); ++i) {
           auto& stage = pipeline.mStages[i];

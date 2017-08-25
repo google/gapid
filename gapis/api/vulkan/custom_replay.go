@@ -1067,6 +1067,15 @@ func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, s *api.State, 
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateDestroyRenderPass) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	cb := CommandBuilder{Thread: a.thread}
+	allocator := memory.Nullptr
+	hijack := cb.VkDestroyRenderPass(a.Device, a.RenderPass, allocator)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreateDescriptorPool) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}

@@ -3492,6 +3492,12 @@ cmd void vkDestroyQueryPool(
 @threadSafety("system")
 @indirect("VkDevice")
 @blocking
+@no_replay
+// GetQueryPoolResults has no semantic impact
+// on replay, so avoid replaying it. It can cause
+// hangs depending on the state of the query pool
+// TODO(awoloszyn): Work out all of the cases where this
+// may cause hangs, and fix it for replay.
 cmd VkResult vkGetQueryPoolResults(
     VkDevice           device,
     VkQueryPool        queryPool,
@@ -3906,6 +3912,14 @@ cmd VkResult vkCreateShaderModule(
 cmd void RecreateDestroyShaderModule(
     VkDevice       device,
     VkShaderModule shaderModule) { }
+
+@override
+@custom
+@no_replay
+cmd void RecreateDestroyRenderPass(
+    VkDevice       device,
+    VkRenderPass renderPass) { }
+
 
 @indirect("VkDevice")
 cmd void vkDestroyShaderModule(
