@@ -88,6 +88,11 @@ func (t *readFramebuffer) depth(
 		c := GetContext(s, thread)
 
 		if fb == 0 {
+			if c.Bound.DrawFramebuffer == nil {
+				log.W(ctx, "No framebuffer bound after %v", id)
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+				return
+			}
 			fb = c.Bound.DrawFramebuffer.GetID()
 		}
 
@@ -119,6 +124,11 @@ func (t *readFramebuffer) color(
 		c := GetContext(s, thread)
 
 		if fb == 0 {
+			if c.Bound.DrawFramebuffer == nil {
+				log.W(ctx, "No framebuffer bound after %v", id)
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+				return
+			}
 			fb = c.Bound.DrawFramebuffer.GetID()
 		}
 
