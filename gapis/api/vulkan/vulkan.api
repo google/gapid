@@ -8712,6 +8712,20 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
   return ?
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDebugMarkerBeginEXT(
+    VkCommandBuffer             commandBuffer,
+    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
+    read(pMarkerInfo[0:1])
+}
+
+@internal class
+RecreateCmdDebugMarkerBeginEXTData {
+  VkDebugMarkerMarkerInfoEXT MarkerInfo,
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_marker")
@@ -8721,8 +8735,20 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
-  read(pMarkerInfo[0:1])
+  addCmd(commandBuffer, new!RecreateCmdDebugMarkerBeginEXTData(
+    MarkerInfo: pMarkerInfo[0]
+  ), Unimplemented(), doCmdNop)
 }
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDebugMarkerEndEXT(
+    VkCommandBuffer             commandBuffer) {
+}
+
+@internal class
+RecreateCmdDebugMarkerEndEXTData {}
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -8732,6 +8758,22 @@ cmd void vkCmdDebugMarkerBeginEXT(
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
     VkCommandBuffer                             commandBuffer) {
+    addCmd(commandBuffer, new!RecreateCmdDebugMarkerEndEXTData(),
+      Unimplemented(), doCmdNop)
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateCmdDebugMarkerInsertEXT(
+  VkCommandBuffer             commandBuffer,
+  VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
+  read(pMarkerInfo[0:1])
+}
+
+@internal class
+RecreateCmdDebugMarkerInsertEXTData {
+  VkDebugMarkerMarkerInfoEXT MarkerInfo
 }
 
 @threadSafety("app")
@@ -8744,6 +8786,8 @@ cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
   read(pMarkerInfo[0:1])
+  addCmd(commandBuffer, new!RecreateCmdDebugMarkerInsertEXTData(),
+    Unimplemented(), doCmdNop)
 }
 
 /////////////////////////////

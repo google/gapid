@@ -82,11 +82,10 @@ uint32_t SpyOverride_vkDebugMarkerSetObjectNameEXT(
 
 void SpyOverride_vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
-
 void SpyOverride_vkCmdDebugMarkerEndEXT(VkCommandBuffer commandBuffer) {}
-
 void SpyOverride_vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+
 void SpyOverride_RecreateInstance(const VkInstanceCreateInfo*, VkInstance*) {}
 void SpyOverride_RecreateState() {}
 void SpyOverride_RecreatePhysicalDevices(VkInstance, uint32_t*,
@@ -281,6 +280,11 @@ void SpyOverride_RecreateCmdWaitEvents(VkCommandBuffer, uint32_t,
                                        const VkMemoryBarrier*, uint32_t,
                                        const VkBufferMemoryBarrier*, uint32_t,
                                        const VkImageMemoryBarrier*) {}
+void SpyOverride_RecreateCmdDebugMarkerBeginEXT(
+    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+void SpyOverride_RecreateCmdDebugMarkerEndEXT(VkCommandBuffer commandBuffer) {}
+void SpyOverride_RecreateCmdDebugMarkerInsertEXT(
+    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
 
 void SpyOverride_RecreateXCBSurfaceKHR(VkDevice,
                                        const VkXcbSurfaceCreateInfoKHR*,

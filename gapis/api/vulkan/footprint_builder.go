@@ -1109,6 +1109,17 @@ func (vb *FootprintBuilder) draw(ctx context.Context,
 	}
 }
 
+func (vb *FootprintBuilder) keepSubmittedCommandAlive(ctx context.Context,
+	ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
+	vkCb VkCommandBuffer) {
+	cbc := vb.newCommand(ctx, bh, vkCb)
+	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {
+		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
+		cbh.Alive = true
+		ft.AddBehavior(ctx, cbh)
+	}
+}
+
 func (t VkIndexType) size() int {
 	switch t {
 	case VkIndexType_VK_INDEX_TYPE_UINT16:
@@ -2606,6 +2617,21 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 
+	// debug marker extension commandbuffer commands. Those commands are kept
+	// alive if they are submitted.
+	case *VkCmdDebugMarkerBeginEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+	case *RecreateCmdDebugMarkerBeginEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+	case *VkCmdDebugMarkerEndEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+	case *RecreateCmdDebugMarkerEndEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+	case *VkCmdDebugMarkerInsertEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+	case *RecreateCmdDebugMarkerInsertEXT:
+		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
+
 	// event commandbuffer commands
 	case *VkCmdSetEvent:
 		read(ctx, bh, vkHandle(cmd.Event))
@@ -2920,6 +2946,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		*VkGetPhysicalDeviceSurfaceCapabilitiesKHR,
 		*VkGetPhysicalDeviceSurfaceFormatsKHR,
 		*VkGetPhysicalDeviceSurfacePresentModesKHR:
+		bh.Alive = true
+	case *RecreateState:
 		bh.Alive = true
 
 	// Unhandled, always keep alive
