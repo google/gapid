@@ -906,6 +906,30 @@ func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, s *api.State, b *bui
 	return hijack.Mutate(ctx, s, b)
 }
 
+func (a *RecreateCmdDebugMarkerBeginEXT) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	cb := CommandBuilder{Thread: a.thread}
+	hijack := cb.VkCmdDebugMarkerBeginEXT(a.CommandBuffer, a.PMarkerInfo)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDebugMarkerEndEXT) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	cb := CommandBuilder{Thread: a.thread}
+	hijack := cb.VkCmdDebugMarkerEndEXT(a.CommandBuffer)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
+func (a *RecreateCmdDebugMarkerInsertEXT) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	cb := CommandBuilder{Thread: a.thread}
+	hijack := cb.VkCmdDebugMarkerInsertEXT(a.CommandBuffer, a.PMarkerInfo)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	return hijack.Mutate(ctx, s, b)
+}
+
 func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}

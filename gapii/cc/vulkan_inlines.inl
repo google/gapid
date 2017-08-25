@@ -661,6 +661,35 @@ operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
       image_memory_barriers.size(), image_memory_barriers.data());
    return true;
 }
+
+template <>
+bool inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdDebugMarkerBeginEXTData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdDebugMarkerBeginEXTData>& t) {
+  auto markerInfo = t->mMarkerInfo;
+  spy->RecreateCmdDebugMarkerBeginEXT(observer, commandBuf, &markerInfo);
+  return true;
+}
+
+template <>
+bool inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdDebugMarkerEndEXTData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdDebugMarkerEndEXTData>& t) {
+  spy->RecreateCmdDebugMarkerEndEXT(observer, commandBuf);
+  return true;
+}
+
+template <>
+bool inline CommandListRecreator<
+    std::shared_ptr<RecreateCmdDebugMarkerInsertEXTData>>::
+operator()(VkCommandBuffer commandBuf, CallObserver* observer, VulkanSpy* spy,
+           const std::shared_ptr<RecreateCmdDebugMarkerInsertEXTData>& t) {
+  auto markerInfo = t->mMarkerInfo;
+  spy->RecreateCmdDebugMarkerInsertEXT(observer, commandBuf, &markerInfo);
+  return true;
+}
 ///////////////// End CommandBuffer Commands
 
 template<typename RecreatePayload, typename Payload, typename Func>
