@@ -236,7 +236,6 @@ func parseDevices(ctx context.Context, out string) (map[string]bind.Status, erro
 			continue
 		case 2:
 			serial, status := fields[0], fields[1]
-			fmt.Printf("serial: %v, status: %v\n", serial, status)
 			switch status {
 			case "unknown":
 				devices[serial] = bind.Status_Unknown
