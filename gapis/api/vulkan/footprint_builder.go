@@ -1677,6 +1677,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkDestroyShaderModule:
 		read(ctx, bh, vkHandle(cmd.ShaderModule))
 		bh.Alive = true
+	case *RecreateDestroyShaderModule:
+		read(ctx, bh, vkHandle(cmd.ShaderModule))
+		bh.Alive = true
 
 	// create/destroy renderpass
 	case *VkCreateRenderPass:
@@ -1684,6 +1687,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *RecreateRenderPass:
 		write(ctx, bh, vkHandle(cmd.PRenderPass.Read(ctx, cmd, s, nil)))
 	case *VkDestroyRenderPass:
+		read(ctx, bh, vkHandle(cmd.RenderPass))
+		bh.Alive = true
+	case *RecreateDestroyRenderPass:
 		read(ctx, bh, vkHandle(cmd.RenderPass))
 		bh.Alive = true
 

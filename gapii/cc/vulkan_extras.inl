@@ -122,6 +122,7 @@ void SpyOverride_RecreateRenderPass(VkDevice, const VkRenderPassCreateInfo*,
 void SpyOverride_RecreateShaderModule(VkDevice, const VkShaderModuleCreateInfo*,
                                       VkShaderModule*) {}
 void SpyOverride_RecreateDestroyShaderModule(VkDevice, VkShaderModule) {}
+void SpyOverride_RecreateDestroyRenderPass(VkDevice, VkRenderPass) {}
 void SpyOverride_RecreateDescriptorPool(VkDevice,
                                         const VkDescriptorPoolCreateInfo*,
                                         VkDescriptorPool*) {}
