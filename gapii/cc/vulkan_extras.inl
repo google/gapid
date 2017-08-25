@@ -70,6 +70,23 @@ uint32_t SpyOverride_vkCreateSwapchainKHR(VkDevice device,
                                           VkSwapchainCreateInfoKHR* pCreateInfo,
                                           VkAllocationCallbacks* pAllocator,
                                           VkSwapchainKHR* pImage);
+uint32_t SpyOverride_vkDebugMarkerSetObjectTagEXT(
+    VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+  return VkResult::VK_SUCCESS;
+}
+
+uint32_t SpyOverride_vkDebugMarkerSetObjectNameEXT(
+    VkDevice device, VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+  return VkResult::VK_SUCCESS;
+}
+
+void SpyOverride_vkCmdDebugMarkerBeginEXT(
+    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+
+void SpyOverride_vkCmdDebugMarkerEndEXT(VkCommandBuffer commandBuffer) {}
+
+void SpyOverride_vkCmdDebugMarkerInsertEXT(
+    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
 void SpyOverride_RecreateInstance(const VkInstanceCreateInfo*, VkInstance*) {}
 void SpyOverride_RecreateState() {}
 void SpyOverride_RecreatePhysicalDevices(VkInstance, uint32_t*,
@@ -206,8 +223,7 @@ void SpyOverride_RecreateCmdSetViewport(VkCommandBuffer, uint32_t, uint32_t,
                                         const VkViewport*) {}
 void SpyOverride_RecreateCmdSetDepthBias(VkCommandBuffer, float, float, float) {
 }
-void SpyOverride_RecreateCmdSetDepthBounds(VkCommandBuffer, float, float) {
-}
+void SpyOverride_RecreateCmdSetDepthBounds(VkCommandBuffer, float, float) {}
 void SpyOverride_RecreateCmdSetLineWidth(VkCommandBuffer, float) {}
 void SpyOverride_RecreateCmdSetStencilCompareMask(VkCommandBuffer,
                                                   VkStencilFaceFlags,

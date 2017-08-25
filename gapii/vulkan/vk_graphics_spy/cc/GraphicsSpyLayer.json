@@ -10,7 +10,19 @@
     "functions": {
       "vkGetDeviceProcAddr": "gapid_vkGetDeviceProcAddr",
       "vkGetInstanceProcAddr": "gapid_vkGetInstanceProcAddr"
-    }
+    },
+    "device_extensions": [
+      {
+        "name": "VK_EXT_debug_marker",
+        "spec_version": "4",
+        "entrypoints": ["vkDebugMarkerSetObjectTagEXT",
+                        "vkDebugMarkerSetObjectNameEXT",
+                        "vkCmdDebugMarkerBeginEXT",
+                        "vkCmdDebugMarkerEndEXT",
+                        "vkCmdDebugMarkerInsertEXT"
+                       ]
+      }
+    ]
   }
 }
 

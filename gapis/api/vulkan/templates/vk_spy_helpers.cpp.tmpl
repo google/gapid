@@ -150,8 +150,59 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(const cha
     return VkResult::VK_SUCCESS;
 }
 
-uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {
-    *pCount = 0;
+uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {    
+    //auto next_layer_enumerate_extensions = mImports.mVkInstanceFunctions[PhysicalDevices[physicalDevice]->mInstance].vkEnumerateDeviceExtensionProperties;
+    gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES next_layer_enumerate_extensions = NULL;
+    auto phy_dev_iter = PhysicalDevices.find(physicalDevice);
+    if (phy_dev_iter != PhysicalDevices.end()) {
+        auto inst_func_iter = mImports.mVkInstanceFunctions.find(phy_dev_iter->second->mInstance);
+        if (inst_func_iter != mImports.mVkInstanceFunctions.end()) {
+            next_layer_enumerate_extensions = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES>(
+                inst_func_iter->second.vkEnumerateDeviceExtensionProperties);
+        } 
+    }
+    
+    uint32_t next_layer_count = 0;
+    uint32_t next_layer_result;
+    if (next_layer_enumerate_extensions) {
+        next_layer_result = next_layer_enumerate_extensions(physicalDevice, pLayerName, &next_layer_count, NULL);
+        if (next_layer_result != VkResult::VK_SUCCESS) {
+            return next_layer_result;
+        }
+    }
+    std::vector<VkExtensionProperties> properties(next_layer_count, VkExtensionProperties{});
+    //properties.reserve(next_layer_count+1);
+    if (next_layer_enumerate_extensions) {
+        next_layer_result = next_layer_enumerate_extensions(physicalDevice, pLayerName, &next_layer_count, properties.data());
+        if (next_layer_result != VkResult::VK_SUCCESS) {
+            return next_layer_result;
+        }
+    }
+    bool has_debug_marker_ext = false;
+    for (VkExtensionProperties& ext : properties) {
+        // TODO: Check the spec version and emit warning if not match.
+        // TODO: refer to VK_EXT_DEBUG_MARKER_EXTENSION_NAME
+        if (!strcmp(ext.mextensionName, "VK_EXT_debug_marker")) {
+            has_debug_marker_ext = true;
+            break;
+        }
+    }
+    if (!has_debug_marker_ext) {
+        // TODO: refer to VK_EXT_DEBUG_MARKER_EXTENSION_NAME and VK_EXT_DEBUG_MARKER_SPEC_VERSION
+        char debug_marker_extension_name[] = "VK_EXT_debug_marker";
+        uint32_t debug_marker_spec_version = 4;
+        properties.emplace_back(VkExtensionProperties{debug_marker_extension_name, debug_marker_spec_version});
+    }
+    if (pProperties == NULL) {
+        *pCount = properties.size();
+        return VkResult::VK_SUCCESS;
+    }
+    uint32_t copy_count = properties.size() < *pCount ? properties.size():*pCount;
+    memcpy(pProperties, properties.data(), copy_count * sizeof(VkExtensionProperties));
+    if (*pCount < properties.size()) {
+        return VkResult::VK_INCOMPLETE;
+    }
+    *pCount = properties.size();
     return VkResult::VK_SUCCESS;
 }
 
@@ -223,7 +274,7 @@ void VulkanSpy::SpyOverride_vkDestroyInstance(VkInstance instance, VkAllocationC
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo* pCreateInfo, VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
-      VkLayerDeviceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
+    VkLayerDeviceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
     // Grab the fpGetInstanceProcAddr from the layer_info. We will get
     // vkCreateDevice from this.
     // Note: we cannot use our instance_map because we do not have a
@@ -247,6 +298,30 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, 
     // The next layer may read from layer_info,
     // so increment the pointer for it.
     layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
+
+    //// Prepare the enabled extension list for the next layer's vkCreateDevice
+    auto enumerate_dev_exts = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES>(
+        mImports.mVkInstanceFunctions[PhysicalDevices[physicalDevice]->mInstance].vkEnumerateDeviceExtensionProperties);
+    uint32_t extension_count = 0;
+    uint32_t enumerate_extension_result;
+    enumerate_extension_result = enumerate_dev_exts(physicalDevice, nullptr, &extension_count, nullptr);
+    if (enumerate_extension_result != VkResult::VK_SUCCESS) {
+      return VkResult::VK_ERROR_INITIALIZATION_FAILED;
+    }
+    std::vector<VkExtensionProperties> ext_properties;
+    ext_properties.reserve(extension_count);
+    enumerate_extension_result = enumerate_dev_exts(physicalDevice, nullptr, &extension_count, ext_properties.data());
+    if (enumerate_extension_result != VkResult::VK_SUCCESS) {
+      return VkResult::VK_ERROR_INITIALIZATION_FAILED;
+    }
+    std::vector<char*> extension_names;
+    for(uint32_t i = 0; i < pCreateInfo->menabledExtensionCount; i++) {
+      if (strcmp(pCreateInfo->mppEnabledExtensionNames[i], "VK_EXT_debug_marker")) {
+        extension_names.push_back(pCreateInfo->mppEnabledExtensionNames[i]);
+      }
+    }
+    pCreateInfo->mppEnabledExtensionNames = extension_names.data();
+    pCreateInfo->menabledExtensionCount = extension_names.size();
 
     // Actually make the call to vkCreateDevice.
     uint32_t result = create_device(physicalDevice, pCreateInfo, pAllocator, pDevice);
