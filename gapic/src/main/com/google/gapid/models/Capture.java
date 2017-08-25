@@ -29,6 +29,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
+import com.google.gapid.server.Client.UnsupportedVersionException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 
@@ -103,6 +104,8 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
       } else {
         return success(capturePath);
       }
+    } catch (UnsupportedVersionException e) {
+      return error(Loadable.Message.error(e.getMessage()));
     } catch (RpcException e) {
       return error(Loadable.Message.error(e));
     } catch (ExecutionException e) {

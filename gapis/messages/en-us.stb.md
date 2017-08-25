@@ -154,3 +154,15 @@ There are no new builds available.
 # ERR_INVALID_MEMORY_POOL
 
 Pool {{pool}} not found.
+
+# ERR_FILE_CANNOT_BE_READ
+
+The file cannot be read.
+
+# ERR_FILE_TOO_NEW
+
+The file was created by a more recent version of GAPID and cannot be read.
+
+# ERR_FILE_TOO_OLD
+
+The file was created by an old version of GAPID and cannot be read.

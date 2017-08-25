@@ -46,7 +46,7 @@ func NewWriter(to io.Writer) (*Writer, error) {
 	if err := w.writeMagic(); err != nil {
 		return nil, err
 	}
-	header := &Header{Version: &version}
+	header := &Header{Version: version}
 	if err := w.writeHeader(header); err != nil {
 		return nil, err
 	}
