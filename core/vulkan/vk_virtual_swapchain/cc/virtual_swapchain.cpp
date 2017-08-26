@@ -76,18 +76,18 @@ VirtualSwapchain::VirtualSwapchain(
           nullptr,                             // pNext
           0,                                   // flags
           VK_IMAGE_TYPE_2D,                    // imageType
-          swapchain_info_.imageFormat,        // format
+          swapchain_info_.imageFormat,         // format
           VkExtent3D{swapchain_info_.imageExtent.width,
                      swapchain_info_.imageExtent.height, 1}, // extent
-          1,                                                  // mipLevels
+          1,                                                 // mipLevels
           swapchain_info_.imageArrayLayers,                  // arrayLayers
-          VK_SAMPLE_COUNT_1_BIT,                              // samples
-          VK_IMAGE_TILING_OPTIMAL,                            // tiling
+          VK_SAMPLE_COUNT_1_BIT,                             // samples
+          VK_IMAGE_TILING_OPTIMAL,                           // tiling
           swapchain_info_.imageUsage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, // usage
           swapchain_info_.imageSharingMode,      // sharingmode
           swapchain_info_.queueFamilyIndexCount, // queueFamilyIndexCount
           swapchain_info_.pQueueFamilyIndices,   // queueFamilyIndices
-          VK_IMAGE_LAYOUT_UNDEFINED,              // initialLayout
+          VK_IMAGE_LAYOUT_UNDEFINED,             // initialLayout
       };
       // The size of the buffer that we need is surprisingly easy.
       // Pixel-width * width * height. The GPU will copy into the
@@ -111,8 +111,9 @@ VirtualSwapchain::VirtualSwapchain(
           buffer_memory_size,                   // size
           VK_BUFFER_USAGE_TRANSFER_DST_BIT,     // usage
           VK_SHARING_MODE_EXCLUSIVE,            // sharingMode
-          0,
-          nullptr};
+          0,                                    // queueFamilyIndexCount
+          nullptr                               // pQueueFamilyIndices
+        };
 
       VkCommandPoolCreateInfo command_pool_info{
           VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // sType
@@ -203,12 +204,13 @@ VirtualSwapchain::VirtualSwapchain(
           VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
           nullptr,                                 // pNext
           VK_ACCESS_TRANSFER_WRITE_BIT,            // srcAccessMask
-          VK_ACCESS_HOST_READ_BIT,                 // dstAccessMask,
-          VK_QUEUE_FAMILY_IGNORED,
-          VK_QUEUE_FAMILY_IGNORED,
-          image_data.buffer_,
-          0,
-          VK_WHOLE_SIZE};
+          VK_ACCESS_HOST_READ_BIT,                 // dstAccessMask
+          VK_QUEUE_FAMILY_IGNORED,                 // srcQueueFamilyIndex
+          VK_QUEUE_FAMILY_IGNORED,                 // dstQueueFamilyIndex
+          image_data.buffer_,                      // buffer
+          0,                                       // offset
+          VK_WHOLE_SIZE                            // size
+      };
 
       VkBufferImageCopy region{
           0, // Start of the buffer
@@ -218,10 +220,11 @@ VirtualSwapchain::VirtualSwapchain(
               VK_IMAGE_ASPECT_COLOR_BIT,          // aspectMask
               0,                                  // mipLevel
               0,                                  // baseArrayLayer
-              swapchain_info_.imageArrayLayers}, // imageSubresourceLayers
+              swapchain_info_.imageArrayLayers},  // imageSubresourceLayers
           VkOffset3D{0, 0, 0},
           VkExtent3D{swapchain_info_.imageExtent.width,
-                     swapchain_info_.imageExtent.height, 1}};
+                     swapchain_info_.imageExtent.height, 1}
+      };
 
       VkCommandBufferBeginInfo cbegin{
           VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
@@ -392,4 +395,4 @@ uint32_t VirtualSwapchain::ImageByteSize() const {
   // more dynamic.
   return width_ * height_ * 4;
 }
-}
+} // swapchain
