@@ -21,6 +21,7 @@
 #include <atomic>
 #include <deque>
 #include <mutex>
+#include <functional>
 #include <vulkan/vulkan.h>
 
 namespace swapchain {
