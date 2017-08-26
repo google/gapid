@@ -102,5 +102,5 @@ VKAPI_ATTR void VKAPI_CALL vkCmdWaitEvents(
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
     VkDevice device, const VkRenderPassCreateInfo *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkRenderPass *pRenderPass);
-}
+} // swapchain
 #endif // VK_VIRTUAL_SWAPCHAIN_SWAPCHAIN_H_

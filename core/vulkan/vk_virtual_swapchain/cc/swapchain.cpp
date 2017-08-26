@@ -265,8 +265,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
                     nullptr,                       // waitDstStageMask
                     0,                             // commandBufferCount
                     nullptr,                       // pCommandBuffers
-                    (has_semaphore ? 1u : 0u),     // waitSemaphoreCount
-                    (has_semaphore ? &semaphore : nullptr)};
+                    (has_semaphore ? 1u : 0u),     // semaphoreCount
+                    (has_semaphore ? &semaphore : nullptr)}; // pSemaphores
   return swapchain::vkQueueSubmit(q, 1, &info, fence);
 
 }
@@ -402,4 +402,4 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
 
   return func(device, &intercepted, pAllocator, pRenderPass);
 }
-}
+} // swapchain

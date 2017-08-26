@@ -159,6 +159,6 @@ private:
 #endif
 };
 
-}
-}
+} // threading
+} // swapchain
 #endif // VK_VIRTUAL_SWAPCHAIN_THREADING_H_

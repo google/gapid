@@ -512,7 +512,7 @@ vkGetDeviceProcAddr(VkDevice dev, const char *funcName) {
       GetGlobalContext().GetDeviceData(dev)->vkGetDeviceProcAddr;
   return device_proc_addr(dev, funcName);
 }
-}
+} // swapchain
 
 extern "C" {
 
