@@ -20,6 +20,8 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.meshAfter;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
+import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
@@ -67,6 +69,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
@@ -108,6 +111,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final LoadablePanel<ScenePanel<GeometryScene.Data>> loading;
   protected final ScenePanel<GeometryScene.Data> canvas;
+  private final Label statusBar;
   protected GeometryScene.Data data = GeometryScene.Data.DEFAULTS;
   private final IsoSurfaceCameraModel camera =
       new IsoSurfaceCameraModel(new CylindricalCameraModel());
@@ -125,16 +129,19 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
 
     setLayout(new GridLayout(2, false));
 
-    GeometryScene scene = new GeometryScene(camera);
-
     ToolBar toolbar = createToolbar(widgets.theme);
-    loading = LoadablePanel.create(this, widgets,
+    Composite content = createComposite(this, new GridLayout(1, false));
+    GeometryScene scene = new GeometryScene(camera);
+    loading = LoadablePanel.create(content, widgets,
         panel -> new ScenePanel<GeometryScene.Data>(panel, scene));
     canvas = loading.getContents();
     scene.bindCamera(canvas);
+    statusBar = createLabel(content, "");
 
     toolbar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
+    content.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
     models.capture.addListener(this);
     models.atoms.addListener(this);
@@ -252,6 +259,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   private void updateModels(boolean assumeLoading) {
+    statusBar.setText("");
     if (!assumeLoading && models.atoms.isLoaded()) {
       AtomIndex atom = models.atoms.getSelectedAtoms();
       if (atom == null) {
@@ -344,7 +352,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     }
 
     int[] indices = mesh.getIndexBuffer().getIndicesList().stream().mapToInt(x -> x).toArray();
-    Model model = new Model(primitive, positions, normals, indices);
+    Model model = new Model(primitive, mesh.getStats(), positions, normals, indices);
     return Futures.immediateFuture(model);
   }
 
@@ -412,6 +420,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     displayMode = newDisplayMode;
 
     setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp), displayMode));
+    statusBar.setText(model.getStatusMessage());
   }
 
   private void updateRenderable() {

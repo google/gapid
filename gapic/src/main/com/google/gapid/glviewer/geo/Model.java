@@ -22,13 +22,16 @@ import com.google.gapid.proto.service.api.API;
  */
 public class Model {
   private final API.DrawPrimitive primitive;
+  private final API.Mesh.Stats stats;
   private final float[] positions; // x, y, z
   private final float[] normals; // x, y, z
   private final int[] indices;
   private final BoundingBox bounds = new BoundingBox();
 
-  public Model(API.DrawPrimitive primitive, float[] positions, float[] normals, int[] indices) {
+  public Model(API.DrawPrimitive primitive, API.Mesh.Stats stats, float[] positions,
+      float[] normals, int[] indices) {
     this.primitive = primitive;
+    this.stats = stats;
     this.positions = positions;
     this.normals = normals;
     this.indices = indices;
@@ -55,5 +58,29 @@ public class Model {
 
   public BoundingBox getBounds() {
     return bounds;
+  }
+
+  public String getStatusMessage() {
+    StringBuilder sb = new StringBuilder();
+    int v = stats.getVertices(), i = stats.getIndices(), p = stats.getPrimitives();
+    sb.append(v).append(v != 1 ? " vertices, " : " vertex, ");
+    sb.append(i).append(i != 1 ? " indices" :  " index");
+    switch (primitive) {
+      case Points:
+        sb.append(", ").append(p).append(p != 1 ? " points" : " point");
+        break;
+      case Lines:
+      case LineStrip:
+      case LineLoop:
+        sb.append(", ").append(p).append(p != 1 ? " lines" : " line");
+        break;
+      case Triangles:
+      case TriangleStrip:
+      case TriangleFan:
+        sb.append(", ").append(p).append(p != 1 ? " triangles" : " triangle");
+        break;
+      default:
+    }
+    return sb.toString();
   }
 }

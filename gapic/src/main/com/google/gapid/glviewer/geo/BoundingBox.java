@@ -76,4 +76,9 @@ public class BoundingBox {
     result.add(tMax);
     return result;
   }
+
+  @Override
+  public String toString() {
+    return String.format("(%g, %g, %g) - (%g, %g, %g)", min[0], min[1], min[2], max[0], max[1], max[2]);
+  }
 }
