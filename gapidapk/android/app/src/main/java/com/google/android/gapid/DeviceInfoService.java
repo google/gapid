@@ -61,13 +61,6 @@ public class DeviceInfoService extends IntentService {
     private static final String EXTRA_SOCKET_NAME = "com.google.android.gapid.extra.SOCKET_NAME";
 
     /**
-     * Optional parameter for {@link #ACTION_SEND_DEVICE_INFO} that tells the service how to format
-     * the results. Version 1 produces a single JSON-formatted string. Version 2 uses an
-     * ObjectOutputStream and produces the data in two passes.
-     */
-    private static final String EXTRA_PROTOCOL_VERSION = "com.google.android.gapid.extra.PROTOCOL_VERSION";
-
-    /**
      * The default socket name when {@link #EXTRA_SOCKET_NAME} is not provided.
      */
     private static final String DEFAULT_SOCKET_NAME = "gapid-devinfo";

@@ -42,8 +42,14 @@ class SocketWriter {
             LocalSocket socket = server.accept();
             try {
                 DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                dos.write(data.get());
-                dos.flush();
+                byte[] bytes;
+                try (Counter.Scope t = Counter.time("data.get()")) {
+                    bytes = data.get();
+                }
+                try (Counter.Scope t = Counter.time("transmit")) {
+                    dos.write(bytes);
+                    dos.flush();
+                }
             } finally {
                 socket.close();
             }

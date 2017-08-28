@@ -62,6 +62,8 @@ public class PackageInfoService extends IntentService {
 
     private static final int BASE_ICON_DENSITY = DisplayMetrics.DENSITY_MEDIUM;
 
+    private static final boolean PROFILE = false;
+
     /**
      * Action used to start waiting for an incoming connection on the local-abstract port
      * {@link #EXTRA_SOCKET_NAME}. When a connection is made, the package information is send to the
@@ -113,7 +115,14 @@ public class PackageInfoService extends IntentService {
                 boolean onlyDebug = intent.getBooleanExtra(EXTRA_ONLY_DEBUG, false);
                 boolean includeIcons = intent.getBooleanExtra(EXTRA_INCLUDE_ICONS, false);
                 float iconDensityScale = intent.getFloatExtra(EXTRA_ICON_DENSITY_SCALE, 1.0f);
-                handleSendPackageInfo(socketName, onlyDebug, includeIcons, iconDensityScale);
+
+                try (Counter.Scope t = Counter.time("handleSendPackageInfo")) {
+                    handleSendPackageInfo(socketName, onlyDebug, includeIcons, iconDensityScale);
+                }
+
+                if (PROFILE) {
+                    Log.i(TAG, Counter.collect());
+                }
             }
         }
     }
@@ -131,20 +140,18 @@ public class PackageInfoService extends IntentService {
         final IconStore icons = new IconStore((int)(BASE_ICON_DENSITY * iconDensityScale));
         final PackageManager pm = getPackageManager();
 
-        final Future<List<PackageInfo>> installedPackagesFuture = executor.submit(
-                new Callable<List<PackageInfo>>() {
-                    @Override
-                    public List<PackageInfo> call() throws Exception {
-                        List<PackageInfo> packages = pm.getInstalledPackages(
-                                PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES);
-                        return packages;
-                    }
-                });
-
         Callable<byte[]> packageInfoFuture = new Callable<byte[]>() {
             @Override
             public byte[] call() throws Exception {
-                String json = getPackageInfo(includeIcons ? icons : null, onlyDebug, pm, installedPackagesFuture.get());
+                List<PackageInfo> packages;
+                try (Counter.Scope t = Counter.time("getInstalledPackages")) {
+                    packages = pm.getInstalledPackages(
+                            PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES);
+                }
+                String json;
+                try (Counter.Scope t = Counter.time("getPackageInfo")) {
+                    json = getPackageInfo(includeIcons ? icons : null, onlyDebug, pm, packages);
+                }
                 return json.getBytes("UTF-8");
             }
         };
@@ -183,9 +190,10 @@ public class PackageInfoService extends IntentService {
                 continue;
             }
 
-            JSONObject packageJson = getPackageJson(
-                    pm, packageInfo, icons, primaryCpuAbiField, isDebuggable);
-
+            JSONObject packageJson;
+            try (Counter.Scope t = Counter.time("getPackageJson")) {
+                packageJson = getPackageJson(pm, packageInfo, icons, primaryCpuAbiField, isDebuggable);
+            }
             packagesJson.put(packageJson);
         }
 
@@ -204,14 +212,19 @@ public class PackageInfoService extends IntentService {
             boolean isDebuggable) throws JSONException {
 
         ApplicationInfo applicationInfo = packageInfo.applicationInfo;
-        Intent launchIntent = pm.getLaunchIntentForPackage(packageInfo.packageName);
+        Intent launchIntent;
+        try (Counter.Scope t = Counter.time("getLaunchIntentForPackage")) {
+            launchIntent = pm.getLaunchIntentForPackage(packageInfo.packageName);
+        }
         ActivityInfo launchActivityInfo = null;
         if (launchIntent != null) {
-            launchActivityInfo = launchIntent.resolveActivityInfo(pm, 0);
+            try (Counter.Scope t = Counter.time("resolveActivityInfo")) {
+                launchActivityInfo = launchIntent.resolveActivityInfo(pm, 0);
+            }
         }
 
         Resources resources = null;
-        try {
+        try (Counter.Scope t = Counter.time("getResourcesForApplication")){
             resources = pm.getResourcesForApplication(applicationInfo);
         } catch (PackageManager.NameNotFoundException ex) {}
 
@@ -219,7 +232,12 @@ public class PackageInfoService extends IntentService {
 
         Intent queryIntent = new Intent();
         queryIntent.setPackage(packageInfo.packageName);
-        List<ResolveInfo> resolveInfos = pm.queryIntentActivities(queryIntent, PackageManager.GET_RESOLVED_FILTER);
+
+        List<ResolveInfo> resolveInfos;
+        try (Counter.Scope t = Counter.time("queryIntentActivities")) {
+            resolveInfos = pm.queryIntentActivities(queryIntent, PackageManager.GET_RESOLVED_FILTER);
+        }
+
         for (ResolveInfo resolveInfo : resolveInfos) {
             IntentFilter intent = resolveInfo.filter;
             if (intent == null) {
@@ -227,7 +245,7 @@ public class PackageInfoService extends IntentService {
             }
             List<IntentFilter> intents = activityIntents.get(resolveInfo.activityInfo.name);
             if (intents == null) {
-                intents = new ArrayList<IntentFilter>();
+                intents = new ArrayList<>();
                 activityIntents.put(resolveInfo.activityInfo.name, intents);
             }
             intents.add(intent);
@@ -238,13 +256,18 @@ public class PackageInfoService extends IntentService {
             for (ActivityInfo activityInfo : packageInfo.activities) {
                 int iconIndex = -1;
                 if (icons != null) {
-                    iconIndex = icons.add(resources, activityInfo.icon);
+                    try (Counter.Scope t = Counter.time("icons.add")) {
+                        iconIndex = icons.add(resources, activityInfo.icon);
+                    }
                 }
 
                 boolean isLaunchActivity = (launchActivityInfo != null) ?
                         launchActivityInfo.name.equals(activityInfo.name) : false;
                 JSONArray actionsJson = new JSONArray();
-                List<IntentFilter> intents = activityIntents.get(activityInfo.name);
+                List<IntentFilter> intents = null;
+                try (Counter.Scope t = Counter.time("activityIntents.get")) {
+                    activityIntents.get(activityInfo.name);
+                }
                 if (intents != null) {
                     for (IntentFilter intent : intents) {
                         for (int i = 0; i < intent.countActions(); i++) {
@@ -272,7 +295,9 @@ public class PackageInfoService extends IntentService {
 
         if (applicationInfo != null) {
             if (icons != null) {
-                iconIndex = icons.add(resources, applicationInfo.icon);
+                try (Counter.Scope t = Counter.time("icons.add")) {
+                    iconIndex = icons.add(resources, applicationInfo.icon);
+                }
             }
             if (primaryCpuAbiField != null) {
                 try {
@@ -314,37 +339,47 @@ public class PackageInfoService extends IntentService {
          * @return The index of the image stored in the {@link JSONArray} returned by {@link #json}.
          */
         public int add(Resources resources, int iconId) {
-            if (resources == null || iconId <= 0) {
-                return -1;
-            }
-
-            Drawable drawable = null;
             try {
-                drawable = resources.getDrawableForDensity(iconId, iconDensity);
-            } catch (Resources.NotFoundException ex) {
-                return -1;
-            }
-            if (drawable == null || !(drawable instanceof BitmapDrawable)) {
-                return -1;
-            }
+                if (resources == null || iconId <= 0) {
+                    return -1;
+                }
 
-            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-            if (mBitmapMap.containsKey(bitmap)) {
-                return mBitmapMap.get(bitmap);
-            }
+                Drawable drawable;
+                try (Counter.Scope t = Counter.time("getDrawableForDensity")){
+                    drawable = resources.getDrawableForDensity(iconId, iconDensity);
+                } catch (Resources.NotFoundException ex) {
+                    return -1;
+                }
+                if (drawable == null || !(drawable instanceof BitmapDrawable)) {
+                    return -1;
+                }
 
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            byte[] pngBytes = stream.toByteArray();
-            String pngBase64 = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
-            if (!mMap.containsKey(pngBase64)) {
-                int index = mJson.length();
-                mMap.put(pngBase64, index);
-                mBitmapMap.put(bitmap, index);
-                mJson.put(pngBase64);
-                return index;
-            } else {
-                return mMap.get(pngBase64);
+                Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                if (mBitmapMap.containsKey(bitmap)) {
+                    return mBitmapMap.get(bitmap);
+                }
+
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                try (Counter.Scope t1 = Counter.time("bitmap.compress")) {
+                    try (Counter.Scope t2 = Counter.time(bitmap.getWidth() + "x" + bitmap.getHeight())) {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    }
+                }
+                byte[] pngBytes = stream.toByteArray();
+                String pngBase64;
+                try (Counter.Scope t = Counter.time("Base64.encodeToString")) {
+                    pngBase64 = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
+                }
+                if (!mMap.containsKey(pngBase64)) {
+                    int index = mJson.length();
+                    mMap.put(pngBase64, index);
+                    mBitmapMap.put(bitmap, index);
+                    mJson.put(pngBase64);
+                    return index;
+                } else {
+                    return mMap.get(pngBase64);
+                }
+            } finally {
             }
         }
 

@@ -14,6 +14,7 @@
 
 set(android_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/android/app/build.gradle
+    ${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/java/com/google/android/gapid/Counter.java
     ${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/java/com/google/android/gapid/DeviceInfoService.java
     ${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/java/com/google/android/gapid/PackageInfoService.java
     ${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/java/com/google/android/gapid/SocketWriter.java
