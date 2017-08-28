@@ -77,6 +77,17 @@ func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {
 	t.tasks = nil
 }
 
+func getBoundFramebufferID(thread uint64, s *api.State) (FramebufferId, error) {
+	c := GetContext(s, thread)
+	if c == nil {
+		return 0, fmt.Errorf("No OpenGL ES context")
+	}
+	if c.Bound.DrawFramebuffer == nil {
+		return 0, fmt.Errorf("No framebuffer bound")
+	}
+	return c.Bound.DrawFramebuffer.GetID(), nil
+}
+
 func (t *readFramebuffer) depth(
 	id api.CmdID,
 	thread uint64,
@@ -85,15 +96,14 @@ func (t *readFramebuffer) depth(
 
 	t.addTask(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
-		c := GetContext(s, thread)
 
 		if fb == 0 {
-			if c.Bound.DrawFramebuffer == nil {
-				log.W(ctx, "No framebuffer bound after %v", id)
+			var err error
+			if fb, err = getBoundFramebufferID(thread, s); err != nil {
+				log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
 				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 				return
 			}
-			fb = c.Bound.DrawFramebuffer.GetID()
 		}
 
 		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, api.FramebufferAttachment_Depth)
@@ -124,12 +134,12 @@ func (t *readFramebuffer) color(
 		c := GetContext(s, thread)
 
 		if fb == 0 {
-			if c.Bound.DrawFramebuffer == nil {
-				log.W(ctx, "No framebuffer bound after %v", id)
+			var err error
+			if fb, err = getBoundFramebufferID(thread, s); err != nil {
+				log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
 				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 				return
 			}
-			fb = c.Bound.DrawFramebuffer.GetID()
 		}
 
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
