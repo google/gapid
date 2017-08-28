@@ -93,6 +93,9 @@ const (
 	// InProgress represents a task that is currently being run.
 	// The task's result will be for data that is not current.
 	InProgress
+
+	// Changed represents a task with a result for the latest data that is different from its stale data
+	Changed
 )
 
 // TaskList is a list of tasks.
@@ -114,10 +117,12 @@ func (l TaskList) stats() taskStats {
 		numCurrentSucceeded:       l.Count(taskCurrentSucceeded),
 		numStaleSucceeded:         l.Count(taskStaleSucceeded),
 		numInProgressWasSucceeded: l.Count(taskInProgressWasSucceeded),
+		numFixed:                  l.Count(taskFixed),
 		numInProgressWasUnknown:   l.Count(taskInProgressWasUnknown),
 		numInProgressWasFailed:    l.Count(taskInProgressWasFailed),
 		numStaleFailed:            l.Count(taskStaleFailed),
 		numCurrentFailed:          l.Count(taskCurrentFailed),
+		numRegressed:              l.Count(taskRegressed),
 		numTasks:                  len(l),
 	}
 }
@@ -125,9 +130,11 @@ func (l TaskList) stats() taskStats {
 func taskCurrentSucceeded(t Task) bool       { return t.Result == Succeeded && t.Status == Current }
 func taskStaleSucceeded(t Task) bool         { return t.Result == Succeeded && t.Status == Stale }
 func taskInProgressWasSucceeded(t Task) bool { return t.Result == Succeeded && t.Status == InProgress }
+func taskFixed(t Task) bool                  { return t.Result == Succeeded && t.Status == Changed }
 func taskCurrentFailed(t Task) bool          { return t.Result == Failed && t.Status == Current }
 func taskStaleFailed(t Task) bool            { return t.Result == Failed && t.Status == Stale }
 func taskInProgressWasFailed(t Task) bool    { return t.Result == Failed && t.Status == InProgress }
+func taskRegressed(t Task) bool              { return t.Result == Failed && t.Status == Changed }
 func taskInProgressWasUnknown(t Task) bool   { return t.Result == Unknown && t.Status == InProgress }
 
 type cell struct {
@@ -154,10 +161,12 @@ type taskStats struct {
 	numCurrentSucceeded       int
 	numStaleSucceeded         int
 	numInProgressWasSucceeded int
+	numFixed                  int
 	numInProgressWasUnknown   int
 	numInProgressWasFailed    int
 	numStaleFailed            int
 	numCurrentFailed          int
+	numRegressed              int
 	numTasks                  int
 }
 

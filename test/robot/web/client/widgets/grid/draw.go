@@ -304,6 +304,8 @@ func (g *Grid) drawCluster(ctx *dom.Context2D, c *cluster, r *dom.Rect) {
 	drawSegment(g.Style.StaleFailedForegroundColor, false, c.stats.numStaleFailed)
 	drawSegment(g.Style.StaleFailedForegroundColor, true, c.stats.numInProgressWasFailed)
 	drawSegment(g.Style.CurrentFailedForegroundColor, false, c.stats.numCurrentFailed)
+	drawSegment(g.Style.FixedForegroundColor, false, c.stats.numFixed)
+	drawSegment(g.Style.RegressedForegroundColor, false, c.stats.numRegressed)
 
 	if icon != 0 {
 		ctx.Translate(centre)
