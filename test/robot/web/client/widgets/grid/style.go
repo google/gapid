@@ -42,6 +42,8 @@ type Style struct {
 	StaleFailedBackgroundColor      dom.Color // The background color used for tasks that have failed and are stale.
 	StaleFailedForegroundColor      dom.Color // The foreground color used for tasks that have failed and are stale.
 	InProgressForegroundColor       dom.Color // The foreground color used for tasks that last failed and are currently in progress.
+	RegressedForegroundColor        dom.Color // The foreground color used for tasks that last succeeded and now are failing.
+	FixedForegroundColor            dom.Color // The foreground color used for tasks that last failed and now are succeeding.
 	UnknownBackgroundColor          dom.Color // The background color used for tasks that are in an unknown state.
 	UnknownForegroundColor          dom.Color // The foreground color used for tasks that are in an unknown state.
 	SelectedBackgroundColor         dom.Color // The background color used for cells and headers when selected.
@@ -51,8 +53,12 @@ type Style struct {
 
 func (s *Style) statsStyle(stats taskStats) (icon rune, backgroundColor, foregroundColor dom.Color) {
 	switch {
+	case stats.numRegressed > 0:
+		return s.Icons.Failed, s.CurrentFailedBackgroundColor, s.RegressedForegroundColor
 	case stats.numCurrentFailed > 0:
 		return s.Icons.Failed, s.CurrentFailedBackgroundColor, s.CurrentFailedForegroundColor
+	case stats.numFixed > 0:
+		return s.Icons.Succeeded, s.CurrentSucceededBackgroundColor, s.FixedForegroundColor
 	case stats.numInProgressWasFailed+stats.numStaleFailed > 0:
 		return s.Icons.Failed, s.StaleFailedBackgroundColor, s.StaleFailedForegroundColor
 	case stats.numInProgressWasSucceeded+stats.numStaleSucceeded > 0:

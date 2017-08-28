@@ -236,6 +236,7 @@ func newTask(entry map[string]interface{}, kind Item) *task {
 }
 
 func compareTasksSimilar(t1 *task, t2 *task) bool {
+	// similar tasks can have different packages, but have the same target, subject, and host.
 	if t1.trace.target.Id() == t2.trace.target.Id() && t1.trace.subject.Id() == t2.trace.subject.Id() && t1.host.Id() == t2.host.Id() {
 		return true
 	}
@@ -244,6 +245,7 @@ func compareTasksSimilar(t1 *task, t2 *task) bool {
 
 func connectTaskParentChild(childListMap map[string][]*task, parentListMap map[string][]*task, t *task) {
 	findParentPkgIdInList := func(idList []string, childId string) string {
+		// it is the index of id's parent.
 		for it, id := range idList[1:] {
 			if childId == id {
 				return idList[it]
@@ -282,6 +284,7 @@ func connectTaskParentChild(childListMap map[string][]*task, parentListMap map[s
 func robotTasksPerKind(kind Item, path string, fun func(map[string]interface{}, *task)) []*task {
 	tasks := []*task{}
 	notCurrentTasks := []*task{}
+	currentTasks := []*task{}
 	childMap := map[string][]*task{}
 	parentMap := map[string][]*task{}
 
@@ -293,11 +296,18 @@ func robotTasksPerKind(kind Item, path string, fun func(map[string]interface{}, 
 		tasks = append(tasks, t)
 		if t.status != grid.Current {
 			notCurrentTasks = append(notCurrentTasks, t)
+		} else {
+			currentTasks = append(currentTasks, t)
 		}
 	}
 	for _, t := range notCurrentTasks {
 		if t.parent != nil {
 			t.result = t.parent.result
+		}
+	}
+	for _, t := range currentTasks {
+		if t.parent != nil && t.parent.result != t.result {
+			t.status = grid.Changed
 		}
 	}
 	return tasks

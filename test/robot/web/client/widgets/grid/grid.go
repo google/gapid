@@ -67,6 +67,8 @@ func New() *Grid {
 		StaleFailedBackgroundColor:      dom.RGBA(1.00, 0.80, 0.82, 0.3),
 		StaleFailedForegroundColor:      dom.RGBA(0.95, 0.26, 0.21, 0.3),
 		InProgressForegroundColor:       dom.RGBA(0.00, 0.50, 1.00, 0.9),
+		RegressedForegroundColor:        dom.RGBA(1.00, 0.40, 0.41, 0.9),
+		FixedForegroundColor:            dom.RGBA(0.18, 0.85, 0.20, 0.9),
 		UnknownBackgroundColor:          dom.RGBA(1.00, 1.00, 1.00, 1.0),
 		UnknownForegroundColor:          dom.RGBA(0.60, 0.60, 0.60, 0.9),
 		SelectedBackgroundColor:         dom.RGB(0.89, 0.95, 0.97),
