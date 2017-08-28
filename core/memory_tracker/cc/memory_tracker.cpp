@@ -90,19 +90,15 @@ bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
   size_t size_aligned = GetAlignedSize(start, size, page_size_);
   dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
 
-  bool can_be_removed = true;
+  bool result = true;
   for (uint8_t* p = reinterpret_cast<uint8_t*>(start_page_addr);
       p < reinterpret_cast<uint8_t*>(start_page_addr)+size_aligned;
       p = p + page_size_) {
-    if (IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
-      can_be_removed = false;
-      break;
+    if (!IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
+      result &= set_protection(p, page_size_, PageProtections::kReadWrite) == 0;
     }
   }
-  if (can_be_removed) {
-    return set_protection(start_page_addr, size_aligned, PageProtections::kReadWrite) == 0;
-  }
-  return true;
+  return result;
 }
 
 template<>
