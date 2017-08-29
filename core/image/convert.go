@@ -62,6 +62,30 @@ type converter interface {
 // If no direct converter has been registered to convert from srcFmt to dstFmt,
 // then Convert may try converting via an intermediate format.
 func Convert(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]byte, error) {
+	out, err := convertDirect(data, width, height, depth, srcFmt, dstFmt)
+	if err != nil {
+		return nil, err
+	}
+	if out != nil {
+		return out, nil
+	}
+
+	// No direct conversion found. Try going via a common intermediate formats.
+	for _, via := range []*Format{
+		RGBA_U8_NORM, SRGBA_U8_NORM,
+	} {
+		if data, _ := convertDirect(data, width, height, depth, srcFmt, via); data != nil {
+			if data, _ := convertDirect(data, width, height, depth, via, dstFmt); data != nil {
+				return data, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("No converter registered that can convert from format '%s' to '%s'",
+		srcFmt, dstFmt)
+}
+
+func convertDirect(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]byte, error) {
 	srcKey, dstKey := srcFmt.Key(), dstFmt.Key()
 	if srcKey == dstKey {
 		return data, nil // No conversion required.
@@ -78,24 +102,10 @@ func Convert(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]b
 
 	// Check if the source format supports the converter interface.
 	if c, ok := protoutil.OneOf(srcFmt.Format).(converter); ok {
-		data, err := c.convert(data, width, height, depth, dstFmt)
-		if data != nil || err != nil {
-			return data, err
-		}
+		return c.convert(data, width, height, depth, dstFmt)
 	}
 
-	// No direct conversion found. Try going via RGBA_U8_NORM.
-	rgbaU8Key := RGBA_U8_NORM.Key()
-	if convA, found := registeredConverters[srcDstFmt{srcKey, rgbaU8Key}]; found {
-		if convB, found := registeredConverters[srcDstFmt{rgbaU8Key, dstKey}]; found {
-			if data, err := convA(data, width, height, depth); err != nil {
-				return convB(data, width, height, depth)
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("No converter registered that can convert from format '%s' to '%s'",
-		srcFmt, dstFmt)
+	return nil, nil
 }
 
 // Resolve returns the byte array holding the converted image for the resolve
