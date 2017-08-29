@@ -58,7 +58,12 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, nil)
+	sd, err := SyncData(ctx, r.Path.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, sd)
 	if err != nil {
 		return nil, err
 	}

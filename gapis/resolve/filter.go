@@ -26,11 +26,10 @@ import (
 type filter func(api.CmdID, api.Cmd, *api.State) bool
 
 func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (filter, error) {
-	filters := []filter{}
-	if sd != nil {
-		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+	filters := []filter{
+		func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
 			return !sd.Hidden.Contains(id)
-		})
+		},
 	}
 	if c := f.GetContext(); c.IsValid() {
 		c, err := Context(ctx, p.Context(c))
