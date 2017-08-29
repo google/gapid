@@ -94,13 +94,9 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 			return err
 		}
 
-		syncData, err := database.Build(ctx, &SynchronizationResolvable{cmdTree.path.Capture})
+		snc, err := SyncData(ctx, cmdTree.path.Capture)
 		if err != nil {
 			return err
-		}
-		snc, ok := syncData.(*sync.Data)
-		if !ok {
-			return log.Errf(ctx, nil, "Could not find valid Synchronization Data")
 		}
 
 		nodePred := func(item api.SpanItem) bool {

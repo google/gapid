@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/extensions"
@@ -158,13 +157,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	syncData, err := database.Build(ctx, &SynchronizationResolvable{p.Capture})
+	snc, err := SyncData(ctx, p.Capture)
 	if err != nil {
-		return nil, log.Errf(ctx, nil, "Error building sync data")
-	}
-	snc, ok := syncData.(*sync.Data)
-	if !ok {
-		return nil, log.Errf(ctx, nil, "Could not find valid Synchronization Data")
+		return nil, err
 	}
 
 	filter, err := buildFilter(ctx, p.Capture, p.Filter, snc)

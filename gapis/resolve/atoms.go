@@ -19,9 +19,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -53,13 +51,9 @@ func NCmds(ctx context.Context, p *path.Capture, n uint64) ([]api.Cmd, error) {
 func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
 	atomIdx := p.Indices[0]
 	if len(p.Indices) > 1 {
-		syncData, err := database.Build(ctx, &SynchronizationResolvable{p.Capture})
+		snc, err := SyncData(ctx, p.Capture)
 		if err != nil {
 			return nil, err
-		}
-		snc, ok := syncData.(*sync.Data)
-		if !ok {
-			return nil, log.Errf(ctx, nil, "Could not find valid Synchronization Data")
 		}
 
 		sg, ok := snc.SubcommandReferences[api.CmdID(atomIdx)]
