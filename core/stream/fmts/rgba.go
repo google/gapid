@@ -137,7 +137,7 @@ var (
 		}},
 	}
 
-	RGBA_N_sRGBU8N_sRGBU8N_sRGBU8NU8 = &stream.Format{
+	SRGBA_U8_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U8,
 			Sampling: stream.SRGBNormalized,

@@ -145,7 +145,7 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_R8G8B8_SINT:
 		return image.NewUncompressed("VK_FORMAT_R8G8B8_SINT", fmts.RGB_S8), nil
 	case VkFormat_VK_FORMAT_R8G8B8_SRGB:
-		return image.NewUncompressed("VK_FORMAT_R8G8B8_SRGB", fmts.RGB_U8_NORM_sRGB), nil
+		return image.NewUncompressed("VK_FORMAT_R8G8B8_SRGB", fmts.SRGB_U8_NORM), nil
 	case VkFormat_VK_FORMAT_B8G8R8_UNORM:
 		return image.NewUncompressed("VK_FORMAT_B8G8R8_UNORM", fmts.BGR_U8_NORM), nil
 	case VkFormat_VK_FORMAT_B8G8R8_SNORM:
@@ -173,7 +173,7 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_R8G8B8A8_SINT:
 		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_SINT", fmts.RGBA_S8), nil
 	case VkFormat_VK_FORMAT_R8G8B8A8_SRGB:
-		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_SRGB", fmts.RGBA_N_sRGBU8N_sRGBU8N_sRGBU8NU8), nil
+		return image.NewUncompressed("VK_FORMAT_R8G8B8A8_SRGB", fmts.SRGBA_U8_NORM), nil
 	case VkFormat_VK_FORMAT_B8G8R8A8_UNORM:
 		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_UNORM", fmts.BGRA_U8_NORM), nil
 	case VkFormat_VK_FORMAT_B8G8R8A8_SNORM:
