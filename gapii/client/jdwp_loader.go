@@ -137,6 +137,11 @@ func (p *Process) loadAndConnectViaJDWP(
 		if abi == nil {
 			return nil, fmt.Errorf("Unknown ABI %v", abiName)
 		}
+
+		// For NativeBridge emulated devices opt for the native ABI of the
+		// emulator.
+		abi = d.NativeBridgeABI(ctx, abi)
+
 		return abi, nil
 	}
 
