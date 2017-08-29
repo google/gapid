@@ -17,16 +17,15 @@ package device
 var (
 	UnknownABI = abi("unknown", UnknownOS, UnknownArchitecture, &MemoryLayout{})
 
-	// Android ARM defaults to v7a which is the lowest that we support.
+	// AndroidARM defaults to v7a which is the lowest that we support.
 	AndroidARM = abi("armeabi", Android, ARMv7a, Little32)
 
-	AndroidARMv7a     = abi("armeabi-v7a", Android, ARMv7a, Little32)
-	AndroidARMv7aHard = abi("armeabi-v7a-hard", Android, ARMv7a, Little32)
-	AndroidARM64v8a   = abi("arm64-v8a", Android, ARMv8a, Little64)
-	AndroidX86        = abi("x86", Android, X86, Little32)
-	AndroidX86_64     = abi("x86-64", Android, X86_64, Little64)
-	AndroidMIPS       = abi("mips", Android, MIPS, Little32)
-	AndroidMIPS64     = abi("mips64", Android, MIPS64, Little64)
+	AndroidARMv7a   = abi("armeabi-v7a", Android, ARMv7a, Little32)
+	AndroidARM64v8a = abi("arm64-v8a", Android, ARMv8a, Little64)
+	AndroidX86      = abi("x86", Android, X86, Little32)
+	AndroidX86_64   = abi("x86-64", Android, X86_64, Little64)
+	AndroidMIPS     = abi("mips", Android, MIPS, Little32)
+	AndroidMIPS64   = abi("mips64", Android, MIPS64, Little64)
 
 	LinuxX86_64   = abi("linux_x64", Linux, X86_64, Little64)
 	OSXX86_64     = abi("osx_x64", OSX, X86_64, Little64)

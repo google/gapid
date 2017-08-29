@@ -130,8 +130,7 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 func (a APK) LibsPath(abi *device.ABI) string {
 	switch {
 	case abi.SameAs(device.AndroidARM),
-		abi.SameAs(device.AndroidARMv7a),
-		abi.SameAs(device.AndroidARMv7aHard):
+		abi.SameAs(device.AndroidARMv7a):
 		return a.path + "/lib/arm"
 	case abi.SameAs(device.AndroidARM64v8a):
 		return a.path + "/lib/arm64"
@@ -155,8 +154,7 @@ func (a APK) LibInterceptorPath(abi *device.ABI) string {
 func pkgName(abi *device.ABI) string {
 	switch {
 	case abi.SameAs(device.AndroidARM),
-		abi.SameAs(device.AndroidARMv7a),
-		abi.SameAs(device.AndroidARMv7aHard):
+		abi.SameAs(device.AndroidARMv7a):
 		return "com.google.android.gapid.armeabi"
 	case abi.SameAs(device.AndroidARM64v8a):
 		return "com.google.android.gapid.aarch64"
