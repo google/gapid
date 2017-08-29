@@ -79,6 +79,8 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 	// Vertex buffer streams
 	vb := &vertex.Buffer{}
 
+	stats := &api.Mesh_Stats{}
+
 	// In total there are four kinds of draw calls: vkCmdDraw, vkCmdDrawIndexed,
 	// vkCmdDrawIndirect, vkCmdDrawIndexedIndirect. Each is processed in one of
 	// the branches.
@@ -96,6 +98,8 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		if err != nil {
 			return nil, err
 		}
+		stats.Vertices = p.VertexCount
+		stats.Primitives = drawPrimitive.Count(p.VertexCount)
 	} else if p := lastDrawInfo.CommandParameters.DrawIndexed; p != nil {
 		// Last draw call is vkCmdDrawIndexed
 		// Get the current bound index buffer
@@ -107,6 +111,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		// Calculate the vertex count and the first vertex
 		maxIndex := uint32(0)
 		minIndex := uint32(0xFFFFFFFF)
+		uniqueIndices := make(map[uint32]bool)
 		for _, i := range indices {
 			if maxIndex < i {
 				maxIndex = i
@@ -114,6 +119,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 			if i < minIndex {
 				minIndex = i
 			}
+			uniqueIndices[i] = true
 		}
 		vertexCount := maxIndex - minIndex + 1
 		// Get the current bound vertex buffers
@@ -132,7 +138,9 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		ib = &api.IndexBuffer{
 			Indices: []uint32(shiftedIndices),
 		}
-
+		stats.Vertices = uint32(len(uniqueIndices))
+		stats.Indices = p.IndexCount
+		stats.Primitives = drawPrimitive.Count(p.IndexCount)
 	} else if p := lastDrawInfo.CommandParameters.DrawIndirect; p != nil {
 		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndirect not implemented")
 	} else if p := lastDrawInfo.CommandParameters.DrawIndexedIndirect; p != nil {
@@ -143,6 +151,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		DrawPrimitive: drawPrimitive,
 		VertexBuffer:  vb,
 		IndexBuffer:   ib,
+		Stats:         stats,
 	}
 
 	if p.Options != nil && p.Options.Faceted {
