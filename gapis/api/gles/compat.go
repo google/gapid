@@ -323,6 +323,16 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					return
 				}
 			}
+			// Translate to non-OES call.
+			out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(cmd.Array))
+			return
+
+		case *GlGenVertexArraysOES:
+			// Translate to non-OES call.
+			c := cb.GlGenVertexArrays(cmd.Count, cmd.Arrays)
+			c.Extras().Add(cmd.Extras().All()...)
+			out.MutateAndWrite(ctx, id, c)
+			return
 
 		case *GlBindBufferBase:
 			if cmd.Buffer == 0 {
