@@ -30,7 +30,12 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, p.Capture, p.Filter, nil)
+	sd, err := SyncData(ctx, p.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	filter, err := buildFilter(ctx, p.Capture, p.Filter, sd)
 	if err != nil {
 		return nil, err
 	}
