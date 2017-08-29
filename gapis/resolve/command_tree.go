@@ -214,7 +214,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Add any extension groupers
 	for _, e := range extensions.Get() {
-		groupers = append(groupers, e.CmdGroupers...)
+		groupers = append(groupers, e.CmdGroupers()...)
 	}
 
 	// Walk the list of unfiltered commands to build the groups.

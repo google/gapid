@@ -23,8 +23,10 @@ import (
 func init() {
 	extensions.Register(extensions.Extension{
 		Name: "Unity",
-		CmdGroupers: []cmdgrouper.Grouper{
-			&stateResetGrouper{},
+		CmdGroupers: func() []cmdgrouper.Grouper {
+			return []cmdgrouper.Grouper{
+				&stateResetGrouper{},
+			}
 		},
 	})
 }
