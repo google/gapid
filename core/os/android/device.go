@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 )
 
@@ -69,6 +70,10 @@ type Device interface {
 	// Logcat writes all logcat messages reported by the device to the chan msgs,
 	// blocking until the context is stopped.
 	Logcat(ctx context.Context, msgs chan<- LogcatMessage) error
+	// NativeBridgeABI returns the native ABI for the given emulated ABI for the
+	// device by consulting the ro.dalvik.vm.isa.<emulated_isa>=<native_isa>
+	// system properties.
+	NativeBridgeABI(ctx context.Context, abi *device.ABI) *device.ABI
 }
 
 // LogcatMessage represents a single logcat message.
