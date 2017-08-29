@@ -72,7 +72,8 @@ type Device interface {
 	Logcat(ctx context.Context, msgs chan<- LogcatMessage) error
 	// NativeBridgeABI returns the native ABI for the given emulated ABI for the
 	// device by consulting the ro.dalvik.vm.isa.<emulated_isa>=<native_isa>
-	// system properties.
+	// system properties. If there is no native ABI for the given ABI, then abi
+	// is simply returned.
 	NativeBridgeABI(ctx context.Context, abi *device.ABI) *device.ABI
 }
 
