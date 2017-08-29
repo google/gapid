@@ -14,7 +14,11 @@
 
 package stream
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
+)
 
 // Format prints the Component to f.
 func (c Component) Format(f fmt.State, r rune) {
@@ -34,4 +38,9 @@ func (c *Component) IsNormalized() bool {
 		return c.Sampling.Normalized
 	}
 	return false
+}
+
+// Clone returns a deep copy of c.
+func (c *Component) Clone() *Component {
+	return proto.Clone(c).(*Component)
 }

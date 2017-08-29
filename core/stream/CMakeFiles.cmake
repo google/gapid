@@ -22,6 +22,7 @@ set(files
     component.go
     convert.go
     convert_test.go
+    curve.go
     datatype.go
     doc.go
     format.go

@@ -32,6 +32,11 @@ type buf struct {
 	stride    uint32 // in bits
 }
 
+func (b buf) clone() buf {
+	b.component = b.component.Clone()
+	return b
+}
+
 type mapping struct {
 	dst, src buf
 }
@@ -42,7 +47,6 @@ type mapping struct {
 // Certain components found in dst that are not in src are filled with default
 // values (Y=0, Z=0, W=1, Alpha=1).
 // Component order and datatypes can be changed.
-// TODO: Deal with curves.
 func Convert(dst, src *Format, data []byte) ([]byte, error) {
 	if dst == src || reflect.DeepEqual(dst, src) {
 		return data, nil
@@ -68,6 +72,10 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 			m.src = buf{data, s, srcOffsets[s], uint32(srcStride) * 8}
 		}
 		dstOffset += d.DataType.Bits()
+
+		if err := m.convertCurve(count); err != nil {
+			return nil, err
+		}
 	}
 
 	if src.HasComponent(Channel_SharedExponent) && !dst.HasComponent(Channel_SharedExponent) {
@@ -141,6 +149,9 @@ var (
 
 func (m *mapping) conv(count int) error {
 	d, s := m.dst.component, m.src.component
+	if d.GetSampling().GetCurve() != s.GetSampling().GetCurve() {
+		return fmt.Errorf("Cannot convert curve from %v to %v", s.GetSampling().GetCurve(), d.GetSampling().GetCurve())
+	}
 	dstIsInt, srcIsInt := d.DataType.IsInteger(), s.DataType.IsInteger()
 	dstIsFloat, srcIsFloat := d.DataType.IsFloat(), s.DataType.IsFloat()
 	switch {

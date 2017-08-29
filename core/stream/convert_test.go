@@ -420,3 +420,36 @@ func TestSharedExp(t *testing.T) {
 		},
 	})
 }
+
+func TestSRGB(t *testing.T) {
+	// These are split into two as rounding makes the numbers asymetrical.
+	// TODO: Try and reduce the rounding errors.
+	convertTests{
+		{SRGB_U8_NORM, RGB_U8_NORM},
+	}.run(t, map[*stream.Format][]byte{
+		RGB_U8_NORM: []byte{
+			0x00, 0x00, 0x00,
+			0xff, 0xff, 0xff,
+			0x10, 0x50, 0x90,
+		},
+		SRGB_U8_NORM: []byte{
+			0x00, 0x00, 0x00,
+			0xfe, 0xfe, 0xfe,
+			0x46, 0x97, 0xC5,
+		},
+	})
+	convertTests{
+		{RGB_U8_NORM, SRGB_U8_NORM},
+	}.run(t, map[*stream.Format][]byte{
+		RGB_U8_NORM: []byte{
+			0x00, 0x00, 0x00,
+			0xff, 0xff, 0xff,
+			0x0f, 0x4e, 0x8e,
+		},
+		SRGB_U8_NORM: []byte{
+			0x00, 0x00, 0x00,
+			0xff, 0xff, 0xff,
+			0x46, 0x97, 0xC5,
+		},
+	})
+}
