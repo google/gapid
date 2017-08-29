@@ -15,22 +15,29 @@
 package stream
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
 
+var aliases = map[string]string{
+	"RGBA_N_sRGBU8N_sRGBU8N_sRGBU8NU8": "SRGBA_U8_NORM",
+	"RGB_U8_NORM_sRGB":                 "SRGB_U8_NORM",
+}
+
 // Format prints the Format to w.
 func (f Format) Format(w fmt.State, r rune) {
+	buf := &bytes.Buffer{}
 	samplings := map[Sampling]struct{}{}
 	datatypes := map[DataType]struct{}{}
 	for _, c := range f.Components {
-		fmt.Fprint(w, c.Channel)
+		fmt.Fprint(buf, c.Channel)
 		datatypes[*c.DataType] = struct{}{}
 		if s := c.Sampling; s != nil {
 			samplings[*s] = struct{}{}
 		}
 	}
-	fmt.Fprint(w, "_")
+	fmt.Fprint(buf, "_")
 
 	datatypesCommon := len(datatypes) < 2
 	samplingsCommon := len(samplings) < 2
@@ -39,30 +46,36 @@ func (f Format) Format(w fmt.State, r rune) {
 	if !datatypesCommon || !samplingsCommon {
 		for _, c := range f.Components {
 			if !samplingsCommon && *c.Sampling != defaultSampling {
-				fmt.Fprintf(w, "%c", c.Sampling)
+				fmt.Fprintf(buf, "%c", c.Sampling)
 			}
-			fmt.Fprint(w, c.DataType)
+			fmt.Fprint(buf, c.DataType)
 		}
 		if samplingsCommon {
 			for sampling := range samplings {
 				if sampling != defaultSampling {
-					fmt.Fprint(w, "_", sampling)
+					fmt.Fprint(buf, "_", sampling)
 				}
 			}
 		}
 	} else {
 		if datatypesCommon {
 			for datatype := range datatypes {
-				fmt.Fprint(w, datatype)
+				fmt.Fprint(buf, datatype)
 			}
 		}
 		if samplingsCommon {
 			for sampling := range samplings {
 				if sampling != defaultSampling {
-					fmt.Fprint(w, "_", sampling)
+					fmt.Fprint(buf, "_", sampling)
 				}
 			}
 		}
+	}
+	name := buf.String()
+	if alias, ok := aliases[name]; ok {
+		w.Write([]byte(alias))
+	} else {
+		w.Write([]byte(name))
 	}
 }
 
