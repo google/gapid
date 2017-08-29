@@ -35,8 +35,18 @@ public class Model {
     this.positions = positions;
     this.normals = normals;
     this.indices = indices;
-    for (int i = 0; i < positions.length; i += 3) {
-      bounds.add(positions[i + 0], positions[i + 1], positions[i + 2]);
+
+    if (indices == null) {
+      for (int i = 0; i < positions.length; i += 3) {
+        bounds.add(positions[i + 0], positions[i + 1], positions[i + 2]);
+      }
+    } else {
+      for (int i = 0; i < indices.length; i++) {
+        int idx = 3 * indices[i];
+        if (idx >= 0 && idx + 2 < positions.length) {
+          bounds.add(positions[idx + 0], positions[idx + 1], positions[idx + 2]);
+        }
+      }
     }
   }
 
