@@ -91,48 +91,50 @@ func NewSRGB8_ALPHA8_12x12(name string) *image.Format { return image.NewASTC(nam
 func init() {
 	C.init_astc()
 
-	fmts := []*image.Format{
-		RGBA_4x4,
-		RGBA_5x4,
-		RGBA_5x5,
-		RGBA_6x5,
-		RGBA_6x6,
-		RGBA_8x5,
-		RGBA_8x6,
-		RGBA_8x8,
-		RGBA_10x5,
-		RGBA_10x6,
-		RGBA_10x8,
-		RGBA_10x10,
-		RGBA_12x10,
-		RGBA_12x12,
-		SRGB8_ALPHA8_4x4,
-		SRGB8_ALPHA8_5x4,
-		SRGB8_ALPHA8_5x5,
-		SRGB8_ALPHA8_6x5,
-		SRGB8_ALPHA8_6x6,
-		SRGB8_ALPHA8_8x5,
-		SRGB8_ALPHA8_8x6,
-		SRGB8_ALPHA8_8x8,
-		SRGB8_ALPHA8_10x5,
-		SRGB8_ALPHA8_10x6,
-		SRGB8_ALPHA8_10x8,
-		SRGB8_ALPHA8_10x10,
-		SRGB8_ALPHA8_12x10,
-		SRGB8_ALPHA8_12x12,
-	}
-	for _, f := range fmts {
+	for _, f := range []struct {
+		src *image.Format
+		dst *image.Format
+	}{
+		{RGBA_4x4, image.RGBA_U8_NORM},
+		{RGBA_5x4, image.RGBA_U8_NORM},
+		{RGBA_5x5, image.RGBA_U8_NORM},
+		{RGBA_6x5, image.RGBA_U8_NORM},
+		{RGBA_6x6, image.RGBA_U8_NORM},
+		{RGBA_8x5, image.RGBA_U8_NORM},
+		{RGBA_8x6, image.RGBA_U8_NORM},
+		{RGBA_8x8, image.RGBA_U8_NORM},
+		{RGBA_10x5, image.RGBA_U8_NORM},
+		{RGBA_10x6, image.RGBA_U8_NORM},
+		{RGBA_10x8, image.RGBA_U8_NORM},
+		{RGBA_10x10, image.RGBA_U8_NORM},
+		{RGBA_12x10, image.RGBA_U8_NORM},
+		{RGBA_12x12, image.RGBA_U8_NORM},
+		{SRGB8_ALPHA8_4x4, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_5x4, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_5x5, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_6x5, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_6x6, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_8x5, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_8x6, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_8x8, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_10x5, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_10x6, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_10x8, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_10x10, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_12x10, image.SRGBA_U8_NORM},
+		{SRGB8_ALPHA8_12x12, image.SRGBA_U8_NORM},
+	} {
 		f := f
-		image.RegisterConverter(f, image.RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		image.RegisterConverter(f.src, f.dst, func(src []byte, w, h, d int) ([]byte, error) {
 			dst := make([]byte, w*h*d*4)
-			sliceSize := f.Size(w, h, 1)
+			sliceSize := f.src.Size(w, h, 1)
 			for z := 0; z < d; z++ {
 				dst, src := dst[z*w*h*4:], src[z*sliceSize:]
 				in := (unsafe.Pointer)(&src[0])
 				out := (unsafe.Pointer)(&dst[0])
-				blockW := f.GetAstc().BlockWidth
-				blockH := f.GetAstc().BlockHeight
-				C.decompress_astc( // TODO: sRGB.
+				blockW := f.src.GetAstc().BlockWidth
+				blockH := f.src.GetAstc().BlockHeight
+				C.decompress_astc(
 					(*C.uint8_t)(in),
 					(*C.uint8_t)(out),
 					(C.uint32_t)(w),

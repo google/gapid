@@ -198,6 +198,15 @@ func init() {
 	RegisterConverter(ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
 		return decodeETC(src, w, h, d, etcAlpha1Bit)
 	})
+	RegisterConverter(ETC2_SRGB_U8_NORM, SRGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlphaNone)
+	})
+	RegisterConverter(ETC2_SRGBA_U8_NORM, SRGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlpha8Bit)
+	})
+	RegisterConverter(ETC2_SRGBA_U8U8U8U1_NORM, SRGBA_U8_NORM, func(src []byte, w, h, d int) ([]byte, error) {
+		return decodeETC(src, w, h, d, etcAlpha1Bit)
+	})
 	RegisterConverter(ETC2_R_U11_NORM, R_U16_NORM, func(src []byte, w, h, d int) ([]byte, error) {
 		return decodeETCU11(src, w, h, d, 1)
 	})
@@ -217,6 +226,9 @@ func init() {
 		{ETC2_RGB_U8_NORM, RGB_U8_NORM},
 		{ETC2_RGBA_U8_NORM, RGBA_U8_NORM},
 		{ETC2_RGBA_U8U8U8U1_NORM, RGBA_U8_NORM},
+		{ETC2_SRGB_U8_NORM, SRGBA_U8_NORM},
+		{ETC2_SRGBA_U8_NORM, SRGBA_U8_NORM},
+		{ETC2_SRGBA_U8U8U8U1_NORM, SRGBA_U8_NORM},
 		{ETC2_R_U11_NORM, R_U16_NORM},
 		{ETC2_RG_U11_NORM, RG_U16_NORM},
 		{ETC2_R_S11_NORM, R_S16_NORM},
