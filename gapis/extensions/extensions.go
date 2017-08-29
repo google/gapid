@@ -35,7 +35,7 @@ type Extension struct {
 	// Name of the extension.
 	Name string
 	// Custom command groupers.
-	CmdGroupers []cmdgrouper.Grouper
+	CmdGroupers func() []cmdgrouper.Grouper
 }
 
 // Register registers the extension e.
