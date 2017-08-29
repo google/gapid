@@ -74,8 +74,16 @@ uint32_t SpyOverride_vkDebugMarkerSetObjectTagEXT(
     VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
   return VkResult::VK_SUCCESS;
 }
+uint32_t SpyOverride_RecreateDebugMarkerSetObjectTagEXT(
+    VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+  return VkResult::VK_SUCCESS;
+}
 
 uint32_t SpyOverride_vkDebugMarkerSetObjectNameEXT(
+    VkDevice device, VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+  return VkResult::VK_SUCCESS;
+}
+uint32_t SpyOverride_RecreateDebugMarkerSetObjectNameEXT(
     VkDevice device, VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
   return VkResult::VK_SUCCESS;
 }

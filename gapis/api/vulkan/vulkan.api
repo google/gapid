@@ -5422,6 +5422,7 @@ extern void nextSubcontext()
 extern void leaveSubcontext()
 extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
 extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
+extern void addDebugMarkerTagBytes(ref!VulkanDebugMarkerInfo debugInfo, size numBytes, u8* pTag)
 extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
     VkBuffer     dstBuffer
     VkDeviceSize dstOffset
@@ -8700,6 +8701,230 @@ class VkDebugMarkerMarkerInfoEXT {
     @readonly f32[4]   color
 }
 
+sub ref!VulkanDebugMarkerInfo updateDebugMarkerObjectName(
+  ref!VulkanDebugMarkerInfo origInfo,
+  VkDebugMarkerObjectNameInfoEXT nameInfo) {
+    newInfo := switch (origInfo == null) {
+      case true:
+        new!VulkanDebugMarkerInfo()
+      case false:
+        origInfo
+    }
+    newInfo.ObjectName = as!string(nameInfo.pObjectName)
+    return newInfo
+}
+
+sub ref!VulkanDebugMarkerInfo updateDebugMarkerObjectTag(
+  ref!VulkanDebugMarkerInfo origInfo,
+  VkDebugMarkerObjectTagInfoEXT tagInfo) {
+    newInfo := switch (origInfo == null) {
+      case true:
+        new!VulkanDebugMarkerInfo()
+      case false:
+        origInfo
+    }
+    newInfo.TagName = tagInfo.tagName
+    newInfo.Tag = make!u8(tagInfo.tagSize)
+    copy(newInfo.Tag[0:tagInfo.tagSize], as!u8*(tagInfo.pTag)[0:tagInfo.tagSize])
+    addDebugMarkerTagBytes(newInfo, tagInfo.tagSize, as!u8*(tagInfo.pTag))
+    return newInfo
+}
+
+sub void setDebugMarkerObjectTag(VkDebugMarkerObjectTagInfoEXT tagInfo) {
+  objTy := tagInfo.objectType
+  obj := tagInfo.object
+  switch objTy {
+    case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
+      Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Instances[as!VkInstance(obj)].DebugInfo, tagInfo)
+    case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
+		  PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
+	  	Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Devices[as!VkDevice(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
+	  	Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Queues[as!VkQueue(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
+	  	Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Semaphores[as!VkSemaphore(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
+	  	CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
+	  	Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Fences[as!VkFence(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
+	  	DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
+	  	Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Buffers[as!VkBuffer(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
+	  	Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Images[as!VkImage(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
+	  	Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Events[as!VkEvent(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
+	  	QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          QueryPools[as!VkQueryPool(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
+	  	BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          BufferViews[as!VkBufferView(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
+	  	ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          ImageViews[as!VkImageView(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
+	  	ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          ShaderModules[as!VkShaderModule(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
+	  	PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
+	  	PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
+	  	RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          RenderPasses[as!VkRenderPass(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
+      if (as!VkPipeline(obj) in GraphicsPipelines) {
+        GraphicsPipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectTag(
+            GraphicsPipelines[as!VkPipeline(obj)].DebugInfo, tagInfo)
+      } else if (as!VkPipeline(obj) in ComputePipelines) {
+        ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectTag(
+            ComputePipelines[as!VkPipeline(obj)].DebugInfo, tagInfo)
+      }
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
+	  	DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
+	  	Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        Samplers[as!VkSampler(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
+	  	DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
+	  	DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
+	  	Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        Framebuffers[as!VkFramebuffer(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
+	  	CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+        CommandPools[as!VkCommandPool(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
+	  	Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, tagInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
+	  	Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, tagInfo)
+  }
+}
+
+sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
+  objTy := nameInfo.objectType
+  obj := nameInfo.object
+  switch objTy {
+    case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
+      Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Instances[as!VkInstance(obj)].DebugInfo, nameInfo)
+    case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
+		  PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
+	  	Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Devices[as!VkDevice(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
+	  	Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Queues[as!VkQueue(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
+	  	Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Semaphores[as!VkSemaphore(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
+	  	CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+          CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
+	  	Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Fences[as!VkFence(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
+	  	DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
+	  	Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Buffers[as!VkBuffer(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
+	  	Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Images[as!VkImage(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
+	  	Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Events[as!VkEvent(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
+	  	QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+          QueryPools[as!VkQueryPool(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
+	  	BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectName(
+          BufferViews[as!VkBufferView(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
+	  	ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectName(
+          ImageViews[as!VkImageView(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
+	  	ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectName(
+          ShaderModules[as!VkShaderModule(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
+	  	PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
+	  	PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
+	  	RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectName(
+          RenderPasses[as!VkRenderPass(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
+      if (as!VkPipeline(obj) in GraphicsPipelines) {
+        GraphicsPipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
+            GraphicsPipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
+      } else if (as!VkPipeline(obj) in ComputePipelines) {
+        ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
+            ComputePipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
+      }
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
+	  	DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
+        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
+	  	Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectName(
+        Samplers[as!VkSampler(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
+	  	DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
+	  	DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectName(
+        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
+	  	Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+        Framebuffers[as!VkFramebuffer(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
+	  	CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+        CommandPools[as!VkCommandPool(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
+	  	Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, nameInfo)
+	  case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
+	  	Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, nameInfo)
+  }
+}
+
+@override
+@no_replay
+cmd void RecreateDebugMarkerSetObjectTagEXT(
+  VkDevice device,
+  VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+  tagInfo := pTagInfo[0]
+  setDebugMarkerObjectTag(tagInfo)
+}
+
 @threadSafety("app")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")
@@ -8709,8 +8934,18 @@ class VkDebugMarkerMarkerInfoEXT {
 cmd VkResult vkDebugMarkerSetObjectTagEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectTagInfoEXT*              pTagInfo) {
-  read(pTagInfo[0:1])
+  tagInfo := pTagInfo[0]
+  setDebugMarkerObjectTag(tagInfo)
   return ?
+}
+
+@override
+@no_replay
+cmd void RecreateDebugMarkerSetObjectNameEXT(
+  VkDevice device,
+  VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+  nameInfo := pNameInfo[0]
+  setDebugMarkerObjectName(nameInfo)
 }
 
 @threadSafety("app")
@@ -8722,7 +8957,8 @@ cmd VkResult vkDebugMarkerSetObjectTagEXT(
 cmd VkResult vkDebugMarkerSetObjectNameEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectNameInfoEXT*             pNameInfo) {
-  read(pNameInfo[0:1])
+  nameInfo := pNameInfo[0]
+  setDebugMarkerObjectName(nameInfo)
   return ?
 }
 
@@ -8732,12 +8968,17 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
 cmd void RecreateCmdDebugMarkerBeginEXT(
     VkCommandBuffer             commandBuffer,
     VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-    read(pMarkerInfo[0:1])
+    markerInfo := pMarkerInfo[0]
+    _ = as!string(markerInfo.pMarkerName)
+    for i in (0 .. 4) {
+      _ = markerInfo.color[i]
+    }
 }
 
 @internal class
 RecreateCmdDebugMarkerBeginEXTData {
-  VkDebugMarkerMarkerInfoEXT MarkerInfo,
+  @unused string MarkerName,
+  @unused f32[4] Color,
 }
 
 @threadSafety("app")
@@ -8749,9 +8990,15 @@ RecreateCmdDebugMarkerBeginEXTData {
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
-  addCmd(commandBuffer, new!RecreateCmdDebugMarkerBeginEXTData(
-    MarkerInfo: pMarkerInfo[0]
-  ), Unimplemented(), doCmdNop)
+  markerInfo := pMarkerInfo[0]
+  recreate_data := new!RecreateCmdDebugMarkerBeginEXTData(
+    MarkerName: as!string(markerInfo.pMarkerName),
+  )
+  recreate_data.Color[0] = markerInfo.color[0]
+  recreate_data.Color[1] = markerInfo.color[1]
+  recreate_data.Color[2] = markerInfo.color[2]
+  recreate_data.Color[3] = markerInfo.color[3]
+  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
 }
 
 @override
@@ -8782,12 +9029,17 @@ cmd void vkCmdDebugMarkerEndEXT(
 cmd void RecreateCmdDebugMarkerInsertEXT(
   VkCommandBuffer             commandBuffer,
   VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-  read(pMarkerInfo[0:1])
+  markerInfo := pMarkerInfo[0]
+   _ = as!string(markerInfo.pMarkerName)
+  for i in (0 .. 4) {
+    _ = markerInfo.color[i]
+  }
 }
 
 @internal class
 RecreateCmdDebugMarkerInsertEXTData {
-  VkDebugMarkerMarkerInfoEXT MarkerInfo
+  @unused string MarkerName,
+  @unused f32[4] Color,
 }
 
 @threadSafety("app")
@@ -8799,8 +9051,15 @@ RecreateCmdDebugMarkerInsertEXTData {
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
-  read(pMarkerInfo[0:1])
-  addCmd(commandBuffer, new!RecreateCmdDebugMarkerInsertEXTData(),
+  markerInfo := pMarkerInfo[0]
+  recreate_data := new!RecreateCmdDebugMarkerInsertEXTData(
+    MarkerName: as!string(markerInfo.pMarkerName),
+  )
+  recreate_data.Color[0] = markerInfo.color[0]
+  recreate_data.Color[1] = markerInfo.color[1]
+  recreate_data.Color[2] = markerInfo.color[2]
+  recreate_data.Color[3] = markerInfo.color[3]
+  addCmd(commandBuffer, recreate_data,
     Unimplemented(), doCmdNop)
 }
 
@@ -9004,12 +9263,19 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
 }
 
+@internal class VulkanDebugMarkerInfo {
+  @unused string  ObjectName
+  @unused u64     TagName
+  @internal u8[]  Tag
+}
+
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.
 @internal class InstanceObject {
   @unused u32               ApiVersion        // The api version the app requested when setting up the instance
   @unused map!(u32, string) EnabledExtensions // Map from enabled extension index to extension name
   @unused map!(u32, string) EnabledLayers
   @unused VkInstance        VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
 @extension("VK_KHR_xlib_surface") define VK_KHR_XLIB_SURFACE_SPEC_VERSION   6
@@ -9025,6 +9291,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused VkPhysicalDevice         VulkanHandle
   // A map of queue family indices to queue properties.
   @unused map!(u32, VkQueueFamilyProperties) QueueFamilyProperties
+  @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
 @intenral class QueueInfo {
@@ -9040,6 +9307,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused map!(u32, QueueInfo)     Queues
   @unused VkPhysicalDeviceFeatures EnabledFeatures
   @unused VkDevice                 VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
 @internal class QueueObject {
@@ -9048,6 +9316,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused u32                    Index
   @unused VkQueue                VulkanHandle
   map!(VkEvent, ref!EventObject) PendingEvents
+  @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
 enum RecordingState {
@@ -9074,6 +9343,7 @@ enum RecordingState {
   @unused VkCommandPool          Pool
   @unused VkCommandBufferLevel   Level
   @unused ref!CommandBufferBegin BeginInfo
+  @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
 @internal class DeviceMemoryObject {
@@ -9086,6 +9356,7 @@ enum RecordingState {
   void*                                       MappedLocation
   u32                                         MemoryTypeIndex
   @hidden @internal u8[]                      Data
+  @unused ref!VulkanDebugMarkerInfo                       DebugInfo
   ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
 }
 
@@ -9105,6 +9376,7 @@ enum RecordingState {
   ref!DeviceMemoryObject  Memory
   VkDeviceSize            MemoryOffset
   @unused ref!QueueObject LastBoundQueue
+  @unused ref!VulkanDebugMarkerInfo   DebugInfo
 }
 
 @internal class BufferViewObject {
@@ -9114,6 +9386,7 @@ enum RecordingState {
   @unused VkFormat         Format
   @unused VkDeviceSize     Offset
   @unused VkDeviceSize     Range
+  @unused ref!VulkanDebugMarkerInfo    DebugInfo
 }
 
 @internal class ImageInfo {
@@ -9143,6 +9416,7 @@ enum RecordingState {
   ImageInfo                 Info
   VkImageAspectFlags        ImageAspect
   map!(u32, ref!ImageLayer) Layers
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
 @internal class ImageLayer {
@@ -9165,6 +9439,7 @@ enum RecordingState {
   @unused VkComponentMapping      Components
   @unused VkImageSubresourceRange SubresourceRange
   ref!ImageObject                 Image
+  @unused ref!VulkanDebugMarkerInfo           DebugInfo
 }
 
 @resource
@@ -9172,6 +9447,7 @@ enum RecordingState {
   @unused VkDevice       Device
   @unused u32[]          Words
   @unused VkShaderModule VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo  DebugInfo
 }
 
 @internal class SpecializationInfo {
@@ -9270,7 +9546,8 @@ enum RecordingState {
   @unused VkPipeline                BasePipeline
   // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
   //       It will have been set for you correctly
-  @unused s32 BasePipelineIndex
+  @unused s32                       BasePipelineIndex
+  @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
 @internal class ComputePipelineObject {
@@ -9283,7 +9560,8 @@ enum RecordingState {
   @unused VkPipeline               BasePipeline
   // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
   //       It will have been set for you correctly
-  @unused s32 BasePipelineIndex
+  @unused s32                     BasePipelineIndex
+  @unused ref!VulkanDebugMarkerInfo           DebugInfo
 }
 
 @internal class PipelineLayoutObject {
@@ -9291,6 +9569,7 @@ enum RecordingState {
   @unused VkPipelineLayout                         VulkanHandle
   @unused map!(u32, ref!DescriptorSetLayoutObject) SetLayouts
   @unused map!(u32, VkPushConstantRange)           PushConstantRanges
+  @unused ref!VulkanDebugMarkerInfo                            DebugInfo
 }
 
 @internal class SamplerObject {
@@ -9311,6 +9590,7 @@ enum RecordingState {
   @unused f32                  MaxLod
   @unused VkBorderColor        BorderColor
   @unsued VkBool32             UnnormalizedCoordinates
+  @unused ref!VulkanDebugMarkerInfo        DebugInfo
 }
 
 @internal class DescriptorBinding {
@@ -9327,6 +9607,7 @@ enum RecordingState {
   // Map from a binding number to its bound array of buffers.
   map!(u32, DescriptorBinding)  Bindings
   ref!DescriptorSetLayoutObject Layout
+  @unused ref!VulkanDebugMarkerInfo         DebugInfo
 }
 
 @internal class DescriptorSetLayoutBinding {
@@ -9342,6 +9623,7 @@ enum RecordingState {
   u32                           MaximumBinding
   // Map of binding numbers to binding information
   map!(u32, DescriptorSetLayoutBinding) Bindings
+  @unused ref!VulkanDebugMarkerInfo         DebugInfo
 }
 
 @internal class DescriptorPoolObject {
@@ -9351,12 +9633,14 @@ enum RecordingState {
   @unused u32                             MaxSets
   @unused map!(u32, VkDescriptorPoolSize) Sizes
   @unused map!(VkDescriptorSet, ref!DescriptorSetObject) DescriptorSets
+  @unused ref!VulkanDebugMarkerInfo                   DebugInfo
 }
 
 @internal class FenceObject {
   @unused VkDevice Device
   @unused VkFence  VulkanHandle
   @unused bool     Signaled
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
 
@@ -9365,6 +9649,7 @@ enum RecordingState {
   @unused VkSemaphore VulkanHandle
   @unused VkQueue     LastQueue
   @unused bool        Signaled
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
 @internal class EventObject {
@@ -9372,6 +9657,7 @@ enum RecordingState {
   @unused VkEvent  VulkanHandle
   @unused bool     Signaled
   @unused VkQueue  SubmitQueue
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
 enum QueryStatus {
@@ -9387,6 +9673,7 @@ enum QueryStatus {
   @unused u32                           QueryCount
   @unused VkQueryPipelineStatisticFlags PipelineStatistics
   @unused map!(u32, QueryStatus)        Status
+  @unused ref!VulkanDebugMarkerInfo                 DebugInfo
 }
 
 @internal class FramebufferObject {
@@ -9397,6 +9684,7 @@ enum QueryStatus {
   @unused u32                    Width
   @unused u32                    Height
   @unused u32                    Layers
+  @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
 @internal class SubpassDescription {
@@ -9415,11 +9703,13 @@ enum QueryStatus {
   @unused map!(u32, VkAttachmentDescription) AttachmentDescriptions
   @unused map!(u32, SubpassDescription)      SubpassDescriptions
   @unused map!(u32, VkSubpassDependency)     SubpassDependencies
+  @unused ref!VulkanDebugMarkerInfo                      DebugInfo
 }
 
 @internal class PipelineCacheObject {
   @unused VkDevice        Device
   @unused VkPipelineCache VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo   DebugInfo
 }
 
 @internal class CommandPoolObject {
@@ -9428,6 +9718,7 @@ enum QueryStatus {
   @unsued VkCommandPoolCreateFlags                       Flags
   @unused u32                                            QueueFamilyIndex
   @unused map!(VkCommandBuffer, ref!CommandBufferObject) CommandBuffers
+  @unused ref!VulkanDebugMarkerInfo                                  DebugInfo
 }
 
 enum SurfaceType {
@@ -9444,6 +9735,7 @@ enum SurfaceType {
   @unused VkInstance   Instance
   @unused VkSurfaceKHR VulkanHandle
   @unused SurfaceType  Type
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
 @internal class SwapchainObject {
@@ -9457,12 +9749,14 @@ enum SurfaceType {
   @unused VkPresentModeKHR              PresentMode
   @unused VkBool32                      Clipped
   map!(u32, ref!ImageObject)            SwapchainImages
+  @unused ref!VulkanDebugMarkerInfo                 DebugInfo
 }
 
 @internal class DisplayModeObject {
   @unused VkPhysicalDevice PhysicalDevice
   @unused VkDisplayKHR     Display
   @unused VkDisplayModeKHR VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo    DebugInfo
 }
 
 sub VkQueueFlags AddQueueFlag(VkQueueFlags flags, VkQueueFlagBits bit) {
