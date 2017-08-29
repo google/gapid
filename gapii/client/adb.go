@@ -63,6 +63,10 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 	if abi.SameAs(device.UnknownABI) {
 		abi = p.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
+
+	// For NativeBridge emulated devices opt for the native ABI of the emulator.
+	abi = d.NativeBridgeABI(ctx, abi)
+
 	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
 	log.I(ctx, "Turning device screen on")
