@@ -33,7 +33,6 @@ var abiTestData = []struct {
 }{
 	{device.UnknownABI, "unknown", 0, 0, 0, 0, device.UnknownEndian},
 	{device.AndroidARMv7a, "armeabi-v7a", 32, 4, 4, 4, device.LittleEndian},
-	{device.AndroidARMv7aHard, "armeabi-v7a-hard", 32, 4, 4, 4, device.LittleEndian},
 	{device.AndroidARM64v8a, "arm64-v8a", 64, 8, 8, 8, device.LittleEndian},
 	{device.AndroidX86, "x86", 32, 4, 4, 4, device.LittleEndian},
 	{device.AndroidX86_64, "x86-64", 64, 8, 8, 8, device.LittleEndian},
