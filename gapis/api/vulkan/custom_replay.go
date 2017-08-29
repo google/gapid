@@ -1361,6 +1361,28 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, s *api.State, b *builder.
 	return cb.ReplayGetEventStatus(a.Device, a.Event, a.Result, wait, a.Result).Mutate(ctx, s, b)
 }
 
+func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory.ApplicationPool())
+	nameInfo := a.PNameInfo.Read(ctx, a, s, nil)
+	err := subSetDebugMarkerObjectName(ctx, a, o, s, GetState(s), a.thread, nil, nameInfo)
+	if err != nil {
+		return err
+	}
+	return a.mutate(ctx, s, b)
+}
+
+func (a *RecreateDebugMarkerSetObjectTagEXT) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory.ApplicationPool())
+	tagInfo := a.PTagInfo.Read(ctx, a, s, nil)
+	err := subSetDebugMarkerObjectTag(ctx, a, o, s, GetState(s), a.thread, nil, tagInfo)
+	if err != nil {
+		return err
+	}
+	return a.mutate(ctx, s, b)
+}
+
 func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
 	if err := a.mutate(ctx, s, b); err != nil {
 		return err

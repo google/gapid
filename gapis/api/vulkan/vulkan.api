@@ -8918,11 +8918,12 @@ sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
 
 @override
 @no_replay
+@custom
 cmd void RecreateDebugMarkerSetObjectTagEXT(
   VkDevice device,
   VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
   tagInfo := pTagInfo[0]
-  setDebugMarkerObjectTag(tagInfo)
+  read(as!u8*(tagInfo.pTag)[0:tagInfo.tagSize])
 }
 
 @threadSafety("app")
@@ -8941,11 +8942,12 @@ cmd VkResult vkDebugMarkerSetObjectTagEXT(
 
 @override
 @no_replay
+@custom
 cmd void RecreateDebugMarkerSetObjectNameEXT(
   VkDevice device,
   VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
   nameInfo := pNameInfo[0]
-  setDebugMarkerObjectName(nameInfo)
+  _ = as!string(nameInfo.pObjectName)
 }
 
 @threadSafety("app")
