@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
-	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -93,27 +92,6 @@ func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Termin
 // ResolveSynchronization resolve all of the synchronization information for
 // the given API
 func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
-	cmds, err := resolve.Cmds(ctx, c)
-	if err != nil {
-		return err
-	}
-	for i, c := range cmds {
-		if caller := c.Caller(); caller != api.CmdNoID {
-			id := api.CmdID(i)
-			d.Hidden.Add(id)
-			if d.Hidden.Contains(caller) {
-				continue // Most likely a sub-sub-command, which we don't currently support.
-			}
-			l := d.SubcommandReferences[caller]
-			idx := api.SubCmdIdx{uint64(len(l))}
-			l = append(l, sync.SubcommandReference{
-				Index:         idx,
-				GeneratingCmd: id,
-			})
-			d.SubcommandReferences[caller] = l
-			d.SubcommandGroups[caller] = []api.SubCmdIdx{idx}
-		}
-	}
 	return nil
 }
 

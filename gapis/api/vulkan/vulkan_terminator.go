@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -49,15 +48,10 @@ type VulkanTerminator struct {
 var _ transform.Terminator = &VulkanTerminator{}
 
 func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTerminator, error) {
-	syncData, err := database.Build(ctx, &resolve.SynchronizationResolvable{capture})
+	s, err := resolve.SyncData(ctx, capture)
 	if err != nil {
 		return nil, err
 	}
-	s, ok := syncData.(*sync.Data)
-	if !ok {
-		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
-	}
-
 	return &VulkanTerminator{api.CmdID(0), make([]uint64, 0), false, s}, nil
 }
 

@@ -23,11 +23,9 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
@@ -611,13 +609,9 @@ func (a API) QueryFramebufferAttachment(
 	wireframeMode replay.WireframeMode,
 	hints *service.UsageHints) (*image.Data, error) {
 
-	syncData, err := database.Build(ctx, &resolve.SynchronizationResolvable{intent.Capture})
+	s, err := resolve.SyncData(ctx, intent.Capture)
 	if err != nil {
 		return nil, err
-	}
-	s, ok := syncData.(*sync.Data)
-	if !ok {
-		return nil, log.Errf(ctx, nil, "Could not get synchronization data")
 	}
 	beginIndex := api.CmdID(0)
 	endIndex := api.CmdID(0)
