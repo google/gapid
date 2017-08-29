@@ -44,10 +44,7 @@ public class Geometry {
   }
 
   public BoundingBox getBounds() {
-    if (model != null) {
-      return model.getBounds();
-    }
-    return BoundingBox.INVALID;
+    return (model == null) ? new BoundingBox() : model.getBounds();
   }
 
   public Renderable asRenderable(DisplayMode displayMode) {
