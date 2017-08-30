@@ -10,6 +10,7 @@ go_library(
         "value.go",
         "visitor.go",
     ],
+    importpath = "github.com/google/gapid/gapis/api/gles/glsl/ast",
     visibility = ["//visibility:public"],
     deps = ["//core/text/parse:go_default_library"],
 )

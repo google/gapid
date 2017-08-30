@@ -19,6 +19,7 @@ go_library(
         "doc.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/memory/memory_pb",
     visibility = ["//visibility:public"],
     deps = ["@com_github_golang_protobuf//proto:go_default_library"],
 )

@@ -1,20 +1,16 @@
-load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-cgo_library(
-    name = "cgo_default_library",
+go_library(
+    name = "go_default_library",
     srcs = [
         "astc.cc",
         "astc.go",
         "astc.h",
     ],
-    clinkopts = [],
-    visibility = ["//visibility:private"],
-    deps = ["//core/image:go_default_library"],
     cdeps = ["@astc-encoder//:astc-encoder"],
-)
-
-go_library(
-    name = "go_default_library",
-    library = ":cgo_default_library",
+    cgo = True,
+    clinkopts = [],
+    importpath = "github.com/google/gapid/core/image/astc",
     visibility = ["//visibility:public"],
+    deps = ["//core/image:go_default_library"],
 )

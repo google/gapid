@@ -24,6 +24,7 @@ go_library(
         "doc.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/capture",
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",
@@ -49,6 +50,7 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["capture_test.go"],
+    importpath = "github.com/google/gapid/gapis/capture_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

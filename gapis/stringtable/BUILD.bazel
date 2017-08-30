@@ -32,6 +32,7 @@ go_library(
         "value.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/stringtable",
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/service/box:go_default_library",

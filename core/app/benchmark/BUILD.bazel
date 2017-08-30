@@ -8,6 +8,7 @@ go_library(
         "counter.go",
         "doc.go",
     ],
+    importpath = "github.com/google/gapid/core/app/benchmark",
     visibility = ["//visibility:public"],
 )
 
@@ -18,6 +19,7 @@ go_test(
         "complexity_test.go",
         "counter_test.go",
     ],
+    importpath = "github.com/google/gapid/core/app/benchmark_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

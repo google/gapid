@@ -11,9 +11,12 @@ go_library(
         "set.go",
         "unix.go",
     ] + select({
-        "@io_bazel_rules_go//go/platform:windows_amd64": ["windows.go"],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "windows.go",
+        ],
         "//conditions:default": [],
     }),
+    importpath = "github.com/google/gapid/core/os/file",
     visibility = ["//visibility:public"],
     deps = ["//core/log:go_default_library"],
 )
@@ -24,9 +27,12 @@ go_test(
     srcs = [
         "path_test.go",
     ] + select({
-        "@io_bazel_rules_go//go/platform:windows_amd64": ["windows_test.go"],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "windows_test.go",
+        ],
         "//conditions:default": [],
     }),
+    importpath = "github.com/google/gapid/core/os/file_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

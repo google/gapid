@@ -23,6 +23,7 @@ go_library(
         "simple.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/core/os/device/bind",
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",

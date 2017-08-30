@@ -31,6 +31,7 @@ go_library(
         "log.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/core/log/log_pb",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/pod:go_default_library",

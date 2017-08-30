@@ -7,6 +7,7 @@ go_library(
         "cst.go",
         "verify.go",
     ],
+    importpath = "github.com/google/gapid/core/text/parse/test",
     visibility = ["//visibility:public"],
     deps = [
         "//core/assert:go_default_library",

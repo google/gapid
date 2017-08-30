@@ -8,6 +8,7 @@ go_library(
         "framebuffer_observation.go",
         "resource.go",
     ],
+    importpath = "github.com/google/gapid/gapis/atom",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/endian:go_default_library",

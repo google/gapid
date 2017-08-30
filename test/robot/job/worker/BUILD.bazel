@@ -25,6 +25,7 @@ go_library(
         "worker.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/job/worker",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/id:go_default_library",

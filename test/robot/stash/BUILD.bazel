@@ -24,6 +24,7 @@ go_library(
         "upload.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/stash",
     visibility = ["//visibility:public"],
     deps = [
         "//core/fault:go_default_library",

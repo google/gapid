@@ -6,12 +6,14 @@ go_library(
         "slice.go",
         "sort.go",
     ],
+    importpath = "github.com/google/gapid/core/data/slice",
     visibility = ["//visibility:public"],
 )
 
 go_test(
     name = "go_default_test",
     srcs = ["sort_test.go"],
+    importpath = "github.com/google/gapid/core/data/slice",
     library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",
@@ -22,6 +24,7 @@ go_test(
 go_test(
     name = "go_default_xtest",
     srcs = ["slice_test.go"],
+    importpath = "github.com/google/gapid/core/data/slice_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

@@ -27,6 +27,7 @@ go_library(
         "vertex.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/vertex",
     visibility = ["//visibility:public"],
     deps = [
         "//core/stream:go_default_library",
@@ -38,6 +39,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["vertex_test.go"],
+    importpath = "github.com/google/gapid/gapis/vertex_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

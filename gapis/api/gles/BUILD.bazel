@@ -76,6 +76,7 @@ go_library(
         ":generated",  # keep
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/api/gles",
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",
@@ -128,6 +129,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["dead_code_elimination_test.go"],
+    importpath = "github.com/google/gapid/gapis/api/gles",
     library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",
@@ -152,6 +154,7 @@ go_test(
         "resources_test.go",
         "stub_program_test.go",
     ],
+    importpath = "github.com/google/gapid/gapis/api/gles_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

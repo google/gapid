@@ -26,6 +26,7 @@ go_library(
         "replay.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/replay",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/benchmark:go_default_library",

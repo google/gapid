@@ -12,6 +12,7 @@ go_library(
         "doc.go",
         ":lingo",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/lingo/examples/cstcalc",
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
@@ -22,6 +23,7 @@ go_library(
 
 go_binary(
     name = "cstcalc",
+    importpath = "github.com/google/gapid/test/robot/lingo/examples/cstcalc",
     library = ":go_default_library",
     visibility = ["//visibility:public"],
 )

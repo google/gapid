@@ -9,6 +9,7 @@ go_library(
         "server.go",
         "stream.go",
     ],
+    importpath = "github.com/google/gapid/core/net/grpcutil",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event:go_default_library",
@@ -24,6 +25,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["pipe_test.go"],
+    importpath = "github.com/google/gapid/core/net/grpcutil_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

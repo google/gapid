@@ -9,6 +9,7 @@ go_library(
         "rewrite.go",
         "wrap.go",
     ],
+    importpath = "github.com/google/gapid/test/robot/lingo/generator",
     visibility = ["//visibility:public"],
     deps = [
         "//core/fault:go_default_library",

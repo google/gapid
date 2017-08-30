@@ -20,6 +20,7 @@ go_library(
         "textedit.go",
         "uri.go",
     ],
+    importpath = "github.com/google/gapid/core/langsvr",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event/task:go_default_library",
@@ -33,6 +34,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["body_test.go"],
+    importpath = "github.com/google/gapid/core/langsvr_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

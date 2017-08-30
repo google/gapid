@@ -6,6 +6,7 @@ go_library(
         "auth.go",
         "doc.go",
     ],
+    importpath = "github.com/google/gapid/core/app/auth",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/endian:go_default_library",
@@ -20,6 +21,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["auth_test.go"],
+    importpath = "github.com/google/gapid/core/app/auth_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

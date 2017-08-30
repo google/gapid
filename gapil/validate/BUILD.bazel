@@ -8,6 +8,7 @@ go_library(
         "no_unused.go",
         "validate.go",
     ],
+    importpath = "github.com/google/gapid/gapil/validate",
     visibility = ["//visibility:public"],
     deps = [
         "//core/text/parse:go_default_library",
@@ -21,6 +22,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["inspect_test.go"],
+    importpath = "github.com/google/gapid/gapil/validate_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",
