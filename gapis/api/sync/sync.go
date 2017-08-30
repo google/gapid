@@ -61,10 +61,27 @@ func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) 
 	s.cmds = append(s.cmds, cmd)
 }
 
+// calleeCmdID flattens grouped ids to their flattened linear ids if possible.
+func calleeCmdID(idx api.SubCmdIdx, data *Data) api.CmdID {
+	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
+	if !ok {
+		return 0
+	}
+	for _, v := range sg {
+		if v.Index.Equals(idx[1:]) {
+			if v.IsCallerGroup {
+				return v.GeneratingCmd
+			}
+			break
+		}
+	}
+	return api.CmdID(0)
+}
+
 // MutationCmdsFor returns a list of command that represent the correct
 // mutations to have the state for all commands before and including the given
 // index.
-func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id api.CmdID, subindex []uint64) ([]api.Cmd, error) {
+func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []api.Cmd, id api.CmdID, subindex []uint64) ([]api.Cmd, error) {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -72,6 +89,15 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, cmds []api.Cmd, id ap
 	if err != nil {
 		return nil, err
 	}
+
+	fullCommand := api.SubCmdIdx{uint64(id)}
+	fullCommand = append(fullCommand, subindex...)
+
+	if newIdx := calleeCmdID(fullCommand, data); newIdx != 0 {
+		id = newIdx
+		subindex = []uint64{}
+	}
+
 	terminators := make([]transform.Terminator, 0)
 	transforms := transform.Transforms{}
 

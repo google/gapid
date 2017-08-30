@@ -38,6 +38,9 @@ type ExecutionRanges struct {
 type SubcommandReference struct {
 	Index         api.SubCmdIdx
 	GeneratingCmd api.CmdID
+	// IsCalledGroup is true if the reference is to a nested call, otherwise
+	// the reference belongs to a command-list.
+	IsCallerGroup bool
 }
 
 // Data contains a map of synchronization pairs.

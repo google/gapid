@@ -37,7 +37,7 @@ const (
 	stop = fault.Const("stop")
 )
 
-func translateId(idx api.SubCmdIdx, data *sync.Data) (api.CmdID, bool) {
+func translateIDForDisplay(idx api.SubCmdIdx, data *sync.Data) (api.CmdID, bool) {
 	atomIdx := api.CmdID(0)
 	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
 	if !ok {
@@ -105,7 +105,7 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 				return pred(item.Name)
 			case api.SubCmdIdx:
 				if len(item) > 1 {
-					if idx, found := translateId(item, snc); found {
+					if idx, found := translateIDForDisplay(item, snc); found {
 						return pred(fmt.Sprint(c.Commands[idx]))
 					}
 					return false
@@ -113,7 +113,7 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 				return pred(fmt.Sprint(c.Commands[item[0]]))
 			case api.SubCmdRoot:
 				if len(item.Id) > 1 {
-					if idx, found := translateId(item.Id, snc); found {
+					if idx, found := translateIDForDisplay(item.Id, snc); found {
 						return pred(fmt.Sprint(c.Commands[idx]))
 					}
 					return false

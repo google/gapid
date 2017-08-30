@@ -38,7 +38,13 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
+
+	sd, err := SyncData(ctx, path.FindCapture(p))
+	if err != nil {
+		return nil, err
+	}
+
+	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
 	if err != nil {
 		return nil, err
 	}
