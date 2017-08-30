@@ -69,6 +69,7 @@ type dimension struct {
 	valueOf  func(*task) Item
 	itemMap  map[string]Item
 	enumSrc  func() enum
+	enumSort func(a, b string) bool
 }
 
 func (d *dimension) getEnum() enum {
@@ -306,7 +307,7 @@ func (p *page) refresh() {
 		}
 	}
 
-	p.grid.SetData(data)
+	p.grid.SetData(data, p.rowDimension.enumSort, p.columnDimension.enumSort)
 }
 
 func robotEntityLink(path string, s interface{}) interface{} {

@@ -304,15 +304,27 @@ func buildData(in Data, rowSort, columnSort headerLess) *dataset {
 }
 
 // SetData assigns the data to the grid.
-func (g *Grid) SetData(data Data) {
-	new, old := buildData(data, g.rowSort, g.columnSort), g.topDataset()
+func (g *Grid) SetData(data Data, rowSort, columnSort func(a, b string) bool) {
+	if rowSort == nil {
+		rowSort = sortAlphabetic
+	}
+	if columnSort == nil {
+		columnSort = sortAlphabetic
+	}
+	new, old := buildData(data, makeHeaderLess(rowSort), makeHeaderLess(columnSort)), g.topDataset()
 	g.setTransition(old, new)
 	g.tick()
 }
 
 type headerLess func(a, b *header) bool
 
-func sortAlphabetic(a, b *header) bool { return a.data.Name < b.data.Name }
+func sortAlphabetic(a, b string) bool { return a < b }
+
+func makeHeaderLess(sort func(a, b string) bool) headerLess {
+	return func(a, b *header) bool {
+		return sort(a.data.Name, b.data.Name)
+	}
+}
 
 type headerSorter struct {
 	list []*header

@@ -25,8 +25,6 @@ import (
 type Grid struct {
 	canvas         *dom.Canvas
 	datasets       []*dataset  // The grid dataset(s).
-	rowSort        headerLess  // Sorting function for rows
-	columnSort     headerLess  // Sorting function for rows
 	animating      bool        // If true then the grid will repeatedly redraw
 	time           float64     // time in seconds since the grid was created
 	startTime      time.Time   // time when the grid was created
@@ -80,11 +78,9 @@ func New() *Grid {
 		},
 	}
 	grid := &Grid{
-		canvas:     dom.NewCanvas(4, 4),
-		rowSort:    sortAlphabetic,
-		columnSort: sortAlphabetic,
-		startTime:  time.Now(),
-		Style:      style,
+		canvas:    dom.NewCanvas(4, 4),
+		startTime: time.Now(),
+		Style:     style,
 	}
 	grid.canvas.OnMouseDown(grid.onMouseDown)
 	grid.canvas.OnMouseUp(grid.onMouseUp)
