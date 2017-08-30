@@ -69,6 +69,7 @@ type DCE struct {
 	footprint        *dependencygraph.Footprint
 	endBehaviorIndex uint64
 	requests         *commandIndicesSet
+	requestCount     uint64
 }
 
 // NewDCE constructs a new DCE instance and returns a pointer to the created
@@ -83,6 +84,7 @@ func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 // Request added a requsted command or subcommand, represented by its full
 // command index, to the DCE.
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
+	t.requestCount++
 	t.requests.insert(fci)
 	bi := t.footprint.BehaviorIndex(ctx, fci)
 	if bi > t.endBehaviorIndex {
@@ -140,6 +142,9 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 
 			out.MutateAndWrite(ctx, api.CmdID(fci[0]), aliveCmd)
 		} else {
+			if t.requestCount == uint64(1) && !aliveCmds.contains(fci) {
+				log.W(ctx, "Dead command/subcommand: %v", fci)
+			}
 			if len(fci) == 1 && !aliveCmds.contains(fci) {
 				// logging the DCE result of dead commands
 				deadCmd := t.footprint.Commands[fci[0]]

@@ -338,6 +338,8 @@ type subpassAttachmentInfo struct {
 }
 
 type subpassInfo struct {
+	loadAttachments        []*subpassAttachmentInfo
+	storeAttachments       []*subpassAttachmentInfo
 	colorAttachments       []*subpassAttachmentInfo
 	resolveAttachments     []*subpassAttachmentInfo
 	inputAttachments       []*subpassAttachmentInfo
@@ -436,7 +438,7 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 	bh *dependencygraph.Behavior) {
 	write(ctx, bh, qei.subpass)
 	subpassI := qei.subpass.val
-	handleLoadOp := func(ctx context.Context, bh *dependencygraph.Behavior,
+	noDsAttLoadOp := func(ctx context.Context, bh *dependencygraph.Behavior,
 		attachment *subpassAttachmentInfo) {
 		// TODO: Not all subpasses change layouts
 		modify(ctx, bh, attachment.layout)
@@ -450,29 +452,27 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 			}
 		}
 	}
-	for _, c := range qei.subpasses[subpassI].colorAttachments {
-		handleLoadOp(ctx, bh, c)
-	}
-	for _, r := range qei.subpasses[subpassI].resolveAttachments {
-		handleLoadOp(ctx, bh, r)
-	}
-	for _, i := range qei.subpasses[subpassI].inputAttachments {
-		handleLoadOp(ctx, bh, i)
-	}
-	if qei.subpasses[subpassI].depthStencilAttachment != nil {
-		dsAtt := qei.subpasses[subpassI].depthStencilAttachment
+	dsAttLoadOp := func(ctx context.Context, bh *dependencygraph.Behavior,
+		attachment *subpassAttachmentInfo) {
 		// TODO: Not all subpasses change layouts
-		modify(ctx, bh, dsAtt.layout)
-		if !dsAtt.desc.LoadOp.isLoad() && !dsAtt.desc.StencilLoadOp.isLoad() {
-			if dsAtt.fullImageData {
-				write(ctx, bh, dsAtt.data)
+		modify(ctx, bh, attachment.layout)
+		if !attachment.desc.LoadOp.isLoad() && !attachment.desc.StencilLoadOp.isLoad() {
+			if attachment.fullImageData {
+				write(ctx, bh, attachment.data)
 			} else {
-				modify(ctx, bh, dsAtt.data)
+				modify(ctx, bh, attachment.data)
 			}
-		} else if dsAtt.desc.LoadOp.isLoad() && dsAtt.desc.StencilLoadOp.isLoad() {
-			read(ctx, bh, dsAtt.data)
+		} else if attachment.desc.LoadOp.isLoad() && attachment.desc.StencilLoadOp.isLoad() {
+			read(ctx, bh, attachment.data)
 		} else {
-			modify(ctx, bh, dsAtt.data)
+			modify(ctx, bh, attachment.data)
+		}
+	}
+	for _, l := range qei.subpasses[subpassI].loadAttachments {
+		if qei.subpasses[subpassI].depthStencilAttachment == l {
+			dsAttLoadOp(ctx, bh, l)
+		} else {
+			noDsAttLoadOp(ctx, bh, l)
 		}
 	}
 }
@@ -480,7 +480,7 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 	ft *dependencygraph.Footprint, sc submittedCommand, m *vulkanMachine) {
 	subpassI := qei.subpass.val
-	handleStoreOp := func(ctx context.Context, ft *dependencygraph.Footprint,
+	noDsAttStoreOp := func(ctx context.Context, ft *dependencygraph.Footprint,
 		sc submittedCommand, m *vulkanMachine, att *subpassAttachmentInfo,
 		readAtt *subpassAttachmentInfo) {
 		// Two behaviors for each attachment. One to represent the dependency of
@@ -508,19 +508,10 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 		read(ctx, behaviorForData, qei.subpass)
 		ft.AddBehavior(ctx, behaviorForData)
 	}
-	for i, r := range qei.subpasses[subpassI].resolveAttachments {
-		c := qei.subpasses[subpassI].colorAttachments[i]
-		handleStoreOp(ctx, ft, sc, m, r, c)
-	}
-	for _, c := range qei.subpasses[subpassI].colorAttachments {
-		handleStoreOp(ctx, ft, sc, m, c, nil)
-	}
-	for _, i := range qei.subpasses[subpassI].inputAttachments {
-		handleStoreOp(ctx, ft, sc, m, i, nil)
-	}
-	if qei.subpasses[subpassI].depthStencilAttachment != nil {
+
+	dsAttStoreOp := func(ctx context.Context, ft *dependencygraph.Footprint,
+		sc submittedCommand, m *vulkanMachine, dsAtt *subpassAttachmentInfo) {
 		bh := sc.cmd.newBehavior(ctx, sc, m, qei)
-		dsAtt := qei.subpasses[subpassI].depthStencilAttachment
 		if dsAtt.desc.StoreOp.isStore() || dsAtt.desc.StencilStoreOp.isStore() {
 			modify(ctx, bh, dsAtt.data)
 		} else {
@@ -532,6 +523,35 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 		}
 		read(ctx, bh, qei.subpass)
 		ft.AddBehavior(ctx, bh)
+	}
+
+	isStoreAtt := func(att *subpassAttachmentInfo) bool {
+		for _, storeAtt := range qei.subpasses[subpassI].storeAttachments {
+			if att == storeAtt {
+				return true
+			}
+		}
+		return false
+	}
+
+	for i, r := range qei.subpasses[subpassI].resolveAttachments {
+		if isStoreAtt(r) {
+			c := qei.subpasses[subpassI].colorAttachments[i]
+			noDsAttStoreOp(ctx, ft, sc, m, r, c)
+		}
+	}
+	for _, c := range qei.subpasses[subpassI].colorAttachments {
+		if isStoreAtt(c) {
+			noDsAttStoreOp(ctx, ft, sc, m, c, nil)
+		}
+	}
+	for _, i := range qei.subpasses[subpassI].inputAttachments {
+		if isStoreAtt(i) {
+			noDsAttStoreOp(ctx, ft, sc, m, i, nil)
+		}
+	}
+	if isStoreAtt(qei.subpasses[subpassI].depthStencilAttachment) {
+		dsAttStoreOp(ctx, ft, sc, m, qei.subpasses[subpassI].depthStencilAttachment)
 	}
 	for _, modified := range qei.subpasses[subpassI].modifiedDescriptorData {
 		bh := sc.cmd.newBehavior(ctx, sc, m, qei)
@@ -555,6 +575,49 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 	read(ctx, bh, vkHandle(fb.VulkanHandle))
 	qei.framebuffer = fb
 	qei.subpasses = []subpassInfo{}
+
+	// Record which subpass that loads or stores the attachments. A subpass loads
+	// an attachment if the attachment is first used in that subpass. A subpass
+	// stores an attachment if the subpass is the last use of that attachment.
+	attLoadSubpass := map[uint32]uint32{}
+	attStoreSubpass := map[uint32]uint32{}
+	attStoreAttInfo := map[uint32]*subpassAttachmentInfo{}
+	recordAttachment := func(ai, si uint32) *subpassAttachmentInfo {
+		viewObj := fb.ImageAttachments.Get(ai)
+		imgObj := viewObj.Image
+		layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
+		imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
+		attDesc := rp.AttachmentDescriptions.Get(ai)
+		fullImageData := false
+		switch viewObj.Type {
+		case VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
+			VkImageViewType_VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+			if viewObj.SubresourceRange.BaseArrayLayer == uint32(0) &&
+				imgObj.Info.ArrayLayers == viewObj.SubresourceRange.LayerCount &&
+				imgObj.Info.ImageType == VkImageType_VK_IMAGE_TYPE_2D &&
+				imgObj.Info.Extent.Width == fb.Width &&
+				imgObj.Info.Extent.Height == fb.Height &&
+				fb.Layers == imgObj.Info.ArrayLayers {
+				fullImageData = true
+			}
+		}
+		attachmentInfo := &subpassAttachmentInfo{fullImageData, imgData, imgLayout, attDesc}
+		if _, ok := attLoadSubpass[ai]; !ok {
+			attLoadSubpass[ai] = si
+			qei.subpasses[si].loadAttachments = append(
+				qei.subpasses[si].loadAttachments, attachmentInfo)
+		}
+		attStoreSubpass[ai] = si
+		attStoreAttInfo[ai] = attachmentInfo
+		return attachmentInfo
+	}
+	defer func() {
+		for ai, si := range attStoreSubpass {
+			qei.subpasses[si].storeAttachments = append(
+				qei.subpasses[si].storeAttachments, attStoreAttInfo[ai])
+		}
+	}()
+
 	for _, subpass := range rp.SubpassDescriptions.KeysSorted() {
 		desc := rp.SubpassDescriptions.Get(subpass)
 		qei.subpasses = append(qei.subpasses, subpassInfo{})
@@ -590,39 +653,20 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 		}
 
 		for _, ai := range rp.AttachmentDescriptions.KeysSorted() {
-			viewObj := fb.ImageAttachments.Get(ai)
-			imgObj := viewObj.Image
-			layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
-			imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
-			attDesc := rp.AttachmentDescriptions.Get(ai)
-			fullImageData := false
-			switch viewObj.Type {
-			case VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
-				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-				if viewObj.SubresourceRange.BaseArrayLayer == uint32(0) &&
-					imgObj.Info.ArrayLayers == viewObj.SubresourceRange.LayerCount &&
-					imgObj.Info.ImageType == VkImageType_VK_IMAGE_TYPE_2D &&
-					imgObj.Info.Extent.Width == fb.Width &&
-					imgObj.Info.Extent.Height == fb.Height &&
-					fb.Layers == imgObj.Info.ArrayLayers {
-					fullImageData = true
-				}
-			}
-
 			if _, ok := colorAs[ai]; ok {
 				qei.subpasses[subpass].colorAttachments = append(
 					qei.subpasses[subpass].colorAttachments,
-					&subpassAttachmentInfo{fullImageData, imgData, imgLayout, attDesc})
+					recordAttachment(ai, subpass))
 			}
 			if _, ok := resolveAs[ai]; ok {
 				qei.subpasses[subpass].resolveAttachments = append(
 					qei.subpasses[subpass].resolveAttachments,
-					&subpassAttachmentInfo{fullImageData, imgData, imgLayout, attDesc})
+					recordAttachment(ai, subpass))
 			}
 			if _, ok := inputAs[ai]; ok {
 				qei.subpasses[subpass].inputAttachments = append(
 					qei.subpasses[subpass].inputAttachments,
-					&subpassAttachmentInfo{fullImageData, imgData, imgLayout, attDesc})
+					recordAttachment(ai, subpass))
 			}
 		}
 		if desc.DepthStencilAttachment != nil {
