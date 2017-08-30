@@ -239,8 +239,7 @@ func (s *remoteStore) Create(ctx context.Context, info *stash.Upload) (io.WriteC
 	if err != nil {
 		return nil, log.Err(ctx, err, "Remote store upload start")
 	}
-	err = stream.Send(&UploadChunk{Of: &UploadChunk_Upload{Upload: info}})
-	if err != nil {
+	if err := stream.Send(&UploadChunk{Of: &UploadChunk_Upload{Upload: info}}); err != nil {
 		return nil, log.Err(ctx, err, "Remote store upload header")
 	}
 	return &remoteStoreWriter{stream: stream}, nil
@@ -270,7 +269,11 @@ func (w *remoteStoreWriter) Write(b []byte) (int, error) {
 }
 
 func (w *remoteStoreWriter) Close() error {
-	return w.stream.CloseSend()
+	// Use CloseAndRecv() to block until the server acknowledges the close.
+	// CloseSend() would return without waiting for the server to complete the
+	// call.
+	_, err := w.stream.CloseAndRecv()
+	return err
 }
 
 func (s *remoteStore) Upload(ctx context.Context, info *stash.Upload, reader io.Reader) error {
