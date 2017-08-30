@@ -176,33 +176,41 @@ Spy::Spy()
     mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
 #endif // TARGET_OS
 
+    if (!mConnection->write("gapii", 5)) { // handshake magic
+        GAPID_FATAL("Couldn't send handshake magic");
+    }
+
     GAPID_INFO("Connection made");
 
     ConnectionHeader header;
-    if (header.read(mConnection.get())) {
-        mObserveFrameFrequency = header.mObserveFrameFrequency;
-        mObserveDrawFrequency = header.mObserveDrawFrequency;
-        mDisablePrecompiledShaders =
-                (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
-        mRecordGLErrorState =
-                (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
-        // This will be over-written if we also set the header flags
-        mSuspendCaptureFrames = header.mStartFrame;
-        mCaptureFrames = header.mNumFrames;
-        mSuspendCaptureFrames.store((header.mFlags & ConnectionHeader::FLAG_DEFER_START)?
-            kSuspendIndefinitely: mSuspendCaptureFrames.load());
-#if TARGET_OS == GAPID_OS_ANDROID
-        if (strlen(header.mLibInterceptorPath) > 0) {
-            gInstaller = std::unique_ptr<Installer>(new Installer(header.mLibInterceptorPath));
-        }
-        if (header.mGvrHandle != 0) {
-            auto gvr_lib = reinterpret_cast<void*>(header.mGvrHandle);
-            install_gvr(gInstaller.get(), gvr_lib, &this->GvrSpy::mImports);
-        }
-#endif // TARGET_OS == GAPID_OS_ANDROID
-    } else {
+    if (!header.read(mConnection.get())) {
         GAPID_FATAL("Failed to read connection header");
     }
+
+    GAPID_INFO("Connection header read");
+
+    mObserveFrameFrequency = header.mObserveFrameFrequency;
+    mObserveDrawFrequency = header.mObserveDrawFrequency;
+    mDisablePrecompiledShaders =
+            (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
+    mRecordGLErrorState =
+            (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
+    // This will be over-written if we also set the header flags
+    mSuspendCaptureFrames = header.mStartFrame;
+    mCaptureFrames = header.mNumFrames;
+    mSuspendCaptureFrames.store((header.mFlags & ConnectionHeader::FLAG_DEFER_START)?
+        kSuspendIndefinitely: mSuspendCaptureFrames.load());
+
+#if TARGET_OS == GAPID_OS_ANDROID
+    if (strlen(header.mLibInterceptorPath) > 0) {
+        gInstaller = std::unique_ptr<Installer>(new Installer(header.mLibInterceptorPath));
+    }
+    if (header.mGvrHandle != 0) {
+        auto gvr_lib = reinterpret_cast<void*>(header.mGvrHandle);
+        install_gvr(gInstaller.get(), gvr_lib, &this->GvrSpy::mImports);
+    }
+#endif // TARGET_OS == GAPID_OS_ANDROID
+
     set_valid_apis(header.mAPIs);
     GAPID_ERROR("APIS %08x", header.mAPIs);
     GAPID_INFO("GAPII connection established. Settings:");
