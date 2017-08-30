@@ -10,7 +10,7 @@ github_repository(
     organization = "bazelbuild",
     project = "rules_go",
     branch = "master",
-    commit = "8da86576c32b10a834c78f8afe71dea9e9da86ff", # Comment to use the master branch of this repository
+    commit = "2e319588571f20fdaaf83058b690abd32f596e89", # Comment to use the master branch of this repository
     # path = "../rules_go", # Uncomment to use a local copy of this repository
 )
 
