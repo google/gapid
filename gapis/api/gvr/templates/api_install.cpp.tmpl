@@ -37,7 +37,7 @@
 ¶
 namespace gapii {«
 ¶
-bool install_gvr(void* gvr_lib, GvrImports* imports) {
+bool install_gvr(Installer* installer, void* gvr_lib, GvrImports* imports) {
   struct func_t {
     const char* name;
     void**      imp;
@@ -54,7 +54,7 @@ bool install_gvr(void* gvr_lib, GvrImports* imports) {
   for (auto func : funcs) {
     if (auto import = dlsym(gvr_lib, func.name)) {
       GAPID_INFO("Installing '%s'...", func.name);
-      *func.imp = gapii::install_function(import, func.exp);
+      *func.imp = installer->install(import, func.exp);
     } else {
       GAPID_WARNING("Could not find GVR function '%s'", func.name);
     }

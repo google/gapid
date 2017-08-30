@@ -195,7 +195,6 @@ func (p *Process) loadAndConnectViaJDWP(
 	// This has to be done on a separate go-routine as the call to load gapii
 	// will block until a connection is made.
 	connErr := make(chan error)
-	go func() { connErr <- p.connect(ctx, gvrHandle) }()
 
 	// Load GAPII library.
 	err = jdbg.Do(conn, onCreate.Thread, func(j *jdbg.JDbg) error {
@@ -203,14 +202,16 @@ func (p *Process) loadAndConnectViaJDWP(
 		if err != nil {
 			return err
 		}
+
 		interceptorPath := gapidAPK.LibInterceptorPath(abi)
+		go func() { connErr <- p.connect(ctx, gvrHandle, interceptorPath) }()
+
 		gapiiPath := gapidAPK.LibGAPIIPath(abi)
 		ctx = log.V{"gapii.so": gapiiPath, "process abi": abi.Name}.Bind(ctx)
 
 		// Load the library.
 		log.D(ctx, "Loading GAPII library...")
 		// Work around for loading libraries in the N previews. See b/29441142.
-		j.Class("java.lang.Runtime").Call("getRuntime").Call("doLoad", interceptorPath, nil)
 		j.Class("java.lang.Runtime").Call("getRuntime").Call("doLoad", gapiiPath, nil)
 		log.D(ctx, "Library loaded")
 		return nil

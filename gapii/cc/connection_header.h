@@ -17,6 +17,7 @@
 #ifndef GAPII_CONNECTION_HEADER_H
 #define GAPII_CONNECTION_HEADER_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace core {
@@ -35,6 +36,8 @@ class ConnectionHeader {
 public:
     ConnectionHeader();
 
+    static const size_t MAX_PATH = 512;
+
     // Fakes no support for PCS, forcing the app to share shader source.
     static const uint32_t FLAG_DISABLE_PRECOMPILED_SHADERS = 0x00000001;
     // Driver errors are queried after each call and stored as extras.
@@ -46,15 +49,16 @@ public:
     // on success or false on error.
     bool read(core::StreamReader* reader);
 
-    uint8_t  mMagic[4];              // 's', 'p', 'y', '0'
-    uint32_t mVersion;               // 1
-    uint32_t mObserveFrameFrequency; // non-zero == enabled.
-    uint32_t mObserveDrawFrequency;  // non-zero == enabled.
-    uint32_t mStartFrame;            // non-zero == Frame to start at.
-    uint32_t mNumFrames;             // non-zero == Number of frames to capture.
-    uint32_t mAPIs;                  // Bitset of APIS to enable.
-    uint32_t mFlags;                 // Combination of FLAG_XX bits.
-    uint64_t mGvrHandle;             // Handle of GVR library.
+    uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
+    uint32_t mVersion;                      // 1
+    uint32_t mObserveFrameFrequency;        // non-zero == enabled.
+    uint32_t mObserveDrawFrequency;         // non-zero == enabled.
+    uint32_t mStartFrame;                   // non-zero == Frame to start at.
+    uint32_t mNumFrames;                    // non-zero == Number of frames to capture.
+    uint32_t mAPIs;                         // Bitset of APIS to enable.
+    uint32_t mFlags;                        // Combination of FLAG_XX bits.
+    uint64_t mGvrHandle;                    // Handle of GVR library.
+    char     mLibInterceptorPath[MAX_PATH]; // Path of libinterceptor.so.
 };
 
 } // namespace gapii

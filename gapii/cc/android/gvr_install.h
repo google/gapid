@@ -20,10 +20,11 @@
 
 namespace gapii {
 
+class Installer;
 class GvrImports;
 
 // install_gvr installs interceptor hooks into all the GVR functions.
-bool install_gvr(void* gvr_lib, GvrImports* imports);
+bool install_gvr(Installer* installer, void* gvr_lib, GvrImports* imports);
 
 } // namespace gapii
 

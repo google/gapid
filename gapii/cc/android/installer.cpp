@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "installer.h"
 #include "../gles_exports.h"
 
 #include "core/cc/assert.h"
@@ -117,27 +118,16 @@ void recordInterceptorError(void*, const char* message) {
     GAPID_WARNING("Interceptor error: %s", message);
 }
 
-class Installer {
-public:
-    Installer();
-    ~Installer();
+}  // anonymous namespace
 
-    void* install(void* func_import, const void* func_export);
+namespace gapii {
 
-private:
-    void install_gles();
-};
-
-Installer::Installer() {
+Installer::Installer(const char* libInterceptorPath) {
     GAPID_INFO("Installing GAPII hooks...")
 
-    auto lib = dlopen("libinterceptor.so.4", RTLD_NOW);
+    auto lib = dlopen(libInterceptorPath, RTLD_NOW);
     if (lib == nullptr) {
-        // Older versions of Android use the filename instead of the SONAME from the executable.
-        lib = dlopen("libinterceptor.so", RTLD_NOW);
-    }
-    if (lib == nullptr) {
-        GAPID_FATAL("Couldn't resolve the interceptor library.");
+        GAPID_FATAL("Couldn't load interceptor library from: %s", libInterceptorPath);
     }
 
     gInitializeInterceptor = reinterpret_cast<InitializeInterceptorFunc*>(dlsym(lib, "InitializeInterceptor"));
@@ -237,17 +227,6 @@ void Installer::install_gles() {
             GAPID_ERROR("Couldn't intercept function %s at %p", name, func_import);
         }
     }
-}
-
-// The installer global instance.
-Installer gInstaller;
-
-}  // anonymous namespace
-
-namespace gapii {
-
-void* install_function(void* func_import, const void* func_export) {
-    return gInstaller.install(func_import, func_export);
 }
 
 } // namespace gapii

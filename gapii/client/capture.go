@@ -91,7 +91,7 @@ func (s siSize) String() string {
 	return fmt.Sprintf(f, v)
 }
 
-func (p *Process) connect(ctx context.Context, gvrHandle uint64) error {
+func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath string) error {
 	log.I(ctx, "Waiting for connection to localhost:%d...", p.Port)
 
 	// ADB has an annoying tendancy to insta-close forwarded sockets when
@@ -103,7 +103,7 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64) error {
 			log.D(ctx, "Dial failed: %v", err)
 			return err
 		}
-		if err := sendHeader(conn, p.Options, gvrHandle); err != nil {
+		if err := sendHeader(conn, p.Options, gvrHandle, interceptorPath); err != nil {
 			log.D(ctx, "Failed to send header: %v", err)
 			conn.Close()
 			return err
@@ -134,7 +134,7 @@ func (c bufConn) Read(b []byte) (n int, err error) { return c.r.Read(b) }
 // until s is fired.
 func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (int64, error) {
 	if p.conn == nil {
-		if err := p.connect(ctx, 0); err != nil {
+		if err := p.connect(ctx, 0, ""); err != nil {
 			return 0, err
 		}
 	}
