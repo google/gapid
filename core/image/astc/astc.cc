@@ -66,7 +66,7 @@ extern "C" void decompress_astc(
 
             const float* data = pb.orig_data;
             for (uint32_t dy = 0; dy < block_height; dy++) {
-                uint32_t y = (height-1) - (by*block_height + dy);
+                uint32_t y = by*block_height + dy;
                 for (uint32_t dx = 0; dx < block_width; dx++) {
                     uint32_t x = bx*block_width + dx;
                     if (x < width && y < height) {
