@@ -10,6 +10,7 @@ go_library(
         "resolvable.go",
         "to_proto.go",
     ],
+    importpath = "github.com/google/gapid/gapis/database",
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",

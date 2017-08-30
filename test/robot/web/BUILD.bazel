@@ -27,6 +27,7 @@ go_library(
         "web.go",
         ":embed",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/web",
     visibility = ["//visibility:public"],
     deps = [
         "//core/log:go_default_library",

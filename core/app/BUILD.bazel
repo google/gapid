@@ -12,6 +12,7 @@ go_library(
         "run.go",
         "verbs.go",
     ],
+    importpath = "github.com/google/gapid/core/app",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/flags:go_default_library",

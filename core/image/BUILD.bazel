@@ -47,6 +47,7 @@ go_library(
         "uncompressed.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/core/image",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/binary:go_default_library",
@@ -71,6 +72,7 @@ go_test(
         "image_test.go",
         "rgba_f32_test.go",
     ],
+    importpath = "github.com/google/gapid/core/image_test",
     deps = [
         ":go_default_library",
         "//core/data/endian:go_default_library",

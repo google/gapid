@@ -8,6 +8,7 @@ go_library(
         "host_log_parser.go",
         "session.go",
     ],
+    importpath = "github.com/google/gapid/gapir/client",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app:go_default_library",

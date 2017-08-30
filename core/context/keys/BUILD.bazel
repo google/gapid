@@ -7,6 +7,7 @@ go_library(
         "doc.go",
         "keys.go",
     ],
+    importpath = "github.com/google/gapid/core/context/keys",
     visibility = ["//visibility:public"],
 )
 
@@ -14,5 +15,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["keys_test.go"],
+    importpath = "github.com/google/gapid/core/context/keys_test",
     deps = [":go_default_library"],
 )

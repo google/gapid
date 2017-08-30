@@ -13,6 +13,7 @@ go_library(
         "subject.go",
         "trace.go",
     ],
+    importpath = "github.com/google/gapid/test/robot/monitor",
     visibility = ["//visibility:public"],
     deps = [
         "//core/log:go_default_library",

@@ -19,5 +19,6 @@ go_library(
         "copyright.go",
         ":embed",  # keep
     ],
+    importpath = "github.com/google/gapid/core/text/copyright",
     visibility = ["//visibility:public"],
 )

@@ -8,6 +8,7 @@ go_library(
         "gapidapk.go",
         "packageinfo.go",
     ],
+    importpath = "github.com/google/gapid/gapidapk",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/layout:go_default_library",

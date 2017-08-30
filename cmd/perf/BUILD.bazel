@@ -18,6 +18,7 @@ go_library(
         "samples.go",
         "summary.go",
     ],
+    importpath = "github.com/google/gapid/cmd/perf",
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
@@ -37,6 +38,7 @@ go_library(
 
 go_binary(
     name = "perf",
+    importpath = "github.com/google/gapid/cmd/perf",
     library = ":go_default_library",
     visibility = ["//visibility:public"],
 )
@@ -45,6 +47,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = ["samples_test.go"],
+    importpath = "github.com/google/gapid/cmd/perf",
     library = ":go_default_library",
     tags = [
         "manual",  # TODO: Needs access to a working gl driver

@@ -11,6 +11,7 @@ go_library(
         "sequence.go",
         "stub.go",
     ],
+    importpath = "github.com/google/gapid/core/os/shell/stub",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event/task:go_default_library",
@@ -22,11 +23,18 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = select({
-        "@io_bazel_rules_go//go/platform:darwin_amd64": ["stub_example_test.go"],
-        "@io_bazel_rules_go//go/platform:linux_amd64": ["stub_example_test.go"],
-        "@io_bazel_rules_go//go/platform:windows_amd64": ["stub_example_test.go"],
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "stub_example_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "stub_example_test.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "stub_example_test.go",
+        ],
         "//conditions:default": [],
     }),
+    importpath = "github.com/google/gapid/core/os/shell/stub_test",
     deps = select({
         "@io_bazel_rules_go//go/platform:darwin_amd64": [
             ":go_default_library",

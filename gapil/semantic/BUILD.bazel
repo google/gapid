@@ -15,6 +15,7 @@ go_library(
         "type.go",
         "visit.go",
     ],
+    importpath = "github.com/google/gapid/gapil/semantic",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/slice:go_default_library",
@@ -26,5 +27,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["interface_test.go"],
+    importpath = "github.com/google/gapid/gapil/semantic_test",
     deps = [":go_default_library"],
 )

@@ -8,6 +8,7 @@ go_library(
         "expression.go",
         "replace.go",
     ],
+    importpath = "github.com/google/gapid/test/robot/search/query",
     visibility = ["//visibility:public"],
     deps = [
         "//test/robot/search:go_default_library",

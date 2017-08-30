@@ -16,6 +16,7 @@ alias(
 
 gazelle(
     name = "gazelle",
+    mode = "fix",
 )
 
 # Rules to build the expected installed structure for running

@@ -9,6 +9,7 @@ go_library(
         "scheduler.go",
         "trace.go",
     ],
+    importpath = "github.com/google/gapid/test/robot/scheduler",
     visibility = ["//visibility:public"],
     deps = [
         "//core/log:go_default_library",

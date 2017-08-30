@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "eval.go",
     ],
+    importpath = "github.com/google/gapid/test/robot/search/eval",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event:go_default_library",

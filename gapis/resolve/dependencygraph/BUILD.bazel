@@ -20,8 +20,10 @@ go_library(
     name = "go_default_library",
     srcs = [
         "dependency_graph.go",
-        ":pb_go", # keep
+        "doc.go",
+        ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/resolve/dependencygraph",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/benchmark:go_default_library",

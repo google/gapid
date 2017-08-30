@@ -7,6 +7,7 @@ go_library(
         "doc.go",
         "opcodes.go",
     ],
+    importpath = "github.com/google/gapid/gapis/replay/opcode",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/binary:go_default_library",

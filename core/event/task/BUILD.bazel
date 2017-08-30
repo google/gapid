@@ -14,6 +14,7 @@ go_library(
         "signal.go",
         "task.go",
     ],
+    importpath = "github.com/google/gapid/core/event/task",
     visibility = ["//visibility:public"],
 )
 
@@ -30,6 +31,7 @@ go_test(
         "signal_test.go",
         "task_test.go",
     ],
+    importpath = "github.com/google/gapid/core/event/task_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

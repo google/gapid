@@ -22,6 +22,7 @@ go_library(
         "values.go",
         "writer.go",
     ],
+    importpath = "github.com/google/gapid/core/log",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/flags:go_default_library",
@@ -39,6 +40,7 @@ go_test(
         "log_test.go",
         "styles_test.go",
     ],
+    importpath = "github.com/google/gapid/core/log_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

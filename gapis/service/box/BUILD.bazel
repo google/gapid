@@ -32,8 +32,9 @@ go_library(
     srcs = [
         "box.go",
         "doc.go",
-        ":pb_go", # keep
+        ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/service/box",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/deep:go_default_library",
@@ -47,6 +48,7 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["box_test.go"],
+    importpath = "github.com/google/gapid/gapis/service/box_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

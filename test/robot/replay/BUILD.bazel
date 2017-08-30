@@ -30,6 +30,7 @@ go_library(
         "server.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/replay",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/layout:go_default_library",

@@ -6,6 +6,7 @@ go_library(
         "client.go",
         "doc.go",
     ],
+    importpath = "github.com/google/gapid/core/os/process",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/auth:go_default_library",

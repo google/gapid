@@ -7,6 +7,7 @@ go_library(
         "doc.go",
         "types.go",
     ],
+    importpath = "github.com/google/gapid/core/fault",
     visibility = ["//visibility:public"],
 )
 
@@ -14,5 +15,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["fault_test.go"],
+    importpath = "github.com/google/gapid/core/fault_test",
     deps = [":go_default_library"],
 )

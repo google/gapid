@@ -18,8 +18,8 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
-        ":messages",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/messages",
     visibility = ["//visibility:public"],
     deps = ["//gapis/stringtable:go_default_library"],
 )

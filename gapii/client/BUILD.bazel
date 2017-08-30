@@ -9,6 +9,7 @@ go_library(
         "header.go",
         "jdwp_loader.go",
     ],
+    importpath = "github.com/google/gapid/gapii/client",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/endian:go_default_library",

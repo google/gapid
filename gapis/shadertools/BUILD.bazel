@@ -1,14 +1,23 @@
-load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-cgo_library(
-    name = "cgo_default_library",
+go_library(
+    name = "go_default_library",
     srcs = ["shadertools.go"],
     cdeps = [
         "//gapis/shadertools/cc:cc",
         "@spirv-tools//:spirv-tools",
     ],
-    clinkopts = [],
-    visibility = ["//visibility:private"],
+    cgo = True,
+    clinkopts = [
+        "-lspv -lkhronos -lstdc++ -lpthread -lm",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "-Wl,--allow-multiple-definition",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "github.com/google/gapid/gapis/shadertools",
+    visibility = ["//visibility:public"],
     deps = [
         "//core/fault:go_default_library",
         "//core/text:go_default_library",
