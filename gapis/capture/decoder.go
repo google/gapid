@@ -145,6 +145,9 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		}
 		return in, nil
 
+	case *FBO:
+		d.builder.addCmd(ctx, obj)
+
 	case api.Cmd:
 		return &cmdGroup{cmd: obj}, nil
 	}
