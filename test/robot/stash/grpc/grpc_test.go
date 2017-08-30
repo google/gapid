@@ -36,40 +36,44 @@ import (
 	"google.golang.org/grpc"
 )
 
-func checkReadFromStash(ctx context.Context, assert assert.Manager, rnd *rand.Rand, s *stash.Client, exp map[string][]byte) {
-	for id, expected := range exp {
-		e, err := s.Lookup(ctx, id)
-		assert.For("lookup").ThatError(err).Succeeded()
-		assert.For("lookup").That(e).IsNotNil()
+type data struct {
+	id    string
+	bytes []byte
+}
 
-		assert.For("lookup").That(e.Length).Equals(int64(len(expected)))
-		rs, err := s.Open(ctx, id)
+func checkReadFromStash(ctx context.Context, assert assert.Manager, rnd *rand.Rand, s *stash.Client, exp []data) {
+	for _, expected := range exp {
+		e, err := s.Lookup(ctx, expected.id)
+		assert.For("lookup err").ThatError(err).Succeeded()
+		assert.For("lookup e").That(e).IsNotNil()
+		assert.For("lookup length").That(e.Length).Equals(int64(len(expected.bytes)))
+
+		rs, err := s.Open(ctx, expected.id)
 		assert.For("open").ThatError(err).Succeeded()
 
 		data, err := ioutil.ReadAll(rs)
 		assert.For("readall").ThatError(err).Succeeded()
-		assert.For("readall").ThatSlice(data).Equals(expected)
+		assert.For("readall").ThatSlice(data).Equals(expected.bytes)
 
 		data, err = readInRandomOrder(rnd, rs, 60, 3)
 		assert.For("read random").ThatError(err).Succeeded()
-		assert.For("read random").ThatSlice(data).Equals(expected)
+		assert.For("read random").ThatSlice(data).Equals(expected.bytes)
 
-		data, err = s.Read(ctx, id)
+		data, err = s.Read(ctx, expected.id)
 		assert.For("stash.Read").ThatError(err).Succeeded()
-		assert.For("stash.Read").ThatSlice(data).Equals(expected)
+		assert.For("stash.Read").ThatSlice(data).Equals(expected.bytes)
 	}
 }
 
-func uploadRandomDataToStash(ctx context.Context, assert assert.Manager, r *rand.Rand, s *stash.Client, lens []int) map[string][]byte {
-	m := map[string][]byte{}
+func uploadRandomDataToStash(ctx context.Context, assert assert.Manager, r *rand.Rand, s *stash.Client, lens []int) []data {
+	out := make([]data, len(lens))
 	for i, ln := range lens {
-		data := randomBytes(r, ln)
-		id, err := s.UploadBytes(ctx, stash.Upload{Name: []string{fmt.Sprintf("%d.bin", i)}, Type: []string{"application/binary"}}, data)
+		bytes := randomBytes(r, ln)
+		id, err := s.UploadBytes(ctx, stash.Upload{Name: []string{fmt.Sprintf("%d.bin", i)}, Type: []string{"application/binary"}}, bytes)
 		assert.For("upload").ThatError(err).Succeeded()
-		m[id] = data
+		out[i] = data{id, bytes}
 	}
-	assert.For("upload finished").ThatInteger(len(m)).Equals(len(lens))
-	return m
+	return out
 }
 
 func TestMemoryAndGrpcStash(t *testing.T) {
