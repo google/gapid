@@ -64,7 +64,8 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
         !reader->read(mNumFrames) ||
         !reader->read(mAPIs) ||
         !reader->read(mFlags) ||
-        !reader->read(mGvrHandle)) {
+        !reader->read(mGvrHandle) ||
+        !reader->read(mLibInterceptorPath)) {
         return false;
     }
 

@@ -19,10 +19,19 @@
 
 namespace gapii {
 
-// install_function installs a hook into func_import to call func_export.
-// The returned function allows func_export to call back to the original
-// function that was at func_import.
-void* install_function(void* func_import, const void* func_export);
+class Installer {
+public:
+    Installer(const char* libInterceptorPath);
+    ~Installer();
+
+    // install_function installs a hook into func_import to call func_export.
+    // The returned function allows func_export to call back to the original
+    // function that was at func_import.
+    void* install(void* func_import, const void* func_export);
+
+private:
+    void install_gles();
+};
 
 } // namespace gapii
 

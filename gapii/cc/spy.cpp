@@ -43,12 +43,15 @@
 #endif //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
+#include "gapii/cc/android/installer.h"
 #include "gapii/cc/android/gvr_install.h"
 
 #include <sys/prctl.h>
 #include <jni.h>
 
+static std::unique_ptr<gapii::Installer> gInstaller;
 static JavaVM* gJavaVM = nullptr;
+
 extern "C"
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
@@ -188,10 +191,15 @@ Spy::Spy()
         mCaptureFrames = header.mNumFrames;
         mSuspendCaptureFrames.store((header.mFlags & ConnectionHeader::FLAG_DEFER_START)?
             kSuspendIndefinitely: mSuspendCaptureFrames.load());
+#if TARGET_OS == GAPID_OS_ANDROID
+        if (strlen(header.mLibInterceptorPath) > 0) {
+            gInstaller = std::unique_ptr<Installer>(new Installer(header.mLibInterceptorPath));
+        }
         if (header.mGvrHandle != 0) {
             auto gvr_lib = reinterpret_cast<void*>(header.mGvrHandle);
-            ANDROID_ONLY(install_gvr(gvr_lib, &this->GvrSpy::mImports));
+            install_gvr(gInstaller.get(), gvr_lib, &this->GvrSpy::mImports);
         }
+#endif // TARGET_OS == GAPID_OS_ANDROID
     } else {
         GAPID_FATAL("Failed to read connection header");
     }
