@@ -29,6 +29,11 @@ import (
 	"github.com/google/gapid/test/robot/web/client/widgets/grid"
 )
 
+type TrackInfo struct {
+	packageDisplayToOrder map[string]int
+	packageList           []string
+}
+
 var (
 	traceKind  = item{id: "trace"}
 	reportKind = item{id: "report"}
@@ -79,7 +84,7 @@ var (
 			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
 		},
 	}
-	packageListByTrack = map[string][]string{"auto": []string{}}
+	tracks = map[string]*TrackInfo{"auto": &TrackInfo{packageDisplayToOrder: map[string]int{}}}
 
 	packageDimension = &dimension{
 		name: "package",
@@ -87,11 +92,11 @@ var (
 			return t.pkg
 		},
 		enumSrc: func() enum {
-			e := itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
+			result := itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
 			itemMap := map[string]Item{}
 			childMap := map[string]string{}
 			rootPkgs := []string{}
-			for _, it := range e {
+			for _, it := range result {
 				pkgRoot := it.Underlying().(map[string]interface{})
 				pkgId, ok := pkgRoot["id"].(string)
 				itemMap[pkgId] = it
@@ -108,23 +113,32 @@ var (
 					rootPkgs = append(rootPkgs, pkgId)
 				}
 			}
-			result := enum{}
 			for _, root := range rootPkgs {
-				track := []string{root}
-				result = append(result, itemMap[root])
+				track := &TrackInfo{packageDisplayToOrder: map[string]int{}}
+				track.packageDisplayToOrder[itemMap[root].Display()] = len(track.packageList)
+				track.packageList = append(track.packageList, root)
 				for childId, ok := childMap[root]; ok; childId, ok = childMap[root] {
+					track.packageDisplayToOrder[itemMap[childId].Display()] = len(track.packageList)
 					// want tracks stored from Root -> Head
-					track = append(track, childId)
-					result = append(result, itemMap[childId])
+					track.packageList = append(track.packageList, childId)
 					root = childId
 				}
-				// TODO:(baldwinn) identify the actual track and ensure each head only maps to one track
-				packageListByTrack["auto"] = append(packageListByTrack["auto"], track...)
-			}
-			if len(childMap) != 0 {
-				fmt.Fprintf(os.Stderr, "did not map all values in package child map")
+				// TODO:(baldwinn) identify the actual track name and ensure each head only maps to one track
+				// for now we just append all tracks to the "auto" track
+				for k, v := range track.packageDisplayToOrder {
+					tracks["auto"].packageDisplayToOrder[k] = v + len(tracks["auto"].packageList)
+				}
+				tracks["auto"].packageList = append(tracks["auto"].packageList, track.packageList...)
 			}
 			return result
+		},
+		enumSort: func(a, b string) bool {
+			if ao, ok := tracks["auto"].packageDisplayToOrder[a]; ok {
+				if bo, ok := tracks["auto"].packageDisplayToOrder[b]; ok {
+					return ao < bo
+				}
+			}
+			return a < b
 		},
 	}
 
@@ -256,7 +270,7 @@ func connectTaskParentChild(childListMap map[string][]*task, parentListMap map[s
 	pkgId := t.pkg.Id()
 	parentListMap[pkgId] = append(parentListMap[pkgId], t)
 
-	if parPkgId := findParentPkgIdInList(packageListByTrack["auto"], pkgId); parPkgId != "" {
+	if parPkgId := findParentPkgIdInList(tracks["auto"].packageList, pkgId); parPkgId != "" {
 		childListMap[parPkgId] = append(childListMap[parPkgId], t)
 
 		if parentList, ok := parentListMap[parPkgId]; ok {
