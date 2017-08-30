@@ -55,7 +55,11 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		return nil, err
 	}
 
-	cmds, err := sync.MutationCmdsFor(ctx, p.Capture, allCmds, api.CmdID(atomIdx), p.Indices[1:])
+	s, err := SyncData(ctx, p.Capture)
+	if err != nil {
+		return nil, err
+	}
+	cmds, err := sync.MutationCmdsFor(ctx, p.Capture, s, allCmds, api.CmdID(atomIdx), p.Indices[1:])
 	if err != nil {
 		return nil, err
 	}

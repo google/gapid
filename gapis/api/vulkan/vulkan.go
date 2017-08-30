@@ -125,11 +125,11 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		k := submissionMap[s.CurrentSubmission]
 		if v, ok := d.SubcommandReferences[k]; ok {
 			v = append(v,
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall]})
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall], false})
 			d.SubcommandReferences[k] = v
 		} else {
 			d.SubcommandReferences[k] = []sync.SubcommandReference{
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall]}}
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall], false}}
 		}
 
 		previousIndex := append(api.SubCmdIdx(nil), s.SubCmdIdx...)
