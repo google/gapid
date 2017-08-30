@@ -6,6 +6,7 @@ go_library(
         "data.go",
         "sync.go",
     ],
+    importpath = "github.com/google/gapid/gapis/api/sync",
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/api:go_default_library",

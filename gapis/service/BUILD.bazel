@@ -50,6 +50,7 @@ go_library(
         "service.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/service",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/id:go_default_library",

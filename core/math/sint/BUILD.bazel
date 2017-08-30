@@ -6,11 +6,13 @@ go_library(
         "doc.go",
         "sint.go",
     ],
+    importpath = "github.com/google/gapid/core/math/sint",
     visibility = ["//visibility:public"],
 )
 
 go_test(
     name = "go_default_xtest",
     srcs = ["sint_test.go"],
+    importpath = "github.com/google/gapid/core/math/sint_test",
     deps = [":go_default_library"],
 )

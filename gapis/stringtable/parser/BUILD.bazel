@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["parser.go"],
+    importpath = "github.com/google/gapid/gapis/stringtable/parser",
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/stringtable:go_default_library",
@@ -15,6 +16,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = ["parser_test.go"],
+    importpath = "github.com/google/gapid/gapis/stringtable/parser",
     library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",

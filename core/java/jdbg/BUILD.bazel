@@ -15,6 +15,7 @@ go_library(
         "type.go",
         "value.go",
     ],
+    importpath = "github.com/google/gapid/core/java/jdbg",
     visibility = ["//visibility:public"],
     deps = ["//core/java/jdwp:go_default_library"],
 )
@@ -23,6 +24,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["jdbg_test.go"],
+    importpath = "github.com/google/gapid/core/java/jdbg_test",
     tags = ["integration"],
     deps = [
         ":go_default_library",

@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "float16.go",
     ],
+    importpath = "github.com/google/gapid/core/math/f16",
     visibility = ["//visibility:public"],
 )
 
@@ -13,5 +14,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["float16_test.go"],
+    importpath = "github.com/google/gapid/core/math/f16_test",
     deps = [":go_default_library"],
 )

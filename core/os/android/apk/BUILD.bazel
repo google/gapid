@@ -23,6 +23,7 @@ go_library(
         "doc.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/core/os/android/apk",
     visibility = ["//visibility:public"],
     deps = [
         "//core/fault:go_default_library",

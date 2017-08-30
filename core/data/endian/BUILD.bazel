@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "endian.go",
     ],
+    importpath = "github.com/google/gapid/core/data/endian",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/binary:go_default_library",
@@ -18,6 +19,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["endian_test.go"],
+    importpath = "github.com/google/gapid/core/data/endian_test",
     deps = [
         ":go_default_library",
         "//core/data/binary:go_default_library",

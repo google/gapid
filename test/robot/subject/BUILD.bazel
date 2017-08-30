@@ -29,6 +29,7 @@ go_library(
         "subject.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/subject",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event:go_default_library",

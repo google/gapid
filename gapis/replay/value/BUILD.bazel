@@ -7,6 +7,7 @@ go_library(
         "value.go",
         "values.go",
     ],
+    importpath = "github.com/google/gapid/gapis/replay/value",
     visibility = ["//visibility:public"],
     deps = [
         "//core/math/interval:go_default_library",

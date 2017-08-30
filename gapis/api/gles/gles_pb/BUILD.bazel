@@ -31,6 +31,7 @@ go_library(
         "doc.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/gapis/api/gles/gles_pb",
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/memory/memory_pb:go_default_library",

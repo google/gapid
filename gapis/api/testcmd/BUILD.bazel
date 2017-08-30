@@ -6,6 +6,7 @@ go_library(
         "cmds.go",
         "common.go",
     ],
+    importpath = "github.com/google/gapid/gapis/api/testcmd",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data:go_default_library",

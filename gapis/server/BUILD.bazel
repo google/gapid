@@ -6,6 +6,7 @@ go_library(
         "grpc.go",
         "server.go",
     ],
+    importpath = "github.com/google/gapid/gapis/server",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/auth:go_default_library",

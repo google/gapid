@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "manifest.go",
     ],
+    importpath = "github.com/google/gapid/core/os/android/manifest",
     visibility = ["//visibility:public"],
     deps = [
         "//core/fault:go_default_library",
@@ -17,6 +18,7 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["manifest_test.go"],
+    importpath = "github.com/google/gapid/core/os/android/manifest_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

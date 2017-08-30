@@ -16,6 +16,7 @@ go_library(
         "logcat.go",
         "screen.go",
     ],
+    importpath = "github.com/google/gapid/core/os/android/adb",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app:go_default_library",
@@ -43,6 +44,7 @@ go_test(
         "logcat_test.go",
         "screen_test.go",
     ],
+    importpath = "github.com/google/gapid/core/os/android/adb_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

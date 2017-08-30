@@ -26,6 +26,7 @@ go_library(
         "server.go",
         ":pb_go",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/stash/grpc",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event:go_default_library",
@@ -47,6 +48,7 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["grpc_test.go"],
+    importpath = "github.com/google/gapid/test/robot/stash/grpc_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

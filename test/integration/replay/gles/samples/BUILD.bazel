@@ -8,6 +8,7 @@ go_library(
         "draw_textured_square.go",
         "samples.go",
     ],
+    importpath = "github.com/google/gapid/test/integration/replay/gles/samples",
     visibility = ["//visibility:public"],
     deps = [
         "//core/os/device:go_default_library",

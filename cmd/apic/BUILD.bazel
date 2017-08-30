@@ -8,6 +8,7 @@ go_library(
         "template.go",
         "validate.go",
     ],
+    importpath = "github.com/google/gapid/cmd/apic",
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
@@ -25,6 +26,7 @@ go_library(
 
 go_binary(
     name = "apic",
+    importpath = "github.com/google/gapid/cmd/apic",
     library = ":go_default_library",
     visibility = ["//visibility:public"],
 )

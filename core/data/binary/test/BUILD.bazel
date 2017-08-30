@@ -8,6 +8,7 @@ go_library(
         "read_write.go",
         "test.go",
     ],
+    importpath = "github.com/google/gapid/core/data/binary/test",
     visibility = ["//visibility:public"],
     deps = [
         "//core/assert:go_default_library",

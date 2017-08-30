@@ -10,6 +10,7 @@ go_library(
         "requests.go",
         "types.go",
     ],
+    importpath = "github.com/google/gapid/core/langsvr/protocol",
     visibility = ["//visibility:public"],
     deps = [
         "//core/event/task:go_default_library",

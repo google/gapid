@@ -12,6 +12,7 @@ go_library(
         "doc.go",
         ":lingo",  # keep
     ],
+    importpath = "github.com/google/gapid/test/robot/search/script",
     visibility = ["//visibility:public"],
     deps = [
         "//core/log:go_default_library",
