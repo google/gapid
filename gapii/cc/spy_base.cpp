@@ -30,7 +30,7 @@ SpyBase::SpyBase()
     : mObserveApplicationPool(true)
     , mNullEncoder(PackEncoder::noop())
     , mWatchedApis(0xFFFFFFFF)
-#ifdef COHERENT_TRACKING_ENABLED
+#if COHERENT_TRACKING_ENABLED
     , mMemoryTracker()
 #endif // TARGET_OS
 {
