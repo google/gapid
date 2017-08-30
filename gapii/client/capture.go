@@ -97,35 +97,30 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 	// ADB has an annoying tendancy to insta-close forwarded sockets when
 	// there's no application waiting for the connection. Treat errors as
 	// another waiting-for-connection case.
-	return task.Retry(ctx, 0, 500*time.Millisecond, func(ctx context.Context) error {
+	return task.Retry(ctx, 0, 500*time.Millisecond, func(ctx context.Context) (retry bool, err error) {
 		conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", p.Port))
 		if err != nil {
-			log.D(ctx, "Dial failed: %v", err)
-			return err
-		}
-		if err := sendHeader(conn, p.Options, gvrHandle, interceptorPath); err != nil {
-			log.D(ctx, "Failed to send header: %v", err)
-			conn.Close()
-			return err
+			return true, log.Err(ctx, err, "Dial failed")
 		}
 		r := bufio.NewReader(conn)
 		conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
-		if _, err := r.Peek(4); err != nil {
-			log.D(ctx, "Failed to read data: %v", err)
+		var magic [5]byte
+		if _, err := io.ReadFull(r, magic[:]); err != nil {
 			conn.Close()
-			return err
+			return false, log.Err(ctx, err, "Failed to read magic")
 		}
-		p.conn = bufConn{conn, r}
-		return nil
+		if magic != [...]byte{'g', 'a', 'p', 'i', 'i'} {
+			conn.Close()
+			return true, log.Errf(ctx, nil, "Got unexpected magic: %v", magic)
+		}
+		if err := sendHeader(conn, p.Options, gvrHandle, interceptorPath); err != nil {
+			conn.Close()
+			return true, log.Err(ctx, err, "Failed to send header")
+		}
+		p.conn = conn
+		return true, nil
 	})
 }
-
-type bufConn struct {
-	net.Conn
-	r io.Reader
-}
-
-func (c bufConn) Read(b []byte) (n int, err error) { return c.r.Read(b) }
 
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options o.

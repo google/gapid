@@ -116,15 +116,15 @@ func (p *Process) loadAndConnectViaJDWP(
 	// Create a JDWP connection with the application.
 	var sock net.Conn
 	var conn *jdwp.Connection
-	err = task.Retry(ctx, reconnectAttempts, reconnectDelay, func(ctx context.Context) error {
+	err = task.Retry(ctx, reconnectAttempts, reconnectDelay, func(ctx context.Context) (bool, error) {
 		if sock, err = net.Dial("tcp", fmt.Sprintf("localhost:%v", jdwpPort)); err != nil {
-			return err
+			return false, err
 		}
 		if conn, err = jdwp.Open(ctx, sock); err != nil {
 			sock.Close()
-			return err
+			return false, err
 		}
-		return nil
+		return true, nil
 	})
 	if err != nil {
 		return log.Err(ctx, err, "Connecting to JDWP")

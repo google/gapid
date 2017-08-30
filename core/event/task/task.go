@@ -35,17 +35,17 @@ func Once(task Task) Task {
 	}
 }
 
-// Retry repeatedly calls task until task returns a nil error, the number
-// attempts reaches maxAttempts or the context is cancelled. Retry will sleep
-// for retryDelay between retry attempts.
+// Retry repeatedly calls f until f returns a true, the number of attempts
+// reaches maxAttempts or the context is cancelled. Retry will sleep for
+// retryDelay between retry attempts.
 // if maxAttempts <= 0, then there is no maximum limit to the number of times
-// task will be called.
-func Retry(ctx context.Context, maxAttempts int, retryDelay time.Duration, task Task) error {
+// f will be called.
+func Retry(ctx context.Context, maxAttempts int, retryDelay time.Duration, f func(context.Context) (retry bool, err error)) error {
 	var count int
 	for {
-		err := task(ctx)
-		if err == nil {
-			return nil
+		done, err := f(ctx)
+		if done {
+			return err
 		}
 		count++
 		if maxAttempts > 0 && count >= maxAttempts {
