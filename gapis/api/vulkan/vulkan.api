@@ -83,7 +83,7 @@ define NULL_HANDLE 0
 @extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_SPEC_VERSION   1
 @extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_EXTENSION_NAME "VK_EXT_debug_report"
 
-@extension("VK_EXT_debug_marker") define VK_EXT_DEBUG_MARKER_SPEC_VERSION 4
+@extension("VK_EXT_debug_marker") define VK_EXT_DEBUG_MARKER_SPEC_VERSION   4
 @extension("VK_EXT_debug_marker") define VK_EXT_DEBUG_MARKER_EXTENSION_NAME "VK_EXT_debug_marker"
 
 /////////////
@@ -283,8 +283,8 @@ enum VkStructureType {
 
   //@extension("VK_EXT_debug_marker")
   VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT = 1000022000
-  VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT = 1000022001
-  VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT = 1000022002
+  VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT  = 1000022001
+  VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT      = 1000022002
 
   //@extension("VK_NV_dedicated_allocation")
   VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV    = 1000026000,
@@ -3917,7 +3917,7 @@ cmd void RecreateDestroyShaderModule(
 @custom
 @no_replay
 cmd void RecreateDestroyRenderPass(
-    VkDevice       device,
+    VkDevice     device,
     VkRenderPass renderPass) { }
 
 
@@ -4634,7 +4634,7 @@ cmd VkResult vkResetDescriptorPool(
   // while iterating is safe for Go. So the code here should behave as we
   // expect.
   sets := DescriptorPools[descriptorPool].DescriptorSets
-  for _, s, _ in sets {
+  for _ , s , _ in sets {
     delete(DescriptorSets, s)
     delete(DescriptorPools[descriptorPool].DescriptorSets, s)
   }
@@ -5423,6 +5423,8 @@ extern void leaveSubcontext()
 extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
 extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
 extern void addDebugMarkerTagBytes(ref!VulkanDebugMarkerInfo debugInfo, size numBytes, u8* pTag)
+extern void pushDebugMarker(string name)
+extern void popDebugMarker()
 extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
     VkBuffer     dstBuffer
     VkDeviceSize dstOffset
@@ -8970,17 +8972,25 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
 cmd void RecreateCmdDebugMarkerBeginEXT(
     VkCommandBuffer             commandBuffer,
     VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-    markerInfo := pMarkerInfo[0]
-    _ = as!string(markerInfo.pMarkerName)
-    for i in (0 .. 4) {
-      _ = markerInfo.color[i]
-    }
+  markerInfo := pMarkerInfo[0]
+  _ = as!string(markerInfo.pMarkerName)
+  for i in (0 .. 4) {
+    _ = markerInfo.color[i]
+  }
+}
+
+@internal class CmdDebugMarkerBegin {
+  string MarkerName
+}
+
+sub void doCmdDebugMarkerBegin(CmdDebugMarkerBegin args) {
+  pushDebugMarker(args.MarkerName)
 }
 
 @internal class
 RecreateCmdDebugMarkerBeginEXTData {
   @unused string MarkerName,
-  @unused f32[4] Color,
+  @unused f32[4] Color     ,
 }
 
 @threadSafety("app")
@@ -8993,21 +9003,26 @@ cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
+  markerName := as!string(markerInfo.pMarkerName)
   recreate_data := new!RecreateCmdDebugMarkerBeginEXTData(
-    MarkerName: as!string(markerInfo.pMarkerName),
+    MarkerName: markerName,
   )
   recreate_data.Color[0] = markerInfo.color[0]
   recreate_data.Color[1] = markerInfo.color[1]
   recreate_data.Color[2] = markerInfo.color[2]
   recreate_data.Color[3] = markerInfo.color[3]
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+  addCmd(commandBuffer, recreate_data, CmdDebugMarkerBegin(markerName), doCmdDebugMarkerBegin)
 }
 
 @override
 @custom
 @no_replay
 cmd void RecreateCmdDebugMarkerEndEXT(
-    VkCommandBuffer             commandBuffer) {
+    VkCommandBuffer commandBuffer) {
+}
+
+sub void doCmdDebugMarkerEnd(u32 unused) {
+  popDebugMarker()
 }
 
 @internal class
@@ -9020,19 +9035,18 @@ RecreateCmdDebugMarkerEndEXTData {}
 @override
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
-    VkCommandBuffer                             commandBuffer) {
-    addCmd(commandBuffer, new!RecreateCmdDebugMarkerEndEXTData(),
-      Unimplemented(), doCmdNop)
+    VkCommandBuffer commandBuffer) {
+  addCmd(commandBuffer, new!RecreateCmdDebugMarkerEndEXTData(),as!u32(0), doCmdDebugMarkerEnd)
 }
 
 @override
 @custom
 @no_replay
 cmd void RecreateCmdDebugMarkerInsertEXT(
-  VkCommandBuffer             commandBuffer,
-  VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
+    VkCommandBuffer             commandBuffer,
+    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
-   _ = as!string(markerInfo.pMarkerName)
+  _ = as!string(markerInfo.pMarkerName)
   for i in (0 .. 4) {
     _ = markerInfo.color[i]
   }
@@ -9041,7 +9055,7 @@ cmd void RecreateCmdDebugMarkerInsertEXT(
 @internal class
 RecreateCmdDebugMarkerInsertEXTData {
   @unused string MarkerName,
-  @unused f32[4] Color,
+  @unused f32[4] Color     ,
 }
 
 @threadSafety("app")
@@ -9266,9 +9280,9 @@ sub void clearLastDrawInfoDrawCommandParameters() {
 }
 
 @internal class VulkanDebugMarkerInfo {
-  @unused string  ObjectName
-  @unused u64     TagName
-  @internal u8[]  Tag
+  @unused string ObjectName
+  @unused u64    TagName
+  @internal u8[] Tag
 }
 
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.
@@ -9727,10 +9741,10 @@ enum SurfaceType {
   SURFACE_TYPE_UNKNOWN = 0
   SURFACE_TYPE_XCB     = 1
   SURFACE_TYPE_ANDROID = 2
-  SURFACE_TYPE_WIN32 = 3
+  SURFACE_TYPE_WIN32   = 3
   SURFACE_TYPE_WAYLAND = 4
-  SURFACE_TYPE_XLIB = 5
-  SURFACE_TYPE_MIR = 6
+  SURFACE_TYPE_XLIB    = 5
+  SURFACE_TYPE_MIR     = 6
 }
 
 @internal class SurfaceObject {

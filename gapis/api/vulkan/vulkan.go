@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
@@ -29,12 +30,14 @@ import (
 )
 
 type CustomState struct {
-	SubCmdIdx         api.SubCmdIdx
-	CurrentSubmission *api.Cmd
-	PreSubcommand     func(interface{})
-	PostSubcommand    func(interface{})
-	AddCommand        func(interface{})
-	IsRebuilding      bool
+	SubCmdIdx            api.SubCmdIdx
+	CurrentSubmission    *api.Cmd
+	PreSubcommand        func(interface{})
+	PostSubcommand       func(interface{})
+	AddCommand           func(interface{})
+	IsRebuilding         bool
+	pushDebugMarkerGroup func(name string)
+	popDebugMarkerGroup  func()
 }
 
 func getStateObject(s *api.State) *State {
@@ -107,6 +110,76 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	lastSubcommand := api.SubCmdIdx{}
 	lastCmdIndex := api.CmdID(0)
 
+	// Prepare for collect debug marker groups
+	debugMarkerStack := map[VkQueue][]*api.SubCmdMarkerGroup{}
+	s.pushDebugMarkerGroup = func(name string) {
+		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
+		stack := debugMarkerStack[vkQu]
+		fullCmdIdx := api.SubCmdIdx{uint64(submissionMap[s.CurrentSubmission])}
+		fullCmdIdx = append(fullCmdIdx, s.SubCmdIdx...)
+		group := d.SubCommandMarkerGroups.NewMarkerGroup(fullCmdIdx[0:len(fullCmdIdx)-1], name)
+		group.Start = api.CmdID(fullCmdIdx[len(fullCmdIdx)-1])
+		debugMarkerStack[vkQu] = append(stack, group)
+	}
+	s.popDebugMarkerGroup = func() {
+		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
+		stack := debugMarkerStack[vkQu]
+		if len(stack) == 0 {
+			log.E(ctx, "Cannot pop debug marker, no open debug marker: VkQueueSubmit ID: %v, SubCmdIdx: %v",
+				submissionMap[s.CurrentSubmission], s.SubCmdIdx)
+			return
+		}
+		// Update the End value of the debug marker group.
+		stack[len(stack)-1].End = api.CmdID(s.SubCmdIdx[len(s.SubCmdIdx)-1]) + 1
+		debugMarkerStack[vkQu] = stack[0 : len(stack)-1]
+	}
+
+	s.PreSubcommand = func(interface{}) {
+		// Update the submission map before execute subcommand callback and
+		// postSubCommand callback.
+		if _, ok := submissionMap[s.CurrentSubmission]; !ok {
+			submissionMap[s.CurrentSubmission] = i
+		}
+		// Examine the debug marker stack. For the current submission VkQueue, if
+		// the comming subcommand is submitted in a different command buffer or
+		// submission batch or VkQueueSubmit call, and there are unclosed debug
+		// marker group, we need to 1) check whether the unclosed debug marker
+		// groups are opened in secondary command buffers, log error and pop them.
+		// 2) Close all the unclosed debug marker group, and begin new groups for
+		// the new command buffer.
+		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
+		stack := debugMarkerStack[vkQu]
+		fullCmdIdx := api.SubCmdIdx{uint64(submissionMap[s.CurrentSubmission])}
+		fullCmdIdx = append(fullCmdIdx, s.SubCmdIdx...)
+
+		for lastCmdIndex != api.CmdID(0) && len(stack) > 0 {
+			top := stack[len(stack)-1]
+			if len(top.Parent) > len(fullCmdIdx) {
+				// The top of the stack is an unclosed debug marker group which is
+				// opened in a secondary command buffer. This debug marker group will
+				// be closed here, the End value of the group will be the last updated
+				// value (which should be one plus the last command index in its
+				// secondary command buffer).
+				log.E(ctx, "DebugMarker began in secondary command buffer does not close. Close now")
+				stack = stack[0 : len(stack)-1]
+				continue
+			}
+			break
+		}
+		// Close all the unclosed debug marker groups that are opened in previous
+		// submissions or command buffers. Those closed groups will have their
+		// End value to be the last updated value, and new groups with same name
+		// will be opened in the new command buffer.
+		if lastCmdIndex != api.CmdID(0) && len(stack) > 0 &&
+			!stack[len(stack)-1].Parent.Contains(fullCmdIdx) {
+			originalStack := []*api.SubCmdMarkerGroup(stack)
+			debugMarkerStack[vkQu] = []*api.SubCmdMarkerGroup{}
+			for _, o := range originalStack {
+				s.pushDebugMarkerGroup(o.Name)
+			}
+		}
+	}
+
 	s.PostSubcommand = func(a interface{}) {
 		// We do not record/handle any subcommands inside any of our
 		// rebuild commands
@@ -159,6 +232,17 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			}
 			er.Ranges[i] = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
 			d.CommandRanges[rootIdx] = er
+		}
+
+		// Update the End value for all unclosed debug marker groups
+		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
+		for _, ms := range debugMarkerStack[vkQu] {
+			// If the last subcommand is in a secondary command buffer and current
+			// recording debug marker groups are opened in a primary command buffer,
+			// this will assign a wrong End value to the open marker groups.
+			// However, those End values will be overwritten when the secondary
+			// command buffer ends and vkCmdExecuteCommands get executed.
+			ms.End = api.CmdID(s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1)
 		}
 	}
 
