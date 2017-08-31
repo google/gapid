@@ -23,9 +23,3 @@ go_library(
         "//core/text:go_default_library",
     ],
 )
-
-go_library(
-    name = "go_default_library",
-    library = ":cgo_default_library",
-    visibility = ["//visibility:public"],
-)
