@@ -89,12 +89,8 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   Spy();
 
   // observeFramebuffer captures the currently bound framebuffer's color
-  // buffer, and writes it to a FramebufferObservation atom. If |pendMessaging|
-  // is set to false, the FramebufferObservation atom will be encoded
-  // immediately, otherwise the atom will be cached as pending framebuffer
-  // observations and should be encoded later. By default |pendMessaging| is
-  // set to false.
-  void observeFramebuffer(CallObserver* observer, uint8_t api, bool pendMessaging = false);
+  // buffer, and writes it to a FramebufferObservation message.
+  void observeFramebuffer(CallObserver* observer, uint8_t api);
 
   // getFramebufferAttachmentSize attempts to retrieve the currently bound
   // framebuffer's color buffer dimensions, returning true on success or
@@ -121,9 +117,6 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
 
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
   std::unique_ptr<core::AsyncJob> mDeferStartJob;
-  // The Framebuffer observation pending to be encoded and messaged.
-  std::unique_ptr<capture::FramebufferObservation>
-      mPendingFramebufferObservation;
 };
 
 }  // namespace gapii
