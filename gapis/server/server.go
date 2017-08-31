@@ -234,10 +234,10 @@ func (s *server) GetFramebufferAttachment(
 
 	ctx = log.Enter(ctx, "GetFramebufferAttachment")
 	if err := device.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", device.Text())
+		return nil, log.Errf(ctx, err, "Invalid path: %v", device)
 	}
 	if err := after.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", after.Text())
+		return nil, log.Errf(ctx, err, "Invalid path: %v", after)
 	}
 	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings, hints)
 }
@@ -245,7 +245,7 @@ func (s *server) GetFramebufferAttachment(
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 	ctx = log.Enter(ctx, "Get")
 	if err := p.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
 	v, err := resolve.Get(ctx, p)
 	if err != nil {
@@ -257,7 +257,7 @@ func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Set")
 	if err := p.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
 	return resolve.Set(ctx, p, v)
 }
@@ -265,7 +265,7 @@ func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any
 func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Follow")
 	if err := p.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
 	return resolve.Follow(ctx, p)
 }

@@ -22,7 +22,7 @@ import (
 
 func checkNotNilAndValidate(n Node, f interface{}, name string) error {
 	if f == nil {
-		return fmt.Errorf("Invalid path '%v': %v must not be nil", n.Text(), name)
+		return fmt.Errorf("Invalid path '%v': %v must not be nil", n, name)
 	}
 	if fn, ok := f.(Node); ok {
 		return fn.Validate()
@@ -36,21 +36,21 @@ type isValider interface {
 
 func checkIsValid(n Node, v isValider, name string) error {
 	if v == nil || !v.IsValid() {
-		return fmt.Errorf("Invalid path '%v': ID '%v' is invalid", n.Text(), name)
+		return fmt.Errorf("Invalid path '%v': ID '%v' is invalid", n, name)
 	}
 	return nil
 }
 
 func checkNotEmptyString(n Node, s string, name string) error {
 	if len(s) == 0 {
-		return fmt.Errorf("Invalid path '%v': String '%v' must be non-empty", n.Text(), name)
+		return fmt.Errorf("Invalid path '%v': String '%v' must be non-empty", n, name)
 	}
 	return nil
 }
 
 func checkGreaterThan(n Node, a, b int, name string) error {
 	if a <= b {
-		return fmt.Errorf("Invalid path '%v': %v must be greater than %v", n.Text(), name, b)
+		return fmt.Errorf("Invalid path '%v': %v must be greater than %v", n, name, b)
 	}
 	return nil
 }

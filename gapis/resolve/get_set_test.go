@@ -156,7 +156,7 @@ func TestGet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 	} {
-		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
+		ctx := log.V{"path": test.path}.Bind(ctx)
 		got, err := Get(ctx, test.path.Path())
 		assert.With(ctx).That(got).DeepEquals(test.val)
 		assert.With(ctx).ThatError(err).DeepEquals(test.err)
@@ -231,7 +231,7 @@ func TestSet(t *testing.T) {
 		{p.Command(1).Parameter("Map").MapIndex("bird"), 10.0, fmt.Errorf(
 			"Map at capture<%v>.commands[1].Map has value of type string, got type float64", p.Id.ID())},
 	} {
-		ctx := log.V{"path": test.path.Text(), "value": test.val}.Bind(ctx)
+		ctx := log.V{"path": test.path, "value": test.val}.Bind(ctx)
 
 		path, err := Set(ctx, test.path.Path(), test.val)
 		assert.For(ctx, "Set").ThatError(err).DeepEquals(test.err)
@@ -244,7 +244,7 @@ func TestSet(t *testing.T) {
 			// Check the paths have changed
 			assert.For(ctx, "Set returned path").That(path).DeepNotEquals(test.path)
 
-			ctx := log.V{"changed_path": path.Text()}.Bind(ctx)
+			ctx := log.V{"changed_path": path}.Bind(ctx)
 
 			// Get the changed value
 			got, err := Get(ctx, path)
