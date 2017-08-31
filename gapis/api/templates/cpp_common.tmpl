@@ -178,7 +178,10 @@
 {{define "C++.CallParameters"}}
   {{AssertType $ "Function"}}
 
+  {{$prevCallFunction := Global "CallFunction"}}
+  {{Global "CallFunction" $}}
   {{ForEach $.CallParameters "C++.Parameter" | JoinWith ", "}}
+  {{Global "CallFunction" $prevCallFunction}}
 {{end}}
 
 
@@ -212,6 +215,7 @@
 */}}
 {{define "C++.ParameterTypeNoSuffix"}}
   {{AssertType $ "Type" "Parameter"}}
+  {{$func := Global "CallFunction"}}
 
   {{if $abi_type := GetAnnotation $ "abi_type"}}
     {{index $abi_type.Arguments 0}}
@@ -223,7 +227,7 @@
     {{end}}
   {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}*
   {{else if IsStaticArray $}}{{Template "C++.Type" $.ValueType}}
-  {{else if IsString      $}}const char*
+  {{else if IsString      $}} {{if $func.Extern}} std::string {{else}} const char* {{end}}
 
   {{else                   }}{{Template "C++.Type" $}}
   {{end}}
@@ -277,8 +281,11 @@
 */}}
 {{define "C++.ReturnType"}}
   {{AssertType $ "Function"}}
+  {{$prevCallFunction := Global "CallFunction"}}
+  {{Global "CallFunction" $}}
 
   {{Template "C++.ParameterType" $.Return}}
+  {{Global "CallFunction" $prevCallFunction}}
 {{end}}
 
 

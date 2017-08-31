@@ -97,6 +97,8 @@
 
 {{define "CommandHandler"}}
   {{AssertType $ "Function"}}
+  {{$prevCallFunction := Global "CallFunction"}}
+  {{Global "CallFunction" $}}
 
   {{$api  := Title (Global "API")}}
   {{$name := Macro "CmdName" $}}
@@ -174,6 +176,7 @@
       return false;
     }
   }
+  {{Global "CallFunction" $prevCallFunction}}
 ¶
 {{end}}
 
