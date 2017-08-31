@@ -38,7 +38,6 @@ import (
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/core/video"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -154,7 +153,7 @@ func (verb *videoVerb) regularVideoSource(
 	return func(frames chan<- image.Image) error {
 		for i, frame := range rendered {
 			if err := errors[i]; err != nil {
-				log.E(ctx, "Error getting frame at %v: %v", eofEvents[i].Command.Text(), err)
+				log.E(ctx, "Error getting frame at %v: %v", eofEvents[i].Command, err)
 				continue
 			}
 
@@ -178,26 +177,6 @@ func (verb *videoVerb) regularVideoSource(
 		close(frames)
 		return nil
 	}, nil
-}
-
-// asFbo returns the atom as an *capture.FBO if it represents one.
-func asFbo(a *api.Command) *capture.FBO {
-	if a.Name == "<FBO>" {
-		data := a.FindParameter("Data")
-		originalWidth := a.FindParameter("OriginalWidth")
-		originalHeight := a.FindParameter("OriginalHeight")
-		dataWidth := a.FindParameter("DataWidth")
-		dataHeight := a.FindParameter("DataHeight")
-		fbo := &capture.FBO{
-			Data:           data.Value.GetPod().GetUint8Array(),
-			OriginalWidth:  originalWidth.Value.GetPod().GetUint32(),
-			OriginalHeight: originalHeight.Value.GetPod().GetUint32(),
-			DataWidth:      dataWidth.Value.GetPod().GetUint32(),
-			DataHeight:     dataHeight.Value.GetPod().GetUint32(),
-		}
-		return fbo
-	}
-	return nil
 }
 
 func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -342,16 +321,16 @@ func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, d
 	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
 	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
-		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
+		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed at %v", cmd)
 	}
 	iio, err := client.Get(ctx, iip.Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Get frame image.Info failed")
+		return nil, log.Errf(ctx, err, "Get frame image.Info failed at %v", cmd)
 	}
 	ii := iio.(*img.Info)
 	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Get frame image data failed")
+		return nil, log.Errf(ctx, err, "Get frame image data failed at %v", cmd)
 	}
 	w, h, data := int(ii.Width), int(ii.Height), dataO.([]byte)
 

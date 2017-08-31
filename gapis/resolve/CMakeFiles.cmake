@@ -33,6 +33,7 @@ set(files
     framebuffer_attachment.go
     framebuffer_attachment_data.go
     framebuffer_changes.go
+    framebuffer_observation.go
     get.go
     get_set_test.go
     index_limits.go

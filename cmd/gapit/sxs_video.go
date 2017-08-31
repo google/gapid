@@ -31,14 +31,12 @@ import (
 	"github.com/google/gapid/core/math/f32"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/text/reflow"
-	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 type videoFrame struct {
-	fbo           *capture.FBO
+	fbo           *img.Data
 	command       *path.Command
 	fboIndex      int
 	frameIndex    int
@@ -65,16 +63,15 @@ func getVideoFrames(
 	for i, e := range events {
 		switch e.Kind {
 		case service.EventKind_FramebufferObservation:
-			cmd, err := client.Get(ctx, e.Command.Path())
+			fbo, err := getFBO(ctx, client, e.Command)
 			if err != nil {
-				return nil, 0, 0, log.Err(ctx, err, "Couldn't get framebuffer observation")
+				return nil, 0, 0, err
 			}
-			fbo := asFbo(cmd.(*api.Command))
-			if int(fbo.DataWidth) > w {
-				w = int(fbo.DataWidth)
+			if int(fbo.Width) > w {
+				w = int(fbo.Width)
 			}
-			if int(fbo.DataHeight) > h {
-				h = int(fbo.DataHeight)
+			if int(fbo.Height) > h {
+				h = int(fbo.Height)
 			}
 			videoFrames = append(videoFrames, &videoFrame{
 				fbo:          fbo,
@@ -99,9 +96,9 @@ func getVideoFrames(
 		wg.Add(1)
 		go func(v *videoFrame) {
 			v.observed = &image.NRGBA{
-				Pix:    v.fbo.Data,
-				Stride: int(v.fbo.DataWidth) * 4,
-				Rect:   image.Rect(0, 0, int(v.fbo.DataWidth), int(v.fbo.DataHeight)),
+				Pix:    v.fbo.Bytes,
+				Stride: int(v.fbo.Width) * 4,
+				Rect:   image.Rect(0, 0, int(v.fbo.Width), int(v.fbo.Height)),
 			}
 			if frame, err := getFrame(ctx, maxWidth, maxHeight, v.command, device, client); err == nil {
 				v.rendered = frame
@@ -125,6 +122,27 @@ func getVideoFrames(
 	}
 
 	return videoFrames, w, h, nil
+}
+
+// getFBO fetches the framebuffer observation of the command.
+func getFBO(ctx context.Context, client service.Service, a *path.Command) (*img.Data, error) {
+	obj, err := client.Get(ctx, a.FramebufferObservation().Path())
+	if err != nil {
+		return nil, err
+	}
+	ii := obj.(*img.Info)
+	obj, err = client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
+	if err != nil {
+		return nil, err
+	}
+	data := obj.([]byte)
+	return &img.Data{
+		Format: ii.Format,
+		Width:  ii.Width,
+		Height: ii.Height,
+		Depth:  ii.Depth,
+		Bytes:  data,
+	}, nil
 }
 
 func (verb *videoVerb) sxsVideoSource(
@@ -223,7 +241,7 @@ func (verb *videoVerb) sxsVideoSource(
 			sb := new(bytes.Buffer)
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
-			fmt.Fprintf(refw, "Dimensions:║%dx%d¶", v.fbo.OriginalWidth, v.fbo.OriginalHeight)
+			fmt.Fprintf(refw, "Dimensions:║%dx%d¶", v.fbo.Width, v.fbo.Height)
 			fmt.Fprintf(refw, "Cmd:║%d¶", v.fboIndex)
 			fmt.Fprintf(refw, "Frame:║%d¶", v.frameIndex)
 			fmt.Fprintf(refw, "Draw calls:║%d¶", v.numDrawCalls)

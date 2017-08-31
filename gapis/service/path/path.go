@@ -66,6 +66,7 @@ func (n *Context) Path() *Any                   { return &Any{&Any_Context{n}} }
 func (n *Contexts) Path() *Any                  { return &Any{&Any_Contexts{n}} }
 func (n *Device) Path() *Any                    { return &Any{&Any_Device{n}} }
 func (n *Events) Path() *Any                    { return &Any{&Any_Events{n}} }
+func (n *FramebufferObservation) Path() *Any    { return &Any{&Any_Fbo{n}} }
 func (n *Field) Path() *Any                     { return &Any{&Any_Field{n}} }
 func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}} }
 func (n *MapIndex) Path() *Any                  { return &Any{&Any_MapIndex{n}} }
@@ -98,6 +99,7 @@ func (n Context) Parent() Node                   { return n.Capture }
 func (n Contexts) Parent() Node                  { return n.Capture }
 func (n Device) Parent() Node                    { return nil }
 func (n Events) Parent() Node                    { return n.Capture }
+func (n FramebufferObservation) Parent() Node    { return n.Command }
 func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
 func (n ImageInfo) Parent() Node                 { return nil }
 func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
@@ -476,11 +478,19 @@ func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 	return &Memory{addr, size, pool, n, false, false}
 }
 
+// ResourceAfter returns the path node to the resource with the given identifier
+// after this command.
 func (n *Command) ResourceAfter(id *ID) *ResourceData {
 	return &ResourceData{
 		Id:    id,
 		After: n,
 	}
+}
+
+// FramebufferObservation returns the path node to framebuffer observation
+// after this command.
+func (n *Command) FramebufferObservation() *FramebufferObservation {
+	return &FramebufferObservation{Command: n}
 }
 
 // Mesh returns the path node to the mesh of this command.
