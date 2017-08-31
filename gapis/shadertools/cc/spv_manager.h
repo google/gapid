@@ -17,8 +17,6 @@
 #ifndef SPV_MANAGER_H_
 #define SPV_MANAGER_H_
 
-#define DEBUG
-
 #include "third_party/SPIRV-Headers/include/spirv/1.2/spirv.hpp"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #include "third_party/SPIRV-Tools/source/assembly_grammar.h"
