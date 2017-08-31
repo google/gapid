@@ -24,6 +24,7 @@ def _java_proto_grpc_rule_impl(ctx):
     )
 
 _java_proto_grpc_rule = rule(
+    _java_proto_grpc_rule_impl,
     attrs = {
         "deps": attr.label_list(
             allow_files = False,
@@ -45,8 +46,6 @@ _java_proto_grpc_rule = rule(
             default = Label("@com_github_grpc_java//:protoc-gen-java"),
         ),
     },
-    output_to_genfiles = True,
-    implementation = _java_proto_grpc_rule_impl,
 )
 
 def java_proto_library(name, grpc=False, deps=[], extra_deps=[], **kwargs):

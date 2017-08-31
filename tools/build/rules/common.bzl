@@ -6,21 +6,18 @@ def _generate_impl(ctx):
     )
 
 generate = rule(
+    _generate_impl,
     attrs = {
         "output" : attr.output(mandatory=True),
         "content" : attr.string(mandatory=True),
     },
-    implementation = _generate_impl,
 )
 
 def _copy_impl(ctx):
-    ctx.action(
-        inputs=ctx.files.src,
-        outputs=[ctx.outputs.dst],
-        command=["cp", ctx.file.src.path, ctx.outputs.dst.path],
-    )
+    ctx.template_action(template=ctx.file.src, output=ctx.outputs.dst, substitutions={})
 
 copy = rule(
+    _copy_impl,
     attrs = {
         "src": attr.label(
             single_file = True,
@@ -29,7 +26,6 @@ copy = rule(
         ),
         "dst": attr.output(),
     },
-    implementation = _copy_impl,
     executable = False,
 )
 
@@ -45,16 +41,13 @@ def _copy_to_impl(ctx):
     for src in filtered:
         dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + src.basename)
         outs += [dst]
-        ctx.action(
-            inputs=[src],
-            outputs=[dst],
-            command=["cp", src.path, dst.path],
-        )
+        ctx.template_action(template=src, output=dst, substitutions={})
     return struct(
         files= outs,
     )
 
 copy_to = rule(
+    _copy_to_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = True,
@@ -65,7 +58,6 @@ copy_to = rule(
             mandatory=True,
         ),
     },
-    implementation = _copy_to_impl,
 )
 
 
@@ -79,16 +71,13 @@ def _copy_tree_impl(ctx):
             path = ctx.attr.to + "/" + path
         dst = ctx.new_file(ctx.bin_dir, path)
         outs += [dst]
-        ctx.action(
-            inputs=[src],
-            outputs=[dst],
-            command=["cp", src.path, dst.path],
-        )
+        ctx.template_action(template=src, output=dst, substitutions={})
     return struct(
         files= outs,
     )
 
 copy_tree = rule(
+    _copy_tree_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = True,
@@ -97,7 +86,6 @@ copy_tree = rule(
         "strip": attr.string(),
         "to": attr.string(),
     },
-    implementation = _copy_tree_impl,
 )
 
 def copy_platform_binaries(name, src, **kwargs):

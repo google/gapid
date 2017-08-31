@@ -45,8 +45,8 @@ go_library(
         "state.go",
         "vulkan.go",
         "vulkan_terminator.go",
-        ":generated",  # keep
     ],
+    library = ":generated",
     importpath = "github.com/google/gapid/gapis/api/vulkan",
     visibility = ["//visibility:public"],
     deps = [
