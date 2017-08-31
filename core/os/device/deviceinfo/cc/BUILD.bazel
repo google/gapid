@@ -42,7 +42,7 @@ cc_library(
     defines = cc_defines(),
     copts = cc_copts(),
     linkopts = select({
-        "//tools/build:linux": ["-lGL", "-lX11"],
+        "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
         "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
         "//tools/build:windows": [],
         "//conditions:default": ["-lEGL", "-lGLESv2", "-llog", "-landroid", "-lm"],
