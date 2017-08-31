@@ -25,7 +25,6 @@ set(files
     decoder.go
     encoder.go
     doc.go
-    fbo.go
 )
 set(dirs
 

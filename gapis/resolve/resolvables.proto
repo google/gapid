@@ -121,3 +121,7 @@ message SetResolvable {
 	path.Any path = 1;
 	service.Value value = 2;
 }
+
+message FramebufferObservationResolvable {
+	path.FramebufferObservation path = 1;
+}

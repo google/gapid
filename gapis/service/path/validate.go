@@ -168,6 +168,11 @@ func (n *Events) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *FramebufferObservation) Validate() error {
+	return checkNotNilAndValidate(n, protoutil.OneOf(n.Command), "command")
+}
+
+// Validate checks the path is valid.
 func (n *Field) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, protoutil.OneOf(n.Struct), "struct"),

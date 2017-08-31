@@ -40,22 +40,23 @@ message Any {
     Contexts contexts = 13;
     Device device = 14;
     Events events = 15;
-    Field field = 16;
-    ImageInfo image_info = 17;
-    MapIndex map_index = 18;
-    Memory memory = 19;
-    Mesh mesh = 20;
-    Parameter parameter = 21;
-    Report report = 22;
-    ResourceData resource_data = 23;
-    Resources resources = 24;
-    Result result = 25;
-    Slice slice = 26;
-    State state = 27;
-    StateTree state_tree = 28;
-    StateTreeNode state_tree_node = 29;
-    StateTreeNodeForPath state_tree_node_for_path = 30;
-    Thumbnail thumbnail = 31;
+    FramebufferObservation fbo = 16;
+    Field field = 17;
+    ImageInfo image_info = 18;
+    MapIndex map_index = 19;
+    Memory memory = 20;
+    Mesh mesh = 21;
+    Parameter parameter = 22;
+    Report report = 23;
+    ResourceData resource_data = 24;
+    Resources resources = 25;
+    Result result = 26;
+    Slice slice = 27;
+    State state = 28;
+    StateTree state_tree = 29;
+    StateTreeNode state_tree_node = 30;
+    StateTreeNodeForPath state_tree_node_for_path = 31;
+    Thumbnail thumbnail = 32;
   }
 }
 
@@ -192,6 +193,12 @@ message Context {
 // Device is a path to a device used for replay.
 message Device {
     ID id = 1;
+}
+
+// FramebufferObservation is a path to a framebuffer observation image at the
+// specified command. It resolves to an image.Info.
+message FramebufferObservation {
+    Command command = 1;
 }
 
 // Field is a path to a field in a struct.

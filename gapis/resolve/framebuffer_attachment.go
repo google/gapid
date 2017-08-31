@@ -79,7 +79,7 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api
 		return framebufferAttachmentInfo{}, err
 	}
 	if info.err != nil {
-		log.W(ctx, "Framebuffer error: %v", info.err)
+		log.W(ctx, "Framebuffer error after %v: %v", after, info.err)
 		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 	return info, nil

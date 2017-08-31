@@ -113,11 +113,13 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		}
 
 		if p.FramebufferObservations {
-			if _, ok := cmd.(*capture.FBO); ok {
-				events = append(events, &service.Event{
-					Kind:    service.EventKind_FramebufferObservation,
-					Command: p.Capture.Command(uint64(id)),
-				})
+			for _, e := range cmd.Extras().All() {
+				if _, ok := e.(*capture.FramebufferObservation); ok {
+					events = append(events, &service.Event{
+						Kind:    service.EventKind_FramebufferObservation,
+						Command: p.Capture.Command(uint64(id)),
+					})
+				}
 			}
 		}
 
