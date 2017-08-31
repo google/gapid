@@ -41,6 +41,7 @@ def _go_proto_sources_impl(ctx):
     )
 
 go_proto_sources = rule(
+    _go_proto_sources_impl,
     attrs = {
         "deps": attr.label_list(
             allow_files = False,
@@ -63,7 +64,5 @@ go_proto_sources = rule(
         ),
         "_go_prefix": attr.label(default = Label("//:go_prefix")),
     },
-    output_to_genfiles = True,
-    implementation = _go_proto_sources_impl,
 )
 

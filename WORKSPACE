@@ -38,7 +38,7 @@ github_repository(
 ##############################
 # Load all our workspace rules
 
-load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@io_bazel_rules_appengine//appengine:appengine.bzl", "appengine_repositories")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "windows_sdk")
@@ -46,7 +46,8 @@ load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "wi
 #########################################################
 # Run our workspace preparation rules
 
-go_repositories()
+go_rules_dependencies()
+go_register_toolchains()
 appengine_repositories()
 cc_configure()
 

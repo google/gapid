@@ -1,3 +1,6 @@
+load("@io_bazel_rules_go//go:def.bzl", "GoLibrary")
+load("@io_bazel_rules_go//go/private:providers.bzl", "CgoLibrary")
+
 def api_search_path(inputs):
     roots = {}
     for dep in inputs:
@@ -29,12 +32,28 @@ def _apic_impl(ctx):
             progress_message = "apic " + api.main.short_path + " with " + template.main.short_path,
             executable = ctx.executable._apic
         )
-    return struct(
-        files = generated,
-    )
+        srcs = depset([f for f in generated if f.basename.endswith(".go")])
+    return [
+        GoLibrary(#TODO: this is too complicated, needs cleaning up
+            label = ctx.label,
+            srcs = srcs,
+            transformed = srcs,
+            direct=(),
+            cgo_deps=(),
+            gc_goopts=(),
+            cover_vars=(),
+        ),
+        CgoLibrary(#TODO: remove this when we switch from the library attribute
+            object=None,
+        ),
+        DefaultInfo(
+            files = generated,
+        ),
+    ]
 
 """Adds an API compiler rule"""
 apic = rule(
+    _apic_impl,
     attrs = {
         "api": attr.label(
             allow_files = False,
@@ -61,6 +80,4 @@ apic = rule(
             default = Label("//cmd/apic:apic"),
         ),
     },
-    output_to_genfiles = True,
-    implementation = _apic_impl,
 )

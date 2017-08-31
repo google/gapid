@@ -1,19 +1,23 @@
 def _stringgen_impl(ctx):
+    go = ctx.new_file(ctx.label.name+".api")
+    api = ctx.new_file(ctx.label.name+".go")
+    table = ctx.new_file("en-us.stb")
     ctx.action(
         inputs=[ctx.file.input],
-        outputs=[ctx.outputs.go, ctx.outputs.api, ctx.outputs.table],
+        outputs=[go, api, table],
         progress_message="Stringgen %s" % ctx.file.input.short_path,
         executable=ctx.executable._stringgen,
         arguments=[
-            "--def-go", ctx.outputs.go.path,
-            "--def-api", ctx.outputs.api.path,
-            "--pkg", ctx.outputs.table.dirname,
+            "--def-go", go.path,
+            "--def-api", api.path,
+            "--pkg", table.dirname,
             ctx.file.input.path
         ],
     )
 
 """Builds a stringgen source converter rule"""
 stringgen = rule(
+    _stringgen_impl,
     attrs = {
         "input": attr.label(
             single_file = True,
@@ -27,11 +31,4 @@ stringgen = rule(
             default = Label("//cmd/stringgen:stringgen"),
         ),
     },
-    output_to_genfiles = True,
-    outputs = {
-        "go": "%{name}.go",
-        "api": "%{name}.api",
-        "table": "en-us.stb",
-    },
-    implementation = _stringgen_impl,
 )

@@ -13,6 +13,7 @@ def _filehash_impl(ctx):
         executable=ctx.executable._filehash)
 
 filehash = rule(
+    _filehash_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = True,
@@ -32,6 +33,4 @@ filehash = rule(
             default = Label("//cmd/filehash:filehash"),
         ),
     },
-    output_to_genfiles = True,
-    implementation = _filehash_impl,
 )

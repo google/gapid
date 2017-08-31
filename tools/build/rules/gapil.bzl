@@ -12,6 +12,7 @@ def _api_library_impl(ctx):
 
 """Adds an API library rule"""
 api_library = rule(
+    _api_library_impl,
     attrs = {
         "apiname": attr.string(mandatory=True),
         "api": attr.label(
@@ -28,8 +29,6 @@ api_library = rule(
             ],
         ),
     },
-    output_to_genfiles = True,
-    implementation = _api_library_impl,
 )
 
 def _api_template_impl(ctx):
@@ -44,6 +43,7 @@ def _api_template_impl(ctx):
 
 """Adds an API template library rule"""
 api_template = rule(
+    _api_template_impl,
     attrs = {
         "template": attr.label(
             single_file = True,
@@ -52,6 +52,4 @@ api_template = rule(
         "includes": attr.label_list(allow_files = True),
         "outputs": attr.string_list(),
     },
-    output_to_genfiles = True,
-    implementation = _api_template_impl,
 )
