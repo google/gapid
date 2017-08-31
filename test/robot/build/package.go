@@ -78,7 +78,7 @@ func (p *packages) apply(ctx context.Context, pkg *Package) error {
 	for _, t := range pkg.Tool {
 		old.mergeTool(ctx, t)
 	}
-	p.onChange.Send(ctx, pkg)
+	p.onChange.Send(ctx, old)
 	return nil
 }
 
