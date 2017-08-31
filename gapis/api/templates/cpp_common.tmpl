@@ -178,8 +178,10 @@
 {{define "C++.CallParameters"}}
   {{AssertType $ "Function"}}
 
+  {{$prevCallFunction := Global "CallFunction"}}
   {{Global "CallFunction" $}}
   {{ForEach $.CallParameters "C++.Parameter" | JoinWith ", "}}
+  {{Global "CallFunction" $prevCallFunction}}
 {{end}}
 
 
@@ -279,8 +281,11 @@
 */}}
 {{define "C++.ReturnType"}}
   {{AssertType $ "Function"}}
+  {{$prevCallFunction := Global "CallFunction"}}
+  {{Global "CallFunction" $}}
 
   {{Template "C++.ParameterType" $.Return}}
+  {{Global "CallFunction" $prevCallFunction}}
 {{end}}
 
 
