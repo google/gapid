@@ -45,14 +45,14 @@ type Cmd interface {
 	CmdName() string
 
 	// CmdFlags returns the flags of the command.
-	CmdFlags(context.Context, *State) CmdFlags
+	CmdFlags(context.Context, CmdID, *State) CmdFlags
 
 	// Extras returns all the Extras associated with the dynamic command.
 	Extras() *CmdExtras
 
 	// Mutate mutates the State using the command. If the builder argument is
 	// not nil then it will call the replay function on the builder.
-	Mutate(context.Context, *State, *builder.Builder) error
+	Mutate(context.Context, CmdID, *State, *builder.Builder) error
 }
 
 const (

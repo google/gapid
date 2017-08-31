@@ -215,7 +215,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Walk the list of unfiltered commands to build the groups.
 	s := c.NewState()
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, id, s, nil)
 		if filter(id, cmd, s) {
 			for _, g := range groupers {
 				g.Process(ctx, id, cmd, s)
@@ -268,7 +268,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Now we have all the groups, we finally need to add the filtered commands.
 	s = c.NewState()
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, id, s, nil)
 
 		if !filter(id, cmd, s) {
 			return nil
@@ -287,7 +287,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 		out.root.AddCommand(id)
 
-		if flags := cmd.CmdFlags(ctx, s); flags.IsDrawCall() || flags.IsClear() {
+		if flags := cmd.CmdFlags(ctx, id, s); flags.IsDrawCall() || flags.IsClear() {
 			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
 				Start: id, End: id + 1,
 			})

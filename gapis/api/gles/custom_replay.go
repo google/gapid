@@ -262,20 +262,20 @@ func (i GLeglImageOES) value(b *builder.Builder, cmd api.Cmd, s *api.State) valu
 	return value.AbsolutePointer(i.addr)
 }
 
-func (ω *EglCreateContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *EglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Result].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
+func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
 	prevContext := GetState(s).Contexts[ω.Thread()]
 	_, existed := GetState(s).EGLContexts[ω.Context]
-	err := ω.mutate(ctx, s, nil)
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
@@ -285,16 +285,16 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.B
 			return nil
 		}
 		ctxID := uint32(prevContext.Identifier)
-		return cb.ReplayUnbindRenderer(ctxID).Mutate(ctx, s, b)
+		return cb.ReplayUnbindRenderer(ctxID).Mutate(ctx, id, s, b)
 	}
 	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
 	if !existed {
 		// The eglCreateContext call was missing, so fake it (can happen on Samsung).
-		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b); err != nil {
+		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b); err != nil {
 			return err
 		}
 	}
-	if err := cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b); err != nil {
+	if err := cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b); err != nil {
 		return err
 	}
 	if cs := FindDynamicContextState(ω.Extras()); cs != nil {
@@ -307,35 +307,35 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.B
 			cs.BackbufferStencilFmt,
 			cs.ResetViewportScissor,
 		)
-		if err := cmd.Mutate(ctx, s, b); err != nil {
+		if err := cmd.Mutate(ctx, id, s, b); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (ω *WglCreateContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *WglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
@@ -344,21 +344,21 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, s *api.State, b *builder.B
 	}
 	ctxID := uint32(GetState(s).WGLContexts[ω.Hglrc].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *CGLCreateContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *CGLCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.Read(ctx, ω, s, b)].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
@@ -367,31 +367,31 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, s *api.State, b *bui
 	}
 	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *GlXCreateContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *GlXCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *GlXCreateNewContext) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *GlXCreateNewContext) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
-func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	err := ω.mutate(ctx, s, nil)
+func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
 	}
@@ -400,11 +400,11 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, s *api.State, b *bu
 	}
 	ctxID := uint32(GetState(s).GLXContexts[ω.Ctx].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, s, b)
+	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
 // Force all attributes to use the capture-observed locations during replay.
-func bindAttribLocations(ctx context.Context, cmd api.Cmd, s *api.State, b *builder.Builder, pid ProgramId) error {
+func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
@@ -416,7 +416,7 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, s *api.State, b *buil
 					log.E(ctx, "Can not set location for built-in attribute: %v", cmd)
 					continue
 				}
-				if err := cmd.Mutate(ctx, s, b); err != nil {
+				if err := cmd.Mutate(ctx, id, s, b); err != nil {
 					return err
 				}
 			}
@@ -426,14 +426,14 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, s *api.State, b *buil
 }
 
 // Remap uniform block indices
-func bindUniformBlocks(ctx context.Context, cmd api.Cmd, s *api.State, b *builder.Builder, pid ProgramId) error {
+func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *builder.Builder, pid ProgramId) error {
 	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
 		for i, ub := range pi.ActiveUniformBlocks {
 			// Query replay-time uniform block index so that the remapping is established
 			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
-			if err := cmd.Mutate(ctx, s, b); err != nil {
+			if err := cmd.Mutate(ctx, id, s, b); err != nil {
 				return err
 			}
 		}
@@ -441,40 +441,40 @@ func bindUniformBlocks(ctx context.Context, cmd api.Cmd, s *api.State, b *builde
 	return nil
 }
 
-func (cmd *GlProgramBinaryOES) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
+func (cmd *GlProgramBinaryOES) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, id, s, b, cmd.Program); err != nil {
 		return err
 	}
-	if err := cmd.mutate(ctx, s, b); err != nil {
+	if err := cmd.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (cmd *GlLinkProgram) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
-		return err
-	}
-	if err := cmd.mutate(ctx, s, b); err != nil {
-		return err
-	}
-	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
+	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cmd *GlProgramBinary) Mutate(ctx context.Context, s *api.State, b *builder.Builder) error {
-	if err := bindAttribLocations(ctx, cmd, s, b, cmd.Program); err != nil {
+func (cmd *GlLinkProgram) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, id, s, b, cmd.Program); err != nil {
 		return err
 	}
-	if err := cmd.mutate(ctx, s, b); err != nil {
+	if err := cmd.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, cmd, s, b, cmd.Program); err != nil {
+	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *GlProgramBinary) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+	if err := bindAttribLocations(ctx, cmd, id, s, b, cmd.Program); err != nil {
+		return err
+	}
+	if err := cmd.mutate(ctx, id, s, b); err != nil {
+		return err
+	}
+	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
 		return err
 	}
 	return nil

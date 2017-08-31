@@ -84,7 +84,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
-		cmd.Mutate(ctx, state, nil)
+		cmd.Mutate(ctx, id, state, nil)
 		return nil
 	})
 	if err != nil {

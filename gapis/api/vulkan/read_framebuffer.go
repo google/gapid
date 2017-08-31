@@ -45,7 +45,7 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 // the framebuffer read.
 func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
-	isEOF := cmd.CmdFlags(ctx, s).IsEndOfFrame()
+	isEOF := cmd.CmdFlags(ctx, id, s).IsEndOfFrame()
 	doMutate := func() {
 		out.MutateAndWrite(ctx, id, cmd)
 	}
@@ -55,7 +55,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	} else {
 		// This is a VkQueuePresent, we need to extract the information out of this,
 		// so that we can correctly display the image.
-		cmd.Mutate(ctx, out.State(), nil)
+		cmd.Mutate(ctx, id, out.State(), nil)
 	}
 
 	if r, ok := t.injections[id]; ok {

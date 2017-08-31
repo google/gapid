@@ -90,6 +90,7 @@
   func {{Template "Go.Subroutine" $}}(§
       ϟctx context.Context, §
       ϟa api.Cmd, §
+      ϟi api.CmdID, §
       ϟo *api.CmdObservations, §
       ϟs *api.State, §
       ϟc *State, §
@@ -141,7 +142,7 @@
       {{end}}
       func (ϟa *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟs *api.State, ϟb *builder.Builder) error {
+        ϟctx context.Context, ϟi api.CmdID, ϟs *api.State, ϟb *builder.Builder) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -507,7 +508,7 @@
     {{if $call.Target.Function.Subroutine}}
       {{/* Transform: v := sub() -> v, err := sub() */}}
       {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}})
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟi, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}})
       if ϟerr != nil {
         {{Template "Go.ReturnErr" "ϟerr"}}
       }

@@ -632,7 +632,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.thread}
 	state := c.NewState()
-	cmd.Mutate(ctx, state, nil)
+	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
@@ -682,7 +682,7 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.thread}
 	state := c.NewState()
-	cmd.Mutate(ctx, state, nil)
+	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)

@@ -65,7 +65,7 @@ func (t *tweaker) getCapability(ctx context.Context, name GLenum) bool {
 	o := a.Extras().Observations()
 	s := t.out.State()
 	i := GLuint(0) // capability index.
-	res, err := subGetCapability(ctx, a, o, s, GetState(s), a.thread, nil, name, i)
+	res, err := subGetCapability(ctx, a, t.dID, o, s, GetState(s), a.thread, nil, name, i)
 	if err != nil {
 		panic(err)
 	}
