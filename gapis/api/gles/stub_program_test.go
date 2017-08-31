@@ -40,8 +40,12 @@ func TestStubShaderSource(t *testing.T) {
 					},
 				},
 			},
-			vs: `// GAPII stub vertex shader
-#version 110
+			vs: `#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 uniform vec4 foo;
 void main() {
@@ -49,8 +53,12 @@ void main() {
     no_strip += foo.x;
     gl_Position = vec4(no_strip * 0.000001, 0., 0., 1.);
 }`,
-			fs: `// GAPII stub fragment shader
-#version 110
+			fs: `#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 uniform sampler2D bar;
 void main() {
@@ -74,8 +82,12 @@ void main() {
 					},
 				},
 			},
-			vs: `// GAPII stub vertex shader
-#version 110
+			vs: `#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 uniform vec4 bar[3];
 uniform vec4 foo[3];
@@ -89,8 +101,12 @@ void main() {
     no_strip += foo[2].x;
     gl_Position = vec4(no_strip * 0.000001, 0., 0., 1.);
 }`,
-			fs: `// GAPII stub fragment shader
-#version 110
+			fs: `#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 void main() {
     float no_strip = 0.0;

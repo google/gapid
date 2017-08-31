@@ -31,7 +31,8 @@ var (
 )
 
 func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.State, programID ProgramId) []api.Cmd {
-	vss, fss, err := stubShaderSource(FindProgramInfo(e))
+	programInfo := FindProgramInfo(e)
+	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)
 	}
@@ -45,9 +46,11 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 		return ok || x == uint32(vertexShaderID)
 	}))
 	cb := CommandBuilder{Thread: thread}
+	glLinkProgram := cb.GlLinkProgram(programID)
+	glLinkProgram.Extras().Add(programInfo)
 	return append(
 		CompileProgram(ctx, s, cb, vertexShaderID, fragmentShaderID, programID, vss, fss),
-		cb.GlLinkProgram(programID),
+		glLinkProgram,
 	)
 }
 
@@ -92,15 +95,23 @@ func stubShaderSource(pi *ProgramInfo) (vertexShaderSource, fragmentShaderSource
 		sort.Strings(vsTickles)
 		sort.Strings(fsTickles)
 	}
-	return fmt.Sprintf(`// GAPII stub vertex shader
-#version 110
+	return fmt.Sprintf(`#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 %svoid main() {
     float no_strip = 0.0;
     %sgl_Position = vec4(no_strip * 0.000001, 0., 0., 1.);
 }`, strings.Join(vsDecls, ""), strings.Join(vsTickles, "")),
-		fmt.Sprintf(`// GAPII stub fragment shader
-#version 110
+		fmt.Sprintf(`#version 150
+
+/////////////////////////////////////////////
+// GAPID stub shader (no source available) //
+/////////////////////////////////////////////
+
 precision highp float;
 %svoid main() {
     float no_strip = 0.0;
