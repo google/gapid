@@ -21,7 +21,7 @@ func (e *ErrDataUnavailable) Error() string {
 }
 
 func (e *ErrInvalidPath) Error() string {
-	return fmt.Sprintf("The path '%v' is invalid. Reason: %v", e.Path.Text(), e.Reason.Text(nil))
+	return fmt.Sprintf("The path '%v' is invalid. Reason: %v", e.Path, e.Reason.Text(nil))
 }
 
 func (e *ErrInvalidArgument) Error() string {

@@ -31,10 +31,6 @@ import (
 // passed between client and server using RPCs in order to describe some data
 // in a capture.
 type Node interface {
-	// Text returns the string representation of the path.
-	// The returned string must be consistent for equal paths.
-	Text() string
-
 	// Parent returns the path that this path derives from.
 	// If this path is a root, then Base returns nil.
 	Parent() Node
@@ -119,53 +115,120 @@ func (n StateTreeNode) Parent() Node             { return nil }
 func (n StateTreeNodeForPath) Parent() Node      { return nil }
 func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
 
-func (n ArrayIndex) Text() string { return fmt.Sprintf("%v[%v]", n.Parent().Text(), n.Index) }
-func (n API) Text() string        { return fmt.Sprintf("api<%v>", n.Id) }
-func (n As) Text() string         { return fmt.Sprintf("%v.as<%v>", n.Parent().Text(), protoutil.OneOf(n.To)) }
-func (n Blob) Text() string       { return fmt.Sprintf("blob<%x>", n.Id) }
-func (n Capture) Text() string    { return fmt.Sprintf("capture<%x>", n.Id) }
-func (n ConstantSet) Text() string {
-	return fmt.Sprintf("%v.constant-set<%v>", n.Parent().Text(), n.Index)
+// Format implements fmt.Formatter to print the version.
+func (n ArrayIndex) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v[%v]", n.Parent(), n.Index)
 }
-func (n Command) Text() string {
-	return fmt.Sprintf("%v.commands[%v]", n.Parent().Text(), printIndices(n.Indices))
+
+// Format implements fmt.Formatter to print the version.
+func (n API) Format(f fmt.State, c rune) { fmt.Fprintf(f, "api<%v>", n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n As) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.as<%v>", n.Parent(), protoutil.OneOf(n.To))
 }
-func (n Commands) Text() string {
-	return fmt.Sprintf("%v.commands[%v-%v]", n.Parent().Text(), printIndices(n.From), printIndices(n.To))
+
+// Format implements fmt.Formatter to print the version.
+func (n Blob) Format(f fmt.State, c rune) { fmt.Fprintf(f, "blob<%x>", n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Capture) Format(f fmt.State, c rune) { fmt.Fprintf(f, "capture<%x>", n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n ConstantSet) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.constant-set<%v>", n.Parent(), n.Index)
 }
-func (n CommandTree) Text() string { return fmt.Sprintf("%v.command-tree") }
-func (n CommandTreeNode) Text() string {
-	return fmt.Sprintf("command-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
+
+// Format implements fmt.Formatter to print the version.
+func (n Command) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.commands[%v]", n.Parent(), printIndices(n.Indices))
 }
-func (n CommandTreeNodeForCommand) Text() string {
-	return fmt.Sprintf("%v.command-tree-node<%v>", n.Command.Text(), n.Tree)
+
+// Format implements fmt.Formatter to print the version.
+func (n Commands) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.commands[%v-%v]", n.Parent(), printIndices(n.From), printIndices(n.To))
 }
-func (n Context) Text() string   { return fmt.Sprintf("%v.[%x]", n.Parent().Text(), n.Id) }
-func (n Contexts) Text() string  { return fmt.Sprintf("%v.contexts", n.Parent().Text()) }
-func (n Device) Text() string    { return fmt.Sprintf("device<%x>", n.Id) }
-func (n Events) Text() string    { return fmt.Sprintf(".events", n.Parent().Text()) }
-func (n Field) Text() string     { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
-func (n ImageInfo) Text() string { return fmt.Sprintf("image-info<%x>", n.Id) }
-func (n MapIndex) Text() string  { return fmt.Sprintf("%v[%x]", n.Parent().Text(), n.Key) }
-func (n Memory) Text() string    { return fmt.Sprintf("%v.memory-after", n.Parent().Text()) }
-func (n Mesh) Text() string      { return fmt.Sprintf("%v.mesh", n.Parent().Text()) }
-func (n Parameter) Text() string { return fmt.Sprintf("%v.%v", n.Parent().Text(), n.Name) }
-func (n Report) Text() string    { return fmt.Sprintf("%v.report", n.Parent().Text()) }
-func (n ResourceData) Text() string {
-	return fmt.Sprintf("%v.resource-data<%x>", n.Parent().Text(), n.Id)
+
+// Format implements fmt.Formatter to print the version.
+func (n CommandTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.command-tree") }
+
+// Format implements fmt.Formatter to print the version.
+func (n CommandTreeNode) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "command-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
 }
-func (n Resources) Text() string { return fmt.Sprintf("%v.resources", n.Parent().Text()) }
-func (n Result) Text() string    { return fmt.Sprintf("%v.result", n.Parent().Text()) }
-func (n Slice) Text() string     { return fmt.Sprintf("%v[%v:%v]", n.Parent().Text(), n.Start, n.End) }
-func (n State) Text() string     { return fmt.Sprintf("%v.state-after", n.Parent().Text()) }
-func (n StateTree) Text() string { return fmt.Sprintf("%v.state-tree") }
-func (n StateTreeNode) Text() string {
-	return fmt.Sprintf("state-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
+
+// Format implements fmt.Formatter to print the version.
+func (n CommandTreeNodeForCommand) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.command-tree-node<%v>", n.Command, n.Tree)
 }
-func (n StateTreeNodeForPath) Text() string {
-	return fmt.Sprintf("state-tree-for<%v, %v>", n.Tree, n.Member.Text())
+
+// Format implements fmt.Formatter to print the version.
+func (n Context) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.[%x]", n.Parent(), n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Contexts) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.contexts", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, ".events", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
+
+// Format implements fmt.Formatter to print the version.
+func (n ImageInfo) Format(f fmt.State, c rune) { fmt.Fprintf(f, "image-info<%x>", n.Id) }
+
+// Format implements fmt.Formatter to print the version.
+func (n MapIndex) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v[%x]", n.Parent(), n.Key) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Memory) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.memory-after", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Mesh) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.mesh", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Parameter) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Report) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.report", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n ResourceData) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.Id)
 }
-func (n Thumbnail) Text() string { return fmt.Sprintf("%v.thumbnail", n.Parent().Text()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Resources) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.resources", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Result) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.result", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n Slice) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v[%v:%v]", n.Parent(), n.Start, n.End)
+}
+
+// Format implements fmt.Formatter to print the version.
+func (n State) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.state-after", n.Parent()) }
+
+// Format implements fmt.Formatter to print the version.
+func (n StateTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.state-tree") }
+
+// Format implements fmt.Formatter to print the version.
+func (n StateTreeNode) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "state-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
+}
+
+// Format implements fmt.Formatter to print the version.
+func (n StateTreeNodeForPath) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "state-tree-for<%v, %v>", n.Tree, n.Member)
+}
+
+// Format implements fmt.Formatter to print the version.
+func (n Thumbnail) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.thumbnail", n.Parent()) }
 
 func (n *ArrayIndex) SetParent(p Node) {
 	switch p := p.(type) {
@@ -248,8 +311,10 @@ func oneOfNode(v interface{}) Node {
 // Node returns the path node for p.
 func (p *Any) Node() Node { return oneOfNode(p.Path) }
 
-// Text returns the textual representation of the path.
-func (p *Any) Text() string { return p.Node().Text() }
+// Format implements fmt.Formatter to print the version.
+func (p *Any) Format(f fmt.State, c rune) {
+	fmt.Fprint(f, p.Node())
+}
 
 // FindCommand traverses the path nodes looking for a Command path node.
 // If no Command path node was found then nil is returned.

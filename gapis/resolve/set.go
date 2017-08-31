@@ -234,7 +234,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			val, ok := convert(reflect.ValueOf(val), ty)
 			if !ok {
 				return nil, fmt.Errorf("Slice or array at %s has element of type %v, got type %v",
-					p.Parent().Text(), ty, val.Type())
+					p.Parent(), ty, val.Type())
 			}
 			if count := uint64(a.Len()); p.Index >= count {
 				return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
@@ -270,7 +270,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			val, ok := convert(reflect.ValueOf(val), m.Type().Elem())
 			if !ok {
 				return nil, fmt.Errorf("Map at %s has value of type %v, got type %v",
-					p.Parent().Text(), m.Type().Elem(), val.Type())
+					p.Parent(), m.Type().Elem(), val.Type())
 			}
 			m.SetMapIndex(key, val)
 			parent, err := change(ctx, p.Parent(), m.Interface())

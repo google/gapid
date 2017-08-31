@@ -226,7 +226,7 @@ func TestGet(t *testing.T) {
 		{capture.Report(nil, nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
 	} {
-		ctx = log.V{"path": test.path.Text()}.Bind(ctx)
+		ctx = log.V{"path": test.path}.Bind(ctx)
 		got, err := server.Get(ctx, test.path.Path())
 		assert.With(ctx).ThatError(err).Succeeded()
 		if test.ty.Kind() == reflect.Interface {

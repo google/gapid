@@ -160,7 +160,7 @@ func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
 func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*service.Event, error) {
 	b, err := client.Get(ctx, p.Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Couldn't get events at: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Couldn't get events at: %v", p)
 	}
 	return b.(*service.Events).List, nil
 }
@@ -168,7 +168,7 @@ func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*
 func getCommand(ctx context.Context, client service.Service, p *path.Command) (*api.Command, error) {
 	boxedCmd, err := client.Get(ctx, p.Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Couldn't load command at: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Couldn't load command at: %v", p)
 	}
 	return boxedCmd.(*api.Command), nil
 }
@@ -176,13 +176,13 @@ func getCommand(ctx context.Context, client service.Service, p *path.Command) (*
 var constantSetCache = map[string]*service.ConstantSet{}
 
 func getConstantSet(ctx context.Context, client service.Service, p *path.ConstantSet) (*service.ConstantSet, error) {
-	key := p.Text()
+	key := fmt.Sprintf("%v", p)
 	if cs, ok := constantSetCache[key]; ok {
 		return cs, nil
 	}
 	boxedConstants, err := client.Get(ctx, p.Path())
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Couldn't local constant set at: %v", p.Text())
+		return nil, log.Errf(ctx, err, "Couldn't local constant set at: %v", p)
 	}
 	out := boxedConstants.(*service.ConstantSet)
 	constantSetCache[key] = out

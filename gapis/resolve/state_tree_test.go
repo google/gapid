@@ -569,18 +569,18 @@ func TestStateTreeNode(t *testing.T) {
 	} {
 
 		node, err := stateTreeNode(ctx, tree, test.path)
-		if assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
+		if assert.For(ctx, "stateTreeNode(%v)", test.path).
 			ThatError(err).Succeeded() {
-			assert.For(ctx, "stateTreeNode(%v)", test.path.Text()).
+			assert.For(ctx, "stateTreeNode(%v)", test.path).
 				That(node).DeepEquals(test.expected)
 		}
 
-		ctx := log.V{"path": test.path.Text()}.Bind(ctx)
+		ctx := log.V{"path": test.path}.Bind(ctx)
 		p := test.expected.ValuePath.Node()
 		indices, err := stateTreeNodePath(ctx, tree, p)
-		if assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
+		if assert.For(ctx, "stateTreeNodePath(%v)", p).
 			ThatError(err).Succeeded() {
-			assert.For(ctx, "stateTreeNodePath(%v)", p.Text()).
+			assert.For(ctx, "stateTreeNodePath(%v)", p).
 				ThatSlice(indices).Equals(test.path.Indices)
 		}
 	}
