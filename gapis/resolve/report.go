@@ -129,7 +129,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				messages.ErrTraceAssert(as.Reason)))
 		}
 
-		err := cmd.Mutate(ctx, state, nil /* no builder, just mutate */)
+		err := cmd.Mutate(ctx, id, state, nil /* no builder, just mutate */)
 
 		if len(items) == 0 {
 			if err != nil && !api.IsErrCmdAborted(err) {

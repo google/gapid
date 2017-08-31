@@ -44,13 +44,13 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 
 	s := c.NewState()
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, id, s, nil)
 
 		// TODO: Add event generation to the API files.
 		if !filter(id, cmd, s) {
 			return nil
 		}
-		f := cmd.CmdFlags(ctx, s)
+		f := cmd.CmdFlags(ctx, id, s)
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_Clear,

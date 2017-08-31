@@ -70,7 +70,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, id, s, nil)
 		return nil
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (interface{}, 
 	}
 
 	err = api.ForeachCmd(ctx, cmds[:cmdIdx+1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, s, nil)
+		cmd.Mutate(ctx, id, s, nil)
 		return nil
 	})
 	if err != nil {

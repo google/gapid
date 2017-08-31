@@ -551,9 +551,9 @@
   {{if $.Target.Object}}
     {{Template "Go.Read" $.Target.Object}}.{{$.Target.Function.Name}}(ϟctx, {{$args}})
   {{else if $.Target.Function.Extern}}
-    (externs{ϟctx, ϟa, ϟs, ϟb}.{{$.Target.Function.Name}}({{$args}}))
+    (externs{ϟctx, ϟa, ϟi, ϟs, ϟb}.{{$.Target.Function.Name}}({{$args}}))
   {{else if $.Target.Function.Subroutine}}
-    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟa, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}}); ϟerr != nil {
+    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟa, ϟi, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}}); ϟerr != nil {
       {{Template "Go.ReturnErr" "ϟerr"}}
     }
   {{else}}

@@ -138,10 +138,10 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			}
 			b.Write(g, renderbufferDataKey{depth})
 			b.Write(g, renderbufferDataKey{stencil})
-		} else if cmd.CmdFlags(ctx, s).IsDrawCall() {
+		} else if cmd.CmdFlags(ctx, id, s).IsDrawCall() {
 			b.Read(g, uniformGroupKey{c.Bound.Program})
 			b.Read(g, vertexAttribGroupKey{c.Bound.VertexArray})
-			for _, stateKey := range getAllUsedTextureData(ctx, cmd, s, c) {
+			for _, stateKey := range getAllUsedTextureData(ctx, cmd, id, s, c) {
 				b.Read(g, stateKey)
 			}
 			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
@@ -150,7 +150,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				b.Modify(g, data)
 			})
 			// TODO: Write transform feedback buffers.
-		} else if cmd.CmdFlags(ctx, s).IsClear() {
+		} else if cmd.CmdFlags(ctx, id, s).IsClear() {
 			switch cmd := cmd.(type) {
 			case *GlClearBufferfi:
 				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
@@ -198,18 +198,18 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				b.Read(g, textureSizeKey{c.Objects.Shared.Textures[cmd.Texture], cmd.Texture})
 				b.KeepAlive = true // Changes untracked state
 			case *GlCompressedTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, s, c.Bound.TextureUnit, cmd.Target)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlCompressedTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, s, c.Bound.TextureUnit, cmd.Target)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
 				b.Modify(g, texData)
 			case *GlTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, s, c.Bound.TextureUnit, cmd.Target)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, s, c.Bound.TextureUnit, cmd.Target)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
 				b.Modify(g, texData)
 			case *GlUniform1fv:
 				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
@@ -231,7 +231,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	} else /* c == nil */ {
 		b.KeepAlive = true
 	}
-	if err := cmd.Mutate(ctx, s, nil /* builder */); err != nil {
+	if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
 		log.W(ctx, "Command %v %v: %v", id, cmd, err)
 		return dependencygraph.AtomBehaviour{Aborted: true}
 	}
@@ -252,13 +252,13 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBeha
 	b.Write(g, data)
 }
 
-func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, s *api.State, c *Context) (stateKeys []dependencygraph.StateKey) {
+func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, c *Context) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
 	if prog := c.Bound.Program; prog != nil {
 		for _, activeUniform := range prog.ActiveUniforms {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
-				target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, nil, s, GetState(s), cmd.Thread(), nil, activeUniform.Type)
+				target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, activeUniform.Type)
 				if target == GLenum_GL_NONE {
 					continue // Not a sampler type
 				}
@@ -270,7 +270,7 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, s *api.State, c *Co
 					}
 					for _, unit := range units {
 						if tu := c.Objects.TextureUnits[TextureUnitId(unit)]; tu != nil {
-							texData, _ := getTextureDataAndSize(ctx, cmd, s, tu, target)
+							texData, _ := getTextureDataAndSize(ctx, cmd, id, s, tu, target)
 							stateKeys = append(stateKeys, texData)
 						}
 					}
@@ -281,8 +281,8 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, s *api.State, c *Co
 	return
 }
 
-func getTextureDataAndSize(ctx context.Context, cmd api.Cmd, s *api.State, unit *TextureUnit, target GLenum) (dependencygraph.StateKey, dependencygraph.StateKey) {
-	tex, err := subGetBoundTextureForUnit(ctx, cmd, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
+func getTextureDataAndSize(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, unit *TextureUnit, target GLenum) (dependencygraph.StateKey, dependencygraph.StateKey) {
+	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
 	if tex == nil || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil

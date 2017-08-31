@@ -289,7 +289,7 @@ func getVerticesData(ctx context.Context, s *api.State, thread uint64,
 	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize, s.MemoryLayout)
 
 	formatElementAndTexelBlockSize, err :=
-		subGetElementAndTexelBlockSize(ctx, nil, nil, s, nil, thread, nil, attribute.Format)
+		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Format)
 	if err != nil {
 		return nil, err
 	}

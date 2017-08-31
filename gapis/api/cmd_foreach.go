@@ -60,7 +60,7 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 // MutateCmds calls Mutate on each of cmds.
 func MutateCmds(ctx context.Context, state *State, builder *builder.Builder, cmds ...Cmd) {
 	ForeachCmd(ctx, cmds, func(ctx context.Context, id CmdID, cmd Cmd) error {
-		cmd.Mutate(ctx, state, builder)
+		cmd.Mutate(ctx, id, state, builder)
 		return nil
 	})
 }

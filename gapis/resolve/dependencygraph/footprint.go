@@ -222,7 +222,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 				// execution footprint info, we still need to mutate it in the new
 				// state, because following commands in other APIs may depends on the
 				// side effect of the this command.
-				if err := cmd.Mutate(ctx, s, nil); err != nil {
+				if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 					bh.Aborted = true
 					// TODO: This error should be moved to report view.
 					return fmt.Errorf("Command %v %v: %v", id, cmd, err)

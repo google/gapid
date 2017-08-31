@@ -93,7 +93,7 @@ func (p TransformWriter) State() *api.State {
 
 func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if config.SeparateMutateStates {
-		cmd.Mutate(ctx, p.S, nil /* no builder, just mutate */)
+		cmd.Mutate(ctx, id, p.S, nil /* no builder, just mutate */)
 	}
 	p.T.Transform(ctx, id, cmd, p.O)
 }

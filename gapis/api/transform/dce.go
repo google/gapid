@@ -131,7 +131,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 			// Logging the DCE result of alive commands
 			numCmd++
 			numLive++
-			if aliveCmd.CmdFlags(ctx, s).IsDrawCall() {
+			if aliveCmd.CmdFlags(ctx, api.CmdNoID, s).IsDrawCall() {
 				numLiveDraws++
 			}
 			if e := aliveCmd.Extras(); e != nil && e.Observations() != nil {
@@ -150,7 +150,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 				deadCmd := t.footprint.Commands[fci[0]]
 				numCmd++
 				numDead++
-				if deadCmd.CmdFlags(ctx, s).IsDrawCall() {
+				if deadCmd.CmdFlags(ctx, api.CmdNoID, s).IsDrawCall() {
 					numDeadDraws++
 				}
 				if e := deadCmd.Extras(); e != nil && e.Observations() != nil {

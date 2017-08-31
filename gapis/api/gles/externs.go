@@ -29,10 +29,11 @@ import (
 )
 
 type externs struct {
-	ctx context.Context // Allowed because the externs struct is only a parameter proxy for a single call
-	cmd api.Cmd
-	s   *api.State
-	b   *rb.Builder
+	ctx   context.Context // Allowed because the externs struct is only a parameter proxy for a single call
+	cmd   api.Cmd
+	cmdID api.CmdID
+	s     *api.State
+	b     *rb.Builder
 }
 
 func (e externs) mapMemory(slice memory.Slice) {

@@ -33,7 +33,7 @@ func (w *Writer) State() *api.State {
 
 func (w *Writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if w.S != nil {
-		cmd.Mutate(ctx, w.S, nil)
+		cmd.Mutate(ctx, id, w.S, nil)
 	}
 	w.Cmds = append(w.Cmds, cmd)
 	w.CmdsAndIDs = append(w.CmdsAndIDs, CmdAndID{cmd, id})

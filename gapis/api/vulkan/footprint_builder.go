@@ -1268,7 +1268,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	}
 
 	// Mutate
-	if err := cmd.Mutate(ctx, s, nil); err != nil {
+	if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 		log.E(ctx, "Command %v %v: %v", id, cmd, err)
 		return
 	}
@@ -1292,7 +1292,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkMapMemory:
 		modify(ctx, bh, vkHandle(cmd.Memory))
 		memObj := GetState(s).DeviceMemories.Get(cmd.Memory)
-		isCoherent, _ := subIsMemoryCoherent(ctx, cmd, nil, s, GetState(s),
+		isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s),
 			cmd.thread, nil, memObj)
 		if isCoherent {
 			vb.mappedCoherentMemories[cmd.Memory] = memObj
@@ -1348,7 +1348,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Image))
 		read(ctx, bh, vkHandle(cmd.Memory))
 		offset := uint64(cmd.MemoryOffset)
-		inferredSize, err := subInferImageSize(ctx, cmd, nil, s, nil, cmd.thread,
+		inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
 			nil, GetState(s).Images.Get(cmd.Image))
 		if err != nil {
 			log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)
@@ -1364,7 +1364,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Image))
 		read(ctx, bh, vkHandle(cmd.Memory))
 		offset := uint64(cmd.Offset)
-		inferredSize, err := subInferImageSize(ctx, cmd, nil, s, nil, cmd.thread,
+		inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
 			nil, GetState(s).Images.Get(cmd.Image))
 		if err != nil {
 			log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)

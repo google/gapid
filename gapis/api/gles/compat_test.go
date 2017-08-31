@@ -123,9 +123,7 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	}
 
 	s := newState(ctx)
-	for _, c := range mw.Cmds {
-		c.Mutate(ctx, s, nil)
-	}
+	api.MutateCmds(ctx, s, nil, mw.Cmds...)
 
 	srcPtr := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
 	got := strings.TrimRight(string(memory.CharToBytes(srcPtr.StringSlice(ctx, s).Read(ctx, cmd, s, nil))), "\x00")
@@ -190,7 +188,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	s := newState(ctx)
 	var found bool
 	err = api.ForeachCmd(ctx, mw.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, s, nil); err != nil {
+		if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 			return err
 		}
 

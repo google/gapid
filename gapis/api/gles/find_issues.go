@@ -92,7 +92,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	ctx = log.Enter(ctx, "findIssues")
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	t.lastGlError = GLenum_GL_NO_ERROR
-	mutateErr := cmd.Mutate(ctx, t.state, nil /* no builder */)
+	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
 	if mutateErr != nil {
 		if api.IsErrCmdAborted(mutateErr) && t.lastGlError != GLenum_GL_NO_ERROR {
 			// GL errors have already been reported - so do not log it again.

@@ -186,7 +186,7 @@ func (w *adapter) State() *api.State {
 
 func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	w.builder.BeginCommand(uint64(id), cmd.Thread())
-	if err := cmd.Mutate(ctx, w.state, w.builder); err == nil {
+	if err := cmd.Mutate(ctx, id, w.state, w.builder); err == nil {
 		w.builder.CommitCommand()
 	} else {
 		w.builder.RevertCommand(err)

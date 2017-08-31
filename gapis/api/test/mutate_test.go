@@ -59,7 +59,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 
 	api.ForeachCmd(ctx, test.cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		b.BeginCommand(uint64(id), 0)
-		cmd.Mutate(ctx, s, b)
+		cmd.Mutate(ctx, id, s, b)
 		b.CommitCommand()
 		return nil
 	})

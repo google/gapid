@@ -273,7 +273,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		switch cmd := cmd.(type) {
 		case *GlBindBuffer:
 			if cmd.Buffer == 0 {
-				buf, err := subGetBoundBuffer(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
 				if err != nil {
 					log.E(ctx, "Can not get bound buffer: %v ", err)
 				}
@@ -336,11 +336,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlBindBufferBase:
 			if cmd.Buffer == 0 {
-				genBuf, err := subGetBoundBuffer(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
 				if err != nil {
 					log.E(ctx, "Can not get bound buffer: %v ", err)
 				}
-				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target, cmd.Index)
+				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target, cmd.Index)
 				if err != nil {
 					log.E(ctx, "Can not get bound buffer: %v ", err)
 				}
@@ -414,7 +414,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlVertexAttrib4fv:
 			if oldAttrib, ok := c.Vertex.Attributes[cmd.Location]; ok {
 				oldValue := oldAttrib.Value.Read(ctx, cmd, s, nil /* builder */)
-				cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				newAttrib := c.Vertex.Attributes[cmd.Location]
 				newValue := newAttrib.Value.Read(ctx, cmd, s, nil /* builder */)
 				if reflect.DeepEqual(oldValue, newValue) {
@@ -442,7 +442,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// command.
 			// This is so we can grab the source string from the Shader object.
 			// We will actually provide the source to driver at compile time.
-			cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+			cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 			return
 
 		case *GlCompileShader:
@@ -887,7 +887,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// framebuffer. The state is mutated so that when a non-default
 				// framebuffer is bound later on, FRAMEBUFFER_SRGB will be enabled.
 				// (see GlBindFramebuffer below)
-				cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				return
 			}
 
@@ -984,7 +984,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *EglCreateImageKHR:
 			{
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
-					return cmd.Mutate(ctx, s, nil) // do not call, just mutate
+					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
 				}))
 
 				// Create GL texture as compat replacement of the EGL image
@@ -1019,7 +1019,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				cmd := *cmd
 				convertTexTarget(&cmd.Target)
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
-					return cmd.Mutate(ctx, s, nil) // do not call, just mutate
+					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
 				}))
 
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
@@ -1048,7 +1048,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlFramebufferTextureMultiviewOVR:
 			{
-				cmd.Mutate(ctx, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would loose the knowledge about view count.
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
@@ -1084,7 +1084,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		default:
-			flags := cmd.CmdFlags(ctx, s)
+			flags := cmd.CmdFlags(ctx, id, s)
 			if flags.IsClear() {
 				compatMultiviewDraw(ctx, id, cmd, out)
 				return
