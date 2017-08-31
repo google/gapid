@@ -17,6 +17,7 @@ def _extract_impl(ctx):
     )
 
 extract = rule(
+    _extract_impl,
     attrs = {
         "zip": attr.label(
             single_file = True,
@@ -26,5 +27,4 @@ extract = rule(
         "entries": attr.string_list(mandatory=True),
         "dir": attr.string(),
     },
-    implementation = _extract_impl,
 )

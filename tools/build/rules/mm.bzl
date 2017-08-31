@@ -11,13 +11,13 @@ def _filter_headers_impl(ctx):
     )
 
 filter_headers = rule(
+    _filter_headers_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = True,
             mandatory = True,
         ),
     },
-    implementation = _filter_headers_impl,
 )
 
 def mm_library(name, srcs=[], hdrs = [], copy_hdrs=[], **kwargs):

@@ -20,7 +20,7 @@ def _empty_repository_impl(ctx):
     fail("You must specify either build_file or build_file_content'")
 
 empty_repository = repository_rule(
-    implementation = _empty_repository_impl,
+    _empty_repository_impl,
     attrs = _BUILD_FILE_ATTRS,
 )
 
@@ -60,7 +60,7 @@ def _github_repository_impl(ctx):
   _add_build_file(ctx)
 
 _github_repository = repository_rule(
-    implementation = _github_repository_impl,
+    _github_repository_impl,
     attrs = _BUILD_FILE_ATTRS + dict(
         organization = attr.string(mandatory = True),
         project = attr.string(mandatory = True),

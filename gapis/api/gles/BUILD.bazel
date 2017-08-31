@@ -73,9 +73,9 @@ go_library(
         "version.go",
         "vertex_attribute_array.go",
         "wireframe.go",
-        ":generated",  # keep
         ":pb_go",  # keep
     ],
+    library = ":generated",
     importpath = "github.com/google/gapid/gapis/api/gles",
     visibility = ["//visibility:public"],
     deps = [

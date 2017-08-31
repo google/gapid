@@ -46,6 +46,7 @@ def _tablegen_impl(ctx):
         executable=ctx.executable._tblgen)
 
 llvm_tablegen = rule(
+    _tablegen_impl,
     attrs = {
         "table": attr.label(
             single_file = True,
@@ -61,8 +62,6 @@ llvm_tablegen = rule(
             default = Label("@llvm//:llvm-tblgen"),
         ),
     },
-    output_to_genfiles = True,
-    implementation = _tablegen_impl,
 )
 
 def tablegen(name = "", table="", rules=[], deps=[], **kwargs):
