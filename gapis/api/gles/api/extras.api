@@ -67,9 +67,11 @@ sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
     program.ActiveUniforms = null
     program.Uniforms = null
     for _, attributeIndex, aa in info.ActiveAttributes {
+      aa.Type = hintAtAttributeType(aa.Type)
       program.ActiveAttributes[attributeIndex] = aa
     }
     for _, uniformIndex, au in info.ActiveUniforms {
+      au.Type = hintAtUniformType(au.Type)
       program.ActiveUniforms[uniformIndex] = au
       for arrayIndex in (0 .. as!UniformLocation(au.ArraySize)) {
         // TODO: Locations do not have to be consecutive.
@@ -82,11 +84,171 @@ sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
     for _, blockIndex, aub in info.ActiveUniformBlocks {
       tmp := aub
       for _, uniformIndex, au in info.ActiveUniforms {
+        au.Type = hintAtUniformType(au.Type)
         if au.BlockIndex == blockIndex {
           tmp.ActiveUniforms[uniformIndex] = au // Copy for convenience
         }
       }
       program.ActiveUniformBlocks[blockIndex] = tmp
     }
+  }
+}
+
+// hintAtUniformType simply return the single argument unaltered.
+// It is used to add enum name hint information for static analysis.
+sub GLenum hintAtUniformType(GLenum ty) {
+  return switch ty {
+    case GL_FLOAT,
+        GL_FLOAT_VEC2,
+        GL_FLOAT_VEC3,
+        GL_FLOAT_VEC4,
+        GL_DOUBLE,
+        GL_DOUBLE_VEC2,
+        GL_DOUBLE_VEC3,
+        GL_DOUBLE_VEC4,
+        GL_INT,
+        GL_INT_VEC2,
+        GL_INT_VEC3,
+        GL_INT_VEC4,
+        GL_UNSIGNED_INT,
+        GL_UNSIGNED_INT_VEC2,
+        GL_UNSIGNED_INT_VEC3,
+        GL_UNSIGNED_INT_VEC4,
+        GL_BOOL,
+        GL_BOOL_VEC2,
+        GL_BOOL_VEC3,
+        GL_BOOL_VEC4,
+        GL_FLOAT_MAT2,
+        GL_FLOAT_MAT3,
+        GL_FLOAT_MAT4,
+        GL_FLOAT_MAT2x3,
+        GL_FLOAT_MAT2x4,
+        GL_FLOAT_MAT3x2,
+        GL_FLOAT_MAT3x4,
+        GL_FLOAT_MAT4x2,
+        GL_FLOAT_MAT4x3,
+        GL_DOUBLE_MAT2,
+        GL_DOUBLE_MAT3,
+        GL_DOUBLE_MAT4,
+        GL_DOUBLE_MAT2x3,
+        GL_DOUBLE_MAT2x4,
+        GL_DOUBLE_MAT3x2,
+        GL_DOUBLE_MAT3x4,
+        GL_DOUBLE_MAT4x2,
+        GL_DOUBLE_MAT4x3,
+        GL_SAMPLER_1D,
+        GL_SAMPLER_2D,
+        GL_SAMPLER_3D,
+        GL_SAMPLER_CUBE,
+        GL_SAMPLER_1D_SHADOW,
+        GL_SAMPLER_2D_SHADOW,
+        GL_SAMPLER_1D_ARRAY,
+        GL_SAMPLER_2D_ARRAY,
+        GL_SAMPLER_1D_ARRAY_SHADOW,
+        GL_SAMPLER_2D_ARRAY_SHADOW,
+        GL_SAMPLER_2D_MULTISAMPLE,
+        GL_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_SAMPLER_CUBE_SHADOW,
+        GL_SAMPLER_BUFFER,
+        GL_SAMPLER_2D_RECT,
+        GL_SAMPLER_2D_RECT_SHADOW,
+        GL_INT_SAMPLER_1D,
+        GL_INT_SAMPLER_2D,
+        GL_INT_SAMPLER_3D,
+        GL_INT_SAMPLER_CUBE,
+        GL_INT_SAMPLER_1D_ARRAY,
+        GL_INT_SAMPLER_2D_ARRAY,
+        GL_INT_SAMPLER_2D_MULTISAMPLE,
+        GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_INT_SAMPLER_BUFFER,
+        GL_INT_SAMPLER_2D_RECT,
+        GL_UNSIGNED_INT_SAMPLER_1D,
+        GL_UNSIGNED_INT_SAMPLER_2D,
+        GL_UNSIGNED_INT_SAMPLER_3D,
+        GL_UNSIGNED_INT_SAMPLER_CUBE,
+        GL_UNSIGNED_INT_SAMPLER_1D_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE,
+        GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_BUFFER,
+        GL_UNSIGNED_INT_SAMPLER_2D_RECT,
+        GL_IMAGE_1D,
+        GL_IMAGE_2D,
+        GL_IMAGE_3D,
+        GL_IMAGE_2D_RECT,
+        GL_IMAGE_CUBE,
+        GL_IMAGE_BUFFER,
+        GL_IMAGE_1D_ARRAY,
+        GL_IMAGE_2D_ARRAY,
+        GL_IMAGE_2D_MULTISAMPLE,
+        GL_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_INT_IMAGE_1D,
+        GL_INT_IMAGE_2D,
+        GL_INT_IMAGE_3D,
+        GL_INT_IMAGE_2D_RECT,
+        GL_INT_IMAGE_CUBE,
+        GL_INT_IMAGE_BUFFER,
+        GL_INT_IMAGE_1D_ARRAY,
+        GL_INT_IMAGE_2D_ARRAY,
+        GL_INT_IMAGE_2D_MULTISAMPLE,
+        GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_1D,
+        GL_UNSIGNED_INT_IMAGE_2D,
+        GL_UNSIGNED_INT_IMAGE_3D,
+        GL_UNSIGNED_INT_IMAGE_2D_RECT,
+        GL_UNSIGNED_INT_IMAGE_CUBE,
+        GL_UNSIGNED_INT_IMAGE_BUFFER,
+        GL_UNSIGNED_INT_IMAGE_1D_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_2D_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE,
+        GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_ATOMIC_COUNTER:
+      ty
+    default:
+      ty
+  }
+}
+
+// hintAtAttributeType simply return the single argument unaltered.
+// It is used to add enum name hint information for static analysis.
+sub GLenum hintAtAttributeType(GLenum ty) {
+    return switch ty {
+    case GL_FLOAT,
+        GL_FLOAT_VEC2,
+        GL_FLOAT_VEC3,
+        GL_FLOAT_VEC4,
+        GL_FLOAT_MAT2,
+        GL_FLOAT_MAT3,
+        GL_FLOAT_MAT4,
+        GL_FLOAT_MAT2x3,
+        GL_FLOAT_MAT2x4,
+        GL_FLOAT_MAT3x2,
+        GL_FLOAT_MAT3x4,
+        GL_FLOAT_MAT4x2,
+        GL_FLOAT_MAT4x3,
+        GL_INT,
+        GL_INT_VEC2,
+        GL_INT_VEC3,
+        GL_INT_VEC4,
+        GL_UNSIGNED_INT,
+        GL_UNSIGNED_INT_VEC2,
+        GL_UNSIGNED_INT_VEC3,
+        GL_UNSIGNED_INT_VEC4,
+        GL_DOUBLE,
+        GL_DOUBLE_VEC2,
+        GL_DOUBLE_VEC3,
+        GL_DOUBLE_VEC4,
+        GL_DOUBLE_MAT2,
+        GL_DOUBLE_MAT3,
+        GL_DOUBLE_MAT4,
+        GL_DOUBLE_MAT2x3,
+        GL_DOUBLE_MAT2x4,
+        GL_DOUBLE_MAT3x2,
+        GL_DOUBLE_MAT3x4,
+        GL_DOUBLE_MAT4x2,
+        GL_DOUBLE_MAT4x3:
+      ty
+    default:
+      ty
   }
 }
