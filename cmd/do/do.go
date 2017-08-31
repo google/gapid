@@ -126,8 +126,8 @@ func findRootSourcePath() file.Path {
 func checkGoVersion() {
 	var major, minor, point int
 	fmt.Sscanf(runtime.Version(), "go%d.%d.%d", &major, &minor, &point)
-	if major != 1 || minor != 8 {
-		fmt.Fprintf(os.Stderr, "Requires Go version 1.8.x, got %v.%v.%v", major, minor, point)
+	if major != 1 || minor < 8 {
+		fmt.Fprintf(os.Stderr, "Requires Go version greater than 1.8.x, got %v.%v.%v", major, minor, point)
 		os.Exit(1)
 	}
 }
