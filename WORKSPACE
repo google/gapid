@@ -102,7 +102,7 @@ github_repository(
     name = "spirv-tools",
     organization = "KhronosGroup",
     project = "SPIRV-Tools",
-    commit = "e9e4393b1c5aad7553c05782acefbe32b42644bd",
+    commit = "0b0454c42c6b6f6746434bd5c78c5c70f65d9c51",
     build_file = "//tools/build/third_party:spirv-tools.BUILD",
 )
 
@@ -110,7 +110,7 @@ github_repository(
     name = "spirv-cross",
     organization = "KhronosGroup",
     project = "SPIRV-Cross",
-    commit = "2cbeaac76f6fac04f077a6aea2bd1417909798f3",
+    commit = "98a17431c24b47392cbe343da8dbd1f5ffbb23e8",
     build_file = "//tools/build/third_party:spirv-cross.BUILD",
 )
 
@@ -118,7 +118,7 @@ github_repository(
     name = "spirv-headers",
     organization = "KhronosGroup",
     project = "SPIRV-Headers",
-    commit = "661ad91124e6af2272afd00f804d8aa276e17107",
+    commit = "2bf02308656f97898c5f7e433712f21737c61e4e",
     build_file = "//tools/build/third_party:spirv-headers.BUILD",
 )
 
@@ -126,7 +126,7 @@ github_repository(
     name = "glslang",
     organization = "KhronosGroup",
     project = "glslang",
-    commit = "eaed06823a5853274a1cea61511090ce6e838c02",
+    commit = "778806a69246b8921e867e839c9e87ccddc924f2",
     build_file = "//tools/build/third_party:glslang.BUILD",
 )
 
