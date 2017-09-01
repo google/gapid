@@ -96,6 +96,8 @@ func (t *fenceTracker) isInternal(n semantic.Expression) bool {
 		return n.IsInternal()
 	case *semantic.Clone, *semantic.Make:
 		return true
+	case *semantic.Call:
+		return n.Target.Function.IsInternal()
 	default:
 		return false
 	}
