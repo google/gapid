@@ -35,6 +35,9 @@ public:
     inline Slice();
     inline Slice(T* base, uint64_t count, const std::shared_ptr<Pool>& pool);
 
+    // Equality operator.
+    inline bool operator == (const Slice<T>& other) const;
+
     // Returns the number of elements in the slice.
     inline uint64_t count() const;
 
@@ -80,6 +83,11 @@ template<typename T>
 inline Slice<T>::Slice(T* base, uint64_t count, const std::shared_ptr<Pool>& pool)
     : mBase(base), mCount(count), mPool(pool) {
     GAPID_ASSERT(mBase != nullptr || count == 0 /* Slice: null pointer */);
+}
+
+template<typename T>
+inline bool Slice<T>::operator == (const Slice<T>& other) const {
+    return mBase == other.mBase && mCount == other.mCount;
 }
 
 template<typename T>
