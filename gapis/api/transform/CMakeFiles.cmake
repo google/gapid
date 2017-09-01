@@ -28,10 +28,11 @@ set(files
     file_log.go
     injector.go
     injector_test.go
+    tasks.go
     terminator.go
     transformer.go
     transforms.go
 )
 set(dirs
-    
+
 )

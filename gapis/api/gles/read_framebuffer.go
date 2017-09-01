@@ -17,7 +17,6 @@ package gles
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/binary"
@@ -32,49 +31,10 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
-type readFbTask struct {
-	at   api.CmdID
-	work func(ctx context.Context, w transform.Writer)
-}
-
-type readFramebuffer struct {
-	tasks       []readFbTask
-	tasksSorted bool
-}
+type readFramebuffer struct{ transform.Tasks }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 	return &readFramebuffer{}
-}
-
-func (t *readFramebuffer) addTask(at api.CmdID, work func(context.Context, transform.Writer)) {
-	t.tasks = append(t.tasks, readFbTask{at, work})
-	t.tasksSorted = false
-}
-
-func (t *readFramebuffer) sortTasks() {
-	if !t.tasksSorted {
-		sort.Slice(t.tasks, func(i, j int) bool { return t.tasks[i].at < t.tasks[j].at })
-		t.tasksSorted = true
-	}
-}
-
-func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	if id.IsReal() {
-		t.sortTasks()
-		for len(t.tasks) > 0 && t.tasks[0].at < id {
-			t.tasks[0].work(ctx, out)
-			t.tasks = t.tasks[1:]
-		}
-	}
-	out.MutateAndWrite(ctx, id, cmd)
-}
-
-func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) {
-	t.sortTasks()
-	for _, task := range t.tasks {
-		task.work(ctx, out)
-	}
-	t.tasks = nil
 }
 
 func getBoundFramebufferID(thread uint64, s *api.State) (FramebufferId, error) {
@@ -94,7 +54,7 @@ func (t *readFramebuffer) depth(
 	fb FramebufferId,
 	res replay.Result) {
 
-	t.addTask(id, func(ctx context.Context, out transform.Writer) {
+	t.Add(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 
 		if fb == 0 {
@@ -129,7 +89,7 @@ func (t *readFramebuffer) color(
 	bufferIdx uint32,
 	res replay.Result) {
 
-	t.addTask(id, func(ctx context.Context, out transform.Writer) {
+	t.Add(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s, thread)
 
