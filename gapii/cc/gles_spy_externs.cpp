@@ -102,4 +102,8 @@ void GlesSpy::onGlError(CallObserver* observer, GLenum_Error err) {
     }
 }
 
+Slice<uint8_t> GlesSpy::ReadGPUTextureData(CallObserver* observer, std::shared_ptr<Texture> texture, GLint level, GLint layer) {
+    return Slice<uint8_t>(); // Not currently required for gapii.
+}
+
 }

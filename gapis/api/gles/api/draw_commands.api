@@ -66,6 +66,7 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
   CheckNonNegative!GLsizei(indices_count)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
+  WriteGPUFramebufferData(ctx)
 }
 
 @if(Version.GLES31)
@@ -80,6 +81,7 @@ cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+  WriteGPUFramebufferData(ctx)
 }
 
 @if(Version.GLES30)
@@ -99,6 +101,7 @@ sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indice
   CheckNonNegative!GLsizei(instance_count)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
+  WriteGPUFramebufferData(ctx)
 }
 
 sub void DrawElements(ref!Context    ctx,
@@ -141,6 +144,7 @@ sub void DrawElements(ref!Context    ctx,
       read(index_data[0:count * IndexSize(indices_type)])
     }
   }
+  WriteGPUFramebufferData(ctx)
 }
 
 @if(Version.GLES10)
@@ -190,6 +194,7 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+  WriteGPUFramebufferData(ctx)
 }
 
 @if(Version.GLES30)
@@ -298,3 +303,28 @@ sub void PrimitiveBoundingBox(GLfloat minX, GLfloat minY, GLfloat minZ, GLfloat 
   ctx.Rasterization.PrimitiveBoundingBox.Min = Vec4f(minX, minY, minZ, minW)
   ctx.Rasterization.PrimitiveBoundingBox.Max = Vec4f(maxX, maxY, maxZ, maxW)
 }
+
+// WriteGPUFramebufferData updates the currently the data of currently bound
+// framebuffer textures.
+sub void WriteGPUFramebufferData(ref!Context ctx) {
+  for _, _, a in ctx.Bound.DrawFramebuffer.ColorAttachments {
+    if a.Texture != null {
+      if a.TextureLevel in a.Texture.Levels {
+        level := a.Texture.Levels[a.TextureLevel]
+        if a.TextureLayer in level.Layers {
+          layer := level.Layers[a.TextureLayer]
+          if layer.Data == null {
+            layer.Data = ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer)
+          } else {
+            copy(layer.Data, ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer))
+          }
+        }
+      }
+    }
+  }
+}
+
+// ReadGPUTextureData is used to read the texture updated by the GPU.
+// This is typically done to read the result of a render-to-texture.
+@internal
+extern u8[] ReadGPUTextureData(ref!Texture texture, GLint level, GLint layer)

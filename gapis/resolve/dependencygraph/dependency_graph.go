@@ -143,7 +143,8 @@ func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
 }
 
 func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
+	ctx = capture.Put(ctx, r.Capture)
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
