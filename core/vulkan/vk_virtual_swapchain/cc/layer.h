@@ -130,8 +130,8 @@ template <typename T> struct ContextToken {
   T &operator*() { return object_; }
 
 private:
-  std::unique_lock<threading::mutex> context_lock_;
   T &object_;
+  std::unique_lock<threading::mutex> context_lock_;
 };
 
 // In order to prevent dead-locks in the presence of
