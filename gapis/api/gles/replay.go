@@ -111,8 +111,8 @@ func (a API) Replay(
 	// Skip unnecessary commands.
 	deadCodeElimination := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
-	// Transform for all framebuffer reads.
-	readFramebuffer := newReadFramebuffer(ctx)
+	var rf *readFramebuffer // Transform for all framebuffer reads.
+	var rt *readTexture     // Transform for all texture reads.
 
 	optimize := true
 	wire := false
@@ -126,7 +126,18 @@ func (a API) Replay(
 			}
 			issues.reportTo(rr.Result)
 
+		case textureRequest:
+			if rt == nil {
+				rt = &readTexture{}
+			}
+			after := api.CmdID(req.data.After)
+			deadCodeElimination.Request(after)
+			rt.add(ctx, req.data, rr.Result)
+
 		case framebufferRequest:
+			if rf == nil {
+				rf = &readFramebuffer{}
+			}
 			deadCodeElimination.Request(req.after)
 			// HACK: Also ensure we have framebuffer before the command.
 			// TODO: Remove this and handle swap-buffers better.
@@ -135,12 +146,12 @@ func (a API) Replay(
 			thread := cmds[req.after].Thread()
 			switch req.attachment {
 			case api.FramebufferAttachment_Depth:
-				readFramebuffer.depth(req.after, thread, req.fb, rr.Result)
+				rf.depth(req.after, thread, req.fb, rr.Result)
 			case api.FramebufferAttachment_Stencil:
 				return fmt.Errorf("Stencil buffer attachments are not currently supported")
 			default:
 				idx := uint32(req.attachment - api.FramebufferAttachment_Color0)
-				readFramebuffer.color(req.after, thread, req.width, req.height, req.fb, idx, rr.Result)
+				rf.color(req.after, thread, req.width, req.height, req.fb, idx, rr.Result)
 			}
 
 			cfg := cfg.(drawConfig)
@@ -170,7 +181,12 @@ func (a API) Replay(
 	// Needs to be after 'issues' which uses absence of draw calls to find undefined framebuffers.
 	transforms.Add(undefinedFramebuffer(ctx, device))
 
-	transforms.Add(readFramebuffer)
+	if rt != nil {
+		transforms.Add(rt)
+	}
+	if rf != nil {
+		transforms.Add(rf)
+	}
 
 	// Device-dependent transforms.
 	if c, err := compat(ctx, device); err == nil {

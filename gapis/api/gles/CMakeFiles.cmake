@@ -47,6 +47,7 @@ set(files
     markers.go
     markers_test.go
     mutate.go
+    read_texture.go
     read_framebuffer.go
     replay.go
     resolvables.pb.go

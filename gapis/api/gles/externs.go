@@ -20,10 +20,14 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/pkg/errors"
 )
@@ -135,4 +139,34 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 	if f := e.s.AddTag; f != nil {
 		f(msgID, message)
 	}
+}
+
+func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
+	poolID, dst := e.s.Memory.New()
+	registry := bind.GetRegistry(e.ctx)
+	device := registry.DefaultDevice() // TODO: Device selection.
+	img := texture.Levels[level].Layers[layer]
+	dataFormat, dataType := img.getUnsizedFormatAndType()
+	format, err := getImageFormat(dataFormat, dataType)
+	if err != nil {
+		panic(err)
+	}
+	size := format.Size(int(img.Width), int(img.Height), 1)
+	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
+		Capture:    path.NewCapture(capture.Get(e.ctx).Id.ID()),
+		Device:     path.NewDevice(device.Instance().Id.ID()),
+		After:      uint64(e.cmdID),
+		Thread:     e.cmd.Thread(),
+		Texture:    uint32(texture.ID),
+		Level:      uint32(level),
+		Layer:      uint32(layer),
+		DataFormat: uint32(dataFormat),
+		DataType:   uint32(dataType),
+	})
+	if err != nil {
+		panic(err)
+	}
+	data := memory.Resource(dataID, uint64(size))
+	dst.Write(0, data)
+	return U8ˢ{count: uint64(size), pool: poolID}
 }
