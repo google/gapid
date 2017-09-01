@@ -83,12 +83,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
 		levels := make([]*api.CubemapLevel, len(t.Levels))
+		anyData := false
 		for i, level := range t.Levels {
 			levels[i] = &api.CubemapLevel{}
 			for j, face := range level.Layers {
 				if face.Data.count == 0 {
-					// TODO: Make other results available
-					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+					continue
 				}
 				dataFormat, dataType := face.getUnsizedFormatAndType()
 				format, err := getImageFormat(dataFormat, dataType)
@@ -116,7 +116,11 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 				case GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
 					levels[i].PositiveZ = img
 				}
+				anyData = true
 			}
+		}
+		if !anyData {
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Cubemap{Levels: levels})), nil
 
