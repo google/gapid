@@ -16,6 +16,7 @@ package gles
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -333,6 +334,36 @@ func (t *tweaker) glBindRenderbuffer(ctx context.Context, id RenderbufferId) {
 		t.doAndUndo(ctx,
 			t.cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, id),
 			t.cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, o))
+	}
+}
+
+func (t *tweaker) glBindTexture(ctx context.Context, tex *Texture) {
+	var old TextureId
+	switch tex.Kind {
+	case GLenum_GL_TEXTURE_2D:
+		old = t.c.Bound.TextureUnit.Binding2d.GetID()
+	case GLenum_GL_TEXTURE_3D:
+		old = t.c.Bound.TextureUnit.Binding3d.GetID()
+	case GLenum_GL_TEXTURE_2D_ARRAY:
+		old = t.c.Bound.TextureUnit.Binding2dArray.GetID()
+	case GLenum_GL_TEXTURE_CUBE_MAP:
+		old = t.c.Bound.TextureUnit.BindingCubeMap.GetID()
+	case GLenum_GL_TEXTURE_CUBE_MAP_ARRAY:
+		old = t.c.Bound.TextureUnit.BindingCubeMapArray.GetID()
+	case GLenum_GL_TEXTURE_2D_MULTISAMPLE:
+		old = t.c.Bound.TextureUnit.Binding2dMultisample.GetID()
+	case GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+		old = t.c.Bound.TextureUnit.Binding2dMultisampleArray.GetID()
+	case GLenum_GL_TEXTURE_EXTERNAL_OES:
+		old = t.c.Bound.TextureUnit.BindingExternalOes.GetID()
+	default:
+		panic(fmt.Errorf("%v is not a texture kind", tex.Kind))
+	}
+
+	if old != tex.ID {
+		t.doAndUndo(ctx,
+			t.cb.GlBindTexture(tex.Kind, tex.ID),
+			t.cb.GlBindTexture(tex.Kind, old))
 	}
 }
 
