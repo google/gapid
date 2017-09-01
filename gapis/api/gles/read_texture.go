@@ -40,11 +40,6 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		c := GetContext(s, r.Thread)
 		dID := id.Derived()
 		cb := CommandBuilder{Thread: r.Thread}
-		t := newTweaker(out, dID, cb)
-		defer t.revert(ctx)
-
-		t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
-		t.glBindTexture_2D(ctx, TextureId(r.Texture))
 
 		f, err := getImageFormat(GLenum(r.DataFormat), GLenum(r.DataType))
 		if err != nil {
@@ -63,12 +58,18 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 
 		size := uint64(f.Size(int(layer.Width), int(layer.Height), 1))
 		tmp := s.AllocOrPanic(ctx, size)
+		defer tmp.Free()
+
+		t := newTweaker(out, dID, cb)
+		defer t.revert(ctx)
+
+		t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
+		t.glBindTexture(ctx, tex)
 
 		target := tex.Kind
 		if tex.Kind == GLenum_GL_TEXTURE_CUBE_MAP {
 			target = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(r.Layer)
 		}
-
 		out.MutateAndWrite(ctx, dID, cb.GlGetTexImage(target, GLint(r.Level), GLenum(r.DataFormat), GLenum(r.DataType), tmp.Ptr()))
 
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
