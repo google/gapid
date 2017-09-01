@@ -114,6 +114,7 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 
 	params := []string{
 		"video",
+		"-type", "sxs",
 		"-out", videofile.System(),
 		tracefile.System(),
 	}
