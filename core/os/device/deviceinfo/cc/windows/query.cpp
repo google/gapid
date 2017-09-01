@@ -174,7 +174,7 @@ int numABIs() { return 1; }
 
 void abi(int idx, device::ABI* abi) {
     abi->set_name("X86_64");
-    abi->set_os(device::OSX);
+    abi->set_os(device::Windows);
     abi->set_architecture(device::X86_64);
     abi->set_allocated_memorylayout(currentMemoryLayout());
 }
