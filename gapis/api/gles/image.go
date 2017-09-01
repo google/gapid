@@ -24,6 +24,13 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
+func (i *Image) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
+	if i.DataFormat == 0 && i.DataType == 0 {
+		return getUnsizedFormatAndType(i.SizedFormat)
+	}
+	return i.DataFormat, i.DataType
+}
+
 // getSizedFormatFromTuple returns sized format from unsized format and component type.
 func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 	sf, _ := subGetSizedFormatFromTuple(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, unsizedFormat, ty)
