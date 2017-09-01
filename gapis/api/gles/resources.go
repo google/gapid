@@ -66,7 +66,8 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 				// TODO: Make other results available
 				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
-			format, err := getImageFormat(img.DataFormat, img.DataType)
+			dataFormat, dataType := img.getUnsizedFormatAndType()
+			format, err := getImageFormat(dataFormat, dataType)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +90,8 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 					// TODO: Make other results available
 					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 				}
-				format, err := getImageFormat(face.DataFormat, face.DataType)
+				dataFormat, dataType := face.getUnsizedFormatAndType()
+				format, err := getImageFormat(dataFormat, dataType)
 				if err != nil {
 					return nil, err
 				}
