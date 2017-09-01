@@ -54,6 +54,7 @@ func functionSignature(rv *resolver, out *semantic.Function) {
 		}
 	}
 	out.Signature = getSignature(rv, in, out.Return.Type, args)
+	out.Annotations = annotations(rv, in.Annotations)
 	rv.mappings.add(in, out)
 	rv.mappings.add(in.Generic.Name, out)
 }
@@ -88,7 +89,6 @@ func functionBody(rv *resolver, owner semantic.Type, out *semantic.Function) {
 			if out.This != nil {
 				rv.add(string(ast.KeywordThis), out.This)
 			}
-			out.Annotations = annotations(rv, in.Annotations)
 			out.Block = block(rv, in.Block, out)
 			if out.Subroutine {
 				switch out.Block.Statements.Last().(type) {
